@@ -54,6 +54,9 @@ enum StartError {
     },
     #[error("{0}")]
     RuntimeRole(#[from] events::RoleError),
+    /// The events error's text is fixed and holds no value (LOG-007).
+    #[error("the audit entries cannot be linked in the hash chain ({0})")]
+    AuditChain(#[from] events::Error),
     /// The builds error's text is fixed and holds no value (LOG-007).
     #[error("the builders that went with the operator's tokens cannot be audited ({0})")]
     Builds(#[from] builds::Error),
@@ -167,6 +170,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let bucket = release_bucket(&config)?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
+    link_audit_entries(&pool).await?;
     permit_networks(&pool, &config).await?;
     // One deny list for every outbound connection; `tunnels` says which path takes it how.
     let policy = AddressPolicy::new(config.probe_deny.clone());
@@ -302,6 +306,16 @@ fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartE
     let bucket = opened.transpose()?.flatten();
     tracing::info!(publishing = bucket.is_some(), "release bucket");
     Ok(bucket.map(Arc::new))
+}
+
+/// Links the audit entries that exist when the hash chain is empty, before anything writes an
+/// audit entry (LOG-026). Each command that writes to the audit log calls it first.
+async fn link_audit_entries(pool: &PgPool) -> Result<(), StartError> {
+    let linked = events::link_existing(pool).await?;
+    if linked > 0 {
+        tracing::info!(linked, "audit entries linked in the hash chain");
+    }
+    Ok(())
 }
 
 /// Connects to the database named in `ANIMA_DATABASE_URL_FILE` (DB-002).

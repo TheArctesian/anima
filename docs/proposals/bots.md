@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 1 (2026-11-17). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-038. It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
+evidence: Version 2 (2026-11-17). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-046 (BOT-039 to BOT-046, agent coverage against Orca, are proposed with OD-BOT1 to OD-BOT7). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
 ---
 
 # Proposal: Bots
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the Bots extension (XP-16, proposed) |
-| Version | 1 |
+| Version | 2 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. No requirement is approved. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, proposed. No requirement is approved. |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway) |
 
-Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
+Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
 
 ## Bots
 
@@ -235,7 +235,84 @@ Codex, and Google Antigravity". The public text does not support this claim for 
 - Cursor and Grok Build: the vendor text and docs support the CLI path, so the claim holds for the
   documented CLI use.
 
-**Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1), the rule engine (ENG-001), and
+**Agent coverage (proposed 2026-11-17, version 2; not ruled).** The note
+`Market/Competitors/Analysis/Agent Coverage vs Orca.md` in the Anima.ing vault (checked 2026-11-17)
+compares the agents that [Orca](https://github.com/stablyai/orca) lists (34 command-line agents) with
+this proposal. It holds the install line, the sign-in and the effort for each agent. This section does
+not copy them (PLN-016). The state today, by that note: the daemon detects 2 of the 34, Claude Code and
+Codex, and does only that (`crates/daemon-core/src/inventory/tools.rs` prints their version; AU-1 will
+read their session files for counts, AIS-018). This proposal names an adapter for 3 more (BOT-019,
+BOT-034, BOT-035, BOT-036: Cursor, Grok Build, and Antigravity on an API key only). It covers 14 only
+as "any ACP agent" (BOT-037). 15 have no entry. A generic runner (BOT-039) gives breadth for the cost of
+the agent panes (AIS-009 to AIS-013). A named adapter gives depth and is worth building only for
+the agents of Tier 1. BOT-039 to BOT-046 are proposed. A requirement here does not change BOT-019 to
+BOT-038.
+
+- **BOT-039.** Tier 0, the generic runner. The operator must be able to add an agent that has no adapter
+  as a custom entry: a name, the program, the launch line, how the first prompt goes in (an argument, a
+  flag, or text typed after the start), and the sign-in command. The runner must start the program in an
+  agent pane (AIS-013) on a machine that the operator chose, as the operator's own user. The state of
+  the pane must come from terminal activity (AIS-010). The runner needs no status adapter and no
+  structured chat. It does not work until the agent panes are approved and built: AIS-009 to AIS-013 are
+  direction only. The terms gate (BOT-041) applies to each entry.
+- **BOT-040.** The daemon must read one catalog of known agents, with one entry for each: the program
+  name, the version command, the sign-in status command (or "not verified", BOT-022), how the first
+  prompt goes in, and the row of the vendor terms table (BOT-038) or "terms not checked". A new entry
+  for an agent must need no code when the agent runs in a pane (BOT-039). The daemon must find these
+  programs with the steps of BOT-022 and must not read a login file (BOT-023). The state of each agent
+  shows on the device page (BOT-024).
+- **BOT-041.** The terms gate of BOT-037 and BOT-038 applies to each catalog entry and each custom entry,
+  not only to an ACP agent. The configurator must show "terms not checked" and the link to the terms of
+  the vendor, or the verdict and its date. The operator must confirm once for each agent that the login
+  is his own, and the confirmation goes in the audit log. An entry whose verdict is "restricted" for the
+  use that the entry makes must be off.
+- **BOT-042.** Tier 1. The named adapters are Claude Code (BOT-032), Codex (BOT-033), Cursor (BOT-034)
+  and Grok Build (BOT-035), and one generic ACP adapter that serves any ACP agent (BOT-019, BOT-037).
+  Only the named adapters of Tier 1 can give a status that is more than terminal activity, or a
+  structured chat. Claude Code and Codex must not use an ACP adapter, because the adapters that the
+  public ACP agent list names for them use the SDKs that BOT-021 bans. Claude Code must run only as
+  the unmodified `claude` program with the login of the operator (BOT-032).
+- **BOT-043.** Tier 2. These agents get a catalog entry (BOT-040) and a version check, in this order,
+  which is the order of their public use: OpenCode, Hermes Agent, Pi, Cline, Goose, oh-my-pi, Continue,
+  Qwen Code, Kilocode, Kimi, Mistral Vibe, GitHub Copilot, Amp, Droid and Kiro. Each one runs in a pane
+  (BOT-039), or through the ACP adapter when the agent speaks ACP by itself. A Tier 2 entry shows its
+  verdict and date, or "terms not checked" (BOT-041). A person must write its row in the vendor terms
+  table before the release that lists it by name (BOT-038), except for the entries that the operator
+  chooses to run with "terms not checked".
+- **BOT-044.** Tier 3. The configurator must not list these agents by name until a person has read the
+  terms of the vendor and has written a dated row in the vendor terms table (BOT-038): DeepSeek Harness,
+  ZCode, MiMo Code, OpenClaude, Devin, Auggie, Autohand Code, Charm (Crush), CodeBuddy, Codebuff,
+  Freebuff, Command Code, Rovo Dev and Muse. The operator can still run any of them as a custom entry
+  (BOT-039) with "terms not checked". Crush is under the FSL-1.1-MIT licence, which bans a "Competing
+  Use". It must not be listed until counsel has read that clause.
+- **BOT-045.** Parked: Antigravity (`agy`) and Gemini CLI on a consumer Google login. BOT-036 stays
+  as it is: only a Gemini API key, Vertex AI or Gemini Enterprise that the operator set in the program on
+  the machine. A catalog entry or a custom entry for these programs must not give a bot a consumer
+  Google login. The generic runner (BOT-039) must not be a way around BOT-036.
+- **BOT-046.** A catalog entry must not set up a second login of the same vendor, and it must not
+  rotate or pool logins (BOT-025, BOT-029). The configurator must keep to one login of each vendor on
+  each machine until open decision 8 is ruled. A multi-account switcher is not a feature of any entry.
+
+Terms limits that the note found, and that the requirements above already carry: Claude only through the
+unmodified `claude` program with the operator's own login (BOT-021, BOT-032); the `codex app-server`
+login is banned for the hosted mode (BOT-033), and `codex exec` on a ChatGPT login is unclear (open
+decision 7); Google on a consumer login is restricted (BOT-036). The verdicts of the note for Copilot
+(ACP documented), Amp (headless with an access token) and Droid (`droid exec` with an API key) are not
+rows of the table below yet. They stay in the note until a person adds a dated row (BOT-038).
+
+**Open decisions: agent coverage.** Each row is proposed, not ruled. Only the operator can rule it.
+
+| Decision | Question | Recommendation |
+| --- | --- | --- |
+| OD-BOT1 | Is breadth, as the agents that Orca lists, a goal of the first release of Bots, and is the generic runner (BOT-039) the first work of Bots after the agent panes? | Proposed, not ruled: yes. A custom entry gives all 34 agents at launch-and-watch depth for the cost of the panes work. The panes work (AIS-009 to AIS-013, OD-AI4, OD-AI5) needs its own approval first. |
+| OD-BOT2 | Which agents get a Tier 2 catalog entry, and in what order (BOT-043)? | Proposed, not ruled: the order of BOT-043. It comes from GitHub stars on 2026-11-17, a weak signal, and no public number exists for the closed agents (Cursor, Copilot, Amp, Droid, Kiro, Devin). |
+| OD-BOT3 | Inside Tier 1, does the generic ACP adapter come before the named adapters of Claude Code and Codex (BOT-042)? | Proposed, not ruled: no. Claude Code and Codex first, as the two agents that Anima.ing detects today and that most operators have. The note estimates each of them at 1 to 2 weeks and the ACP adapter at the same size, once. |
+| OD-BOT4 | Does Anima.ing list Crush at all (BOT-044)? | Proposed, not ruled: no, until counsel has read the "Competing Use" clause of its licence. |
+| OD-BOT5 | May an operator run `agy` or Gemini CLI on a consumer Google login in a pane that he drives by hand (BOT-045)? A reply on the Google tracker of 2026-11-12 says an interactive ACP session by a person is allowed, and a background worker is not. The reply is not a term. | Proposed, not ruled: a bot never uses that login (BOT-036). A person's own terminal pane is his own use, and Anima.ing offers no entry for it. |
+| OD-BOT6 | Do the agents that speak ACP only through a program that their vendor did not publish (Pi with `pi-acp`, Muse with an unofficial adapter) run through the ACP adapter (BOT-021)? | Proposed, not ruled: no. They stay terminal entries (BOT-039) until the operator rules. |
+| OD-BOT7 | Do the 14 agents with no checked terms row show as "terms not checked" in the first release (BOT-041, BOT-043), or does a person read their terms first? | Proposed, not ruled: show them only as custom entries with "terms not checked" (Tier 3); read the rows of Tier 2 before the release (BOT-043). |
+
+**Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1; BOT-039 needs AIS-009 to AIS-013, which are direction only), the rule engine (ENG-001), and
 for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the
 cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010).
 
@@ -244,7 +321,7 @@ cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010
 - Subscription terms: driving a Claude or ChatGPT plan from our own code may break the vendor's
   terms. Calling the vendor's own program (BOT-003) is the safe path. The vendor terms table above
   (checked 2026-11-16) shows that this is allowed for Cursor and Grok Build, restricted for Claude Code
-  and for Google, and unclear for Codex. BOT-020 to BOT-038 make the restrictions into requirements.
+  and for Google, and unclear for Codex. BOT-020 to BOT-038 (and BOT-045) make the restrictions into requirements.
   A vendor can change its terms at any time. A person must check each row again before each release (BOT-038).
 - "Always on" only holds while the device is on. A cloud computer add-on would cover users with one
   laptop ([cloud-machines.md](../proposals/cloud-machines.md)).

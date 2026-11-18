@@ -62,7 +62,43 @@ const APP_COMMANDS: &[&str] = &[
     "web_certificate_read",
 ];
 
+/// Links the Go device link that `link/build-phone.sh` built for this phone target (mobile plan M3-1,
+/// MOB-031): a static archive for iOS, a shared library for Android, which also goes beside the app's own
+/// library in the Android project. A desktop target needs nothing: it runs the `anima-link` program.
+fn link_phone_library() {
+    let target = std::env::var("TARGET").unwrap_or_default();
+    let os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    if os != "ios" && os != "android" {
+        return;
+    }
+    let manifest = std::path::PathBuf::from(
+        std::env::var("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR"),
+    );
+    let folder = manifest.join("../../../target/phonelink").join(&target);
+    let file = if os == "ios" {
+        "libphonelink.a"
+    } else {
+        "libphonelink.so"
+    };
+    println!("cargo:rerun-if-changed={}", folder.join(file).display());
+    assert!(
+        folder.join(file).is_file(),
+        "the device link for {target} is not built: run link/build-phone.sh {target}"
+    );
+    println!("cargo:rustc-link-search=native={}", folder.display());
+    if os == "ios" {
+        println!("cargo:rustc-link-lib=static=phonelink");
+        return;
+    }
+    println!("cargo:rustc-link-lib=dylib=phonelink");
+    let libraries = manifest.join("gen/android/app/src/main/jniLibs/arm64-v8a");
+    if std::fs::create_dir_all(&libraries).is_ok() {
+        let _ = std::fs::copy(folder.join(file), libraries.join(file));
+    }
+}
+
 fn main() {
+    link_phone_library();
     tauri_build::try_build(
         Attributes::new().app_manifest(AppManifest::new().commands(APP_COMMANDS)),
     )

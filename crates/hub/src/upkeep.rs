@@ -24,9 +24,9 @@ use sqlx::PgPool;
 use tokio::time::MissedTickBehavior;
 
 /// Starts the scheduled jobs: the daily ones, each run now and then daily (`retention` makes the
-/// day partitions ahead and drops the expired ones, and `access_prune` deletes old login attempts
-/// and expired tokens, and audits each builder that went with its token; D-4, DB-004, DB-005,
-/// D-25, BLD-025), every 30 seconds the end of build leases that ran out (WP-36 D-2), and, when
+/// day partitions ahead and drops the expired ones, `access_prune` deletes old login attempts
+/// and expired tokens, and audits each builder that went with its token, and `audit_chain`
+/// checks the hash chain of the audit log; D-4, DB-004, DB-005, D-25, BLD-025, LOG-028), every 30 seconds the end of build leases that ran out (WP-36 D-2), and, when
 /// the hub has a release bucket, every 10 seconds the publisher (WP-36 D-25).
 pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, clock) = (&dependencies.pool, &dependencies.clock);
@@ -54,13 +54,28 @@ pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
             }
         })
     };
+    let chain = {
+        let (db, bus) = (pool.clone(), dependencies.bus.clone());
+        events::run_daily("audit_chain", clock.clone(), move |now| {
+            let (db, bus) = (db.clone(), bus.clone());
+            async move {
+                events::check_chain_daily(&db, &bus, now)
+                    .await
+                    .map_err(|e| e.fault())
+            }
+        })
+    };
     let builds = Builds {
         db: pool.clone(),
         bus: dependencies.bus.clone(),
         updates: dependencies.build_updates.clone(),
         clock: clock.clone(),
     };
-    let mut jobs = vec![tokio::spawn(retention), tokio::spawn(prune)];
+    let mut jobs = vec![
+        tokio::spawn(retention),
+        tokio::spawn(prune),
+        tokio::spawn(chain),
+    ];
     jobs.push(tokio::spawn(publishing(
         builds.clone(),
         dependencies.bucket.clone(),

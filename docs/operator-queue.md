@@ -23,8 +23,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
 | 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
-| 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
-| 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
+| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
 | 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
@@ -32,10 +32,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.9 | Hosted applications | Operator: approval of the proposal |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
-| 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
+| 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (106)
+## 2. Open decisions (101)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -47,6 +47,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), does that VPS hub stay as… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E1 | Hub location for Class B data. The hub is on the VPS (OD-9). | Seal Class B with separate data keys (VLT-003). Before XP-05, XP-06 and XP-08, decide if a home hub must keep Class B data and the VPS hub only the device manag… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -87,19 +88,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. | [proposals/ai-direction.md](proposals/ai-direction.md) |
-| OD-ROL-1 | Where a daemon gets its files: from its hub, or from the release host | From its hub (ROL-008). MET-020 and the VPN rules stay, and a machine with no internet access can update. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the daemon and the hub | One key in the first version, with the program name in the signed record (ROL-013). It is one key to keep safe and to back up. A second key is correct if the op… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | An image file on the release host, with its digest in the signed record. GitHub is not in the release path (R-107), and a build from source is slow and needs th… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-4 | The order of the build | Three stages. A: the versions show (ROL-051). B: the machines update with one press. C: the hub joins, after the restore procedure (FND-006) is written. Until C… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-5 | The values and the default of the automatic update | "Off" by default. "Machines" in stage B. "Machines and hub" only in stage C. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-6 | The numbers: a quarter for each step, 10 minutes between steps, 1 hour after the first machine of an automatic rollout, 3 minutes and 5 minutes for the checks | As written. Fixed in the first version. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-7 | Who selects the first machine | The policy, and the operator can change it in the confirmation (ROL-025). | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-9 | Can an API key or an AI agent start, stop or roll back a rollout? | No. Add those calls to the list of INT-003. A key can read the state. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-10 | Does a machine that has "Takes work" off (USE-004) get updates? | Yes. The update has its own switch at the machine (ROL-028). If not, a machine that takes no work keeps an old daemon. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-11 | What a rollout does when it stops: only stop, or also roll back each updated machine | Only stop (ROL-027). The updated machines passed their check. The operator has "Roll back" for one and for all. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-12 | A release whose database change the previous hub cannot read | Forbid it in the gates (ROL-034). Permit an exception that the record names, with a second confirmation and no automatic rollout (ROL-036). | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-13 | On a computer that has the desktop application, who updates the daemon: the rollout, or the application when it updates itself | The rollout only. The application installs the daemon only when the computer has none (MET-019). Two updaters for one program can roll each other back. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
-| OD-ROL-14 | Is the desktop application part of a rollout? | No. UPD-001 to UPD-006 stay. The application installs with no prompt and waits for "Restart to update". | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-BOT1 | Is breadth, as the agents that Orca lists, a goal of the first release of Bots, and is the generic runner (BOT-039) the first work of Bots after the agent panes… | Proposed, not ruled: yes. A custom entry gives all 34 agents at launch-and-watch depth for the cost of the panes work. The panes work (AIS-009 to AIS-013, OD-AI… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT2 | Which agents get a Tier 2 catalog entry, and in what order (BOT-043)? | Proposed, not ruled: the order of BOT-043. It comes from GitHub stars on 2026-11-17, a weak signal, and no public number exists for the closed agents (Cursor, C… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT3 | Inside Tier 1, does the generic ACP adapter come before the named adapters of Claude Code and Codex (BOT-042)? | Proposed, not ruled: no. Claude Code and Codex first, as the two agents that Anima.ing detects today and that most operators have. The note estimates each of th… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT4 | Does Anima.ing list Crush at all (BOT-044)? | Proposed, not ruled: no, until counsel has read the "Competing Use" clause of its licence. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT5 | May an operator run `agy` or Gemini CLI on a consumer Google login in a pane that he drives by hand (BOT-045)? A reply on the Google tracker of 2026-11-12 says… | Proposed, not ruled: a bot never uses that login (BOT-036). A person's own terminal pane is his own use, and Anima.ing offers no entry for it. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT6 | Do the agents that speak ACP only through a program that their vendor did not publish (Pi with `pi-acp`, Muse with an unofficial adapter) run through the ACP ad… | Proposed, not ruled: no. They stay terminal entries (BOT-039) until the operator rules. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT7 | Do the 14 agents with no checked terms row show as "terms not checked" in the first release (BOT-041, BOT-043), or does a person read their terms first? | Proposed, not ruled: show them only as custom entries with "terms not checked" (Tier 3); read the rows of Tier 2 before the release (BOT-043). | [proposals/bots.md](proposals/bots.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D9 | Which sign-in methods does AuthKit show? | GitHub, Google and email with a code; passkeys offered after the first sign-in. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
@@ -146,7 +141,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (28)
+## 3. Documents that wait for an approval (27)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -164,7 +159,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
-| [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) | Proposal, with a task table | Direction decided |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Build state not checked |
 | [proposals/hosted-applications.md](proposals/hosted-applications.md) | Proposal | Draft |
 | [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
@@ -179,7 +173,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (71)
+## 4. Checks that only the operator can do (74)
 
 | Check | What |
 | --- | --- |
@@ -205,8 +199,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
-| HT-025 | the computer that signs in is a device of the hosted hub (HM-T8) |
-| HT-026 | the hosted hub is a device of its own device list (HM-T9) |
+| HT-027 | the computer that signs in is a device of the hosted hub (HM-T8) |
+| HT-028 | the hosted hub is a device of its own device list (HM-T9) |
+| HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
+| HT-024 | an SSH session on a phone, with the key row |
+| HT-025 | a phone joins a hub with an invite, through the link in the app |
 | O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
 | O-2 | RDP: a changed certificate stops the session; the Warning badge |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |

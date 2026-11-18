@@ -70,6 +70,11 @@ describe('eventVariables', () => {
     expect(variables.filter).toEqual({ severity: ['ERROR'], source: ['CHECK', 'HUB'], deviceId: 'd9' });
   });
 
+  it('LOG-011 the search text reaches the filter without its spaces, and blank text is left out', () => {
+    expect(eventVariables(filterWith({ text: '  backup ' }), NOW).filter?.text).toBe('backup');
+    expect(eventVariables(filterWith({ text: '   ' }), NOW).filter).not.toHaveProperty('text');
+  });
+
   it('LOG-009 an older page sends the cursor', () => {
     expect(eventVariables(DEFAULT_LOG_FILTER, NOW, 'c7').after).toBe('c7');
     expect(eventVariables(DEFAULT_LOG_FILTER, NOW)).not.toHaveProperty('after');
@@ -99,6 +104,9 @@ describe('matches', () => {
     ['an event without a device under a device filter', event('a', { deviceId: null }), { deviceId: 'd1' }, false],
     ['older than the window', event('a', { at: '2026-05-30T00:00:00.000Z' }), {}, false],
     ['older than the window under "all"', event('a', { at: '2020-01-01T00:00:00.000Z' }), { since: 'all' }, true],
+    ['search text in the message, case ignored', event('a', { message: 'Backup done' }), { text: 'BACKUP' }, true],
+    ['search text in the device name', event('a'), { text: ' nas ' }, true],
+    ['search text found nowhere', event('a'), { text: 'router' }, false],
   ];
   it.each(cases)('LOG-009 %s', (_name, candidate, changes, expected) => {
     expect(matches(candidate, filterWith(changes), NOW)).toBe(expected);

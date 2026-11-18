@@ -57,6 +57,8 @@ async fn cmd_020_event_list_prints_a_table_and_sends_the_filter() {
             device,
             "--since",
             "2026-11-01T00:00:00Z",
+            "--search",
+            "ping",
             "--hub",
             &hub.origin,
         ])
@@ -75,7 +77,7 @@ async fn cmd_020_event_list_prints_a_table_and_sends_the_filter() {
     assert_eq!(
         seen[0].variables["filter"],
         json!({ "severity": ["ERROR", "WARNING"], "source": ["CHECK"],
-                "deviceId": device, "since": "2026-11-01T00:00:00Z" })
+                "deviceId": device, "since": "2026-11-01T00:00:00Z", "text": "ping" })
     );
     assert_eq!(seen[0].variables["first"], 100);
     assert_eq!(

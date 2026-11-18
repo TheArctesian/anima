@@ -148,7 +148,10 @@ stops a run after two hours. It is sandboxed: the file system is read-only excep
   credentials cannot be read. Keep a copy offline: `deploy/secrets/anima_key`.
 - **The Cloudflare token.** Create a new one if you lose it.
 - **The certificate.** The certificate container issues it again.
-- **The database passwords.** On a new host, run `deploy/bin/make-secrets` and set the role passwords to match.
+- **The database passwords.** A new host makes new ones (`deploy/bin/make-secrets`); the roles of its new database take them at the first start.
+- **The file `.env`, the `restic` secret files, and the updater key and the R2 keys of a hub that publishes releases.**
+
+To restore on a new server, or to move the hub, follow [restore-and-move.md](../../docs/procedures/restore-and-move.md).
 
 ## Restore
 

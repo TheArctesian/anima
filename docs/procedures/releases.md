@@ -163,7 +163,7 @@ stored or read. It proves:
   signature that names no version (`requireSignedVersion`) are each refused;
 - a 404 feed and a feed with no entry for this target install nothing.
 
-Run it alone with `cargo test -p anima-desktop --test updater`.
+Run it alone with `cargo test -p anima-app --test updater`.
 
 **Manual, two AppImages (a Linux computer and a release build).** The automated proof does not run
 the installer or the restart:

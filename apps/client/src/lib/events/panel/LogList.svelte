@@ -59,7 +59,7 @@
       <li class="row {row.severity.toLowerCase()}" {@attach slide(row.id)}>
         <span class="glow" data-glow aria-hidden="true"></span>
         <time datetime={row.at}>{clockLabel(row.at)}</time>
-        <span class="severity"><span class="dot" aria-hidden="true"></span>{labelOf(SEVERITY_CHOICES, row.severity)}</span>
+        <span class="severity"><span class="dot" aria-hidden="true"></span><span class="kind" aria-hidden="true"><Icon name={row.severity === 'INFO' ? 'carbon:information' : 'carbon:warning-alt'} size="sm" /></span>{labelOf(SEVERITY_CHOICES, row.severity)}</span>
         <span class="source"><Icon name={sourceIcon(row.source)} size="sm" />{labelOf(SOURCE_CHOICES, row.source)}</span>
         <span class="device"
           >{#if typeof row.deviceId === 'string' && typeof row.deviceName === 'string'}<a
@@ -194,6 +194,11 @@
     gap: var(--space-2);
     inline-size: calc(var(--space-16) * 1.5);
     color: var(--text-tertiary);
+  }
+
+  /* The phone layout shows an icon in place of the dot (mockup 6). */
+  .kind {
+    display: none;
   }
 
   .dot {

@@ -5,10 +5,11 @@ import { isMac } from '$lib/platform/mac';
 import { isMobile, type Agent } from '$lib/platform/mobile';
 
 /**
- * What the mobile shell can do (MOB-002, MOB-004): it keeps the access token, and it has no desktop-only feature. A
- * phone has no updater (UPD-001), runs no hub and no build, and reads no computer.
+ * What the mobile shell can do (MOB-002, MOB-004): it keeps the access token and runs the device link inside the app
+ * (MOB-031, mobile plan M3-1), and it has no desktop-only feature. A phone has no updater (UPD-001), runs no hub and no
+ * build, reads no computer and has no cloud commands yet.
  */
-const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true };
+const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true };
 
 /**
  * What the shell can do, or `null` outside it (WP-42 D-4). On a phone or a tablet the answers are the mobile shell's.
@@ -36,6 +37,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     stayAwake: true,
   localHub: true,
     deviceLink: true,
+    cloudAccount: true,
     overlayTitleBar: isMac(userAgent),
   };
 }

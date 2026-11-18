@@ -1044,7 +1044,7 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 
 ### 4.16 Bots (proposed, operator direction 2026-11-16)
 
-This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-038). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
+This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-046). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
 
 ## 5. Build order: engine first, then one workflow per extension
 

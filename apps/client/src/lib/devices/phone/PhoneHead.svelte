@@ -4,6 +4,7 @@
   import { tallyQuery, type Tally } from '../list/look';
   import type { ListQuery } from '../query';
   import { NAME_DEBOUNCE_MS, debounced } from '../toolbar/toolbar';
+  import '$lib/nav/phone/head.css';
   import './list.css';
 
   interface Props {
@@ -34,7 +35,7 @@
   <div class="pagehead">
     <h1>Devices</h1>
     <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
-    <button type="button" class="add" tabindex="0" aria-label="Add device" onclick={onAddDevice} {@attach press()}><Icon name="carbon:add" size="lg" /></button>
+    <button type="button" class="phone-head-button" tabindex="0" aria-label="Add device" onclick={onAddDevice} {@attach press()}><Icon name="carbon:add" size="lg" /></button>
   </div>
   <div class="tally" role="group" aria-label="Show devices by status">
     {#each tally.parts as part (part.status)}
@@ -43,7 +44,7 @@
       </button>
     {/each}
   </div>
-  <label class="search" role="search">
+  <label class="phone-search" role="search">
     <span class="label">Search by name</span>
     <Icon name="carbon:search" size="lg" />
     <input

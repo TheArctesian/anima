@@ -33,6 +33,11 @@ export interface Capabilities {
    * the link library is in the app (MOB-031, mobile plan M3-1).
    */
   readonly deviceLink: boolean;
+  /**
+   * The shell signs in to the Anima.ing account with `cloud_sign_in_start` and the other cloud commands (HM-T1 to
+   * HM-T7): the hosted sign-in needs it with `deviceLink`. The mobile shell has no cloud commands yet.
+   */
+  readonly cloudAccount: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
 }

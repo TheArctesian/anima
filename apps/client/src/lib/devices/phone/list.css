@@ -21,19 +21,6 @@
   letter-spacing: var(--tracking-tight);
 }
 
-.phone-devices-head .add {
-  display: grid;
-  place-items: center;
-  inline-size: var(--target-min-touch);
-  block-size: var(--target-min-touch);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  color: var(--text);
-  cursor: pointer;
-}
-
 .phone-devices-head .tally {
   display: flex;
   flex-wrap: wrap;
@@ -91,49 +78,6 @@
   background: var(--status-maintenance);
 }
 
-.phone-devices-head .search {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--border-focus));
-  block-size: var(--target-min-touch);
-  margin-block-start: var(--space-1);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  color: var(--text-tertiary);
-}
-
-.phone-devices-head .search:focus-within {
-  outline: var(--border-focus) solid var(--focus-ring);
-  outline-offset: var(--border-focus);
-}
-
-.phone-devices-head .search .label {
-  position: absolute;
-  inline-size: var(--border-thin);
-  block-size: var(--border-thin);
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.phone-devices-head .search input {
-  flex: 1;
-  min-inline-size: 0;
-  block-size: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-lg);
-  outline: none;
-}
-
-.phone-devices-head .search input::placeholder {
-  color: var(--text-tertiary);
-}
-
 .phone-devices .group {
   display: flex;
   align-items: flex-end;
@@ -168,16 +112,20 @@
   border-block-end: var(--border-thin) solid var(--border-subtle);
 }
 
+/* A row that needs a look has an edge of its status colour and a wash of it that fades out by 60 % of the row. */
 .phone-devices .dev[data-edge] {
+  background: linear-gradient(90deg, var(--status-down-wash), transparent 60%);
   box-shadow: inset var(--border-focus) 0 0 var(--status-down);
 }
 
 .phone-devices .dev[data-edge="degraded"] {
+  background: linear-gradient(90deg, var(--status-degraded-wash), transparent 60%);
   box-shadow: inset var(--border-focus) 0 0 var(--status-degraded);
 }
 
 .phone-devices .dev[data-edge="unknown"],
 .phone-devices .dev[data-edge="maintenance"] {
+  background: none;
   box-shadow: inset var(--border-focus) 0 0 var(--status-unknown);
 }
 

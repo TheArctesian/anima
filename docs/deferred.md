@@ -225,6 +225,12 @@ Added 2026-11-08.
 - T2 (should): web interface mutations read the device name on a second pool connection while their transaction is open; add a `devices` face function on `&mut PgConnection`.
 - T2 (K3 deviations, recorded): `Trail::from_context` returns `async_graphql::Result`; `write(self, ..)` takes self by value and returns `events::Error`; extra `Trail::new(bus, (operator, client), now)` for the files tunnel; `AuditTarget::WebInterface` not added (WP-30 D-3).
 
+### GH-2 L0: the hash chain of the audit log (R-138)
+
+Added 2026-11-17.
+
+- An anchor for the head of the chain outside the hub (LOG-027, Section 3.8.2 "Limits"). Without it, a person who can write to the database can write a new chain and the check passes. Possible anchors: the client keeps the last head that it saw and warns when the chain does not continue it; the hub sends the head to the Anima.ing cloud. L0 leaves it out to keep the change small.
+
 ### WP-43 T4 / WP-47 (note)
 
 Added 2026-11-10.

@@ -1,0 +1,170 @@
+/*
+ * The Settings page in the phone layout, with the sizes of mockup 7 (docs/mockup/mobile/index.html): a title of 36 px,
+ * each section under a small capital caption with a hairline, rows of at least 48 px with the name of 16 px at the start
+ * and the value of 15 px at the end, and a segmented choice of 44 px that fills the width. There is no index of sections.
+ * The selectors start at `:root` so they win over the scoped rules of the shared rows.
+ */
+@media (max-width: 767.98px) {
+  :root [data-settings-page] > .head {
+    margin-block: var(--space-1) var(--space-3);
+  }
+
+  :root [data-settings-page] > .head .label {
+    display: none;
+  }
+
+  :root [data-settings-page] nav {
+    display: none;
+  }
+
+  :root [data-settings-page] .page {
+    gap: calc(var(--space-4) + var(--border-focus));
+  }
+
+  :root [data-settings-page] section {
+    gap: 0;
+  }
+
+  :root [data-settings-page] section > .label {
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  :root [data-settings-page] section > .label :is(.mark, .rule) {
+    display: none;
+  }
+
+  :root [data-settings-page] section > p {
+    display: none;
+  }
+
+  :root [data-settings-page] section > .rows {
+    border-block-end: 0;
+  }
+
+  :root [data-settings-page] .rows .row {
+    justify-content: center;
+    min-block-size: var(--space-12);
+    padding: var(--space-1) 0;
+    border-block-start: 0;
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+  }
+
+  :root [data-settings-page] .rows .line {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  :root [data-settings-page] .rows .control {
+    justify-content: end;
+    color: var(--text-secondary);
+    font-size: var(--text-phone-row);
+  }
+
+  :root [data-settings-page] .rows .name {
+    font-size: var(--text-lg);
+  }
+
+  /* A choice of a few words (Theme) puts its name on a line of its own and fills the width under it (mockup 7). */
+  :root [data-settings-page] .rows .line:has(.segmented) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  :root [data-settings-page] .rows .line:has(.segmented) .name {
+    padding-block-start: var(--space-2);
+    color: var(--text-secondary);
+    font-size: var(--text-md);
+  }
+
+  :root [data-settings-page] .rows .control .segmented {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: 0;
+    inline-size: 100%;
+    block-size: auto;
+    padding: var(--border-focus);
+    box-shadow: none;
+  }
+
+  :root [data-settings-page] .rows .control .segmented button {
+    justify-content: center;
+    block-size: var(--target-min-touch);
+    padding: 0 var(--space-2);
+    font-size: var(--text-phone-row);
+    font-weight: var(--weight-regular);
+  }
+
+  :root [data-settings-page] .rows .control .segmented button[aria-checked="true"] {
+    background: var(--surface-overlay);
+    box-shadow: inset 0 calc(var(--border-focus) * -1) 0 var(--accent);
+  }
+
+  /* A row of mockup 7: the name of 16 px at the start, the value of 15 px at the end, at least 48 px high. */
+  :root [data-settings-page] .phone-kv {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    box-sizing: border-box;
+    inline-size: 100%;
+    min-block-size: var(--space-12);
+    padding: 0;
+    border: 0;
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-lg);
+    text-align: start;
+  }
+
+  :root [data-settings-page] button.phone-kv {
+    cursor: pointer;
+  }
+
+  :root [data-settings-page] .phone-kv .v {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-inline-size: 0;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: var(--text-phone-row);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :root [data-settings-page] .phone-kv .dot {
+    flex: none;
+    inline-size: var(--space-2);
+    block-size: var(--space-2);
+    border-radius: 50%;
+    background: var(--status-unknown);
+  }
+
+  :root [data-settings-page] .phone-kv .dot.up {
+    background: var(--status-up);
+  }
+
+  :root [data-settings-page] .phone-kv .dot.down {
+    background: var(--status-down);
+  }
+
+  :root [data-settings-page] .phone-kv-problem {
+    margin: var(--space-2) 0 0;
+    color: var(--status-down-text);
+    font-size: var(--text-sm);
+  }
+
+  :root [data-settings-page] .phone-leave {
+    display: grid;
+    margin-block-start: var(--space-3);
+  }
+}

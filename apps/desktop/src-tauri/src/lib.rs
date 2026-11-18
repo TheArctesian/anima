@@ -38,6 +38,8 @@ mod memory_tokens;
 mod mobile;
 #[cfg(desktop)]
 mod os_program;
+#[cfg(mobile)]
+mod phone_link;
 #[cfg(desktop)]
 mod process_log;
 #[cfg(desktop)]

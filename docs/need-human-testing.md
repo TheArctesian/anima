@@ -45,8 +45,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
-| HT-025 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
-| HT-026 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
+| HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
+| HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
+| HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -461,7 +462,7 @@ No gate runs on Linux, and the Mac has no Linux target.
 
 1. On the Linux machine, get `main` and run `rustc --version` in the repository.
    Expected: `rustc 1.100.0` (`rust-toolchain.toml`).
-2. Run `cargo clippy -p anima-desktop --all-targets -- -D warnings`.
+2. Run `cargo clippy -p anima-app --all-targets -- -D warnings`.
    Expected: no error.
 3. Run `bun run --cwd apps/desktop tauri build` with `RUSTFLAGS` not set.
    Expected: the bundles are built. If the error of GH-52 comes again, copy it into GH-52 with the
@@ -540,7 +541,7 @@ hosted hub: "got to here the first time, reopend to the same screen"): steps 3 a
 In the same message the operator asked for more than this check
 covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
 
-### HT-025: the computer that signs in is a device of the hosted hub (HM-T8)
+### HT-027: the computer that signs in is a device of the hosted hub (HM-T8)
 
 Built: when the app opens the device list of a hosted hub, it adds the computer it runs on as a device with
 no question ([hosted-mode.md](proposals/hosted-mode.md) HMD-044, R-136). The shell command `cloud_device`
@@ -565,7 +566,7 @@ list showed one row for this Mac, Unknown, "No checks yet", with a host that sta
 the log showed "Device ... added" with no question. The app made the new hub and joined its link with no step,
 although it held the link and the token of the deleted hub. Not seen in the picture: steps 2 and 3.
 
-### HT-026: the hosted hub is a device of its own device list (HM-T9)
+### HT-028: the hosted hub is a device of its own device list (HM-T9)
 
 Built: a hosted hub adds itself to its devices at each start, when no device has the host `localhost`
 ([hosted-mode.md](proposals/hosted-mode.md) HMD-045, R-137). The device has the name `Hub` (`Hub (hosted)` when
@@ -598,7 +599,108 @@ metrics". Two differences. The row shows the mark of Linux with no distribution:
 over SSH only, and it has no SSH to itself (the image is Debian 13). The row shows the button "+ VNC", which
 adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
 
+### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
+
+Built: migration `0506_events_audit_chain.sql` and the hash chain of the audit log
+([design-spec.md](spec/design-spec.md) Section 3.8.2). At its first start the hub links each audit entry
+that exists. `anima audit verify` and the MCP tool `anima_audit_verify` check the chain.
+
+The tests use a throwaway database with a few entries. No test ran the migration and the first link
+on the real hub, with its year of entries, and no test ran the daily check there.
+
+1. Update the hub, start it, and look at its process log.
+   Expected: the hub starts. When the audit log had entries, one line says "audit entries linked in
+   the hash chain", with the count.
+2. Run `anima audit verify`.
+   Expected: "Chain whole". "Links" is the number of audit entries. "Head" shows a number and 64
+   hexadecimal characters. Write the head down outside the hub.
+3. Change something in the client, for example a tag of a device, and run `anima audit verify` again.
+   Expected: "Chain whole", with one more link than in step 2.
+4. The next day, open the Logs panel and filter for Error.
+   Expected: no event that says "The audit log chain is broken".
+
+Result: Open.
+
+### HT-024: an SSH session on a phone, with the key row
+
+Built: on the branch `mobile/m1-shell` (mobile plan M4-1, MOB-020, RA-050; mockup 8). In the phone
+layout an SSH session fills the screen. A bar holds back, the device and the time, "Hide keyboard"
+and the session menu. A row of keys (Esc, Tab, Ctrl, Alt, the arrows, `| ~ / -`) sits over the
+on-screen keyboard. Ctrl and Alt latch for the next key.
+
+The tests cover the bytes of the latched keys and the time text. On 2026-11-17 a throwaway SSH
+server that ran only `cat -v` was used on the iPhone 17 Pro simulator and on the Android emulator:
+Ctrl then L gave `^L`, typing worked on iOS, and back kept the session open. No real phone and no
+real shell were used.
+
+Later on 2026-11-17 the Android keyboard plugin (`apps/desktop/keyboard`) and the emptied input box
+(`sessions/screen/operator/typing.ts`) were added. On the Android emulator with Gboard the key row then
+sat directly above the keyboard, and keys tapped on Gboard after typing in the device search arrived in
+order ("hello wo" and Backspace gave "hello w"). Before, the keyboard covered the key row and that text
+came out as "elloh". The same typing was correct on the iPhone simulator. Only Gboard was tried.
+
+1. Install a build of this branch on an iPhone. Sign in to a hub that has a device with SSH set
+   up, and open the device. Tap SSH. Expected: the session fills the screen, the bar shows the
+   device name and "SSH" with a time that counts up, and the navigation bar is hidden.
+2. Tap the terminal. Expected: the keyboard opens, and the key row is directly above it.
+3. Type `ls` and Return. Expected: the list of files. Tap Ctrl, then type `c` while a command
+   runs (for example `sleep 30`). Expected: the command stops, and Ctrl is no longer highlighted.
+4. Tap the up arrow of the row. Expected: the shell shows the last command again.
+5. Tap "Hide keyboard". Expected: the keyboard closes and the key row moves to the bottom of the
+   screen.
+6. Tap back. Expected: the device list with the navigation bar. The session is still open.
+7. Do steps 1 to 6 on an Android phone. Expected: the same results. Before step 1, type a word in
+   the device search; then in step 3 type a full sentence. Expected: the text arrives in the order
+   typed. If the phone has a second keyboard app (for example SwiftKey or Samsung Keyboard), do step 3
+   with it too.
+8. On the Android phone, tap the device search. Expected: the navigation bar sits directly above the
+   keyboard, with no gap between them.
+
+Result: Open.
+
+### HT-025: a phone joins a hub with an invite, through the link in the app
+
+Built: on the branch `mobile/m1-shell` (mobile plan M1-4 and M3-1, MOB-031, MOB-032, MOB-035, MOB-036). The Go link
+runs inside the phone app as a library (`link/cmd/phonelink`, built by `link/build-phone.sh`). "Join a hub", then
+"Join with an invite", joins the phone to a hub over the link, and the app reaches the hub at a loopback address.
+
+The tests cover the error codes of the library, a join with text that is not an invite, and a start with no hub. On
+2026-11-17 the Android emulator reached the link and wrote its folder, but the emulator had no route to the internet,
+so the relay never answered. The iPhone simulator stopped answering before the join. No phone joined a hub.
+
+1. Build this branch for an iPhone and an Android phone (`link/build-phone.sh`, then the Tauri build). On the hub, in
+   Settings, make an invite for a new device.
+2. On the phone, open the app, tap "Join a hub", then "Join with an invite". Paste the invite and tap Join. Expected:
+   the sign-in page of the hub opens.
+3. Sign in. Expected: the device list.
+4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
+   new invite.
+5. Settings, Leave hub. Expected: the welcome screen. On the hub, the phone is no longer on the link.
+
+Result: Open.
+
 ## Not built yet
+### HT-024: a hub restored on a second server from its backup (FND-006, task F1)
+
+Built: the procedure [restore-and-move.md](procedures/restore-and-move.md). An agent did its database
+steps (3 and 6 to 10) on a new, empty setup in Docker on 2026-11-17; the section "Proof" of the
+procedure has the results.
+
+Not covered: a real server. No test joined the VPN, ordered the certificate, started the hub on the
+restored database or opened a session with a restored credential.
+
+1. On a second Linux server, do steps 1 to 5 of the procedure. Expected: each `bin/preflight` command
+   prints no refusal.
+2. Do steps 6 to 10 with the newest dump of the hub. Expected: "Restored ... into anima.", `migrate`
+   exits with code 0, and "Restore check passed".
+3. Do steps 11 and 12. Expected: `docker compose ps` shows `hub` as running, and the client connects
+   at the address of the hub.
+4. In the client, open the device list and the audit log, then open a session to a device that has a
+   stored credential. Expected: the devices and the log are those of the old hub, and the session
+   opens with no question for the credential.
+
+Result: Open.
+
 
 The Tools section of the Device page and the Tools filter of the device list
 ([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their

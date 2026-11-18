@@ -53,6 +53,7 @@
           {visible}
           {focused}
           onretitle={(title) => sessions.retitle(tab.id, title)}
+          onback={() => sessions.deselect()}
         />
       {:else}
         <RemoteView

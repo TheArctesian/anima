@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Icon from '$lib/icons/Icon.svelte';
-  import { press } from '$lib/motion/roles/press';
   import type { SessionsApi } from '../api';
   import type { SessionEnding } from '../ending';
   import { checkLink, linkRefusalText, openLink } from '../screen/remote/links';
@@ -12,6 +10,7 @@
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
   import KeysMenu from './menu/KeysMenu.svelte';
+  import SessionTools from './menu/SessionTools.svelte';
   import { KEY_SEQUENCES, type KeySequence } from './menu/sequences';
   import FindBar from './pane/FindBar.svelte';
   import LinkConfirm from './pane/LinkConfirm.svelte';
@@ -19,6 +18,11 @@
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
   import type { SessionStart } from './start';
   import ConnectionSteps from './steps/ConnectionSteps.svelte';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
+  import { NO_LATCH, latched, toggled, withLatch, type Latch } from './phone/keys';
+  import PhoneKeys from './phone/PhoneKeys.svelte';
+  import PhoneSessionBar from './phone/PhoneSessionBar.svelte';
+  import './phone/session.css';
 
   interface Props {
     device: { readonly id: string; readonly name: string };
@@ -35,9 +39,11 @@
     onended?: (ending: SessionEnding) => void;
     /** Hears the remote shell's window title, cleaned (K4 §8.7); `''` when a session starts or ends. */
     onretitle?: (title: string) => void;
+    /** Shows the pages and keeps this session open (D-11); the phone layout's back button. */
+    onback?: () => void;
   }
 
-  const { device, start, api, openScreen, visible, focused, onended, onretitle }: Props = $props();
+  const { device, start, api, openScreen, visible, focused, onended, onretitle, onback }: Props = $props();
   const COPY_FAILED = 'Could not copy to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow access, or paste with the keyboard.';
   const OVERFLOW = 'Some output was skipped. Press Ctrl+L to redraw.';
@@ -61,6 +67,9 @@
   let filing = $state(false);
   /** An address the device asked to open, waiting for the operator's confirmation (K4 §8.7). */
   let confirming: string | undefined = $state();
+  const phone = $derived(phoneLayout());
+  /** Ctrl and Alt of the phone's key row, latched for the next key (RA-050). */
+  let latch: Latch = $state(NO_LATCH);
 
   const stage = $derived(connection.stage);
   const ready = $derived(connection.ready);
@@ -72,7 +81,10 @@
   const hostKeyOpen = $derived(visible && stage.kind === 'ended' && stage.hostKeyChanged && dismissed !== stage);
 
   const hooks: ScreenHooks = {
-    oninput: (bytes) => connection.tunnel?.send(bytes),
+    oninput: (bytes) => {
+      connection.tunnel?.send(withLatch(bytes, latch));
+      if (latched(latch)) latch = NO_LATCH;
+    },
     onresize: (size) => connection.tunnel?.resize(size),
     ontitle: (title) => onretitle?.(title),
     oncopy: (text) => copyToSystem(text),
@@ -178,24 +190,28 @@
   });
 </script>
 
-<section class="session" hidden={!visible} aria-label="SSH session on {device.name}">
+<section class="session" class:phone-session={phone} hidden={!visible} aria-label="SSH session on {device.name}">
   <div class="toolbar">
-    <KeysMenu disabled={!ready} entries={KEY_SEQUENCES} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
-    <button
-      type="button"
-      class="find"
-      aria-expanded={finding}
-      disabled={!ready}
-      title="Find (Cmd+F, Ctrl+Shift+F)"
-      onclick={() => (finding ? closeFind() : (finding = true))}
-      {@attach press()}
-    >
-      <Icon name="carbon:search" />
-      <span>Find</span>
-    </button>
-    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}><Icon name="carbon:folder" /><span>Files</span></button>
-    <span class="device">{device.name}</span>
-    {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
+    {#if phone}
+      <PhoneSessionBar name={device.name} {ready} onback={() => onback?.()} onhidekeyboard={() => screen?.blur()}>
+        {#snippet menu()}
+          <KeysMenu phone disabled={!ready} entries={KEY_SEQUENCES} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
+        {/snippet}
+      </PhoneSessionBar>
+    {:else}
+      <SessionTools
+        name={device.name}
+        {ready}
+        {finding}
+        {filing}
+        policy={rules.notice}
+        onkeys={sendKeys}
+        onpaste={pasteFromClipboard}
+        pasteOff={rules.pasteOff}
+        onfind={() => (finding ? closeFind() : (finding = true))}
+        onfiles={() => (filing = !filing)}
+      />
+    {/if}
     <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->
     {#if finding && ready}
       <div class="cover">
@@ -224,6 +240,14 @@
       </div>
     {/if}
   </div>
+  {#if phone}
+    <PhoneKeys
+      disabled={!ready}
+      {latch}
+      ontoggle={(modifier) => (latch = toggled(latch, modifier))}
+      onkeys={(bytes) => connection.tunnel?.send(bytes)}
+    />
+  {/if}
 </section>
 
 <LinkConfirm address={confirming} onopen={openConfirmed} oncancel={() => (confirming = undefined)} />
@@ -277,48 +301,6 @@
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
     background: var(--surface-raised);
-  }
-
-  /* The bar never sets the pane's width: the name and the policy give way first, and the controls keep their size (UI-009). */
-  .device,
-  .policy {
-    min-inline-size: 0;
-    overflow: hidden;
-    font-size: var(--text-sm);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .device {
-    font-family: var(--font-mono);
-  }
-
-  .policy {
-    flex: 1;
-    color: var(--text-secondary);
-  }
-
-  .find {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border-strong);
-    border-radius: var(--radius-md);
-    background: var(--surface-overlay);
-    color: var(--text);
-    font: inherit;
-  }
-
-  .find:disabled {
-    color: var(--text-secondary);
-  }
-
-  .find:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
-    outline-offset: calc(var(--border-focus) * -1);
   }
 
   .stage {

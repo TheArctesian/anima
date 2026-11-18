@@ -3,6 +3,7 @@
 
 mod actor;
 mod bus;
+mod chain;
 pub mod graphql;
 mod model;
 mod page;
@@ -20,6 +21,7 @@ use sqlx::{PgConnection, PgPool};
 
 pub use actor::{Actor, ActorKind, TokenKind};
 pub use bus::{Bus, Signal};
+pub use chain::{check_chain_daily, link_existing};
 pub use model::{
     AuditAction, AuditTarget, ClientAddr, EventSummary, HeartbeatSummary, NewAudit, NewEvent,
     Operator, Severity, Source,
@@ -268,15 +270,18 @@ pub fn redact_text(text: &str) -> String {
     redaction::redact_text(text)
 }
 
-/// Stores an audit entry. Secret values in `change` are replaced with `"[redacted]"` first
-/// (LOG-007); callers should not pass secrets, this is the backstop.
+/// Stores an audit entry and its link in the hash chain. Secret values in `change` are replaced
+/// with `"[redacted]"` first (LOG-007); callers should not pass secrets, this is the backstop.
+/// The link is the hash of the values that the database stored (LOG-021, LOG-022). The lock of
+/// the chain stays until the caller's transaction ends, so concurrent writers wait in turn
+/// (LOG-024).
 ///
 /// If the day partition is missing, it is created inside the caller's transaction (see
 /// `create_partitions_ahead` for the lock this takes).
 ///
 /// # Errors
 ///
-/// `Error::Database` if the partition or the row cannot be written.
+/// `Error::Database` if the partition, the row or the link cannot be written.
 pub async fn audit(
     conn: &mut PgConnection,
     at: DateTime<Utc>,
@@ -286,6 +291,7 @@ pub async fn audit(
         change: redaction::redact(entry.change),
         ..entry
     };
-    store::insert_audit(conn, at, &entry).await?;
+    let stored = store::insert_audit(conn, at, &entry).await?;
+    chain::append(conn, &stored).await?;
     Ok(())
 }
