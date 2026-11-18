@@ -168,6 +168,17 @@ pub fn link(carried: &Carried, folders: &Folders) -> Result<Spec, LongSocketPath
     })
 }
 
+/// The hub of `spec` in the hosted mode, when the pool gives the file of the cloud's key: the
+/// hub then makes device invites and claims for the Anima.ing cloud and refuses every password
+/// sign-in (R-129, HMD-038, HMD-039). Without a file the hub stays a local hub.
+#[must_use]
+pub fn hosted(mut spec: Spec, cloud_key_file: Option<&Path>) -> Spec {
+    if let Some(file) = cloud_key_file {
+        spec.env.push(("ANIMA_HOSTED_CLOUD_KEY_FILE", file.into()));
+    }
+    spec
+}
+
 /// Everything the hub is told. A setting that is not here has the hub's default (K7).
 fn hub_environment(
     folders: &Folders,

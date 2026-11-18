@@ -97,6 +97,7 @@ fn rig() -> Rig {
         carried: Carried::installed_in(&programs),
         folders: Folders::new(folder.path().join("hub root"), folder.path().join("s")).unwrap(),
         listen: "127.0.0.1:8443".parse().unwrap(),
+        hosted_cloud_key_file: None,
         limits: Limits {
             database_ready: limit,
             migration: limit,

@@ -62,7 +62,7 @@ The application runs these for you. Each command accepts `--root <folder>` toget
 | `anima-local-hub stop` | Stops the hub now and waits until it stopped. The hub stays installed: it starts again at the next login or with `start`. macOS: `launchctl bootout`; Linux: `systemctl --user stop`. |
 | `anima-local-hub start` | Starts the installed hub. On macOS a hub that launchd has loaded already is left as it is. |
 | `anima-local-hub account …` | The operator account. See Section 7. |
-| `anima-local-hub run` | What the unit runs. It prints `ready` when the hub serves and stops on SIGTERM. |
+| `anima-local-hub run` | What the unit runs. It prints `ready` when the hub serves and stops on SIGTERM. On a hub of the pool only, `--hosted-cloud-key-file <absolute path>` gives the hub `ANIMA_HOSTED_CLOUD_KEY_FILE`: the hub runs in the hosted mode, makes device invites and claims for the Anima.ing cloud and refuses every password sign-in (R-129). The pool writes the file (the cloud's key, readable by the hub's user only) before the first start. `install`, `update` and the desktop app never give it. |
 
 `status` prints, for example:
 
