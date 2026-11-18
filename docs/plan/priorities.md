@@ -32,8 +32,13 @@ The table gives the order. The section of each row below the table gives the wor
 | --- | --- | --- | --- | --- | --- |
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
+<<<<<<< HEAD
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-131). Task U1 is done. Task U4 is in progress. | Agent: task U4, then U5, in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-136). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+=======
+| 4.17 | 1 | The hosted mode and the shared pool | Foundation | In progress. The sign-in path is built and merged; no device has signed in yet. | Operator: the first real sign-in (HT-022 in [need-human-testing.md](../need-human-testing.md)); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
+>>>>>>> origin/main
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
@@ -71,8 +76,8 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: Foundation
 - Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../proposals/hosted-mode.md), [shared-pool-hosting.md](../proposals/shared-pool-hosting.md)).
-- Work items: No work item yet
-- State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036.
+- Work items: The tasks HM-T1 to HM-T7 in Section 8 of [hosted-mode.md](../proposals/hosted-mode.md). No work item document yet
+- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The rulings R-127 to R-130 name the tasks HM-T1 to HM-T7 and approve HMD-037 to HMD-041 and HMD-043. HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to `main` (2026-11-17); HM-T4 is built in the private repositories and its site half is deployed. No device has signed in with an account yet: each task waits for HT-022. The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. Open: the security review (HM-D7), "Add this computer" for a computer of the link only (HM-D11), and the form of the WorkOS requests (HM-D13). The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036. On 2026-11-17 the operator said that he will use only the hosted version and that his self-hosted hub can go away later (R-130); no row of this table has changed its tier for that.
 
 ### 4.18 Update the daemon and the hub
 
@@ -80,7 +85,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Update the daemon and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
 - Work items: No work item yet. The tasks are in "Tasks" of [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)
-- State: Plan, in progress. The operator put it here on 2026-11-16: directly after the first release (OD-W23), and approved stages A and B on 2026-11-17 (R-131). Stage C (the hub of a server) is deferred: the pool updates a hosted hub (R-130). Task U4 (the contract) is in progress. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
+- State: Plan, in progress. The operator put it here on 2026-11-16: directly after the first release (OD-W23), and approved stages A and B on 2026-11-17 (R-136). Stage C (the hub of a server) is deferred: the pool updates a hosted hub (R-130). Task U4 (the contract) is done. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
 
