@@ -9,7 +9,7 @@
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { provideHub } from '$lib/hub/context';
-  import { createHub, type HubAddress } from '$lib/hub/hub';
+  import { createHub, desktopRecentCopy, type HubAddress } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { shiftShell } from '$lib/nav/banner-shift';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
@@ -82,7 +82,14 @@
     // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
     // The socket reconnects by itself after a dead hub, so its reader asks the shell before every connection (MF-1).
     const desktop = capabilities().keyStore;
-    const hub = createHub({ address, token: tokenFor(address, desktop), socketToken: tokenFor(address, desktop, { fresh: true }) });
+    // Only the app on a computer keeps a copy of recent answers for when the hub does not answer (FND-007).
+    const recent = capabilities().recentCopy ? desktopRecentCopy() : undefined;
+    const hub = createHub({
+      address,
+      token: tokenFor(address, desktop),
+      socketToken: tokenFor(address, desktop, { fresh: true }),
+      ...(recent === undefined ? {} : { recent }),
+    });
     provideHub(hub);
     // A hub that stops answering may come back as another program on the same port: once the connection is not live,
     // the next request checks again (M-C, MF-1).

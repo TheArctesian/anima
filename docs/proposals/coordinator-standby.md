@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (OD-W9). No requirement is approved. R-140 (2026-11-17): the operator starts fresh on the hosted hub, so FND-006 moves no data to the pool. R-141 names task F1 (FND-006 for a hub on a server), which is In progress.
+evidence: Direction decided (OD-W9). No requirement is approved. R-140 (2026-11-17): the operator starts fresh on the hosted hub, so FND-006 moves no data to the pool. R-141 names task F1 (FND-006 for a hub on a server), which is In progress. R-142 (2026-11-18): the standbys are deferred, and FND-007 is approved for the application on a computer (task F2, built, waits for HT-026).
 ---
 
 # Proposal: copies of the coordinator database, and how to move the coordinator
@@ -51,6 +51,10 @@ The operator also set the order: FND-006 (restore and move) comes directly after
 manager is accepted. The standbys come later, with the extensions.
 
 ## Proposal
+
+State of the requirements (R-141, R-142): FND-006 is approved for a hub on a server. FND-007 is approved for
+the application on a computer. FND-001 to FND-005 and FND-008 to FND-012 are not approved: they are deferred,
+because a hosted hub keeps its database in the pool (R-130).
 
 ### Which machines can hold a copy
 
@@ -115,11 +119,32 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 - A move of a hub between a server, a computer and the pool with one file is HMD-016 of
   [hosted-mode.md](hosted-mode.md). It is not part of FND-006.
 
+## The copy in the application on a computer (FND-007, R-142, task F2)
+
+- The copy is kept at one place: where the application sends a request to the hub (`apps/client/src/lib/hub/recent/`).
+  When the hub answers a query of the list, the application keeps the answer. When the hub does not answer, the
+  application gives the kept answer of the same query, with the same variables, for the same hub.
+- The list of queries: the devices and one device, the tags and the sites of the device list, the checks of a device
+  and their heartbeats, the metrics of a device, and the event log. A query is added to the list only when its answer
+  holds no credential. The answer of a mutation is never kept.
+- The copy is read-only. A change that the operator starts while the hub does not answer fails as before.
+- The age: the banner "Not on the network" shows the age of the oldest copy on the screen, also after a start of the
+  application with no hub (NET-004).
+- The size: at most 100 answers, each of at most 1 MB of text. The oldest answers go first. A copy older than 30 days
+  is not shown.
+- The place: the IndexedDB store of the web view of the application, on this computer. It is not encrypted by the
+  application. Sign-out deletes it. If the delete fails, the application says so.
+- Only the application on a computer keeps the copy. A browser keeps none: the hub serves its page, and the computer
+  can be a shared one. The phone applications keep none here: IOS-003 and the mobile plan own that copy.
+- The hub has no new function, so there is no new `anima` command and no MCP tool (CMD-030).
+
 ## Open decisions
 
 | Number | Decision | Recommendation | Result |
 | --- | --- | --- | --- |
 | OD-FND-1 | When the operator goes to the hosted hub: move the data of the hub on the VPS, or start fresh? | Start fresh. Each machine joins again in the two cases, and the pool has no import. | Decided (R-140, operator, 2026-11-17): start fresh. |
+| OD-FND-3 | The standby copies (FND-001 to FND-005, FND-008 to FND-012): build them, or defer them now that the hub is hosted? | Defer. A hosted hub keeps its database in the pool; a standby at a home needs the database and its key outside the pool. | Decided (R-142, operator, 2026-11-18): deferred, not approved. |
+| OD-FND-4 | The read-only copy in the application (FND-007): build it now for the application on a computer? | Yes. It is the part that helps when a hosted hub does not answer. | Decided (R-142, operator, 2026-11-18): yes, task F2. |
 | OD-FND-2 | Is FND-006 now only the procedure for a person who runs a hub on a server: one document from the scripts that exist, tested by a restore on a new, empty setup in Docker, with no change to the VPS (task F1)? | Yes. | Decided (R-141, operator, 2026-11-17): yes. |
 
 ## Tasks
@@ -127,7 +152,7 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
 | F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-141 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-024 (PLN-014). |
-| F2 | FND-007 for the desktop application: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | The operator named it on 2026-11-18 ("Yes, as listed"); the ruling gets its number at the merge | In progress | |
+| F2 | FND-007 for the application on a computer: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | R-142 names it | In progress | Built, not checked in the installed application: `apps/client/src/lib/hub/recent/`. The tests give the copy when the hub does not answer, the age in the banner, the limits and the delete at sign-out. The store was run in Chromium on 2026-11-18, not in the web view of the application. It waits for HT-026 (PLN-014). |
 
 ## Open points
 

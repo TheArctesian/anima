@@ -40,4 +40,6 @@ export interface Capabilities {
   readonly cloudAccount: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
+  /** The app keeps a read-only copy of recent hub answers on this computer and shows it when the hub does not answer (FND-007). */
+  readonly recentCopy: boolean;
 }

@@ -42,7 +42,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
 | 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
-| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
+| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. The standbys are deferred (R-142). The copy in the application on a computer (FND-007) is approved; task F2 is built. | Operator: the check HT-026 in [need-human-testing.md](../need-human-testing.md) |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |

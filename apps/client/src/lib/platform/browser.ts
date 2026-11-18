@@ -18,6 +18,7 @@ export const browserCapabilities: Capabilities = {
   deviceLink: false,
   cloudAccount: false,
   overlayTitleBar: false,
+  recentCopy: false,
 };
 
 /** Hosts a plain `http:` page may come from: this machine only, for a local build or test (E-2). */

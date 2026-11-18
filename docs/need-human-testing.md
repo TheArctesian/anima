@@ -46,6 +46,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
+| HT-026 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -729,3 +730,27 @@ One visit to a machine can close many rows.
 ## Passed
 
 None.
+
+### HT-026: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
+
+Built: on the branch `offline-copy` (R-142). The application keeps the last answer of the hub for the device list,
+one device, its checks, its metrics and the event log (`apps/client/src/lib/hub/recent/`). When the hub does not
+answer, it shows that copy, and the banner "Not on the network" gives its age. Sign-out deletes the copy.
+
+The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
+was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
+looked at with the network off.
+
+1. Open the application while the hub answers. Open Devices, then one device, then Logs. Expected: the usual screens.
+2. Turn the network off (Wi-Fi off, or stop the VPN client). Quit the application and open it again. Expected: the
+   banner "Not on the network" with "Data from" and an age of some minutes, and the device list with the devices of
+   step 1.
+3. Open the device and the Logs of step 1. Expected: the same content as in step 1. A screen that was not opened in
+   step 1 shows that the hub did not answer.
+4. Try a change, for example rename the device. Expected: the application says that the hub did not answer, and the
+   name does not change.
+5. Turn the network on. Expected: in less than one minute the banner goes away and the screens show live data.
+6. Turn the network off again. In Settings, sign out. Quit the application, open it, and sign in is asked. Expected:
+   no device of step 1 is shown anywhere before the sign-in.
+
+Result: Open.

@@ -30,7 +30,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.9 | Hosted applications | Operator: approval of the proposal |
-| 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
+| 4.10 | Standby copies of the coordinator database | Operator: the check HT-026 in need-human-testing.md |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |

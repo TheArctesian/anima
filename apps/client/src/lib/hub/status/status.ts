@@ -5,6 +5,11 @@ export interface HubStatus {
   readonly connection: Connection;
   /** Last time the hub answered; the age of the data on the screen (NET-004). `null` until the first answer. */
   readonly lastContactAt: Date | null;
+  /**
+   * When the oldest copy on the screen was made: set while the hub does not answer and the client shows its
+   * copy of an earlier answer (FND-007). Absent when no copy was shown since the last answer.
+   */
+  readonly copyFrom?: Date;
 }
 
 /**
@@ -16,6 +21,11 @@ export interface HubStatus {
 export type StatusSignal = 'acknowledged' | 'refused' | 'closed' | 'answered' | 'failed';
 
 export const INITIAL_STATUS: HubStatus = { connection: 'connecting', lastContactAt: null };
+
+/** The status after the client showed its copy made at `at` in place of an answer: the oldest such copy is kept (FND-007). */
+export function withCopyShown(state: HubStatus, at: Date): HubStatus {
+  return state.copyFrom !== undefined && state.copyFrom <= at ? state : { ...state, copyFrom: at };
+}
 
 /** The status after `signal` arrives at `now` (NAV-003, NET-004). */
 export function nextStatus(state: HubStatus, signal: StatusSignal, now: Date): HubStatus {

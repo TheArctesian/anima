@@ -11,11 +11,14 @@ export interface SignOut {
    */
   readonly desktop: boolean;
   readonly clearToken: (address: HubAddress) => Promise<void>;
+  /** Removes the copy of recent hub answers from this computer; absent where no copy is kept (FND-007). */
+  readonly forgetCopy?: () => Promise<void>;
 }
 
 export const TOKEN_KEPT_AFTER_LOGOUT = 'Signed out, but the key store kept the access token.';
 export const TOKEN_KEPT_UNCONFIRMED =
   'The hub did not confirm the sign-out, and the key store kept the access token.';
+export const COPY_KEPT = 'Signed out, but the copy of recent hub data stayed on this computer. Sign in and sign out again.';
 export const COOKIE_KEPT = 'The hub did not confirm the sign-out, so this browser may still be signed in. Retry.';
 
 /** The hub's answer to `logout`; a rejected call is no answer (`null`). */
@@ -40,15 +43,21 @@ function cookieGone(answer: HubResult<boolean> | null): boolean {
  * Ends the token on the hub, then, on desktop, removes it from this machine (SET-002, CLI-003). The desktop app clears
  * its token whatever `logout` does: an unreachable hub must not keep the operator signed in here. A browser is signed
  * out only once the hub says so, since its cookie is out of script's reach (E-4). Returns the message to show when a
- * token may remain, or `null` when the client may go to sign-in.
+ * token or the copy of recent data may remain, or `null` when the client may go to sign-in.
  */
-export async function signOut({ api, address, desktop, clearToken }: SignOut): Promise<string | null> {
+export async function signOut({ api, address, desktop, clearToken, forgetCopy }: SignOut): Promise<string | null> {
   const answer = await logoutAnswer(api);
   if (!desktop) return cookieGone(answer) ? null : COOKIE_KEPT;
   try {
     await clearToken(address);
   } catch {
     return answer?.ok === true ? TOKEN_KEPT_AFTER_LOGOUT : TOKEN_KEPT_UNCONFIRMED;
+  }
+  try {
+    await forgetCopy?.();
+  } catch {
+    // The token is gone, so the operator is signed out; what stayed is told, since the copy holds the hub's data.
+    return COPY_KEPT;
   }
   return null;
 }
