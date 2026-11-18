@@ -3,5 +3,5 @@
 
 fn main() {
     #[cfg(desktop)]
-    anima_desktop_lib::run();
+    anima_app_lib::run();
 }

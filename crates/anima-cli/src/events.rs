@@ -1,9 +1,11 @@
-//! `anima event` and `anima audit`: what happened on the hub, and who changed what. `watch`
+//! `anima event` and `anima audit`: what happened on the hub, who changed what, and whether
+//! the audit log is whole. `watch`
 //! follows the hub's event stream (the crate README shows how a `watch` command is built).
 
 pub mod audit;
 pub mod documents;
 pub mod list;
+pub mod verify;
 pub mod watch;
 
 use crate::failure::Failure;
@@ -21,6 +23,8 @@ pub enum EventCommand {
 pub enum AuditCommand {
     /// List the audit trail, newest first.
     List(audit::ListArgs),
+    /// Check that no audit entry was changed or removed (the hash chain).
+    Verify(verify::VerifyArgs),
 }
 
 impl EventCommand {
@@ -44,6 +48,7 @@ impl AuditCommand {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,
+            Self::Verify(args) => args.run(invocation).await,
         }
     }
 }

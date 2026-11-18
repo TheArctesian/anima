@@ -1,4 +1,5 @@
-//! Text from devices comes back cleaned and capped, in named fields only (MCP-008).
+//! Text from devices comes back cleaned and capped, in named fields only (MCP-008), and search text reaches
+//! the hub as given (LOG-011).
 
 use serde_json::{Value, json};
 
@@ -59,4 +60,24 @@ async fn mcp_008_a_10000_character_event_message_is_capped_with_a_marker() {
             .expect("the text form is the same JSON");
     assert_eq!(text, answer["structuredContent"]);
     session.finish().await;
+}
+
+#[tokio::test]
+async fn log_011_the_events_tool_sends_its_search_text_to_the_hub() {
+    let hub = hub().await;
+    hub.answer(
+        "EventList",
+        data(json!({ "events": { "edges": [],
+                                 "pageInfo": { "hasNextPage": false, "endCursor": null } } })),
+    );
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
+    let answer = session
+        .call("anima_events_search", json!({ "text": "backup" }))
+        .await;
+    assert_eq!(answer["structuredContent"]["events"], json!([]));
+    let sent = hub.seen().pop().expect("a list");
+    assert_eq!(sent.variables["filter"]["text"], "backup");
+    let (printed, stderr) = session.finish().await;
+    assert_protocol_only(&printed, &stderr, API_KEY);
 }

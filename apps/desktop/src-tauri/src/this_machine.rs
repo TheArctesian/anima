@@ -44,9 +44,7 @@ impl OperatingSystem {
 
 /// The name of this computer, as `this_machine_read` gives it; empty when the OS gives none.
 pub(crate) fn computer_name() -> String {
-    OperatingSystem::current()
-        .map(name::computer_name)
-        .unwrap_or_default()
+    OperatingSystem::current().map_or_default(name::computer_name)
 }
 
 /// This computer, as the Add device form needs it. Crosses to the client in camelCase.

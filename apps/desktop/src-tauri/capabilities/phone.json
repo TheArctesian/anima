@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "phone",
+  "description": "The phone apps: the device link inside the app, with the desktop link's three commands (mobile plan M3-1, MOB-031).",
+  "platforms": ["iOS", "android"],
+  "webviews": ["main"],
+  "permissions": ["allow-link-join", "allow-link-status", "allow-link-leave"]
+}

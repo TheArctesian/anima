@@ -11,7 +11,10 @@ use crate::fleet::events::{Bus, audit, record};
 
 /// Statements the runtime role must not be able to run against the logs or their partitions.
 /// The partitions are those `write_both` creates.
-const TAMPERING: [&str; 14] = [
+const TAMPERING: [&str; 17] = [
+    "update events.audit_chain set hash = previous",
+    "delete from events.audit_chain",
+    "truncate events.audit_chain",
     "update events.audit_log set operator_name = 'someone else'",
     "delete from events.audit_log",
     "truncate events.audit_log",

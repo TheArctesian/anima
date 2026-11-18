@@ -227,6 +227,8 @@
   --status-down-tint: color-mix(in srgb, var(--status-down) 16%, var(--surface-raised));
   --status-down-text: var(--graphite-aurora-11-text);
   --status-degraded-tint: color-mix(in srgb, var(--status-degraded) 16%, var(--surface-raised));
+  --status-down-wash: color-mix(in srgb, var(--status-down) 7%, transparent);
+  --status-degraded-wash: color-mix(in srgb, var(--status-degraded) 6%, transparent);
   --status-degraded-text: var(--graphite-aurora-13-text);
   --status-warning-tint: color-mix(in srgb, var(--status-warning) 16%, var(--surface-raised));
   --status-warning-text: var(--graphite-aurora-12-text);
@@ -392,6 +394,8 @@
   --status-down-tint: color-mix(in srgb, var(--status-down) 16%, var(--surface-raised));
   --status-down-text: var(--nord-11-text);
   --status-degraded-tint: color-mix(in srgb, var(--status-degraded) 16%, var(--surface-raised));
+  --status-down-wash: color-mix(in srgb, var(--status-down) 7%, transparent);
+  --status-degraded-wash: color-mix(in srgb, var(--status-degraded) 6%, transparent);
   --status-degraded-text: var(--nord-13-text);
   --status-warning-tint: color-mix(in srgb, var(--status-warning) 16%, var(--surface-raised));
   --status-warning-text: var(--nord-12-text);

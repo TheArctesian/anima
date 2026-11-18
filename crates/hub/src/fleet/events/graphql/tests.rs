@@ -86,6 +86,7 @@ fn log_004_the_filter_parses_the_device_id_and_keeps_the_rest() {
         source: Some(vec![]),
         device_id: Some(device.to_string().into()),
         since: Some(now()),
+        text: None,
     })
     .unwrap();
     assert_eq!(filter.severities, Some(vec![Severity::Error]));
@@ -97,6 +98,23 @@ fn log_004_the_filter_parses_the_device_id_and_keeps_the_rest() {
         ..EventFilterInput::default()
     });
     assert_eq!(bad.unwrap_err().field, "filter.deviceId");
+}
+
+#[test]
+fn log_011_the_search_text_is_trimmed_blank_means_none_and_200_characters_is_the_most() {
+    let with_text = |text: String| {
+        event_filter(EventFilterInput {
+            text: Some(text),
+            ..EventFilterInput::default()
+        })
+    };
+    assert_eq!(
+        with_text("  nas ".into()).unwrap().text.as_deref(),
+        Some("nas")
+    );
+    assert_eq!(with_text("   ".into()).unwrap().text, None);
+    assert!(with_text("é".repeat(200)).is_ok());
+    assert_eq!(with_text("é".repeat(201)).unwrap_err().field, "filter.text");
 }
 
 struct Root;

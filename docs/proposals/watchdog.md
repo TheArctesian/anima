@@ -10,7 +10,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 Version: 1. Date: 2026-11-16.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog, and the update of the
-daemon and the hub ([daemon-and-hub-update.md](daemon-and-hub-update.md)).
+daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)).
 Status: the header of this document holds the state (PLN-020). History: Draft. A proposal for a ruling. No requirement is approved. Nothing is built.
 Map: [work-plan.md](../work-plan.md), categories See and Use, decision OD-W22.
 Identifiers: WDG-001 to WDG-041.
@@ -167,7 +167,7 @@ uses "Watchdog" only as the name of the function.
 
 - **WDG-039.** The watchdog is a function of `anima-daemon`. It is not a second program and not a
   container (OD-W10, OD-WDG-1). It gets its update with the daemon
-  ([daemon-and-hub-update.md](daemon-and-hub-update.md)), and it reports the version of the daemon.
+  ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)), and it reports the version of the daemon.
 - **WDG-040.** The part of the daemon that speaks to the hub must not hold the right to restart a
   program. On a Linux system installation, a second unit of the same program must hold that
   right. It must have no network access other than the probes. The two parts must share only two
@@ -233,7 +233,7 @@ machine, and the command to add one.
 | A ruling number for OD-W10, which changes R-115 | Decided, with no ruling number ([jobs.md](jobs.md), "Needs") | The watchdog changes a device. Without the ruling, MET-002 and R-115 forbid it. |
 | The work route (tasks W1, W4 and W5 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)) | Not started | Stage 2 needs it. Stage 1 does not. |
 | A change to K8, which is frozen (CON-001) | Not asked | The reports of WDG-031 need an optional member of the push, or `/daemon/v2/`. |
-| The update of the daemon ([daemon-and-hub-update.md](daemon-and-hub-update.md)) | Proposal | Without it, each machine gets the watchdog only when a person builds and installs the daemon by hand. |
+| The update of the daemon ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)) | Proposal | Without it, each machine gets the watchdog only when a person builds and installs the daemon by hand. |
 | Signed releases: the first release (task R7), and a daemon artefact for each target | See the release record in [releases.md](../procedures/releases.md). The builder makes only the desktop application. | A machine with no desktop application has no published daemon to install. |
 | The isolation design and the security review of the work route (tasks W2 and S) | Not started | The right of WDG-040 is a security subject. It needs the security reviewer. |
 | Read-only discovery (R-115 "later", HOST-001) | Not built, no requirement | WDG-005 is that function. Build it one time, for this proposal and for hosted applications. |

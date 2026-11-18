@@ -6,7 +6,7 @@
 <title>First Run Mockups</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
 <style>
-/* Layout: a review board. Row 1 is the first-run choices; rows 2 and 3 are the steps and the failures of "Sign in"
+/* Layout: a review board. Row 1 is the first screen and the page behind "Join a hub"; rows 2 and 3 are the steps and the failures of "Sign in"
    (hosted-mode.md Section 4.1, HMD-022, HMD-023). Each frame is the welcome column of the app at its own width. */
 :root {
   color-scheme: dark;
@@ -33,7 +33,7 @@
   --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-2xl: 1.5rem; --text-display: 2.25rem;
   --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em; --tracking-label: 0.14em;
   --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --border-thin: 1px; --border-focus: 2px;
-  --control-md: 2rem; --target-min-desktop: 24px;
+  --control-md: 2rem; --target-min-desktop: 24px; --target-min-touch: 44px;
 }
 
 * { box-sizing: border-box; }
@@ -63,6 +63,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
 .choices strong { display: flex; justify-content: space-between; }
 .choices p { color: var(--text-secondary); font-size: var(--text-sm); }
 .secondary { color: var(--accent); font-size: var(--text-sm); }
+/* The first screen (routes/welcome/+page.svelte): one primary action and one link. */
+.welcome-actions { display: grid; gap: var(--space-2); margin-block-start: var(--space-4); }
+.welcome-actions .go { display: grid; place-items: center; min-block-size: var(--target-min-touch); border-radius: var(--radius-md); background: var(--accent); color: var(--on-accent); font-weight: var(--weight-medium); }
+.welcome-actions .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.welcome-actions .other { display: grid; place-items: center; min-block-size: var(--target-min-touch); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); font-weight: var(--weight-medium); }
+.choices .back { color: var(--text-secondary); font-size: var(--text-sm); }
 
 /* A step of "Sign in" (routes/welcome/hosted/HostedSignIn.svelte). */
 .step { display: grid; gap: var(--space-2); }
@@ -77,30 +83,30 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
 <body>
 <h1 class="board">First run: Sign in</h1>
 <p class="about">The first-run choices and each step of "Sign in" (hosted-mode.md Section 4.1, HMD-022, HMD-023).
-Each step has one heading, one line and at most one button. Back goes to the choices. After "Sign in" no step asks for an invite, an address or a hub password (HMD-037, R-128). The values are the design tokens.</p>
+Each step has one heading, one line and at most one button. Back goes to the first screen. After "Sign in" no step asks for an invite, an address or a hub password (HMD-037, R-128). The values are the design tokens.</p>
 
-<h2 class="row">1. Choices</h2>
+<h2 class="row">1. First screen and "Join a hub"</h2>
 <div class="frames">
   <figure><div class="frame tall gd">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
     <h1>Welcome to Anima.ing</h1>
-    <p class="lead">Choose how this computer reaches its hub.</p>
-    <ul class="choices">
-      <li class="primary"><strong>Sign in <span>→</span></strong><p>Use a hub hosted by Anima.ing.</p><span class="secondary">Use a hub address</span></li>
-      <li><strong>Join a hub <span>→</span></strong><p>Link this computer to a hub with an invite.</p></li>
-      <li><strong>Create a hub on this computer <span>→</span></strong><p>This computer runs the hub. Other devices join it.</p></li>
-    </ul>
-  </div><figcaption>Sign in is the primary choice: its edge is the accent (HMD-022).</figcaption></figure>
+    <div class="welcome-actions"><span class="go">Sign in</span><span class="pair"><span class="other">Sign up</span><span class="other">Join a hub</span></span></div>
+  </div><figcaption>The first screen, as frame 1 of the mobile mockup: Sign in with the Anima.ing account, then Sign up and Join a hub side by side (operator, 2026-11-17). Sign up opens the same account page. On a phone the doors stand above the title and the buttons sit low, under the thumb.</figcaption></figure>
   <figure><div class="frame tall gl">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
     <h1>Welcome to Anima.ing</h1>
-    <p class="lead">Choose how this computer reaches its hub.</p>
+    <div class="welcome-actions"><span class="go">Sign in</span><span class="pair"><span class="other">Sign up</span><span class="other">Join a hub</span></span></div>
+  </div><figcaption>Light.</figcaption></figure>
+  <figure><div class="frame tall gd">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
+    <h1>Join a hub</h1>
     <ul class="choices">
-      <li class="primary"><strong>Sign in <span>→</span></strong><p>Use a hub hosted by Anima.ing.</p><span class="secondary">Use a hub address</span></li>
-      <li><strong>Join a hub <span>→</span></strong><p>Link this computer to a hub with an invite.</p></li>
+      <li><strong>Join with an invite <span>→</span></strong><p>Link this device to a hub with an invite.</p></li>
+      <li><strong>Use a hub address <span>→</span></strong><p>Sign in to a hub on a server of your own.</p></li>
       <li><strong>Create a hub on this computer <span>→</span></strong><p>This computer runs the hub. Other devices join it.</p></li>
     </ul>
-  </div><figcaption>Light.</figcaption></figure>
+    <span class="back">Back</span>
+  </div><figcaption>Behind "Join a hub": the other ways to reach a hub (HMD-022). On a phone the invite and Create say "Desktop app only." until the link is in the app.</figcaption></figure>
 </div>
 
 <h2 class="row">2. Steps</h2>

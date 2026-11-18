@@ -14,7 +14,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Category | Meaning | Content | Owner documents |
 | --- | --- | --- | --- |
-| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-daemon` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the daemon and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../plans/vpn-plan.md). [coordinator-standby.md](../proposals/coordinator-standby.md), [bulk-data-placement.md](../proposals/bulk-data-placement.md), [daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md) |
+| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-daemon` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the daemon and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../plans/vpn-plan.md). [coordinator-standby.md](../proposals/coordinator-standby.md), [bulk-data-placement.md](../proposals/bulk-data-placement.md), [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) |
 | See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [watchdog.md](../proposals/watchdog.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../proposals/new-sources.md) |
@@ -32,9 +32,9 @@ The table gives the order. The section of each row below the table gives the wor
 | --- | --- | --- | --- | --- | --- |
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
-| 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | 1 | Update the daemon and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
-| 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
+| 4.17 | 1 | The hosted mode and the shared pool | Foundation | In progress. The sign-in path is built and merged; no device has signed in yet. | Operator: the first real sign-in (HT-022 in [need-human-testing.md](../need-human-testing.md)); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-139). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. FND-006 is approved for a hub on a server (R-141); task F1 is built. The operator starts fresh on the hosted hub (R-140). | Operator: the check HT-024 in [need-human-testing.md](../need-human-testing.md), or a ruling that it is not necessary |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
@@ -45,7 +45,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
-| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: a requirement for the hash chain. No requirement of the design specification has it; [GH-2](../work-items/device-manager/GH-2.md) holds the proposal. Agent: nothing |
+| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
 | 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
@@ -71,16 +71,16 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: Foundation
 - Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../proposals/hosted-mode.md), [shared-pool-hosting.md](../proposals/shared-pool-hosting.md)).
-- Work items: No work item yet
-- State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036.
+- Work items: The tasks HM-T1 to HM-T7 in Section 8 of [hosted-mode.md](../proposals/hosted-mode.md). No work item document yet
+- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The rulings R-127 to R-130 name the tasks HM-T1 to HM-T7 and approve HMD-037 to HMD-041 and HMD-043. HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to `main` (2026-11-17); HM-T4 is built in the private repositories and its site half is deployed. No device has signed in with an account yet: each task waits for HT-022. The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. Open: the security review (HM-D7), "Add this computer" for a computer of the link only (HM-D11), and the form of the WorkOS requests (HM-D13). The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036. On 2026-11-17 the operator said that he will use only the hosted version and that his self-hosted hub can go away later (R-130); no row of this table has changed its tier for that.
 
 ### 4.18 Update the daemon and the hub
 
 - Tier: 1
 - Category: Foundation
 - Work: Update the daemon and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
-- Work items: No work item yet. The tasks are in "Tasks" of [daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md)
-- State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
+- Work items: No work item yet. The tasks are in "Tasks" of [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)
+- State: Plan, in progress. The operator put it here on 2026-11-16: directly after the first release (OD-W23), and approved stages A and B on 2026-11-17 (R-139). Stage C (the hub of a server) is deferred: the pool updates a hosted hub (R-130). Task U4 (the contract) is done. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
 
@@ -88,7 +88,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: The procedure to restore a backup on a new machine and to move the coordinator (FND-006)
 - Work items: No work item yet. The requirement is in [coordinator-standby.md](../proposals/coordinator-standby.md), which is a draft
-- State: Proposal. The operator put it here on 2026-11-12: directly after tier 0.
+- State: Proposal. The operator put it here on 2026-11-12: directly after tier 0. R-141 approves FND-006 for a hub on a server; task F1 of [coordinator-standby.md](../proposals/coordinator-standby.md) is built and waits for HT-024.
 
 ### 4.3 Decisions and approvals for the foundation
 
@@ -176,7 +176,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: A hash chain for the audit log, so that a change to an old entry shows
 - Work items: [GH-2](../work-items/device-manager/GH-2.md)
-- State: The operator made the work item smaller on 2026-11-12: only its phase L0 stays. Its phases L1 to L5 are withdrawn (OD-W9).
+- State: The operator made the work item smaller on 2026-11-12: only its phase L0 stays. Its phases L1 to L5 are withdrawn (OD-W9). The operator asked for the build of L0 on 2026-11-17 (R-138). The operator approved the requirements LOG-021 to LOG-028 (design specification Section 3.8.2) the same day.
 
 ### 4.14 Mobile clients (Phase 5) and site operations (Phase 6)
 
