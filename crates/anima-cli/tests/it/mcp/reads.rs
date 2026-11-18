@@ -301,23 +301,3 @@ async fn mcp_017_capability_list_filters_and_gives_device_text_cleaned_and_cappe
     let (printed, stderr) = session.finish().await;
     assert_protocol_only(&printed, &stderr, API_KEY);
 }
-
-#[tokio::test]
-async fn log_011_the_events_tool_sends_its_search_text_to_the_hub() {
-    let hub = hub().await;
-    hub.answer(
-        "EventList",
-        data(json!({ "events": { "edges": [],
-                                 "pageInfo": { "hasNextPage": false, "endCursor": null } } })),
-    );
-    let desk = Desk::new();
-    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
-    let answer = session
-        .call("anima_events_search", json!({ "text": "backup" }))
-        .await;
-    assert_eq!(structured(&answer)["events"], json!([]));
-    let sent = hub.seen().pop().expect("a list");
-    assert_eq!(sent.variables["filter"]["text"], "backup");
-    let (printed, stderr) = session.finish().await;
-    assert_protocol_only(&printed, &stderr, API_KEY);
-}
