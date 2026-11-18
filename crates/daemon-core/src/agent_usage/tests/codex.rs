@@ -70,6 +70,23 @@ fn ais_018_an_older_codex_counts_its_user_message_events() {
 }
 
 #[test]
+fn ais_018_a_codex_thread_takes_its_model_from_its_meta_then_its_settings() {
+    let lines = r#"{"timestamp":"2026-11-08T10:00:00Z","type":"session_meta","payload":{"id":"t","base_instructions":{"text":"MARKER-7f3a9c-SECRET","provenance":{"model":"gpt-5.2"}}}}
+{"timestamp":"2026-11-08T10:00:01Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"output_tokens":3}}}}
+{"timestamp":"2026-11-08T10:00:02Z","type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"gpt-5.3","cwd":"/w"}}}
+{"timestamp":"2026-11-08T10:00:03Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"output_tokens":4}}}}"#;
+    let tally = tally(Source::Codex, lines);
+    let day = &days_of(&tally, "t")[0];
+    let models: Vec<(&str, u64)> = day
+        .models
+        .iter()
+        .map(|one| (one.model.as_str(), one.tokens.output))
+        .collect();
+    assert_eq!(models, [("gpt-5.2", 3), ("gpt-5.3", 4)]);
+    assert_no_marker(&tally, "t");
+}
+
+#[test]
 fn ais_018_a_codex_sub_agent_does_not_count_its_parent_s_copied_history() {
     let lines = r#"{"timestamp":"2026-11-08T11:00:00Z","ordinal":0,"type":"session_meta","payload":{"id":"child","parent_thread_id":"parent","subagent_history_start_ordinal":3}}
 {"timestamp":"2026-11-08T10:00:00Z","ordinal":1,"type":"session_meta","payload":{"id":"parent"}}

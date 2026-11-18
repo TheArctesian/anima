@@ -1,6 +1,7 @@
 //! The lines of a Codex rollout file (`~/.codex/sessions/**/rollout-*.jsonl`): the first
-//! `session_meta` names the thread, its working folder and the thread that started it; each
-//! `turn_context` names the model of the lines after it; a prompt is a `UserMessage` item (or
+//! `session_meta` names the thread, its working folder, the thread that started it and the
+//! model its instructions are for; each `turn_context` and `thread_settings_applied` names the
+//! model of the lines after it; a prompt is a `UserMessage` item (or
 //! a `user_message` event of an older Codex); a tool call is a call item; the tokens are the
 //! `last_token_usage` of each `token_count` event whose total moved.
 //!
@@ -93,12 +94,34 @@ struct TurnContext {
 }
 
 #[derive(Deserialize)]
-struct TokenCount {
-    info: Option<Info>,
+struct SettingsApplied {
+    thread_settings: Option<TurnContext>,
+}
+
+/// The model the thread's instructions were made for: the model of a thread that names no
+/// other. The text of the instructions is skipped.
+#[derive(Deserialize)]
+struct MetaModel {
+    base_instructions: Option<Instructions>,
 }
 
 #[derive(Deserialize)]
-struct Info {
+struct Instructions {
+    provenance: Option<Provenance>,
+}
+
+#[derive(Deserialize)]
+struct Provenance {
+    model: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct TokenCount {
+    info: Option<TokenTotals>,
+}
+
+#[derive(Deserialize)]
+struct TokenTotals {
     total_token_usage: Option<Usage>,
     last_token_usage: Option<Usage>,
 }
@@ -120,7 +143,7 @@ struct Usage {
 }
 
 #[derive(Deserialize)]
-struct ItemCompleted {
+struct Completed {
     item: Option<Kind>,
 }
 
@@ -129,15 +152,13 @@ pub(super) fn read(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
         return;
     };
     let payload_kind = head.payload.and_then(|payload| payload.kind);
-    match head.kind.as_deref() {
-        Some("session_meta") => meta(thread, counts, line),
-        Some("turn_context") => {
-            if let Some(context) = payload::<TurnContext>(line) {
-                thread.model = context.model.or(thread.model.take());
-                if let Some(cwd) = &context.cwd {
-                    counts.named_folder(cwd);
-                }
-            }
+    match (head.kind.as_deref(), payload_kind.as_deref()) {
+        (Some("session_meta"), _) => meta(thread, counts, line),
+        (Some("turn_context"), _) => context(thread, counts, payload::<TurnContext>(line)),
+        (Some("event_msg"), Some("thread_settings_applied")) => {
+            let settings =
+                payload::<SettingsApplied>(line).and_then(|applied| applied.thread_settings);
+            context(thread, counts, settings);
         }
         _ => {}
     }
@@ -150,7 +171,7 @@ pub(super) fn read(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
         (Some("event_msg"), Some("token_count")) => tokens(thread, counts, at, line),
         (Some("event_msg"), Some("user_message")) => thread.prompt(PromptKind::Event, counts, at),
         (Some("event_msg"), Some("item_completed")) => {
-            let item = payload::<ItemCompleted>(line).and_then(|done| done.item?.kind);
+            let item = payload::<Completed>(line).and_then(|done| done.item?.kind);
             if item.as_deref() == Some("UserMessage") {
                 thread.prompt(PromptKind::Item, counts, at);
             }
@@ -159,6 +180,17 @@ pub(super) fn read(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
             counts.tool_calls(at, 1);
         }
         _ => {}
+    }
+}
+
+/// The model and folder a turn context or applied settings name.
+fn context(thread: &mut Thread, counts: &mut Counts, context: Option<TurnContext>) {
+    let Some(context) = context else {
+        return;
+    };
+    thread.model = context.model.or(thread.model.take());
+    if let Some(cwd) = &context.cwd {
+        counts.named_folder(cwd);
     }
 }
 
@@ -171,6 +203,8 @@ fn meta(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
         return;
     };
     thread.id = meta.id;
+    thread.model =
+        payload::<MetaModel>(line).and_then(|meta| meta.base_instructions?.provenance?.model);
     thread.parent = meta.parent_thread_id;
     thread.history_end = meta.subagent_history_start_ordinal;
     if let Some(cwd) = &meta.cwd {
