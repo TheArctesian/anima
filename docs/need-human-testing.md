@@ -20,6 +20,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
   the result, can set Passed or Failed.
 - A Failed entry stays in the list until a correction is built. Then its state goes back to Open.
 - Move a Passed entry to "Passed" at the end of this document. Do not delete it.
+- A proposal of 2026-11-18 sorts the open checks for the hosted hub and gives one order for them: [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md). It changes no entry (OD-W24 of [decisions.md](plan/decisions.md) is open).
 
 ## Open
 

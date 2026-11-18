@@ -32,10 +32,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (106)
+## 2. Open decisions (107)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
+| OD-W24 | Can an entry of need-human-testing.md have the state "Deferred", with the reason and the ruling, for a check that can run only against the hub on the VPS or its… | Open. Recommendation: yes. One sentence in "How to use this list" and in PLN-014: only a ruling of the operator sets Deferred; the entry stays in the list and i… | [plan/decisions.md](plan/decisions.md) |
 | OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
