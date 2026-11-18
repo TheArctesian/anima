@@ -1,4 +1,4 @@
-//! The K1 `AuditChainCheck` type that `Query.auditChain` returns (LOG-027, R-136).
+//! The K1 `AuditChainCheck` type that `Query.auditChain` returns (LOG-027, R-138).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

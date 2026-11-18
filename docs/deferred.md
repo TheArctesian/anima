@@ -225,7 +225,7 @@ Added 2026-11-08.
 - T2 (should): web interface mutations read the device name on a second pool connection while their transaction is open; add a `devices` face function on `&mut PgConnection`.
 - T2 (K3 deviations, recorded): `Trail::from_context` returns `async_graphql::Result`; `write(self, ..)` takes self by value and returns `events::Error`; extra `Trail::new(bus, (operator, client), now)` for the files tunnel; `AuditTarget::WebInterface` not added (WP-30 D-3).
 
-### GH-2 L0: the hash chain of the audit log (R-136)
+### GH-2 L0: the hash chain of the audit log (R-138)
 
 Added 2026-11-17.
 

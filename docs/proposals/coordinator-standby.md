@@ -99,6 +99,12 @@ manager is accepted. The standbys come later, with the extensions.
   The client must show the age of this data (NET-004). The copy must not contain a credential.
   IOS-003 already requires this copy for iOS.
 
+## Tasks
+
+| Task | Content | Needs | State | Commits |
+| --- | --- | --- | --- | --- |
+| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | The operator named it on 2026-11-17 ("Yes, build F1"); the branch `restore-and-move` records the ruling | Not started | — |
+
 ## Open points
 
 - The standby must send the notification of FND-004 when the home is down. Thus a standby needs

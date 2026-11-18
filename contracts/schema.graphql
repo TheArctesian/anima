@@ -1211,7 +1211,7 @@ type AuditConnection {
   pageInfo: PageInfo!
 }
 
-"(R-136, LOG-027) The check of the hash chain of the audit log. It changes nothing."
+"(R-138, LOG-027) The check of the hash chain of the audit log. It changes nothing."
 type AuditChainCheck {
   "True when the check found no fault."
   intact: Boolean!
@@ -1227,7 +1227,7 @@ type AuditChainCheck {
   fault: AuditChainFault
 }
 
-"(R-136, LOG-027) The first place where the chain and the entries do not agree."
+"(R-138, LOG-027) The first place where the chain and the entries do not agree."
 type AuditChainFault {
   kind: AuditChainFaultKind!
   "The link; null for NOT_LINKED."
@@ -1236,7 +1236,7 @@ type AuditChainFault {
   at: DateTime!
 }
 
-"(R-136, LOG-027)"
+"(R-138, LOG-027)"
 enum AuditChainFaultKind {
   "The entry does not give the hash of its link: a field changed, or entries changed places."
   CHANGED
@@ -2601,7 +2601,7 @@ type Query {
   events(filter: EventFilter, first: Int = 100, after: String): EventConnection!
   "actorKind (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned): only the entries of that kind; an entry with no recorded kind matches none (LOG-020)."
   audit(first: Int = 100, after: String, actorKind: ActorKind): AuditConnection!
-  "(R-136, LOG-027) Checks the hash chain of the audit log. It changes nothing."
+  "(R-138, LOG-027) Checks the hash chain of the audit log. It changes nothing."
   auditChain: AuditChainCheck!
 
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!

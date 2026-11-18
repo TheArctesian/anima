@@ -1,4 +1,4 @@
--- The hash chain of the audit log (LOG-021 to LOG-028, R-136): one link for each audit entry.
+-- The hash chain of the audit log (LOG-021 to LOG-028, R-138): one link for each audit entry.
 --
 -- The links have their own table, so this migration changes no audit entry (LOG-006, LOG-026);
 -- the hub links the entries that exist at its first start. The table has no partitions: a link

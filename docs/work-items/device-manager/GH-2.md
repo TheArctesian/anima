@@ -20,10 +20,10 @@ The requirements come first (PLN-013). The build follows CMD-030.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| L0-T1 | The requirements LOG-021 to LOG-028 in the design specification Section 3.8.2, and the ruling R-136 | Done. Approved by the operator, 2026-11-17 (R-136) | 33295a96 and the commit that records R-136 |
+| L0-T1 | The requirements LOG-021 to LOG-028 in the design specification Section 3.8.2, and the ruling R-138 | Done. Approved by the operator, 2026-11-17 (R-138) | 33295a96, 468d9eed |
 | L0-T2 | The hub: the migration, the chain on each audit write, the check of the chain, the GraphQL field (K1, K2, K3) | Built: migration 0506, `events/chain`, `Query.auditChain`, the daily check. Waits for HT-023 ([need-human-testing.md](../../need-human-testing.md)) on the real hub | 9113ee8d, a14a9a56 |
 | L0-T3 | The `anima audit` command and the MCP tool for the check | Done. `anima audit verify` and `anima_audit_verify` | 9113ee8d |
-| L0-T4 | The client: show if the chain is whole | Done by ruling: no new screen; a fault shows as an Error event in the Logs panel (R-136, LOG-028) | R-136 |
+| L0-T4 | The client: show if the chain is whole | Done by ruling: no new screen; a fault shows as an Error event in the Logs panel (R-138, LOG-028) | R-138 |
 
 ## Scope made smaller — 2026-11-12
 

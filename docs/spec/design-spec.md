@@ -303,7 +303,7 @@ These requirements change the frozen contracts K1, K2 and K7 (CON-001). The oper
 
 #### 3.8.2 Hash chain of the audit log
 
-State: approved (operator, 2026-11-17, R-136). The operator said on 2026-11-17: "Lets build out the Tamper-evident audit log". Only phase L0 of [GH-2](../work-items/device-manager/GH-2.md) is in scope (OD-W9).
+State: approved (operator, 2026-11-17, R-138). The operator said on 2026-11-17: "Lets build out the Tamper-evident audit log". Only phase L0 of [GH-2](../work-items/device-manager/GH-2.md) is in scope (OD-W9).
 
 Purpose: a change to an old audit log entry, or the removal of an entry, shows. The chain does not stop a change. It does not protect against a person who can write to the database and writes a new chain (see "Limits" below).
 
