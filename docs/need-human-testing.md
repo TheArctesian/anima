@@ -46,6 +46,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
+| HT-025 | A phone joins a hub with an invite, through the link in the app; the Paste invite and Joining screens | An iPhone and an Android phone with a build of `mobile/m1-shell`, the simulator and the emulator, a hub with an invite | Open |
 | HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
 
 ### HT-001: `anima snapshot` against GitHub
@@ -571,13 +572,19 @@ Result: Open.
 
 ### HT-025: a phone joins a hub with an invite, through the link in the app
 
-Built: on the branch `mobile/m1-shell` (mobile plan M1-4 and M3-1, MOB-031, MOB-032, MOB-035, MOB-036). The Go link
+Built: on the branch `mobile/m1-shell` (mobile plan M1-4, M3-1 and M3-2, MOB-031 to MOB-033, MOB-035, MOB-036). The Go link
 runs inside the phone app as a library (`link/cmd/phonelink`, built by `link/build-phone.sh`). "Join a hub", then
 "Join with an invite", joins the phone to a hub over the link, and the app reaches the hub at a loopback address.
 
 The tests cover the error codes of the library, a join with text that is not an invite, and a start with no hub. On
 2026-11-17 the Android emulator reached the link and wrote its folder, but the emulator had no route to the internet,
 so the relay never answered. The iPhone simulator stopped answering before the join. No phone joined a hub.
+
+The "Paste invite" and "Joining the hub" screens (M3-2, `31378b0d`, `6ae435e3`) follow frame 2 of
+`docs/mockup/mobile/index.html`. On 2026-11-18 they were measured in a desktop browser at 390 by 844 px, dark; the
+joining view had a stand-in for the commands of the shell. They were not seen on the iPhone simulator, on the Android
+emulator or on a phone: the keyboard, the safe areas, the paste permission of iOS and the wait for a real hub are not
+covered. Steps 6 to 8 are for the simulator and the emulator and need no hub; steps 1 to 5 need real phones.
 
 1. Build this branch for an iPhone and an Android phone (`link/build-phone.sh`, then the Tauri build). On the hub, in
    Settings, make an invite for a new device.
@@ -589,6 +596,19 @@ so the relay never answered. The iPhone simulator stopped answering before the j
 4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
    new invite.
 5. Settings, Leave hub. Expected: the welcome screen. On the hub, the phone is no longer on the link.
+6. On the iPhone simulator and on the Android emulator, open a build of this branch, tap "Join a hub", then "Join
+   with an invite". Open `docs/mockup/mobile/index.html` beside it. Expected: the screen looks as the "Paste invite"
+   frame of row 2: Back, the title, the field, Paste with a line around it, "Join hub" and "Works once. Not kept.",
+   with the same space at each side.
+7. Tap the field. Expected: the keyboard opens, the page does not zoom, and "Join hub" stays above the keyboard. Type
+   `abc` and tap "Join hub". Expected: a line under the field says that the text is not an invite, and `abc` stays in
+   the field.
+8. Copy some text in a different app, come back and tap Paste. Expected: the text is in the field (iOS asks to allow
+   the paste first). Tap Back. Expected: the screen before it.
+9. On each real phone, during step 2, look at "Joining the hub" beside the "Joining" frame of row 2. Expected: four
+   rows with a mark each, the device key in machine text under "Link started", and Cancel low on the screen, above the
+   home bar. Turn the hub off before a join with a new invite. Expected: after a minute "Waiting for hub" has a red
+   mark, a line says that the hub did not answer, and Retry replaces Cancel.
 
 Result: Open.
 
