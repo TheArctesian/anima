@@ -16,10 +16,14 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 - Each entry has an identifier `HT-nnn`. Do not use an identifier again.
 - The operator does the steps and writes the result in the entry: the state, the date and one
   line about what occurred.
-- The states are Open, Passed and Failed. Only the operator, or an agent that the operator told
+- The states are Open, Passed, Failed and Deferred. Only the operator, or an agent that the operator told
   the result, can set Passed or Failed.
+- Deferred means that the check is put aside because it cannot run now (PLN-014, R-169). Only a
+  ruling of the operator sets it. The entry gives the reason and the ruling. It is not deleted, and
+  a ruling or the operator sets it to Open again.
 - A Failed entry stays in the list until a correction is built. Then its state goes back to Open.
 - Move a Passed entry to "Passed" at the end of this document. Do not delete it.
+- A proposal of 2026-11-18 sorts the open checks for the hosted hub and gives one order for them: [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md). The operator approved it on 2026-11-18 (R-169). The entries below do not show it yet: a later commit sets the fifteen deferred entries and writes the new steps.
 
 ## Open
 
@@ -51,6 +55,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
 | HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 
@@ -980,5 +985,32 @@ The hub and the daemon must be of this build. A local hub is sufficient
     and the page say "This daemon runs as a system unit and cannot see the sessions of a user."
 11. Stop and start the daemon of the Mac. Wait 2 minutes. Expected: the numbers of step 2 do not
     change, apart from new use.
+
+Result: Open.
+
+### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
+
+Built: in 53af82a1 and 3b46dfef (R-157). The application keeps the last answer of the hub for the device list,
+one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). It does not keep the checks of a
+device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
+banner "Not on the network" gives its age. Sign-out deletes the copy.
+
+The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
+was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
+looked at with the network off.
+
+1. Open the application while the hub answers. Open Devices, then one device, then Logs. Expected: the usual screens.
+2. Turn the network off (Wi-Fi off, or stop the VPN client). Quit the application and open it again. Expected: the
+   banner "Not on the network" with "Data from" and an age of some minutes, and the device list with the devices of
+   step 1.
+3. Open the device and the Logs of step 1. Expected: the same content as in step 1, and the charts of the device
+   show their lines. The checks of the device, and a screen that was not opened in step 1, show that the hub did
+   not answer.
+4. Try a change, for example rename the device. Expected: the application says that the hub did not answer, and the
+   name does not change.
+5. Turn the network on. Expected: in less than one minute the banner goes away, the page loads again by itself and
+   shows live data.
+6. Turn the network off again. In Settings, sign out. Quit the application, open it, and sign in is asked. Expected:
+   no device of step 1 is shown anywhere before the sign-in.
 
 Result: Open.

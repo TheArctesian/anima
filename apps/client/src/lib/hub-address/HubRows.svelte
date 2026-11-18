@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { forgetRecentCopy } from '$lib/hub/hub';
   import { accessApi } from '$lib/access/api';
   import { goToSignIn } from '$lib/access/navigation';
   import { signOut } from '$lib/access/sign-out';
@@ -28,7 +29,7 @@
     busy = true;
     status = '';
     // `signOut` returns fixed sentences and does not throw; its own messages are shown whole, as SignOutRow shows them.
-    const kept = await signOut({ api, address: hub.address, desktop: true, clearToken: clearAccessToken });
+    const kept = await signOut({ api, address: hub.address, desktop: true, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
     if (kept === null) goToSignIn();
     else status = kept;
     busy = false;

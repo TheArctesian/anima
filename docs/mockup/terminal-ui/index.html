@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>anima tui: terminal screen mockups</title>
+<style>
+:root { color-scheme: dark; --pg-bg:#101214; --pg-fg:#E6E7E9; --pg-muted:#A4A8B0; --pg-rule:#2C3036;
+  --font-ui:"IBM Plex Sans", system-ui, -apple-system, sans-serif; --font-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+/* Terminal tokens, copied from design/tokens/terminal.tokens.json and design/tokens/palettes/nord.tokens.json.
+   A real terminal draws these 16 colours itself: the program names a colour number, not a hex value (TUI-032). */
+.term { --t-bg:#2E3440; --t-fg:#D8DEE9;
+  --a0:#3B4252; --a1:#BF616A; --a2:#A3BE8C; --a3:#EBCB8B; --a4:#81A1C1; --a5:#B48EAD; --a6:#88C0D0; --a7:#E5E9F0;
+  --a8:#4C566A; --a9:#BF616A; --a10:#A3BE8C; --a11:#EBCB8B; --a12:#81A1C1; --a13:#B48EAD; --a14:#8FBCBB; --a15:#ECEFF4; }
+* { box-sizing: border-box; }
+body { margin:0; padding:2rem 1.25rem 4rem; background:var(--pg-bg); color:var(--pg-fg); font:400 0.9375rem/1.5 var(--font-ui); }
+main { max-width: 64rem; margin: 0 auto; }
+h1 { font-weight:200; font-size:2rem; letter-spacing:-0.03em; margin:0 0 .5rem; }
+p.note { color:var(--pg-muted); max-width: 46rem; margin:.25rem 0 1.5rem; }
+figure { margin:0 0 2.5rem; }
+figcaption { font-weight:500; margin:0 0 .5rem; }
+figcaption span { display:block; font-weight:400; color:var(--pg-muted); font-size:.8125rem; }
+pre.term { margin:0; padding:.75rem 1rem; width:fit-content; max-width:100%; overflow-x:auto; background:var(--t-bg); color:var(--t-fg);
+  font:400 .9375rem/1.25 var(--font-mono); border:1px solid var(--pg-rule); border-radius:4px; }
+pre.term.mono { filter: grayscale(1); }
+.up{color:var(--a2)} .dn{color:var(--a1)} .dg{color:var(--a3)} .mt{color:var(--a5)} .dim{color:var(--a8)} .acc{color:var(--a6)} .sel{background:var(--a0)}
+.rev{background:var(--t-fg);color:var(--t-bg)} .b{font-weight:500}
+</style>
+</head>
+<body>
+<main>
+<h1>anima tui</h1>
+<p class="note">A review board for the terminal screen of cli-mcp-plan.md Section 11 (TUI-010 to TUI-034). Each frame is drawn at 80 columns, in the Nord scheme of the terminal tokens. The real program names colour numbers (the 16 ANSI colours), so the scheme of the terminal applies. A status is always a symbol and a word. Draft: not approved, not built.</p>
+<figure><figcaption>1. Devices, with the detail of the selected device<span>Worst status first. The selected row is web-02. Under 100 columns the real screen hides the detail pane and shows it on Enter (task TU5); this frame fits both panes into 80 columns to show the content.</span></figcaption><pre class="term"> <span class="b">anima</span>  hub.anima.ing (home)                      <span class="up">●</span> live    <span class="up">▲ 14</span>  <span class="dg">◆ 1</span>  <span class="dn">▼ 2</span>  <span class="mt">■ 1</span>
+ <span class="rev"> 1 Devices </span> 2 Events  3 Sessions                           <span class="dim">sorted: worst first</span> 
+┌ Devices (18) ─────────────────────────┐┌ web-02 ─────────────────────────────┐
+│ <span class="sel"><span class="dn">▼ down  </span> web-02     server  home     </span> ││ host   web-02.lan   10.0.0.12       │
+│ <span class="dn">▼ down  </span> nas-01     server  home      ││ os     Linux        kind server     │
+│ <span class="dg">◆ deg.  </span> build-mac  mac     office    ││ site   home    tags  prod, web      │
+│ <span class="mt">■ maint.</span> backup-01  server  home      ││                                     │
+│ <span class="up">▲ up    </span> ollama     server  home      ││ Checks                              │
+│ <span class="up">▲ up    </span> pve-01     server  home      ││ <span class="dn">▼</span> ping      down     60 s           │
+│ <span class="up">▲ up    </span> router     network home      ││ <span class="up">▲</span> https     up       60 s           │
+│ <span class="up">▲ up    </span> studio     mac     office    ││                                     │
+│ ...                                   ││ Events                              │
+│                                       ││ 14:02 <span class="dn">ERR </span> ping failed 3 times      │
+│                                       ││ 13:58 <span class="dg">WARN</span> https slow (2.4 s)       │
+│                                       ││ 13:41 <span class="up">INFO</span> came back up             │
+└───────────────────────────────────────┘└─────────────────────────────────────┘
+ <span class="dim">↑↓</span> select  <span class="dim">/</span> filter  <span class="dim">s</span> order  <span class="dim">t</span> terminal  <span class="dim">r</span> refresh  <span class="dim">Tab</span> view  <span class="dim">?</span> help  <span class="dim">q</span> quit</pre></figure><figure><figcaption>2. Events<span>New events at the top, as they arrive. Tab or 1, 2, 3 change the view. The key e limits the events to the selected device.</span></figcaption><pre class="term"> <span class="b">anima</span>  hub.anima.ing (home)                      <span class="up">●</span> live    <span class="up">▲ 14</span>  <span class="dg">◆ 1</span>  <span class="dn">▼ 2</span>  <span class="mt">■ 1</span>
+  1 Devices <span class="rev"> 2 Events </span> 3 Sessions           <span class="dim">min severity: info   e: this device</span> 
+┌ Events (live) ───────────────────────────────────────────────────────────────┐
+│ 14:02:11  <span class="dn">ERR </span>  web-02     ping failed 3 times                               │
+│ 14:01:40  <span class="dg">WARN</span>  build-mac  disk 91 percent full                              │
+│ 13:58:03  <span class="dg">WARN</span>  web-02     https slow (2.4 s)                                │
+│ 13:52:19  <span class="up">INFO</span>  nas-01     check added: smart                                │
+│ 13:41:44  <span class="up">INFO</span>  web-02     came back up                                      │
+│ 13:30:02  <span class="dn">ERR </span>  nas-01     ping failed 3 times                               │
+│ 13:12:50  <span class="up">INFO</span>  studio     session ended (anima ssh)                         │
+│ 13:05:31  <span class="up">INFO</span>  studio     session started (anima ssh)                       │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+ <span class="dim">↑↓</span> select  <span class="dim">/</span> filter  <span class="dim">s</span> order  <span class="dim">t</span> terminal  <span class="dim">r</span> refresh  <span class="dim">Tab</span> view  <span class="dim">?</span> help  <span class="dim">q</span> quit</pre></figure><figure><figcaption>3. Connection lost<span>The data stays and its age is shown. The screen opens the sockets again after 1, 2, 4, 8, 16 and 30 seconds (TUI-023).</span></figcaption><pre class="term"> <span class="b">anima</span>  hub.anima.ing (home)       <span class="dg">◌</span> reconnecting, retry in 8 s   data 41 s old
+ <span class="rev"> 1 Devices </span> 2 Events  3 Sessions                                              <span class="dim"></span> 
+┌ Devices (18) ────────────────────────────────────────────────────────────────┐
+│ <span class="dim">▼ down  </span> web-02     server  home                                             │
+│ <span class="dim">▼ down  </span> nas-01     server  home                                             │
+│ <span class="dim">◆ deg.  </span> build-mac  mac     office                                           │
+│ <span class="dim">■ maint.</span> backup-01  server  home                                             │
+│ <span class="dim">▲ up    </span> ollama     server  home                                             │
+│ ...                                                                          │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+ <span class="dg">Showing old data. Every list is read again when the hub answers.</span>
+ <span class="dim">↑↓</span> select  <span class="dim">/</span> filter  <span class="dim">s</span> order  <span class="dim">t</span> terminal  <span class="dim">r</span> refresh  <span class="dim">Tab</span> view  <span class="dim">?</span> help  <span class="dim">q</span> quit</pre></figure><figure><figcaption>4. Signed out<span>The hub refused the token (close code 4403). Only q works. Exit code 4 (TUI-051).</span></figcaption><pre class="term"> <span class="b">anima</span>  hub.anima.ing (home)                      <span class="dn">✖ signed out</span>   data 3 min old
+ <span class="rev"> 1 Devices </span> 2 Events  3 Sessions                                              <span class="dim"></span> 
+┌ Devices (18) ────────────────────────────────────────────────────────────────┐
+│ <span class="dim">▼ down  </span> web-02     server  home                                             │
+│ <span class="dim">▼ down  </span> nas-01     server  home                                             │
+│ <span class="dim">◆ deg.  </span> build-mac  mac     office                                           │
+│ ...                                                                          │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+ <span class="dn">Signed out. Run `anima auth login`.</span>   <span class="dim">q</span> quit
+</pre></figure><figure><figcaption>5. Window too small<span>Below 80 by 24 the screen draws one line and nothing else (TUI-031).</span></figcaption><pre class="term">
+  Make the window at least 80 by 24
+</pre></figure><figure><figcaption>6. Empty hub</figcaption><pre class="term"> <span class="b">anima</span>  hub.anima.ing (home)                      <span class="up">●</span> live    <span class="up">▲  0</span>  <span class="dg">◆ 0</span>  <span class="dn">▼ 0</span>  <span class="mt">■ 0</span>
+ <span class="rev"> 1 Devices </span> 2 Events  3 Sessions                                              <span class="dim"></span> 
+
+  No devices yet. Add one in the application or with `anima device create`.
+</pre></figure><figure><figcaption>7. No colour (NO_COLOR set)<span>The same text with no colour. Plain symbols stand in for the others on a terminal that cannot draw them (TUI-032).</span></figcaption><pre class="term"> <span>anima</span>  hub.anima.ing (home)                      <span>*</span> live    <span>+ 14</span>  <span>~ 1</span>  <span>! 2</span>  <span>m 1</span>
+ <span class="rev"> 1 Devices </span> 2 Events  3 Sessions                           <span>sorted: worst first</span> 
+┌ Devices (18) ─────────────────────────┐┌ web-02 ─────────────────────────────┐
+│ <span><span>! down  </span> web-02     server  home     </span> ││ host   web-02.lan   10.0.0.12       │
+│ <span>! down  </span> nas-01     server  home      ││ os     Linux        kind server     │
+│ <span>~ deg.  </span> build-mac  mac     office    ││ site   home    tags  prod, web      │
+│ <span>m maint.</span> backup-01  server  home      ││                                     │
+│ <span>+ up    </span> ollama     server  home      ││ Checks                              │
+│ <span>+ up    </span> pve-01     server  home      ││ <span>!</span> ping      down     60 s           │
+│ <span>+ up    </span> router     network home      ││ <span>+</span> https     up       60 s           │
+│ <span>+ up    </span> studio     mac     office    ││                                     │
+│ ...                                   ││ Events                              │
+│                                       ││ 14:02 <span>ERR </span> ping failed 3 times      │
+│                                       ││ 13:58 <span>WARN</span> https slow (2.4 s)       │
+│                                       ││ 13:41 <span>INFO</span> came back up             │
+└───────────────────────────────────────┘└─────────────────────────────────────┘
+ <span>↑↓</span> select  <span>/</span> filter  <span>s</span> order  <span>t</span> terminal  <span>r</span> refresh  <span>Tab</span> view  <span>?</span> help  <span>q</span> quit</pre></figure>
+</main>
+</body>
+</html>

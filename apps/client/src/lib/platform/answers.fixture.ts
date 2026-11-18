@@ -21,6 +21,7 @@ export const DESKTOP_MAC: Capabilities = {
   deviceLink: true,
   cloudAccount: true,
   overlayTitleBar: true,
+  recentCopy: true,
 };
 
 /** A browser: every desktop-only feature off. */

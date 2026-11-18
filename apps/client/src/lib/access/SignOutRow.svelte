@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { forgetRecentCopy } from '$lib/hub/hub';
   import { tick } from 'svelte';
   import { useHub } from '$lib/hub/context';
   import { clearAccessToken } from '$lib/desktop/token';
@@ -31,7 +32,7 @@
     busy = true;
     let kept: string | null;
     try {
-      kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken });
+      kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
     } catch (reason) {
       busy = false;
       throw reason;

@@ -6,7 +6,7 @@ import { metricsApi, type DeviceMetricsView, type MetricRange, type NewMetrics }
 import { chartsOf } from '$lib/metrics/overview-charts';
 import { chartShapeOf, rememberChartShape } from '$lib/metrics/shapes';
 import { mergeLive } from '$lib/metrics/live';
-import { rangeWindow } from '$lib/metrics/ranges';
+import { rangeWindow, seriesWindow } from '$lib/metrics/ranges';
 import { hasMetrics } from '$lib/metrics/source/has-metrics';
 import { mergeStorage } from '$lib/metrics/storage/storage';
 
@@ -84,7 +84,8 @@ export class DeviceMetrics {
     }
     this.readings = result.value?.readings ?? this.readings;
     this.#shown = range;
-    this.span = rangeWindow(range, at);
+    const pointTimes = (result.value?.series ?? []).flatMap((one) => one.points.map((point) => Date.parse(point.at)));
+    this.span = seriesWindow(range, at, pointTimes);
   }
 
   /** Ends the subscription; answers still on their way are dropped. */
