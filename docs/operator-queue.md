@@ -37,7 +37,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (94)
+## 2. Open decisions (101)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -90,6 +90,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-BOT1 | Is breadth, as the agents that Orca lists, a goal of the first release of Bots, and is the generic runner (BOT-039) the first work of Bots after the agent panes… | Proposed, not ruled: yes. A custom entry gives all 34 agents at launch-and-watch depth for the cost of the panes work. The panes work (AIS-009 to AIS-013, OD-AI… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT2 | Which agents get a Tier 2 catalog entry, and in what order (BOT-043)? | Proposed, not ruled: the order of BOT-043. It comes from GitHub stars on 2026-11-17, a weak signal, and no public number exists for the closed agents (Cursor, C… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT3 | Inside Tier 1, does the generic ACP adapter come before the named adapters of Claude Code and Codex (BOT-042)? | Proposed, not ruled: no. Claude Code and Codex first, as the two agents that Anima.ing detects today and that most operators have. The note estimates each of th… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT4 | Does Anima.ing list Crush at all (BOT-044)? | Proposed, not ruled: no, until counsel has read the "Competing Use" clause of its licence. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT5 | May an operator run `agy` or Gemini CLI on a consumer Google login in a pane that he drives by hand (BOT-045)? A reply on the Google tracker of 2026-11-12 says… | Proposed, not ruled: a bot never uses that login (BOT-036). A person's own terminal pane is his own use, and Anima.ing offers no entry for it. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT6 | Do the agents that speak ACP only through a program that their vendor did not publish (Pi with `pi-acp`, Muse with an unofficial adapter) run through the ACP ad… | Proposed, not ruled: no. They stay terminal entries (BOT-039) until the operator rules. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT7 | Do the 14 agents with no checked terms row show as "terms not checked" in the first release (BOT-041, BOT-043), or does a person read their terms first? | Proposed, not ruled: show them only as custom entries with "terms not checked" (Tier 3); read the rows of Tier 2 before the release (BOT-043). | [proposals/bots.md](proposals/bots.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D9 | Which sign-in methods does AuthKit show? | GitHub, Google and email with a code; passkeys offered after the first sign-in. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |

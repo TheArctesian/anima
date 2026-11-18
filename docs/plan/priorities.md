@@ -34,7 +34,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
 <<<<<<< HEAD
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-136). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-138). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 =======
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | In progress. The sign-in path is built and merged; no device has signed in yet. | Operator: the first real sign-in (HT-022 in [need-human-testing.md](../need-human-testing.md)); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
 | 4.18 | 1 | Update the daemon and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
@@ -85,7 +85,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Update the daemon and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
 - Work items: No work item yet. The tasks are in "Tasks" of [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)
-- State: Plan, in progress. The operator put it here on 2026-11-16: directly after the first release (OD-W23), and approved stages A and B on 2026-11-17 (R-136). Stage C (the hub of a server) is deferred: the pool updates a hosted hub (R-130). Task U4 (the contract) is done. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
+- State: Plan, in progress. The operator put it here on 2026-11-16: directly after the first release (OD-W23), and approved stages A and B on 2026-11-17 (R-138). Stage C (the hub of a server) is deferred: the pool updates a hosted hub (R-130). Task U4 (the contract) is done. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
 
