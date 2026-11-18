@@ -32,22 +32,22 @@ The table gives the order. The section of each row below the table gives the wor
 | --- | --- | --- | --- | --- | --- |
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
-| 4.17 | 1 | The hosted mode and the shared pool | Foundation | In progress. The first real sign-in is Passed (HT-022, 2026-11-17). The computer as a device, the hub as a device, the check of the presence on the link and the TCP path from the hub to a computer are built and merged (HM-T8, HM-T9, HM-T11, HM-T12); none has its live check yet. | Operator: HT-027, HT-028, HT-029 and HT-031 in [need-human-testing.md](../need-human-testing.md), which need a hub of the pool from a new hub image and an application with the new link program; approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of [hosted-mode.md](../proposals/hosted-mode.md) |
-| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-139). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.17 | 1 | The hosted mode and the shared pool | Foundation | In progress. The first real sign-in is Passed (HT-022, 2026-11-17). The computer as a device, the hub as a device, the check of the presence on the link and the TCP path from the hub to a computer are built and merged (HM-T8, HM-T9, HM-T11, HM-T12); none has its live check yet. | Operator: HT-027, HT-028, HT-029 and HT-031 in [need-human-testing.md](../need-human-testing.md), which need a hub of the pool from a new hub image and an application with the new link program; the proposed requirement HMD-051 of [hosted-mode.md](../proposals/hosted-mode.md); HM-D2, HM-D8, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of [hosted-mode.md](../proposals/hosted-mode.md) |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-139). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. FND-006 is approved for a hub on a server (R-141); task F1 is built. The operator starts fresh on the hosted hub (R-140). | Operator: the check HT-024 in [need-human-testing.md](../need-human-testing.md), or a ruling that it is not necessary |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of [planning-evidence-plan.md](../plans/planning-evidence-plan.md), read-only preparation (R-152) |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: None. E0-5 T1 to E0-7 are claimed (docs/claims/e0-5.md, e0-6.md and e0-7.md, branch `engine/e0-5-places`, started 2026-11-18). OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.6 | 3a | Projects | See | In progress. | Nothing now. The parts that are not built wait for later plans: a hosting provider as a source (PRO-005, Q1), the Operations area of the project page (PRO-006, Q2), task W1 (PRO-006, Q3) and a second forge (PRO-007, Q4); see [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0" |
-| 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
+| 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Agent: task W1, the contract of the work route, in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (R-160 is the ruling that changes R-115). Operator: the acceptance of the contract (W1) and of the design (W2); the security review of the work route comes before code |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
-| 4.9 | 3c | Hosted applications | Use | Plan, in progress (R-149). Stage 1 is the first to build and is claimed; H1 to H3 are Not started on `main`. Stage 2 waits for task W1 of row 4.7. | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
-| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
-| 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
+| 4.9 | 3c | Hosted applications | Use | Plan, in progress (R-149). Stage 1 is the first to build and is claimed; H1 to H3 are Not started on `main`. Stage 2 waits for task W1 of row 4.7, which no longer waits for a ruling (R-160). | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
+| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent |
+| 4.11 | 3 | Bulk data on the operator's machines | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent. E0-5 does not wait for it (R-145) |
+| 4.19 | 3 | The watchdog | See, Use | Proposal, direction decided (R-162). After jobs (row 4.7). | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
-| 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
 
 ### 4.1 Finish the device manager
@@ -72,7 +72,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../proposals/hosted-mode.md), [shared-pool-hosting.md](../proposals/shared-pool-hosting.md)).
 - Work items: The tasks HM-T1 to HM-T15 in Section 8 of [hosted-mode.md](../proposals/hosted-mode.md). No work item document yet
-- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The rulings R-127 to R-130 name the tasks HM-T1 to HM-T7 and approve HMD-037 to HMD-041 and HMD-043. HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to `main` (2026-11-17); HM-T4 is built in the private repositories and its site half is deployed. No device has signed in with an account yet: each task waits for HT-022. The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. Open: the security review (HM-D7), "Add this computer" for a computer of the link only (HM-D11), and the form of the WorkOS requests (HM-D13). The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036. On 2026-11-17 the operator said that he will use only the hosted version and that his self-hosted hub can go away later (R-130); no row of this table has changed its tier for that.
+- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The rulings R-127 to R-130 name the tasks HM-T1 to HM-T7 and approve HMD-037 to HMD-041 and HMD-043. HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to `main` (2026-11-17); HM-T4 is built in the private repositories and its site half is deployed. No device has signed in with an account yet: each task waits for HT-022. R-163 (2026-11-18) approves the requirements HMD-001 to HMD-036 in their revised text; 16 of them are not built, and HMD-051 is proposed. R-159 (2026-11-18) decides the second sign-in factor (HM-D4: required before the first device with remote access) and the security review (HM-D7: none by a person from outside). Open: "Add this computer" for a computer of the link only (HM-D11), the form of the WorkOS requests (HM-D13), the usage line (HM-D2) and the numbers of the sleep (HM-D8). R-164 decides a free hub that is not used (HM-D15: it sleeps, and it is deleted after 60 days with no sign-in). R-163 decides the meaning of "remote access" (HM-D14). The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036. On 2026-11-17 the operator said that he will use only the hosted version and that his self-hosted hub can go away later (R-130); no row of this table has changed its tier for that.
 
 ### 4.18 Update the daemon and the hub
 
@@ -128,7 +128,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Use
 - Work: Jobs, with the build as the first job type. Then AI agent runs. Anima has two build models: its own builds, and owned machines as runners of GitHub Actions (PRO-010, PRO-027, OD-W13).
 - Work items: [C7](../work-items/compute/C7.md), [C3](../work-items/compute/C3.md). No work item yet for the proposals
-- State: [C7](../work-items/compute/C7.md) is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (2026-11-16). Their order is W, then B, then A (OD-W21).
+- State: [C7](../work-items/compute/C7.md) is planned. R-160 (operator, 2026-11-18: "A: on everywhere") is the ruling that changes R-115: the hub can send work to the daemon, on by default on each hub, a hosted hub included. Task W1 no longer waits for a ruling; the contract and the security review come before code. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (2026-11-16). Their order is W, then B, then A (OD-W21).
 
 ### 4.8 The other extensions
 
@@ -144,7 +144,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Use
 - Work: Hosted applications
 - Work items: none. The tasks H0 to H7 are in [hosted-applications-plan.md](../plans/hosted-applications-plan.md)
-- State: Plan, in progress (R-149, 2026-11-18). Stage 1 (see the containers of a machine) is built now. Stage 2 (control, install, the catalogue) waits for task W1 of row 4.7. The tier is not changed.
+- State: Plan, in progress (R-149, 2026-11-18). Stage 1 (see the containers of a machine) is built now. Stage 2 (control, install, the catalogue) waits for task W1 of row 4.7; the ruling that W1 waited for is R-160. The tier is not changed.
 
 ### 4.10 Standby copies of the coordinator database
 
@@ -152,7 +152,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Standby copies of the coordinator database (FND-001 to FND-005, FND-007 to FND-012)
 - Work items: No work item yet
-- State: Proposal. Its direction is decided (OD-W9).
+- State: Parked until after the hosted launch (R-161, operator, 2026-11-18: "B: park both"). No requirement is approved. Its direction is decided (OD-W9). FND-006 is row 4.2; FND-007 is not part of the parking.
 
 ### 4.11 Bulk data on the operator's machines
 
@@ -160,7 +160,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Bulk data in encrypted pieces on the operator's machines
 - Work items: No work item yet. It changes the file store of [E0-5](../work-items/engine/E0-5.md)
-- State: Proposal. Its direction is decided (OD-W9). E0-5 builds the file store in a folder of the hub and does not wait for it (R-145).
+- State: Parked until after the hosted launch (R-161, operator, 2026-11-18: "B: park both"). No requirement is approved. Its direction is decided (OD-W9). Open, a note of the orchestrating session: no document says what happens when the 20 GiB disk of a hosted hub is full after the file store of E0-5 is in use. E0-5 builds the file store in a folder of the hub and does not wait for it (R-145).
 
 ### 4.12 Level 2: one model across machines
 
@@ -196,11 +196,11 @@ The table gives the order. The section of each row below the table gives the wor
 
 ### 4.19 The watchdog
 
-- Tier: Not set
+- Tier: 3, after jobs (R-162)
 - Category: See, Use
 - Work: The watchdog: `anima-daemon` restarts the programs that the operator marked, and reports each restart (WDG-001 to WDG-041)
 - Work items: No work item yet. The tasks are in "Tasks" of [watchdog.md](../proposals/watchdog.md)
-- State: Proposal. Not approved. The operator must give it a tier (OD-W22). It needs the ruling for OD-W10 and a change to K8; its second stage needs the work route (group W).
+- State: Proposal, direction decided (R-162, operator, 2026-11-18: "A: approve, tier 3"). The decisions OD-WDG-1 to OD-WDG-13 take the recommendations of the proposal. The requirements WDG-001 to WDG-041 are not approved one by one, and no ruling names a task. R-160 is the ruling for OD-W10. It needs a change to K8; its second stage needs the work route (group W).
 
 ### Notes on the order
 
@@ -209,6 +209,7 @@ Notes:
 - Tiers 2a and 2b do not depend on each other. They can run at the same time.
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
 - The rows 4.16, 4.17 and 4.18 are tier 1 (operator, 2026-11-16). They come before the engine, the model service and the extensions. Their numbers follow 4.15 because a published number does not change.
+- Row 4.19 is tier 3, after jobs (R-162). It keeps its number.
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 

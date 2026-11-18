@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
-state: Draft
-evidence: Version 1 (2026-11-16). Not approved (OD-W22). No tier yet (Section 4, row 4.19). Task G1, a prototype, is In progress: launchd, Docker and systemd are measured; the right of WDG-040 is open ([research/watchdog/g1-supervisors.md](../research/watchdog/g1-supervisors.md)). The other tasks of its "Tasks" are Not started.
+state: Direction decided
+evidence: R-162 (operator, 2026-11-18: "A: approve, tier 3") approves the direction and decides OD-WDG-1 to OD-WDG-13 as recommended; tier 3, after jobs (Section 4, row 4.19). The requirements WDG-001 to WDG-041 are not approved one by one, and no ruling names a task. Version 1 (2026-11-16). Task G1, a prototype, is In progress: launchd, Docker and systemd are measured; the right of WDG-040 is open ([research/watchdog/g1-supervisors.md](../research/watchdog/g1-supervisors.md)). The other tasks of its "Tasks" are Not started.
 ---
 
 # Proposal: the watchdog (keep the important programs of a machine running)
@@ -11,7 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 Version: 1. Date: 2026-11-16.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog, and the update of the
 daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)).
-Status: the header of this document holds the state (PLN-020). History: Draft. A proposal for a ruling. No requirement is approved. Nothing is built.
+Status: the header of this document holds the state (PLN-020). History: Draft until 2026-11-18. R-162 (operator, 2026-11-18: "A: approve, tier 3") approves the direction, with the recommendations for OD-WDG-1 to OD-WDG-13, and gives tier 3, after jobs. It stays a proposal: the requirements are not approved one by one (PLN-018). No ruling names a task, so nothing is built from it (PLN-007); stage 2 needs the work route.
 Map: [work-plan.md](../work-plan.md), categories See and Use, decision OD-W22.
 Identifiers: WDG-001 to WDG-041.
 
@@ -230,7 +230,7 @@ machine, and the command to add one.
 
 | Dependency | State today | Effect |
 | --- | --- | --- |
-| A ruling number for OD-W10, which changes R-115 | Decided, with no ruling number ([jobs.md](jobs.md), "Needs") | The watchdog changes a device. Without the ruling, MET-002 and R-115 forbid it. |
+| A ruling number for OD-W10, which changes R-115 | R-160 (2026-11-18) is the ruling for OD-W10 ([jobs.md](jobs.md), "Needs"). It does not change MET-002 for a restart | The watchdog changes a device. Without the ruling, MET-002 and R-115 forbid it. |
 | The work route (tasks W1, W4 and W5 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)) | Not started | Stage 2 needs it. Stage 1 does not. |
 | A change to K8, which is frozen (CON-001) | Not asked | The reports of WDG-031 need an optional member of the push, or `/daemon/v2/`. |
 | The update of the daemon ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)) | Proposal | Without it, each machine gets the watchdog only when a person builds and installs the daemon by hand. |
@@ -252,21 +252,21 @@ machine, and the command to add one.
 
 ## Open decisions
 
-| Number | Decision | Recommendation |
-| --- | --- | --- |
-| OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | A function of `anima-daemon` (WDG-039). "Why not a container" has the reasons. |
-| OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with a polkit rule for the named units and membership of the group `docker` | Its own user with a polkit rule, and the group `docker` only when a container is watched. State in the client that the Docker socket is equal to root on that machine. The security reviewer must accept the design first. |
-| OD-WDG-3 | A process with no supervisor | Not in the first version (WDG-002). Later, Anima can offer to write a unit for it at the machine. |
-| OD-WDG-4 | Stage 1 first (watches made at the machine), or wait for the work route and build stage 2 only | Stage 1 first. It gives the restarts and the reports early and needs no route from the hub to the daemon. |
-| OD-WDG-5 | When systemd or Docker stopped its own attempts, does the watchdog try again (WDG-024)? | Yes, with the long delays. The supervisor has stopped, so two programs do not act at the same time. |
-| OD-WDG-6 | Is a watch a check of a new type (WDG-035), or does it have its own status rules? | A check. The notifications, the uptime and the maintenance windows then need no second set of rules. |
-| OD-WDG-7 | Which restarts send a notification by default | Only "Restart loop" and "Gave up". Each restart is an event. The operator can set a notification for each restart of one watch (WDG-038). |
-| OD-WDG-8 | Does a report contain the last lines of the output of the program? | No, in the first version (WDG-032). The output of a program can contain a secret (LOG-007). |
-| OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a program. |
-| OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). |
-| OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. |
-| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as [hosted-applications-plan.md](../plans/hosted-applications-plan.md): Docker only there (R-149, HOST-010). |
-| OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. |
+| Number | Decision | Recommendation | Result |
+| --- | --- | --- | --- |
+| OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | A function of `anima-daemon` (WDG-039). "Why not a container" has the reasons. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with a polkit rule for the named units and membership of the group `docker` | Its own user with a polkit rule, and the group `docker` only when a container is watched. State in the client that the Docker socket is equal to root on that machine. The security reviewer must accept the design first. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-3 | A process with no supervisor | Not in the first version (WDG-002). Later, Anima can offer to write a unit for it at the machine. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-4 | Stage 1 first (watches made at the machine), or wait for the work route and build stage 2 only | Stage 1 first. It gives the restarts and the reports early and needs no route from the hub to the daemon. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-5 | When systemd or Docker stopped its own attempts, does the watchdog try again (WDG-024)? | Yes, with the long delays. The supervisor has stopped, so two programs do not act at the same time. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-6 | Is a watch a check of a new type (WDG-035), or does it have its own status rules? | A check. The notifications, the uptime and the maintenance windows then need no second set of rules. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-7 | Which restarts send a notification by default | Only "Restart loop" and "Gave up". Each restart is an event. The operator can set a notification for each restart of one watch (WDG-038). | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-8 | Does a report contain the last lines of the output of the program? | No, in the first version (WDG-032). The output of a program can contain a secret (LOG-007). | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a program. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as [hosted-applications-plan.md](../plans/hosted-applications-plan.md): Docker only there (R-149, HOST-010). | Decided (R-162, operator, 2026-11-18): as recommended. |
+| OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. | Decided (R-162, operator, 2026-11-18): as recommended. |
 
 The tier of this proposal is decision OD-W22 of the work plan.
 
@@ -287,8 +287,8 @@ G1 is in progress. The other tasks are not started. The states obey PLN-007.
 
 ## Needs
 
-- A decision on OD-W22 (the tier) and on OD-WDG-1 to OD-WDG-13.
-- A ruling number in `docs/rulings.md` for OD-W10, with the change to MET-002 and to R-115.
+- Done: OD-W22 and OD-WDG-1 to OD-WDG-13 are decided (R-162). Still open: the approval of the requirements WDG-001 to WDG-041.
+- R-160 is the ruling for OD-W10 and changes R-115. The change to MET-002 for a restart (WDG-026) still needs a ruling.
 - A ruling for the change to K8, or for a new contract (CON-001).
 - The security reviewer for WDG-040 and WDG-041 (a `security` task).
 - After approval: one issue with the labels of Section 4 of the work plan.
