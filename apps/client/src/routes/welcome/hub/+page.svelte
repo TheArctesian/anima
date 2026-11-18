@@ -7,11 +7,11 @@
   import { capabilities } from '$lib/platform/platform';
   import { hubChoices } from '../welcome';
 
-  const { localHub, deviceLink } = capabilities();
+  const { localHub, deviceLink, cloudAccount } = capabilities();
   /** Unknown until the shell answers; "Create" stays off until then. */
   let carried = $state(false);
   let title: HTMLElement | undefined = $state();
-  const choices = $derived(hubChoices({ deviceLink, localHub, carried }));
+  const choices = $derived(hubChoices({ deviceLink, cloudAccount, localHub, carried }));
 
   onMount(() => {
     title?.focus();
@@ -74,8 +74,11 @@
     text-decoration: none;
   }
 
-  li a:hover {
-    color: var(--accent-hover);
+  /* Only a pointer that hovers: on a touch screen iOS takes the first tap as a hover, and the link needs two. */
+  @media (hover: hover) {
+    li a:hover {
+      color: var(--accent-hover);
+    }
   }
 
   .off strong {

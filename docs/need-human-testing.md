@@ -545,6 +545,27 @@ came out as "elloh". The same typing was correct on the iPhone simulator. Only G
 
 Result: Open.
 
+### HT-024: a phone joins a hub with an invite, through the link in the app
+
+Built: on the branch `mobile/m1-shell` (mobile plan M1-4 and M3-1, MOB-031, MOB-032, MOB-035, MOB-036). The Go link
+runs inside the phone app as a library (`link/cmd/phonelink`, built by `link/build-phone.sh`). "Join a hub", then
+"Join with an invite", joins the phone to a hub over the link, and the app reaches the hub at a loopback address.
+
+The tests cover the error codes of the library, a join with text that is not an invite, and a start with no hub. On
+2026-11-17 the Android emulator reached the link and wrote its folder, but the emulator had no route to the internet,
+so the relay never answered. The iPhone simulator stopped answering before the join. No phone joined a hub.
+
+1. Build this branch for an iPhone and an Android phone (`link/build-phone.sh`, then the Tauri build). On the hub, in
+   Settings, make an invite for a new device.
+2. On the phone, open the app, tap "Join a hub", then "Join with an invite". Paste the invite and tap Join. Expected:
+   the sign-in page of the hub opens.
+3. Sign in. Expected: the device list.
+4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
+   new invite.
+5. Settings, Leave hub. Expected: the welcome screen. On the hub, the phone is no longer on the link.
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list

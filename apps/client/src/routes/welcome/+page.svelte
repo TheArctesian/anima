@@ -6,9 +6,9 @@
   import { capabilities } from '$lib/platform/platform';
   import { signInChoice } from './welcome';
 
-  const { localHub, deviceLink, keyStore } = capabilities();
+  const { localHub, deviceLink, cloudAccount, keyStore } = capabilities();
   // Only the hosted sign-in decides this screen; the build's hub programs matter on the page behind "Join a hub".
-  const signIn = $derived(signInChoice({ deviceLink, localHub, carried: false }, keyStore));
+  const signIn = $derived(signInChoice({ deviceLink, cloudAccount, localHub, carried: false }, keyStore));
   let title: HTMLElement | undefined = $state();
 
   onMount(() => {
@@ -60,8 +60,11 @@
     text-decoration: none;
   }
 
-  .primary:hover {
-    background: var(--accent-hover);
+  /* Only a pointer that hovers: on a touch screen iOS takes the first tap as a hover. */
+  @media (hover: hover) {
+    .primary:hover {
+      background: var(--accent-hover);
+    }
   }
 
   .primary.off {

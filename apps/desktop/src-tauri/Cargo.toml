@@ -31,6 +31,10 @@ serde_json.workspace = true
 # The phone keeps its web view above the on-screen keyboard (mobile plan M4-1).
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-keyboard = { path = "../keyboard" }
+# The device link in the app (MOB-031): its answers, its errors and the invite wiped after use (MOB-035).
+serde.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
 
 # The dependencies of the desktop application. A phone has the window and the access token only, so it
 # builds none of them (MOB-002, MOB-003).

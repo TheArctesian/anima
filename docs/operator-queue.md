@@ -174,7 +174,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (70)
+## 4. Checks that only the operator can do (71)
 
 | Check | What |
 | --- | --- |
@@ -201,6 +201,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
 | HT-023 | an SSH session on a phone, with the key row |
+| HT-024 | a phone joins a hub with an invite, through the link in the app |
 | O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
 | O-2 | RDP: a changed certificate stops the session; the Warning badge |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |

@@ -14,6 +14,8 @@ export interface Choice {
  */
 export interface ChoicePlace {
   readonly deviceLink: boolean;
+  /** The shell signs in to the Anima.ing account (its cloud commands). */
+  readonly cloudAccount: boolean;
   readonly localHub: boolean;
   readonly carried: boolean;
 }
@@ -30,8 +32,8 @@ export function signInChoice(place: ChoicePlace, inApp: boolean): Choice {
     title: 'Sign in',
     line: 'With your Anima.ing account.',
     href: '/welcome/hosted',
-    // The phone app is the app; it signs in once it runs the link (mobile plan M3-1).
-    off: place.deviceLink ? null : inApp ? 'Not on phones yet.' : 'Needs the Anima.ing app.',
+    // The phone app is the app; it signs in once it has the link and the cloud commands (mobile plan M3-1).
+    off: place.deviceLink && place.cloudAccount ? null : inApp ? 'Not on phones yet.' : 'Needs the Anima.ing app.',
   };
 }
 
@@ -43,7 +45,8 @@ export function hubChoices(place: ChoicePlace): readonly Choice[] {
       title: 'Join with an invite',
       line: 'Link this device to a hub with an invite.',
       href: '/welcome/join',
-      off: place.localHub ? null : 'Desktop app only.',
+      // The desktop shell runs anima-link; a phone runs the link inside the app (MOB-031, M3-1).
+      off: place.deviceLink ? null : 'Needs the Anima.ing app.',
     },
     {
       id: 'address',

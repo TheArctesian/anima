@@ -45,8 +45,8 @@ body {
    (MOB-012). `:root` and `:not()` put this rule above a component's own rule for its field. */
 @media (pointer: coarse) {
   :root input:not([type="checkbox"], [type="radio"], [type="range"]),
-  :root textarea,
-  :root select {
+  :root textarea:not([hidden]),
+  :root select:not([hidden]) {
     font-size: var(--text-lg);
   }
 }
