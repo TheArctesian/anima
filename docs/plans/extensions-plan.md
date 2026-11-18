@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Version 0.2 (2026-11-17). The operator approved the engine items and Projects one at a time, not the plan as one document. On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-3, E0-5 to E0-7 and the other extensions are not on `main`. The index of the work items holds the state of each item ([work-items/](../work-items/README.md), "Engine", "Extensions" and "Decisions").
+evidence: Version 0.3 (2026-11-18). The operator approved the engine items and Projects one at a time, not the plan as one document. On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-3, E0-5 to E0-7 and the other extensions are not on `main`. The operator decided T0 of E0-5 and of E0-6, the contract ruling and the gate on 2026-11-18 (R-144 to R-148). The index of the work items holds the state of each item ([work-items/](../work-items/README.md), "Engine", "Extensions" and "Decisions").
 ---
 
 # Anima Extensions Plan
@@ -11,10 +11,10 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Extensions plan |
-| Version | 0.2 |
-| Date | 2026-11-17 |
+| Version | 0.3 |
+| Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: In progress. The operator did not approve the plan as one document: version 0.1 of 2026-11-03 was "For review". The operator approved the engine items and Projects one at a time, and they are built (Section 0). Version 0.2 adds Section 0 and the tasks of E0-5 to E0-7, moves the Bots proposal to its own document, and records OD-E18. It changes no requirement, except the folder name in ENG-012. |
+| Status | The header of this document holds the state (PLN-020). History: In progress. The operator did not approve the plan as one document: version 0.1 of 2026-11-03 was "For review". The operator approved the engine items and Projects one at a time, and they are built (Section 0). Version 0.2 adds Section 0 and the tasks of E0-5 to E0-7, moves the Bots proposal to its own document, and records OD-E18. It changes no requirement, except the folder name in ENG-012. Version 0.3 records the decisions of 2026-11-18 (R-144 to R-148): it changes FIL-001 and REM-008, decides OD-E1 and OD-E18, and adds OD-E19 and task T6 of E0-5. |
 | Related | [design-spec.md](../spec/design-spec.md), [implementation-plan.md](../archive/phase-1/implementation-plan.md) (Phase 1, done and in the archive; XP-002 uses its task loop) |
 
 This document obeys the writing rules in Section 0 of the design specification.
@@ -35,9 +35,9 @@ Read this section first. It says where the state is and what is next. It holds n
 | E0-1, E0-2 | Nothing. Compare each with the text of its work item, then set its state in the index. | — |
 | E0-3 | Later: it is tier 3b. | Row 4.8 |
 | E0-4 | An agent: T9 (compare the hub and the tests with each rule of time and references, then set its state). Then T8, the live check, which the operator does. T7 is later work. | OD-E16 and OD-E17 for the parts that they name |
-| E0-5 | T0 of its table: the operator decides the provider and the rules. | The decision on bulk data (work plan row 4.11) and OD-E1 |
-| E0-6 | T0 of its table: the operator decides the store and the lifecycle. | OD-E1 |
-| E0-7 | The operator: a ruling for the contract K-E6 (CON-001), and OD-E18. Then T1 of its table. | OD-E18; the work item still names the gate PH-E-000 |
+| E0-5 | An agent: T1 of its table. T0 is decided (R-145). | — |
+| E0-6 | An agent: T1 of its table, after E0-5. T0 is decided (R-146, R-147). | — |
+| E0-7 | An agent: T1 of its table, after E0-6. The contract ruling is R-148 and the gate is released (R-144). | — |
 | E0-8 | The launch briefs (ENG-012). | The engine items that a brief names |
 | Writing (XP-03) | It is the sample extension of the engine (ENG-010). | E0-4 to E0-7 |
 
@@ -220,7 +220,7 @@ The hub runs on the Hostinger VPS (OD-9). A VPS breach must not expose the most 
 
 Photos, PDFs and export archives use one file store.
 
-- **FIL-001.** The hub must store files in a named Docker volume by content hash. The database keeps the metadata.
+- **FIL-001.** The hub must store files by content hash, as sealed pieces in a folder of the hub (a named Docker volume on a server), behind one store interface. The database keeps the metadata. (R-145; [bulk-data-placement.md](../proposals/bulk-data-placement.md) can change the place of the pieces later.)
 - **FIL-002.** The hub must seal each file with the data key of its class.
 - **FIL-003.** The hub must remove the location metadata (EXIF GPS) from a photo copy that it shows. It can keep the location as a field of the record, if the operator permits it.
 - **FIL-004.** An export archive is the unit of deletion. If the operator deletes an archive, the hub must delete all records that came from it.
@@ -826,7 +826,7 @@ Reminders deliver only to the devices of the operator.
 | Delivery | When |
 | --- | --- |
 | Client notification (Tauri notification plugin) | A desktop client is open |
-| ntfy on the hub, to the ntfy app on iPhone and macOS | No client is open |
+| The ntfy channel of the notifications, to the ntfy app on iPhone and macOS (REM-008) | No client is open |
 | Anima iOS push | Phase 5 |
 
 - **REM-001.** The rule evaluation must be a pure function. It receives the rule, the new records, the place state and the current time. It returns a list of reminders to send (CQ-021).
@@ -836,7 +836,7 @@ Reminders deliver only to the devices of the operator.
 - **REM-005.** The hub must check the rule again just before it sends. If the operator changed the rule, the hub must not send the old reminder.
 - **REM-006.** Place rules must use the place state (inside or outside). A new fix inside the place radius is an arrival only if the last state was outside.
 - **REM-007.** The operator can snooze or acknowledge a reminder from the notification.
-- **REM-008.** The hub must run ntfy on the Docker network and publish it only on the VPN interface (NET-003). Each topic name must be random.
+- **REM-008.** A reminder must go to an open application and to the ntfy channel that the operator set in the notifications (NOT-002), on any ntfy server. Each topic name must be random. On a hosted hub Anima runs no ntfy server of its own (R-148). Until 2026-11-18 this requirement was: the hub runs ntfy on the Docker network and publishes it only on the VPN interface (NET-003).
 - **REM-009.** The notification text on the lock screen must not contain Class A or Class B values.
 - **REM-010.** Device status notifications (NOT-001) must use the same delivery code.
 
@@ -1133,20 +1133,21 @@ These rows give the order of the work of each item. The work item holds the scop
 
 | Item | Task | Content | State | Commits |
 | --- | --- | --- | --- | --- |
-| [E0-5](../work-items/engine/E0-5.md) | T0 | The operator decides: the location provider, the rules to match an event with a sample (tolerance, age, uncertainty), and where bulk data is kept (work plan row 4.11, before the file store). | Not started | |
+| [E0-5](../work-items/engine/E0-5.md) | T0 | The operator decides: the location provider, the rules to match an event with a sample (tolerance, age, uncertainty), and where bulk data is kept. | Done (R-145, 2026-11-18): samples from Dawarich, then OwnTracks, then the Anima phone apps, through one ingestion contract; 2 minutes for "at the time", 10 minutes for "nearest, inferred", then unknown, and "uncertain" with no accuracy or an accuracy worse than 200 m; sealed pieces in a folder of the hub. Class B is on the hosted hub (R-146). | |
 | E0-5 | T1 | Contract: the places and files parts of K-E4 (`contracts/extensions/shared-records.md`), which E0-4 left open. | Not started | |
 | E0-5 | T2 | Hub: places (PLC-001 to PLC-006), the file store (FIL-001 to FIL-005) and extraction proposals (VIS-001 to VIS-004). | Not started | |
 | E0-5 | T3 | Hub: location samples from the selected provider through the source framework of E0-2, and the context of a transfer event at the SSH and SFTP boundary. | Not started | |
 | E0-5 | T4 | The `anima` commands and the MCP tools of T2 and T3 (CMD-030). | Not started | |
 | E0-5 | T5 | Live check: the cases of the acceptance criteria of the work item, with an entry in [need-human-testing.md](../need-human-testing.md). | Not started | |
-| [E0-6](../work-items/engine/E0-6.md) | T0 | The operator decides: the store, how a server proves its identity, the life of a cache, how a change reaches a cache, and the rules for versions. | Not started | |
+| E0-5 | T6 | A quick way to deploy an OwnTracks server (R-145): the deployment files and the procedure. It changes no server of the operator (VPS-005). | Not started | |
+| [E0-6](../work-items/engine/E0-6.md) | T0 | The operator decides: the store, how a server proves its identity, the life of a cache, how a change reaches a cache, and the rules for versions. | Done (R-147, 2026-11-18): the `credentials` domain of the hub; the daemon token of an admitted server; a daemon learns the versions at each report and deletes its cache after 7 days with no contact; one active version, and the old one stops at once. | |
 | E0-6 | T1 | Contract: K-E5 (`contracts/extensions/vault.md`). | Not started | |
 | E0-6 | T2 | Hub: operational keys in the `credentials` domain, with versions, retrieval by an admitted server and revocation (VLT-001 to VLT-006). | Not started | |
 | E0-6 | T3 | The `anima` commands. An MCP tool must not take or return a secret ([cli-mcp-plan.md](cli-mcp-plan.md) Section 7). | Not started | |
 | E0-6 | T4 | The security review of the vault (ENG-011, PH-E-001, PH-E-002). | Not started | |
 | [E0-7](../work-items/engine/E0-7.md) | T1 | Contract: K-E6 (`contracts/extensions/reminders.md`). Compare the delivery with the notification work of Phase 3 (WP-45, WP-50) first; do not build a second transport. | Not started | |
 | E0-7 | T2 | Hub: the pure evaluation of a rule (time, place, source event, source state, threshold, expiry), cooldowns and the check at send time (REM-001 to REM-010). | Not started | |
-| E0-7 | T3 | Delivery by client notification and by self-hosted ntfy. | Not started | |
+| E0-7 | T3 | Delivery to an open application and to the ntfy channel of the notifications (REM-008, R-148). | Not started | |
 | E0-7 | T4 | The `anima` commands and the MCP tools (CMD-030). | Not started | |
 | E0-7 | T5 | Live check, with an entry in [need-human-testing.md](../need-human-testing.md). | Not started | |
 
@@ -1241,7 +1242,7 @@ crates/
 
 | Number | Decision | Recommendation |
 | --- | --- | --- |
-| OD-E1 | Hub location for Class B data. The hub is on the VPS (OD-9). | Seal Class B with separate data keys (VLT-003). Before XP-05, XP-06 and XP-08, decide if a home hub must keep Class B data and the VPS hub only the device manager. |
+| OD-E1 | Hub location for Class B data. | Decided: Class B records are on the hosted hub, sealed with one data key for each extension, different from the credential key (VLT-003). No home hub. (operator, 2026-11-18, R-146) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org before payment. HSBC HK and Revolut use statement uploads. |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. |
@@ -1258,7 +1259,8 @@ crates/
 | OD-E15 | Where the webhook receiver runs (Section 2.12) | Decided: on the VPS, as a small separate program that is not the hub (WHK-009). It works where the hub runs and needs no other service. This changes SITE-006 ("the website is the only public part of Anima"). To open the port on the VPS needs the operator's confirmation at that time (VPS-005). (operator, 2026-11-13) |
 | OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. |
 | OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. |
-| OD-E18 | PH-E-000 says that no extension work starts before the device manager build is finished. E0-1, E0-2, E0-4, E0-8 and Projects are built and are on `main`, and Phase 3 is not accepted. Is PH-E-000 released, changed or still in force? | Not decided. The operator directed each of those builds (work plan row 4.4 and row 4.6). Recommendation: record that PH-E-000 is released for the engine and Projects, and keep it for the other extensions until the Phase 3 acceptance run (WP-53). The work items E0-5, E0-6 and E0-7 still name the gate. |
+| OD-E18 | PH-E-000 says that no extension work starts before the device manager build is finished. Is PH-E-000 released, changed or still in force? | Decided: released for the engine and Projects; in force for the other extensions until the Phase 3 acceptance run (WP-53). (operator, 2026-11-18, R-144) |
+| OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of photon.codes, of the agent of Nous Research and of OpenClaw (operator direction, 2026-11-18, R-148). Which channels, in which order, and which code is copied under which licence? | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first, then decide the channels one at a time. The Bots proposal ([bots.md](../proposals/bots.md)) names related work. |
 
 ## 8. Ideas taken from Auracle and HQ
 
