@@ -1,0 +1,15 @@
+query AttachmentList($owner: String!) {
+  attachments(owner: $owner) {
+    id
+    owner
+    name
+    mediaType
+    hash
+    key
+    size
+    archiveId
+    latitude
+    longitude
+    createdAt
+  }
+}

@@ -2,6 +2,7 @@
 
 pub mod data_keys;
 pub mod extensions;
+pub mod files;
 pub mod instants;
 pub mod links;
 pub mod records;

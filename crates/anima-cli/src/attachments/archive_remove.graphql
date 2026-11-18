@@ -1,0 +1,3 @@
+mutation ArchiveRemove($id: ID!) {
+  deleteArchive(id: $id)
+}

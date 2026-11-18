@@ -114,7 +114,12 @@
     "links": [
       "events"
     ],
-    "link": []
+    "link": [],
+    "files": [
+      "events",
+      "extensions",
+      "access"
+    ]
   },
   "graphql": {
     "devices": [
@@ -174,6 +179,9 @@
     "link": [
       "access",
       "events"
+    ],
+    "files": [
+      "access"
     ]
   }
 }

@@ -46,6 +46,8 @@ pub enum Tool {
     Repositories(repositories::RepositoryTool),
     Timeline(shared_records::timeline::TimelineTool),
     Records(shared_records::links::RecordTool),
+    Files(shared_records::files::FileTool),
+    Extractions(shared_records::extractions::ExtractionTool),
 }
 
 impl Tool {
@@ -70,6 +72,8 @@ impl Tool {
         tools.extend(repositories::RepositoryTool::ALL.map(Self::Repositories));
         tools.extend(shared_records::timeline::TimelineTool::ALL.map(Self::Timeline));
         tools.extend(shared_records::links::RecordTool::ALL.map(Self::Records));
+        tools.extend(shared_records::files::FileTool::ALL.map(Self::Files));
+        tools.extend(shared_records::extractions::ExtractionTool::ALL.map(Self::Extractions));
         tools
     }
 
@@ -92,7 +96,7 @@ impl Tool {
             Self::Projects(_) => ToolSet::Projects,
             Self::Repositories(_) => ToolSet::Repositories,
             Self::Timeline(_) => ToolSet::Timeline,
-            Self::Records(_) => ToolSet::Records,
+            Self::Records(_) | Self::Files(_) | Self::Extractions(_) => ToolSet::Records,
         }
     }
 
@@ -116,6 +120,8 @@ impl Tool {
             Self::Repositories(tool) => tool.definition(),
             Self::Timeline(tool) => tool.definition(),
             Self::Records(tool) => tool.definition(),
+            Self::Files(tool) => tool.definition(),
+            Self::Extractions(tool) => tool.definition(),
         }
     }
 
@@ -146,6 +152,8 @@ impl Tool {
             Self::Repositories(tool) => tool.call(hub, arguments).await,
             Self::Timeline(tool) => tool.call(hub, arguments).await,
             Self::Records(tool) => tool.call(hub, arguments).await,
+            Self::Files(tool) => tool.call(hub, arguments).await,
+            Self::Extractions(tool) => tool.call(hub, arguments).await,
         }
     }
 }

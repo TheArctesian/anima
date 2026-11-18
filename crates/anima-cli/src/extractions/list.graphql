@@ -1,0 +1,18 @@
+query ExtractionList($owner: String, $state: ProposalState) {
+  extractionProposals(owner: $owner, state: $state) {
+    id
+    attachmentId
+    owner
+    form
+    origin
+    state
+    createdAt
+    decidedAt
+    fields {
+      name
+      type
+      value
+      confidence
+    }
+  }
+}

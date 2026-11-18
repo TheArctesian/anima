@@ -1,0 +1,8 @@
+mutation ArchiveAdd($owner: String!, $name: String!) {
+  createArchive(owner: $owner, name: $name) {
+    id
+    owner
+    name
+    createdAt
+  }
+}

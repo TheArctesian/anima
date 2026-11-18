@@ -2586,6 +2586,101 @@ input RecordLinkInput {
   label: String
 }
 
+# Files and extraction proposals (R-148; K-E4 Sections 9, 10 and 13; FIL-001 to FIL-005, VIS-001 to VIS-004)
+
+"A file of one record (FIL-001). Its bytes go through POST and GET /files/v1/attachments, not through GraphQL."
+type Attachment {
+  id: ID!
+  "The record the file belongs to, as kind:id."
+  owner: String!
+  name: String!
+  mediaType: String!
+  "The SHA-256 of the plain bytes, in lower-case hexadecimal."
+  hash: String!
+  "The data key that seals the piece: engine or the key of an extension (VLT-003)."
+  key: String!
+  "The size of the plain bytes; at most 268435456."
+  size: Int!
+  archiveId: ID
+  "The position read from the photo at upload with keep_location=true (FIL-003); null otherwise. Metadata of the file: not evidence of where the operator was."
+  latitude: Float
+  longitude: Float
+  createdAt: DateTime!
+}
+
+"The unit of deletion of one import (FIL-004)."
+type Archive {
+  id: ID!
+  owner: String!
+  name: String!
+  createdAt: DateTime!
+}
+
+enum ExtractedFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  REFERENCE
+}
+
+"Where the extraction ran (VIS-002)."
+enum ExtractionOrigin {
+  CLIENT
+  HUB
+}
+
+enum ProposalState {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+}
+
+"One typed field of an extraction (VIS-004). value is text in the form of its type: a number, a date YYYY-MM-DD, true or false, or a record kind:id."
+type ExtractedField {
+  name: String!
+  type: ExtractedFieldType!
+  value: String!
+  "0 to 1; null when the extractor gave none: unknown, not certain."
+  confidence: Float
+}
+
+input ExtractedFieldInput {
+  "Lower snake case, 1 to 40 characters; once in a list."
+  name: String!
+  type: ExtractedFieldType!
+  "At most 2000 characters, in the form of its type."
+  value: String!
+  confidence: Float
+}
+
+"The result of one extraction. Nothing of it is a record until the operator confirms it (VIS-001); a decided proposal does not change."
+type ExtractionProposal {
+  id: ID!
+  attachmentId: ID
+  owner: String!
+  "What the extension asked for, in lower snake case, for example book."
+  form: String!
+  origin: ExtractionOrigin!
+  "As the extraction gave them while PROPOSED; as the operator left them once CONFIRMED."
+  fields: [ExtractedField!]!
+  state: ProposalState!
+  createdAt: DateTime!
+  decidedAt: DateTime
+}
+
+input ProposeExtractionInput {
+  owner: String!
+  form: String!
+  "The key of the extension that asked for the form. Its data class decides where the extraction may run: for Class A the hub refuses HUB (VLT-001, VIS-002)."
+  extension: String!
+  origin: ExtractionOrigin!
+  "An attachment of the same owner."
+  attachmentId: ID
+  "At most 100."
+  fields: [ExtractedFieldInput!]!
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -2655,6 +2750,11 @@ type Query {
   timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
   "The links that start or end at record (kind:id), newest first, at most 200. VALIDATION when record is not kind:id."
   recordLinks(record: String!): [RecordLink!]!
+  # Files and extraction proposals (R-148; K-E4 Section 13)
+  "The files of owner (kind:id), newest first, at most 200. VALIDATION when owner is not kind:id."
+  attachments(owner: String!): [Attachment!]!
+  "The proposals of owner (or of every record) in state (or any), newest first, at most 200."
+  extractionProposals(owner: String, state: ProposalState): [ExtractionProposal!]!
 
   # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
   # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
@@ -2871,6 +2971,20 @@ type Mutation {
   linkRecords(input: RecordLinkInput!): RecordLink!
   "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
   unlinkRecords(id: ID!): ID!
+
+  # Files and extraction proposals (R-148; K-E4 Section 13). Each change writes one audit entry and one event.
+  "Removes one file and returns its ID; its piece goes when no other file has the same bytes and key. NOT_FOUND when no file has this ID; UNAVAILABLE with no file store."
+  deleteAttachment(id: ID!): ID!
+  "Makes an archive, the unit of deletion of one import (FIL-004). VALIDATION for an owner that is not kind:id or a name that is not one line of 1 to 200 characters."
+  createArchive(owner: String!, name: String!): Archive!
+  "Deletes an archive with each of its files and each record that came from it, then the pieces that no file uses (FIL-004); returns its ID. NOT_FOUND when there is none."
+  deleteArchive(id: ID!): ID!
+  "Stores the result of one extraction as a proposal (VIS-001). VALIDATION with extensions.fields for a bad form, field, attachment or extension, and for origin HUB on a Class A form (VIS-002)."
+  proposeExtraction(input: ProposeExtractionInput!): ExtractionProposal!
+  "Confirms a proposal with the fields as the operator left them. NOT_FOUND; CONFLICT when it is decided."
+  confirmExtraction(id: ID!, fields: [ExtractedFieldInput!]!): ExtractionProposal!
+  "Rejects a proposal. NOT_FOUND; CONFLICT when it is decided."
+  rejectExtraction(id: ID!): ExtractionProposal!
 }
 
 type Subscription {

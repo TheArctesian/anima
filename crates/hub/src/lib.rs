@@ -173,7 +173,7 @@ pub fn all_routes(dependencies: schema::Dependencies, edge: fleet::access::Edge)
 
 /// The routes beside `/graphql`, each logged by its template only, never its token (K3,
 /// LOG-007, R-028, R-051): the session tunnels, the push routes ([`pushes`]), `/metrics` behind a READ bearer
-/// (D-24), Connect GitHub ([`connect_github`]) and, last, the web client at `config.web_root` as the fallback (D-2).
+/// (D-24), Connect GitHub ([`connect_github`]), the files ([`files`]) and, last, the web client at `config.web_root` as the fallback (D-2).
 fn beside_graphql(
     dependencies: &schema::Dependencies,
     origin: &fleet::access::PublicOrigin,
@@ -184,7 +184,16 @@ fn beside_graphql(
         .merge(pushes(dependencies))
         .merge(exposition(pool.clone(), clock.clone()))
         .merge(connect_github(dependencies, origin))
+        .merge(files(dependencies))
         .merge(web_fallback(web_root, origin))
+}
+
+/// The bytes of the files (`/files/v1`, K-E4 Section 9), logged by their templates only: an
+/// owner or a name in a query never reaches the log (LOG-007). They have no 1 MiB limit; an
+/// upload stops at 256 MB while it streams (FIL-005).
+pub fn files(parts: &schema::Dependencies) -> Router {
+    let routes = engine::files::router(&parts.pool, &parts.bus, &parts.clock, &parts.files);
+    logged(routes)
 }
 
 /// The Connect GitHub routes (`/connect/github*`, K-E1 Section 7a), logged by their templates
