@@ -98,6 +98,23 @@ that gave no sign since the hub link started has no `seen`. A device link that i
 gives no sign, and a hub link that is older refuses the stream: the device link then tries again each minute
 and its local port is not affected.
 
+A hub reaches a local TCP port of a device through the link only when the person on the device turned the
+port on (HMD-048, HMD-049). The list of open ports is empty at first. It can hold port 22 (SSH), port 5900
+(VNC) and, on Windows, port 3389 (RDP).
+
+```sh
+# On the device: show the list, turn a port on, turn it off. The device link needs no restart.
+anima-link ports -state <DEVICE_STATE_DIR>
+anima-link ports -state <DEVICE_STATE_DIR> on 22
+anima-link ports -state <DEVICE_STATE_DIR> off 22
+```
+
+The hub link asks the device for the port on the stream of the reverse port, and the device gives the
+connection on a new stream to port 447 of the hub link. The hub gets it from the socket `dial.sock`, which the
+hub link makes beside `control.sock`. A hub that has `ANIMA_LINK_CONTROL` uses that socket for each TCP
+connection to a link address. The link carries TCP only: a check that needs ICMP or UDP is Unknown for such a
+device.
+
 What the device link does by itself:
 
 - It pings the hub each 15 seconds. This keeps the link ready, and it connects again after a hub

@@ -6,7 +6,7 @@
 use std::{
     collections::BTreeMap,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
@@ -55,6 +55,14 @@ pub(super) fn control(
         return Err(Error::LinkControlAlone);
     }
     Ok(control)
+}
+
+/// The dial socket of `anima-link hub`, through which the hub reaches a local port of a
+/// computer on its link (HMD-048): `dial.sock` in the folder of the control socket `control`,
+/// where the link makes both (`link/cmd/anima-link/hub.go`).
+#[must_use]
+pub fn dial_socket(control: &Path) -> Option<PathBuf> {
+    Some(control.parent()?.join("dial.sock"))
 }
 
 /// The cloud key file of the hosted mode, or `None` when unset or empty. It is refused without
@@ -178,6 +186,14 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn hmd_048_the_dial_socket_is_beside_the_control_socket() {
+        assert_eq!(
+            dial_socket(Path::new("/run/anima/link/control.sock")),
+            Some(PathBuf::from("/run/anima/link/dial.sock"))
+        );
     }
 
     #[test]

@@ -1,8 +1,9 @@
 //! The one target rule (Q2-09, R-030, R-032): the policy refuses the gateway's own machine,
 //! link-local neighbours, group and reserved addresses, every IPv6 form that carries one of
 //! them, and the deny list's networks in every form; device ranges pass. The checked resolver
-//! is in `resolver`.
+//! is in `resolver`, and the connect function on a link address in `link_path`.
 
+pub(crate) mod link_path;
 mod resolver;
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};

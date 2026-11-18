@@ -188,7 +188,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (75)
+## 4. Checks that only the operator can do (76)
 
 | Check | What |
 | --- | --- |
@@ -217,6 +217,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-027 | the computer that signs in is a device of the hosted hub (HM-T8) |
 | HT-028 | the hosted hub is a device of its own device list (HM-T9) |
 | HT-029 | the computer is Up while it is connected to the link (HM-T11) |
+| HT-031 | a hosted hub reaches SSH of a computer on its link (HM-T12) |
 | HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | HT-024 | an SSH session on a phone, with the key row |
 | HT-025 | a phone joins a hub with an invite, through the link in the app |

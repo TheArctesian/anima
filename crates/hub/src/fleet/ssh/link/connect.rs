@@ -6,14 +6,14 @@ use std::{sync::Arc, time::Duration};
 
 use russh::client::{self, Handle};
 use sqlx::PgPool;
-use tokio::{net::TcpStream, time::timeout};
+use tokio::time::timeout;
 
 use super::Error;
 use crate::fleet::{
     credentials,
     devices::Device,
     ssh::{self, Observer, SshError},
-    targets::{self, AddressPolicy},
+    targets::{self, AddressPolicy, Reached},
     trust,
 };
 
@@ -81,12 +81,12 @@ async fn opened(
 /// # Errors
 /// [`Error::Unresolved`], [`Error::RefusedTarget`] when `policy` refuses any address, and
 /// [`Error::Unreachable`] when no address answers.
-async fn reach(policy: &AddressPolicy, device: &Device) -> Result<TcpStream, Error> {
+async fn reach(policy: &AddressPolicy, device: &Device) -> Result<Reached, Error> {
     let addresses = targets::resolve_checked(&device.host, device.ssh.port, policy)
         .await
         .map_err(SshError::from)?;
     for address in addresses {
-        if let Ok(Ok(stream)) = timeout(ADDRESS_WAIT, TcpStream::connect(address)).await {
+        if let Ok(Ok(stream)) = timeout(ADDRESS_WAIT, targets::connect(policy, address)).await {
             return Ok(stream);
         }
     }

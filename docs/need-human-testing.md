@@ -50,6 +50,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
 | HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -643,6 +644,60 @@ was built from a checkout that has this change (`link/build.sh` makes the link p
    sleeps, wait 10 minutes more, and start the app. Expected: the hub wakes and the row of this Mac is Up. The
    history of the check `Connected` shows no Down for the time in which the hub slept. The history of the
    check `Hub running` shows none for that time.
+
+Result: Open.
+
+### HT-031: a hosted hub reaches SSH of a computer on its link (HM-T12)
+
+Built: the path from a hub to a local TCP port of a computer on its link
+([hosted-mode.md](proposals/hosted-mode.md) HMD-048, HMD-049, R-143).
+
+- The hub link asks for a port on the stream that the computer keeps open to port 446, and the computer gives
+  the connection on a new stream to port 447 of the hub link (`link/dial/`, `link/hublink/hublink.go`,
+  `link/devicelink/presence.go`). The computer connects to the port on its own loopback address only, and only
+  when the port is in its list of open ports (`link/ports/ports.go`). The list is the file `open-ports` in the
+  state directory of the link program of the computer. It is empty at first, and the hub cannot change it.
+- `anima-link ports -state <DIR>` shows the list. `anima-link ports -state <DIR> on 22` and `off 22` change
+  it, also while the link program runs (`link/cmd/anima-link/device.go`). The ports can be 22 and 5900, and
+  3389 on Windows only. The switches in the application are task HM-T13: until then, this command is the only
+  way to turn a port on.
+- The hub link makes the socket `dial.sock` beside its control socket. The hub connects through it with its
+  one connect function (`crates/hub/src/fleet/targets/reached.rs`) when the address is a link address. The TCP
+  checks, the TLS checks and each SSH connection of the hub (terminal, files, metrics, the checks over SSH, the
+  connection test) use that function. A check that needs ICMP or UDP (Ping, SNMP) on a computer of the link is
+  Unknown, with a message that says that the link carries TCP only.
+- Not built: VNC and RDP sessions through the path (HM-T14), the switches (HM-T13), Windows (HM-T15).
+  Wake-on-LAN is not possible for a computer of the link.
+
+The tests use a hub link and a device link in one process with a relay on loopback, the two programs with the
+command `ports`, and the hub beside a fake dial socket that connects to a port on loopback. No test uses a hub
+of the pool from a new hub image, the real relay, the SSH server of macOS (Remote Login), or the terminal of
+the application. No test uses the hub program and the link program together.
+
+Do these steps after the hub of the account was made again from the new hub image, with an application that
+was built from a checkout that has this change (`link/build.sh` makes the link program). HT-029 must show the
+row of this Mac as Up first. `<LINK>` is the link program that the application carries, and `<DIR>` is the
+state directory that the application gives it: read the two from the output of
+`ps ax | grep "anima-link device"` while the application runs.
+
+1. On this Mac, turn on System Settings, General, Sharing, Remote Login. Run `<LINK> ports -state <DIR>`.
+   Expected: the answer is `{"open":[]}`.
+2. In the application, open the device of this Mac and add a TCP check of port 22. Wait 1 minute. Expected:
+   the check is Down, and its message is "the connection failed: permission denied".
+3. Run `<LINK> ports -state <DIR> on 22`. Expected: the answer is `{"open":[22]}`. Do not start the
+   application again. Wait 1 minute. Expected: the TCP check is Up.
+4. On the device of this Mac, add SSH with the user of this Mac and its password or key, and run the
+   connection test. Expected: the test shows the host key of this Mac (compare with
+   `ssh-keyscan -t ed25519 localhost | ssh-keygen -lf -`). Accept the key.
+5. Open a terminal session on the device. Run `hostname`. Expected: the name of this Mac. Open the files of the
+   device. Expected: the home folder of the user.
+6. Wait 5 minutes with the terminal open, and type in it now and then. Expected: the session does not end.
+7. Add a Ping check to the device. Wait 1 minute. Expected: the check is Unknown, not Down, and its message
+   says that a computer of the link is reached with TCP only.
+8. Run `<LINK> ports -state <DIR> off 22`. Expected: the answer is `{"open":[]}`. Open a new terminal
+   session. Expected: it does not open. In 1 minute the TCP check is Down again. The check `Connected` stays Up.
+9. Run `<LINK> ports -state <DIR> on 80`. Expected: the command refuses, and the list stays empty.
+10. Turn Remote Login off again if it was off before step 1, and remove the checks of steps 2 and 7.
 
 Result: Open.
 

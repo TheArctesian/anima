@@ -180,7 +180,10 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let bucket = release_bucket(&config)?;
     let pool = database(&config).await?;
     // One deny list for every outbound connection; `tunnels` says which path takes it how.
-    let policy = AddressPolicy::new(config.probe_deny.clone());
+    // A hub with a link reaches the computers of the link through its dial socket (HMD-048).
+    let link_dial = config.link_control.as_deref();
+    let policy = AddressPolicy::new(config.probe_deny.clone())
+        .reaching_link(link_dial.and_then(anima_hub::config::dial_socket));
     let live = open_sessions(&pool, clock.now())
         .await?
         .denying(policy.clone());
