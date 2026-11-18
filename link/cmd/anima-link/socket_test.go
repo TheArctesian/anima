@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/TheArctesian/anima/link/hublink/testhub"
+	"github.com/TheArctesian/anima/link/statedir"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
@@ -85,4 +90,86 @@ func TestHMD047TheDeviceListShowsWhenADeviceProgramWasLastSeen(t *testing.T) {
 	if at, listed := seen["off"]; !listed || at != nil {
 		t.Errorf("the device that never connected: listed = %v, seen = %v; want listed with no time", listed, at)
 	}
+}
+
+// dialWord asks the dial socket of a hub link for a local port of a device
+// and returns the answer line.
+func dialWord(t *testing.T, hub runningHub, device, port string) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := statedir.Dial(ctx, hub.state, dialSocket)
+	if err != nil {
+		t.Fatalf("the hub link has no dial socket: %v", err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(20 * time.Second))
+	if _, err := io.WriteString(conn, "dial "+device+" "+port+"\n"); err != nil {
+		t.Fatal(err)
+	}
+	word, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		t.Fatalf("the dial socket gave no answer line: %v", err)
+	}
+	return strings.TrimSuffix(word, "\n")
+}
+
+// ports runs the command "ports" as a second process would.
+func portsOf(t *testing.T, state string, args ...string) (stdout string, code int) {
+	t.Helper()
+	var out, errs output
+	code = run(context.Background(), append([]string{"ports", "-state", state}, args...), stdio{strings.NewReader(""), &out, &errs})
+	return strings.TrimSpace(out.String() + errs.String()), code
+}
+
+// connected starts a device link and returns its state directory and its
+// link address, once the hub link has seen it.
+func connected(t *testing.T, hub runningHub) (state, address string) {
+	t.Helper()
+	state, _ = startDevice(t, hub)
+	deadline := time.Now().Add(30 * time.Second)
+	for seenOf(t, hub)["device link"] == nil {
+		if time.Now().After(deadline) {
+			t.Fatal("the device is not connected after 30 s")
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	text, _ := hub.ctl(t, "devices.list")
+	var listed []struct{ Address string }
+	if err := json.Unmarshal([]byte(text), &listed); err != nil || len(listed) != 1 {
+		t.Fatalf("devices.list = %q", text)
+	}
+	return state, listed[0].Address
+}
+
+// The two programs and the command "ports": the device gives no port until
+// its person turns the port on, and the change needs no restart. The test
+// cannot open port 22 itself, so with the port on it accepts "ok" (this
+// computer has Remote Login) and "closed" (it has not).
+func TestHMD048TheDialSocketReachesAPortOnlyAfterThePersonTurnedItOn(t *testing.T) {
+	hub := startHub(t)
+	state, device := connected(t, hub)
+	wantPorts := func(want string, wantCode int, args ...string) {
+		t.Helper()
+		if got, code := portsOf(t, state, args...); code != wantCode || (want != "" && got != want) {
+			t.Fatalf("ports %v = %q, exit %d; want %q, exit %d", args, got, code, want, wantCode)
+		}
+	}
+	wantWord := func(device, port string, want ...string) {
+		t.Helper()
+		if word := dialWord(t, hub, device, port); !slices.Contains(want, word) {
+			t.Fatalf("the dial socket said %q for port %s, want one of %v", word, port, want)
+		}
+	}
+
+	wantPorts(`{"open":[]}`, 0)
+	wantWord(device, "22", "refused")
+	wantPorts("", 1, "on", "80")
+	wantPorts(`{"open":[22]}`, 0, "on", "22")
+	wantWord(device, "22", "ok", "closed")
+	wantWord(device, "5900", "refused")
+	wantPorts(`{"open":[]}`, 0, "off", "22")
+	wantWord(device, "22", "refused")
+	wantWord("fd41:4e49:4d41::ffff", "22", "not_connected")
+	wantPorts("", 2, "sideways", "22")
 }

@@ -1,6 +1,7 @@
 // Package devicelink is the device side of the link: a loopback port that
 // reaches the hub, a keepalive that holds the link ready, and a stream that
-// tells the hub that the device is connected.
+// tells the hub that the device is connected and gives the hub the local
+// ports that the person opened.
 package devicelink
 
 import (
@@ -59,6 +60,10 @@ type Config struct {
 	// LookupTXT reads the TXT records of a domain name, for a device whose
 	// identity has a HubName (LNK-007). Nil means the system's resolver.
 	LookupTXT func(ctx context.Context, name string) ([]string, error)
+	// OpenPort reports whether the hub may reach a local port of this
+	// computer through the link (HMD-048, HMD-049). It is asked for each
+	// request. Nil means that no port is open.
+	OpenPort func(port uint16) bool
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -88,6 +93,10 @@ type Link struct {
 	reverse net.Conn
 	// presentNow asks for a new stream to the reverse port with no wait.
 	presentNow chan struct{}
+	// openPort is Config.OpenPort; giving holds one value for each
+	// connection to a local port that the hub has now.
+	openPort func(port uint16) bool
+	giving   chan struct{}
 }
 
 // tunnel is the device side of the tunnel for the device's current key.
@@ -142,6 +151,7 @@ func Start(cfg Config) (*Link, error) {
 	link := &Link{
 		device: device, saved: cfg.Identity, listener: listener, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
 		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
+		openPort: cfg.OpenPort, giving: make(chan struct{}, maxLocalConnections),
 	}
 	if link.now == nil {
 		link.now = time.Now

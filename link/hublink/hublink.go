@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/TheArctesian/anima/link/devices"
+	"github.com/TheArctesian/anima/link/dial"
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/invites"
 	"github.com/TheArctesian/anima/link/presence"
@@ -74,6 +75,8 @@ type Link struct {
 	streams streams
 	// present is what the devices say on the reverse port (HMD-047).
 	present presence.Book
+	// asked is the requests for a local port of a device (HMD-048).
+	asked dial.Desk
 
 	// enrolling limits the enrolments that run at one time; enrolments waits
 	// for them when the hub link stops.
@@ -110,7 +113,7 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 	if err != nil {
 		return nil, err
 	}
-	serve := map[uint16]func(net.Conn){tunnel.HubPort: link.forward, tunnel.NoticePort: link.notify, tunnel.ReversePort: link.hear}
+	serve := map[uint16]func(net.Conn){tunnel.HubPort: link.forward, tunnel.NoticePort: link.notify, tunnel.ReversePort: link.hear, tunnel.OpenPort: link.give}
 	if link.invites != nil {
 		serve[tunnel.EnrolPort] = link.enrol
 	}
@@ -265,6 +268,30 @@ func (l *Link) hear(stream net.Conn) {
 	}
 	defer l.present.Release(device, stream)
 	presence.Read(stream, func() { l.present.Saw(device, l.now()) })
+}
+
+// Open asks the device that has a link address for one of its local ports
+// and returns the stream to that port (HMD-048). The device decides: it
+// gives only a port that its person opened. The caller calls release when
+// it has finished with the stream. The errors are those of package dial.
+func (l *Link) Open(ctx context.Context, device netip.Addr, port uint16) (stream net.Conn, release func(), err error) {
+	return l.asked.Open(ctx, device, port, func(line string) error { return l.present.Write(device, line) })
+}
+
+// give serves one stream of the open port: the answer of a device to a
+// request of Open. The stream is recorded and the list is asked as in hear.
+func (l *Link) give(stream net.Conn) {
+	defer stream.Close()
+	key, known := l.hub.DeviceOf(stream.RemoteAddr())
+	if !known || !l.streams.add(key, stream) {
+		return
+	}
+	defer l.streams.remove(key, stream)
+	device, permitted := l.devices.AddressOf(key)
+	if !permitted {
+		return
+	}
+	l.asked.Deliver(device, stream)
 }
 
 // named writes the header that names the device to the hub, before any
