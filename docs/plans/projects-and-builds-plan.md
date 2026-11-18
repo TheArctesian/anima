@@ -1,14 +1,14 @@
 ---
 kind: Plan, with the task table for builds and runners
 state: In progress
-evidence: It was a proposal until 2026-11-17 (PLN-018). PRO-031 to PRO-053 have no ruling, except the requirements that OD-W14 to OD-W21 name. Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. Its "Tasks" holds the state of each task: R1 to R6 are done, R7 is in progress, and each other task is not started.
+evidence: It was a proposal until 2026-11-17 (PLN-018). PRO-031 to PRO-053 have no ruling, except the requirements that OD-W14 to OD-W21 name. Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. Its "Tasks" holds the state of each task: P0 and R1 to R6 are done, R7 is in progress, and each other task is not started.
 ---
 
 # Plan: projects first (import from GitHub, the builder as a job, sign-in)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 2.1. Date: 2026-11-17. Version 2.1 only moved this document from `programme/proposals/projects-and-builds.md` (PLN-018, operator, 2026-11-17).
+Version: 2.2. Date: 2026-11-17. Version 2.2 adds the results of task P0 and its decisions Q1 to Q4 (operator, 2026-11-17); it changes no requirement. Version 2.1 only moved this document from `programme/proposals/projects-and-builds.md` (PLN-018, operator, 2026-11-17).
 From: a side chat with the operator on 2026-11-13, sent to the planning session. Version 2 adds
 the rulings of 2026-11-16 (OD-W13) and the plan for the two build models.
 Status: the header of this document holds the state (PLN-020). History: In progress. The operator decided the six points in "Decision" (OD-W11), the points in
@@ -448,7 +448,7 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| P0 | Compare PRO-005, PRO-006 and PRO-007 with the code on `main`. Write below this table, for each requirement, if it is built, with the file and the test that show it. Build nothing. | — | The three results are in this plan, and row 4.6 of the work plan agrees with them. | Not started | — |
+| P0 | Compare PRO-005, PRO-006 and PRO-007 with the code on `main`. Write below this table, for each requirement, if it is built, with the file and the test that show it. Build nothing. | — | The three results are in this plan, and row 4.6 of the work plan agrees with them. | Done. The three results are in "Results of task P0" below these tables. PRO-005: not built. PRO-006: partly built. PRO-007: built differently. The operator decided the differences Q1 to Q4 on 2026-11-17, each as recommended. | Branch `claude/projects-p0-d18079` |
 | R1 | The clone address comes from one configuration value with the new name (D5). Change BLD-040. | — | A test proves that the builder clones the configured address. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R2 | Delete the bundle folder before the bundle step (D1). | — | A test builds one version two times and uploads the file of the second attempt. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R3 | Add Go to the tool check (D4, BLD-028). | — | A builder with no Go names Go and does not claim. | Done | Branch `builds/release-corrections`, merged to `main` |
@@ -457,15 +457,83 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 | R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](one-click/s4-local-hub-tasks.md) states. This row only points to it. | Done, as T9 of the S4 tasks: the release 0.2.0 carries the programs and the tree. | `f24f4c54`, `aec3c400` |
 | R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | In progress. The release record holds what is published and what is verified: [releases.md](../procedures/releases.md). | `43291afc`, `b361eb5f` |
 
+## Results of task P0 (2026-11-17)
+
+The comparison is with `main` at `0e7dff86`. It changed no code and no requirement. "Built" here
+means that the code and its test are on `main`; it does not mean that a person checked it (PLN-009).
+
+### PRO-005: not built
+
+- The hub knows one provider: GitHub. Its registry of sources holds one declaration
+  (`crates/hub/src/lib.rs:273`). `anima source connect` has one subcommand, `github`
+  (`crates/anima-cli/src/sources/connect.rs:30`).
+- A confirmation changes only the state of the resource and writes the audit entry
+  (`crates/hub/src/work/projects/graphql.rs:247`, `crates/hub/src/work/projects/store/choices.rs:68`).
+  It starts no sign-in and proposes none. The command (`crates/anima-cli/src/projects/confirm.graphql`),
+  the MCP tool `anima_project_resource_confirm` (`crates/anima-cli/src/mcp/tools/projects.rs:137`) and the
+  client (`apps/client/src/lib/projects/ResourceRow.svelte:27`: a Confirm button and nothing after it) do
+  the same.
+- Thus Anima never asks for a sign-in to Cloudflare, Vercel or a different hosting provider. The
+  "only" part of the requirement is true, because no such sign-in exists. The part "ask when a
+  confirmed project uses the provider" is not built. No test names PRO-005.
+- One sign-in is asked before a project exists: GitHub (`apps/client/src/lib/projects/ProjectsScreen.svelte:52`).
+  The import needs it (PRO-002). See Q1.
+
+### PRO-006: partly built
+
+- Part 1, a project on owned and on rented compute: partly built. One project can hold one resource
+  of each kind at the same time (`crates/hub/migrations/2200_projects_schema.sql:75`), so it can show
+  `SERVER` and `CLOUDFLARE` together. But a resource does not record if the compute is owned or
+  rented, and a `SERVER` resource has no link to a device of the operator
+  (`crates/hub/migrations/2200_projects_schema.sql:66` to 78). See Q2.
+- Part 2, a service that holds data about the operator is never a resource: built as written. Only
+  four hosting kinds exist: in the hub (`crates/hub/src/work/projects/model.rs:16`), in the table
+  (`crates/hub/migrations/2200_projects_schema.sql:69`), in the command
+  (`crates/anima-cli/src/projects/resource.rs:29`) and in the client
+  (`apps/client/src/lib/projects/words.ts:41`). Each sign proposes hosting
+  (`crates/hub/src/work/projects/proposals.rs:11`). Test: `pro_006_only_hosting_kinds_exist`
+  (`crates/hub/src/work/projects/tests/proposals.rs:39`).
+- Part 3, a job on an owned machine reads the local copy and does not call the service: not built.
+  No job function is built (groups W and A are not started), and no task names this part. See Q3.
+
+### PRO-007: built differently
+
+- Built as written: the code that talks to GitHub and reads its answers is in the provider crate
+  `crates/providers/github`, and GitHub is one declaration in the source registry of the engine
+  (`crates/hub/src/lib.rs:273`). The engine holds no GitHub name. The names of the contract are
+  neutral (`contracts/schema.graphql:1976`).
+- Different: the Projects domain of the hub is specific to GitHub. Thirty files (26 of them not tests) of
+  `crates/hub/src/work/projects/` import `provider_github`: the model
+  (`model.rs:10`), the intake (`intake.rs:8`), and each live read and change of pull requests,
+  issues, workflows, history and code (for example `pull_requests/graphql.rs:5`, `issues/graphql.rs:5`,
+  `workflows/graphql.rs:5`, `history/graphql.rs:5`, `code/graphql.rs:8`). The store has one fixed forge
+  (`store.rs:19`), the table allows only `github` (`crates/hub/migrations/2200_projects_schema.sql:33`),
+  and the address of a repository is made from `https://github.com/` (`graphql/views.rs:23`).
+- The contract K-E1 permits a part of this: an extension holds the intake of its source (K-E1 Section 3),
+  and Section 13 defines the live reads as reads of GitHub.
+- The client shows the GitHub mark for each repository (`apps/client/src/lib/projects/RepositoryRow.svelte:18`,
+  `detail/Overview.svelte:23`). The command and the MCP tool have GitHub only in their help text.
+- Thus a second forge needs a new source and also a change to the Projects domain, to a migration
+  and to the client. That is not "changes nothing else". No test names PRO-007. See Q4.
+
+### Decisions of task P0
+
+| Decision | Question | Recommendation | Result |
+| --- | --- | --- | --- |
+| Q1 | PRO-005 is not built, because GitHub is the only provider with a sign-in. Does it get a task now? And does the sign-in to the forge, which Anima asks before a project exists, agree with PRO-005? | No task now. Keep PRO-005 as it is. The first plan that adds a hosting provider as a source (Cloudflare or Vercel) gets the task: the project page proposes the sign-in when a confirmed resource of that kind has no account. Record that PRO-005 is about hosting providers and that the forge is the exception, because the import needs it. | Decided (operator, 2026-11-17): as recommended. |
+| Q2 | PRO-006, part 1: a resource does not record if its compute is owned or rented, and a `SERVER` resource has no link to a device. Must a resource hold this? | Yes, but not now. Add it with the Operations area of the project page (OD-W11, number 1): a `SERVER` resource can name a device of the operator, and each kind says owned or rented. Give it a task in that plan. | Decided (operator, 2026-11-17): as recommended. |
+| Q3 | PRO-006, part 3 (a job reads the local copy and does not call the service) has no task. Which task owns it? | Task W1: the contract of the work route states it, and task W4 proves it with a test. No code before W1. | Decided (operator, 2026-11-17): as recommended. |
+| Q4 | PRO-007: a second forge changes the Projects domain of the hub, one migration and the client, not only the source registry. Change the code now, or accept this until a second forge is planned? | Accept it now (ETH-009: build for what the operator uses; no second forge is in use). Do not change the code. Record that PRO-007 is met at the engine and in the names of the contract, and that the Projects domain becomes neutral in the plan that adds the second forge. | Decided (operator, 2026-11-17): as recommended. |
+
 Group W: the work route. [jobs.md](../proposals/jobs.md) owns its requirements; the tasks are here so that one
 table has the order.
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. | A ruling that changes R-115 ([jobs.md](../proposals/jobs.md), "Needs") | The programme accepts the contract. | Not started | — |
+| W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. It states that a job reads the local copy that Anima holds and does not call the service (PRO-006, Q3). | A ruling that changes R-115 ([jobs.md](../proposals/jobs.md), "Needs") | The programme accepts the contract. | Not started | — |
 | W2 | The isolation design, with prototypes: the container runtime on Linux, a workflow that needs Docker, the build user on a Mac, a signing identity for one job (PRO-029). | — | A record with measured results on one Linux machine and one Mac. The security reviewer and the operator accept it. | Not started | — |
 | W3 | The hub: one queue for work, the placement function, the log store (PRO-050, PRO-051). Hub API, then `anima`, then MCP. | W1 | The gates pass. The release of Anima still works through the old path. | Not started | — |
-| W4 | The daemon: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). | W1, W2 | A test proves that a job cannot read the daemon token or the home folder, and that nothing stays after a stop. | Not started | — |
+| W4 | The daemon: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). A test proves that a job reads the local copy and does not call the service (PRO-006, Q3). | W1, W2 | A test proves that a job cannot read the daemon token or the home folder, and that nothing stays after a stop. | Not started | — |
 | W5 | "Takes work" for each machine, and "native jobs" for each Mac (USE-004, USE-008, PRO-024). | W3 | A machine that is set off at the machine refuses work from the hub. | Not started | — |
 | W6 | The list of what runs, in the hub and in the client (PRO-026, PRO-052). | W3 | The area shows a build and a session, and shows nothing when nothing runs. | Not started | — |
 
