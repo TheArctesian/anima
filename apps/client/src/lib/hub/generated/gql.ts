@@ -16,6 +16,7 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
 type Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": typeof types.LoginDocument,
     "\n  mutation SignInBrowser($input: LoginInput!) {\n    signInBrowser(input: $input) {\n      expiresAt\n    }\n  }\n": typeof types.SignInBrowserDocument,
+    "\n  mutation ClaimDeviceToken($claim: String!) {\n    claimDeviceToken(claim: $claim) {\n      token\n    }\n  }\n": typeof types.ClaimDeviceTokenDocument,
     "\n  mutation Logout {\n    logout\n  }\n": typeof types.LogoutDocument,
     "\n  query Me {\n    me {\n      username\n      totpEnabled\n    }\n  }\n": typeof types.MeDocument,
     "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      madeFor\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": typeof types.ApiKeysDocument,
@@ -80,9 +81,9 @@ type Documents = {
     "\n  mutation RevokeLinkDevice($key: String!) {\n    revokeLinkDevice(key: $key)\n  }\n": typeof types.RevokeLinkDeviceDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        diskMount\n        otherDrives\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      storage {\n        drives {\n          name\n          kind\n          sizeBytes\n          mounted\n          mounts {\n            path\n            usedBytes\n            sizeBytes\n            percent\n          }\n          readBps\n          writeBps\n          busyPercent\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": typeof types.DeviceMetricsDocument,
     "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        diskMount\n        otherDrives\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n": typeof types.MetricsAddedDocument,
-    "\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": typeof types.AgentStatusDocument,
-    "\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n": typeof types.EnrolAgentDocument,
-    "\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": typeof types.RevokeAgentTokenDocument,
+    "\n  query DaemonStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n": typeof types.DaemonStatusDocument,
+    "\n  mutation EnrolDaemon($deviceId: ID!) {\n    enrolDaemon(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n": typeof types.EnrolDaemonDocument,
+    "\n  mutation RevokeDaemonToken($deviceId: ID!) {\n    revokeDaemonToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n": typeof types.RevokeDaemonTokenDocument,
     "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": typeof types.DeliveryFieldsFragmentDoc,
     "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": typeof types.NotificationChannelFieldsFragmentDoc,
     "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": typeof types.NotificationSettingsFieldsFragmentDoc,
@@ -177,6 +178,7 @@ type Documents = {
 const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": types.LoginDocument,
     "\n  mutation SignInBrowser($input: LoginInput!) {\n    signInBrowser(input: $input) {\n      expiresAt\n    }\n  }\n": types.SignInBrowserDocument,
+    "\n  mutation ClaimDeviceToken($claim: String!) {\n    claimDeviceToken(claim: $claim) {\n      token\n    }\n  }\n": types.ClaimDeviceTokenDocument,
     "\n  mutation Logout {\n    logout\n  }\n": types.LogoutDocument,
     "\n  query Me {\n    me {\n      username\n      totpEnabled\n    }\n  }\n": types.MeDocument,
     "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      madeFor\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": types.ApiKeysDocument,
@@ -241,9 +243,9 @@ const documents: Documents = {
     "\n  mutation RevokeLinkDevice($key: String!) {\n    revokeLinkDevice(key: $key)\n  }\n": types.RevokeLinkDeviceDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        diskMount\n        otherDrives\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      storage {\n        drives {\n          name\n          kind\n          sizeBytes\n          mounted\n          mounts {\n            path\n            usedBytes\n            sizeBytes\n            percent\n          }\n          readBps\n          writeBps\n          busyPercent\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": types.DeviceMetricsDocument,
     "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        diskMount\n        otherDrives\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n": types.MetricsAddedDocument,
-    "\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": types.AgentStatusDocument,
-    "\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n": types.EnrolAgentDocument,
-    "\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": types.RevokeAgentTokenDocument,
+    "\n  query DaemonStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n": types.DaemonStatusDocument,
+    "\n  mutation EnrolDaemon($deviceId: ID!) {\n    enrolDaemon(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n": types.EnrolDaemonDocument,
+    "\n  mutation RevokeDaemonToken($deviceId: ID!) {\n    revokeDaemonToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n": types.RevokeDaemonTokenDocument,
     "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": types.DeliveryFieldsFragmentDoc,
     "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": types.NotificationChannelFieldsFragmentDoc,
     "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": types.NotificationSettingsFieldsFragmentDoc,
@@ -358,6 +360,10 @@ export function graphql(source: "\n  mutation Login($input: LoginInput!) {\n    
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation SignInBrowser($input: LoginInput!) {\n    signInBrowser(input: $input) {\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation SignInBrowser($input: LoginInput!) {\n    signInBrowser(input: $input) {\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ClaimDeviceToken($claim: String!) {\n    claimDeviceToken(claim: $claim) {\n      token\n    }\n  }\n"): (typeof documents)["\n  mutation ClaimDeviceToken($claim: String!) {\n    claimDeviceToken(claim: $claim) {\n      token\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -617,15 +623,15 @@ export function graphql(source: "\n  subscription MetricsAdded($deviceId: ID!) {
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"): (typeof documents)["\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"];
+export function graphql(source: "\n  query DaemonStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n"): (typeof documents)["\n  query DaemonStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n"];
+export function graphql(source: "\n  mutation EnrolDaemon($deviceId: ID!) {\n    enrolDaemon(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation EnrolDaemon($deviceId: ID!) {\n    enrolDaemon(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"): (typeof documents)["\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"];
+export function graphql(source: "\n  mutation RevokeDaemonToken($deviceId: ID!) {\n    revokeDaemonToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n"): (typeof documents)["\n  mutation RevokeDaemonToken($deviceId: ID!) {\n    revokeDaemonToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n      daemonVersion\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

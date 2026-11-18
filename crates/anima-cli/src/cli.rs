@@ -1,6 +1,7 @@
 //! The command tree. Nouns are grouped by what the operator works on: `fleet` (devices and how
-//! they are reached), `hub_records` (what the hub keeps) and `program` (the program itself). A new
-//! noun adds one variant and one arm to the group it belongs to, beside its `mod` line in `lib.rs`.
+//! they are reached), `hub_records` (what the hub keeps), `shared_records` (what every extension
+//! shares) and `program` (the program itself). A new noun adds one variant and one arm to the
+//! group it belongs to, beside its `mod` line in `lib.rs`.
 
 use std::ffi::OsString;
 use std::process::ExitCode;
@@ -15,10 +16,12 @@ use crate::output::Output;
 mod fleet;
 mod hub_records;
 mod program;
+mod shared_records;
 
 use fleet::FleetCommand;
 use hub_records::HubRecordCommand;
 use program::ProgramCommand;
+use shared_records::SharedRecordCommand;
 
 /// The command line for an Anima hub.
 #[derive(Debug, Parser)]
@@ -38,6 +41,8 @@ enum Command {
     #[command(flatten)]
     HubRecord(HubRecordCommand),
     #[command(flatten)]
+    SharedRecord(SharedRecordCommand),
+    #[command(flatten)]
     Program(ProgramCommand),
 }
 
@@ -46,6 +51,7 @@ impl Command {
         match self {
             Self::Fleet(command) => command.run(invocation).await,
             Self::HubRecord(command) => command.run(invocation).await,
+            Self::SharedRecord(command) => command.run(invocation).await,
             Self::Program(command) => command.run(invocation).await,
         }
     }

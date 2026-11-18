@@ -1,7 +1,7 @@
-//! Storage and agent mappings for metric kinds.
+//! Storage and daemon mappings for metric kinds.
 
-use agent_core::points::Kind;
 use async_graphql::EnumType;
+use daemon_core::points::Kind;
 
 use super::*;
 

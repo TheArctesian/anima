@@ -12,11 +12,11 @@ pub fn hint(tool: &str, reason: &NotUsableReason) -> &'static str {
              sudo xcode-select --switch /Applications/Xcode.app on the device."
         }
         ("rustc" | "cargo" | "cargo-nextest", NotUsableReason::EXITED) => {
-            "Install a default Rust toolchain on the device: rustup default stable. The agent \
+            "Install a default Rust toolchain on the device: rustup default stable. The daemon \
              never lets rustup download one."
         }
         ("claude" | "codex", NotUsableReason::EXITED) => {
-            "Update or reinstall it on the device; the agent runs it with an empty home folder, \
+            "Update or reinstall it on the device; the daemon runs it with an empty home folder, \
              so it must print its version without a sign-in."
         }
         (_, NotUsableReason::TIMED_OUT) => {
@@ -28,11 +28,11 @@ pub fn hint(tool: &str, reason: &NotUsableReason) -> &'static str {
              to see the error, then repair or reinstall it."
         }
         (_, NotUsableReason::NO_VERSION) => {
-            "It printed no version the agent reads: it may be another program of the same name, \
-             or a newer output format that a newer agent reads."
+            "It printed no version the daemon reads: it may be another program of the same name, \
+             or a newer output format that a newer daemon reads."
         }
         (_, NotUsableReason::FAILED | NotUsableReason::Other(_)) => {
-            "Update the hub and this command line to the agent's version to see why."
+            "Update the hub and this command line to the daemon's version to see why."
         }
     }
 }

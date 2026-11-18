@@ -1,18 +1,18 @@
-//! MET-017, K8 Section 6: an agent request that gets no turn is `UNAVAILABLE` before it waits
+//! MET-017, K8 Section 6: a daemon request that gets no turn is `UNAVAILABLE` before it waits
 //! for the database. One push or renewal per device, so one token cannot queue pushes on its
 //! device row; two requests per address until their credential is known, so one node's junk
-//! cannot keep honest agents out; at most `AGENT_REQUESTS` using the database at once, waited
+//! cannot keep honest daemons out; at most `DAEMON_REQUESTS` using the database at once, waited
 //! for in order, and never held while a body arrives.
 
 use std::{sync::Arc, time::Duration};
 
-use agent_core::wire::AgentToken;
 use axum::{
     Router,
     body::Body,
     http::{Request, StatusCode},
 };
 use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
+use daemon_core::wire::DaemonToken;
 use http_body_util::BodyExt as _;
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -26,8 +26,8 @@ use crate::{
         events::{Bus, ClientAddr},
         metrics::ingest::{
             renewal::renew,
-            routes::{Deadlines, agent_router_within},
-            turns::{ADDRESS_REQUESTS, AGENT_REQUESTS, Turns},
+            routes::{Deadlines, daemon_router_within},
+            turns::{ADDRESS_REQUESTS, DAEMON_REQUESTS, Turns},
         },
     },
     ids::DeviceId,
@@ -81,20 +81,20 @@ async fn post(
 async fn send(
     router: Router,
     from: ClientAddr,
-    token: &AgentToken,
+    token: &DaemonToken,
     body: String,
 ) -> (StatusCode, String) {
     let bearer = Some(token.expose().to_owned());
-    post(router, ("/agent/v1/push", from), bearer, Body::from(body)).await
+    post(router, ("/daemon/v1/push", from), bearer, Body::from(body)).await
 }
 
 fn spawn_push(
     router: &Router,
     from: ClientAddr,
-    token: &AgentToken,
+    token: &DaemonToken,
     body: String,
 ) -> JoinHandle<(StatusCode, String)> {
-    let (router, token) = (router.clone(), AgentToken::parse(token.expose()).unwrap());
+    let (router, token) = (router.clone(), DaemonToken::parse(token.expose()).unwrap());
     tokio::spawn(async move { send(router, from, &token, body).await })
 }
 
@@ -111,7 +111,7 @@ const SHORT: Duration = Duration::from_millis(200);
 
 fn router_within(pool: &PgPool, now: DateTime<Utc>, deadlines: Deadlines) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    agent_router_within(pool.clone(), Bus::new(1024), clock, deadlines)
+    daemon_router_within(pool.clone(), Bus::new(1024), clock, deadlines)
 }
 
 fn router(pool: &PgPool, now: DateTime<Utc>) -> Router {
@@ -144,14 +144,14 @@ async fn hub_pool(pool: &PgPool) -> PgPool {
         .unwrap()
 }
 
-const AGENT_ROW: &str = "SELECT 1 FROM metrics.agents WHERE device_id = $1 FOR UPDATE";
+const DAEMON_ROW: &str = "SELECT 1 FROM metrics.daemons WHERE device_id = $1 FOR UPDATE";
 
 /// pve-01 enrolled with a renewed token not yet used; that token. Its first uses wait to promote
-/// it while the agent row is held, before their device is known.
-async fn renewed_pve(pool: &PgPool, now: DateTime<Utc>) -> AgentToken {
+/// it while the daemon row is held, before their device is known.
+async fn renewed_pve(pool: &PgPool, now: DateTime<Utc>) -> DaemonToken {
     let current = enrolled_pve(pool, now, 1).await;
-    let next = AgentToken::from_random([9; 32]);
-    let presented = AgentToken::parse(next.expose()).unwrap();
+    let next = DaemonToken::from_random([9; 32]);
+    let presented = DaemonToken::parse(next.expose()).unwrap();
     renew(pool, &current, next, now).await.unwrap().unwrap();
     presented
 }
@@ -181,7 +181,7 @@ async fn at_once(answer: impl Future<Output = (StatusCode, String)>) -> (StatusC
 
 #[test]
 fn met_017_a_device_has_one_turn_and_an_address_two_until_they_end() {
-    let turns = Turns::new(AGENT_REQUESTS, PATIENT.request);
+    let turns = Turns::new(DAEMON_REQUESTS, PATIENT.request);
     let first = turns.device(pve()).expect("a free turn");
     assert!(turns.device(pve()).is_none(), "taken by the first push");
     assert!(
@@ -207,9 +207,9 @@ fn met_017_a_device_has_one_turn_and_an_address_two_until_they_end() {
 #[tokio::test(start_paused = true)]
 async fn met_017_a_request_waits_in_order_for_a_turn_up_to_its_deadline() {
     let wait = Deadlines::HUB.request;
-    let turns = Turns::new(AGENT_REQUESTS, wait);
+    let turns = Turns::new(DAEMON_REQUESTS, wait);
     let mut held = Vec::new();
-    for _ in 0..AGENT_REQUESTS {
+    for _ in 0..DAEMON_REQUESTS {
         held.push(turns.request().await.unwrap());
     }
     let started = Instant::now();
@@ -268,14 +268,14 @@ async fn met_017_a_second_push_of_a_device_is_unavailable_at_once_and_others_are
 }
 
 /// The reviewer's pool probe at its worst: ten pushes from ten nodes with a renewed token wait
-/// to promote it while a write holds the agent row. Only `AGENT_REQUESTS` take a connection;
+/// to promote it while a write holds the daemon row. Only `DAEMON_REQUESTS` take a connection;
 /// the rest wait for a turn without one, then are `UNAVAILABLE` after their [`SHORT`] wait, and
 /// a ten-connection pool keeps room throughout.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_017_agent_requests_never_hold_more_than_their_share_of_the_pool(pool: PgPool) {
+async fn met_017_daemon_requests_never_hold_more_than_their_share_of_the_pool(pool: PgPool) {
     let now = database_now(&pool).await;
     let presented = renewed_pve(&pool, now).await;
     let small = hub_pool(&pool).await;
@@ -284,7 +284,7 @@ async fn met_017_agent_requests_never_hold_more_than_their_share_of_the_pool(poo
         ..PATIENT
     };
     let router = router_within(&small, now, deadlines);
-    let holder = hold_row(&pool, AGENT_ROW, pve()).await;
+    let holder = hold_row(&pool, DAEMON_ROW, pve()).await;
 
     let pushes: Vec<_> = (0..10)
         .map(|n| spawn_push(&router, address(10 + n), &presented, batch(pve(), now)))
@@ -292,21 +292,21 @@ async fn met_017_agent_requests_never_hold_more_than_their_share_of_the_pool(poo
     tokio::time::sleep(SHORT / 2).await;
     assert!(
         small.acquire().await.is_ok(),
-        "the agents took the whole pool"
+        "the daemons took the whole pool"
     );
     let answered = tokio::time::timeout(Duration::from_secs(10), async {
-        while pushes.iter().filter(|push| push.is_finished()).count() < 10 - AGENT_REQUESTS {
+        while pushes.iter().filter(|push| push.is_finished()).count() < 10 - DAEMON_REQUESTS {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     })
     .await;
     assert!(
         answered.is_ok(),
-        "more than {AGENT_REQUESTS} pushes waited for the row"
+        "more than {DAEMON_REQUESTS} pushes waited for the row"
     );
     assert!(
         small.acquire().await.is_ok(),
-        "the agents took the whole pool"
+        "the daemons took the whole pool"
     );
 
     holder.rollback().await.unwrap();
@@ -315,7 +315,7 @@ async fn met_017_agent_requests_never_hold_more_than_their_share_of_the_pool(poo
         answers.push(push.await.unwrap());
     }
     let refused = answers.iter().filter(|answer| **answer == unavailable());
-    assert!(refused.count() >= 10 - AGENT_REQUESTS, "{answers:?}");
+    assert!(refused.count() >= 10 - DAEMON_REQUESTS, "{answers:?}");
     let stored = answers
         .iter()
         .filter(|(status, _)| *status == StatusCode::NO_CONTENT);

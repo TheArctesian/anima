@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use agent_core::readings::Drive;
 use chrono::{DateTime, Utc};
+use daemon_core::readings::Drive;
 
 use super::{Gpu, MetricKind, Readings};
 use crate::ids::DeviceId;

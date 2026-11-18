@@ -18,6 +18,7 @@ export const DESKTOP_MAC: Capabilities = {
   commandLine: true,
   stayAwake: true,
   localHub: true,
+  deviceLink: true,
   overlayTitleBar: true,
 };
 

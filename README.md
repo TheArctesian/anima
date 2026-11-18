@@ -8,7 +8,7 @@
 
 <p align="center">
   An open-source device manager for remote access, uptime and metrics.<br>
-  Self-hosted today. A hosted network is planned.
+  Self-hosted today. A hosted mode, where you sign in and Anima.ing runs the hub, is planned.
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
   ·
   <a href="LICENSE">AGPL-3.0-or-later</a>
   ·
-  <a href="docs/setup/anima-mcp.md">MCP</a>
+  <a href="docs/procedures/setup/anima-mcp.md">MCP</a>
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 Anima.ing is a self-hosted device manager for the computers and servers you already have — including the ones AI agents run on. It combines a native macOS and Linux client, a Rust hub, and a gateway for remote sessions. A command-line tool and an MCP server let you and your coding agents use the same hub.
 
-The first public release of the client is coming soon. Until then, you can build from this repository.
+A signed, notarised release of the macOS client is published at [releases.anima.ing](https://releases.anima.ing); [docs/procedures/releases.md](docs/procedures/releases.md) gives the newest version. A signed Linux build is still to come; until then, you can build from this repository.
 
 ## Features
 
@@ -49,39 +49,39 @@ The first public release of the client is coming soon. Until then, you can build
 
 - Uptime checks: HTTP, ICMP, TCP, TLS, DNS, Docker, systemd, SNMP, push, groups, Tailscale ping, and domain expiry
 - Resource metrics: CPU, memory, disk (usage and I/O), network, load, uptime, and GPU (NVIDIA, AMD, Intel, and Apple)
-- Metrics from a small agent (`anima-agent`) or, without an agent, over SSH
+- Metrics from a small daemon (`anima-daemon`) or, without a daemon, over SSH
 - Alerts on webhook, ntfy, email, or [Apprise](deploy/README.md)
-- A Prometheus scrape endpoint at `/metrics` ([setup](docs/setup/prometheus.md))
+- A Prometheus scrape endpoint at `/metrics` ([setup](docs/procedures/setup/prometheus.md))
 
 **Keep the network private**
 
-- A WireGuard mesh around your own hub, run with Headscale, with no open ports required on devices ([VPN guide](docs/setup/vpn.md))
+- A WireGuard mesh around your own hub, run with Headscale, with no open ports required on devices ([VPN guide](docs/procedures/setup/vpn.md))
 - Sign-in with a password and a TOTP code
-- `anima-link`: an encrypted device-to-hub path that needs no VPN client and no administrator rights. You can run it by hand today; the desktop app does not start it yet ([setup](docs/setup/link.md))
+- `anima-link`: an encrypted device-to-hub path that needs no VPN client and no administrator rights. You can run it by hand today; the desktop app does not start it yet ([setup](docs/procedures/setup/link.md))
 
 **Use it from a terminal or an agent**
 
 - The `anima` command line, which talks to the same GraphQL API as the client
-- `anima mcp`, an MCP server on standard input and output ([setup](docs/setup/anima-mcp.md))
+- `anima mcp`, an MCP server on standard input and output ([setup](docs/procedures/setup/anima-mcp.md))
 
 ## Why Anima.ing
 
 Most people assemble this stack from three or four tools: a mesh VPN, a remote-desktop gateway, and an uptime checker. Anima.ing is one hub, one native client, and one API — including an MCP server so a coding agent can list machines, read checks, and (with your permission) change them.
 
-Self-hosting is free. A hosted plan called Solo is planned at $19 a month or $199 a year, for the case where Anima.ing runs the private network and relay for you. Solo is not for sale yet, and there is no public waitlist page at the time of writing. Paid plans are meant to sell hosting and support, not to withhold code: the same software stays in this repository.
+Self-hosting is free. The hosted mode is planned to be the default first run: you sign in and Anima.ing makes a hub for your account. A small hosted hub is planned to be free below a usage line, and it sleeps when none of your devices is connected. A hosted plan called Solo is planned at $19 a month or $199 a year, for an always-on hub, with Anima.ing running the private network and relay for you. None of this is for sale yet; the website has a waitlist only. Paid plans are meant to sell hosting and support, not to withhold code: the same software stays in this repository.
 
 ## Status
 
 | | Today | Planned |
 | --- | --- | --- |
-| Self-host the hub and client | Yes, build from source | Signed macOS and Linux downloads |
+| Self-host the hub and client | Yes, build from source | Signed Linux downloads |
 | Desktop client | macOS 14.2+ (Apple Silicon and Intel), Linux AppImage (x86-64). Linux ARM64 support. | Windows |
-| Web client | Served by the hub to browsers on the VPN ([guide](docs/setup/web-client.md)) | iOS |
+| Web client | Served by the hub to browsers on the VPN ([guide](docs/procedures/setup/web-client.md)) | iOS |
 | Remote desktops | VNC and RDP through `guacd`; native VNC via `anima-gateway` | Native RDP |
 | Private network | Headscale / WireGuard; `anima-link` by hand | An Anima.ing-operated Tailcat relay; app-started `anima-link` |
-| Hosted Solo | — | $19 / month or $199 / year, waitlist only |
+| Hosted mode and Solo | — | Sign in to a hosted hub, free below a usage line; Solo at $19 / month or $199 / year; waitlist only |
 
-There is no public download yet: [releases.anima.ing](https://releases.anima.ing) is not serving builds, and this repository has no GitHub Releases. The first release is coming soon.
+The macOS DMG is published at [releases.anima.ing](https://releases.anima.ing) (notarised; the release record in [docs/procedures/releases.md](docs/procedures/releases.md) gives the version and the evidence). A signed Linux build is not published yet, and this repository has no GitHub Releases.
 
 ## Quick start (build from source)
 
@@ -139,7 +139,7 @@ anima ssh <device>
 
 ### Hub
 
-The supported way to run the hub is Docker Compose, which starts PostgreSQL 17, the migration job, TLS, `guacd`, and the hub. It expects a Linux host with Docker Engine 28 or later and a WireGuard address for the hub. The full steps, including secrets and the Headscale VPN, are in [deploy/README.md](deploy/README.md) and [docs/setup/vpn.md](docs/setup/vpn.md).
+The supported way to run the hub is Docker Compose, which starts PostgreSQL 17, the migration job, TLS, `guacd`, and the hub. It expects a Linux host with Docker Engine 28 or later and a WireGuard address for the hub. The full steps, including secrets and the Headscale VPN, are in [deploy/README.md](deploy/README.md) and [docs/procedures/setup/vpn.md](docs/procedures/setup/vpn.md).
 
 To build the hub image from this tree:
 
@@ -157,7 +157,7 @@ The program understands `anima-hub migrate`, `anima-hub operator set <username>`
 
 ### Native VNC gateway
 
-`anima-gateway` speaks to the hub as `guacd` does, and handles VNC itself. Use it where there is no `guacd`, for example a hub running on a Mac. RDP is still passed to `guacd`. Details: [docs/setup/native-gateway.md](docs/setup/native-gateway.md).
+`anima-gateway` speaks to the hub as `guacd` does, and handles VNC itself. Use it where there is no `guacd`, for example a hub running on a Mac. RDP is still passed to `guacd`. Details: [docs/procedures/setup/native-gateway.md](docs/procedures/setup/native-gateway.md).
 
 ```sh
 cargo build --release --locked --bin anima-gateway
@@ -171,23 +171,23 @@ To keep RDP on `guacd` while VNC uses the native gateway:
 anima-gateway listen 127.0.0.1:4823 --other-gateway 127.0.0.1:4822
 ```
 
-### Metrics agent
+### Metrics daemon
 
-`anima-agent` runs on a device, samples every two seconds, and pushes points to the hub every ten seconds. The desktop app can install it on the computer it runs on. You can also enrol it by hand:
+`anima-daemon` runs on a device, samples every two seconds, and pushes points to the hub every ten seconds. The desktop app can install it on the computer it runs on. You can also enrol it by hand:
 
 ```sh
-cargo build --release --locked --bin anima-agent
-anima-agent enrol <code> --hub <https origin>
-anima-agent install          # user unit / LaunchAgent
-# anima-agent install --system
-anima-agent run
+cargo build --release --locked --bin anima-daemon
+anima-daemon enrol <code> --hub <https origin>
+anima-daemon install          # user unit / LaunchAgent
+# anima-daemon install --system
+anima-daemon run
 ```
 
-The enrolment code comes from the Device page in the client (`anima agent enrol` on the command line). The agent does not listen on a port.
+The enrolment code comes from the Device page in the client (`anima daemon enrol` on the command line). The daemon does not listen on a port.
 
 ### Link (run by hand)
 
-`anima-link` is a separate Go program that makes an encrypted connection from a device to a hub without a VPN client. Nothing in the desktop app or the hub starts the two sides together yet. To build and run it by hand, follow [docs/setup/link.md](docs/setup/link.md).
+`anima-link` is a separate Go program that makes an encrypted connection from a device to a hub without a VPN client. Nothing in the desktop app or the hub starts the two sides together yet. To build and run it by hand, follow [docs/procedures/setup/link.md](docs/procedures/setup/link.md).
 
 ```sh
 link/build.sh    # writes link/bin/anima-link-<os>-<arch>
@@ -209,7 +209,7 @@ link/build.sh    # writes link/bin/anima-link-<os>-<arch>
            +-- RDP: guacd
            +-- Device web interfaces
            +-- Checks, notifications, /metrics
-           +-- Metrics ingest from anima-agent (or SSH collection)
+           +-- Metrics ingest from anima-daemon (or SSH collection)
            |
            +-- Headscale / WireGuard mesh
            +-- anima-link (optional, started by hand)
@@ -223,15 +223,15 @@ link/build.sh    # writes link/bin/anima-link-<os>-<arch>
 | Hub | `crates/hub` | API, checks, sessions, notifications |
 | Native VNC gateway | `crates/anima-gateway` | VNC sessions without `guacd` |
 | Command line and MCP | `crates/anima-cli` | The `anima` and `anima mcp` programs |
-| Metrics agent | `crates/agent` | `anima-agent` |
+| Metrics daemon | `crates/daemon` | `anima-daemon` |
 | Link | `link/` | `anima-link` (Go) |
 | Deployment | `deploy/` | Compose, Headscale, backups |
 
-The design specification is [docs/design-spec.md](docs/design-spec.md). It is the source of truth for behaviour.
+The design specification is [docs/spec/design-spec.md](docs/spec/design-spec.md). It is the source of truth for behaviour.
 
 ## Agents
 
-`anima mcp` is an MCP server on standard input and output. A coding agent starts it and calls its tools. It uses the same hub and token as the `anima` command line. Full steps: [docs/setup/anima-mcp.md](docs/setup/anima-mcp.md).
+`anima mcp` is an MCP server on standard input and output. A coding agent starts it and calls its tools. It uses the same hub and token as the `anima` command line. Full steps: [docs/procedures/setup/anima-mcp.md](docs/procedures/setup/anima-mcp.md).
 
 Make an API key for the agent, not your login. A read key is a good start:
 
@@ -282,8 +282,8 @@ In development:
 
 Planned, not available today:
 
-- The first signed macOS and Linux releases
-- Solo hosting ($19 / month or $199 / year, waitlist only)
+- A signed Linux release
+- The hosted mode: sign in, and a hub is made for your account. Free below a usage line, with Solo hosting at $19 / month or $199 / year (waitlist only)
 - A native RDP gateway
 - A Windows client
 - An Anima.ing-operated Tailcat relay
@@ -299,14 +299,14 @@ The work plan is [docs/work-plan.md](docs/work-plan.md).
 
 | Document | Contents |
 | --- | --- |
-| [docs/setup/anima-mcp.md](docs/setup/anima-mcp.md) | `anima mcp` for coding agents |
-| [docs/setup/native-gateway.md](docs/setup/native-gateway.md) | `anima-gateway` for VNC |
-| [docs/setup/link.md](docs/setup/link.md) | `anima-link`, by hand |
-| [docs/setup/vpn.md](docs/setup/vpn.md) | Headscale / WireGuard mesh |
-| [docs/setup/prometheus.md](docs/setup/prometheus.md) | Scraping `/metrics` |
-| [docs/setup/web-client.md](docs/setup/web-client.md) | Browser UI on the VPN |
+| [docs/procedures/setup/anima-mcp.md](docs/procedures/setup/anima-mcp.md) | `anima mcp` for coding agents |
+| [docs/procedures/setup/native-gateway.md](docs/procedures/setup/native-gateway.md) | `anima-gateway` for VNC |
+| [docs/procedures/setup/link.md](docs/procedures/setup/link.md) | `anima-link`, by hand |
+| [docs/procedures/setup/vpn.md](docs/procedures/setup/vpn.md) | Headscale / WireGuard mesh |
+| [docs/procedures/setup/prometheus.md](docs/procedures/setup/prometheus.md) | Scraping `/metrics` |
+| [docs/procedures/setup/web-client.md](docs/procedures/setup/web-client.md) | Browser UI on the VPN |
 | [deploy/README.md](deploy/README.md) | Running the hub with Compose |
-| [docs/design-spec.md](docs/design-spec.md) | Behaviour and requirement IDs |
+| [docs/spec/design-spec.md](docs/spec/design-spec.md) | Behaviour and requirement IDs |
 | [docs/work-plan.md](docs/work-plan.md) | Purpose, priority, plan register |
 | [quality/README.md](quality/README.md) | Local gates |
 | [AGENTS.md](AGENTS.md) | Contributor and agent rules |

@@ -27,7 +27,12 @@ async fn back_from_install(served: &Served) -> (Browser, Answer) {
 
 fn assert_connected_page(browser: &Browser, page: &Answer) {
     assert_eq!(page.status, StatusCode::OK);
-    assert!(page.body.contains("GitHub is connected."), "{}", page.body);
+    assert!(page.body.contains("<h1>GitHub is connected.</h1>"));
+    assert!(
+        page.body
+            .contains("You can close this tab and go back to Anima.ing.")
+    );
+    assert!(!page.body.contains("<script"));
     assert!(
         !browser.cookies.contains_key("__Host-anima-connect"),
         "the done page clears the cookie"

@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login` and `signInBrowser` (API-003, D-4, R-111).
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite` and `claimDeviceToken` (API-003, D-4, R-111, R-129).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -96,7 +96,7 @@ type ApiKeyCreated {
 }
 
 "Shown once. The hub keeps only its SHA-256; one use, 15 minutes (MET-012, K8)."
-type AgentEnrolment {
+type DaemonEnrolment {
   code: String!
   expiresAt: DateTime!
 }
@@ -201,7 +201,7 @@ enum VpnPath {
 enum VpnRole {
   HUB
   ROUTER
-  AGENT
+  DAEMON
   CLIENT
   OTHER
 }
@@ -275,7 +275,7 @@ enum MetricsSource {
   NONE
   SSH
   "Set only by enrolment (MET-011, R-092 D-7)."
-  AGENT
+  DAEMON
 }
 
 "RA-020. TELNET joins when Telnet exists."
@@ -353,8 +353,10 @@ type Device {
   "Lower-case aa:bb:cc:dd:ee:ff (RA-031)."
   macAddress: String
   metricsSource: MetricsSource!
-  "True when the source is AGENT and no batch came in the last 30 seconds (MET-018)."
+  "True when the source is DAEMON and no batch came in the last 30 seconds (MET-018)."
   metricsStale: Boolean!
+  "The version of the device's daemon from its last batch; null unless the source is DAEMON and the daemon sent one (R-122, ROL-051)."
+  daemonVersion: String
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
@@ -855,7 +857,7 @@ type Storage {
 }
 
 # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
-"A device's capabilities: today the tool inventory its agent last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
+"A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
 type DeviceCapabilities {
   device: Device!
   "aarch64 or x86_64."
@@ -864,7 +866,7 @@ type DeviceCapabilities {
   os: String!
   "For example 27.0 (macOS) or 24.04 (the Linux distribution; the kernel release when it has none). 1 to 64 bytes of [0-9A-Za-z.+_-]."
   osVersion: String!
-  "The tools the agent found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
+  "The tools the daemon found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
   tools: [Tool!]!
   "The installed Rust targets (rustup), in byte order."
   buildTargets: [String!]!
@@ -872,7 +874,7 @@ type DeviceCapabilities {
   foundAt: DateTime!
 }
 
-"One tool the agent found (CAP-024, CAP-025)."
+"One tool the daemon found (CAP-024, CAP-025)."
 type Tool {
   "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude or codex."
   name: String!
@@ -890,9 +892,9 @@ enum NotUsableReason {
   TIMED_OUT
   "It could not start, or exited with a failure."
   EXITED
-  "It ran but printed no version the agent reads."
+  "It ran but printed no version the daemon reads."
   NO_VERSION
-  "A reason this hub does not know (a newer agent's)."
+  "A reason this hub does not know (a newer daemon's)."
   FAILED
 }
 
@@ -1474,6 +1476,15 @@ type LinkInvite {
   expiresAt: DateTime!
 }
 
+"""What a hosted hub gives the Anima.ing cloud for a new device (hosted-mode.md HMD-037, R-129): shown once, never logged (LOG-007)."""
+type HostedDeviceInvite {
+  "The link invite: works once and expires (LNK-003). Null when a device with this name is already on the link: the claim then gives that device a new token."
+  invite: String
+  "The one-time claim that the device that joined with invite trades for its token (claimDeviceToken)."
+  claim: String!
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -1941,7 +1952,7 @@ type Project {
   id: ID!
   slug: String!
   name: String!
-  "The full name of its first repository; other extensions keep this text (PRJ-016, LNK-004)."
+  "The full name of its first repository; other extensions keep this text (PRJ-016, RLK-004)."
   subjectKey: String!
   repositories: [ProjectRepository!]!
   resources: [ProjectResource!]!
@@ -2471,6 +2482,73 @@ input CommitStatusInput {
   targetUrl: String
 }
 
+# ---------------------------------------------------------------- timeline and record links (E0-4, K-E3, K-E4)
+# Operator, 2026-11-16; ruling number to be assigned. Requirement IDs: TML-001 to TML-007, RLK-001, RLK-002, RLK-004.
+
+"The closed list of TML-004. A new value needs a change to docs/plans/extensions-plan.md."
+enum EvidenceCategory { SLEEP WORKOUT VISIT TRAVEL CODE MESSAGE POST MEDIA READING SPENDING DOCUMENT DEVICE SESSION NOTE }
+
+"How the source knows what an entry says (TML-003)."
+enum EvidenceBasis { OBSERVED PLANNED OPERATOR_REPORTED INFERRED }
+
+"One entry of the timeline. The hub makes it from a record of the owning domain when the timeline is read; it is not stored (TML-001)."
+type Evidence {
+  "The record this entry is made from, as kind:id (K-E4), for example event:0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d."
+  reference: String!
+  "The key of the source that recorded it, for example event_log."
+  source: String!
+  category: EvidenceCategory!
+  "One line for a list."
+  title: String!
+  start: DateTime!
+  "Null: the source gives no end time. Then uncertainty says so (TML-006)."
+  end: DateTime
+  "When the hub received the record, when that is later than the event, such as a delayed import (TML-009). It never replaces start. Null: the hub saw the event when it happened, as for the event log."
+  receivedAt: DateTime
+  basis: EvidenceBasis!
+  "What the source does not say about this entry, one sentence each (TML-006)."
+  uncertainty: [String!]!
+  "The reference of the entry of a higher-ranked source for the same event (TML-005). The entry that has it is kept, not deleted. It is set only when both entries are among those read for this page."
+  supersededBy: String
+}
+
+type EvidenceEdge {
+  cursor: String!
+  node: Evidence!
+}
+
+type EvidenceConnection {
+  edges: [EvidenceEdge!]!
+  pageInfo: PageInfo!
+}
+
+"A link from one record to another (RLK-001). Neither record has to exist (RLK-002)."
+type RecordLink {
+  id: ID!
+  "The record the link starts at, as kind:id."
+  source: String!
+  "The record the link points to, as kind:id."
+  target: String!
+  "What the link means, in lower snake case, for example lent_to."
+  kind: String!
+  "The text to show for the target while it has no record (RLK-002). It is kept after the target has one."
+  label: String
+  "The name of the source record. Null: no domain gives one. A date or a repository key is its own name."
+  sourceTitle: String
+  "The name of the target record. Null: no domain gives one; show label."
+  targetTitle: String
+  createdAt: DateTime!
+}
+
+input RecordLinkInput {
+  source: String!
+  target: String!
+  "Lower snake case, 1 to 40 characters, starts with a letter."
+  kind: String!
+  "One line of at most 200 characters."
+  label: String
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -2530,8 +2608,14 @@ type Query {
   githubConnect: GithubConnectAttempt
 
   # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
-  "Each device whose agent sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
+  "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
+
+  # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
+  "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
+  timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
+  "The links that start or end at record (kind:id), newest first, at most 200. VALIDATION when record is not kind:id."
+  recordLinks(record: String!): [RecordLink!]!
 
   # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
   # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
@@ -2636,9 +2720,9 @@ type Mutation {
   "Login or browser token only (D-23, R-100)."
   revokeApiKey(id: ID!): ID!
   "Login or browser token only (INT-003, D-23, R-100). A new code makes the device's earlier unused codes useless."
-  enrolAgent(deviceId: ID!): AgentEnrolment!
-  "Login or browser token only (D-23, R-100). The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
-  revokeAgentToken(deviceId: ID!): Device!
+  enrolDaemon(deviceId: ID!): DaemonEnrolment!
+  "Login or browser token only (D-23, R-100). The source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7)."
+  revokeDaemonToken(deviceId: ID!): Device!
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 
@@ -2737,6 +2821,17 @@ type Mutation {
   createLinkInvite(name: String!): LinkInvite!
   "Removes the device with this key from the link and closes its streams; returns how many it closed (LNK-004). NOT_FOUND when the link does not list the key. Writes an audit entry. Login or browser token only (D-23)."
   revokeLinkDevice(key: String!): Int!
+  # The hosted mode: the Anima.ing account is the only way in (hosted-mode.md HMD-037, R-129)
+  "An invite and a one-time claim for the device named name, for the Anima.ing cloud only: cloudKey is the key of ANIMA_HOSTED_CLOUD_KEY_FILE. A device already on the link gets a claim and no invite. A new claim for a name ends the open claim of that name. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for a wrong key. The response is no-store."
+  hostedDeviceInvite(cloudKey: String!, name: String!): HostedDeviceInvite!
+  "A login token for the device that sends this through the link, when it joined with the invite of claim. The claim works once, until its invite expires. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for any other refusal. The response is no-store."
+  claimDeviceToken(claim: String!): AuthPayload!
+
+  # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
+  "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."
+  linkRecords(input: RecordLinkInput!): RecordLink!
+  "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
+  unlinkRecords(id: ID!): ID!
 }
 
 type Subscription {

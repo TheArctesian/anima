@@ -15,7 +15,7 @@ describe('inventory findings', () => {
       'unknown-tag odd',
       'unexpected-node odd',
       'unapproved-route router-office1',
-      'tagged-with-expiry agent-nas',
+      'tagged-with-expiry daemon-nas',
       'long-expiry mac2',
       'missing-node ghost',
     ]);
@@ -28,8 +28,8 @@ describe('inventory findings', () => {
     expect(foreign).toEqual([{ kind: 'foreign-user', node: 'stranger', user: 'intruder' }]);
   });
 
-  it('VPN-013: an agent node with an expiry is reported (R-105)', () => {
-    expect(findings(policy, tailnet, expected, NOW)).toContainEqual({ kind: 'tagged-with-expiry', node: 'agent-nas' });
+  it('VPN-013: a daemon node with an expiry is reported (R-105)', () => {
+    expect(findings(policy, tailnet, expected, NOW)).toContainEqual({ kind: 'tagged-with-expiry', node: 'daemon-nas' });
   });
 
   it('VPN-013: a client with no expiry is reported, one at 170 days is not', () => {

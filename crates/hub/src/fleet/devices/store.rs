@@ -54,7 +54,7 @@ pub(super) use detected_os::set_detected_os;
 pub(super) use distribution::set_distribution;
 pub(super) use holds::{lock_device, lock_metrics_source};
 pub(super) use remote::{
-    devices_by_ids, lock_site, set_agent_source, set_wake_relay, share_device, wake_relay,
+    devices_by_ids, lock_site, set_daemon_source, set_wake_relay, share_device, wake_relay,
 };
 pub(super) use sites::{create_site, list_sites, sites_by_ids};
 

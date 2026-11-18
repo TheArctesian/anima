@@ -1,21 +1,21 @@
 //! The metrics GraphQL part: `Query.capabilities` (K1; CAP-030), `Subscription.metricsAdded`
-//! (K1; API-003, MET-005, D-9), and `enrolAgent` and `revokeAgentToken` (K1, K8 Section 3;
+//! (K1; API-003, MET-005, D-9), and `enrolDaemon` and `revokeDaemonToken` (K1, K8 Section 3;
 //! MET-012, MET-013).
 //!
 //! The metric types are served from `model.rs`; the `Device` fields that return them
 //! (`readings`, `metrics`, `gpus`) belong to the devices domain. Each mutation writes its
 //! change, one audit entry and one event in one transaction; neither entry holds the code.
 
-use agent_core::wire::{CODE_BYTES, EnrolmentCode};
 use async_graphql::futures_util::stream::{self, Stream};
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result, Subscription};
 use chrono::SecondsFormat;
+use daemon_core::wire::{CODE_BYTES, EnrolmentCode};
 use serde_json::json;
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use super::{
     CapabilityFilter, DeviceCapabilities, Feed, MetricsAdded,
-    ingest::{self, AgentEnrolment},
+    ingest::{self, DaemonEnrolment},
 };
 use crate::{
     api_errors::{
@@ -34,7 +34,7 @@ pub struct Query;
 
 #[Object(name = "MetricsQuery")]
 impl Query {
-    /// The tool inventory of each device whose agent sent one, in device-name order; `tool`
+    /// The tool inventory of each device whose daemon sent one, in device-name order; `tool`
     /// keeps the devices where it is usable, `buildTarget` those with that target (CAP-030).
     #[graphql(guard = "Authenticated")]
     async fn capabilities(
@@ -56,10 +56,10 @@ pub struct Mutation;
 
 #[Object(name = "MetricsMutation")]
 impl Mutation {
-    /// A one-use code that enrols an agent for the device within 15 minutes; the device's
+    /// A one-use code that enrols a daemon for the device within 15 minutes; the device's
     /// earlier unused codes stop working (MET-012). Login or browser token only (INT-003).
     #[graphql(guard = "Authenticated")]
-    async fn enrol_agent(&self, ctx: &Context<'_>, device_id: ID) -> Result<AgentEnrolment> {
+    async fn enrol_daemon(&self, ctx: &Context<'_>, device_id: ID) -> Result<DaemonEnrolment> {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
         let bytes = ingest::random::<CODE_BYTES>().map_err(internal)?;
@@ -74,10 +74,10 @@ impl Mutation {
         Ok(enrolment)
     }
 
-    /// Ends the device's agent token and its unused codes; the next push or renewal with the
-    /// token is refused. The metrics source stays `AGENT` (MET-013, R-092 D-7).
+    /// Ends the device's daemon token and its unused codes; the next push or renewal with the
+    /// token is refused. The metrics source stays `DAEMON` (MET-013, R-092 D-7).
     #[graphql(guard = "Authenticated")]
-    async fn revoke_agent_token(&self, ctx: &Context<'_>, device_id: ID) -> Result<Device> {
+    async fn revoke_daemon_token(&self, ctx: &Context<'_>, device_id: ID) -> Result<Device> {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
@@ -112,7 +112,7 @@ fn ingest_error(error: ingest::Error) -> GraphQlError {
 }
 
 /// The audit entry and event of a new code: when it stops working, never the code (LOG-007).
-fn code_made(device: &Device, enrolment: &AgentEnrolment) -> TrailEntry {
+fn code_made(device: &Device, enrolment: &DaemonEnrolment) -> TrailEntry {
     let expires_at = enrolment
         .expiry()
         .to_rfc3339_opts(SecondsFormat::Secs, true);
@@ -120,10 +120,10 @@ fn code_made(device: &Device, enrolment: &AgentEnrolment) -> TrailEntry {
         source: Source::Metrics,
         severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
-        message: format!("Made an agent enrolment code for {}.", device.name),
+        message: format!("Made a daemon enrolment code for {}.", device.name),
         action: AuditAction::Create,
         target: AuditTarget::Device(device.id),
-        change: json!({ "agentEnrolment": { "expiresAt": expires_at } }),
+        change: json!({ "daemonEnrolment": { "expiresAt": expires_at } }),
     }
 }
 
@@ -133,10 +133,10 @@ fn token_revoked(device: &Device, had_token: bool) -> TrailEntry {
         source: Source::Metrics,
         severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
-        message: format!("Revoked the agent token of {}.", device.name),
+        message: format!("Revoked the daemon token of {}.", device.name),
         action: AuditAction::Delete,
         target: AuditTarget::Device(device.id),
-        change: json!({ "agent": { "tokenRevoked": had_token } }),
+        change: json!({ "daemon": { "tokenRevoked": had_token } }),
     }
 }
 

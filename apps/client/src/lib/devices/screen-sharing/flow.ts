@@ -5,6 +5,7 @@ import {
   isThisComputer,
   NO_ANSWER_TEXT,
   screenSharingTest,
+  screenSharingUser,
   type ScreenSharingCalls,
   type SetupDevice,
   type SetupState,
@@ -39,7 +40,7 @@ export class SetupFlow {
     const machine = await this.#calls.thisMachine();
     if (run !== this.#run) return;
     const here = isThisComputer(device, machine);
-    const user = here ? machine.user : null;
+    const user = here ? screenSharingUser(machine) : null;
     const answer = await this.#probe(device);
     if (run !== this.#run) return;
     if (answer.kind === 'unreachable' && here && this.#calls.sharingAvailable()) {

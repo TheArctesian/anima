@@ -8,6 +8,8 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest as _, Sha256};
 
+mod installed;
+
 /// The one script the hub serves: it posts the form to GitHub at once.
 pub const SCRIPT: &str = "document.forms[0].submit();";
 
@@ -61,9 +63,7 @@ impl Notice {
             }
             Self::StepPassed => "This step is done. Go back to Anima.ing to see what comes next.",
             Self::TryAgain => "Anima.ing could not finish this step. Try again in a moment.",
-            Self::Connected => {
-                "GitHub is connected. You can close this tab and go back to Anima.ing."
-            }
+            Self::Connected => "You can close this tab and go back to Anima.ing.",
             Self::Finishing => {
                 "The App is made. Anima.ing finishes the connection when GitHub \
                 shows it is installed. You can close this tab."
@@ -111,6 +111,17 @@ fn document(main: &str) -> String {
 #[must_use]
 pub fn notice(notice: Notice) -> String {
     document(&format!("<p>{}</p>", notice.words()))
+}
+
+/// The browser's result when it returns from GitHub (PRJ-039, UR-7).
+#[must_use]
+pub fn installed(notice: Notice) -> String {
+    let heading = if notice == Notice::Connected {
+        "GitHub is connected."
+    } else {
+        "Connect GitHub to Anima.ing"
+    };
+    installed::document(heading, notice.words())
 }
 
 /// The confirm page a signed-in operator opens from the link with no value in it: the same

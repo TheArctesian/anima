@@ -18,10 +18,10 @@
 //!   `src/sessions/files/tests/transfers.rs` for file paths and content;
 //! - recording, which R-113 removed.
 
-mod agents;
 mod capture;
 mod channels;
 mod credentials;
+mod daemons;
 mod edge;
 mod forms;
 mod keys;
@@ -47,7 +47,7 @@ pub struct Secret {
 }
 
 /// The fixed starts of the secrets the hub makes, which are not random.
-const PREFIXES: [&str; 3] = ["anima_agent_", "anima_enrol_", "anima_"];
+const PREFIXES: [&str; 3] = ["anima_daemon_", "anima_enrol_", "anima_"];
 
 impl Secrets {
     /// Plants a new canary of `kind` and returns it.
@@ -127,9 +127,9 @@ const EXPECTED: [&str; 35] = [
     "login-token",
     "api-key",
     "unknown-api-key",
-    "agent-code",
-    "agent-token",
-    "agent-next-token",
+    "daemon-code",
+    "daemon-token",
+    "daemon-next-token",
     "webhook-path",
     "webhook-query",
     "webhook-header",
@@ -168,7 +168,7 @@ async fn log_007_no_phase_3_secret_reaches_the_process_log(pool: PgPool) {
     let hub = WholeHub::new(&pool, now, (feed.clone(), broker.broker())).await;
     let token = operator::sign_in(&hub, &pool, now, &mut secrets).await;
     keys::api_key(&hub, &token, now, &mut secrets).await;
-    agents::enrol(&hub, &token, &mut secrets).await;
+    daemons::enrol(&hub, &token, &mut secrets).await;
     channels::send_tests(&hub, &token, &mut secrets).await;
     credentials::set(&hub, &token, &mut secrets).await;
     vpn::change(&hub, &token, (&pool, &feed, &broker), now).await;
@@ -190,7 +190,12 @@ async fn log_007_no_phase_3_secret_reaches_the_process_log(pool: PgPool) {
         "and the blocking pool's"
     );
     assert!(log.contains(r#""level":"TRACE""#), "the log is at TRACE");
-    for route in ["/graphql", "/metrics", "/agent/v1/enrol", "/agent/v1/renew"] {
+    for route in [
+        "/graphql",
+        "/metrics",
+        "/daemon/v1/enrol",
+        "/daemon/v1/renew",
+    ] {
         assert!(
             log.contains(&format!(r#""path":"{route}""#)),
             "{route} is logged"

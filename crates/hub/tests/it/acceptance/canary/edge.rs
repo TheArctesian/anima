@@ -1,5 +1,5 @@
 //! The whole hub as `main.rs` serves it ([`all_routes`]): `/graphql` at a public origin, the
-//! agent routes, `/metrics` and the tunnels behind the permitted networks, with a VPN feed and
+//! daemon routes, `/metrics` and the tunnels behind the permitted networks, with a VPN feed and
 //! broker, at one fixed instant; and the requests the canary test sends to it.
 
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};

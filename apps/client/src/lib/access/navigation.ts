@@ -1,12 +1,13 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
-import { hasStoredHubAddress } from '$lib/desktop/address';
+import { hasStoredHubAddress, storedHubAddress } from '$lib/desktop/address';
+import { isHostedHub } from '$lib/hosted/mark';
 import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { accessApi } from './api';
 import { startGuard } from './guard';
 import { tokenFor } from './listener/check';
-import { isSignedOut, routePath, SIGN_IN_PATH, WELCOME_PATH } from './routes';
+import { isSignedOut, routePath, signInPathFor, SIGN_IN_PATH, WELCOME_PATH } from './routes';
 import { clientStart, type ClientStart } from './start';
 
 // The browser side of access: the router, the page reload, the platform and the page origin. Logic stays in
@@ -17,8 +18,10 @@ function failed(): void {
   console.warn('Navigation failed.');
 }
 
+/** The sign-in of this client's hub: the password page, or the account for a hosted hub (R-129). */
 export function goToSignIn(): void {
-  goto(resolve(SIGN_IN_PATH)).catch(failed);
+  const hosted = isHostedHub(localStorage, storedHubAddress(localStorage).origin);
+  goto(resolve(signInPathFor(hosted))).catch(failed);
 }
 
 /** The first-run choices of the desktop app (FRN-001). */

@@ -23,6 +23,9 @@ pub enum Error {
     /// asking to manage keys or start a session (D-23, WP-43 A-6).
     #[error("This token cannot do that. Sign in to the hub to do it.")]
     KindRefused,
+    /// A password sign-in on a hosted hub: the Anima.ing account is the only way in (R-129).
+    #[error("This hub is hosted by Anima.ing. Sign in with your Anima.ing account.")]
+    Hosted,
     /// `signInBrowser` came from another origin than the hub's own, or with none (A-4).
     #[error("Sign in from the hub's own address.")]
     OtherOrigin,
@@ -91,6 +94,7 @@ impl Error {
             Self::ReadOnly
             | Self::KindRefused
             | Self::OtherOrigin
+            | Self::Hosted
             | Self::NotPermitted
             | Self::OutOfScope(_) => "FORBIDDEN",
             Self::Validation { .. } => "VALIDATION",
@@ -114,6 +118,7 @@ impl Error {
             | Self::ReadOnly
             | Self::KindRefused
             | Self::OtherOrigin
+            | Self::Hosted
             | Self::NotPermitted
             | Self::OutOfScope(_)
             | Self::Validation { .. } => None,
@@ -174,6 +179,7 @@ impl Error {
             | Self::ReadOnly
             | Self::KindRefused
             | Self::OtherOrigin
+            | Self::Hosted
             | Self::NotPermitted
             | Self::OutOfScope(_)
             | Self::Validation { .. }

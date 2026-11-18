@@ -1,12 +1,12 @@
 //! What each GPU vendor's output says, the AMD files split by card, and the samples of the
 //! GPUs a discovery numbered (MET-006, MET-007, MET-009, D-30).
 
-use agent_core::points::Kind;
-use agent_core::readings::captures::{
+use chrono::{DateTime, Utc};
+use daemon_core::points::Kind;
+use daemon_core::readings::captures::{
     AMD_GPU_BUSY_PERCENT, AMD_VRAM_TOTAL, AMD_VRAM_USED, INTEL_GPU_TOP_ARRAY, IOREG_ACCELERATOR,
     NVIDIA_SMI_NOT_AVAILABLE, NVIDIA_SMI_TWO,
 };
-use chrono::{DateTime, Utc};
 
 use crate::fleet::{
     metrics::{
@@ -54,7 +54,7 @@ pub(super) fn amd_card(card: u32) -> Vec<u8> {
     out
 }
 
-fn gpus(answer: &Answer) -> &[agent_core::readings::GpuReading] {
+fn gpus(answer: &Answer) -> &[daemon_core::readings::GpuReading] {
     match answer {
         Answer::Gpus(gpus) => gpus,
         Answer::Failed | Answer::Unknown => panic!("no readings"),

@@ -17,6 +17,14 @@ const SIGN_IN_BROWSER = graphql(`
   }
 `);
 
+const CLAIM_DEVICE_TOKEN = graphql(`
+  mutation ClaimDeviceToken($claim: String!) {
+    claimDeviceToken(claim: $claim) {
+      token
+    }
+  }
+`);
+
 const LOGOUT = graphql(`
   mutation Logout {
     logout
@@ -48,6 +56,12 @@ export interface AccessApi {
    * (CLI-003, D-3). The value is only when that token ends.
    */
   signInBrowser(input: LoginInput): Promise<HubResult<string>>;
+  /**
+   * The token of this device on a hosted hub, for the one-time claim the cloud gave with its invite (R-129). The hub
+   * answers only a device of its link that joined with that invite. The caller keeps the token only until it has
+   * written it to the key store (CLI-003).
+   */
+  claimDeviceToken(claim: string): Promise<HubResult<string>>;
   /** Ends the token on the hub; for a browser the hub also clears the cookie (K7). */
   logout(): Promise<HubResult<boolean>>;
   /** Who the stored token belongs to; `UNAUTHENTICATED` when there is none or it is no longer valid. */
@@ -62,6 +76,8 @@ export function accessApi(hub: Pick<Hub, 'request'>): AccessApi {
   return {
     login: async (input) => mapValue(await hub.request(LOGIN, { input }), (value) => value.login.token),
     signInBrowser: async (input) => mapValue(await hub.request(SIGN_IN_BROWSER, { input }), (value) => value.signInBrowser.expiresAt),
+    claimDeviceToken: async (claim) =>
+      mapValue(await hub.request(CLAIM_DEVICE_TOKEN, { claim }), (value) => value.claimDeviceToken.token),
     logout: async () => mapValue(await hub.request(LOGOUT, {}), (value) => value.logout),
     me: async () => mapValue(await hub.request(ME, {}), (value) => value.me),
   };

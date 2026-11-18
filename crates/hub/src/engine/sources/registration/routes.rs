@@ -103,9 +103,8 @@ fn notice(status: StatusCode, notice: Notice) -> Response {
     html(status, pages::notice(notice))
 }
 
-/// A notice that also clears the cookie: the done and failure pages.
-fn last(status: StatusCode, notice: Notice) -> Response {
-    let mut response = self::notice(status, notice);
+/// Clears the binding cookie on the done and failure pages.
+fn clear_binding(mut response: Response) -> Response {
     let cleared = format!("{COOKIE}=; Max-Age=0; {ATTRIBUTES}");
     if let Ok(value) = HeaderValue::from_str(&cleared) {
         response.headers_mut().insert(header::SET_COOKIE, value);
@@ -240,7 +239,7 @@ async fn back_from_create(
         Created::Waiting => notice(StatusCode::OK, Notice::Finishing),
         Created::Refused(Refusal::Conflict) => notice(StatusCode::CONFLICT, Notice::StepPassed),
         Created::Refused(_) => notice(StatusCode::BAD_REQUEST, Notice::NotThisBrowser),
-        Created::Failed => last(StatusCode::OK, Notice::Failed),
+        Created::Failed => clear_binding(notice(StatusCode::OK, Notice::Failed)),
     }
 }
 
@@ -273,7 +272,7 @@ async fn back_from_install(
         if matches!(seen, Ok(((true, _), ..))) {
             flow.attempts.wake();
         }
-        return notice(StatusCode::OK, Notice::MaybeInstalled);
+        return html(StatusCode::OK, pages::installed(Notice::MaybeInstalled));
     };
     let ended = match phase {
         Phase::Connected | Phase::Failed | Phase::Cancelled => Some(phase),
@@ -282,9 +281,15 @@ async fn back_from_install(
         }
         Phase::WaitingForBrowser | Phase::AtGithub => None,
     };
-    match ended {
-        Some(Phase::Connected) => last(StatusCode::OK, Notice::Connected),
-        Some(Phase::Failed | Phase::Cancelled) => last(StatusCode::OK, Notice::Failed),
-        _ => notice(StatusCode::OK, Notice::Finishing),
+    let notice = match ended {
+        Some(Phase::Connected) => Notice::Connected,
+        Some(Phase::Failed | Phase::Cancelled) => Notice::Failed,
+        _ => Notice::Finishing,
+    };
+    let response = html(StatusCode::OK, pages::installed(notice));
+    if matches!(notice, Notice::Connected | Notice::Failed) {
+        clear_binding(response)
+    } else {
+        response
     }
 }

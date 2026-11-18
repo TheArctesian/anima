@@ -80,9 +80,9 @@ pub(in crate::fleet::devices) async fn write_change(
     Ok(())
 }
 
-/// Sets the metrics source to `agent` and returns the device's name; the update locks the
+/// Sets the metrics source to `daemon` and returns the device's name; the update locks the
 /// device row first, the order `delete_device` takes it in.
-pub(in crate::fleet::devices) async fn set_agent_source(
+pub(in crate::fleet::devices) async fn set_daemon_source(
     conn: &mut PgConnection,
     id: DeviceId,
 ) -> Result<String, Error> {
@@ -90,7 +90,7 @@ pub(in crate::fleet::devices) async fn set_agent_source(
         "UPDATE devices.devices SET metrics_source = $2 WHERE id = $1 RETURNING name",
     )
     .bind(id)
-    .bind(MetricsSource::Agent.as_str())
+    .bind(MetricsSource::Daemon.as_str())
     .fetch_optional(conn)
     .await?;
     name.ok_or(Error::NotFound(Missing::Device(id)))

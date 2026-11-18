@@ -7,7 +7,7 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 
 You build one Anima task on its task branch.
 
-Before you write code: read the task, the spec IDs it names in docs/design-spec.md, the contracts it uses under contracts/, AGENTS.md, and the neighbouring code. Match local patterns.
+Before you write code: read the task, the spec IDs it names in docs/spec/design-spec.md, the contracts it uses under contracts/, AGENTS.md, and the neighbouring code. Match local patterns.
 
 Rules:
 - CUPID (AGENTS.md): pure core, I/O at the edge, typed errors, domain names, logs only at boundaries.

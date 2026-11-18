@@ -1,9 +1,9 @@
-//! Who may use the database for an agent now (K8 Section 6, MET-017).
+//! Who may use the database for a daemon now (K8 Section 6, MET-017).
 //!
 //! - At most [`ADDRESS_REQUESTS`] requests per client address until the request's credential is
 //!   known, so one VPN node with junk bearers or codes cannot keep the hub busy for the others.
 //!   All requests from one address share its turns.
-//! - At most [`AGENT_REQUESTS`] agent requests using the database at once, well under the pool.
+//! - At most [`DAEMON_REQUESTS`] daemon requests using the database at once, well under the pool.
 //!   A request waits for its turn in order, up to the wait it is given, and holds it only
 //!   around its database work, never while a body arrives. A valid token's store holds its turn
 //!   until it ends, at most until the answer's deadline.
@@ -28,16 +28,16 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::ids::DeviceId;
 
-/// The most agent requests that use the database at once: well under the hub's pool of 10
+/// The most daemon requests that use the database at once: well under the hub's pool of 10
 /// connections (`PgPool::connect`'s default), so the operator's requests and the checks always
 /// find one.
-pub(super) const AGENT_REQUESTS: usize = 4;
+pub(super) const DAEMON_REQUESTS: usize = 4;
 
 /// The most requests of one client address before their credentials are known: the node's
-/// agent, which sends one at a time, and an enrolment beside it (MET-012).
+/// daemon, which sends one at a time, and an enrolment beside it (MET-012).
 pub(super) const ADDRESS_REQUESTS: usize = 2;
 
-/// The agent requests in progress.
+/// The daemon requests in progress.
 #[derive(Clone)]
 pub(super) struct Turns {
     requests: Arc<Semaphore>,
@@ -47,7 +47,7 @@ pub(super) struct Turns {
 }
 
 impl Turns {
-    /// Room for `requests` agent requests at once, each waiting up to `wait` for its turn.
+    /// Room for `requests` daemon requests at once, each waiting up to `wait` for its turn.
     pub(super) fn new(requests: usize, wait: Duration) -> Self {
         Self {
             requests: Arc::new(Semaphore::new(requests)),

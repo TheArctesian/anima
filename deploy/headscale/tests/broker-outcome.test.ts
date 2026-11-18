@@ -69,7 +69,7 @@ describe('audit of router keys', () => {
   });
 
   it('a node that passed once is not checked again', () => {
-    const changed = listed(4, { user: 'tagged-devices', tags: ['tag:router', 'tag:site-home', 'tag:agent'], expiry: null, preAuthKeyId: 21 });
+    const changed = listed(4, { user: 'tagged-devices', tags: ['tag:router', 'tag:site-home', 'tag:daemon'], expiry: null, preAuthKeyId: 21 });
     const result = audit(tailnetOfNodes([changed]), [routerKey(21, 'home', true)], null, NOW);
     expect(result).toEqual({ fixes: [], issued: [routerKey(21, 'home', true)] });
   });

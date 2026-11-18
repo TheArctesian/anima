@@ -73,9 +73,9 @@ describe("hub configuration", () => {
     const source = readFileSync(CONFIG_PATH, "utf8");
     const conventions = readFileSync(join(ROOT, "contracts", "conventions.md"), "utf8");
     // Phase 2 variables (K7) are frozen in phase-2-contracts.md until conventions.md absorbs them.
-    const phase2 = readFileSync(join(ROOT, "docs", "programme", "phase-2-contracts.md"), "utf8");
+    const phase2 = readFileSync(join(ROOT, "docs", "archive", "phase-2", "phase-2-contracts.md"), "utf8");
     // Phase 3 variables (K7) are frozen in phase-3-contracts.md for the same reason.
-    const phase3 = readFileSync(join(ROOT, "docs", "programme", "phase-3-contracts.md"), "utf8");
+    const phase3 = readFileSync(join(ROOT, "docs", "plans", "phase-3", "phase-3-contracts.md"), "utf8");
     const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g), ...conventions.matchAll(/`(ANIMA_[A-Z_]+)`/g), ...phase2.matchAll(/`(ANIMA_[A-Z_]+)`/g), ...phase3.matchAll(/`(ANIMA_[A-Z_]+)`/g)].map((match) => match[1]));
     for (const name of ["hub", "migrate"]) {
       for (const key of Object.keys(compose.services[name]?.environment ?? {})) {

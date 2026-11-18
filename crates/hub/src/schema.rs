@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, sources},
+    engine::{extensions, links, sources, timeline},
     fleet::{
         access, builds, checks,
         credentials::Vault,
@@ -39,6 +39,7 @@ pub struct Query(
     events::graphql::Query,
     extensions::graphql::Query,
     link::graphql::Query,
+    links::graphql::Query,
     maintenance::graphql::Query,
     metrics::graphql::Query,
     notifications::graphql::Query,
@@ -47,6 +48,7 @@ pub struct Query(
     sessions::graphql::Query,
     sources::graphql::Query,
     sources::graphql::GithubConnectQuery,
+    timeline::graphql::Query,
     vpn::graphql::Query,
 );
 
@@ -59,6 +61,8 @@ pub struct Mutation(
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
     link::graphql::Mutation,
+    link::graphql::HostedMutation,
+    links::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
@@ -164,7 +168,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(clock.clone())
     .data(pool.clone())
     .data(bus)
-    .data(vault);
+    .data(vault)
+    // The open claims of a hosted hub (R-129).
+    .data(link::Claims::default());
     // One block per domain: its loaders (R-014) and its state.
     with_devices_loaders(builder, &pool, &clock)
         // checks
@@ -194,6 +200,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(sources)
         // projects: the changes each API key made this minute (K-E1 Section 13.1)
         .data(projects::KeyChanges::default())
+        // timeline: one adapter for each domain that has records to show (K-E3)
+        .data(timeline::Adapters::new(vec![timeline::event_log()]))
         .finish()
 }
 
@@ -220,6 +228,7 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::daemon_version_loader(pool.clone()).delay(BATCH_WINDOW))
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

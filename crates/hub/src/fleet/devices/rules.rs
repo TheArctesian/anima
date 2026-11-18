@@ -6,7 +6,7 @@ mod remote;
 
 pub(super) use remote::{rdp_settings, vnc_settings, wake_relay};
 
-use agent_core::wire::DEVICE_NAME_CHARS;
+use daemon_core::wire::DEVICE_NAME_CHARS;
 
 use super::{
     model::{
@@ -148,8 +148,8 @@ fn length_between(text: &str, max: usize) -> bool {
     (1..=max).contains(&text.chars().count())
 }
 
-/// A device's name: its agent keeps every name of up to `DEVICE_NAME_CHARS` characters (K8
-/// Section 3, MET-012), so the length comes from the agent's rule.
+/// A device's name: its daemon keeps every name of up to `DEVICE_NAME_CHARS` characters (K8
+/// Section 3, MET-012), so the length comes from the daemon's rule.
 fn device_name(text: &str) -> Result<String, FieldError> {
     name(text, "name", DEVICE_NAME_CHARS)
 }

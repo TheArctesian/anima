@@ -1,4 +1,4 @@
-//! The bearer layer, and agent secrets on every transport, on a pool that fails on use: an
+//! The bearer layer, and daemon secrets on every transport, on a pool that fails on use: an
 //! answer of 401 or no identity proves no lookup ran, because a lookup on that pool fails (A-9,
 //! R-092 D-1). The answers on a database are in the `it` crate (`tests/it/bearer/`).
 
@@ -40,8 +40,8 @@ fn failing_pool() -> PgPool {
         .expect("a lazy pool")
 }
 
-fn agent_token() -> String {
-    format!("anima_agent_{}", URL_SAFE_NO_PAD.encode([9_u8; 32]))
+fn daemon_token() -> String {
+    format!("anima_daemon_{}", URL_SAFE_NO_PAD.encode([9_u8; 32]))
 }
 
 fn enrolment_code() -> String {
@@ -80,14 +80,14 @@ fn bearer_headers(value: &str) -> HeaderMap {
 }
 
 #[tokio::test]
-async fn r_092_an_agent_secret_is_no_identity_and_never_looked_up() {
+async fn r_092_a_daemon_secret_is_no_identity_and_never_looked_up() {
     let db = failing_pool();
     let now = Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap();
     // The control: a token that is looked up fails on this pool.
     let looked_up = resolve(&db, &plain_token(), Transport::Bearer, now).await;
     assert!(matches!(looked_up, Err(Error::Unreachable(_))));
 
-    for secret in [agent_token(), enrolment_code()] {
+    for secret in [daemon_token(), enrolment_code()] {
         for transport in [Transport::Bearer, Transport::Cookie] {
             let resolved = resolve(&db, &secret, transport, now).await;
             assert!(matches!(resolved, Ok(None)), "{transport:?}");
@@ -142,7 +142,7 @@ async fn a_9_a_request_without_one_bearer_token_gets_401_with_no_lookup_and_no_r
     let (router, reached) = guarded(Scope::Read);
     let token = plain_token();
     let bearer = format!("Bearer {token}");
-    let agent = format!("Bearer {}", agent_token());
+    let daemon = format!("Bearer {}", daemon_token());
     let enrolment = format!("Bearer {}", enrolment_code());
     let cookie = format!("__Host-anima={token}");
     let cases: [&[(&str, &str)]; 11] = [
@@ -155,7 +155,7 @@ async fn a_9_a_request_without_one_bearer_token_gets_401_with_no_lookup_and_no_r
         &[("authorization", "Bearer ")],
         &[("authorization", "Bearer not-a-token")],
         &[("authorization", &format!("Bearer {token}x"))],
-        &[("authorization", &agent)],
+        &[("authorization", &daemon)],
         &[("authorization", &enrolment)],
     ];
     for headers in cases {

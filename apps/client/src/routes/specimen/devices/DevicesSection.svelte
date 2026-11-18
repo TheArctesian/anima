@@ -29,7 +29,7 @@
       status: status as Status,
       uptime,
       macAddress: protocols.includes('Wake') ? '00:11:22:33:44:55' : null,
-      metricsSource: readings === null ? 'NONE' : 'AGENT',
+      metricsSource: readings === null ? 'NONE' : 'DAEMON',
       readings:
         readings === null
           ? null

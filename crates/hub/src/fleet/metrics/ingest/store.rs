@@ -1,7 +1,9 @@
-//! All SQL on `metrics.agents` and `metrics.enrolments` (K2 0710, 0712). Lookups are by hash
+//! All SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716, 0717, 0718). Lookups are by hash
 //! only; the time is a parameter, and a value is usable until, not at, its expiry.
 
-use agent_core::wire::{CodeHash, TokenHash};
+use daemon_core::wire::{CodeHash, TokenHash};
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
@@ -55,7 +57,8 @@ pub(super) async fn use_code(
 }
 
 /// Makes `token` the device's only token, with no renewed one beside it. The stale timer
-/// starts again: the new agent has sent no batch yet (MET-018).
+/// starts again, and the version is forgotten: the new daemon has sent no batch yet (MET-018,
+/// R-122).
 pub(super) async fn replace_token(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -63,10 +66,10 @@ pub(super) async fn replace_token(
     expires_at: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "INSERT INTO metrics.agents (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
+        "INSERT INTO metrics.daemons (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
          ON CONFLICT (device_id) DO UPDATE SET token_sha256 = excluded.token_sha256, \
              expires_at = excluded.expires_at, next_token_sha256 = NULL, next_expires_at = NULL, \
-             last_batch_at = NULL, stale_at = NULL",
+             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
@@ -86,7 +89,7 @@ pub(super) async fn holder(
 ) -> Result<Option<DeviceId>, sqlx::Error> {
     let hash = token.to_bytes();
     let promoted: Option<DeviceId> = sqlx::query_scalar(
-        "UPDATE metrics.agents SET token_sha256 = next_token_sha256, \
+        "UPDATE metrics.daemons SET token_sha256 = next_token_sha256, \
              expires_at = next_expires_at, next_token_sha256 = NULL, next_expires_at = NULL \
          WHERE next_token_sha256 = $1 AND next_expires_at > $2 RETURNING device_id",
     )
@@ -98,7 +101,7 @@ pub(super) async fn holder(
         return Ok(promoted);
     }
     sqlx::query_scalar(
-        "SELECT device_id FROM metrics.agents WHERE token_sha256 = $1 AND expires_at > $2",
+        "SELECT device_id FROM metrics.daemons WHERE token_sha256 = $1 AND expires_at > $2",
     )
     .bind(hash.as_slice())
     .bind(now)
@@ -116,7 +119,7 @@ pub(super) async fn set_next(
     (now, expires_at): (DateTime<Utc>, DateTime<Utc>),
 ) -> Result<Option<DeviceId>, sqlx::Error> {
     sqlx::query_scalar(
-        "UPDATE metrics.agents SET next_token_sha256 = $2, next_expires_at = $4 \
+        "UPDATE metrics.daemons SET next_token_sha256 = $2, next_expires_at = $4 \
          WHERE token_sha256 = $1 AND expires_at > $3 RETURNING device_id",
     )
     .bind(current.to_bytes().as_slice())
@@ -145,7 +148,7 @@ pub(super) async fn code_kept(
 /// Deletes the device's token and all its codes, used ones too, so an exchange whose code was
 /// redeemed before the revoke finds it gone; whether the device had a token.
 pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<bool, sqlx::Error> {
-    let deleted = sqlx::query("DELETE FROM metrics.agents WHERE device_id = $1")
+    let deleted = sqlx::query("DELETE FROM metrics.daemons WHERE device_id = $1")
         .bind(device)
         .execute(&mut *conn)
         .await?;
@@ -168,9 +171,9 @@ pub(super) async fn take_batch(
 ) -> Result<Option<bool>, sqlx::Error> {
     sqlx::query_scalar(
         "WITH old AS ( \
-            SELECT device_id, stale_at FROM metrics.agents \
+            SELECT device_id, stale_at FROM metrics.daemons \
             WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE) \
-         UPDATE metrics.agents a \
+         UPDATE metrics.daemons a \
          SET last_batch_at = GREATEST(a.last_batch_at, $3), stale_at = NULL FROM old \
          WHERE a.device_id = old.device_id RETURNING old.stale_at IS NOT NULL",
     )
@@ -181,14 +184,50 @@ pub(super) async fn take_batch(
     .await
 }
 
-/// The devices whose agent has sent a batch, none since before `cutoff`, and is not marked
+/// Records `version`, the daemon version of the batch accepted at `at`, in the caller's
+/// transaction after [`take_batch`]; `None` is a daemon older than R-122. A batch that started
+/// earlier and commits after a newer one leaves the newer one's version (R-122).
+pub(super) async fn record_version(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    version: Option<&str>,
+    at: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE metrics.daemons SET daemon_version = $2 \
+         WHERE device_id = $1 AND last_batch_at = $3",
+    )
+    .bind(device)
+    .bind(version)
+    .bind(at)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// The daemon version of each of `devices` whose last batch had one (R-122).
+pub(in crate::fleet::metrics) async fn daemon_versions(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, String>, sqlx::Error> {
+    let rows: Vec<(DeviceId, String)> = sqlx::query_as(
+        "SELECT device_id, daemon_version FROM metrics.daemons \
+         WHERE device_id = ANY($1) AND daemon_version IS NOT NULL",
+    )
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    Ok(rows.into_iter().collect())
+}
+
+/// The devices whose daemon has sent a batch, none since before `cutoff`, and is not marked
 /// stale yet (MET-018).
 pub(super) async fn overdue(
     db: &PgPool,
     cutoff: DateTime<Utc>,
 ) -> Result<Vec<DeviceId>, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT device_id FROM metrics.agents \
+        "SELECT device_id FROM metrics.daemons \
          WHERE stale_at IS NULL AND last_batch_at < $1 ORDER BY device_id",
     )
     .bind(cutoff)
@@ -196,7 +235,7 @@ pub(super) async fn overdue(
     .await
 }
 
-/// Marks the device's agent stale at `now` in the caller's transaction, unless a batch came at
+/// Marks the device's daemon stale at `now` in the caller's transaction, unless a batch came at
 /// or after `cutoff` or it is marked already; whether this marked it.
 pub(super) async fn mark_stale(
     conn: &mut PgConnection,
@@ -204,7 +243,7 @@ pub(super) async fn mark_stale(
     (cutoff, now): (DateTime<Utc>, DateTime<Utc>),
 ) -> Result<bool, sqlx::Error> {
     let marked = sqlx::query(
-        "UPDATE metrics.agents SET stale_at = $3 \
+        "UPDATE metrics.daemons SET stale_at = $3 \
          WHERE device_id = $1 AND stale_at IS NULL AND last_batch_at < $2",
     )
     .bind(device)
@@ -215,14 +254,14 @@ pub(super) async fn mark_stale(
     Ok(marked.rows_affected() > 0)
 }
 
-/// Of `devices`, those with no fresh agent: no token, no batch yet, or marked stale (MET-018).
-pub(super) async fn without_fresh_agent(
+/// Of `devices`, those with no fresh daemon: no token, no batch yet, or marked stale (MET-018).
+pub(super) async fn without_fresh_daemon(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<Vec<DeviceId>, sqlx::Error> {
     sqlx::query_scalar(
         "SELECT d FROM unnest($1::uuid[]) AS d WHERE NOT EXISTS ( \
-            SELECT 1 FROM metrics.agents a WHERE a.device_id = d \
+            SELECT 1 FROM metrics.daemons a WHERE a.device_id = d \
             AND a.last_batch_at IS NOT NULL AND a.stale_at IS NULL)",
     )
     .bind(devices)

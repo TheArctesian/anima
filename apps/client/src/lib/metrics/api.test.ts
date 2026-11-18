@@ -43,28 +43,42 @@ describe('metricsApi', () => {
     expect(heard).toEqual([batch, DENIED]);
     expect(fake.listeners('MetricsAdded')).toBe(0);
   });
+});
 
-  it('enrolAgent asks for the device and returns the code and its expiry', async () => {
+describe('metricsApi: the daemon', () => {
+  it('enrolDaemon asks for the device and returns the code and its expiry', async () => {
     const enrolment = { code: 'anima_enrol_AbCdEfGhIjKlMnOpQrStUv', expiresAt: '2026-11-09T10:15:00Z' };
-    const fake = fakeHub({ EnrolAgent: { enrolAgent: enrolment }, });
-    expect(await metricsApi(fake.hub).enrolAgent('d1')).toEqual({ ok: true, value: enrolment });
-    expect(fake.requests).toEqual([{ operation: 'EnrolAgent', variables: { deviceId: 'd1' } }]);
+    const fake = fakeHub({ EnrolDaemon: { enrolDaemon: enrolment }, });
+    expect(await metricsApi(fake.hub).enrolDaemon('d1')).toEqual({ ok: true, value: enrolment });
+    expect(fake.requests).toEqual([{ operation: 'EnrolDaemon', variables: { deviceId: 'd1' } }]);
   });
 
-  it('enrolAgent and revokeAgentToken pass a hub error through', async () => {
-    const fake = fakeHub({ EnrolAgent: DENIED, RevokeAgentToken: DENIED });
-    expect(await metricsApi(fake.hub).enrolAgent('d1')).toEqual({ ok: false, error: DENIED });
-    expect(await metricsApi(fake.hub).revokeAgentToken('d1')).toEqual({ ok: false, error: DENIED });
+  it('enrolDaemon and revokeDaemonToken pass a hub error through', async () => {
+    const fake = fakeHub({ EnrolDaemon: DENIED, RevokeDaemonToken: DENIED });
+    expect(await metricsApi(fake.hub).enrolDaemon('d1')).toEqual({ ok: false, error: DENIED });
+    expect(await metricsApi(fake.hub).revokeDaemonToken('d1')).toEqual({ ok: false, error: DENIED });
   });
 
-  it('revokeAgentToken returns the source and stale flag the hub answers', async () => {
-    const fake = fakeHub({ RevokeAgentToken: { revokeAgentToken: { id: 'd1', metricsSource: 'AGENT', metricsStale: true } } });
-    expect(await metricsApi(fake.hub).revokeAgentToken('d1')).toEqual({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true } });
+  it('revokeDaemonToken returns the source and stale flag the hub answers', async () => {
+    const fake = fakeHub({ RevokeDaemonToken: { revokeDaemonToken: { id: 'd1', metricsSource: 'DAEMON', metricsStale: true, daemonVersion: null } } });
+    expect(await metricsApi(fake.hub).revokeDaemonToken('d1')).toEqual({
+      ok: true,
+      value: { metricsSource: 'DAEMON', metricsStale: true, daemonVersion: null },
+    });
   });
 
-  it('agentStatus returns the state, or null for an unknown device', async () => {
-    const known = fakeHub({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale: false } } });
-    expect(await metricsApi(known.hub).agentStatus('d1')).toEqual({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
-    expect(await metricsApi(fakeHub({ AgentStatus: { device: null } }).hub).agentStatus('x')).toEqual({ ok: true, value: null });
+  it('daemonStatus returns the state, or null for an unknown device', async () => {
+    const known = fakeHub({ DaemonStatus: { device: { id: 'd1', metricsSource: 'DAEMON', metricsStale: false, daemonVersion: null } } });
+    expect(await metricsApi(known.hub).daemonStatus('d1')).toEqual({
+      ok: true,
+      value: { metricsSource: 'DAEMON', metricsStale: false, daemonVersion: null },
+    });
+    expect(await metricsApi(fakeHub({ DaemonStatus: { device: null } }).hub).daemonStatus('x')).toEqual({ ok: true, value: null });
+  });
+
+  it('R-122: daemonStatus gives the version the daemon reported', async () => {
+    const known = fakeHub({ DaemonStatus: { device: { id: 'd1', metricsSource: 'DAEMON', metricsStale: false, daemonVersion: '0.3.1' } } });
+    const result = await metricsApi(known.hub).daemonStatus('d1');
+    expect(result.ok && result.value?.daemonVersion).toBe('0.3.1');
   });
 });

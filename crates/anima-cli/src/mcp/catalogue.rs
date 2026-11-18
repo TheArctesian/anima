@@ -22,6 +22,8 @@ pub enum ToolSet {
     Sources,
     Projects,
     Repositories,
+    Timeline,
+    Records,
 }
 
 /// What a tool needs from the token.
@@ -71,7 +73,7 @@ impl Kind {
 }
 
 impl ToolSet {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 17] = [
         Self::Devices,
         Self::Checks,
         Self::Maintenance,
@@ -87,6 +89,8 @@ impl ToolSet {
         Self::Sources,
         Self::Projects,
         Self::Repositories,
+        Self::Timeline,
+        Self::Records,
     ];
 
     /// The set's name as `--toolsets` takes it.
@@ -108,6 +112,8 @@ impl ToolSet {
             Self::Sources => "sources",
             Self::Projects => "projects",
             Self::Repositories => "repositories",
+            Self::Timeline => "timeline",
+            Self::Records => "records",
         }
     }
 

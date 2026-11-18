@@ -1,5 +1,5 @@
 {
   "bundle": {
-    "externalBin": ["binaries/anima-agent"]
+    "externalBin": ["binaries/anima-daemon"]
   }
 }

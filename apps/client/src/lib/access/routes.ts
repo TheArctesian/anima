@@ -4,6 +4,17 @@ export const SIGN_IN_PATH = '/sign-in';
 /** The first-run choices of the desktop app (FRN-001, NAV-009). */
 export const WELCOME_PATH = '/welcome';
 
+/** The sign-in with the Anima.ing account (HMD-022). */
+export const HOSTED_PATH = '/welcome/hosted';
+
+/**
+ * Where a device that must sign in goes: the hub password page, or, for a hub hosted by Anima.ing, the account sign-in,
+ * which first renews the session silently (R-129, HMD-041, HMD-043). Never the password page for a hosted hub.
+ */
+export function signInPathFor(hosted: boolean): typeof SIGN_IN_PATH | typeof HOSTED_PATH {
+  return hosted ? HOSTED_PATH : SIGN_IN_PATH;
+}
+
 /** Whether `route` is `parent` or below it by whole segment: `/sign-in/x` is below `/sign-in`, `/sign-inx` is not. */
 function within(route: string, parent: string): boolean {
   return route === parent || route.startsWith(`${parent}/`);

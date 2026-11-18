@@ -1,0 +1,7 @@
+# `anima daemon enrol`: the one-time code, shown once (MET-012, LOG-007).
+mutation DaemonEnrol($deviceId: ID!) {
+  enrolDaemon(deviceId: $deviceId) {
+    code
+    expiresAt
+  }
+}

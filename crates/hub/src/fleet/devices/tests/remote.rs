@@ -279,15 +279,15 @@ fn ra_030_every_remote_error_is_reported_with_the_other_fields_at_once() {
 }
 
 #[test]
-fn met_011_r_092_d_7_only_enrolment_sets_the_agent_source() {
+fn met_011_r_092_d_7_only_enrolment_sets_the_daemon_source() {
     let form = |source| RemoteForm {
         metrics_source: Some(source),
         ..RemoteForm::default()
     };
-    let created = validate_new_device(&with_remote(form(MetricsSource::Agent)));
+    let created = validate_new_device(&with_remote(form(MetricsSource::Daemon)));
     assert_eq!(fields(&created.unwrap_err()), ["metricsSource"]);
     let changed = validate_change(&DeviceChangeInput {
-        remote: form(MetricsSource::Agent),
+        remote: form(MetricsSource::Daemon),
         ..DeviceChangeInput::default()
     });
     assert_eq!(fields(&changed.unwrap_err()), ["metricsSource"]);
@@ -300,5 +300,5 @@ fn met_011_r_092_d_7_only_enrolment_sets_the_agent_source() {
         });
         assert_eq!(changed.unwrap().remote.metrics_source, Some(source));
     }
-    assert_eq!("agent".parse(), Ok(MetricsSource::Agent));
+    assert_eq!("daemon".parse(), Ok(MetricsSource::Daemon));
 }

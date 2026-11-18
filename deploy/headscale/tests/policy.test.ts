@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { parsePolicy, PolicyError, type PolicyErrorCode } from '../src/policy.ts';
 import { allows, runPolicyTests, type TailnetNode } from '../src/tailnet.ts';
-import { AGENT_ROWS, allowed, everyone, nodes, policy, raw, ROUTER_ROWS, SITES, tcp, withGrants, withTests, type From, type To } from './policy-fixture.ts';
+import { DAEMON_ROWS, allowed, everyone, nodes, policy, raw, ROUTER_ROWS, SITES, tcp, withGrants, withTests, type From, type To } from './policy-fixture.ts';
 
 describe('policy tests block', () => {
   test('vpn_004 every row of the policy tests block passes in the evaluator', () => {
@@ -45,37 +45,37 @@ describe('policy tests block', () => {
   });
 });
 
-describe('agent devices (MET-020, R-084)', () => {
+describe('daemon devices (MET-020, R-084)', () => {
   const probe = (from: From, to: To, port: number, proto: string): boolean => allows(policy, everyone, { from, to, port, proto });
 
-  test('met_020 every agent-tag row passes in the evaluator', () => {
-    expect(runPolicyTests(withTests(AGENT_ROWS), nodes)).toEqual([]);
+  test('met_020 every daemon-tag row passes in the evaluator', () => {
+    expect(runPolicyTests(withTests(DAEMON_ROWS), nodes)).toEqual([]);
   });
 
-  test('met_020 an agent reaches tcp 443 of the hub', () => {
-    expect(probe({ node: 'agent' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
-    expect(probe({ node: 'agent2' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
+  test('met_020 a daemon reaches tcp 443 of the hub', () => {
+    expect(probe({ node: 'daemon' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
+    expect(probe({ node: 'daemon2' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
   });
 
-  test('met_020 an agent is refused every other hub port and protocol', () => {
-    for (const port of [22, 80, 5432, 8080, 5900]) expect(probe({ node: 'agent' }, { node: 'hub' }, port, 'tcp')).toBe(false);
-    for (const proto of ['udp', 'icmp']) expect(probe({ node: 'agent' }, { node: 'hub' }, 443, proto)).toBe(false);
+  test('met_020 a daemon is refused every other hub port and protocol', () => {
+    for (const port of [22, 80, 5432, 8080, 5900]) expect(probe({ node: 'daemon' }, { node: 'hub' }, port, 'tcp')).toBe(false);
+    for (const proto of ['udp', 'icmp']) expect(probe({ node: 'daemon' }, { node: 'hub' }, 443, proto)).toBe(false);
   });
 
-  test('met_020 an agent reaches no site, device, client, router or other agent', () => {
+  test('met_020 a daemon reaches no site, device, client, router or other daemon', () => {
     for (const port of [22, 443, 3389, 5900]) {
-      for (const address of ['10.10.0.5', '10.20.0.5', '10.30.0.5']) expect(probe({ node: 'agent' }, { address }, port, 'tcp')).toBe(false);
-      for (const node of ['mac', 'laptop', 'router-home', 'router-office2', 'agent2']) expect(probe({ node: 'agent' }, { node }, port, 'tcp')).toBe(false);
+      for (const address of ['10.10.0.5', '10.20.0.5', '10.30.0.5']) expect(probe({ node: 'daemon' }, { address }, port, 'tcp')).toBe(false);
+      for (const node of ['mac', 'laptop', 'router-home', 'router-office2', 'daemon2']) expect(probe({ node: 'daemon' }, { node }, port, 'tcp')).toBe(false);
     }
   });
 
-  test('met_020 nothing reaches an agent device: the agent listens on no port', () => {
-    for (const from of ['hub', 'mac', 'laptop', 'router-home', 'agent2']) {
+  test('met_020 nothing reaches a daemon device: the daemon listens on no port', () => {
+    for (const from of ['hub', 'mac', 'laptop', 'router-home', 'daemon2']) {
       for (const port of [22, 443, 5900]) {
-        for (const proto of ['tcp', 'udp', 'icmp']) expect(probe({ node: from }, { node: 'agent' }, port, proto)).toBe(false);
+        for (const proto of ['tcp', 'udp', 'icmp']) expect(probe({ node: from }, { node: 'daemon' }, port, proto)).toBe(false);
       }
     }
-    expect(probe({ lan: '10.10.0.5' }, { node: 'agent' }, 443, 'tcp')).toBe(false);
+    expect(probe({ lan: '10.10.0.5' }, { node: 'daemon' }, 443, 'tcp')).toBe(false);
   });
 });
 

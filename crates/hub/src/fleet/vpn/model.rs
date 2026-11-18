@@ -31,7 +31,7 @@ pub enum BrokerState {
 pub enum Role {
     Hub,
     Router,
-    Agent,
+    Daemon,
     Client,
     Other,
 }

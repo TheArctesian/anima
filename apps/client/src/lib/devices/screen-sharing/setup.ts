@@ -35,6 +35,14 @@ export function isThisComputer(device: Pick<SetupDevice, 'host'>, machine: ThisM
   return machine !== null && normalizeHost(device.host) === machine.vpnAddress;
 }
 
+/**
+ * The VNC user name the flow stores for this computer (R-079, GH-53): its OS user on a Mac, because Screen Sharing
+ * signs in an account; none on Linux, where a VNC server such as wayvnc refuses a name it does not expect.
+ */
+export function screenSharingUser(machine: Pick<ThisMachine, 'os' | 'user'>): string | null {
+  return machine.os === 'MACOS' ? machine.user : null;
+}
+
 /** The unsaved test of the VNC port (WP-35 D-1). It carries no credential, and a stale stored port cannot change it. */
 export function screenSharingTest(device: Pick<SetupDevice, 'host'>): ConnectionTestInput {
   return { host: device.host, protocol: 'VNC', vnc: { enabled: true, port: SCREEN_SHARING_PORT } };

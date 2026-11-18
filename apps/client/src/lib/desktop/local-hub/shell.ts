@@ -1,9 +1,9 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-/** What the hub group reports (LHB-010, `docs/setup/local-hub.md` Section 2). */
+/** What the hub group reports (LHB-010, `docs/procedures/setup/local-hub.md` Section 2). */
 export type LocalHubState = 'starting' | 'ready' | 'blocked' | 'stopping' | 'stopped' | 'failed';
 
-/** Why a hub is `blocked` (`docs/setup/local-hub.md` Section 4). */
+/** Why a hub is `blocked` (`docs/procedures/setup/local-hub.md` Section 4). */
 export type BlockedReason = 'key-missing' | 'database-version' | 'database-in-use';
 
 /** The link member of the group (F-6). */

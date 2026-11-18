@@ -46,7 +46,7 @@ fn vpn_009_a_router_with_its_site_tag_is_a_router() {
 fn vpn_009_roles_follow_the_first_matching_tag() {
     let shown = picture(&status("status-mixed.json"));
 
-    assert_eq!(node(&shown, "printer").role, Role::Agent);
+    assert_eq!(node(&shown, "printer").role, Role::Daemon);
     let mut raw = json("status-idle.json");
     peer_mut(&mut raw, "mac")["Tags"] = serde_json::json!(["tag:other", "tag:hub"]);
     peer_mut(&mut raw, "router-home")["Tags"] = serde_json::json!(["tag:site-home"]);
@@ -289,13 +289,13 @@ fn vpn_011_an_unmatched_client_is_not_in_anima() {
 }
 
 #[test]
-fn vpn_011_an_agent_node_matched_by_ip_is_in_anima() {
+fn vpn_011_a_daemon_node_matched_by_ip_is_in_anima() {
     let devices = [device(9, "printer", "100.64.0.7")];
 
     let shown = picture_with(&status("status-mixed.json"), &devices, &[]);
 
     let printer = node(&shown, "printer");
-    assert_eq!((printer.role, printer.in_anima), (Role::Agent, true));
+    assert_eq!((printer.role, printer.in_anima), (Role::Daemon, true));
 }
 
 #[test]
@@ -339,7 +339,7 @@ fn vpn_009_a_router_with_a_wider_or_narrower_route_serves_no_site() {
 
 #[test]
 fn vpn_009_a_peer_that_is_not_a_router_serves_no_site() {
-    for tags in [&[][..], &["tag:agent"][..]] {
+    for tags in [&[][..], &["tag:daemon"][..]] {
         let shown = home_served_by(&[], tags, &["10.10.0.0/24"]);
 
         assert_eq!(shown.sites[0].state, RouteState::NoRouter, "{tags:?}");

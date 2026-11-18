@@ -1,6 +1,6 @@
 # deploy/headscale: file map
 
-What each file is, where it ends up, and which step of the [VPN guide](../../docs/setup/vpn.md)
+What each file is, where it ends up, and which step of the [VPN guide](../../docs/procedures/setup/vpn.md)
 uses it. The procedures are in the guide, not here. Public DNS records are in
 [`../dns/`](../dns/README.md).
 
@@ -26,49 +26,49 @@ uses it. The procedures are in the guide, not here. Public DNS records are in
 | `broker/*.ts`, `bin/broker-build.ts` | Not installed. Compiled on the Mac to one Linux binary, `/usr/local/libexec/anima-broker` | 11 |
 | `src/`, `tests/`, `package.json`, `tsconfig.json` | Not installed. Local checks: `bun test deploy/headscale` | 8 |
 
-## Agent devices (MET-020, R-084)
+## Daemon devices (MET-020, R-084)
 
-`config/policy.hujson` carries `tag:agent` for a device that runs `anima-agent` and nothing
-else. One grant names it: `tag:agent` to `tag:hub`, `tcp:443`. No grant has it as a
-destination (the agent listens on no port) while every `device-*` host entry is kept current
+`config/policy.hujson` carries `tag:daemon` for a device that runs `anima-daemon` and nothing
+else. One grant names it: `tag:daemon` to `tag:hub`, `tcp:443`. No grant has it as a
+destination (the daemon listens on no port) while every `device-*` host entry is kept current
 (see "Removing a client device" below). No other grant gives it reach, so it cannot touch the
 hub's SSH, a site or another device.
 
 Like every tag, its owner list is empty. The operator applies the tag in one of two ways, both
-operator steps (VPS-005): with `headscale nodes tag -i <id> -t tag:agent` on an existing node,
-or with a pre-auth key made with `--tags tag:agent` when the device registers.
+operator steps (VPS-005): with `headscale nodes tag -i <id> -t tag:daemon` on an existing node,
+or with a pre-auth key made with `--tags tag:daemon` when the device registers.
 
 A tagged node stops being a personal node, and tagged nodes do not expire in Headscale.
-VPN-003 lists agent-only devices with the hub and routers as nodes whose keys do not expire
-(R-105): an agent node reaches only the hub on TCP 443, and every route there needs the
-device's agent token (K8), so there is no re-key schedule.
+VPN-003 lists daemon-only devices with the hub and routers as nodes whose keys do not expire
+(R-105): a daemon node reaches only the hub on TCP 443, and every route there needs the
+device's daemon token (K8), so there is no re-key schedule.
 
-Revoking the agent token on the device's page stops its pushes, but not its VPN reach to the
-hub on 443. To cut an agent device off the tailnet, the operator deletes the node
+Revoking the daemon token on the device's page stops its pushes, but not its VPN reach to the
+hub on 443. To cut a daemon device off the tailnet, the operator deletes the node
 (`headscale nodes delete`) or removes the tag (VPS-005).
 
 A device that is also an operator machine (a laptop or the Mac) stays a personal node of
-`operator`, untagged: it keeps its operator reach, and its agent still only dials the hub on
+`operator`, untagged: it keeps its operator reach, and its daemon still only dials the hub on
 443, which `operator@` already allows. Do not tag it, or it would lose that reach.
 
 Applying the policy on the live Headscale is the operator's step (VPS-005). The tests block
-does not name `tag:agent` yet: Headscale refuses a policy that names a tag no node carries.
-Its rows wait in `AGENT_ROWS` in `tests/policy-fixture.ts`.
+does not name `tag:daemon` yet: Headscale refuses a policy that names a tag no node carries.
+Its rows wait in `DAEMON_ROWS` in `tests/policy-fixture.ts`.
 
-### First agent device
+### First daemon device
 
-1. Tag the enrolled node, or register it with a pre-auth key made with `--tags tag:agent`
+1. Tag the enrolled node, or register it with a pre-auth key made with `--tags tag:daemon`
    (both operator steps, VPS-005).
-2. Run `headscale nodes list`. The node must show `tag:agent` and no user. Do not continue
-   if it shows a user: it is not an agent-only device.
-3. Move `AGENT_ROWS` from `tests/policy-fixture.ts` into the policy `tests` block, then apply
+2. Run `headscale nodes list`. The node must show `tag:daemon` and no user. Do not continue
+   if it shows a user: it is not a daemon-only device.
+3. Move `DAEMON_ROWS` from `tests/policy-fixture.ts` into the policy `tests` block, then apply
    the policy on the live Headscale (VPS-005).
 
 ### Removing a client device
 
 When the operator removes a client device, delete its `device-*` host entry and its grant from
 `config/policy.hujson` too. The hub's device grants match by address, so a reused address could
-otherwise reach an agent. `tests/policy-rules.test.ts` checks that no host `/32` equals the address of
+otherwise reach a daemon. `tests/policy-rules.test.ts` checks that no host `/32` equals the address of
 a tagged node in its test inventory, but the test cannot see the live tailnet, so keep the
 entries current.
 

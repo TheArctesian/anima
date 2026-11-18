@@ -38,7 +38,7 @@
     onClearVncCredential: () => later(() => { device = { ...device, vnc: { ...device.vnc, credentialStored: false } }; return stored(false)(); }),
     webInterfaces: { onCreate: () => later(unavailable), onUpdate: () => later(unavailable), onDelete: () => later(unavailable), onAcceptSuggestion: () => later(unavailable), onDismissSuggestion: () => later(unavailable) },
   };
-  const agentCalls = { agentStatus: () => later(unavailable), enrolAgent: () => later(unavailable), revokeAgentToken: () => later(unavailable) };
+  const daemonCalls = { daemonStatus: () => later(unavailable), enrolDaemon: () => later(unavailable), revokeDaemonToken: () => later(unavailable) };
   const ignore = (): void => undefined;
 </script>
 
@@ -49,7 +49,7 @@
     {device}
     section={null}
     {calls}
-    agent={{ calls: agentCalls, origin: 'https://hub.specimen', reveal: false, shell: null }}
+    daemon={{ calls: daemonCalls, origin: 'https://hub.specimen', reveal: false, shell: null }}
     now={() => new Date()}
     onTest={() => later(unavailable)}
     onOpenChecks={ignore}

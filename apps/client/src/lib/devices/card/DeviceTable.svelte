@@ -40,54 +40,60 @@
 
 <!-- The list view (UR-7, D18): hairline rows, problems first under their own group title, each problem with its
      reason where an up device shows its meters. Below 1100 px each device takes two lines. -->
-<table class="device-rows">
-  <caption class="caption">Devices</caption>
-  <thead>
-    <tr>
-      <th scope="col" class="c-status">Status</th>
-      <th scope="col" class="c-name">Name</th>
-      <th scope="col" class="c-uptime">24 h</th>
-      <th scope="col" class="c-beats">Last 50 checks</th>
-      <th scope="col" class="c-detail">Usage or problem</th>
-      <th scope="col" class="c-connect">Connect</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each items as item, index (item.key)}
-      {#if item.kind === 'group'}
-        <tr class="group" transition:listRow={{ index }} {@attach track(item.key)}>
-          <th colspan="6" scope="colgroup">{item.title}<span class="count">{item.count}</span></th>
-        </tr>
-      {:else}
-        {@const device = item.device}
-        {@const line = hostLine(device)}
-        {@const deviceBeats = beats.get(device.id)}
-        <tr class="device" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()} transition:listRow={{ index }} {@attach track(item.key)}>
-          <td class="c-status">
-            <span class="marks">
-              <StatusBadge status={device.status} deviceId={device.id} />
-              <WarningBadge warnings={device.accessWarnings} />
-            </span>
-          </td>
-          <th scope="row" class="c-name">
-            <OsIcon os={device.os} distribution={device.distribution} />
-            <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" title={device.name} tabindex="0" data-device-id={device.id} {@attach press()}>{device.name}</a>
-            <span class="host" title={line.host}>{line.host}</span>
-            {#if line.ip !== null}<span class="host ip">{line.ip}</span>{/if}
-          </th>
-          <td class="c-uptime">{uptimeText(device.uptime)}</td>
-          <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
-          <td class="c-detail">
-            {#if device.status === 'UP'}
-              <Meters readings={device.readings ?? null} source={device.metricsSource} />
-            {:else}
-              <Why {device} beats={deviceBeats} />
-            {/if}
-          </td>
-          <td class="c-connect"><DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} compact /></td>
-          <td class="c-meta" aria-hidden="true"><span class="host">{line.host}</span><span>{uptimeText(device.uptime)}</span></td>
-        </tr>
-      {/if}
-    {/each}
-  </tbody>
-</table>
+<div class="device-list">
+  <table class="device-rows">
+    <caption class="caption">Devices</caption>
+    <thead>
+      <tr>
+        <th scope="col" class="c-status">Status</th>
+        <th scope="col" class="c-name">Name</th>
+        <th scope="col" class="c-uptime">24 h</th>
+        <th scope="col" class="c-beats">Last 50 checks</th>
+        <th scope="col" class="c-detail">Usage</th>
+        <th scope="col" class="c-connect">Connect</th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each items as item, index (item.key)}
+        {#if item.kind === 'group'}
+          <tr class="group" transition:listRow={{ index }} {@attach track(item.key)}>
+            <th colspan="6" scope="colgroup">{item.title}<span class="count">{item.count}</span></th>
+          </tr>
+        {:else}
+          {@const device = item.device}
+          {@const line = hostLine(device)}
+          {@const deviceBeats = beats.get(device.id)}
+          <tr class="device" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()} transition:listRow={{ index }} {@attach track(item.key)}>
+            <td class="c-status">
+              <span class="marks">
+                <StatusBadge status={device.status} deviceId={device.id} />
+                <WarningBadge warnings={device.accessWarnings} />
+              </span>
+            </td>
+            <th scope="row" class="c-name">
+              <div class="device-label">
+                <OsIcon os={device.os} distribution={device.distribution} />
+                <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" title={device.name} tabindex="0" data-device-id={device.id} {@attach press()}>{device.name}</a>
+              </div>
+              <div class="addresses">
+                <span class="host" title={line.host}>{line.host}</span>
+                {#if line.ip !== null}<span class="host ip" title={line.ip}>{line.ip}</span>{/if}
+              </div>
+            </th>
+            <td class="c-uptime">{uptimeText(device.uptime)}</td>
+            <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
+            <td class="c-detail">
+              {#if device.status === 'UP'}
+                <Meters readings={device.readings ?? null} source={device.metricsSource} />
+              {:else}
+                <Why {device} beats={deviceBeats} />
+              {/if}
+            </td>
+            <td class="c-connect"><DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} compact /></td>
+            <td class="c-meta" aria-hidden="true"><span class="host">{line.host}</span><span>{uptimeText(device.uptime)}</span></td>
+          </tr>
+        {/if}
+      {/each}
+    </tbody>
+  </table>
+</div>

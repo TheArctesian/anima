@@ -1,6 +1,6 @@
 # K-E1 — Sources (engine)
 
-Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: SRC-*, ITG-*, KEY-*, PRJ-017, PRJ-018 of `docs/extensions-plan.md`; EXT-000 to EXT-012 for the extension switch.
+Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: SRC-*, ITG-*, KEY-*, PRJ-017, PRJ-018 of `docs/plans/extensions-plan.md`; EXT-000 to EXT-012 for the extension switch.
 
 A source is a place the hub reads records from (GitHub first). A source has one provider crate with pure code, and one or more intakes in the extensions that use it. The engine domain `crates/hub/src/engine/sources/` owns accounts, credentials by reference, schedule, runs and health. Owner: engine (`crates/hub/src/engine/**`, `crates/providers/exchange/**`, `$lib/sources/**`).
 
@@ -186,7 +186,7 @@ One attempt exists at a time, in hub memory only (`Attempts`: one `Arc<Mutex<Opt
 **What each attacker can do.**
 
 - Learns the attempt id or `pageUrl`: nothing. No route takes the id; GraphQL needs a token.
-- Learns the ticket before the operator's browser uses it, and is on the VPN: can bind their own browser and connect the hub to an App in their own GitHub account. This is the one real exposure. Bounds: 5 minutes, one use, a URL passed only from the client process to the browser and never to an agent or a log. The operator's browser then gets the "already used" page, and the client shows an owner login that is not theirs.
+- Learns the ticket before the operator's browser uses it, and is on the VPN: can bind their own browser and connect the hub to an App in their own GitHub account. This is the one real exposure. Bounds: 5 minutes, one use, a URL passed only from the client process to the browser and never to a daemon or a log. The operator's browser then gets the "already used" page, and the client shows an owner login that is not theirs.
 - Learns S1 or S2: nothing without the cookie.
 - Cross-site, makes the operator's browser hit `/start`: the Lax cookie is sent, and the page holds the same S1 as before; the attempt is unchanged and the operator's return still exchanges.
 - Cross-site, makes the operator's browser hit `/created`: the Lax cookie is sent, the state is unknown, the request is refused (in `AT_GITHUB`) or shown the "finishing" page (once the App is made), and the attempt is unchanged (no lockout).

@@ -31,8 +31,8 @@
 
 use std::time::Duration;
 
-use agent_core::{points::MAX_GPU_INDEX, readings::GpuReading};
 use chrono::{DateTime, TimeDelta, Utc};
+use daemon_core::{points::MAX_GPU_INDEX, readings::GpuReading};
 
 use super::answers::Answer;
 use crate::fleet::metrics::{Gpu, GpuVendor, MAX_LABELS, Reading};

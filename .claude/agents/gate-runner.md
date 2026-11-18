@@ -1,6 +1,6 @@
 ---
 name: gate-runner
-description: Haiku gate runner for Anima. Runs the gates from docs/implementation-plan.md Section 7 on a branch and reports pass or fail with the relevant output. Never changes code.
+description: Haiku gate runner for Anima. Runs the gates from docs/archive/phase-1/implementation-plan.md Section 7 on a branch and reports pass or fail with the relevant output. Never changes code.
 model: haiku
 tools: Read, Bash, Grep, Glob
 ---

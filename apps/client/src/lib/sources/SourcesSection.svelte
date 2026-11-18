@@ -1,6 +1,5 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import FormButton from '$lib/forms/FormButton.svelte';
   import { useHub } from '$lib/hub/context';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import SettingRow from '$lib/settings/SettingRow.svelte';
@@ -41,20 +40,16 @@
   }
 </script>
 
-<SettingRow label="GitHub">
+<SettingRow label="GitHub" stacked>
   {#snippet hint()}
     <p class="hint">Makes a GitHub App in your account; the hub keeps its key.</p>
   {/snippet}
-  <GithubConnect {opener} />
-  <FormButton
-    tone="ghost"
-    icon="simple-icons:github"
-    onclick={() => {
+  <GithubConnect
+    {opener}
+    onKeyFile={() => {
       connecting = true;
     }}
-  >
-    Use key file
-  </FormButton>
+  />
 </SettingRow>
 
 {#if store.status === 'failed'}

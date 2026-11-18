@@ -1,0 +1,3 @@
+mutation RecordLinkRemove($id: ID!) {
+  unlinkRecords(id: $id)
+}

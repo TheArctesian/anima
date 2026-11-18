@@ -1,0 +1,130 @@
+== L1 KeepAlive true, serve: the process gets SIGKILL from a shell (a crash, or a person's kill -9)
+state = running;runs = 1;pid = 36855;immediate reason = speculative;last exit code = (never exited);state = active;state = active;
+t+  0.0s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  1.0s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  2.1s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  3.1s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  4.1s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  5.2s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  6.2s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  7.2s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  8.3s state = running;runs = 2;pid = 37533;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;
+t+  9.3s state = running;runs = 2;pid = 37533;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;
+t+ 10.3s state = running;runs = 2;pid = 37533;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;
+t+ 11.4s state = running;runs = 2;pid = 37533;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;
+== L2 KeepAlive true, serve: launchctl kill SIGTERM (a person; the program exits 0)
+t+  0.0s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  1.0s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  2.1s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  3.1s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  4.1s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  5.1s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  6.2s state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  7.2s state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  8.3s state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  9.3s state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+ 10.3s state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+ 11.3s state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+== L3 KeepAlive true, serve: launchctl disable, then launchctl bootout (a person)
+state = running;runs = 3;pid = 38264;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+		"ing.anima.g1.watch" => disabled
+Could not find service "ing.anima.g1.watch" in domain for user gui: 501;
+		"ing.anima.g1.watch" => disabled
+== L4 KeepAlive SuccessfulExit=false, crash after 2 s with code 1: launchd throttles
+t+  3.0s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+  4.1s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+  5.1s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+  6.1s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+  7.2s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+  8.2s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+  9.2s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+ 10.3s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;
+t+ 11.3s state = running;runs = 2;pid = 39470;immediate reason = semaphore;last exit code = 1;state = active;state = active;
+t+ 12.3s state = running;runs = 2;pid = 39470;immediate reason = semaphore;last exit code = 1;state = active;state = active;
+t+ 13.4s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 14.4s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 15.4s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 16.4s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 17.5s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 18.5s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 19.5s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 20.6s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;
+t+ 21.6s state = running;runs = 3;pid = 40142;immediate reason = semaphore;last exit code = 1;state = active;state = active;
+t+ 22.6s state = running;runs = 3;pid = 40142;immediate reason = semaphore;last exit code = 1;state = active;state = active;
+t+ 23.7s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;
+t+ 24.7s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;
+t+ 25.7s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;
+t+ 26.8s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;
+t+ 27.8s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;
+== L5 KeepAlive SuccessfulExit=false, serve: launchctl kill SIGTERM (a person, exit 0)
+t+  0.0s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  1.0s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  2.1s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  3.1s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  4.1s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+== L6 no KeepAlive, crash after 2 s with code 3
+t+  3.1s state = not running;runs = 1;last exit code = 3;state = active;state = active;
+t+  4.1s state = not running;runs = 1;last exit code = 3;state = active;state = active;
+t+  5.2s state = not running;runs = 1;last exit code = 3;state = active;state = active;
+t+  6.2s state = not running;runs = 1;last exit code = 3;state = active;state = active;
+t+  7.2s state = not running;runs = 1;last exit code = 3;state = active;state = active;
+== L7 no KeepAlive, serve: SIGKILL from a shell
+t+  0.0s state = not running;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  1.1s state = not running;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+t+  2.1s state = not running;runs = 1;last terminating signal = Killed: 9;state = active;state = active;
+== L8 no KeepAlive, serve: launchctl kill SIGTERM (a person)
+t+  0.0s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  1.0s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  2.0s state = not running;runs = 1;last exit code = 0;state = active;state = active;
+== L9 no KeepAlive, not running: launchctl kickstart -k
+state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+ 15.0s state = running;runs = 3;pid = 43385;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;
+t+ 16.0s state = running;runs = 3;pid = 43385;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;
+t+ 17.1s state = running;runs = 3;pid = 43385;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;
+== L10 no KeepAlive, serve: launchctl kill SIGTERM, then launchctl kickstart (no -k)
+state = not running;runs = 1;last exit code = 0;state = active;state = active;
+t+  7.0s state = running;runs = 2;pid = 44176;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+t+  8.0s state = running;runs = 2;pid = 44176;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+t+  9.0s state = running;runs = 2;pid = 44176;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+== L11 no KeepAlive, serve, running: launchctl kickstart -k
+state = running;runs = 2;pid = 44176;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+t+  7.1s state = running;runs = 3;pid = 44664;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+t+  8.4s state = running;runs = 3;pid = 44664;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+t+  9.5s state = running;runs = 3;pid = 44664;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;
+== L12 KeepAlive true, serve: launchctl stop (a person)
+t+  0.1s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  1.1s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  2.1s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  3.2s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  4.2s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  5.3s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  6.3s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  7.3s state = spawn scheduled;runs = 1;last exit code = 0;state = active;state = active;
+t+  8.3s state = running;runs = 2;pid = 45661;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  9.4s state = running;runs = 2;pid = 45661;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+ 10.4s state = running;runs = 2;pid = 45661;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+ 11.4s state = running;runs = 2;pid = 45661;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+== L13 KeepAlive true, serve: kill -TERM from a shell (a person)
+t+  0.0s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  1.0s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  2.0s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  3.1s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  4.1s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  5.2s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;
+t+  6.2s state = running;runs = 3;pid = 46229;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  7.2s state = running;runs = 3;pid = 46229;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  8.2s state = running;runs = 3;pid = 46229;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+  9.3s state = running;runs = 3;pid = 46229;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+ 10.3s state = running;runs = 3;pid = 46229;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+t+ 11.4s state = running;runs = 3;pid = 46229;immediate reason = inefficient;last exit code = 0;state = active;state = active;
+== L14 no KeepAlive, plain (catches no signal): launchctl kill SIGTERM (a person)
+t+  0.0s state = not running;runs = 1;last terminating signal = Terminated: 15;state = active;state = active;
+t+  1.1s state = not running;runs = 1;last terminating signal = Terminated: 15;state = active;state = active;
+t+  2.1s state = not running;runs = 1;last terminating signal = Terminated: 15;state = active;state = active;
+== L15 no KeepAlive, plain, running: launchctl kickstart -k
+state = running;runs = 1;pid = 47005;immediate reason = speculative;last exit code = (never exited);state = active;state = active;
+t+  8.0s state = running;runs = 2;pid = 47476;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;
+t+  9.1s state = running;runs = 2;pid = 47476;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;
+t+ 10.1s state = running;runs = 2;pid = 47476;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;
+== end: bootout
+Could not find service "ing.anima.g1.watch" in domain for user gui: 501;

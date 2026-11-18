@@ -12,7 +12,9 @@
     "quality:limits": "bun run --cwd quality limits",
     "quality:baseline": "bun run --cwd quality baseline",
     "quality:names": "bun run --cwd quality names",
-    "quality:imports": "bun run --cwd quality imports"
+    "quality:imports": "bun run --cwd quality imports",
+    "quality:documents": "bun run --cwd quality documents",
+    "quality:register": "bun run --cwd quality register"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",

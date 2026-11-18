@@ -1,0 +1,9 @@
+# `anima daemon revoke`: the source stays DAEMON, shown as stale, until the operator changes it.
+mutation DaemonRevoke($deviceId: ID!) {
+  revokeDaemonToken(deviceId: $deviceId) {
+    id
+    name
+    metricsSource
+    metricsStale
+  }
+}

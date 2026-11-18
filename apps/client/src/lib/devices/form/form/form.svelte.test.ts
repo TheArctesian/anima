@@ -306,28 +306,28 @@ it('an error that belongs to no field is brought into view', async () => {
   expect(scrolled).toHaveBeenCalledOnce();
 });
 
-it('D-7: an AGENT device shows the source as set by the agent, and offers only None and SSH to pick', () => {
-  show({ ...SAVED, metricsSource: 'AGENT' });
+it('D-7: an DAEMON device shows the source as set by the daemon, and offers only None and SSH to pick', () => {
+  show({ ...SAVED, metricsSource: 'DAEMON' });
   const select = document.querySelector<HTMLSelectElement>('#device-metricsSource');
   const options = [...(select?.options ?? [])].map((option) => ({ value: option.value, text: option.text, disabled: option.disabled }));
-  expect(select?.value).toBe('AGENT');
+  expect(select?.value).toBe('DAEMON');
   expect(options).toEqual([
-    { value: 'AGENT', text: 'Agent', disabled: true },
+    { value: 'DAEMON', text: 'Daemon', disabled: true },
     { value: 'NONE', text: 'None', disabled: false },
     { value: 'SSH', text: 'SSH', disabled: false },
   ]);
 });
 
-it('D-7, WCAG 1.3.1: the "Set by the agent" hint describes the source select, and a field without a hint or error has no description', () => {
-  show({ ...SAVED, metricsSource: 'AGENT' });
+it('D-7, WCAG 1.3.1: the "Set by the daemon" hint describes the source select, and a field without a hint or error has no description', () => {
+  show({ ...SAVED, metricsSource: 'DAEMON' });
   const select = document.querySelector('#device-metricsSource');
   if (select === null) throw new Error('no source select');
-  expect(describedBy(select)).toEqual(['Set by the agent. Revoke it, or pick None or SSH, to change.']);
+  expect(describedBy(select)).toEqual(['Set by the daemon. Revoke it, or pick None or SSH, to change.']);
   expect(describedBy(input('host'))).toEqual(['Host name or IP address.']);
   expect(input('name').hasAttribute('aria-describedby')).toBe(false);
 });
 
-it('D-7: a device that does not use the agent is not offered Agent', () => {
+it('D-7: a device that does not use the daemon is not offered Daemon', () => {
   show(SAVED);
   expect([...(document.querySelector<HTMLSelectElement>('#device-metricsSource')?.options ?? [])].map((option) => option.value)).toEqual(['NONE', 'SSH']);
 });

@@ -3,26 +3,43 @@ export interface Choice {
   readonly id: 'sign-in' | 'join' | 'create';
   readonly title: string;
   readonly line: string;
-  readonly href: '/welcome/join' | '/welcome/create' | null;
+  readonly href: '/welcome/hosted' | '/welcome/join' | '/welcome/create' | null;
+  /** The one main choice of the first run (HMD-022). */
+  readonly primary: boolean;
   /** Why the choice is off, or `null` when it is on. */
   readonly off: string | null;
 }
 
-/** What decides the choices: the desktop app's local hub support, and whether this build carries the hub programs. */
+/**
+ * What decides the choices: whether the shell joins this device over the link (the hosted sign-in), the desktop app's
+ * local hub support, and whether this build carries the hub programs.
+ */
 export interface ChoicePlace {
+  readonly deviceLink: boolean;
   readonly localHub: boolean;
   readonly carried: boolean;
 }
 
-/** The three choices of the first run, in order (FRN-001). The hosted sign-in has no service yet. */
+/**
+ * The three choices of the first run, in order (FRN-001). "Sign in" is the primary choice (HMD-022); it needs a shell
+ * that joins over the link, the desktop app's or a phone's (R-129).
+ */
 export function welcomeChoices(place: ChoicePlace): readonly Choice[] {
   return [
-    { id: 'sign-in', title: 'Sign in', line: 'Use a hub hosted by Anima.ing.', href: null, off: 'Not yet available.' },
+    {
+      id: 'sign-in',
+      title: 'Sign in',
+      line: 'Use a hub hosted by Anima.ing.',
+      href: '/welcome/hosted',
+      primary: true,
+      off: place.deviceLink ? null : 'Needs the Anima.ing app.',
+    },
     {
       id: 'join',
       title: 'Join a hub',
       line: 'Link this computer to a hub with an invite.',
       href: '/welcome/join',
+      primary: false,
       off: place.localHub ? null : 'Desktop app only.',
     },
     {
@@ -30,6 +47,7 @@ export function welcomeChoices(place: ChoicePlace): readonly Choice[] {
       title: 'Create a hub on this computer',
       line: 'This computer runs the hub. Other devices join it.',
       href: '/welcome/create',
+      primary: false,
       off: !place.localHub ? 'Desktop app only.' : place.carried ? null : 'This build does not carry the hub programs.',
     },
   ];

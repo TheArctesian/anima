@@ -51,6 +51,10 @@ pub struct Config {
     /// The control socket of `anima-link hub`: the hub makes invites, lists the link's devices
     /// and revokes one through it (FRN-009). Only in the link mode; `None` when unset or empty.
     pub link_control: Option<PathBuf>,
+    /// The file of the Anima.ing cloud's key; set means the hosted mode (hosted-mode.md HMD-037,
+    /// R-129): the cloud asks this hub for device invites, and no one signs in with a password.
+    /// Only with the link's control socket; `None` when unset or empty.
+    pub hosted_cloud_key_file: Option<PathBuf>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
     pub probe_deny: Vec<ipnet::IpNet>,
@@ -118,6 +122,8 @@ pub enum Error {
     LinkNetworks,
     #[error("{} {}", link::LINK_CONTROL, link::CONTROL_RULE)]
     LinkControlAlone,
+    #[error("{} {}", link::HOSTED_CLOUD_KEY_FILE, link::HOSTED_RULE)]
+    HostedWithoutLink,
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
@@ -288,6 +294,8 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         source,
     })?;
     let link_socket = link::socket(env, listen)?;
+    let link_control = link::control(env, link_socket.is_some())?;
+    let hosted_cloud_key_file = link::hosted(env, link_control.is_some())?;
     Ok(Config {
         listen,
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
@@ -303,7 +311,8 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         },
         vpn_broker: optional_socket(env, VPN_BROKER)?,
         permitted_networks: permitted_networks(env, link_socket.is_some())?,
-        link_control: link::control(env, link_socket.is_some())?,
+        link_control,
+        hosted_cloud_key_file,
         link_socket,
         probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
             None | Some("") => Vec::new(),

@@ -11,9 +11,10 @@
   interface Props {
     /** Makes the opening for a link. It is called inside the click; tests pass their own. */
     opener?: () => LinkOpening;
+    onKeyFile: () => void;
   }
 
-  const { opener = linkOpening }: Props = $props();
+  const { opener = linkOpening, onKeyFile }: Props = $props();
   // The hub is fixed for the life of the row.
   const store = untrack(() => new GithubConnectStore(githubConnectApi(useHub())));
   const view = $derived(store.attempt !== null ? describeAttempt(store.attempt) : store.restarted ? RESTARTED : NO_ATTEMPT);
@@ -64,6 +65,7 @@
     {#if view.cancel}
       <FormButton tone="ghost" onclick={() => void store.cancel()}>Cancel</FormButton>
     {/if}
+    <FormButton tone="ghost" icon="simple-icons:github" onclick={onKeyFile}>Use key file</FormButton>
   </div>
 </div>
 
@@ -84,5 +86,6 @@
     margin: 0;
     color: var(--text-secondary);
     font-size: var(--text-sm);
+    overflow-wrap: anywhere;
   }
 </style>

@@ -1,7 +1,7 @@
 //! The hub in the link mode, as `main.rs` wires it (one-click plan, item S5): `anima-link`
 //! reaches it through a Unix socket and names each device by its link address. The rules that
 //! name a client then name a device: the permitted clients (NET-001, NET-002), the builder's
-//! binding (BLD-024), the agent routes' refusal log (K8) and the audit log (LOG-005).
+//! binding (BLD-024), the daemon routes' refusal log (K8) and the audit log (LOG-005).
 
 use std::{
     collections::BTreeMap,
@@ -320,14 +320,14 @@ async fn bld_024_a_builder_token_works_only_from_the_device_that_enrolled_it(poo
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn k8_an_agent_refusal_is_logged_for_each_device_of_the_link(pool: PgPool) {
+async fn k8_a_daemon_refusal_is_logged_for_each_device_of_the_link(pool: PgPool) {
     let hub = serve_linked(&pool).await;
-    // The spelling of an agent token that no agent holds.
-    let unknown = format!("anima_agent_{}", "A".repeat(43));
+    // The spelling of a daemon token that no daemon holds.
+    let unknown = format!("anima_daemon_{}", "A".repeat(43));
 
     for device in [LAPTOP, LAPTOP, DESK] {
         let push = Post {
-            path: "/agent/v1/push",
+            path: "/daemon/v1/push",
             token: Some(&unknown),
             body: "{}",
         };

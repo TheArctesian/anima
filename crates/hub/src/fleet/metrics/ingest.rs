@@ -1,5 +1,5 @@
-//! The Anima agent's side of the hub: enrolment codes, agent tokens, the `/agent/v1/` routes
-//! and the stale mark of an agent that stopped pushing (K8, MET-011 to MET-018, R-092 D-1).
+//! The Anima daemon's side of the hub: enrolment codes, daemon tokens, the `/daemon/v1/` routes
+//! and the stale mark of a daemon that stopped pushing (K8, MET-011 to MET-018, R-092 D-1).
 //!
 //! A code and a token are kept only as the SHA-256 of their random bytes, and each belongs to
 //! one device. Neither reaches a log, an event, an error or any response other than the one
@@ -23,21 +23,22 @@ mod turns;
 use chrono::TimeDelta;
 use zeroize::Zeroizing;
 
-pub use enrolment::AgentEnrolment;
+pub use enrolment::DaemonEnrolment;
 pub(super) use enrolment::{make_code, revoke};
-pub use routes::agent_router;
+pub use routes::daemon_router;
 pub use stale::spawn_stale_watch;
-pub(super) use stale::without_fresh_agent;
+pub(super) use stale::without_fresh_daemon;
+pub(super) use store::daemon_versions;
 
 use crate::fleet::{devices, events};
 
 /// How long an enrolment code works (MET-012).
 const CODE_LIFETIME: TimeDelta = TimeDelta::minutes(15);
 
-/// How long an agent token works, from enrolment or renewal (MET-013).
+/// How long a daemon token works, from enrolment or renewal (MET-013).
 const TOKEN_LIFETIME: TimeDelta = TimeDelta::days(365);
 
-/// Why an agent operation failed. Messages are fixed text: they hold no code, token, body or
+/// Why a daemon operation failed. Messages are fixed text: they hold no code, token, body or
 /// SQL (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub(super) enum Error {
@@ -47,7 +48,7 @@ pub(super) enum Error {
     Events(#[from] events::Error),
     #[error("the OS random source failed")]
     Random(#[source] getrandom::Error),
-    /// The device was deleted while its agent enrolled.
+    /// The device was deleted while its daemon enrolled.
     #[error("the device does not exist")]
     NoDevice,
     #[error("the device cannot be read")]

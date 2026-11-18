@@ -9,8 +9,8 @@
 # `tauri bundle`.
 #
 # The agent sidecar (MET-019, D-10 d). The release build must:
-#   1. build `anima-agent` for the app's target triple from the same commit;
-#   2. place it at `binaries/anima-agent-<target-triple>` (this folder);
+#   1. build `anima-daemon` for the app's target triple from the same commit;
+#   2. place it at `binaries/anima-daemon-<target-triple>` (this folder);
 #   3. pass `--config tauri.release.conf.json` to `tauri build`, which names it in `bundle.externalBin`.
 /binaries/
 #

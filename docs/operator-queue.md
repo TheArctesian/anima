@@ -1,0 +1,251 @@
+# Operator queue
+
+| Item | Value |
+| --- | --- |
+| Document | What waits for the operator, in one place (PLN-023) |
+| Language | ASD-STE100 Simplified Technical English (STE) |
+| Status | Generated. Do not change the lists by hand |
+
+This document is generated: `bun run quality:register` writes it from the documents that own each fact, and `bun run quality:documents` fails when it does not agree with them. It holds no fact of its own (PLN-016). To take an item off a list, change its owner: decide the decision in its plan, set the state in the header of the document, or write the result of the check in [need-human-testing.md](need-human-testing.md).
+
+- List 1 is in the order of the priorities ([plan/priorities.md](plan/priorities.md)). Start at the top.
+- List 2 has each row of a decision table that does not say "Decided". The work items in [work-items/README.md](work-items/README.md), section "Decisions", are in it.
+- List 3 has each plan and proposal whose state is Draft, Direction decided or Not checked.
+- List 4 has the open entries of [need-human-testing.md](need-human-testing.md). The older checks are in its section "Checks that other documents hold", grouped by machine.
+- The business vault (a different, private repository) holds the deadlines of the company. They are not in this list.
+
+<!-- generated from the planning documents: bun run quality:register -->
+
+## 1. In the order of the priorities (14)
+
+| Row | Work | Waits for |
+| --- | --- | --- |
+| 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
+| 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
+| 4.17 | The hosted mode and the shared pool | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
+| 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
+| 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
+| 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
+| 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
+| 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
+| 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
+| 4.9 | Hosted applications | Operator: approval of the proposal |
+| 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
+| 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
+| 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
+| 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
+
+## 2. Open decisions (102)
+
+| Decision | Question | Recommendation or state | Document |
+| --- | --- | --- | --- |
+| OD-W22 | The watchdog (watchdog.md): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open | [plan/decisions.md](plan/decisions.md) |
+| OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C4 | Where the block adapters live | Offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C5 | Router location | The router runs in the hub on the VPS (OD-9). Each request then goes caller to VPS to node. Measure the added delay in C1. If it is too high, run a second route… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-E1 | Hub location for Class B data. The hub is on the VPS (OD-9). | Seal Class B with separate data keys (VLT-003). Before XP-05, XP-06 and XP-08, decide if a home hub must keep Class B data and the VPS hub only the device manag… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E7 | Garmin access | Use the Garmin bridge with `python-garminconnect` (Section 4.9.1). Keep FIT and export uploads as the fallback. Accept the risk that Garmin blocks unofficial ac… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E8 | Obsidian two-way sync | Read-only in this version (WRT-005). Decide after XP-03. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E10 | Price source for holdings that the source does not price | IBKR, Coinbase and Gemini give their own prices. For MetaMask tokens and the SimpleFIN holdings, select one free price API. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E11 | Path for a request to a local upstream (MGW-010). A program such as Claude Code has one base address, so it cannot select the path itself. | The `anima` program on each computer listens on the loopback address. It sends a request for a local upstream directly to the device on the VPN, sends all other… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E18 | PH-E-000 says that no extension work starts before the device manager build is finished. E0-1, E0-2, E0-4, E0-8 and Projects are built and are on `main`, and Ph… | Not decided. The operator directed each of those builds (work plan row 4.4 and row 4.6). Recommendation: record that PH-E-000 is released for the engine and Pro… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-4 | What waits for the second-Mac measurements? | Nothing in T1 to T12 waits; they are proved by tests on one machine. Three things wait: the acceptance numbers of the keepalive (T6 is built with parameters; th… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-5 | Invites by a temporary key (1.4), or an enrolment port that accepts every key? | The temporary key. The hub then never admits a key that it does not know, also when the address is public (D-6). The security review of T8 must confirm the deri… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-6 | A domain name for the address (LNK-007). The address holds the pre-shared key, and DNS is public. Then the list of permitted keys is the only protection. | Build it, off by default, with this warning in the setting and in the documents. An invite is the normal way. | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-7 | The device key for the hub (the seam for S5). A loopback stream does not say which device it is from. S5 needs that. Build the sending side in S1? | Yes, as T12, off by default: the hub link puts a PROXY protocol v2 header with the device key at the start of each stream. It is tested against a fake hub. The… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-8 | Where the private key is kept. A file with owner-only access, or the system key store? | A file in S1, for both roles (the hub role also runs on Linux with no key store). For the device role in the application, S6 can move the key to the key store t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-9 | Folder name: `link/` at the root, program `anima-link`, proposed requirement LNK-009 for the keepalive. | Yes. Spec Section 13 needs one line (Section 4). | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
+| D-1 | The seam: a gateway program with the `guacd` protocol (1.1), or VNC code inside the hub with a worker that the hub starts? | The gateway program. No change to the hub's session code, to K3, K4 or K7. The other way changes the `tunnel` router signature (K3), adds a setting (K7) and tou… | [plans/one-click/s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md) |
+| D-2 | The gateway listens on loopback TCP with no authentication, as `guacd` does (GW-003). On a Mac any local program can connect to it. Such a program gets no crede… | Yes. A Unix socket with owner-only access is better, but `ANIMA_GUACD` is `host:port` in K7. Ask for that K7 change with the security review of T6. | [plans/one-click/s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md) |
+| D-3 | A Mac with several displays sends all of them as one screen of about 14 megapixels (spike 4.2). First version: scale the screen down in the gateway to a largest… | Scale down to at most the client's window size (the `size` instruction gives it). It needs no Apple-specific message and also cuts bytes. One display at a time… | [plans/one-click/s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md) |
+| D-4 | Name: crate `crates/anima-gateway`, program `anima-gateway`. "Gateway" is the spec's word for this role (Section 4.3). | Yes. | [plans/one-click/s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md) |
+| D-1 | The seam: a program `anima-database` beside the hub (1.1), or a `database` domain inside the hub? | The program. No change to the hub, to K7, to `main.rs` or to `hub-modules.json`, and the hub stays unaware of where its database is. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-2 | Name: crate `crates/anima-database`, program `anima-database`, folder word `cluster`. | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-3 | The password and where it is kept. (a) Generated 192-bit passwords, SCRAM, kept in the two URL files with mode 0600 below the root. This is DB-002's "file" and… | (a). The files are in a folder with mode 0700 and never leave it; `backup` and `status` never print them. The same question exists for the hub's key file (`ANIM… | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-4 | Durability on macOS: `wal_sync_method=fsync_writethrough`? It makes a commit 3.7 ms in place of 45 microseconds (spike 10.2). Without it a power cut can damage… | Yes, on macOS. A Mac mini has no battery. The hub's write rate can carry it. Linux keeps its default, which is already safe. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-5 | The socket path limit is 103 bytes. With the socket in `~/Library/Application Support/ing.anima.desktop/pg/` a home folder path of 40 bytes or less fits (`/User… | (a) for the first version. (b) is a second connection mode to build, test and review for a case that may never occur. On Linux the socket is in `$XDG_RUNTIME_DI… | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-6 | The major-version upgrade (1.5). Build the full `pg_upgrade` driver now, or only the parts that protect data? | Now: the version check, the refusal of a newer cluster, the versioned tree folders and `backup`. Later, in the release that brings PostgreSQL 18: the `pg_upgrad… | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-7 | Backup. S3 gives the `backup`, `restore` and `verify` commands. The schedule, the place, how many are kept and the command in the client and CLI are S9. Agree? | Yes. S3 also takes one backup itself before a major upgrade. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| OD-ROL-1 | Where a daemon gets its files: from its hub, or from the release host | From its hub (ROL-008). MET-020 and the VPN rules stay, and a machine with no internet access can update. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the daemon and the hub | One key in the first version, with the program name in the signed record (ROL-013). It is one key to keep safe and to back up. A second key is correct if the op… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | An image file on the release host, with its digest in the signed record. GitHub is not in the release path (R-107), and a build from source is slow and needs th… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-4 | The order of the build | Three stages. A: the versions show (ROL-051). B: the machines update with one press. C: the hub joins, after the restore procedure (FND-006) is written. Until C… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-5 | The values and the default of the automatic update | "Off" by default. "Machines" in stage B. "Machines and hub" only in stage C. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-6 | The numbers: a quarter for each step, 10 minutes between steps, 1 hour after the first machine of an automatic rollout, 3 minutes and 5 minutes for the checks | As written. Fixed in the first version. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-7 | Who selects the first machine | The policy, and the operator can change it in the confirmation (ROL-025). | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-9 | Can an API key or an AI agent start, stop or roll back a rollout? | No. Add those calls to the list of INT-003. A key can read the state. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-10 | Does a machine that has "Takes work" off (USE-004) get updates? | Yes. The update has its own switch at the machine (ROL-028). If not, a machine that takes no work keeps an old daemon. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-11 | What a rollout does when it stops: only stop, or also roll back each updated machine | Only stop (ROL-027). The updated machines passed their check. The operator has "Roll back" for one and for all. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-12 | A release whose database change the previous hub cannot read | Forbid it in the gates (ROL-034). Permit an exception that the record names, with a second confirmation and no automatic rollout (ROL-036). | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-13 | On a computer that has the desktop application, who updates the daemon: the rollout, or the application when it updates itself | The rollout only. The application installs the daemon only when the computer has none (MET-019). Two updaters for one program can roll each other back. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-14 | Is the desktop application part of a rollout? | No. UPD-001 to UPD-006 stay. The application installs with no prompt and waits for "Restart to update". | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D9 | Which sign-in methods does AuthKit show? | GitHub, Google and email with a code; passkeys offered after the first sign-in. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D10 | Do the sign-in pages use a domain of Anima.ing, for example `auth.anima.ing`? | Not at the launch. Add it when the cost is small against revenue. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D4 | Is the second factor (HMD-006) required for each account? | Proposed: required. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D5 | In which region is the first pool host? | Price a US host before the launch. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | Check against the real WorkOS before the first release. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | A review by a person from outside, before the first account of a different person. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
+| Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
+| Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
+| Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
+| Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
+| OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | A function of `anima-daemon` (WDG-039). "Why not a container" has the reasons. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with… | Its own user with a polkit rule, and the group `docker` only when a container is watched. State in the client that the Docker socket is equal to root on that ma… | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-3 | A process with no supervisor | Not in the first version (WDG-002). Later, Anima can offer to write a unit for it at the machine. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-4 | Stage 1 first (watches made at the machine), or wait for the work route and build stage 2 only | Stage 1 first. It gives the restarts and the reports early and needs no route from the hub to the daemon. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-5 | When systemd or Docker stopped its own attempts, does the watchdog try again (WDG-024)? | Yes, with the long delays. The supervisor has stopped, so two programs do not act at the same time. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-6 | Is a watch a check of a new type (WDG-035), or does it have its own status rules? | A check. The notifications, the uptime and the maintenance windows then need no second set of rules. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-7 | Which restarts send a notification by default | Only "Restart loop" and "Gave up". Each restart is an event. The operator can set a notification for each restart of one watch (WDG-038). | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-8 | Does a report contain the last lines of the output of the program? | No, in the first version (WDG-032). The output of a program can contain a secret (LOG-007). | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a… | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as the open decision of hosted-applications.md. Docker only until that is decided. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-4 | Hub on Proxmox | The operator can run the hub in an LXC container on the Proxmox node. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-5 | Time-series storage | Start with plain PostgreSQL and daily partitions. Add the TimescaleDB extension only if metric queries become slow. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-7 | Self-signed certificates in the Tauri web view | Test certificate pinning on macOS (WKWebView) and Linux (WebKitGTK) before Phase 2. If the web view cannot pin a certificate, open the interface in the system b… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-8 | Spring library | `motion` (vanilla API). It re-targets springs from the current velocity and works with Svelte and React. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-9 | Hub location | Hostinger VPS. The hub continues to operate when a site loses power or internet, and it can report that the site is down. Risk: a VPS breach exposes the device… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-10 | Headscale or the Tailscale hosted control server | Headscale, because it keeps the control server under the control of the operator. Headscale does not have "Tailnet Lock" (devices must approve each new node). T… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-11 | Gateway location | The gateway runs with the hub on the VPS. A session to a device at a site then goes VPS to site. If the latency is too high, a later version can run a gateway a… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-12 | Build trigger | Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on i… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-15 | Contract change for the actor kinds (Section 3.8.1) | A programme ruling must approve the additions to K1, K2 and K7 before the build (CON-001). The ruling must also give the value of `AuditEntry.operatorName` for… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-19 | How the website reads the feed (SITE-003) | Two options: a build step of the website at each release, or a script in the page. A script in the page needs cross-origin read access to the release host, whic… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
+
+## 3. Documents that wait for an approval (27)
+
+| Document | Kind | State |
+| --- | --- | --- |
+| [plans/one-click/s12-spec-delta.md](plans/one-click/s12-spec-delta.md) | Proposal: spec delta for packaging | Draft |
+| [plans/one-click/s3-spec-delta.md](plans/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft |
+| [plans/one-click/s4-spec-delta.md](plans/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft |
+| [plans/one-click/s6-spec-delta.md](plans/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft |
+| [plans/ui-redesign-direction.md](plans/ui-redesign-direction.md) | Plan: direction of the redesign | Not checked |
+| [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
+| [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Build state not checked |
+| [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
+| [proposals/bots.md](proposals/bots.md) | Proposal | Draft |
+| [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
+| [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
+| [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
+| [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
+| [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) | Proposal, with a task table | Direction decided |
+| [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Build state not checked |
+| [proposals/hosted-applications.md](proposals/hosted-applications.md) | Proposal | Draft |
+| [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
+| [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked |
+| [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
+| [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |
+| [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
+| [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
+| [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
+| [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
+| [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
+| [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
+| [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
+
+## 4. Checks that only the operator can do (69)
+
+| Check | What |
+| --- | --- |
+| HT-001 | `anima snapshot` against GitHub |
+| HT-002 | the tool inventory from a daemon to the command line |
+| HT-003 | the tool inventory in an MCP client |
+| HT-004 | no window of Apple on a Mac without the developer tools |
+| HT-005 | the tool inventory of a daemon that runs as a system unit |
+| HT-006 | the probes of `claude` and `codex` leave the account alone |
+| HT-007 | the pinned Rust version on the Linux computer |
+| HT-008 | a macOS release build with the pinned Rust version |
+| HT-009 | the hub image builds with Rust 1.100.0 |
+| HT-010 | merge a pull request, and a set of pull requests, on GitHub |
+| HT-011 | run a workflow again, cancel a run and start a workflow on GitHub |
+| HT-012 | set a commit status on GitHub |
+| HT-013 | an API key cannot merge, control a run or read a file |
+| HT-014 | the issue tools of the MCP server, and a workflow that a comment starts |
+| HT-015 | the Work, Code and History tabs of a project in the client |
+| HT-016 | a release build on the Linux builder puts the bundle in its own clone |
+| HT-017 | "This machine" with the Anima VPN and NetBird together |
+| HT-018 | each machine with the old program gets `anima-daemon` and enrols again |
+| HT-019 | the VPN role `daemon` on the VPS |
+| HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
+| HT-021 | the delay of the session picture in the Linux application (GH-54) |
+| HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
+| O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
+| O-2 | RDP: a changed certificate stops the session; the Warning badge |
+| O-4 | SFTP: list, upload, download, the refusals, the audit entries |
+| O-5 | Wake-on-LAN through the site relay |
+| O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
+| O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |
+| O-8 | SSH metrics: a new point each 30 s, the bars on the card |
+| O-9 | Docker, SNMP, Tailscale ping and systemd checks |
+| P-1 | The deployed image and the compose file are the accepted ones |
+| P-2 | The T4 probe, with no key |
+| P-3 | Browsers and sign-in on macOS; the cookie attributes |
+| P-4 | A browser on Linux, and the desktop application |
+| P-5 | The web client: the device list and the detail view |
+| P-6 | SSH and VNC sessions in the web client |
+| P-7 | The notification channels are entered |
+| P-8 | Channels are selected on a check |
+| P-9 | "Send test" on each channel |
+| P-10 | A Down and Up cycle sends the messages |
+| P-11 | Maintenance sends no message |
+| P-12 | A live RDAP check |
+| P-13 | GPU metrics on the Apple silicon Mac |
+| P-14 | Optional: a real Prometheus scrape |
+| P-15 | Optional: the API key checks in Settings |
+| P-17 | The desktop application: the update banner |
+| P-16 | Last: the T3 log scan of the live hub log |
+| S1-T14 | The link between two machines: the direct rate, the first-connection time, relayed Screen Sharing, the firewall prompt. It sets the keepalive numbers (LNK-009) |
+| S2-T9 | The native VNC gateway against macOS Screen Sharing and TigerVNC, with the figures |
+| S2-RDP | The native RDP gateway against a GNOME Remote Desktop host |
+| S3-T10 | The database tree recipe on the Linux builder |
+| S3-T12 | Signature and notary check of the database tree |
+| S3-T13 | No data loss after a power cut |
+| S3-T14 | The database on a real Linux desktop |
+| S4-T10 | The systemd user unit on Linux. The Local Network prompt on a Mac |
+| S6-1 | The first run in the desktop window: create a hub, TOTP, the key copy, an invite |
+| S6-2 | Join from a second Mac, then revoke |
+| S6-3 | The first run on Linux with the systemd user unit; finding F-10 |
+| S6-4 | No port mapping on a real router; no TCP port answers from outside |
+| S6-5 | A relayed path shows `RELAYED` |
+| S8-1 to S8-8 | Stay awake on macOS: the tray, keep awake, the set-up, the lid, quit and failure, the battery floor, remove, eight hours (8 checks) |
+| S8-9 to S8-13 | Stay awake on Linux: the tray, keep awake, the lid on GNOME, quit, the battery (5 checks) |
+| CLI-1 | `anima mcp` with a real MCP client: the tool list, one read, one change, and the approval request for a tool in state "ask" (MCP-013) |
+| CLI-2 | The MCP section in Settings in the real desktop application |
+| CLI-3 | Linux: the crate compiles; the Secret Service token store and its file fallback |
+| CLI-4 | macOS: the Keychain item and its access control |
+| CLI-5 | TLS against a hub with a bad certificate |
+| CLI-6 | The list of GH-60 against the production hub: sign-in, `anima ssh`, `anima files`, a confirmation prompt |
+| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) |
+
+<!-- end of the generated queue -->

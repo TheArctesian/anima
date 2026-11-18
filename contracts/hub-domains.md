@@ -12,13 +12,15 @@ The hub groups its domains under parent nouns so `crates/hub/src/` stays within 
 | --- | --- |
 | `crates/hub/src/fleet/` | The device manager: `access`, `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces` |
 
-The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/extensions-plan.md`) are added by the task that adds their first code.
+The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/plans/extensions-plan.md`) are added by the task that adds their first code.
 
 ## Leaf modules (owned by WP-01; every domain may import them; they import no domain)
 
 | Module | Content |
 | --- | --- |
 | `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
+| `crates/hub/src/engine/instants.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3, TML-008) | `micros` and `from_micros`: an event instant as microseconds since the Unix epoch in UTC. It imports no module of the hub |
+| `crates/hub/src/engine/records.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E4) | `Reference` (`kind:id`) and `Subject` (the shared subject keys, RLK-004). It imports only `ids`, which gains `RecordLinkId`, `PlaceId` and `PersonId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
@@ -175,7 +177,7 @@ pub struct NewEvent { pub severity: Severity, pub source: Source, pub device: Op
 ```
 
 `NewAudit` takes its actor from `operator.actor`. A writer that no request drives (scheduler, retention, prune,
-policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorKind::Hub`.
+policy, builder and daemon tokens per LOG-019) uses `Operator::hub()` and `ActorKind::Hub`.
 `access` adds `pub struct Declaration` (the agent declaration, `of_headers`, `of_payload`), `pub enum MadeFor
 { User, Agent }` and `pub const ACTOR_HEADER`; the decision itself is private to `access` (LOG-014).
 
@@ -194,7 +196,7 @@ policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorK
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; agent tokens live in `metrics`, R-092 D-1); crate `agent-core` (CR-8) |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
@@ -207,6 +209,8 @@ policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorK
 | `sources` (Connect GitHub, replaces the row above; operator, 2026-11-14; ruling number to be assigned; K-E1 Section 7a) | the same, and `access` for `registration/routes.rs` only: `PublicOrigin`, `SameOrigin`, `identify`, and a cookie reader (K-E1 Section 12) |
 | `projects` (work, new; same ruling; XP-02) | `extensions` (`PROJECTS`, `require_on` only), `sources` (`Intake`, `Page`, `Taken`, `Counts`, `request_sync` only), `events` |
 | `projects` (second slice, adds; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14; K-E1 Section 13) | `sources` (`Scheduling`, `ask`, `change`, `forget`, `standing`, `Keep`, `Reply`, `LiveFailure` too); `access` (`operator_only` only, and only in the files named `graphql.rs` of its sub-folders: the import gate reads `<domain>/graphql.rs` alone as the graphql module, so this edge is listed under `domains`); crates `provider-github` (already) and `source-exchange` (`Change`, its parts, `Settled`) |
+| `timeline` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3) | `events` (`before`, `EventSummary`, `Source` only) |
+| `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -225,6 +229,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
 | `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`); and, from the second Projects slice (operator, 2026-11-14; ruling number to be assigned), on `codeFile`, `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow`, `setCommitStatus` (they join `API_KEY_REFUSED_ROOTS`) |
+| `timeline`, `links` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4) | `access` | the `Authenticated` guard on `timeline`, `recordLinks`, `linkRecords`, `unlinkRecords` |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -256,7 +261,7 @@ pub struct RdpSettings { pub enabled: bool, pub port: u16, pub username: String,
 pub struct VncSettings { pub enabled: bool, pub port: u16, pub username: Option<String> }
 pub struct TransferPolicy { pub upload: bool, pub download: bool, pub copy: bool, pub paste: bool }
 pub struct MacAddress([u8; 6]);            // parsed at the API edge; Display renders aa:bb:cc:dd:ee:ff
-pub enum MetricsSource { None, Ssh, Agent }   // Agent (Phase 3, CR-15): set only by metrics enrolment
+pub enum MetricsSource { None, Ssh, Daemon }   // Daemon (Phase 3, CR-15): set only by metrics enrolment
 pub async fn wake_relay(db: &Db, site: SiteId) -> Result<Option<Device>, Error>;
 ```
 
@@ -274,7 +279,7 @@ pub async fn record_distribution(db: &Db, id: DeviceId, distribution: &Distribut
 pub async fn record_detected_os(db: &Db, id: DeviceId, os: OperatingSystem) -> Result<bool, Error>;   // metrics collector; DEV-025, writes only while os = 'other'
 pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error>;                                  // FOR UPDATE; metrics enrolment
 pub async fn lock_metrics_source(conn: &mut PgConnection, id: DeviceId) -> Result<MetricsSource, Error>;       // FOR UPDATE; MET-011, MET-018
-pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // agent enrolment only; R-092 D-7
+pub async fn use_daemon_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // daemon enrolment only; R-092 D-7
 pub async fn session_limit<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Option<NonZeroU8>, Error>;   // RA-036
 ```
 
@@ -495,21 +500,23 @@ pub async fn storage(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<St
 // Wiring only: create_partitions_ahead, drop_expired_partitions (as events and checks).
 
 // (Phase 3, WP-54; K8, R-092)
-/// POST /agent/v1/{enrol,push,renew} (K8). main.rs merges it behind the NET-002 layer.
-pub fn agent_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum::Router;
-/// Marks AGENT devices stale after 30 s with no batch, with one event each way (MET-018);
+/// POST /daemon/v1/{enrol,push,renew} (K8). main.rs merges it behind the NET-002 layer.
+pub fn daemon_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum::Router;
+/// Marks DAEMON devices stale after 30 s with no batch, with one event each way (MET-018);
 /// spawned from spawns.rs (P3-007). Takes the event bus, not the feed (CR-18).
 pub fn spawn_stale_watch(db: Db, bus: events::Bus, clock: Clock) -> JoinHandle<()>;
-/// Of `devices`, those whose agent is not fresh: never pushed, revoked or stale (MET-018, CR-18).
-pub async fn stale_agents(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
+/// Of `devices`, those whose daemon is not fresh: never pushed, revoked or stale (MET-018, CR-18).
+pub async fn stale_daemons(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
 
 // (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
-pub struct Capabilities { pub device: DeviceId, pub inventory: agent_core::inventory::Inventory, pub found_at: DateTime<Utc> }
+pub struct Capabilities { pub device: DeviceId, pub inventory: daemon_core::inventory::Inventory, pub found_at: DateTime<Utc> }
 pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option<String> }
-/// The tool inventory each agent sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
-/// Each tool is usable with its version or not usable with a fixed `agent_core::inventory::Reason` (CAP-024).
+/// The tool inventory each daemon sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
+/// Each tool is usable with its version or not usable with a fixed `daemon_core::inventory::Reason` (CAP-024).
 /// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
+/// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
+pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)
@@ -635,6 +642,32 @@ pub fn convert(transport: &Transport, declaration: &Declaration, code: &str, now
 ```
 
 `sources/graphql/trail.rs` moves to `sources/trail.rs` so `connect.rs` can use `connected`. `graphql/registration.rs` holds the three roots and the subscription. `registration/routes.rs` is the only file that imports `access` beyond the guard.
+
+## engine: timeline, links and the leaf `records` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
+
+Folders `crates/hub/src/engine/timeline/` and `crates/hub/src/engine/links/`, and the leaf file `crates/hub/src/engine/records.rs`. `records` is a leaf inside the group `engine/`, as `targets` is inside `fleet/`: it imports only `ids` and every domain may import it. Details are in `contracts/extensions/timeline.md` and `contracts/extensions/shared-records.md`. The timeline has no table (TML-001); `links` has migration 2030.
+
+```rust
+// engine::records (leaf)
+pub struct Reference(/* "kind:id" */);
+pub enum Subject { Repository(String), Place(PlaceId), Person(PersonId), Date(NaiveDate) }
+
+// engine::timeline
+pub trait Adapter { /* K-E3 Section 6 */ }
+pub struct Adapters { /* built once in wiring */ }
+pub fn event_log() -> Arc<dyn Adapter>;
+pub async fn read(adapters: &Adapters, db: &Db, ask: &Ask) -> Result<Page, Error>;
+
+// engine::links
+pub async fn connect(conn: &mut PgConnection, new: NewLink, (at, by): (DateTime<Utc>, &str)) -> Result<(Link, Outcome), Error>;
+pub async fn disconnect(conn: &mut PgConnection, id: RecordLinkId) -> Result<Option<Link>, Error>;
+pub async fn touching(db: &Db, record: &Reference) -> Result<Vec<Link>, Error>;
+
+// fleet::events, added for the timeline (TML-007)
+pub async fn before(db: &Db, (from, before): (DateTime<Utc>, (DateTime<Utc>, Uuid)), sources: Option<Vec<Source>>, limit: i64) -> Result<Vec<EventSummary>, Error>;
+```
+
+`schema.rs` builds `timeline::Adapters` with `timeline::event_log()`. `fleet/events/model.rs` gains `AuditTarget::RecordLink`. `ids.rs` gains `RecordLinkId`, `PlaceId` and `PersonId`. No domain imports `timeline` or `links`.
 
 ## projects (work, XP-02 first slice; operator, 2026-11-13; ruling number to be assigned)
 

@@ -1,15 +1,15 @@
-//! The K1 enums of metrics and their bridge to the stored kinds of [`agent_core::points`].
+//! The K1 enums of metrics and their bridge to the stored kinds of [`daemon_core::points`].
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use agent_core::{
+use async_graphql::{Enum, ID, SimpleObject};
+use chrono::{DateTime, Utc};
+use daemon_core::{
     points::{Kind, Sample},
     wire::{self, BatchGpu},
 };
-use async_graphql::{Enum, ID, SimpleObject};
-use chrono::{DateTime, Utc};
 
 /// What a series measures (the API's `MetricKind`). Stored as [`MetricKind::as_str`]: the name
 /// of its [`Kind`], the one list of stored kind names.
@@ -156,7 +156,7 @@ impl GpuVendor {
     }
 }
 
-/// The vendor of a GPU an agent listed (K8 Section 4, R-098 f).
+/// The vendor of a GPU a daemon listed (K8 Section 4, R-098 f).
 impl From<wire::GpuVendor> for GpuVendor {
     fn from(vendor: wire::GpuVendor) -> Self {
         match vendor {
@@ -178,7 +178,7 @@ pub struct Gpu {
     pub has_vram: bool,
 }
 
-/// A GPU an agent listed in a batch (MET-006, K8 Section 4).
+/// A GPU a daemon listed in a batch (MET-006, K8 Section 4).
 impl From<BatchGpu> for Gpu {
     fn from(gpu: BatchGpu) -> Self {
         Self {

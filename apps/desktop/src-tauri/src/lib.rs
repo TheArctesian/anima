@@ -4,13 +4,15 @@
 //! feature does not compile for a mobile target (MOB-003).
 
 #[cfg(desktop)]
-mod agent;
-#[cfg(desktop)]
 mod builder;
 #[cfg(desktop)]
 mod carried;
 #[cfg(desktop)]
+mod cloud;
+#[cfg(desktop)]
 mod command_line;
+#[cfg(desktop)]
+mod daemon;
 #[cfg(desktop)]
 mod desktop;
 #[cfg(desktop)]

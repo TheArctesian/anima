@@ -1,8 +1,8 @@
 //! When the hub looks for a device's GPUs, how it numbers what it finds and keeps the numbers
 //! (MET-006, MET-007, MET-009), without a device.
 
-use agent_core::readings::captures::IOREG_ACCELERATOR;
 use chrono::{DateTime, TimeDelta, Utc};
+use daemon_core::readings::captures::IOREG_ACCELERATOR;
 
 use super::gpus::{at, found, linux_answers, ok, output};
 use crate::fleet::{
@@ -313,7 +313,7 @@ pub(super) fn reads(plan: &Plan) -> Vec<GpuVendor> {
         .collect()
 }
 
-fn gpus_of(answer: &Answer) -> &[agent_core::readings::GpuReading] {
+fn gpus_of(answer: &Answer) -> &[daemon_core::readings::GpuReading] {
     match answer {
         Answer::Gpus(gpus) => gpus,
         Answer::Failed | Answer::Unknown => &[],

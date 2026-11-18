@@ -3,6 +3,29 @@ import { DEVICE_IDS, openDevices } from './screens';
 
 test.use({ signedIn: true });
 
+test('DEV-007: the wide device list gives the name and address separate lines', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openDevices(page);
+  await page.getByRole('button', { name: 'List', exact: true }).click();
+  const table = page.getByRole('table', { name: 'Devices' });
+  const row = table.getByRole('row', { name: /mac-mini/ });
+  const identity = row.getByRole('rowheader');
+  const name = identity.getByRole('link', { name: 'mac-mini', exact: true });
+  const address = identity.getByText('10.40.0.13', { exact: true });
+  await expect(address).toBeVisible();
+  await expect(table.getByRole('columnheader', { name: 'Last 50 checks' })).toBeVisible();
+
+  const [rowBox, nameBox, addressBox] = await Promise.all([row.boundingBox(), name.boundingBox(), address.boundingBox()]);
+  if (rowBox === null || nameBox === null || addressBox === null) throw new Error('The device row is missing its name or address');
+  expect(rowBox.height).toBeGreaterThanOrEqual(56);
+  expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(addressBox.y);
+  expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(1280);
+
+  const memory = table.getByRole('row', { name: /gpu-box/ }).getByText('Memory', { exact: true });
+  await expect(memory).toBeVisible();
+  expect(await memory.evaluate((label) => label.scrollWidth)).toBeLessThanOrEqual(await memory.evaluate((label) => label.clientWidth));
+});
+
 test('DEV-007, RA-020: status and warning sit side by side inside the Status column', async ({ page, hub }) => {
   await openDevices(page);
   await page.getByRole('button', { name: 'List', exact: true }).click();

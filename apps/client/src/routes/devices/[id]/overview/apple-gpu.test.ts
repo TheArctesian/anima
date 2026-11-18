@@ -26,11 +26,11 @@ const NOW = new Date('2026-11-05T09:05:00Z');
 const AT = '2026-11-05T09:04:00Z';
 const THREE_GIB = 3 * 1024 ** 3;
 
-/** The detail view of an Apple silicon Mac with the agent: usage and shared memory, and no VRAM series. */
+/** The detail view of an Apple silicon Mac with the daemon: usage and shared memory, and no VRAM series. */
 function showApple(): void {
   const metrics = {
     view: {
-      metricsSource: 'AGENT' as const,
+      metricsSource: 'DAEMON' as const,
       gpus: [APPLE],
       series: [...CPU_ONLY, series('GPU_PERCENT', 'GPU 0', [point(AT, 35)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(AT, THREE_GIB)], 0)],
       drives: [],
@@ -47,7 +47,7 @@ function showApple(): void {
   app = mount(OverviewPanel, {
     target: document.body,
     props: {
-      device: device({ metricsSource: 'AGENT' }),
+      device: device({ metricsSource: 'DAEMON' }),
       checks: [],
       metrics,
       range: 'HOUR',

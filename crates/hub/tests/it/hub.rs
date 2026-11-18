@@ -97,6 +97,15 @@ impl Hub {
         }
     }
 
+    /// The same hub, with requests from `client`, for example a link address.
+    pub fn from(&self, client: &'static str) -> Self {
+        Self {
+            router: self.router.clone(),
+            bus: self.bus.clone(),
+            client,
+        }
+    }
+
     /// Sends a raw request from this hub's client; returns the status and the body text.
     pub async fn send(&self, request: Request<Body>) -> (StatusCode, String) {
         let mut request = request;

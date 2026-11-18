@@ -1,6 +1,6 @@
 //! Where the application keeps this user's files: the hub root of `anima-local-hub` and the
 //! device link's folder are below it. The same rule as `anima-database`'s `Layout::for_user`,
-//! which the local hub uses; a test holds the two paths of `docs/setup/local-hub.md`.
+//! which the local hub uses; a test holds the two paths of `docs/procedures/setup/local-hub.md`.
 
 use std::path::{Path, PathBuf};
 

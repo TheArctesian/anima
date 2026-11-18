@@ -78,6 +78,7 @@ export function gateList(baseRef: string): Gate[] {
     { name: "limits", argv: ["bun", "run", "quality:limits"] },
     { name: "names", argv: ["bun", "run", "quality:names"] },
     { name: "imports", argv: ["bun", "run", "quality:imports"] },
+    { name: "documents", argv: ["bun", "run", "quality:documents"] },
     { name: "baseline", argv: ["bun", "run", "quality:baseline", "--", "--base", baseRef] },
   ];
 }

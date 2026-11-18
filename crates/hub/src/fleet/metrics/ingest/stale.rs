@@ -1,10 +1,10 @@
-//! The stale mark of an agent (MET-018, R-098 a): once the hub has accepted no batch from an
-//! agent for more than 30 seconds, the device's metrics are stale, and the hub writes one event;
+//! The stale mark of a daemon (MET-018, R-098 a): once the hub has accepted no batch from an
+//! daemon for more than 30 seconds, the device's metrics are stale, and the hub writes one event;
 //! the next accepted batch clears the mark and writes one more (in `push`). A refused batch
 //! changes neither.
 //!
-//! Stale says only that the agent is not reaching the hub. It writes no heartbeat and changes
-//! no check, so a stale agent is never a Down check. The round takes the time as a parameter
+//! Stale says only that the daemon is not reaching the hub. It writes no heartbeat and changes
+//! no check, so a stale daemon is never a Down check. The round takes the time as a parameter
 //! (CQ-021); only [`spawn_stale_watch`] reads the clock.
 
 use std::{collections::HashSet, sync::Arc, time::Duration};
@@ -23,10 +23,10 @@ use crate::{
     ids::DeviceId,
 };
 
-/// How long the hub waits for a batch before the agent is stale: three push intervals.
+/// How long the hub waits for a batch before the daemon is stale: three push intervals.
 const STALE_AFTER: TimeDelta = TimeDelta::seconds(30);
 
-/// The time between two rounds, so an agent is marked 30 to 35 seconds after its last batch.
+/// The time between two rounds, so a daemon is marked 30 to 35 seconds after its last batch.
 const ROUND: Duration = Duration::from_secs(5);
 
 /// Starts the stale watch: a round every 5 seconds at the clock's time, skipping the ticks a
@@ -41,19 +41,19 @@ pub fn spawn_stale_watch(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> JoinHan
         loop {
             ticker.tick().await;
             if let Err(error) = mark_stale(&db, &bus, clock.now()).await {
-                tracing::error!(%error, "stale agents could not be marked");
+                tracing::error!(%error, "stale daemons could not be marked");
             }
         }
     })
 }
 
-/// Marks every agent with no batch accepted for more than 30 seconds before `now` stale, with
-/// one event for each whose device still takes its metrics from the agent; how many it marked.
-/// An agent that has never pushed is never marked: it never became stale. One device that
+/// Marks every daemon with no batch accepted for more than 30 seconds before `now` stale, with
+/// one event for each whose device still takes its metrics from the daemon; how many it marked.
+/// A daemon that has never pushed is never marked: it never became stale. One device that
 /// cannot be marked is logged by its ID and does not keep the others from being marked.
 ///
 /// # Errors
-/// `Database`, `Devices` or `Events` when the overdue agents cannot be read, or the first
+/// `Database`, `Devices` or `Events` when the overdue daemons cannot be read, or the first
 /// device's failure once every other device was tried.
 pub(in crate::fleet::metrics) async fn mark_stale(
     db: &PgPool,
@@ -68,7 +68,7 @@ pub(in crate::fleet::metrics) async fn mark_stale(
             Ok(true) => marked += 1,
             Ok(false) => {}
             Err(error) => {
-                tracing::error!(%error, %device, "an agent could not be marked stale");
+                tracing::error!(%error, %device, "a daemon could not be marked stale");
                 failed.get_or_insert(error);
             }
         }
@@ -76,7 +76,7 @@ pub(in crate::fleet::metrics) async fn mark_stale(
     failed.map_or(Ok(marked), Err)
 }
 
-/// Marks one agent stale unless a batch came meanwhile; whether it did. The device row is taken
+/// Marks one daemon stale unless a batch came meanwhile; whether it did. The device row is taken
 /// first, as a batch takes it, so the mark and a batch never cross: the later one sees the other.
 async fn mark_one(
     db: &PgPool,
@@ -98,35 +98,35 @@ async fn mark_one(
     if !store::mark_stale(&mut tx, device, (cutoff, now)).await? {
         return Ok(false);
     }
-    // A device switched away from the agent is marked without an event: its metrics are not
-    // the agent's any more, and the mark keeps it out of the next round.
-    if source == MetricsSource::Agent {
+    // A device switched away from the daemon is marked without an event: its metrics are not
+    // the daemon's any more, and the mark keeps it out of the next round.
+    if source == MetricsSource::Daemon {
         events::record(&mut tx, bus, now, went_stale(device, &name)).await?;
     }
     tx.commit().await?;
     Ok(true)
 }
 
-/// The one event of an agent that went stale (MET-018).
+/// The one event of a daemon that went stale (MET-018).
 fn went_stale(device: DeviceId, name: &str) -> NewEvent {
     NewEvent {
         severity: Severity::Warning,
         source: Source::Metrics,
         device: Some((device, name.to_owned())),
-        message: format!("The agent on {name} sent no metrics for 30 seconds; they are stale."),
+        message: format!("The daemon on {name} sent no metrics for 30 seconds; they are stale."),
         actor: ActorKind::Hub,
     }
 }
 
-/// Of `devices`, those with no fresh agent: revoked, not yet pushed, or marked stale. The
-/// caller asks only for devices whose metrics source is `agent` (MET-018, R-092 D-7).
+/// Of `devices`, those with no fresh daemon: revoked, not yet pushed, or marked stale. The
+/// caller asks only for devices whose metrics source is `daemon` (MET-018, R-092 D-7).
 ///
 /// # Errors
 /// The database error when the query fails.
-pub(in crate::fleet::metrics) async fn without_fresh_agent(
+pub(in crate::fleet::metrics) async fn without_fresh_daemon(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<HashSet<DeviceId>, sqlx::Error> {
-    let stale = store::without_fresh_agent(db, devices).await?;
+    let stale = store::without_fresh_daemon(db, devices).await?;
     Ok(stale.into_iter().collect())
 }

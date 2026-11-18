@@ -1,7 +1,7 @@
 //! R-099, R-092 D-6: a GPU series stores its GPU index and the index as its label, every other
 //! kind stores none, and a `gpu_memory_bytes` series is stored and read back.
 
-use agent_core::points::{Kind, Sample};
+use daemon_core::points::{Kind, Sample};
 use sqlx::PgPool;
 
 use super::database::{PVE_01, database_now, device};

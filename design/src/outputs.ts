@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { renderCss } from './css.ts';
+import { renderDoors, renderInstalledTokens } from './github-installation.ts';
 import { loadPalettes, loadTokens } from './load.ts';
 import { isTerminal } from './model.ts';
 import { renderReference } from './reference.ts';
@@ -14,6 +15,8 @@ export const OUTPUT_PATHS = {
   typescript: 'apps/client/src/lib/motion/tokens.ts',
   rust: 'crates/theme/src/generated.rs',
   reference: 'design/tokens/reference.md',
+  installedTokens: 'crates/hub/src/engine/sources/registration/pages/installed-tokens.css',
+  doors: 'crates/hub/src/engine/sources/registration/pages/doors.svg',
 } as const;
 
 /** Build every output in memory from the token source (TOK-002). */
@@ -27,5 +30,7 @@ export async function buildOutputs(repositoryRoot: string): Promise<Outputs> {
     [OUTPUT_PATHS.typescript]: renderTypescript(interfaceTokens),
     [OUTPUT_PATHS.rust]: renderRust(all),
     [OUTPUT_PATHS.reference]: renderReference(interfaceTokens),
+    [OUTPUT_PATHS.installedTokens]: renderInstalledTokens(interfaceTokens, palettes),
+    [OUTPUT_PATHS.doors]: renderDoors(),
   };
 }

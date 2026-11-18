@@ -7,11 +7,11 @@
   import { capabilities } from '$lib/platform/platform';
   import { welcomeChoices } from './welcome';
 
-  const { localHub } = capabilities();
+  const { localHub, deviceLink } = capabilities();
   /** Unknown until the shell answers; "Create" stays off until then. */
   let carried = $state(false);
   let title: HTMLElement | undefined = $state();
-  const choices = $derived(welcomeChoices({ localHub, carried }));
+  const choices = $derived(welcomeChoices({ deviceLink, localHub, carried }));
 
   onMount(() => {
     title?.focus();
@@ -24,7 +24,7 @@
 
 <ul class="choices" {@attach entrance()}>
   {#each choices as choice (choice.id)}
-    <li class:off={choice.off !== null}>
+    <li class:off={choice.off !== null} class:primary={choice.primary}>
       {#if choice.href !== null && choice.off === null}
         <a href={resolve(choice.href)} aria-describedby="{choice.id}-line">
           <strong>{choice.title}</strong><Icon name="carbon:arrow-right" size="sm" />
@@ -82,6 +82,11 @@
 
   li a:first-child:hover {
     color: var(--accent-hover);
+  }
+
+  /* The primary choice (HMD-022) carries the accent edge; the others stay plain. */
+  .primary:not(.off) {
+    border-color: var(--accent);
   }
 
   .off strong {

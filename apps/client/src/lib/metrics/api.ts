@@ -89,31 +89,33 @@ const MetricsAdded = graphql(`
   }
 `);
 
-const AgentStatus = graphql(`
-  query AgentStatus($id: ID!) {
+const DaemonStatus = graphql(`
+  query DaemonStatus($id: ID!) {
     device(id: $id) {
       id
       metricsSource
       metricsStale
+      daemonVersion
     }
   }
 `);
 
-const EnrolAgent = graphql(`
-  mutation EnrolAgent($deviceId: ID!) {
-    enrolAgent(deviceId: $deviceId) {
+const EnrolDaemon = graphql(`
+  mutation EnrolDaemon($deviceId: ID!) {
+    enrolDaemon(deviceId: $deviceId) {
       code
       expiresAt
     }
   }
 `);
 
-const RevokeAgentToken = graphql(`
-  mutation RevokeAgentToken($deviceId: ID!) {
-    revokeAgentToken(deviceId: $deviceId) {
+const RevokeDaemonToken = graphql(`
+  mutation RevokeDaemonToken($deviceId: ID!) {
+    revokeDaemonToken(deviceId: $deviceId) {
       id
       metricsSource
       metricsStale
+      daemonVersion
     }
   }
 `);
@@ -138,13 +140,15 @@ export interface DeviceMetricsView {
   /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
   readonly readings: DeviceNode['readings'] | null;
 }
-/** The agent state of one device: its source, and whether an AGENT device has gone quiet (MET-018). */
-export interface AgentStatusView {
+/** The daemon state of one device: its source, whether an DAEMON device has gone quiet (MET-018), and its daemon version (R-122). */
+export interface DaemonStatusView {
   readonly metricsSource: DeviceNode['metricsSource'];
   readonly metricsStale: boolean;
+  /** The version the daemon's newest batch carried; `null` before a batch, or from a daemon older than R-122. */
+  readonly daemonVersion: string | null;
 }
 /** A one-use enrolment code and when it stops working (MET-012). Show it once; never log or store it (LOG-007). */
-export interface AgentEnrolment {
+export interface DaemonEnrolment {
   readonly code: string;
   readonly expiresAt: string;
 }
@@ -162,24 +166,26 @@ export function metricsApi(hub: Hub) {
       const view = { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics, drives: device.storage.drives };
       return { ok: true, value: { ...view, readings: device.readings ?? null } };
     },
-    /** The device's agent source and stale flag; `null` when the hub has no such device. */
-    agentStatus: async (deviceId: string): Promise<HubResult<AgentStatusView | null>> => {
-      const result = await hub.request(AgentStatus, { id: deviceId });
+    /** The device's daemon source and stale flag; `null` when the hub has no such device. */
+    daemonStatus: async (deviceId: string): Promise<HubResult<DaemonStatusView | null>> => {
+      const result = await hub.request(DaemonStatus, { id: deviceId });
       if (!result.ok) return result;
       const { device } = result.value;
-      return { ok: true, value: device ? { metricsSource: device.metricsSource, metricsStale: device.metricsStale } : null };
+      if (!device) return { ok: true, value: null };
+      const { metricsSource, metricsStale, daemonVersion } = device;
+      return { ok: true, value: { metricsSource, metricsStale, daemonVersion: daemonVersion ?? null } };
     },
     /** Makes a fresh enrolment code for the device (MET-012); a new code voids the earlier unused ones (K8 Section 3) and each works once. */
-    enrolAgent: async (deviceId: string): Promise<HubResult<AgentEnrolment>> => {
-      const result = await hub.request(EnrolAgent, { deviceId });
-      return result.ok ? { ok: true, value: result.value.enrolAgent } : result;
+    enrolDaemon: async (deviceId: string): Promise<HubResult<DaemonEnrolment>> => {
+      const result = await hub.request(EnrolDaemon, { deviceId });
+      return result.ok ? { ok: true, value: result.value.enrolDaemon } : result;
     },
-    /** Revokes the device's agent token (MET-013); the source stays AGENT, shown stale (R-092 D-7). */
-    revokeAgentToken: async (deviceId: string): Promise<HubResult<AgentStatusView>> => {
-      const result = await hub.request(RevokeAgentToken, { deviceId });
+    /** Revokes the device's daemon token (MET-013); the source stays DAEMON, shown stale (R-092 D-7). */
+    revokeDaemonToken: async (deviceId: string): Promise<HubResult<DaemonStatusView>> => {
+      const result = await hub.request(RevokeDaemonToken, { deviceId });
       if (!result.ok) return result;
-      const { metricsSource, metricsStale } = result.value.revokeAgentToken;
-      return { ok: true, value: { metricsSource, metricsStale } };
+      const { metricsSource, metricsStale, daemonVersion } = result.value.revokeDaemonToken;
+      return { ok: true, value: { metricsSource, metricsStale, daemonVersion: daemonVersion ?? null } };
     },
     /** Listen for new samples of one device; returns the function that stops listening. */
     watch: (deviceId: string, sink: Sink<NewMetrics>): (() => void) =>

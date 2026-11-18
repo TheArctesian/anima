@@ -1,8 +1,8 @@
 //! Rounds against the test SSH device with the pop-os `lsblk` and `/proc/diskstats` (MET-027,
 //! MET-028, MET-029).
 
-use agent_core::readings::captures::{LSBLK_OLD, PROC_DISKSTATS};
 use chrono::{DateTime, Utc};
+use daemon_core::readings::captures::{LSBLK_OLD, PROC_DISKSTATS};
 use sqlx::PgPool;
 
 use super::super::bench::{DOCKER_HOST, LINUX_LINES, LSBLK_LINE, LSBLK_OLD_LINE, bench, device};
@@ -72,7 +72,7 @@ async fn met_027_the_first_round_stores_the_drives_and_an_unchanged_list_is_not_
 }
 
 /// The pop-os capture, for a test that changes it.
-const LSBLK_POP_OS_TEXT: &[u8] = agent_core::readings::captures::LSBLK_POP_OS;
+const LSBLK_POP_OS_TEXT: &[u8] = daemon_core::readings::captures::LSBLK_POP_OS;
 
 #[sqlx::test(
     migrations = "./migrations",

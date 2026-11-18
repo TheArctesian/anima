@@ -91,7 +91,7 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    The compose file sets one more hub variable as a fixed value: `ANIMA_WEB_ROOT`
    (`/usr/share/anima/web`, the web client; empty turns it off). `ANIMA_PUBLIC_ORIGIN` and
    `ANIMA_WEB_ROOT` are defined in K7 of
-   [phase-3-contracts.md](../docs/programme/phase-3-contracts.md). Until the web client
+   [phase-3-contracts.md](../docs/plans/phase-3/phase-3-contracts.md). Until the web client
    (WP-43) is in the image, they do nothing.
 
 3. Check the host:
@@ -209,8 +209,8 @@ The gateway image holds the font family `OpenDyslexicM Nerd Font Mono`. Set guac
 
 ## Web client
 
-The hub serves the web client at its own origin. See [../docs/setup/web-client.md](../docs/setup/web-client.md).
-To read metrics with Prometheus, see [../docs/setup/prometheus.md](../docs/setup/prometheus.md).
+The hub serves the web client at its own origin. See [web-client.md](../docs/procedures/setup/web-client.md).
+To read metrics with Prometheus, see [prometheus.md](../docs/procedures/setup/prometheus.md).
 
 ## No recordings volume
 
@@ -418,7 +418,7 @@ user) or in Cloudflare. Nothing in this repository does them.
 
 Do these once, in order, on the VPS in `/opt/anima/deploy` (AlmaLinux 10, as the sudo admin user).
 Each change to the VPS needs the operator's confirmation in chat first (VPS-005). Nothing in this
-repository does them. Log each one in `docs/programme/operator-changes.md`.
+repository does them. Log each one in `docs/plans/phase-3/operator-changes.md`.
 
 Each feature works once its package is in the image. Browser sign-in needs WP-43 and WP-44. The
 Apprise channel and the test notification need WP-45 and WP-50. The retention settings need WP-46 (hub)
@@ -595,7 +595,7 @@ that `restore.sh` printed once you are sure.
 
 Do not undo with only the old image and `docker compose up -d --no-deps hub`. The old `migrate` fails by
 design on a database that holds migrations it does not know (sqlx `VersionMissing`), and the old hub does
-not work on the new schema: K2 in [phase-3-contracts.md](../docs/programme/phase-3-contracts.md) moves
+not work on the new schema: K2 in [phase-3-contracts.md](../docs/plans/phase-3/phase-3-contracts.md) moves
 `sessions.host_keys` and `sessions.server_certificates` to the new schema `trust` (migration 0920),
 and the old hub reads them in `sessions`.
 
@@ -751,7 +751,7 @@ Undo: `sudo docker compose --profile apprise rm -sf apprise`.
 `hub.anima.ing` stays an unproxied record to the VPN address. The web client is same-origin, so
 `CLIENT_ORIGINS` stays as it is. `operator@` already reaches `tag:hub` on tcp:443. Only a Prometheus
 scraper that is not an `operator@` machine needs a grant; see
-[../docs/setup/prometheus.md](../docs/setup/prometheus.md).
+[prometheus.md](../docs/procedures/setup/prometheus.md).
 
 ## The VPS as a device (VP-13)
 

@@ -23,7 +23,7 @@ export const rawNodes = [
   node(4, 'stranger', 'intruder', { expiry: inDays(30), pre_auth_key: key(4) }),
   node(5, 'odd', 'tagged-devices', { tags: ['tag:unknown'], pre_auth_key: key(5) }),
   node(6, 'router-office1', 'tagged-devices', { tags: ['tag:router', 'tag:site-office1'], pre_auth_key: key(6) }),
-  node(7, 'agent-nas', 'tagged-devices', { tags: ['tag:agent'], online: true, expiry: inDays(90), pre_auth_key: key(7) }),
+  node(7, 'daemon-nas', 'tagged-devices', { tags: ['tag:daemon'], online: true, expiry: inDays(90), pre_auth_key: key(7) }),
   node(8, 'mac2', 'operator', { online: true }),
 ];
 
@@ -33,7 +33,7 @@ export const rawRoutes = [
 ];
 
 export const tailnet: Tailnet = { nodes: parseNodes(rawNodes), routes: parseRoutes(rawRoutes) };
-export const expected = ['hub', 'mac', 'router-home', 'router-office1', 'agent-nas', 'mac2'];
+export const expected = ['hub', 'mac', 'router-home', 'router-office1', 'daemon-nas', 'mac2'];
 
 /** The tailnet without its bad nodes: hub, a client within 180 days, the home router. */
 export const clean: Tailnet = {

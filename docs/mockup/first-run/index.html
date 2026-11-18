@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First Run Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
+<style>
+/* Layout: a review board. Row 1 is the first-run choices; rows 2 and 3 are the steps and the failures of "Sign in"
+   (hosted-mode.md Section 4.1, HMD-022, HMD-023). Each frame is the welcome column of the app at its own width. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+:root[data-theme="light"] { color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3; }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, sizes, type). A frame is dark (.gd) or light (.gl) on purpose. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0; --on-accent: #16181B; --status-down: #BF616A;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80; --on-accent: #FFFFFF; --status-down: #BF616A;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-8: 2rem; --space-16: 4rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-2xl: 1.5rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em; --tracking-label: 0.14em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --border-thin: 1px; --border-focus: 2px;
+  --control-md: 2rem; --target-min-desktop: 24px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+h2.row { margin: 32px 0 12px; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pg-muted); }
+.frames { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; }
+figure { margin: 0; flex: 0 0 auto; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 400px; }
+
+/* One frame: the bare ground and the welcome column (routes/welcome/+layout.svelte). */
+.frame { inline-size: 400px; block-size: 380px; overflow: hidden; border: 1px solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-family: var(--font-ui); font-size: var(--text-md); padding: var(--space-8) var(--space-4); display: grid; gap: var(--space-4); align-content: start; }
+.label { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--text-secondary); font-size: var(--text-sm); }
+.logo { inline-size: 22px; block-size: 22px; border-radius: 3px; background: var(--accent); opacity: .7; }
+.rule { inline-size: var(--space-8); block-size: var(--border-thin); background: var(--border-strong); }
+.frame.tall { block-size: 500px; }
+.frame h1 { margin: 0 0 var(--space-2); font-size: var(--text-display); font-weight: var(--weight-light); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+.frame p { margin: 0; line-height: var(--leading-normal); }
+.lead, .line { color: var(--text-secondary); }
+.frame h2 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); line-height: var(--leading-tight); }
+
+/* The choices (routes/welcome/+page.svelte). */
+.choices { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.choices li { display: grid; gap: var(--space-1); padding: var(--space-4); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); }
+.choices li.primary { border-color: var(--accent); }
+.choices strong { display: flex; justify-content: space-between; }
+.choices p { color: var(--text-secondary); font-size: var(--text-sm); }
+.secondary { color: var(--accent); font-size: var(--text-sm); }
+
+/* A step of "Sign in" (routes/welcome/hosted/HostedSignIn.svelte). */
+.step { display: grid; gap: var(--space-2); }
+.failed .line { padding-inline-start: var(--space-2); border-inline-start: var(--border-focus) solid var(--status-down); }
+.code { font-family: var(--font-mono); font-size: var(--text-2xl); letter-spacing: var(--tracking-label); }
+.actions { display: flex; align-items: center; justify-content: space-between; min-block-size: var(--target-min-desktop); margin-block-start: var(--space-2); }
+.actions a { color: var(--text-secondary); font-size: var(--text-sm); }
+.button { margin-inline-start: auto; block-size: var(--control-md); padding: 0 var(--space-3); border-radius: var(--radius-md); border: 0; font: inherit; font-size: var(--text-sm); background: var(--surface-raised); color: var(--text); }
+.button.primary { background: var(--accent); color: var(--on-accent); }
+</style>
+</head>
+<body>
+<h1 class="board">First run: Sign in</h1>
+<p class="about">The first-run choices and each step of "Sign in" (hosted-mode.md Section 4.1, HMD-022, HMD-023).
+Each step has one heading, one line and at most one button. Back goes to the choices. After "Sign in" no step asks for an invite, an address or a hub password (HMD-037, R-128). The values are the design tokens.</p>
+
+<h2 class="row">1. Choices</h2>
+<div class="frames">
+  <figure><div class="frame tall gd">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
+    <h1>Welcome to Anima.ing</h1>
+    <p class="lead">Choose how this computer reaches its hub.</p>
+    <ul class="choices">
+      <li class="primary"><strong>Sign in <span>→</span></strong><p>Use a hub hosted by Anima.ing.</p><span class="secondary">Use a hub address</span></li>
+      <li><strong>Join a hub <span>→</span></strong><p>Link this computer to a hub with an invite.</p></li>
+      <li><strong>Create a hub on this computer <span>→</span></strong><p>This computer runs the hub. Other devices join it.</p></li>
+    </ul>
+  </div><figcaption>Sign in is the primary choice: its edge is the accent (HMD-022).</figcaption></figure>
+  <figure><div class="frame tall gl">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
+    <h1>Welcome to Anima.ing</h1>
+    <p class="lead">Choose how this computer reaches its hub.</p>
+    <ul class="choices">
+      <li class="primary"><strong>Sign in <span>→</span></strong><p>Use a hub hosted by Anima.ing.</p><span class="secondary">Use a hub address</span></li>
+      <li><strong>Join a hub <span>→</span></strong><p>Link this computer to a hub with an invite.</p></li>
+      <li><strong>Create a hub on this computer <span>→</span></strong><p>This computer runs the hub. Other devices join it.</p></li>
+    </ul>
+  </div><figcaption>Light.</figcaption></figure>
+</div>
+
+<h2 class="row">2. Steps</h2>
+<div class="frames">
+  <figure><div class="frame gd">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Starting</h2><p class="line">Getting a code.</p><div class="actions"><a>Back</a></div></div>
+  </div><figcaption>Start: the app gets a code from the cloud and opens the system browser.</figcaption></figure>
+  <figure><div class="frame gd">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Continue in your browser</h2><p class="line">Check that the browser shows this code.</p>
+    <p class="code">WDJB-MJHT</p><div class="actions"><a>Back</a><button class="button">Open the page</button></div></div>
+  </div><figcaption>Waiting: the code to compare with the browser page. If the browser did not open, the line says so.</figcaption></figure>
+  <figure><div class="frame gd">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Your hub is starting</h2><p class="line">Making your hub. This can take a minute.</p><div class="actions"></div></div>
+  </div><figcaption>Make or wake (HMD-025). The line is "Finding your hub.", "Making your hub. This can take a minute." or "Waking your hub."</figcaption></figure>
+  <figure><div class="frame gd">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Connecting</h2><p class="line">Connecting this computer to your hub.</p><div class="actions"></div></div>
+  </div><figcaption>The app joins the hub by itself with what the cloud gave; nothing of it is shown.</figcaption></figure>
+  <figure><div class="frame gl">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Your hub is ready</h2><p class="line">Opening your devices.</p><div class="actions"></div></div>
+  </div><figcaption>Done: the device list opens by itself and offers this computer. No step asks for an invite, an address or a hub password (HMD-037).</figcaption></figure>
+</div>
+
+<h2 class="row">3. Failures, each with a retry</h2>
+<div class="frames">
+  <figure><div class="frame gd failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Sign-in cancelled</h2><p class="line">The sign-in was cancelled in the browser.</p><div class="actions"><a>Back</a><button class="button primary">Try again</button></div></div>
+  </div><figcaption>Cancelled: a new code.</figcaption></figure>
+  <figure><div class="frame gd failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>The code expired</h2><p class="line">Sign in before the code runs out.</p><div class="actions"><a>Back</a><button class="button primary">Get a new code</button></div></div>
+  </div><figcaption>Expired: a new code.</figcaption></figure>
+  <figure><div class="frame gl failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>No network</h2><p class="line">Anima.ing did not answer. Check the network.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
+  </div><figcaption>No network: the step that stopped again.</figcaption></figure>
+  <figure><div class="frame gl failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Sign-in refused</h2><p class="line">Anima.ing refused the sign-in.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
+  </div><figcaption>Refused by the cloud. When the hub refuses this computer, the line is "Your hub refused this computer."</figcaption></figure>
+  <figure><div class="frame gd failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Sign in again</h2><p class="line">Your Anima.ing session ended.</p><div class="actions"><a>Back</a><button class="button primary">Sign in</button></div></div>
+  </div><figcaption>The session of the account ended at any step: the sign-in starts again (HMD-043).</figcaption></figure>
+  <figure><div class="frame gl failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Sign-in not available</h2><p class="line">This build of Anima.ing has no account sign-in.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
+  </div><figcaption>A build with no client ID (HMD-043).</figcaption></figure>
+  <figure><div class="frame gd failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Payment failed</h2><p class="line">Pay on cloud.anima.ing, then retry.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
+  </div><figcaption>The payment of the account failed: the cloud makes and wakes nothing (402 payment_failed).</figcaption></figure>
+</div>
+</body>
+</html>

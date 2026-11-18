@@ -167,7 +167,7 @@ orchestrator may waive; N-2 is a regression from T1 with no decision behind it.
 | Interrupts (MV-003) | Three toggles 60 ms apart (disclosures), Escape or second click at 40, 80, 120, 200 ms (menu, modal), close at 20 and 90 ms (session tab), two status changes 60 ms apart, Back at 60, 100, 250, 700 ms into a card to detail flight. |
 | Harness | Copy of the first audit's harness in `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/reharness/` (new: `r_modal`, `r_cls`, `r_xfade`, `r_xfade2`, `r_press`, `r_rev`, `r_tab`, `r_nav`, `r_menu`, `r_skel`, `r_a11y`, `r_orphan`; logs in `logs/`). Screenshots: `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/reshots/` (cited `shots/<name>`). |
 | Gates | `bun run --cwd apps/client lint` (eslint, stylelint, codegen check): exit 0, so the TOK-003 raw-value gate has no hit. `grep` finds 0 `@keyframes`, 0 `startViewTransition` in `apps/client/src` (MV-006, MV-008). |
-| Not built | D-6, D-7, D-9 and D-10 are not in `docs/programme/packages/WP-17.md` on `1eff0a3` (it ends at D-4). They were read from the commit messages (`0ac3937`, `64f22f0`, `7d210e4`, `b1abe67`, `ff5eba8`) and the code comments. If the decisions say more than those, N-1 and C-2 may change. |
+| Not built | D-6, D-7, D-9 and D-10 are not in `docs/archive/packages/WP-17.md` on `1eff0a3` (it ends at D-4). They were read from the commit messages (`0ac3937`, `64f22f0`, `7d210e4`, `b1abe67`, `ff5eba8`) and the code comments. If the decisions say more than those, N-1 and C-2 may change. |
 
 ### R2. First-audit findings, re-measured
 

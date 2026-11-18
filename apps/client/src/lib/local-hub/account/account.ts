@@ -1,6 +1,6 @@
 import { localHubMessage, type LocalHubProblem } from '$lib/desktop/local-hub/shell';
 
-/** The operator name rule of `anima-hub operator` (`docs/setup/local-hub.md` Section 7). */
+/** The operator name rule of `anima-hub operator` (`docs/procedures/setup/local-hub.md` Section 7). */
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 /** The shortest password the hub's `operator set` rules take. */

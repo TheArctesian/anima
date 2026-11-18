@@ -147,23 +147,23 @@ describe('update diffs', () => {
   });
 });
 
-describe('D-7: the form never resubmits the AGENT source', () => {
+describe('D-7: the form never resubmits the DAEMON source', () => {
   const saved = formValues(SAVED);
-  const agent = edit(formValues({ ...PHASE_1, ...K1, metricsSource: 'AGENT' }), {});
+  const daemon = edit(formValues({ ...PHASE_1, ...K1, metricsSource: 'DAEMON' }), {});
 
-  it('D-7: saving other changes of an AGENT device sends no metricsSource', () => {
-    expect(updateInput(agent, edit(agent, { macAddress: 'aa:bb:cc:dd:ee:00' }))).toEqual({ macAddress: 'aa:bb:cc:dd:ee:00' });
-    expect(updateInput(agent, agent)).toEqual({});
+  it('D-7: saving other changes of an DAEMON device sends no metricsSource', () => {
+    expect(updateInput(daemon, edit(daemon, { macAddress: 'aa:bb:cc:dd:ee:00' }))).toEqual({ macAddress: 'aa:bb:cc:dd:ee:00' });
+    expect(updateInput(daemon, daemon)).toEqual({});
   });
 
-  it('D-7: AGENT is not sent even when it differs from the saved source, nor on create', () => {
-    expect(updateInput(saved, edit(saved, { metricsSource: 'AGENT' }))).toEqual({});
-    expect(createAdditions(edit(saved, { metricsSource: 'AGENT' }))).not.toHaveProperty('metricsSource');
+  it('D-7: DAEMON is not sent even when it differs from the saved source, nor on create', () => {
+    expect(updateInput(saved, edit(saved, { metricsSource: 'DAEMON' }))).toEqual({});
+    expect(createAdditions(edit(saved, { metricsSource: 'DAEMON' }))).not.toHaveProperty('metricsSource');
   });
 
-  it('D-7: the way off the agent is a pick of SSH or NONE, and that is sent', () => {
-    expect(updateInput(agent, edit(agent, { metricsSource: 'SSH' })).metricsSource).toBe('SSH');
-    expect(updateInput(agent, edit(agent, { metricsSource: 'NONE' })).metricsSource).toBe('NONE');
+  it('D-7: the way off the daemon is a pick of SSH or NONE, and that is sent', () => {
+    expect(updateInput(daemon, edit(daemon, { metricsSource: 'SSH' })).metricsSource).toBe('SSH');
+    expect(updateInput(daemon, edit(daemon, { metricsSource: 'NONE' })).metricsSource).toBe('NONE');
   });
 });
 

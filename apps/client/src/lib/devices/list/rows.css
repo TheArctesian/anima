@@ -1,4 +1,8 @@
 /* The device list's rows (UR-7, D18). A table for its column headers; the columns are fixed so every row lines up. */
+.device-list {
+  container-type: inline-size;
+}
+
 .device-rows {
   inline-size: 100%;
   border-collapse: collapse;
@@ -48,7 +52,14 @@
 }
 
 .device-rows .c-beats {
-  inline-size: calc(var(--space-16) * 2);
+  /* The name gets 20% of the results width. Reserve room for the other columns before widening the history. */
+  inline-size: clamp(var(--space-16), calc(80cqi - var(--space-16) * 11), calc(var(--space-16) * 2));
+}
+
+.device-rows thead .c-beats {
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-small);
+  white-space: normal;
 }
 
 /* The bar fits its column; the newest checks stay in view and the oldest are cut. */
@@ -57,8 +68,13 @@
 }
 
 .device-rows .c-connect {
-  inline-size: calc(var(--control-md) * 3 + var(--space-4));
+  inline-size: calc(var(--control-md) * 3 + var(--space-8));
   text-align: end;
+}
+
+.device-rows .c-connect .compact {
+  flex-wrap: wrap;
+  justify-content: end;
 }
 
 .device-rows .c-meta {
@@ -90,6 +106,7 @@
 
 .device-rows .device > * {
   block-size: var(--device-row-block-size);
+  padding-block: var(--space-2);
   border-block-end: var(--border-thin) solid var(--border-subtle);
 }
 
@@ -131,12 +148,20 @@
   display: table-cell;
 }
 
-.device-rows .c-name > * {
-  vertical-align: middle;
+.device-rows .device-label,
+.device-rows .addresses {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.device-rows .addresses {
+  padding-inline-start: calc(var(--icon-md) + var(--space-2));
 }
 
 .device-rows .c-name a {
-  margin-inline: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--text);
   font-weight: var(--weight-medium);
   text-decoration: none;
@@ -171,7 +196,7 @@
   .device-rows .c-status,
   .device-rows .c-uptime,
   .device-rows .c-beats,
-  .device-rows .c-name .host {
+  .device-rows .addresses {
     display: none;
   }
 
@@ -242,7 +267,7 @@
     grid-area: meta;
     display: flex;
     gap: var(--space-2);
-    padding-inline-start: var(--space-6);
+    padding-inline-start: calc(var(--icon-md) + var(--space-2));
     color: var(--text-tertiary);
     font-size: var(--text-sm);
   }
@@ -261,6 +286,5 @@
 }
 
 .device-rows .c-name .ip {
-  margin-inline-start: var(--space-2);
   color: var(--text-quiet);
 }

@@ -15,6 +15,7 @@ use super::{Error, PERMITTED_NETWORKS, optional_socket};
 
 pub(super) const LINK_SOCKET: &str = "ANIMA_LINK_SOCKET";
 pub(super) const LINK_CONTROL: &str = "ANIMA_LINK_CONTROL";
+pub(super) const HOSTED_CLOUD_KEY_FILE: &str = "ANIMA_HOSTED_CLOUD_KEY_FILE";
 
 /// Every link address: the name `anima-link` gives a permitted device key in place of a
 /// network address (`link/devices/address.go` holds the same range). No packet goes to one.
@@ -56,6 +57,19 @@ pub(super) fn control(
     Ok(control)
 }
 
+/// The cloud key file of the hosted mode, or `None` when unset or empty. It is refused without
+/// the control socket: the hub makes the invites that the cloud asks for through it (R-129).
+pub(super) fn hosted(
+    env: &BTreeMap<String, String>,
+    control_set: bool,
+) -> Result<Option<PathBuf>, Error> {
+    let file = optional_socket(env, HOSTED_CLOUD_KEY_FILE)?;
+    if file.is_some() && !control_set {
+        return Err(Error::HostedWithoutLink);
+    }
+    Ok(file)
+}
+
 /// The permitted networks of the link mode: this computer and the devices of the link.
 pub(super) fn permitted_networks() -> Vec<IpNet> {
     vec![
@@ -70,6 +84,8 @@ pub(super) const LISTEN_RULE: &str = "with ANIMA_LINK_SOCKET the hub listens on 
                                       the link only (NET-003)";
 pub(super) const NETWORKS_RULE: &str = "must not be set with ANIMA_LINK_SOCKET: the link \
                                         permits devices by key (NET-001)";
+pub(super) const HOSTED_RULE: &str = "must be set only with ANIMA_LINK_CONTROL: a hosted hub \
+                                       makes its device invites through the link (R-129)";
 pub(super) const CONTROL_RULE: &str = "must be set only with ANIMA_LINK_SOCKET: the control \
                                        socket belongs to the link mode (FRN-009)";
 
@@ -174,5 +190,22 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn r_129_the_hosted_mode_needs_the_control_socket_of_the_link() {
+        const KEY: &str = "/run/secrets/anima/cloud_key";
+        let hosted = env(&[
+            (LINK_SOCKET, SOCKET),
+            (LINK_CONTROL, "/run/anima/link-control.sock"),
+            (HOSTED_CLOUD_KEY_FILE, KEY),
+        ]);
+        assert_eq!(
+            from_env(&hosted).unwrap().hosted_cloud_key_file,
+            Some(PathBuf::from(KEY))
+        );
+        let alone = env(&[(LINK_SOCKET, SOCKET), (HOSTED_CLOUD_KEY_FILE, KEY)]);
+        assert!(matches!(from_env(&alone), Err(Error::HostedWithoutLink)));
+        assert_eq!(from_env(&env(&[])).unwrap().hosted_cloud_key_file, None);
     }
 }

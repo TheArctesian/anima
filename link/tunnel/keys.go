@@ -1,5 +1,5 @@
 // Package tunnel is the encrypted transport of the link. It is the only
-// package that imports the Tailcat library (docs/one-click-plan.md, S1).
+// package that imports the Tailcat library (docs/plans/one-click/one-click-plan.md, S1).
 package tunnel
 
 import (

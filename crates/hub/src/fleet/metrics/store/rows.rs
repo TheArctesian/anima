@@ -1,10 +1,10 @@
 //! Stored rows and their mapping to the output types.
 
-use agent_core::{
+use chrono::{DateTime, Utc};
+use daemon_core::{
     inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict},
     readings::{Drive, DriveKind},
 };
-use chrono::{DateTime, Utc};
 
 use crate::{
     fleet::metrics::{

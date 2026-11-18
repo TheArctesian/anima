@@ -51,14 +51,14 @@ tokio = { workspace = true, features = ["process"] }
 uuid.workspace = true
 # Challenge hosts go through the URL standard's host parser, as pinned origins do (D-4).
 url = "2"
-# The agent's enrolment code in memory only as `Zeroizing` (MET-019). The builder holds no updater
+# The daemon's enrolment code in memory only as `Zeroizing` (MET-019). The builder holds no updater
 # key: the hub signs the updater file (R-117).
 zeroize.workspace = true
 # The updater public key line in the app's `tauri.conf.json`, for the tool check (R-108).
 base64.workspace = true
 # The upload of a job's files to the presigned URLs the hub gives (BLD-060, BLD-063).
 reqwest.workspace = true
-# A name for the agent file while it is placed (MET-019).
+# A name for the daemon file while it is placed (MET-019).
 getrandom = "0.3"
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
 tauri-plugin-updater.workspace = true
@@ -69,13 +69,13 @@ tauri-plugin-dialog = "2"
 
 # Cancelling a build step kills the step's whole process group (BLD-027); on Linux the shell is
 # the child subreaper of every step process and reaps what escaped the group (S-1). `user`: the
-# user ID the agent's install folder must belong to (MET-019). `fs`: whether this user may write a
+# user ID the daemon's install folder must belong to (MET-019). `fs`: whether this user may write a
 # folder for the command line tool (INS-009).
 [target.'cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))'.dependencies]
 nix = { version = "0.31", default-features = false, features = ["signal", "process", "user", "fs"] }
 
 # pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither. `fs`: the POSIX
-# ACL read on the agent's install folders (MET-019), as the agent's own check reads it.
+# ACL read on the daemon's install folders (MET-019), as the daemon's own check reads it.
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { version = "1.1", default-features = false, features = ["std", "process", "fs"] }
 

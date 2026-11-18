@@ -7,8 +7,10 @@
 //! (LOG-005, LOG-007).
 
 mod change;
+mod hosted;
 
 use change::Change;
+pub use hosted::{HostedDeviceInvite, HostedMutation};
 
 use std::sync::Arc;
 

@@ -92,6 +92,12 @@ entity_id! {
     RepositoryId,
     /// A resource a project uses, such as a Cloudflare or Vercel deployment.
     ResourceId,
+    /// A link between two records (RLK-001).
+    RecordLinkId,
+    /// A place, as every extension names it (RLK-004).
+    PlaceId,
+    /// A person, as every extension names them (RLK-004).
+    PersonId,
 }
 
 #[cfg(test)]

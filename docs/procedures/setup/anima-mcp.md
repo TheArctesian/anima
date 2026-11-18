@@ -1,0 +1,141 @@
+# Use Anima from a coding agent (`anima mcp`)
+
+`anima mcp` is an MCP server on standard input and output (docs/plans/cli-mcp-plan.md Section 7,
+MCP-001 to MCP-017). A coding agent starts it and calls its tools. It uses the same hub and
+token as the `anima` command line.
+
+## 0. Install `anima`
+
+`anima` comes with the desktop application; there is no other download (INS-001, INS-002).
+
+1. Install Anima from `Anima.dmg` (macOS: drag it to Applications, then open it from there) or
+   from `Anima-x86_64.AppImage` (Linux).
+2. In Anima, open Settings > Updates > Command line tool. Select **Install**, check the path it
+   shows, then select **Confirm**. If the row shows a line for your shell profile, add it.
+3. In a new terminal, `anima --version` prints the version of the application.
+
+## 1. Make an API key
+
+Give the agent an API key made for an agent, not your login. Make a read key first:
+
+```sh
+# On your computer, signed in with `anima auth login`.
+anima key create --name coding-agent --for agent --scope read --expires 90d
+```
+
+The key is shown once. Do not paste it into chat or a commit.
+
+`--for agent` makes the hub record each change made with the key as the work of an AI agent
+(actor kind Agent, LOG-015). The value cannot change later. `anima audit list --actor agent`
+shows that work.
+
+## 2. Register the server
+
+Claude Code:
+
+```sh
+# On your computer. Type the key; do not copy it from chat.
+claude mcp add anima --env ANIMA_TOKEN=<API_KEY> -- anima mcp
+```
+
+Another agent: run the command `anima mcp` with `ANIMA_TOKEN` in its environment. Add
+`--hub <ORIGIN>` or `--context <NAME>` when the hub is not your current context.
+
+At start the server checks the token with the hub. A bad token stops it before the session
+starts, with the usual exit code and hint.
+
+The server also declares itself to the hub on each request it makes, the start check too: the
+header `Anima-Actor: agent` (LOG-016). The hub then records its changes as Agent with any token.
+The other `anima` commands do not send it.
+
+## 3. What the agent may do
+
+Each tool has one state:
+
+- `allow`: the agent may call it.
+- `ask`: the agent may call it, and you approve each call in your MCP client.
+- `off`: the agent does not see it, and a call is refused.
+
+With nothing saved, every read tool is `allow` and every change tool is `off`. The tool sets
+are `devices`, `checks`, `maintenance`, `events`, `sessions`, `notifications`, `web`,
+`releases`, `vpn` and `retention`.
+
+Save the states once for each hub:
+
+```sh
+anima mcp permissions show                      # one row per tool; --json for programs
+anima mcp permissions set --ask-all --kind change   # every change tool asks first
+anima mcp permissions set --allow anima_check_update,anima_check_set_paused
+anima mcp permissions set --off vpn,retention   # a name is a tool or a tool set
+anima mcp permissions set --allow-all --toolset checks --yes
+anima mcp permissions set --read-only           # every change tool off again
+anima mcp permissions reset                     # back to the defaults
+```
+
+`--allow-all`, `--ask-all` and `--off-all` take `--toolset <set>` and `--kind read|change`.
+`--allow-all` that covers change tools asks you to confirm, or takes `--yes`. A bulk choice
+without `--toolset` changes the default of the kind, so a tool added in a later version follows
+it; a choice by name stays with that tool.
+
+A change that gives the agent more (a tool or a default moves toward `allow`, and a `reset`
+that does so) works only at a terminal or in the desktop app's Settings. Without a terminal on
+standard input the command stops with exit 2, also with `--yes`. This keeps an agent from
+widening its own access through its shell. A change toward `off` works anywhere.
+
+`ask` needs a client that can ask you (it declares MCP elicitation; check your client). The
+server then shows you the tool and every argument, one per line, and waits up to 120 seconds.
+A long value is cut and its full length shown. A call with more than 40 values, or a question
+longer than 4,000 characters, is refused before you are asked. If the client cannot ask, or you
+decline, the call is refused and the hub is not contacted. A delete still needs its `confirm`
+name. `ask` trusts your MCP client: whatever answers the question decides.
+
+Flags at start apply to one run and only narrow what is saved: `--toolsets a,b` turns off every
+tool outside those sets, and `--read-only` turns off every change tool. `--allow-write` (or
+`--allow-write checks,maintenance`) allows the change tools that you have not saved a choice
+for. A tool you saved as `off` or `ask` stays so.
+
+The hub token is still the final limit:
+
+- A read key cannot change anything. A change tool then fails with a message that says so.
+- Some tools need a login token, because an API key may never do them (INT-003): device update
+  and delete, release create, build cancel, VPN route approval and retention set. The server
+  never lists them for an API key, whatever is saved.
+
+## 4. What no tool does
+
+No tool takes or returns a secret: credentials, API keys, VPN keys, notification channel
+addresses, push check paths. No tool accepts a host key or a certificate, opens a session, or
+runs a command on a device. Do these in the Anima client or with the command line.
+
+`anima_check_update` does not replace the config of an HTTP check or an SNMP check. The hub's
+check read does not say whether an HTTP request body is stored, and the SNMP community and
+passwords are never read back, so the tool treats every HTTP and SNMP check as one that holds a
+secret and refuses a new config. It still changes the name and the timing. Change the config
+with `anima check update --from-file`.
+
+Text from devices (names, event messages, log lines) comes back cleaned and capped, in named
+fields. The server tells the agent never to follow it as instructions.
+
+## 5. Before you turn tools on
+
+Assume that the agent can be steered by text it reads. What it can then do depends on the
+token and on the tools you allow (docs/plans/cli-mcp-plan.md Section 9):
+
+- **Read API key:** read the whole fleet, events, the audit log, sessions with client
+  addresses, VPN nodes and build logs.
+- **Write API key, change tools allowed:** also pause every check and empty its notification
+  channels, start maintenance windows, delete checks, windows and web interfaces, end live
+  sessions, point web interfaces and HTTP checks at other addresses, send wake packets and test
+  notifications.
+- **Login token, everything allowed:** also delete devices with their stored credentials,
+  approve a VPN route, cancel builds, set retention to the minimum and start a release.
+
+Prefer a read key, and `ask` over `allow` for change tools. Anyone who can run commands as you
+can still edit the configuration file or start `anima mcp --allow-write`. The project file
+`.mcp.json` of a repository can also start the server with its own flags: check it before you
+trust a repository.
+
+The audit log names the actor kind of each change: User, Agent or Hub (LOG-012). The limit: a
+program decides itself whether it declares an agent. A program that runs with your login token
+and does not declare itself is recorded as User. Only a key made with `--for agent` marks the
+work of an agent whatever the program sends; use one for `anima mcp`.

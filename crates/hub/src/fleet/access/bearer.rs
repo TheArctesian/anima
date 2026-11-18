@@ -30,7 +30,7 @@ struct Gate {
 /// axum middleware for routes outside GraphQL: a request passes only with one
 /// `Authorization: Bearer` header holding a login token or an API key, unexpired, whose scope
 /// covers `scope` (A-9). The token is looked up as [`identity::identify`] looks up a bearer,
-/// so a browser token, an agent token and an enrolment code are refused (A-3, R-092). The
+/// so a browser token, a daemon token and an enrolment code are refused (A-3, R-092). The
 /// cookie is never read.
 ///
 /// Any other request gets 401 with an empty body and no `WWW-Authenticate` header, and the

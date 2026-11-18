@@ -1,0 +1,12 @@
+mutation RecordLinkAdd($input: RecordLinkInput!) {
+  linkRecords(input: $input) {
+    id
+    source
+    target
+    kind
+    label
+    sourceTitle
+    targetTitle
+    createdAt
+  }
+}

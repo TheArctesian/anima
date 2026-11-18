@@ -6,6 +6,7 @@
 //! read to at most 1 MiB, parsed once, and never echoed into an error or a log, because an
 //! invite reply holds a secret (LOG-007).
 
+mod claims;
 pub mod graphql;
 mod model;
 mod owned;
@@ -14,6 +15,7 @@ mod socket;
 mod tests;
 mod wire;
 
+pub use claims::Claims;
 pub use model::LinkPath;
 pub(crate) use model::Refusal;
 

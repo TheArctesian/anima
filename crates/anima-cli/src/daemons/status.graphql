@@ -1,0 +1,13 @@
+# `anima daemon status`: where the device's metrics come from and whether they are current.
+query DaemonStatus($id: ID!) {
+  device(id: $id) {
+    id
+    name
+    metricsSource
+    metricsStale
+    daemonVersion
+    readings {
+      at
+    }
+  }
+}

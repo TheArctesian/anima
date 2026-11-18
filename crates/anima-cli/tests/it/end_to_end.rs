@@ -8,6 +8,7 @@ mod breadth;
 mod checks;
 mod connect_github;
 mod devices;
+mod engine_records;
 mod keys;
 mod mcp;
 mod paging;

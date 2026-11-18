@@ -8,8 +8,8 @@ use sqlx::PgPool;
 use super::{CREATE, ME, REVOKE, count, input, kind_refused, made, signed_in};
 use crate::hub::{Hub, PASSWORD, USERNAME, error};
 
-/// Every root field an API key may never select (D-23, A-6; `enrolAgent` and
-/// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
+/// Every root field an API key may never select (D-23, A-6; `enrolDaemon` and
+/// `revokeDaemonToken` by name before they have resolvers, R-084, CR-8; pinning a device
 /// identity, moving or deleting a device, R-100; VPN keys, registration and renewal, VP-7;
 /// connecting GitHub from the hub, PRJ-039, PRJ-041).
 const REFUSED: [&str; 36] = [
@@ -26,8 +26,8 @@ const REFUSED: [&str; 36] = [
     "clearRdpCredential",
     "setVncCredential",
     "clearVncCredential",
-    "enrolAgent",
-    "revokeAgentToken",
+    "enrolDaemon",
+    "revokeDaemonToken",
     "acceptHostKey",
     "acceptServerCertificate",
     "acceptWebCertificate",

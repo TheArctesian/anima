@@ -1,5 +1,5 @@
 //! Batched reads that join the metrics domain into `Device` (API-005, MET-004, MET-006,
-//! MET-018): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
+//! MET-018, R-122): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
 //! per batch.
 
 use std::{collections::HashMap, sync::Arc};
@@ -44,8 +44,8 @@ impl Loader<DeviceId> for GpusOf {
     }
 }
 
-/// Whether each agent device's metrics are stale, for `Device.metricsStale` (MET-018). Load
-/// only devices whose metrics source is `agent`.
+/// Whether each daemon device's metrics are stale, for `Device.metricsStale` (MET-018). Load
+/// only devices whose metrics source is `daemon`.
 pub struct StaleOf(PgPool);
 
 impl Loader<DeviceId> for StaleOf {
@@ -53,10 +53,25 @@ impl Loader<DeviceId> for StaleOf {
     type Error = Arc<Error>;
 
     async fn load(&self, keys: &[DeviceId]) -> Result<HashMap<DeviceId, bool>, Self::Error> {
-        let stale = metrics::stale_agents(&self.0, keys)
+        let stale = metrics::stale_daemons(&self.0, keys)
             .await
             .map_err(Arc::new)?;
         Ok(keys.iter().map(|id| (*id, stale.contains(id))).collect())
+    }
+}
+
+/// The version of each daemon device's daemon, for `Device.daemonVersion` (R-122). Load only
+/// devices whose metrics source is `daemon`.
+pub struct DaemonVersionOf(PgPool);
+
+impl Loader<DeviceId> for DaemonVersionOf {
+    type Value = String;
+    type Error = Arc<Error>;
+
+    async fn load(&self, keys: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Self::Error> {
+        metrics::daemon_versions(&self.0, keys)
+            .await
+            .map_err(Arc::new)
     }
 }
 
@@ -72,8 +87,15 @@ pub fn gpus_loader(pool: PgPool) -> DataLoader<GpusOf> {
     DataLoader::new(GpusOf(pool), tokio::spawn)
 }
 
-/// The loader behind `Device.metricsStale`: one `metrics::stale_agents` call per batch, no cache.
+/// The loader behind `Device.metricsStale`: one `metrics::stale_daemons` call per batch, no cache.
 #[must_use]
 pub fn stale_loader(pool: PgPool) -> DataLoader<StaleOf> {
     DataLoader::new(StaleOf(pool), tokio::spawn)
+}
+
+/// The loader behind `Device.daemonVersion`: one `metrics::daemon_versions` call per batch, no
+/// cache.
+#[must_use]
+pub fn daemon_version_loader(pool: PgPool) -> DataLoader<DaemonVersionOf> {
+    DataLoader::new(DaemonVersionOf(pool), tokio::spawn)
 }

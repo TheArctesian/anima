@@ -10,7 +10,7 @@
 
 use std::time::Duration;
 
-use agent_core::readings::drives::{LSBLK_ARGS, LSBLK_OLD_ARGS};
+use daemon_core::readings::drives::{LSBLK_ARGS, LSBLK_OLD_ARGS};
 
 use crate::fleet::{devices::OperatingSystem, metrics::GpuVendor, ssh::FixedCommand};
 
@@ -22,7 +22,7 @@ const TOP: Duration = Duration::from_secs(8);
 /// tool that ignores the interrupt, and a margin.
 const INTEL: Duration = Duration::from_secs(4);
 
-/// Which output a command gives, so its reader is known (see [`agent_core::readings`]).
+/// Which output a command gives, so its reader is known (see [`daemon_core::readings`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Source {
     /// Linux `cat /proc/stat`.

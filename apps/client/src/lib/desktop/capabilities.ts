@@ -35,6 +35,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     commandLine: true,
     stayAwake: true,
   localHub: true,
+    deviceLink: true,
     overlayTitleBar: isMac(userAgent),
   };
 }

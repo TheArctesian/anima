@@ -13,6 +13,7 @@ pub mod releases;
 pub mod repositories;
 pub mod retention;
 pub mod sessions;
+pub mod shared_records;
 pub mod sources;
 pub mod vpn;
 pub mod web;
@@ -43,6 +44,8 @@ pub enum Tool {
     Sources(sources::SourceTool),
     Projects(projects::ProjectTool),
     Repositories(repositories::RepositoryTool),
+    Timeline(shared_records::timeline::TimelineTool),
+    Records(shared_records::links::RecordTool),
 }
 
 impl Tool {
@@ -65,6 +68,8 @@ impl Tool {
         tools.extend(sources::SourceTool::ALL.map(Self::Sources));
         tools.extend(projects::ProjectTool::ALL.map(Self::Projects));
         tools.extend(repositories::RepositoryTool::ALL.map(Self::Repositories));
+        tools.extend(shared_records::timeline::TimelineTool::ALL.map(Self::Timeline));
+        tools.extend(shared_records::links::RecordTool::ALL.map(Self::Records));
         tools
     }
 
@@ -86,6 +91,8 @@ impl Tool {
             Self::Sources(_) => ToolSet::Sources,
             Self::Projects(_) => ToolSet::Projects,
             Self::Repositories(_) => ToolSet::Repositories,
+            Self::Timeline(_) => ToolSet::Timeline,
+            Self::Records(_) => ToolSet::Records,
         }
     }
 
@@ -107,6 +114,8 @@ impl Tool {
             Self::Sources(tool) => tool.definition(),
             Self::Projects(tool) => tool.definition(),
             Self::Repositories(tool) => tool.definition(),
+            Self::Timeline(tool) => tool.definition(),
+            Self::Records(tool) => tool.definition(),
         }
     }
 
@@ -135,6 +144,8 @@ impl Tool {
             Self::Sources(tool) => tool.call(hub, arguments).await,
             Self::Projects(tool) => tool.call(hub, arguments).await,
             Self::Repositories(tool) => tool.call(hub, arguments).await,
+            Self::Timeline(tool) => tool.call(hub, arguments).await,
+            Self::Records(tool) => tool.call(hub, arguments).await,
         }
     }
 }

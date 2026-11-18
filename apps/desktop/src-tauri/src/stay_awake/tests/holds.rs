@@ -1,9 +1,11 @@
 use std::fs;
 
 use super::rig::{Rig, eventually, running, short_lived};
+#[cfg(target_os = "macos")]
+use crate::stay_awake::platform::Platform;
 use crate::stay_awake::{
     hold::{self, HoldError, LidHold, sleep_disabled},
-    platform::{Os, Platform},
+    platform::Os,
 };
 
 #[test]

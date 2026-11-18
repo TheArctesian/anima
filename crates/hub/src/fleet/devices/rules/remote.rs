@@ -199,13 +199,13 @@ fn domain(text: Option<&str>) -> Result<Option<String>, FieldError> {
     Ok((!domain.is_empty()).then(|| domain.to_owned()))
 }
 
-/// The source the operator chose. `Agent` is refused: only enrolling an agent sets it, so a
-/// device never waits for an agent that has no token (MET-011, R-092 D-7).
+/// The source the operator chose. `Daemon` is refused: only enrolling a daemon sets it, so a
+/// device never waits for a daemon that has no token (MET-011, R-092 D-7).
 fn metrics_source(source: MetricsSource) -> Result<MetricsSource, FieldError> {
-    if source == MetricsSource::Agent {
+    if source == MetricsSource::Daemon {
         return Err(FieldError::new(
             "metricsSource",
-            "Install the agent to use it: enrolling it sets this source.",
+            "Install the daemon to use it: enrolling it sets this source.",
         ));
     }
     Ok(source)

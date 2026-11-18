@@ -29,9 +29,9 @@ follows the same `issue` set.
 
 ## Rules
 
-- **DNS-008.** Each change to the Cloudflare account or the `anima.ing` zone needs the
+- **DNS-008:** Each change to the Cloudflare account or the `anima.ing` zone needs the
   operator's confirmation in chat. Agents prepare these files; they never apply them.
-- **DNS-003.** Never use the Global API Key. Create each token in Cloudflare → My Profile →
+- **DNS-003:** Never use the Global API Key. Create each token in Cloudflare → My Profile →
   API Tokens → Create Token → template "Edit zone DNS", and keep only:
   - Permissions: **Zone → DNS → Edit** (nothing else).
   - Zone Resources: **Include → Specific zone → anima.ing**.

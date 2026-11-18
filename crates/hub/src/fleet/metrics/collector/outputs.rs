@@ -4,11 +4,11 @@
 
 use std::time::Duration;
 
-use agent_core::readings::{
+use chrono::{DateTime, Utc};
+use daemon_core::readings::{
     Drive, df, drives, linux,
     macos::{self, Sysctl},
 };
-use chrono::{DateTime, Utc};
 
 use super::os_release;
 use crate::fleet::{

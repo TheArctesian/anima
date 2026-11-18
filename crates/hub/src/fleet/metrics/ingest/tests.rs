@@ -1,6 +1,6 @@
-//! Tests of the agent ingest parts below the HTTP client: the throttle, the bearer header, the
+//! Tests of the daemon ingest parts below the HTTP client: the throttle, the bearer header, the
 //! refusal answers, how the routes answer when they cannot finish, the token and code rows at
-//! their edges, the stale mark at its edges, and the turns that keep agents off the pool.
+//! their edges, the stale mark at its edges, and the turns that keep daemons off the pool.
 
 mod answering;
 mod credential;
@@ -13,19 +13,19 @@ mod turns;
 
 use std::sync::Arc;
 
-use agent_core::wire::{AgentToken, EnrolmentCode};
 use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
 use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
+use daemon_core::wire::{DaemonToken, EnrolmentCode};
 use serde_json::Value;
 use sqlx::PgPool;
 use tower::ServiceExt as _;
 
 use super::{
     enrolment::{enrol, make_code, redeem},
-    routes::{Deadlines, agent_router_within},
+    routes::{Deadlines, daemon_router_within},
 };
 use crate::{
     clock::{Clock, FixedClock},
@@ -47,10 +47,10 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
 }
 
 /// Pushes `batch` with `token` at `now` from a permitted address; the status.
-async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Value) -> StatusCode {
+async fn push(pool: &PgPool, now: DateTime<Utc>, token: &DaemonToken, batch: &Value) -> StatusCode {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    let router = agent_router_within(pool.clone(), Bus::new(16), clock, Deadlines::HUB);
-    let mut request = Request::post("/agent/v1/push")
+    let router = daemon_router_within(pool.clone(), Bus::new(16), clock, Deadlines::HUB);
+    let mut request = Request::post("/daemon/v1/push")
         .header("content-type", "application/json")
         .header("authorization", format!("Bearer {}", token.expose()))
         .body(Body::from(batch.to_string()))
@@ -60,22 +60,22 @@ async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Val
     router.oneshot(request).await.unwrap().status()
 }
 
-/// pve-01 enrolled at `now` with the token spelled by `seed`; the token as an agent presents it.
-async fn enrolled_pve(pool: &PgPool, now: DateTime<Utc>, seed: u8) -> AgentToken {
+/// pve-01 enrolled at `now` with the token spelled by `seed`; the token as a daemon presents it.
+async fn enrolled_pve(pool: &PgPool, now: DateTime<Utc>, seed: u8) -> DaemonToken {
     enrolled(pool, pve(), now, seed).await
 }
 
-/// `device` enrolled at `now` with the token spelled by `seed`; the token as an agent presents
+/// `device` enrolled at `now` with the token spelled by `seed`; the token as a daemon presents
 /// it.
-async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8) -> AgentToken {
+async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8) -> DaemonToken {
     let code = EnrolmentCode::from_random([seed; 16]);
     let presented = EnrolmentCode::parse(code.expose()).unwrap();
     let mut conn = pool.acquire().await.unwrap();
     make_code(&mut conn, device, code, now).await.unwrap();
     drop(conn);
     let redeemed = redeem(pool, &presented, now).await.unwrap().unwrap();
-    let token = AgentToken::from_random([seed; 32]);
-    let kept = AgentToken::parse(token.expose()).unwrap();
+    let token = DaemonToken::from_random([seed; 32]);
+    let kept = DaemonToken::parse(token.expose()).unwrap();
     let enrolled = enrol(pool, &Bus::new(4), (redeemed, token), now)
         .await
         .unwrap();
@@ -86,7 +86,7 @@ async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8)
 /// The stored hashes of pve-01's current and renewed tokens.
 async fn token_hashes(pool: &PgPool) -> (Vec<u8>, Option<Vec<u8>>) {
     sqlx::query_as(
-        "SELECT token_sha256, next_token_sha256 FROM metrics.agents WHERE device_id = $1",
+        "SELECT token_sha256, next_token_sha256 FROM metrics.daemons WHERE device_id = $1",
     )
     .bind(pve())
     .fetch_one(pool)

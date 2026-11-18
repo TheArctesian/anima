@@ -8,11 +8,12 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-2`) |
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
+| `bun run documents` | PLN-016, PLN-017, PLN-019 to PLN-023 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); a number of the rulings log names one ruling (PLN-021); a claim is complete and one claim holds a task (PLN-022; `claim-not-complete`, `task-claimed-twice`); a mockup in state Built names the commit it was compared at, and no layout file of its screens has a later commit (PLN-019; `mockup-not-compared`, `mockup-commit-not-found`, `mockup-without-screens`, `screen-changed-after-mockup`); the operator queue agrees with the documents and a task for an agent links to a document whose state permits a build (PLN-023, PLN-007; `queue-out-of-date`, `queue-without-list`, `agent-task-without-link`, `agent-task-in-unapproved-document`); the register has its generated list and each plan has evidence (`register-without-list`, `plan-without-evidence`); a known duplicate still has two owners (`known-duplicate-has-one-owner`); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
 
 ## Local gates
 
 `bun run gates` (from the repository root) is the only gate entry point. There is no CI; gates run on the machine that makes the change.
-It runs twenty gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
+It runs twenty-one gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
 
 1. `cargo fmt --check`
 2. `cargo clippy --all-targets -- -D warnings`
@@ -33,7 +34,8 @@ It runs twenty gates as separate processes, in this order, and stops at the firs
 17. `bun run quality:limits`
 18. `bun run quality:names`
 19. `bun run quality:imports`
-20. `bun run quality:baseline -- --base <BASE_REF>`
+20. `bun run quality:documents`
+21. `bun run quality:baseline -- --base <BASE_REF>`
 
 Gates 6 to 11 are for the Go module `link/`. Go must be on `PATH` (`brew install go`). `staticcheck` and
 `revive` are `tool` lines in `link/go.mod` and run with `go tool`, so they are not installed system-wide.

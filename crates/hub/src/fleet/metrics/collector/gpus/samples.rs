@@ -1,7 +1,7 @@
 //! The samples of each known GPU from one collection's answers (MET-006, MET-007, MET-009).
 //! Pure.
 
-use agent_core::{points::Kind, readings::GpuReading};
+use daemon_core::{points::Kind, readings::GpuReading};
 
 use super::{
     answers::Answer,

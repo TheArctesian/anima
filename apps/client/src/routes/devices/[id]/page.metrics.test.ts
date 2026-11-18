@@ -82,9 +82,9 @@ it('D-7: a device without SSH metrics sends no metrics request and links to Sett
   const fake = await show(answers());
   expect(metricRequests(fake)).toEqual([]);
   expect(fake.subscriptions.map((one) => one.operation)).not.toContain('MetricsAdded');
-  expect(document.body.textContent).toContain('Metrics are off. Install the agent or turn on SSH metrics in Settings.');
+  expect(document.body.textContent).toContain('Metrics are off. Install the daemon or turn on SSH metrics in Settings.');
   [...document.querySelectorAll('button')].find((one) => one.textContent.replace(/\p{Co}/gu, '').trim() === 'Open Settings')?.click();
-  expect(current.goto[0]?.[0]).toBe(`/devices/${ID}?tab=settings#agent`);
+  expect(current.goto[0]?.[0]).toBe(`/devices/${ID}?tab=settings#daemon`);
 });
 
 it('D-5: an SSH device asks for the hour first and listens for live points', async () => {
@@ -159,7 +159,7 @@ it('MET-003: a chart names its range in its text alternative, and a percent char
   expect(label).toContain('threshold line at 85 %');
 });
 
-it('MET-019: opened at #agent, the Settings tab puts focus on the Agent heading', async () => {
-  await show(answers(), '?tab=settings#agent');
-  expect(document.activeElement?.id).toBe('agent-heading');
+it('MET-019: opened at #daemon, the Settings tab puts focus on the Daemon heading', async () => {
+  await show(answers(), '?tab=settings#daemon');
+  expect(document.activeElement?.id).toBe('daemon-heading');
 });

@@ -45,11 +45,11 @@ pub fn page(nodes: &[Value], next: Option<&str>, total: usize) -> Value {
 }
 
 /// A `device` answer for `node` with every field `get.graphql` asks for.
-fn detail(node: &Value) -> Value {
+pub fn detail(node: &Value) -> Value {
     let mut device = node.clone();
     let extra = json!({
         "distribution": "debian", "macAddress": null, "metricsSource": "SSH",
-        "metricsStale": false, "sessionLimit": null, "accessWarnings": [],
+        "metricsStale": false, "daemonVersion": null, "sessionLimit": null, "accessWarnings": [],
         "ssh": { "enabled": true, "port": 22, "username": "operator", "credentialStored": true,
                  "hostKey": { "algorithm": "ssh-ed25519", "fingerprintSha256": "SHA256:abc" } },
         "rdp": { "enabled": false, "port": 3389, "username": "", "credentialStored": false },
