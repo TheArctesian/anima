@@ -32,7 +32,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.9 | Hosted applications | Operator: approval of the proposal |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
-| 4.13 | A hash chain for the audit log | Operator: nothing. Agent: GH-2 L0-T2 to L0-T4, claimed |
+| 4.13 | A hash chain for the audit log | Operator: the merge of the branch `claude/audit-hash-chain-f3d8ea`, then HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
 ## 2. Open decisions (106)
@@ -179,7 +179,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (69)
+## 4. Checks that only the operator can do (70)
 
 | Check | What |
 | --- | --- |
@@ -205,6 +205,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
+| HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
 | O-2 | RDP: a changed certificate stops the session; the Warning badge |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
