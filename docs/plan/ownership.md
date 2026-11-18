@@ -27,7 +27,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Bulk data on the operator's machines | [bulk-data-placement.md](../proposals/bulk-data-placement.md) | STO-001 to STO-011 |
 | Rules for all work on machines, and jobs | [jobs.md](../proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-027 |
 | AI agent runs | [agent-runs.md](../proposals/agent-runs.md) | AGN-001 to AGN-014 |
-| Hosted applications | [hosted-applications.md](../proposals/hosted-applications.md) | HOST-001 to HOST-009 |
+| Hosted applications | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) | HOST-001 to HOST-014 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | PRO-001 to PRO-053 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](../spec/design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |

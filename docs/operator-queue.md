@@ -28,13 +28,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
-| 4.9 | Hosted applications | Operator: approval of the proposal |
+| 4.9 | Hosted applications | Agent: task H1 in hosted-applications-plan.md. Operator: nothing now |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (113)
+## 2. Open decisions (115)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -58,6 +58,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of… | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
@@ -132,7 +134,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a… | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as the open decision of hosted-applications.md. Docker only until that is decided. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as hosted-applications-plan.md: Docker only there (R-149, HOST-010). | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
@@ -152,7 +154,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (28)
+## 3. Documents that wait for an approval (27)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -172,7 +174,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Build state not checked |
-| [proposals/hosted-applications.md](proposals/hosted-applications.md) | Proposal | Draft |
 | [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
