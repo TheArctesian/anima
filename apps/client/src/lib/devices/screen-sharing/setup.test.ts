@@ -61,6 +61,14 @@ describe('SetupFlow (R-079)', () => {
     expect(t.calls.update).toHaveBeenCalledWith('d2', { vnc: { enabled: true, port: 5900, username: 'root' } });
   });
 
+  it('GH-53: this computer on Linux has VNC turned on with no username, so a server that expects none accepts the sign-in', async () => {
+    const t = run();
+    t.calls.thisMachine.mockResolvedValue({ ...MAC, os: 'LINUX' });
+    t.calls.test.mockResolvedValue(answer(true));
+    await t.flow.start({ ...STUDIO, os: 'LINUX' });
+    expect(t.calls.update).toHaveBeenCalledWith('d1', { vnc: { enabled: true, port: 5900, username: null } });
+  });
+
   it('R-079: this computer, answering, has VNC turned on with its OS user as the username', async () => {
     const t = run();
     t.calls.test.mockResolvedValue(answer(true));
