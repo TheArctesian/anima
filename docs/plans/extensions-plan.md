@@ -28,7 +28,7 @@ Read this section first. It says where the state is and what is next. It holds n
 - The tasks of an engine item are in a table in Section 5.1. Take the first task that is "Not started" and that no open decision blocks. Claim it first (PLN-022).
 - An extension (XP-01 to XP-14) has no task table until its launch brief is written (ENG-012). Write the brief and its task table first, in this plan, then build.
 - A requirement is in Section 2 (engine), Section 3 (client) or Section 4 (one section for each extension). The open decisions are in Section 7. A decision that is open blocks the tasks that name it.
-- These parts are drafts and are not for a build: community extensions (Sections 2.8.1, 2.12.1 and 3.4), the project map (Section 4.2.1, XP-14) and Bots ([bots.md](../proposals/bots.md)).
+- These parts are drafts and are not for a build: community extensions (Sections 2.8.1, 2.12.1 and 3.4), the project map (Section 4.2.1, XP-14), Bots ([bots.md](../proposals/bots.md)) and the default panels ([default-panels.md](../proposals/default-panels.md), which proposes a change to EXT-001, EXT-005 and EXT-008).
 
 | Item | What is next | Blocked by |
 | --- | --- | --- |
@@ -1045,7 +1045,7 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 
 ### 4.16 Bots (proposed, operator direction 2026-11-16)
 
-This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-046). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
+This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-057). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
 
 ## 5. Build order: engine first, then one workflow per extension
 
