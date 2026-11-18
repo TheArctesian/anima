@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{BatchAgentUsage, BatchInventory};
+use super::{BatchAgentUsage, BatchInventory, BatchKeys, KeyVersion};
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
 
@@ -46,6 +46,11 @@ pub struct Batch {
         skip_serializing_if = "Option::is_none"
     )]
     pub agent_usage: Option<BatchAgentUsage>,
+    /// The versions of the operational keys in the daemon's cache (K-E5 Section 2.1, R-147). A
+    /// daemon without a key cache sends none and is told no keys; a hub older than R-147 ignores
+    /// it (K8 Section 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keys: Option<BatchKeys>,
 }
 
 /// The lists a batch announces besides its points, each `None` when unchanged (K8 Section 4).
@@ -183,6 +188,16 @@ impl Batch {
             inventory: announced.inventory,
             daemon_version: None,
             agent_usage: announced.agent_usage,
+            keys: None,
+        }
+    }
+
+    /// This batch, with the versions the daemon's key cache holds (K-E5 Section 2.1).
+    #[must_use]
+    pub fn with_keys(self, held: Vec<KeyVersion>) -> Self {
+        Self {
+            keys: Some(BatchKeys { held }),
+            ..self
         }
     }
 

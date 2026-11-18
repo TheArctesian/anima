@@ -14,8 +14,8 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-        EventId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId, ReleaseId, RepositoryId,
-        SessionId, SiteId, SourceAccountId, WindowId,
+        EventId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId,
+        ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -214,6 +214,8 @@ pub enum AuditAction {
     Send,
     /// A pull request merged on GitHub (PRJ-028, OD-E14).
     Merge,
+    /// An operational key a daemon fetched (R-147, K-E5 Section 2.1).
+    Fetch,
 }
 
 impl AuditAction {
@@ -239,6 +241,7 @@ impl AuditAction {
             Self::Cancel => "cancel",
             Self::Send => "send",
             Self::Merge => "merge",
+            Self::Fetch => "fetch",
         }
     }
 }
@@ -293,6 +296,8 @@ pub enum AuditTarget {
     ExtractionProposal(ProposalId),
     /// A place, or the site rows that point at it (PLC-001, PLC-006).
     Place(PlaceId),
+    /// An operational key, its versions and its consumers (R-147); never its value.
+    OperationalKey(OperationalKeyId),
 }
 
 impl AuditTarget {
@@ -325,6 +330,7 @@ impl AuditTarget {
             Self::Archive(_) => "archive",
             Self::ExtractionProposal(_) => "extraction_proposal",
             Self::Place(_) => "place",
+            Self::OperationalKey(_) => "operational_key",
         }
     }
 
@@ -356,6 +362,7 @@ impl AuditTarget {
             Self::Archive(id) => id.to_string(),
             Self::ExtractionProposal(id) => id.to_string(),
             Self::Place(id) => id.to_string(),
+            Self::OperationalKey(id) => id.to_string(),
         }
     }
 }

@@ -58,7 +58,11 @@ impl Clock for SetClock {
 pub fn app(pool: &PgPool, clock: Arc<dyn Clock>) -> Router {
     let bus = Bus::new(64);
     let schema = build_schema(dependencies(pool, clock.clone(), bus.clone()));
-    let daemon = daemon_router(pool.clone(), Feed::new(), bus.clone(), clock.clone());
+    let daemon = daemon_router(
+        (pool.clone(), bus.clone(), clock.clone()),
+        Feed::new(),
+        crate::hub::test_vault(),
+    );
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     router(schema, pool.clone(), clock)
         .merge(logged(daemon))

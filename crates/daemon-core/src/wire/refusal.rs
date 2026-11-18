@@ -20,6 +20,9 @@ pub enum RefusalCode {
     OutOfRange,
     /// The hub cannot store now.
     Unavailable,
+    /// The key does not exist, has no active version, or the device is no consumer of it: one
+    /// answer for the three, so a server cannot learn which keys exist (K-E5 Section 2.1).
+    NoKey,
 }
 
 /// A refusal body, `{ "error": "<CODE>" }`, and nothing else: it never echoes the request.
@@ -38,6 +41,7 @@ impl RefusalCode {
             Self::WrongDevice => 403,
             Self::TooLarge => 413,
             Self::OutOfRange => 422,
+            Self::NoKey => 404,
             Self::Unavailable => 503,
         }
     }
@@ -53,6 +57,7 @@ impl RefusalCode {
             Self::TooLarge => "TOO_LARGE",
             Self::OutOfRange => "OUT_OF_RANGE",
             Self::Unavailable => "UNAVAILABLE",
+            Self::NoKey => "NO_KEY",
         }
     }
 

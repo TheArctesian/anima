@@ -15,7 +15,7 @@ use crate::{
     engine::{extensions, files, links, places, sources, timeline},
     fleet::{
         access, agent_usage, builds, checks,
-        credentials::Vault,
+        credentials::{self, Vault},
         devices,
         events::{
             self, Bus,
@@ -36,6 +36,7 @@ pub struct Query(
     agent_usage::graphql::Query,
     builds::graphql::Query,
     checks::graphql::Query,
+    credentials::graphql::Query,
     devices::graphql::Query,
     events::graphql::Query,
     extensions::graphql::Query,
@@ -62,6 +63,7 @@ pub struct Mutation(
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
     checks::graphql::Mutation,
+    credentials::graphql::Mutation,
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
     link::graphql::Mutation,

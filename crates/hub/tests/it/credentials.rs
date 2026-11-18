@@ -1,10 +1,12 @@
 //! `credentials.secrets` through the public SSH and password functions (SEC-003, SEC-005,
-//! DEV-011, DEV-015).
+//! DEV-011, DEV-015), and the operational keys through K1 and the daemon routes (R-147).
 
 mod batch;
 mod concurrency;
 mod host;
 mod kinds;
+mod operational;
+mod retrieval;
 mod round_trip;
 mod schema;
 mod source;

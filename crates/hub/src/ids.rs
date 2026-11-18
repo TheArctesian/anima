@@ -104,6 +104,10 @@ entity_id! {
     ArchiveId,
     /// One extraction proposal (VIS-001).
     ProposalId,
+    /// An operational key: a credential a server of the operator needs (R-147).
+    OperationalKeyId,
+    /// One version of an operational key; its id is in the context of its sealed value.
+    OperationalKeyVersionId,
 }
 
 #[cfg(test)]

@@ -30,7 +30,9 @@
   ],
   "domains": {
     "events": [],
-    "credentials": [],
+    "credentials": [
+      "events"
+    ],
     "access": [
       "events",
       "credentials"
@@ -193,6 +195,9 @@
       "events"
     ],
     "agent_usage": [
+      "access"
+    ],
+    "credentials": [
       "access"
     ],
     "files": [

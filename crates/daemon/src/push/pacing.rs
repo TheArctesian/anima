@@ -38,15 +38,17 @@ pub enum Action {
 
 /// The action for the answer to a push.
 #[must_use]
-pub const fn action(answer: &Answer<()>) -> Action {
+pub const fn action<T>(answer: &Answer<T>) -> Action {
     match answer {
-        Answer::Accepted(()) => Action::Remove,
+        Answer::Accepted(_) => Action::Remove,
         Answer::Refused(code) => match code {
             RefusalCode::Malformed | RefusalCode::OutOfRange => Action::Drop(*code),
             RefusalCode::TooLarge => Action::Shrink,
             RefusalCode::TokenRefused | RefusalCode::WrongDevice => Action::Stop(*code),
-            // `ENROLMENT_REFUSED` is not a push answer; treat any such answer as a wait.
-            RefusalCode::EnrolmentRefused | RefusalCode::Unavailable => Action::Wait,
+            // `ENROLMENT_REFUSED` and `NO_KEY` are not push answers; treat any such as a wait.
+            RefusalCode::EnrolmentRefused | RefusalCode::NoKey | RefusalCode::Unavailable => {
+                Action::Wait
+            }
         },
         Answer::Failed(_) => Action::Wait,
     }
@@ -102,7 +104,7 @@ mod tests {
 
     #[test]
     fn k8_6_each_answer_maps_to_its_action() {
-        let refused = |code| action(&Answer::Refused(code));
+        let refused = |code| action(&Answer::<()>::Refused(code));
         assert_eq!(action(&Answer::Accepted(())), Action::Remove);
         assert_eq!(
             refused(RefusalCode::Malformed),
@@ -123,7 +125,7 @@ mod tests {
         );
         assert_eq!(refused(RefusalCode::Unavailable), Action::Wait);
         for cause in [Cause::Network, Cause::Timeout, Cause::Status(503)] {
-            assert_eq!(action(&Answer::Failed(cause)), Action::Wait);
+            assert_eq!(action(&Answer::<()>::Failed(cause)), Action::Wait);
         }
     }
 

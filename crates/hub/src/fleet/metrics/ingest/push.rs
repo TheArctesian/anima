@@ -23,13 +23,13 @@ use axum::{
 use chrono::{DateTime, Utc};
 use daemon_core::{
     readings::Drive,
-    wire::{Batch, RefusalCode},
+    wire::{Batch, PushAccepted, RefusalCode},
 };
 
 use super::{
     admission::{Admitted, Stop, admit},
-    credential,
-    refusals::Route,
+    credential, keys,
+    refusals::{self, Route},
     routes::{DaemonState, busy, client_of, read_body, unmounted},
     turns::Turn,
 };
@@ -43,8 +43,9 @@ use samples::Rows;
 /// The push body limit (K8 Section 1, MET-017).
 const BODY_LIMIT: usize = 512 * 1024;
 
-/// Takes a batch from the daemon of the bearer token: `204` once it is stored, or the first
-/// refusal of K8 Section 6, written to the event log without the token.
+/// Takes a batch from the daemon of the bearer token: `204` once it is stored, `200` with
+/// `Accepted` when the batch had a `keys` member (K-E5 Section 2.1), or the first refusal of K8
+/// Section 6, written to the event log without the token.
 pub(super) async fn serve_push(state: DaemonState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
@@ -55,7 +56,8 @@ pub(super) async fn serve_push(state: DaemonState, request: Request) -> Response
     };
     let (parts, body) = request.into_parts();
     match push(&state, (&parts.headers, body), address, now).await {
-        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Ok(None) => StatusCode::NO_CONTENT.into_response(),
+        Ok(Some(accepted)) => refusals::json(StatusCode::OK, &accepted),
         Err(stop) => state.stopped(stop, (Route::Push, client), now).await,
     }
 }
@@ -65,7 +67,7 @@ async fn push(
     (headers, body): (&HeaderMap, Body),
     address: Turn<IpAddr>,
     now: DateTime<Utc>,
-) -> Result<(), Stop> {
+) -> Result<Option<PushAccepted>, Stop> {
     let token =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
     // One push per device at a time: a second one would wait for the device row holding a
@@ -86,6 +88,7 @@ async fn push(
     };
     let rows = samples::rows(&accepted.points);
     let daemon_version = accepted.daemon_version;
+    let held = accepted.keys;
     let gpus: Option<Vec<Gpu>> = accepted
         .gpus
         .map(|gpus| gpus.into_iter().map(Gpu::from).collect());
@@ -109,7 +112,13 @@ async fn push(
             if kept > 0 {
                 publish(state, device, &rows).await;
             }
-            Ok(())
+            let Some(held) = held else {
+                return Ok(None);
+            };
+            let told = keys::current(state, device, &held, now).await;
+            Ok(told.map(|current| PushAccepted {
+                keys: Some(current),
+            }))
         }
         Ok(Written::Refused(code)) => Err(refused(code)),
         Err(error) => Err(Stop::Failed(error)),

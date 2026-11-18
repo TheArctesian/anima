@@ -239,8 +239,9 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// token only (PRJ-034, PRJ-035, PRO-010, K-E1 Section 13.5).
 /// A pull request merge runs code with the repository's secrets: login or browser token only.
 /// A link invite admits a device to the hub, and a revocation is a trust decision: login or
-/// browser token only (FRN-009, OR-S6-3).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 46] = [
+/// browser token only (FRN-009, OR-S6-3). An operational key change takes a secret or is a
+/// trust decision (a grant): login or browser token only (R-147, K-E5 Section 2.2).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 53] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -287,6 +288,13 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 46] = [
     "mergePullRequests",
     "createLinkInvite",
     "revokeLinkDevice",
+    "createOperationalKey",
+    "updateOperationalKey",
+    "removeOperationalKey",
+    "rotateOperationalKey",
+    "revokeOperationalKey",
+    "grantOperationalKey",
+    "ungrantOperationalKey",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of
