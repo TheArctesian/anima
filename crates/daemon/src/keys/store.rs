@@ -77,7 +77,7 @@ impl KeyStore {
     }
 }
 
-/// The file store only: the Keychain store is checked by a person (HT-033).
+/// The file store only: the Keychain store is checked by a person (HT-034).
 #[cfg(all(test, not(target_os = "macos")))]
 mod tests {
     use std::os::unix::fs::PermissionsExt as _;

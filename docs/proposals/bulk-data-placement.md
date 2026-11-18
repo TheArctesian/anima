@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Direction decided
-evidence: Direction decided (OD-W9). No requirement is approved.
+state: Parked
+evidence: Parked until after the hosted launch (R-161, operator, 2026-11-18: "B: park both"). Its direction is decided (OD-W9). No requirement is approved.
 ---
 
 # Proposal: bulk data on the operator's machines, in encrypted pieces
@@ -14,6 +14,7 @@ storage burden on the hub no which is a VPS which is expensive". The operator ag
 "okay yeah lets do that".
 Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling. Its direction is decided (OD-W9). The requirements are not yet
 approved one by one. It changes FIL-001 of the extensions plan.
+Parked (R-161, operator, 2026-11-18: "B: park both"): build nothing until after the hosted launch (PLN-007).
 Map: [work-plan.md](../work-plan.md), principles ETH-003 and ETH-005.
 Related: [coordinator-standby.md](coordinator-standby.md) for the live database.
 
@@ -79,6 +80,7 @@ have free space, but different amounts, and some are not always on.
 - Model files are large and are not secret. They can use the same placement without sealing, or
   stay with the compute plan (PULL-001 to PULL-010). Decide with [C1](../work-items/compute/C1.md).
 - The size of a piece, and the "set time" of STO-006.
+- A note of the orchestrating session of 2026-11-18, not words of the operator: no document says what happens when the 20 GiB disk of a hosted hub is full after the file store of E0-5 is in use. This proposal is parked (R-161), so the question has no owner that is in work.
 
 ## Needs
 

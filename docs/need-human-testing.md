@@ -51,8 +51,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
-| HT-032 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
-| HT-033 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
+| HT-033 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
+| HT-034 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -962,7 +962,7 @@ The hub and the daemon must be of this build. A local hub is sufficient
 
 Result: Open.
 
-### HT-032: a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4)
+### HT-033: a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4)
 
 Built: on the branch of E0-5 T2 and T4 (files part). The hub keeps files as sealed pieces in
 `ANIMA_FILES_DIR`, sealed with a data key of `ANIMA_DATA_KEY_DIR`; the local hub gives both folders in
@@ -989,7 +989,7 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
-### HT-033: a server gets, follows and drops an operational key (E0-6 T2, R-147)
+### HT-034: a server gets, follows and drops an operational key (E0-6 T2, R-147)
 
 Built: on the branch of E0-6 T2 (K-E5 Section 2, K8 Section 9). The hub keeps operational keys in the
 `credentials` domain (`crates/hub/src/fleet/credentials/operational/`) and gives them to the daemon of a granted
