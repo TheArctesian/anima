@@ -99,6 +99,7 @@ manager is accepted. The standbys come later, with the extensions.
   The client must show the age of this data (NET-004). The copy must not contain a credential.
   IOS-003 already requires this copy for iOS.
 
+<<<<<<< HEAD
 ## The hosted hub and FND-006 (R-130, R-137)
 
 The operator will use only the hosted version (R-130). This changes FND-006:
@@ -122,11 +123,17 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 | OD-FND-1 | When the operator goes to the hosted hub: move the data of the hub on the VPS, or start fresh? | Start fresh. Each machine joins again in the two cases, and the pool has no import. | Decided (R-137, operator, 2026-11-17): start fresh. |
 | OD-FND-2 | Is FND-006 now only the procedure for a person who runs a hub on a server: one document from the scripts that exist, tested by a restore on a new, empty setup in Docker, with no change to the VPS (task F1)? | Yes. | Open |
 
+=======
+>>>>>>> origin/main
 ## Tasks
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
+<<<<<<< HEAD
 | F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | OD-FND-2 | Not started | — |
+=======
+| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | The operator named it on 2026-11-17 ("Yes, build F1"); the branch `restore-and-move` records the ruling | Not started | — |
+>>>>>>> origin/main
 
 ## Open points
 
