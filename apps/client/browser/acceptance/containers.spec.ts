@@ -1,5 +1,5 @@
-import { expect, test } from './test-hub';
-import { HUB_ORIGIN } from './synthetic/access';
+import { expect, test } from '../test-hub';
+import { HUB_ORIGIN } from '../synthetic/access';
 
 // The tab "Containers" of a device against the production build (HOST-001, HOST-013): the groups by Compose project, the
 // log of the selected container, and a device the hub cannot read.
