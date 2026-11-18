@@ -575,7 +575,13 @@ The tests start the hub program in the hosted mode on a test database. No test u
 made from a new hub image, and no test looks at the row in the application. No test waits for the timer: the
 tests see the report of the start only.
 
-Do these steps after the pool has a new hub image and the hub of the account was made again from it.
+Checked on the pool on 2026-11-18 (operator: "Yes, test it"), with a hub image built from `eb2c7461` and a test
+hub that is deleted: a device joined the link and traded its claim, and the device list held one device `Hub`
+(host `localhost`, kind `hub`, Linux, site `Link`) that was Up, with the check `Hub running` reported at the
+start and again 60 s later. Not checked: the row in the application, and the hub of the account, which still
+runs the programs of the old image.
+
+Do these steps after the hub of the account was made again from the new hub image.
 
 1. Start the built app as in step 1 of HT-022, and sign in if the app asks. Expected: the device list shows a
    row `Hub`, and the row is Up. The row has no button to connect. Nothing asked for a step.
