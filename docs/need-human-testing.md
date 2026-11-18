@@ -44,6 +44,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A Mac with Tailscale and NetBird, and a second tailnet account | Open |
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
+| HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -485,16 +486,33 @@ No test can see a real screen.
 
 Result: Open.
 
+### HT-022: the first real sign-in with the Anima.ing account (HM-T1 to HM-T7)
+
+Built: the first-run "Sign in" ([hosted-mode.md](proposals/hosted-mode.md) Section 4.1, HMD-022, HMD-023,
+HMD-037 to HMD-041, HMD-043). The desktop shell does the WorkOS device sign-in and calls
+`cloud.anima.ing/v1/hub` and `/v1/hub/access`; the app joins the link with the invite and trades the
+claim with the hosted hub for its token (`claimDeviceToken`).
+
+The tests use a stand-in cloud, fake answers of WorkOS and the site, and a fake link. No test signs
+in with WorkOS, calls the live site, or trades a claim through a real link. Open decision HM-D13 (the
+form of the WorkOS requests) is decided by step 2.
+
+1. On this computer, run `bun run --cwd apps/desktop dev`. On the first-run screen, click "Sign in".
+   Expected: the browser opens a WorkOS page, and the app shows the same short code.
+2. Sign in with the Anima.ing account in the browser. Expected: the app shows "Your hub is
+   starting", then "Connecting". If it shows "Sign-in refused" at once, WorkOS refused the request
+   form: write it in HM-D13.
+3. Wait. Expected: the device list of the hosted hub opens. No screen asked for an invite, an
+   address or a password.
+4. Quit the app and start it again. Expected: the device list opens with no sign-in.
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list
 ([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
 builder adds the entry.
-
-The cloud of "Sign in" in the first run ([hosted-mode.md](proposals/hosted-mode.md) tasks HM-T1 to
-HM-T4) is a stub. The screens are tested with a stand-in, and the hosted mode of the hub with a fake
-link. No test runs a real `anima-link`, a real pool hub and the desktop shell together. The builder of
-the cloud API (HM-T4) adds the entry for a sign-in with a real account on a real hosted hub.
 
 ## Checks that other documents hold
 
