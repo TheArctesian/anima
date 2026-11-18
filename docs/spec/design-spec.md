@@ -1316,6 +1316,7 @@ The view has these tabs:
 | --- | --- |
 | Overview | Status, uptime percentage (24 hours, 7 days, 30 days), metric charts |
 | Checks | The list of checks, heartbeat history, response time chart |
+| Containers | The Docker containers of the device in groups by Compose project, and the log of the selected container (HOST-013, R-149; [hosted-applications-plan.md](../plans/hosted-applications-plan.md)) |
 | Sessions | Session history for this device |
 | Logs | Event log entries for this device (Section 3.8) |
 | Settings | The fields of Section 6.2, saved as they change (DEV-028, D17) |

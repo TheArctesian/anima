@@ -7,6 +7,9 @@
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
   import type { CheckFormValues } from '$lib/checks/form/model/values';
+  import { containersApi } from '$lib/containers/api';
+  import ContainersPanel from '$lib/containers/ContainersPanel.svelte';
+  import { ContainersStore } from '$lib/containers/store.svelte';
   import { thisComputerShell } from '$lib/desktop/daemon/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { metricsApi } from '$lib/metrics/api';
@@ -81,6 +84,13 @@
 
   $effect(() => {
     detail.showTab(place.tab);
+  });
+
+  // HOST-013: the hub reads the device's containers when the tab opens, and again only when the operator asks.
+  // svelte-ignore state_referenced_locally
+  const containers = new ContainersStore(containersApi(hub, id));
+  $effect(() => {
+    if (place.tab === 'containers') untrack(() => void containers.load());
   });
 
   // The bar says why a device is not up from its checks (D16), so they load on every tab while it is not.
@@ -197,6 +207,11 @@
             onDelete={(check) => detail.deleteCheck(check)}
           />
         {/if}
+      </TabPanel>
+    {:else if place.tab === 'containers'}
+      <!-- The panel shows its own errors and Retry. -->
+      <TabPanel name="containers" loading={containers.status === 'idle' || (containers.status === 'loading' && containers.containers.length === 0)}>
+        <ContainersPanel store={containers} />
       </TabPanel>
     {:else if place.tab === 'sessions'}
       <TabPanel name="sessions" loading={sessionPages.items === null && sessionPages.error === null}>

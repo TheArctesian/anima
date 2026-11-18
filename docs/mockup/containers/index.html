@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device Containers Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
+<style>
+/* Layout: a review board. Frame 1 is the tab "Containers" of a device with the log of one container open; frame 2 is a device
+   that the hub cannot read; frame 3 is a device with no container (hosted-applications-plan.md, HOST-001, HOST-013, task H3).
+   Each frame is the panel below the tab strip of the device page. Stage 1 has no control that changes a container. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+:root[data-theme="light"] { color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3; }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, sizes, type). A frame is dark (.gd) or light (.gl) on purpose. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-sunken: #16181B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-warning: #EBCB8B; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-sunken: #ECEEF0; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-warning: #9A7215; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem;
+  --leading-normal: 1.5; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem; --control-lg: 2.5rem;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 24px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+
+/* One frame: the device page from its tab strip down (routes/devices/[id], lib/containers/ContainersPanel.svelte). */
+.frame { max-inline-size: 1040px; border: 1px solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-sm); padding: var(--space-6) var(--space-8) var(--space-8); display: grid; gap: var(--space-4); align-content: start; }
+.frame p { margin: 0; line-height: var(--leading-normal); }
+.tabs { display: flex; gap: var(--space-4); border-block-end: var(--border-thin) solid var(--border-subtle); font-size: var(--text-md); color: var(--text-secondary); }
+.tabs span { padding-block: var(--space-2); }
+.tabs .on { color: var(--text); font-weight: var(--weight-medium); box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* The bar above the table, and the bar of the log: a count or a title, then the buttons. */
+.bar { display: flex; align-items: center; gap: var(--space-3); }
+.bar .grow { flex: 1; color: var(--text-secondary); }
+.bar .title { flex: 1; color: var(--text); font-weight: var(--weight-medium); }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); }
+.btn.ghost { border-color: transparent; background: none; }
+.btn.on { background: var(--surface-hover); }
+.seg { display: inline-flex; gap: var(--space-1); padding: var(--space-1); block-size: var(--control-sm); border-radius: var(--radius-md); background: var(--surface-sunken); box-shadow: inset 0 0 0 var(--border-thin) var(--border-subtle); }
+.seg span { padding: 0 var(--space-2); line-height: calc(var(--control-sm) - 2 * var(--space-1)); color: var(--text-secondary); border-radius: 2px; }
+.seg .on { background: var(--surface-raised); color: var(--text); font-weight: var(--weight-medium); }
+
+/* The table: a group header for each Compose project with its running count; the containers with no project are last. */
+table { inline-size: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+th, td { padding: 0 var(--space-3); block-size: var(--control-lg); border-block-end: var(--border-thin) solid var(--border-subtle); text-align: start; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+thead th { color: var(--text-secondary); font-weight: var(--weight-medium); }
+col.name { inline-size: 24%; } col.state { inline-size: 16%; } col.status { inline-size: 20%; } col.act { inline-size: 4rem; }
+tr.group th { block-size: var(--control-sm); background: var(--surface-sunken); color: var(--text-secondary); font-weight: var(--weight-medium); }
+tr.group small { margin-inline-start: var(--space-3); font-size: inherit; font-weight: 400; }
+tr.selected { background: var(--surface-hover); }
+.mono, .id { font-family: var(--font-mono); }
+.id { margin-inline-start: var(--space-2); color: var(--text-secondary); }
+td.act { text-align: end; }
+.state { display: inline-flex; align-items: center; gap: var(--space-2); }
+.dot { inline-size: var(--space-2); block-size: var(--space-2); border-radius: var(--radius-pill); background: var(--status-unknown); }
+.up .dot { background: var(--status-up); } .down .dot { background: var(--status-down); } .warning .dot { background: var(--status-warning); }
+
+/* The log: the last lines of one container, oldest first, in the mono font; the time of each line is secondary. */
+.lines { margin: 0; padding: var(--space-2) var(--space-3); list-style: none; border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-sunken); font-family: var(--font-mono); }
+.lines li { display: flex; gap: var(--space-3); line-height: var(--leading-normal); }
+.lines time { color: var(--text-secondary); }
+
+/* The error state and the empty state replace the table and nothing else (UI-030). */
+.state-box { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-6) var(--space-4); text-align: center; }
+.state-box h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.state-box .secondary { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<h1 class="board">Device containers</h1>
+<p class="about">The tab "Containers" of the device page: the Docker containers of the device, read by the hub through SSH when the tab opens. Stage 1 only reads: it has no start, stop or remove control (HOST-001, HOST-013, R-149).</p>
+
+<div class="frames">
+<figure>
+  <div class="frame gd">
+    <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
+    <div class="bar"><span class="grow">4 containers</span><span class="btn">Refresh</span></div>
+    <table>
+      <colgroup><col class="name"><col class="state"><col class="status"><col><col><col class="act"></colgroup>
+      <thead><tr><th>Name</th><th>State</th><th>Status</th><th>Image</th><th>Ports</th><th></th></tr></thead>
+      <tbody>
+        <tr class="group"><th colspan="6">tracks<small>2 of 3 running</small></th></tr>
+        <tr class="selected"><th>tracks-app-1<span class="id">4f5c1d2e3a4b</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td class="mono">example/tracks:0.36</td><td class="mono">0.0.0.0:3000-&gt;3000/tcp</td><td class="act"><span class="btn ghost on">Log</span></td></tr>
+        <tr><th>tracks-db-1<span class="id">9a1b2c3d4e5f</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td class="mono">postgres:17</td><td class="mono">5432/tcp</td><td class="act"><span class="btn ghost">Log</span></td></tr>
+        <tr><th>tracks-worker-1<span class="id">0c7d8e9fa1b2</span></th><td><span class="state"><span class="dot"></span>Exited</span></td><td>Exited (1) 2 hours ago</td><td class="mono">example/tracks:0.36</td><td class="mono"></td><td class="act"><span class="btn ghost">Log</span></td></tr>
+      </tbody>
+      <tbody>
+        <tr class="group"><th colspan="6">No Compose project<small>1 of 1 running</small></th></tr>
+        <tr><th>ollama<span class="id">77aa01bc23de</span></th><td><span class="state down"><span class="dot"></span>Running, unhealthy</span></td><td>Up 2 minutes (unhealthy)</td><td class="mono">example/ollama:0.9</td><td class="mono">127.0.0.1:11434-&gt;11434/tcp</td><td class="act"><span class="btn ghost">Log</span></td></tr>
+      </tbody>
+    </table>
+    <div class="bar"><span class="title">Log of tracks-app-1</span><span class="seg"><span>100</span><span class="on">200</span><span>500</span><span>1000</span></span><span class="btn">Refresh</span><span class="btn ghost">✕</span></div>
+    <ol class="lines">
+      <li><time>18:00:00</time><span>listening on :3000</span></li>
+      <li><time>18:00:04</time><span>GET /health 200 2ms</span></li>
+      <li><time>18:00:09</time><span>GET /api/points 200 41ms</span></li>
+    </ol>
+  </div>
+  <figcaption>Frame 1, dark. The containers are in groups by Compose project, by name; the group header gives the running count. The state is a word with a dot. The button "Log" of a row reads the last lines of that container; the operator selects 100, 200, 500 or 1000 lines. The hub and the client keep no line.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gl">
+    <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
+    <div class="state-box"><p>Docker was not read: the device has no SSH credential in Anima. Anima reads the containers of a device through SSH.</p><span class="btn">Retry</span></div>
+  </div>
+  <figcaption>Frame 2, light. A device that the hub cannot read shows the sentence of the hub, which says what to do (no SSH credential, SSH off, no accepted host key, no docker command, or no answer), and "Retry".</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
+    <div class="state-box"><h3>No containers</h3><p class="secondary">Docker on this device has no container, running or stopped.</p></div>
+  </div>
+  <figcaption>Frame 3, dark. Docker answers and has no container.</figcaption>
+</figure>
+</div>
+</body>
+</html>

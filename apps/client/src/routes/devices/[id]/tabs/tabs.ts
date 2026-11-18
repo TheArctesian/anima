@@ -7,6 +7,7 @@ import { tabIds as sharedIds, type TabSpec } from '$lib/tabs/tabs';
 export const TABS = [
   { name: 'overview', label: 'Overview', icon: 'carbon:dashboard' },
   { name: 'checks', label: 'Checks', icon: 'carbon:task-complete' },
+  { name: 'containers', label: 'Containers', icon: 'carbon:grid' },
   { name: 'sessions', label: 'Sessions', icon: 'carbon:recently-viewed' },
   { name: 'logs', label: 'Logs', icon: 'carbon:catalog' },
   { name: 'settings', label: 'Settings', icon: 'carbon:settings-adjust' },
