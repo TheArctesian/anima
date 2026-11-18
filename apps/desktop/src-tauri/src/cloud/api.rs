@@ -56,6 +56,9 @@ pub(super) async fn hub(http: &Client, base: &str, access: &str) -> Result<HubSt
     let response = http
         .post(format!("{base}/v1/hub"))
         .bearer_auth(access)
+        // The site refuses a POST that is not JSON (SvelteKit's cross-site form check).
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body("{}")
         .send()
         .await?;
     let (status, body) = (response.status(), response.bytes().await?);
