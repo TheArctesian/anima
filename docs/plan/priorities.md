@@ -38,7 +38,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 T9 ([extensions-plan.md](../plans/extensions-plan.md) Section 5.1), but not the parts that OD-E16 and OD-E17 name. Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
-| 4.6 | 3a | Projects | See | In progress. | Operator: the decisions Q1 to Q4 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0". Agent: nothing before them |
+| 4.6 | 3a | Projects | See | In progress. | Nothing now. The parts that are not built wait for later plans: a hosting provider as a source (PRO-005, Q1), the Operations area of the project page (PRO-006, Q2), task W1 (PRO-006, Q3) and a second forge (PRO-007, Q4); see [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0" |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
 | 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
@@ -120,7 +120,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: See
 - Work: Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008)
 - Work items: [XP-02](../work-items/extensions/XP-02.md)
-- State: In progress. On `main` (2026-11-13): the Projects domain in the hub, the `anima project` commands, the MCP tools, and the list and detail pages of the client (PRO-001 to PRO-004; merges `566238d2`, `3f9e9536`, `cf6d59bb`, `cc0490bf`). Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). PRO-005 to PRO-007 were compared with the code (task P0, 2026-11-17): PRO-005 is not built, PRO-006 is partly built and PRO-007 is built differently; the results and the open decisions Q1 to Q4 are in the plan. PRO-008 was not compared with the code. The direction is decided (OD-W11). It changes PRJ-001. The parts of the engine that it needs are on `main` (tier 2a).
+- State: In progress. On `main` (2026-11-13): the Projects domain in the hub, the `anima project` commands, the MCP tools, and the list and detail pages of the client (PRO-001 to PRO-004; merges `566238d2`, `3f9e9536`, `cf6d59bb`, `cc0490bf`). Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). PRO-005 to PRO-007 were compared with the code (task P0, 2026-11-17): PRO-005 is not built, PRO-006 is partly built and PRO-007 is built differently; the results and the decisions Q1 to Q4 (operator, 2026-11-17) are in the plan. PRO-008 was not compared with the code. The direction is decided (OD-W11). It changes PRJ-001. The parts of the engine that it needs are on `main` (tier 2a).
 
 ### 4.7 Jobs, builds and AI agent runs
 

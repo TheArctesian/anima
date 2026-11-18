@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (15)
+## 1. In the order of the priorities (14)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -28,7 +28,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
 | 4.4 | The engine (E0) | Agent: E0-4 T9 (extensions-plan.md Section 5.1), but not the parts that OD-E16 and OD-E17 name. Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
-| 4.6 | Projects | Operator: the decisions Q1 to Q4 of projects-and-builds-plan.md, "Results of task P0". Agent: nothing before them |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.9 | Hosted applications | Operator: approval of the proposal |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
@@ -36,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (103)
+## 2. Open decisions (99)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -84,10 +83,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
-| Q1 | PRO-005 is not built, because GitHub is the only provider with a sign-in. Does it get a task now? And does the sign-in to the forge, which Anima asks before a p… | No task now. Keep PRO-005 as it is. The first plan that adds a hosting provider as a source (Cloudflare or Vercel) gets the task: the project page proposes the… | [plans/projects-and-builds-plan.md](plans/projects-and-builds-plan.md) |
-| Q2 | PRO-006, part 1: a resource does not record if its compute is owned or rented, and a `SERVER` resource has no link to a device. Must a resource hold this? | Yes, but not now. Add it with the Operations area of the project page (OD-W11, number 1): a `SERVER` resource can name a device of the operator, and each kind s… | [plans/projects-and-builds-plan.md](plans/projects-and-builds-plan.md) |
-| Q3 | PRO-006, part 3 (a job reads the local copy and does not call the service) has no task. Which task owns it? | Task W1: the contract of the work route states it, and task W4 proves it with a test. No code before W1. | [plans/projects-and-builds-plan.md](plans/projects-and-builds-plan.md) |
-| Q4 | PRO-007: a second forge changes the Projects domain of the hub, one migration and the client, not only the source registry. Change the code now, or accept this… | Accept it now (ETH-009: build for what the operator uses; no second forge is in use). Do not change the code. Record that PRO-007 is met at the engine and in th… | [plans/projects-and-builds-plan.md](plans/projects-and-builds-plan.md) |
 | OD-ROL-1 | Where a daemon gets its files: from its hub, or from the release host | From its hub (ROL-008). MET-020 and the VPN rules stay, and a machine with no internet access can update. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the daemon and the hub | One key in the first version, with the program name in the signed record (ROL-013). It is one key to keep safe and to back up. A second key is correct if the op… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | An image file on the release host, with its digest in the signed record. GitHub is not in the release path (R-107), and a build from source is slow and needs th… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
