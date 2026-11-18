@@ -134,12 +134,12 @@ The hub is not on the public internet (SEC-008). This has two results:
 
 Many sources exist only on an operator computer: AI session files, an Obsidian vault, iMessage, photos. The hub cannot read them.
 
-- **COL-001.** The collector must be a separate Rust binary (`anima-collector`). It must start at login with launchd on macOS and systemd on Linux. It must run when the client is closed.
+- **COL-001.** The collector must be a part of `anima-agent`. It must not be a separate program (operator, 2026-11-16; issue #6). Thus a computer has one program to install, and the collector runs when the client is closed. The additions to the agent protocol (K8) and the ingest protocol (K-E2) need a contract review before the agent reads a file.
 - **COL-002.** The collector must send records to the hub through the VPN only.
 - **COL-003.** Each collector source must use its own ingest token. An ingest token can only add records for one source account. It cannot read data.
 - **COL-004.** The collector must keep a read position for each file, so that it sends only new data.
 - **COL-005.** The collector must redact secrets before it sends text (Section 2.5).
-- **COL-006.** The operator must select each local folder that the collector reads. The collector must not follow symbolic links out of a selected folder.
+- **COL-006.** Each collector source must have a folder rule with one of three modes: all folders of the source, all folders but a list that the operator excludes, or only a list that the operator includes. The default mode is all folders (operator, 2026-11-16). The collector must not follow a symbolic link out of the folders that the rule permits.
 - **COL-007.** If the hub is not available, the collector must keep the records in a local queue and send them later. The queue must have a size limit.
 - **COL-008.** The parsers of the collector must be in a library crate with no I/O, so that tests can use fixture files.
 
@@ -1174,7 +1174,7 @@ crates/
 │   └── work/             XP: projects/, writing/, assistant_sessions/
 ├── providers/            Pure provider normalisers, one module for each source (XP-owned)
 ├── redaction/            The redaction function (Section 2.5, E0)
-├── collector/            anima-collector binary (E0) and its parsers (XP-owned modules)
+├── collector/            The collector logic with no I/O (E0) and its parsers (XP-owned modules); `anima-agent` runs it (COL-001)
 └── anima-cli/            The `anima run` and `anima secrets` commands (XP-04); the `anima gateway` commands (XP-15)
 ```
 
@@ -1187,7 +1187,7 @@ crates/
 | Number | Decision | Recommendation |
 | --- | --- | --- |
 | OD-E1 | Hub location for Class B data. The hub is on the VPS (OD-9). | Seal Class B with separate data keys (VLT-003). Before XP-05, XP-06 and XP-08, decide if a home hub must keep Class B data and the VPS hub only the device manager. |
-| OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. |
+| OD-E2 | Collector form: separate binary or part of the desktop client | Decided (operator, 2026-11-16): a part of `anima-agent` (COL-001). The agent runs when the client is closed and on computers without the client. No second program is installed. |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org before payment. HSBC HK and Revolut use statement uploads. |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. |
@@ -1245,7 +1245,7 @@ Anima is a personal application for one operator. Register each developer applic
 | Protomaps PMTiles file | Map | Download a regional or planet build. No account. |
 | Photon geocoder | Map | Self-hosted with a country or region extract. No account. |
 | Garmin bridge | Health | Section 4.9.1 |
-| `anima-collector` | AI sessions, Writing, People | On each operator computer |
+| The collector in `anima-agent` | AI sessions, Writing, People | On each operator computer (COL-001) |
 
 ### 9.2 Developer applications to register
 

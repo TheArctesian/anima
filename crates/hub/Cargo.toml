@@ -26,7 +26,6 @@ chrono.workspace = true
 chrono-tz.workspace = true
 ipnet.workspace = true
 serde_json.workspace = true
-unicode-normalization.workspace = true
 chacha20poly1305.workspace = true
 zeroize.workspace = true
 sha2.workspace = true
@@ -64,6 +63,8 @@ lettre.workspace = true
 # The updater key the hub signs each published updater file with, and the check of that
 # signature by the updater's own verifier (R-117, BLD-045, BLD-046, BLD-064).
 updater-signature = { path = "../updater-signature" }
+# The text redaction the event log, the audit log and each ingest path share (LOG-007, RED-001).
+redaction = { path = "../redaction" }
 # Sources (K-E1): the types the engine and the providers share, the GitHub declaration the
 # wiring registers, and the boxed futures of the `Intake` trait object.
 source-exchange = { path = "../providers/exchange" }

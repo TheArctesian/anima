@@ -5,19 +5,14 @@
 //! over-matching (`tokenExpiresAt` and `passwordChangedAt` are redacted) to letting a secret
 //! through. Booleans are never redacted: they cannot hold a secret.
 
-mod names;
 #[cfg(test)]
 mod tests;
-mod text;
 
 use chrono::DateTime;
 use serde_json::{Map, Value};
 
-use names::{Secrecy, normalise, secrecy};
-pub(super) use text::redact_text;
-
-/// The value that replaces a secret.
-const REDACTED: &str = "[redacted]";
+pub(super) use ::redaction::redact_text;
+use ::redaction::{REDACTED, Secrecy, normalise, secrecy};
 
 /// Keys whose string value names the field an object describes (`{ "field": "password", … }`,
 /// JSON Patch `{ "op": …, "path": "/ssh/password", … }`). `name` is a label only beside a

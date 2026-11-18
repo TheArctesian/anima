@@ -1,0 +1,10 @@
+[package]
+name = "collector"
+description = "The collector logic with no I/O: the folder rule and the read position of a source file (COL-004, COL-006, COL-008)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
