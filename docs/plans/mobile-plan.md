@@ -198,6 +198,8 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M5-1 | M5 Release | Key store on iOS and on Android | MOB-006 | Not started | — |
 | M5-2 | M5 Release | Signatures and the first builds for the operator | OD-M5, OD-M8 | Not started | — |
 
+**M5-2 pending prerequisite.** On 2026-11-18, Sign in with Apple was enabled as a primary capability on Apple Developer App ID `ing.anima.mobile`. Apple warned that the change invalidated existing provisioning profiles that include this App ID. Before the next signed iOS build, regenerate the affected profiles and replace the old copies wherever the signing environment uses them.
+
 Order: M1, then M2. Stage M3 and the open part of task M1-4 wait (OD-M3, order of the work). Each screen of M2 must match its mockup exactly (operator, 2026-11-16: "It has to match the mock ups perfectly"). M4 and M5 can run at the same time after M3.
 
 If M1-4 fails, stop and ask the operator. Do not add a second application as a replacement (MOB-030).
