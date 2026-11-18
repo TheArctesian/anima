@@ -37,7 +37,7 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 | OD-W19 | The name of the macOS application: `Anima.app` (design specification) or `Anima.ing.app` (the builder) | Decided (operator, 2026-11-16) |
 | OD-W20 | The meaning of "must not be able to build or publish the Anima application" (PRO-028) | Decided (operator, 2026-11-16) |
 | OD-W21 | The order of the build work, and the tier of the correction of the release | Decided (operator, 2026-11-16) |
-| OD-W22 | The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open |
+| OD-W22 | The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Decided (R-162, operator, 2026-11-18) |
 | OD-W23 | The update of the daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
 
 ### OD-W1. Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)?
@@ -78,7 +78,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W10. Can the daemon do work that the coordinator gives it? R-115 did not take a command channel to the daemon.
 
-**Decided (operator, 2026-11-12): yes, one daemon, on by default ("it should be on by default").** The section "Decision" of [jobs.md](../proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of [OD-C8](../work-items/decisions/OD-C8.md). A daemon that is already installed takes work after its update, with no confirmation.
+**Decided (operator, 2026-11-12): yes, one daemon, on by default ("it should be on by default").** The section "Decision" of [jobs.md](../proposals/jobs.md) has the limits. R-160 (2026-11-18) is the ruling that changes R-115; it confirms the default also for a hosted hub ("A: on everywhere"). It also changes CMP-002 and the recommendation of [OD-C8](../work-items/decisions/OD-C8.md). A daemon that is already installed takes work after its update, with no confirmation.
 
 ### OD-W11. Are projects the front door for rented accounts, and does the builder build each project?
 
@@ -126,7 +126,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W22. The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13.
 
-**Open.** Recommendation: approve it as a function of `anima-daemon`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. It needs the ruling number for OD-W10, because it changes MET-002.
+**Decided (R-162, operator, 2026-11-18: "A: approve, tier 3").** The direction is approved with the recommendations of the proposal for OD-WDG-1 to OD-WDG-13. The tier is 3, after jobs. The requirements WDG-001 to WDG-041 are not approved one by one, so the document stays a proposal (PLN-018). The recommendation was: approve it as a function of `anima-daemon`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. R-160 is the ruling for OD-W10. The change to MET-002 for a restart has no ruling yet.
 
 ### OD-W23. The update of the daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
 
