@@ -9,7 +9,7 @@ mod link;
 mod origin;
 mod releases;
 
-pub use link::LINK_DEVICES;
+pub use link::{LINK_DEVICES, dial_socket};
 pub use releases::Releases;
 
 const LISTEN: &str = "ANIMA_LISTEN";

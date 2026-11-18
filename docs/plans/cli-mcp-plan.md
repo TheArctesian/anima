@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built.
+evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started.
 ---
 
 # Anima command line and MCP plan
@@ -436,7 +436,9 @@ has no free memory, or a tool or a build target is absent. They must tell the ag
    `anima` is inside the disk image and the AppImage of the desktop application, at the same
    version, and Settings > Updates > Command line tool puts it on the `PATH` (design
    specification Section 3.11, INS-001 to INS-009). There is no package manager channel
-   (INS-008). The mechanisms are decided by the implementation and need a real release to
+   for the desktop application, the daemon or the hub (INS-008). The command line alone also has a
+   Homebrew formula and a crates.io crate (operator, 2026-11-18, R-151; INS-010 to INS-013; tasks R8a to R8d of
+   [projects-and-builds-plan.md](projects-and-builds-plan.md); not built). The mechanisms are decided by the implementation and need a real release to
    confirm the signature, the notarization and the AppImage launcher (design specification
    OD-16, OD-17, OD-18).
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
@@ -531,18 +533,60 @@ tools that are on:
 
 ## 10. Work
 
-| Task | Content | Builder | Tag |
-| --- | --- | --- | --- |
-| T1 | Crate, `hub/`, contexts, sign-in, token store, output, exit codes, `api`, `device list\|get`, the K1 coverage test | Opus | security |
-| T2 | `device` (the rest), `site`, `tag`, `web`, `agent` | Sonnet | security (credentials) |
-| T3 | `check`, `maintenance` | Sonnet | |
-| T4 | `event`, `audit`, `notify`, `retention`, `key`, and the `watch` commands (subscriptions) | Sonnet | |
-| T5 | `release`, `builder`, `vpn` | Sonnet | security (keys shown once) |
-| T6 | `session`, `ssh`, `files` | Opus | security |
-| T7 | `anima mcp`: server, tool sets, read tools, change tools | Opus | security |
-| T8 | Review (CUPID, tests), security review, gates | Sonnet, Opus | |
-| T9 | Per-tool states `allow`, `ask`, `off`; `permissions show\|set\|reset`; `ask` by elicitation; the `sessions` tool set (MCP-012..017) | Opus | security |
-| T10 | The MCP permissions panel in the desktop Settings page, on the library behind `permissions show\|set\|reset` (MCP-018..023) | Sonnet | security (file write) |
+The state of each task is in the table (PLN-006). T1 to T10 are Done: each commit is the first commit that adds the code of the task to `main`, found on 2026-11-18 (`git log --diff-filter=A`). Their behaviour was not tested again. T11 to T13 are the R-120 work (R-156); they are Not started.
+
+| Task | Content | Builder | Tag | State | Commits |
+| --- | --- | --- | --- | --- | --- |
+| T1 | Crate, `hub/`, contexts, sign-in, token store, output, exit codes, `api`, `device list\|get`, the K1 coverage test | Opus | security | Done | `6cc9d6ad` |
+| T2 | `device` (the rest), `site`, `tag`, `web`, `agent` | Sonnet | security (credentials) | Done | `9c6833aa` |
+| T3 | `check`, `maintenance` | Sonnet |  | Done | `6615375e` |
+| T4 | `event`, `audit`, `notify`, `retention`, `key`, and the `watch` commands (subscriptions) | Sonnet |  | Done | `b42f2de7` |
+| T5 | `release`, `builder`, `vpn` | Sonnet | security (keys shown once) | Done | `04f64e10` |
+| T6 | `session`, `ssh`, `files` | Opus | security | Done | `f3303c43` |
+| T7 | `anima mcp`: server, tool sets, read tools, change tools | Opus | security | Done | `f5819b94` |
+| T8 | Review (CUPID, tests), security review, gates | Sonnet, Opus |  | Done, unverified (no commit found) | — |
+| T9 | Per-tool states `allow`, `ask`, `off`; `permissions show\|set\|reset`; `ask` by elicitation; the `sessions` tool set (MCP-012..017) | Opus | security | Done | `f5819b94` |
+| T10 | The MCP permissions panel in the desktop Settings page, on the library behind `permissions show\|set\|reset` (MCP-018..023) | Sonnet | security (file write) | Done | `f27a56a1` |
+| T11 | R-120, the library and the command: the built-in state of the change tools is `allow`, and the switch "Ask before destructive actions" (MCP-024, MCP-025) in `permissions show\|set\|reset` | Opus | security | Not started | — |
+| T12 | R-120, the audit: each destructive call that runs without a question is in the hub's audit log with the tool, the cleaned arguments and the MCP client name (MCP-026) | Opus | security | Not started | — |
+| T13 | R-120, the desktop Settings panel: the switch "Ask before destructive actions", off for a new user (MCP-025), on the library of T11 | Sonnet |  | Not started | — |
+
+### Tasks of R-120 (T11 to T13)
+
+R-120 (operator, 2026-11-16) is ruled and not built. The code starts with every change tool `off` (`crates/anima-cli/src/mcp/permissions.rs`, `Permissions::built_in`). Build in the order T11, T12, T13. One pull request for each task.
+
+**T11. The default and the switch.**
+- Why: MCP-024 and MCP-025 are ruled and the code does the opposite.
+- Current state: `built_in(Kind::Change)` is `Off`. No switch "Ask before destructive actions" exists in the library or in `permissions set`.
+- Change: make the built-in state of a change tool `allow`. Add the switch of MCP-025 to the saved permissions, `permissions show`, `set` and `reset`. When it is on, each tool with `destructiveHint` is `ask` unless the operator chose a state for that tool. Keep `off` hidden and the choices for single tools first (MCP-025). Keep MCP-014 as MCP-014 says for a change away from a saved `ask` or `off`.
+- Acceptance: pass when a new user has `allow` for every read and change tool, the switch is off, turning it on makes each destructive tool `ask`, a saved tool state still wins, and `off` still hides a tool; fail otherwise.
+- Check: `cargo nextest run -p anima-cli mcp`, `cargo clippy -p anima-cli --all-targets -- -D warnings`, `bun run gates`.
+- Out of scope: the audit (T12), the Settings panel (T13), CMD-024 (the command line keeps its question).
+- Always: write the test of each state first. Ask: before a change to MCP-004 to MCP-008, which do not change. Never: let a tool take or return a secret.
+- Done: the commit that merges the change and sets T11 to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task T11 of docs/plans/cli-mcp-plan.md (R-120, MCP-024, MCP-025). Change the built-in state of the change tools to allow and add the switch 'Ask before destructive actions' to the permissions library and to the permissions show, set and reset commands. Run bun run gates."
+
+**T12. The audit of an unasked destructive call.**
+- Why: MCP-026 says that the operator must see what an agent deleted.
+- Current state: not verified. The audit log has the actor `agent` (LOG-020). Whether an entry holds the tool, the cleaned arguments and the MCP client name is not checked.
+- Change: check the entry that a destructive MCP call writes. Add what MCP-026 names and the hub does not yet hold. Use the clean-up of MCP-013 for the arguments. Write no secret (MCP-004, LOG-007).
+- Acceptance: pass when a test calls a destructive tool in state `allow` and finds one entry with the tool, the cleaned arguments and the MCP client name, and finds none when the call was refused; fail otherwise.
+- Check: `cargo nextest run -p anima-cli -p anima-hub audit`, `bun run gates`.
+- Out of scope: the hash chain (R-138); the Settings panel.
+- Always: one entry for each call. Ask: before a new field in K1 (CON-001). Never: log a token or a secret argument.
+- Done: the commit that merges the audit change and sets T12 to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task T12 of docs/plans/cli-mcp-plan.md (R-120, MCP-026). First check what the audit entry of a destructive MCP call holds. Add the tool, the cleaned arguments and the MCP client name. Write no secret. Run bun run gates."
+
+**T13. The Settings switch.**
+- Why: the operator sets the switch of MCP-025 in the desktop Settings page as well as in the command line.
+- Current state: `apps/client/src/lib/mcp/` has the panel of T10 with per-tool states and no switch.
+- Change: add the switch "Ask before destructive actions", off for a new user, on the library of T11 (MCP-018 to MCP-023 keep their rules). Update the Settings mockup in the same commit when it changes (PLN-019).
+- Acceptance: pass when the switch shows off for a new user, turning it on writes the saved state, and the panel shows each destructive tool as `ask`; fail otherwise.
+- Check: `bun run --filter '*' test`, `bun run gates`.
+- Out of scope: the audit; per-tool changes.
+- Always: use the tokens. Ask: before a new route. Never: write the file from the page without the library of T10.
+- Done: the commit that merges the switch and sets T13 to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task T13 of docs/plans/cli-mcp-plan.md (R-120, MCP-025). Add the switch 'Ask before destructive actions' to the MCP section of the Settings page, on the library of T11. Run bun run gates."
 
 Done when: `bun run gates` passes; each row of Section 6 works against a test hub; the coverage
 test of CMD-031 passes; an MCP client lists the tools and reads the device list.

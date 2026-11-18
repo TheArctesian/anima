@@ -2,6 +2,8 @@
 //! of `anima-link hub` and revokes one, through the link's control socket (FRN-009, LNK-003,
 //! LNK-004). `ANIMA_LINK_CONTROL` names the socket; without it the fields are `UNAVAILABLE`.
 //!
+//! [`presence`] says which devices of the link are connected now (HMD-047).
+//!
 //! The link is a separate program of the same user. Its replies are hostile input: each is
 //! read to at most 1 MiB, parsed once, and never echoed into an error or a log, because an
 //! invite reply holds a secret (LOG-007).
@@ -10,6 +12,7 @@ mod claims;
 pub mod graphql;
 mod model;
 mod owned;
+mod presence;
 mod socket;
 #[cfg(test)]
 mod tests;
@@ -18,6 +21,7 @@ mod wire;
 pub use claims::Claims;
 pub use model::LinkPath;
 pub(crate) use model::Refusal;
+pub use presence::{Presence, presence};
 
 /// Why a call to the link failed. No variant holds a reply, an invite or a key (LOG-007).
 #[derive(Debug, thiserror::Error)]

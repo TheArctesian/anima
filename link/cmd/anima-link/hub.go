@@ -9,6 +9,7 @@ import (
 
 	"github.com/TheArctesian/anima/link/control"
 	"github.com/TheArctesian/anima/link/devices"
+	"github.com/TheArctesian/anima/link/dial"
 	"github.com/TheArctesian/anima/link/hublink"
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/invites"
@@ -18,7 +19,10 @@ import (
 
 const (
 	controlSocket = "control.sock"
-	startLimit    = 30 * time.Second
+	// dialSocket is where the hub gets a connection to a local port of a
+	// device (HMD-048, package dial). It is beside the control socket.
+	dialSocket = "dial.sock"
+	startLimit = 30 * time.Second
 )
 
 func runHub(ctx context.Context, args []string, streams stdio) error {
@@ -49,6 +53,12 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
+	dials, err := dir.Listen(dialSocket)
+	if err != nil {
+		return err
+	}
+	defer dials.Close()
+	go dial.Serve(dials, link.Open)
 
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()

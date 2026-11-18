@@ -10,6 +10,7 @@ const APP_COMMANDS: &[&str] = &[
     "cloud_sign_in_resume",
     "cloud_hub",
     "cloud_hub_access",
+    "cloud_device",
     "builder_token_read",
     "builder_token_write",
     "builder_token_clear",

@@ -1,15 +1,22 @@
 //! Which addresses the hub may connect to: probes, sessions, metrics and every new outbound
 //! connection (R-030, R-032, P3-003). It refuses the addresses the hub must never touch
 //! (loopback, link-local and cloud metadata among them) and allows private and VPN ranges, so
-//! it does not decide which host on those networks is reached. The one target rule, and the
-//! one resolver that applies it before a connection.
+//! it does not decide which host on those networks is reached. The one target rule, the
+//! one resolver that applies it before a connection, and the one connect function
+//! ([`connect`]), which reaches a computer of the link through the link (HMD-048).
+
+mod reached;
 
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use ipnet::IpNet;
+
+pub use reached::{Reached, connect, on_link};
 
 /// The addresses the hub may connect to.
 ///
@@ -26,6 +33,9 @@ use ipnet::IpNet;
 pub struct AddressPolicy {
     extra_deny: Vec<IpNet>,
     allow_loopback: bool,
+    /// The dial socket of the hub's link, when the hub has one: how [`connect`] reaches a
+    /// link address.
+    link_dial: Option<Arc<Path>>,
 }
 
 impl AddressPolicy {
@@ -34,7 +44,21 @@ impl AddressPolicy {
         Self {
             extra_deny,
             allow_loopback: false,
+            link_dial: None,
         }
+    }
+
+    /// The same policy for a hub whose link has the dial socket `dial`: [`connect`] then
+    /// reaches a link address through it (HMD-048). `None` changes nothing.
+    #[must_use]
+    pub fn reaching_link(mut self, dial: Option<PathBuf>) -> Self {
+        self.link_dial = dial.map(Arc::from);
+        self
+    }
+
+    /// The dial socket of [`AddressPolicy::reaching_link`].
+    fn link_dial(&self) -> Option<&Path> {
+        self.link_dial.as_deref()
     }
 
     /// Also allows plain loopback (`127.0.0.0/8` and `::1` as written, not an IPv6 form that
@@ -227,4 +251,4 @@ fn always_refused(ip: IpAddr) -> bool {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

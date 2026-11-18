@@ -17,6 +17,6 @@ pub(in crate::fleet::devices) fn to_graphql(error: impl Into<Arc<Error>>) -> Gra
     match &*error {
         Error::NotFound(missing) => coded(format!("No such {missing}."), ErrorCode::NotFound),
         Error::Validation(fields) => invalid(fields),
-        Error::Database(_) => internal(error),
+        Error::Database(_) | Error::Trail(_) => internal(error),
     }
 }

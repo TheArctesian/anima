@@ -35,7 +35,9 @@ const LIMITS: Limits = Limits {
 };
 
 /// Starts the scheduler. It ticks about once a second at the clock's time and runs until
-/// the handle is aborted; aborting it also aborts the probes in flight. It never panics on
+/// the handle is aborted. A wait for a tick that the clock says was much longer means that
+/// the hub did not run (it slept, or its computer did): the scheduler then goes on as after
+/// a start, so that time is not a missed push or a late check (HMD-047, CHK-010); aborting it also aborts the probes in flight. It never panics on
 /// a failed read or write: it logs and tries again on a later tick.
 #[must_use]
 pub fn spawn_scheduler(
@@ -49,9 +51,15 @@ pub fn spawn_scheduler(
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(TICK);
         ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        let mut idle_since = None;
         loop {
             ticker.tick().await;
-            scheduler.tick(clock.now(), &mut rng).await;
+            let now = clock.now();
+            if schedule::slept(idle_since, now) {
+                scheduler.woke(now);
+            }
+            scheduler.tick(now, &mut rng).await;
+            idle_since = Some(clock.now());
         }
     })
 }

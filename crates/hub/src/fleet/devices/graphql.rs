@@ -16,7 +16,7 @@ mod remote;
 mod site;
 mod ssh;
 mod standing;
-mod trail;
+pub(super) mod trail;
 
 use std::sync::Arc;
 

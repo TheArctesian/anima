@@ -35,6 +35,10 @@ pub(super) struct ListedDevice {
     pub path: LinkPath,
     #[serde(default)]
     pub relay: Option<String>,
+    /// When the device last said that it is connected (HMD-047). `None` for a device that did
+    /// not say so since the link started, and for a link older than this field.
+    #[serde(default)]
+    pub seen: Option<DateTime<Utc>>,
 }
 
 /// An invite: a secret until it is used or expires. It has no `Display`, its `Debug` prints no
