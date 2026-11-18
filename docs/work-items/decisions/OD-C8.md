@@ -15,9 +15,11 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **State (compute plan version 0.3, 2026-11-18).** Open, with a new question: one switch "takes work" (USE-004), or a second switch for compute. The recommendation below is the text of the import and is no longer the recommendation. The compute plan, Section 15, holds the question, the options and the recommendation.
 
+**Decided (R-165, operator, 2026-11-18; R-160).** One switch, "takes work" (USE-004), on by default on each hub; no second switch for compute. The compute plan, Section 15 and CMP-002, holds the text.
+
 Recommendation: off by default; the operator sets each client computer on.
 
-Note of 2026-11-18: OD-W10 and R-160 ("A: on everywhere") say that a machine with the daemon takes work by default, on each hub. [jobs.md](../../proposals/jobs.md), "Decision", says that this recommendation and CMP-002 must change to agree. The owner, the compute plan Section 15, makes that change; until then this item stays open.
+Note of 2026-11-18: OD-W10 and R-160 ("A: on everywhere") say that a machine with the daemon takes work by default, on each hub. [jobs.md](../../proposals/jobs.md), "Decision", says that this recommendation and CMP-002 must change to agree. The owner, the compute plan Section 15, made that change with R-165.
 
 **Plan:** [Section 15](../../plans/compute-plan.md)
 **Requirements:** OD-C8

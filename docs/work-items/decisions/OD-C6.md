@@ -15,6 +15,8 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **State (compute plan version 0.3, 2026-11-18).** Open. It blocks only the Chat page (task L1-21). The compute plan, Section 15, holds the question. The text below is the text of the import.
 
+**Decided (R-165, operator, 2026-11-18).** Yes: on the client device until the vault exists, then sealed on the hub. The compute plan, Section 15, holds the text.
+
 Recommendation: on the client device until the vault exists (extensions plan 2.4), then sealed on the hub so all clients see them.
 
 **Plan:** [Section 15](../../plans/compute-plan.md)

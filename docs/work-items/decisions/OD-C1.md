@@ -15,6 +15,8 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **State (compute plan version 0.3, 2026-11-18).** Open. The question, the options and the table to fill in are in the compute plan, Sections 15 and 15.1. The plan owns them; the text below is the text of the import.
 
+**Answer of the operator (2026-11-18, R-165).** The three machines of Section 15.1 of the compute plan are sufficient for now; he has other machines that are not in the table. The item stays open for the values that are missing; they are filled in after task L1-1.
+
 The operator gives the list: each Mac, each GPU, memory and site. Blocks C1.
 
 **Plan:** [Section 15](../../plans/compute-plan.md)
