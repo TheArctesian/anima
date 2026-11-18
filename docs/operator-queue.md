@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (13)
+## 1. In the order of the priorities (11)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -27,18 +27,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
-| 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
+| 4.7 | Jobs, builds and AI agent runs | Agent: task W1, the contract of the work route, in projects-and-builds-plan.md (R-160 is the ruling that changes R-115). Operator: the acceptance of the contract (W1) and of the design (W2); the security review of the work route comes before code |
 | 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
-| 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
-| 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
+| 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (123)
+## 2. Open decisions (109)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
-| OD-W22 | The watchdog (watchdog.md): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open | [plan/decisions.md](plan/decisions.md) |
 | OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -127,19 +124,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
-| OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | A function of `anima-daemon` (WDG-039). "Why not a container" has the reasons. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with… | Its own user with a polkit rule, and the group `docker` only when a container is watched. State in the client that the Docker socket is equal to root on that ma… | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-3 | A process with no supervisor | Not in the first version (WDG-002). Later, Anima can offer to write a unit for it at the machine. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-4 | Stage 1 first (watches made at the machine), or wait for the work route and build stage 2 only | Stage 1 first. It gives the restarts and the reports early and needs no route from the hub to the daemon. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-5 | When systemd or Docker stopped its own attempts, does the watchdog try again (WDG-024)? | Yes, with the long delays. The supervisor has stopped, so two programs do not act at the same time. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-6 | Is a watch a check of a new type (WDG-035), or does it have its own status rules? | A check. The notifications, the uptime and the maintenance windows then need no second set of rules. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-7 | Which restarts send a notification by default | Only "Restart loop" and "Gave up". Each restart is an event. The operator can set a notification for each restart of one watch (WDG-038). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-8 | Does a report contain the last lines of the output of the program? | No, in the first version (WDG-032). The output of a program can contain a secret (LOG-007). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a… | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as hosted-applications-plan.md: Docker only there (R-149, HOST-010). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
@@ -162,7 +146,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (27)
+## 3. Documents that wait for an approval (26)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -176,7 +160,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
-| [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
@@ -192,7 +175,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
-| [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
+| [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
 ## 4. Checks that only the operator can do (76)
 

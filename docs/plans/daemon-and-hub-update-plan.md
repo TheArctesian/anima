@@ -259,7 +259,7 @@ The build order is CMD-030: the hub API, the `anima` command, the MCP tool, then
 | A builder for each target (BLD-003) | `linux-x86_64` and `darwin-universal` only | A machine of a different target, for example Linux on ARM, gets no daemon file (OD-ROL-8). |
 | The local hub in the release (task R6; S4 T9) | Not started | ROL-020 needs it. |
 | A change to K8, which is frozen (CON-001) | Not asked | ROL-051 needs an optional member of the push. ROL-008 and ROL-009 need a new route, or the work route (task W1, not started). |
-| A ruling number for OD-W10, which changes R-115, and a change to MET-002 | Decided, with no ruling number | The daemon replaces a program on the machine. MET-002 permits it to write only its configuration, its token and its buffer. |
+| A ruling number for OD-W10, which changes R-115, and a change to MET-002 | R-160 (2026-11-18) is the ruling for OD-W10. R-139 gives the change to MET-002 for the update | The daemon replaces a program on the machine. MET-002 permits it to write only its configuration, its token and its buffer. |
 | The hub on the VPS is built there from source | No image is published | ROL-019 needs a published image and a program on the VPS with the Docker right. The first installation of that program is a change to the VPS (VPS-005). |
 | The restore procedure (FND-006, work plan tier 1) | Proposal, not written | It is the last way back when the hub cannot roll back (ROL-036). Decision OD-ROL-4 puts the hub after it. |
 | The isolation design and the security review (tasks W2 and S) | Not started | ROL-015, ROL-019 and ROL-030 are security subjects. |
@@ -336,7 +336,7 @@ U1 and U3 need no release. U2 and each later task need a release for their targe
 - For task U3: one Linux machine and one Mac on which an agent can install a test unit and restart the machine.
 - A release for each target (task R7), which only the operator can do. No Linux release exists. Tasks U2 and U6 to U9 need one.
 - The security reviewer for ROL-010, ROL-015 and ROL-030 (a `security` task, U11).
-- R-139 gives the ruling for the change to K8 and to MET-002. The ruling number for the work route of OD-W10 stays open in [jobs.md](../proposals/jobs.md); this plan does not need it.
+- R-139 gives the ruling for the change to K8 and to MET-002. The ruling for the work route of OD-W10 is R-160 (2026-11-18); this plan does not need it.
 
 ## Council follow-up: mixed-version acknowledgement (2026-11-18)
 
