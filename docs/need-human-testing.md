@@ -581,8 +581,10 @@ so the relay never answered. The iPhone simulator stopped answering before the j
 
 1. Build this branch for an iPhone and an Android phone (`link/build-phone.sh`, then the Tauri build). On the hub, in
    Settings, make an invite for a new device.
-2. On the phone, open the app, tap "Join a hub", then "Join with an invite". Paste the invite and tap Join. Expected:
-   the sign-in page of the hub opens.
+2. On the phone, copy the invite, open the app, tap "Join a hub", then "Join with an invite". Tap Paste, then
+   "Join hub". Expected: Paste puts the invite in the field (iOS may ask to allow the paste first); "Joining the hub"
+   shows four steps, and "Invite read", "Link started" (with the device key under it) and "Waiting for hub" get a
+   check one after the other, within a minute. Tap "Sign in". Expected: the sign-in page of the hub opens.
 3. Sign in. Expected: the device list.
 4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
    new invite.

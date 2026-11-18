@@ -4,10 +4,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import Page from './+page.svelte';
 
-const mocks = vi.hoisted(() => ({ join: vi.fn(), clear: vi.fn(), loadClientAt: vi.fn() }));
+const mocks = vi.hoisted(() => ({ join: vi.fn(), read: vi.fn(), clear: vi.fn(), loadClientAt: vi.fn() }));
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path, asset: (path: string) => path }));
-vi.mock('$lib/desktop/link/shell', () => ({ joinLink: mocks.join }));
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$lib/desktop/link/shell', () => ({ joinLink: mocks.join, readLink: mocks.read }));
 vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clear }));
 vi.mock('$lib/access/navigation', () => ({ loadClientAt: mocks.loadClientAt }));
 
@@ -41,6 +42,7 @@ async function paste(target: HTMLElement, text: string): Promise<void> {
 beforeEach(() => {
   installAnimations();
   mocks.join.mockReset();
+  mocks.read.mockReset().mockResolvedValue({ ok: true, value: { joined: true, state: 'up', path: 'direct' } });
   mocks.clear.mockReset().mockResolvedValue(undefined);
   mocks.loadClientAt.mockReset();
   for (const spy of consoleSpies) spy.mockClear();
@@ -59,15 +61,19 @@ it('FRN-005: the invite field is monospace text with no autocomplete or spell ch
   expect(document.querySelector('label[for="invite"]')?.textContent).toBe('Invite');
 });
 
-it('FRN-005, S3: Join clears the old token, saves the link address, shows the device key, then goes to sign-in', async () => {
+const marks = (target: HTMLElement) => [...target.querySelectorAll('.steps li')].map((step) => step.className.split(' ')[0]);
+const buttons = (target: HTMLElement) => [...target.querySelectorAll('button')].map((button) => button.textContent.trim());
+
+it('FRN-005, S3, MOB-033: Join clears the old token, saves the link address, shows the key, waits for the hub, then offers sign-in', async () => {
   mocks.join.mockResolvedValue({ ok: true, value: { fingerprint: 'ab12-cd34', port: 41_000 } });
   const target = open();
   await paste(target, INVITE);
+  await settle();
   expect(mocks.join).toHaveBeenCalledWith(INVITE);
   expect(mocks.clear.mock.calls[0]?.[0]).toMatchObject({ origin: 'http://127.0.0.1:41000' });
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:41000');
-  expect(target.querySelector('.fingerprint')?.textContent).toBe('ab12-cd34');
-  expect(target.textContent).toContain("Compare it with the hub's device list.");
+  expect(target.querySelector('.steps small')?.textContent).toBe('Key ab12-cd34');
+  expect(marks(target)).toEqual(['done', 'done', 'done', 'now']);
   [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Sign in')?.click();
   expect(mocks.loadClientAt).toHaveBeenCalledWith('/sign-in');
 });
@@ -91,19 +97,19 @@ it('FRN-005: a join refused before the hub saw the invite leaves it in the field
   expect(target.querySelector('textarea')?.value).toBe(INVITE);
 });
 
-it('FRN-005, S3: joined but the old token stays: the key shows, Retry finishes without the invite, then sign-in', async () => {
+it('FRN-005, S3: joined but the old token stays: the step fails, Retry finishes without the invite, then sign-in', async () => {
   mocks.join.mockResolvedValue({ ok: true, value: { fingerprint: 'ab12-cd34', port: 41_000 } });
   mocks.clear.mockRejectedValueOnce(new Error('denied'));
   const target = open();
   await paste(target, INVITE);
-  expect(target.querySelector('.fingerprint')?.textContent).toBe('ab12-cd34');
   expect(target.querySelector('[role="alert"]')?.textContent).toContain('Retry.');
+  expect(marks(target)).toEqual(['done', 'failed', 'wait', 'wait']);
   expect(localStorage.getItem('anima.hubAddress')).toBeNull();
-  const buttons = () => [...target.querySelectorAll('button')].map((button) => button.textContent.trim());
-  expect(buttons()).toEqual(['Retry']);
+  expect(buttons(target)).toEqual(['Retry']);
   [...target.querySelectorAll('button')][0]?.click();
+  await settle();
   await settle();
   expect(mocks.join).toHaveBeenCalledOnce();
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:41000');
-  expect(buttons()).toEqual(['Sign in']);
+  expect(buttons(target)).toEqual(['Sign in']);
 });
