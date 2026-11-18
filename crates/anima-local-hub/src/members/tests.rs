@@ -149,6 +149,14 @@ fn net_003_the_hub_listens_on_loopback_and_no_network_is_permitted_by_address() 
         value(&spec.env, "ANIMA_KEY_FILE"),
         Some("/srv/hub root/vault.key")
     );
+    assert_eq!(
+        value(&spec.env, "ANIMA_DATA_KEY_DIR"),
+        Some("/srv/hub root/data-keys")
+    );
+    assert_eq!(
+        value(&spec.env, "ANIMA_FILES_DIR"),
+        Some("/srv/hub root/files")
+    );
     // NET-001: the link mode permits this computer and the link's devices; the hub refuses
     // a list of networks beside the link's socket.
     for owned_by_s5 in [
