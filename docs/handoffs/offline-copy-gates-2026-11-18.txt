@@ -1,0 +1,33 @@
+Recovered gate summary for offline-copy
+Date: 2026-11-18
+Source task: bisbo0on9
+Command start: 20:24:41 UTC; completed-output modification: 20:43:03 UTC
+HEAD identified by preceding recorded push and branch reflog: 004e84852901f9156b1e4882e832429230b9a516
+The original summary does not print HEAD. No fresh full suite was run during preservation.
+Command: BASE_REF=origin/main bun run gates
+
+main f318a5b0
+gates exit 0
+[1/21] fmt: pass (3.1s)
+[2/21] clippy: pass (3.1s)
+[3/21] rust-test: pass (618.0s)
+[4/21] doctest: pass (11.8s)
+[5/21] pinning: pass (8.9s)
+[6/21] go-fmt: pass (0.2s)
+[7/21] go-vet: pass (0.8s)
+[8/21] go-staticcheck: pass (3.3s)
+[9/21] go-revive: pass (2.4s)
+[10/21] go-test: pass (0.8s)
+[11/21] go-build: pass (6.2s)
+[12/21] install: pass (0.2s)
+[13/21] lint: pass (14.9s)
+[14/21] check: pass (20.4s)
+[15/21] test: pass (389.0s)
+[16/21] build: pass (11.7s)
+[17/21] limits: pass (3.4s)
+[18/21] names: pass (2.0s)
+[19/21] imports: pass (0.5s)
+[20/21] documents: pass (0.5s)
+[21/21] baseline: pass (0.1s)
+
+[exited with code 0]
