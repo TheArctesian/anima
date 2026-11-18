@@ -497,7 +497,7 @@ A person who has a machine with `anima-daemon` can put Claude Code, Codex, Gemin
 | The device page list of agents with a sign-in state (BOT-022, BOT-024) | Not built. No `BOT-` identifier is in `crates/`, `apps/` or `contracts/`. | `rg 'BOT-0' crates apps contracts` finds nothing |
 | The catalog of known agents (BOT-040) and the generic runner (BOT-039) | Not built | same |
 | Any way for the hub to make the daemon run something | Not built. The daemon only sends reports out (K8). It reads no work and listens on no port. | `crates/daemon/src/push/`, `contracts/daemon-push.md`; USE-005 and USE-006 say how work will come |
-| The work route (claim, report, log, stop) and its fixed list of work types | Not built. Task W1 is Not started and waits for a ruling that changes R-115. | `docs/plans/projects-and-builds-plan.md`, task W1; `docs/proposals/jobs.md`, JOB-011 |
+| The work route (claim, report, log, stop) and its fixed list of work types | Not built. Task W1 is Not started. R-160 (2026-11-18) is the ruling that changes R-115; the contract and the security review come before code. | `docs/plans/projects-and-builds-plan.md`, task W1; `docs/proposals/jobs.md`, JOB-011 |
 | Agent panes (AIS-009 to AIS-016) | Direction only. No work package. | `docs/plans/extensions-plan.md` Section 4.12.1 |
 | SSH terminal in the client (the hub opens SSH and relays bytes) | Built | R-062, `contracts/tunnel.md` Section 8, `crates/hub/src/fleet/sessions/terminal/` |
 | Agent usage counts (AU-1 to AU-5) | Built; waits for HT-026 | `crates/hub/src/fleet/agent_usage/` |

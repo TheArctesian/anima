@@ -16,29 +16,26 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (13)
+## 1. In the order of the priorities (11)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
-| 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
-| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; the proposed requirement HMD-051 of hosted-mode.md; HM-D2, HM-D8, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
+| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
-| 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
+| 4.7 | Jobs, builds and AI agent runs | Agent: task W1, the contract of the work route, in projects-and-builds-plan.md (R-160 is the ruling that changes R-115). Operator: the acceptance of the contract (W1) and of the design (W2); the security review of the work route comes before code |
 | 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
-| 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
-| 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
+| 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (124)
+## 2. Open decisions (107)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
-| OD-W22 | The watchdog (watchdog.md): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open | [plan/decisions.md](plan/decisions.md) |
 | OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -46,7 +43,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), does that VPS hub stay as… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -117,30 +113,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D9 | Which sign-in methods does AuthKit show? | GitHub, Google and email with a code; passkeys offered after the first sign-in. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D10 | Do the sign-in pages use a domain of Anima.ing, for example `auth.anima.ing`? | Not at the launch. Add it when the cost is small against revenue. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D4 | Is the second factor (HMD-006) required for each account? | Proposed: required. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D5 | In which region is the first pool host? | Price a US host before the launch. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | The forms of the shell stay. The refresh of a real token is step 4 of HT-022. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | A review by a person from outside, before the first account of a different person. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
-| OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | A function of `anima-daemon` (WDG-039). "Why not a container" has the reasons. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with… | Its own user with a polkit rule, and the group `docker` only when a container is watched. State in the client that the Docker socket is equal to root on that ma… | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-3 | A process with no supervisor | Not in the first version (WDG-002). Later, Anima can offer to write a unit for it at the machine. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-4 | Stage 1 first (watches made at the machine), or wait for the work route and build stage 2 only | Stage 1 first. It gives the restarts and the reports early and needs no route from the hub to the daemon. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-5 | When systemd or Docker stopped its own attempts, does the watchdog try again (WDG-024)? | Yes, with the long delays. The supervisor has stopped, so two programs do not act at the same time. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-6 | Is a watch a check of a new type (WDG-035), or does it have its own status rules? | A check. The notifications, the uptime and the maintenance windows then need no second set of rules. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-7 | Which restarts send a notification by default | Only "Restart loop" and "Gave up". Each restart is an event. The operator can set a notification for each restart of one watch (WDG-038). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-8 | Does a report contain the last lines of the output of the program? | No, in the first version (WDG-032). The output of a program can contain a secret (LOG-007). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a… | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as hosted-applications-plan.md: Docker only there (R-149, HOST-010). | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
@@ -163,7 +144,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (26)
+## 3. Documents that wait for an approval (25)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -177,22 +158,21 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
-| [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Deferred; not built |
-| [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |
 | [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
+| [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
-| [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
+| [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
 ## 4. Checks that only the operator can do (76)
 
