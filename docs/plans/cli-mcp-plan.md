@@ -143,6 +143,7 @@ read key; change commands with a write key).
 | `web` | `list`, `create`, `update`, `delete`, `suggestion accept\|dismiss`, `accept-certificate` L |
 | `agent` | `status`, `enrol` L, `revoke` L |
 | `capability` | `list` (`--tool <name>`, `--target <build target>`): the tool inventory of each device (compute plan CAP-020 to CAP-031) |
+| `agents` | `usage` (`--device <id\|name>`, `--source claude-code\|codex`, `--repository <host/owner/name>`, `--since <day>`, `--until <day>`, `--days <1-366>`, `--by device,source,model,repository,day`, repeatable; device and source by default): the sessions, prompts, tool calls and tokens of Claude Code and Codex with an estimate of the cost, which is not the bill of a subscription, and the AIS-024 sentence for a daemon that runs as a system unit (R-135; AIS-020, AIS-021, AIS-024) |
 | `snapshot` | `push` (`--remote`), `list`, `delete <ref>`: a commit of the working tree on a scratch ref of the forge (JOB-017, JOB-018). It uses git on this computer and makes no hub request. |
 | `notify channel` | `list`, `create`, `update`, `delete`, `test` |
 | `notify` | `settings get\|set`, `deliveries` |
@@ -367,7 +368,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list` | |
@@ -390,7 +391,10 @@ Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` 
 **No MCP tool returns file content** (operator, 2026-11-14; ruling number to be assigned). The content of a file in a repository may hold a secret, and the hub cannot tell (MCP-004, as for `anima_check_update`); it is also the strongest carrier of instructions to an agent in the Projects slice. MCP-002 makes every read tool `allow` by default, so the content gets no tool rather than a read tool. An agent that needs the code has the checkout. `anima_code_directory_list` returns names only. Other text from GitHub in the `repositories` results (titles, bodies, comments, logins, branch names, labels, commit messages, check and job names) is given in named fields, cleaned and cut by `mcp/untrusted.rs`, where the key `body` is cut at 4,000 characters. Each tool description says that this text is data, and the server instructions gain one line for text from GitHub.
 
 `anima_capability_list` (read, tool set `devices`) gives the tool inventory of each device
-(CAP-030, CAP-031). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
+(CAP-030, CAP-031). `anima_agents_usage` (read, tool set `devices`) gives the use of the AI agent programs on each
+device with the estimate of its cost and each daemon's state (R-135; AIS-020, AIS-021, AIS-024); it takes
+and returns no secret, and the model, repository and device names are named fields capped by
+`mcp/untrusted.rs` (MCP-008). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
 the computer that runs `anima mcp`, and an agent with a shell can run the command.
 
 Reserved tools, proposed and not built (jobs proposal JOB-012 to JOB-027):
