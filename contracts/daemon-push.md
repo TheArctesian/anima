@@ -1,10 +1,13 @@
-# K8 — Daemon push: enrolment, push and renewal
+# K8 — Daemon push: enrolment, push, renewal and update
 
 Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ruling, CON-001). Written by
 WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `daemon_core::wire`.
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
+Section 8 (the update), the `update` member of Section 4 and the two update routes were added by R-131
+(operator, 2026-11-17; ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045). They are ruled and
+not built: no hub and no daemon has them yet.
 
 This contract is the whole interface between `anima-daemon` and the hub. The daemon makes no other request.
 
@@ -31,8 +34,10 @@ This contract is the whole interface between `anima-daemon` and the hub. The dae
 | Route | Credential | Body limit | Success |
 | --- | --- | --- | --- |
 | `POST /daemon/v1/enrol` | Enrolment code, in the body | 4 KiB | 200, `Enrolled` |
-| `POST /daemon/v1/push` | Daemon token, `Authorization: Bearer` | 512 KiB (MET-017) | 204, empty |
+| `POST /daemon/v1/push` | Daemon token, `Authorization: Bearer` | 512 KiB (MET-017) | 204, empty; or 200, `Accepted` (Section 8) |
 | `POST /daemon/v1/renew` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `Renewed` |
+| `POST /daemon/v1/update/record` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `ReleaseRecord` (Section 8) |
+| `POST /daemon/v1/update/file` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, the bytes of the file (Section 8) |
 
 The hub reads at most the limit and answers 413 without reading further. A body that has not arrived within
 5 seconds is answered 503 `UNAVAILABLE` and written to the event log like a refusal (Section 6).
@@ -181,6 +186,8 @@ Request:
   is 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, and starts with a digit; any other text is
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
+- `update`: optional (R-131). What the daemon says about its own update, in each batch (Section 8). Absent
+  means a daemon that cannot update itself (ROL-044), and a hub older than R-131 ignores it.
 
 The hub:
 
@@ -203,6 +210,8 @@ The hub:
   absent `inventory` leaves it as it is (CAP-029). Deleting the device deletes its inventory;
 - keeps the `daemonVersion` of the newest accepted batch, or no version when that batch had none, and
   forgets it when it gives the device a new token (R-122). `Device.daemonVersion` serves it;
+- with `update` present, keeps it as the update state of the device (Section 8), and forgets it when it gives
+  the device a new token; with `update` absent, the device has no update function (ROL-044);
 - records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves
@@ -280,3 +289,141 @@ and tries again after its wait (Section 7).
 - After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
   wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so daemons that
   failed together do not all try again together.
+
+## 8. Update (ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045; R-131)
+
+The hub tells a daemon one thing: the version to have. The daemon gets the release record and its program
+file from its hub, and the machine verifies them by itself (ROL-010). The fields of the release record and
+its signature are not part of this contract: the release record has them (ROL-003, ROL-004; task U2 of
+[daemon-and-hub-update-plan.md](../docs/plans/daemon-and-hub-update-plan.md)). To this contract the record is bytes.
+
+### 8.1 What the daemon says
+
+The `update` member of a `Batch`:
+
+```json
+{
+  "update": {
+    "target": "linux-x86_64",
+    "switch": "on",
+    "previous": "0.2.3",
+    "busy": false,
+    "last": { "version": "0.3.0", "result": "rolled_back", "cause": "no_check", "tries": 1 }
+  }
+}
+```
+
+- `target`: the target of the installed program: `linux-x86_64` or `darwin-universal` (OD-ROL-8). The hub
+  reads a target that it does not know as "no release for this machine".
+- `switch`: `on` or `off`. `off` means that updates are set off at the machine (ROL-028). The hub cannot
+  change it, and it tells no version to such a machine.
+- `previous`: optional. The previous version that the machine keeps (ROL-017), with the rule of
+  `daemonVersion` for its text. Absent means that the machine keeps none, so it cannot roll back.
+- `busy`: true while the machine runs a job, a build or a job of a runner (ROL-028). A busy machine does not
+  start an update; it starts when it is no longer busy.
+- `last`: optional. The result of the newest try. Absent means that the machine did not try an update since
+  its installation. `version` is the version that it tried. `result` is `installed`, `rolled_back` or
+  `refused`. `tries` is the number of tries of that version since the operator last asked (1 or 2, ROL-032).
+  `cause` is present exactly for `rolled_back` and `refused`, and is a fixed code, never text from the machine:
+
+| Result | Cause | Meaning |
+| --- | --- | --- |
+| `refused` | `record_signature` | The signature of the record is not good (ROL-010) |
+| `refused` | `record_mismatch` | The record names a different version, target or program (ROL-010, ROL-013) |
+| `refused` | `file_mismatch` | The size or the SHA-256 of the file is not that of the record (ROL-010) |
+| `refused` | `lower_version` | The version is lower than the installed one and is not the previous version (ROL-012) |
+| `refused` | `not_replaceable` | The record says that the release cannot replace the installed version (ROL-041) |
+| `refused` | `fetch_failed` | The record or the file did not arrive whole in 3 tries |
+| `refused` | `no_space` | The machine cannot keep the new file and the previous version |
+| `rolled_back` | `start_failed` | The new version failed to start 3 times (ROL-030) |
+| `rolled_back` | `no_check` | 3 minutes passed with no good check (ROL-029, ROL-030) |
+| `rolled_back` | `asked` | The hub told the previous version, and the machine has it again (ROL-031) |
+
+  The hub reads a cause that it does not know as `failed`, so a newer daemon can talk to an older hub.
+- A value that breaks these rules makes the batch `MALFORMED`.
+
+### 8.2 What the hub says
+
+The hub answers a push with 204 and no body when it has nothing to tell. When it wants the machine to have a
+different version, and the batch had an `update` member, it answers 200 with `Accepted`:
+
+```json
+{ "update": { "version": "0.3.0", "again": false } }
+```
+
+- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member always gets
+  204, so a daemon older than R-131 keeps working.
+- `version` is the only instruction (ROL-009). The hub never sends an address, a path, a command or a file
+  name. The text has the rule of `daemonVersion`; a daemon ignores an `Accepted` that breaks it.
+- `again`: true only after the operator pressed "Try again" (ROL-032). The machine then sets `tries` to 0 for
+  that version. With `again` false, a machine that already tried the version 2 times does nothing.
+- The hub repeats the same `Accepted` with each push until the daemon reports that version in
+  `daemonVersion`, or reports a `last` for it with the result `refused`, or `rolled_back` with `tries` 2.
+  Thus a lost answer costs nothing, and a hub that stopped while a machine was in its check gives the update
+  one more time (ROL-045).
+- A version higher than the installed one is an update. A version that equals `previous` is a rollback
+  (ROL-031). The machine refuses each other lower version (`lower_version`).
+- The hub tells a version only to a machine whose `switch` is `on`, that is not held, and whose step of the
+  rollout started (ROL-023, ROL-028). A machine that connects after its rollout gets the version of the
+  newest rollout that includes it (ROL-040). When the record of that release says that it cannot replace the
+  installed version, the hub tells the releases between them in order (ROL-041).
+
+### 8.3 How the daemon gets the record and the file
+
+Request of both routes:
+
+```json
+{ "version": "0.3.0", "target": "linux-x86_64" }
+```
+
+`ReleaseRecord`:
+
+```json
+{ "record": "<base64 of the bytes of the record>", "signature": "<the text of the signature file>" }
+```
+
+- The hub gives the record and the file of a version only to a device to which it tells that version now, or
+  whose `previous` it is. Each other request is `404 NO_RELEASE`. A daemon token is thus no way to read the
+  release store.
+- `record` is at most 64 KiB before base64. `signature` is at most 1 KiB of text.
+- `POST /daemon/v1/update/file` answers 200 with `Content-Type: application/octet-stream`, a `Content-Length`,
+  and the bytes of the file that the record names for the program `anima-daemon`. The request names no file:
+  the hub selects it from the version and the target. The file is at most 256 MiB. The daemon reads at most
+  the size that the record gives and stops there.
+- The daemon asks for the record first, then for the file, at most 3 times each for one instruction, with the
+  waits of Section 7. The answer's deadline of the file route is 10 minutes, not 10 seconds.
+- The part of the daemon that makes these requests only stores the bytes. The second unit, which has no
+  network access, verifies them and replaces the program (ROL-010, ROL-015). It trusts neither the hub nor
+  the part that made the download.
+- The limits of Section 6 apply. A file request holds the turn of its device and no turn on the database
+  while the bytes go out. The hub serves at most 2 files at once; a third request is `503 UNAVAILABLE`.
+
+New refusal:
+
+| Status | Code | When | Daemon does |
+| --- | --- | --- | --- |
+| 404 | `NO_RELEASE` | The hub does not tell that version to this device, or does not hold that release for that target | Drops the instruction; waits for the next `Accepted` |
+
+### 8.4 The states of a machine
+
+The hub makes one state for each machine from its own facts and from the last `update` member. The words are
+those of the client. This table is the order of the tests: the first row that is true gives the state.
+
+| State | True when |
+| --- | --- |
+| Enrol again | The daemon token of the device ended (MET-013, ROL-043) |
+| Needs a manual installation | The newest accepted batch had no `update` member (ROL-044) |
+| Set off at the machine | `switch` is `off` |
+| Held | The operator holds the machine (ROL-028) |
+| Refused, with the cause | `last.result` is `refused` for the version that the hub tells |
+| Rolled back, with the cause | `last.result` is `rolled_back` for the version that the hub tells, or for the version that it told last |
+| Waiting: not connected | The hub tells a version, and the metrics of the device are stale (MET-018, ROL-039) |
+| Updating | The hub tells a version, and `daemonVersion` is not that version |
+| Checking | `daemonVersion` is the version that the hub tells, and the check of ROL-029 is not complete |
+| Waiting for its step | A rollout includes the machine, and its step did not start |
+| Update available | The hub holds a verified release for `target` that is higher than `daemonVersion` |
+| Up to date | Each other case |
+
+The check of ROL-029 is complete for the hub when it accepted one batch with the new `daemonVersion` and a
+`last` with the result `installed` for that version. The machine writes `installed` only after its own check:
+the new daemon started, `anima-daemon doctor` passed, and the hub accepted one push.
