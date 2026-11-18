@@ -40,7 +40,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.5 | 2b | Level 1 model service | Use | Approved (R-165, 2026-11-18): Level 1 of the compute plan, with the tasks L1-1 to L1-21 of its Section 12.4. No task is started. The tool inventory is built. | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in [need-human-testing.md](../need-human-testing.md) have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md). Agent: nothing before the condition is met |
 | 4.6 | 3a | Projects | See | In progress. | Nothing now. The parts that are not built wait for later plans: a hosting provider as a source (PRO-005, Q1), the Operations area of the project page (PRO-006, Q2), task W1 (PRO-006, Q3) and a second forge (PRO-007, Q4); see [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0" |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Agent: task W1, the contract of the work route, in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (R-160 is the ruling that changes R-115). Operator: the acceptance of the contract (W1) and of the design (W2); the security review of the work route comes before code |
-| 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
+| 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. The shared redaction crate of E0-3 is approved for a build (R-166). | Agent: E0-3 T1 in [extensions-plan.md](../plans/extensions-plan.md) Section 5.1. The other work: row 4.4 |
 | 4.9 | 3c | Hosted applications | Use | Plan, in progress (R-149). Stage 1 is the first to build and is claimed; H1 to H3 are Not started on `main`. Stage 2 waits for task W1 of row 4.7, which no longer waits for a ruling (R-160). | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
 | 4.10 | 3 | Standby copies of the coordinator database | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent. E0-5 does not wait for it (R-145) |
@@ -136,7 +136,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: See, Remember, Reach
 - Work: The other extensions, in the order of XP-005, one at a time
 - Work items: [XP-01](../work-items/extensions/XP-01.md), [XP-04](../work-items/extensions/XP-04.md) to [XP-14](../work-items/extensions/XP-14.md), [E0-3](../work-items/engine/E0-3.md), [SEAMS](../work-items/extensions/SEAMS.md). Decisions [OD-E4](../work-items/decisions/OD-E4.md), [OD-E10](../work-items/decisions/OD-E10.md), [OD-E3](../work-items/decisions/OD-E3.md)
-- State: Planned.
+- State: Planned. One part is approved for a build now: the shared redaction crate, tasks T1 and T2 of E0-3 (R-166, 2026-11-18). The collector of E0-3 (T3, T4) and the other extensions stay later.
 
 ### 4.9 Hosted applications
 

@@ -13,7 +13,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | Origin | GitHub issue #44: made 2026-11-07, last changed 2026-11-08, open at import. Labels: decision, compute, design, priority: foundation. |
 | Text | Copied from the issue on 2026-11-16 (R-119). Only the links were changed. Not written in STE yet. "This issue" in the text means this document. |
 
-**State (compute plan version 0.3, 2026-11-18).** Decided for the compute plan by R-084 (one daemon for the metrics and the compute work; R-126 gives its name). The separation from `anima-collector` is OD-E2 of the extensions plan. What the daemon is permitted to do for a model is OD-C9 of the compute plan, Section 15. The text below is the text of the import.
+**Decided (R-084 and R-166; compute plan Section 15).** One daemon on each machine: `anima-daemon` gives the metrics, does the compute work (R-084; R-126 gives its name) and holds the collector of the extensions plan as a part of it, not as a separate program (R-166, operator, 2026-11-18; OD-E2). What the daemon is permitted to do for a model is OD-C9 of the compute plan (decided, R-165). The title and the text below are the text of the import: the "separate personal collector" and the recommendation to keep `anima-collector` separate no longer apply.
 
 **Ownership / priority clarification (2026-11-07):**
 
