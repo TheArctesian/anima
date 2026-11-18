@@ -1,4 +1,8 @@
 //! The K1 `AuditChainCheck` type that `Query.auditChain` returns (LOG-027, R-136).
+#![expect(
+    clippy::unused_async_trait_impl,
+    reason = "the async-graphql Enum derive generates async trait impls"
+)]
 
 use async_graphql::{Enum, ID, SimpleObject};
 use chrono::{DateTime, Utc};

@@ -79,7 +79,7 @@ fn number_text(number: &Number) -> String {
     number.as_f64().map_or_else(String::new, float_text)
 }
 
-/// ECMAScript's text of a finite double (ECMA-262, Number::toString, radix 10). Rust's `{:e}`
+/// ECMAScript's text of a finite double (ECMA-262, `Number::toString`, radix 10). Rust's `{:e}`
 /// gives the shortest digits that read back as the same double, as ECMAScript requires.
 fn float_text(float: f64) -> String {
     if float == 0.0 {

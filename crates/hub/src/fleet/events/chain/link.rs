@@ -1,6 +1,6 @@
 //! One link of the chain and its hash (LOG-021 to LOG-023): pure, no clock and no database.
 
-use std::net::IpAddr;
+use std::{fmt::Write, net::IpAddr};
 
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
@@ -78,5 +78,9 @@ pub(in crate::fleet::events) fn hash(seq: i64, previous: &Hash, entry: &StoredEn
 
 /// `hash` as 64 lower-case hexadecimal characters.
 pub(in crate::fleet::events) fn hex(hash: &Hash) -> String {
-    hash.iter().map(|byte| format!("{byte:02x}")).collect()
+    hash.iter()
+        .fold(String::with_capacity(64), |mut text, byte| {
+            write!(text, "{byte:02x}").expect("a String takes any text");
+            text
+        })
 }

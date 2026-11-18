@@ -83,12 +83,12 @@ fn log_022_numbers_and_strings_are_written_as_rfc_8785_writes_them() {
 #[test]
 fn log_022_members_are_ordered_by_utf_16_code_units() {
     let value: Value = serde_json::from_str(
-        r#"{"€":1,"\r":2,"דּ":3,"1":4,"😀":5,"\u0080":6,"ö":7,"b":[true,null,{"z":0,"a":1}]}"#,
+        r#"{"€":1,"\r":2,"\ufb33":3,"1":4,"😀":5,"\u0080":6,"ö":7,"b":[true,null,{"z":0,"a":1}]}"#,
     )
     .unwrap();
     assert_eq!(
         canonical(&value),
-        "{\"\\r\":2,\"1\":4,\"b\":[true,null,{\"a\":1,\"z\":0}],\"\u{80}\":6,\"ö\":7,\"€\":1,\"😀\":5,\"דּ\":3}"
+        "{\"\\r\":2,\"1\":4,\"b\":[true,null,{\"a\":1,\"z\":0}],\"\u{80}\":6,\"ö\":7,\"€\":1,\"😀\":5,\"\u{fb33}\":3}"
     );
 }
 

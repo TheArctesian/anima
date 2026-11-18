@@ -268,7 +268,7 @@ async fn log_028_the_daily_check_writes_an_error_event_only_for_a_fault(pool: Pg
     };
 
     check_chain_daily(&pool, &bus, soon()).await.unwrap();
-    assert!(errors().await.is_empty());
+    assert_eq!(errors().await, Vec::new());
 
     let mut conn = pool.acquire().await.unwrap();
     execute(
