@@ -232,7 +232,7 @@ Paths are from `frontend/src/lib/components/` of Arcane. "Anima has" names the p
 | OD-HOST-E | Which applications are first in the catalogue? | OwnTracks Recorder, then Dawarich (R-149, HOST-012). |
 | OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a security review of the session, HOST-024 (R-150). |
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). |
-| OD-HOST-F | Does row 4.9 move to a higher tier? | No move. Stage 1 is built now because it needs nothing of a higher row; stage 2 waits for task W1 of row 4.7 (R-149). |
+| OD-HOST-F | Does row 4.9 move to a higher tier? | No move. Stage 1 is the first to build, and the work is claimed (docs/claims/h1.md), because it needs nothing of a higher row; stage 2 waits for task W1 of row 4.7 (R-149). |
 
 ## Open decisions
 

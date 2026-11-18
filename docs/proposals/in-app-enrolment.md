@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft. Deferred; partly built
-evidence: Deferred by R-055 (operator, 2026-11-05; [deferred.md](../deferred.md)). Checked on `main` at `ec965cdb` (2026-11-18): the broker on the VPS is built (`deploy/headscale/broker/`, commits `9c8d70a7` and `0183c9c7`, 2026-11-10). The embedded tsnet client is not built: the one-click plan builds the link (`link/`) and lists `tsnet` in each application under "Ideas that this plan does not take" ([one-click-plan.md](../plans/one-click/one-click-plan.md), Section 1.5).
+evidence: Deferred by R-055 (operator, 2026-11-05; [deferred.md](../deferred.md)). Decision (b), the broker, was accepted on 2026-11-18 (R-154); decision (a), the embedded client, is open. Checked on `main` at `ec965cdb` (2026-11-18): the broker on the VPS is built (`deploy/headscale/broker/`, commits `9c8d70a7` and `0183c9c7`, 2026-11-10). The embedded tsnet client is not built: the one-click plan builds the link (`link/`) and lists `tsnet` in each application under "Ideas that this plan does not take" ([one-click-plan.md](../plans/one-click/one-click-plan.md), Section 1.5).
 ---
 
 # Proposal: in-app VPN enrolment (no install, no terminal)
@@ -59,5 +59,5 @@ share a VPS), so it is the operator's decision.
 
 - A spec change: a setup screen, invite and enrolment requirements, and Settings items beyond SET-002.
 - Rulings: (a) embedded VPN in the desktop shell; (b) the hub-to-broker permission and the broker's
-  exact verbs.
+  exact verbs (accepted, R-154, 2026-11-18; the verbs are VP-7 of the vpn plan).
 - [deferred.md](../deferred.md) checklist entries for both (R-119).

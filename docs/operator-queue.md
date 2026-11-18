@@ -28,13 +28,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
-| 4.9 | Hosted applications | Agent: task H1 in hosted-applications-plan.md. Operator: nothing now |
+| 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (127)
+## 2. Open decisions (124)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -104,12 +104,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-BOT12 | Does the fallback keep the standing permissions of the stopped session (BOT-006, BOT-051)? | Proposed, not ruled: no. It starts with fewer rights (no push to a shared branch, no delete), and the operator adds them. | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT13 | Is the server on the same device in the first version (BOT-049), or on any device of the operator? | Proposed, not ruled: the same device. A server on another device waits for the spike of the path from one device to another. | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT14 | Does the fallback also cover Codex when it stops on its limit? | Proposed, not ruled: later. Claude Code first. The terms of Codex are unclear (BOT-033). | [proposals/bots.md](proposals/bots.md) |
-| OD-BOT15 | May a one-time sign-in code pass through the hub in plain text in the first version, with a disclosure, or must a sealed terminal come first? (allow with disclo… | Proposed, not ruled: Allow with disclosure. Every SSH session already passes the same way (R-062), the code is useless without the vendor login, and a sealed te… | [proposals/bots.md](proposals/bots.md) |
-| OD-BOT16 | Does the recipe runner wait for the work route (W1), or does it get its own narrow work type `agent_install` in the fixed list of USE-006 now? (wait / narrow wo… | Proposed, not ruled: A narrow work type, written in the K8 contract, with the rules of USE-005 and USE-006, so that W1 can take it over. W1 waits for a ruling o… | [proposals/bots.md](proposals/bots.md) |
-| OD-BOT17 | Do install, update and removal always need the operator's approval, also when the MCP server is fully automatic by default (R-120)? (always / follow R-120) | Proposed, not ruled: Always. MCP-006 already says that no tool runs a command on a device. | [proposals/bots.md](proposals/bots.md) |
-| OD-BOT18 | Is the first version limited to Claude Code and Codex? (yes/no) | Proposed, not ruled: Yes. App recipes need a port and a pairing secret, and T3 Code with Claude conflicts with BOT-021 and BOT-032. | [proposals/bots.md](proposals/bots.md) |
-| OD-BOT19 | Until panes (AIS-009) are built, may the daemon start the agent in a `tmux` session? (yes/no) | Proposed, not ruled: Yes, if `tmux` is already on the machine. Do not install it with root. The session name allows a later move to panes. | [proposals/bots.md](proposals/bots.md) |
-| OD-BOT20 | Does an install need the machine's "takes work" switch (USE-004) to be on, or a new switch? (takes work / new switch) | Proposed, not ruled: Takes work. One switch is easier to explain, and the operator starts each install. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/… | Open | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Aider, OpenCode) in the secret-entry pane, when R-153 covers a one-time code only (BOT-078)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-PNL1 | Are Agents and Projects a part of the foundation, or extensions that are on by default? OD-E13 (operator, 2026-11-13) ruled that Projects is not a part of the f… | Proposed, not ruled: extensions that are on by default (PNL-006). It keeps EXT-005 and OD-E13, and the operator can still turn them off. Only EXT-001 and EXT-00… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |

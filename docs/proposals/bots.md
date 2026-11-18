@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Draft
-evidence: Version 4 (2026-11-18) adds the section "Install an agent on a machine" (BOT-058 to BOT-077, OD-BOT15 to OD-BOT20, tasks BI0 to BI11, all Not started), checked against origin/main at 7342500c. Version 3 (2026-11-18). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-077 (BOT-058 to BOT-077, install an agent, are proposed with OD-BOT15 to OD-BOT20; BOT-039 to BOT-046, agent coverage against Orca, and BOT-047 to BOT-057, the fallback to a local model, are proposed with OD-BOT1 to OD-BOT14). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
+evidence: Version 5 (2026-11-18): the operator decided OD-BOT15 to OD-BOT20 (R-153); the section "Install an agent on a machine" now names six agents for the first version, BOT-065 follows the MCP setting, and OD-BOT21 to OD-BOT23 are open; no requirement is approved. Version 4 (2026-11-18) added the section "Install an agent on a machine" (BOT-058 to BOT-078, OD-BOT15 to OD-BOT20, tasks BI0 to BI11, all Not started), checked against origin/main at 7342500c. Version 3 (2026-11-18). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-078 (BOT-058 to BOT-078, install an agent, are proposed; OD-BOT15 to OD-BOT20 are decided by R-153, OD-BOT21 to OD-BOT23 are open; BOT-039 to BOT-046, agent coverage against Orca, and BOT-047 to BOT-057, the fallback to a local model, are proposed with OD-BOT1 to OD-BOT14). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
 ---
 
 # Proposal: Bots
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the Bots extension (XP-16, proposed) |
-| Version | 4 |
+| Version | 5 |
 | Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, version 3 adds BOT-047 to BOT-057 and version 4 adds BOT-058 to BOT-077, proposed. No requirement is approved. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, version 3 adds BOT-047 to BOT-057, version 4 adds BOT-058 to BOT-078 and version 5 adds BOT-078 and decides OD-BOT15 to OD-BOT20 (R-153). Requirements are proposed; no requirement is approved. No requirement is approved. |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway) |
 
-Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 3 (2026-11-18) adds the section "Fallback to a local model" (BOT-047 to BOT-057, OD-BOT8 to OD-BOT14). Version 4 (2026-11-18) adds the section "Install an agent on a machine" (BOT-058 to BOT-077, OD-BOT15 to OD-BOT20, tasks BI0 to BI11). It changes no earlier requirement. A later edit of 2026-11-17 adds to BOT-034 and BOT-040 that detection accepts both program names of Cursor. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
+Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 3 (2026-11-18) adds the section "Fallback to a local model" (BOT-047 to BOT-057, OD-BOT8 to OD-BOT14). Version 4 (2026-11-18) adds the section "Install an agent on a machine" (BOT-058 to BOT-078, OD-BOT15 to OD-BOT20, tasks BI0 to BI11). It changes no earlier requirement. Version 5 (2026-11-18) records the decisions of the operator on OD-BOT15 to OD-BOT20 (R-153), amends BOT-065, BOT-067, BOT-068, BOT-071, BOT-073, BOT-075 and BOT-077, and adds BOT-078 and OD-BOT21 to OD-BOT23. A later edit of 2026-11-17 adds to BOT-034 and BOT-040 that detection accepts both program names of Cursor. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
 
 ## Bots
 
@@ -440,7 +440,7 @@ Sources, read on 2026-11-18. Not legal advice.
 
 **Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1; BOT-039 needs AIS-009 to AIS-013, which are direction only), the rule engine (ENG-001), and
 for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the
-cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010). The install of an agent (BOT-058 to BOT-077) depends on a work type for the daemon (OD-BOT16; the work route of task W1 in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)), on BOT-022 to BOT-024 and BOT-040, and on a session that stays alive (OD-BOT19).
+cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010). The install of an agent (BOT-058 to BOT-078) depends on a work type for the daemon (OD-BOT16; the work route of task W1 in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)), on BOT-022 to BOT-024 and BOT-040, and on a session that stays alive (OD-BOT19).
 
 **Risks.**
 
@@ -480,13 +480,13 @@ cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010
 
 ## Install an agent on a machine
 
-**Install an agent on a machine (proposed 2026-11-18, version 4; not ruled).** This section adds one action to the configurator of BOT-014 to BOT-018: "Add an agent". The operator picks a machine and a coding agent, reads what will run, and clicks once. The daemon installs the vendor's own program as the operator's user, the operator signs in on the machine in the vendor's own flow, and the agent starts in a session that stays alive. It is a change to this proposal and not a new document (PLN-004, PLN-016): this document owns the agent catalog (BOT-040), the device states (BOT-024), the vendor terms gate (BOT-038, BOT-041) and the sign-in rules (BOT-020, BOT-023). The text comes from a spec of the operator's marketing bot of 2026-11-18. Its private part stays in the business vault. Its placeholder identifiers OCA-01 to OCA-12 are replaced by BOT-058 to BOT-077. Nothing here is approved, built or claimed as a function (PLN-007).
+**Install an agent on a machine (proposed 2026-11-18, version 4; the operator decided the open decisions on 2026-11-18 in R-153, version 5; the requirements are not approved).** This section adds one action to the configurator of BOT-014 to BOT-018: "Add an agent". The operator picks a machine and a coding agent, reads what will run, and clicks once. The daemon installs the vendor's own program as the operator's user, the operator signs in on the machine in the vendor's own flow, and the agent starts in a session that stays alive. It is a change to this proposal and not a new document (PLN-004, PLN-016): this document owns the agent catalog (BOT-040), the device states (BOT-024), the vendor terms gate (BOT-038, BOT-041) and the sign-in rules (BOT-020, BOT-023). The text comes from a spec of the operator's marketing bot of 2026-11-18. Its private part stays in the business vault. Its placeholder identifiers OCA-01 to OCA-12 are replaced by BOT-058 to BOT-078. The operator decided OD-BOT15 to OD-BOT20 on 2026-11-18 (R-153). He chose six agents for the first version, and he chose that installs follow the MCP setting. Nothing is built. Nothing here is approved, built or claimed as a function (PLN-007).
 
 Serves: no row of Section 4 of the work plan names Bots yet. The nearest row is 4.8, "The other extensions" (AI coding sessions, agent panes AIS-009 to AIS-016). [NEEDS CLARIFICATION: the operator names the row that Bots serves (PLN-003) before approval.]
 
 ### Goal
 
-A person who has a machine with `anima-daemon` can put Claude Code or Codex on it from the device page, in a few minutes, without a terminal. Each step is shown first and is in the audit log. Anima.ing never holds the login of the person.
+A person who has a machine with `anima-daemon` can put Claude Code, Codex, Gemini CLI, Cursor CLI, Aider or OpenCode on it from the device page, in a few minutes, without a terminal. Each step is shown first and is in the audit log. Anima.ing never holds the login of the person.
 
 ### Current state (code on `origin/main` at `7342500c`, 2026-11-18)
 
@@ -512,9 +512,9 @@ The question: is terminal traffic sealed from end to end, so that a one-time sig
 - **Ruled.** The hub must not record the content of a session (RA-008) and no log may hold the content of a session (LOG-007). Recording is deferred (RA-040, R-113).
 - **Not ruled.** No requirement says that terminal bytes must be sealed. In the extensions plan, "sealed" means encrypted at rest with a data key, and "client-sealed" means encrypted on the client (Sections 1.3 and 2.4). Neither word is about the terminal.
 - **Open.** Agent panes (AIS-009 to AIS-014) have no transport design. How a client attaches to a pane is not decided.
-- **Open.** Whether a one-time code may pass through the hub in plain text (OD-BOT15).
+- **Decided (R-153, 2026-11-18, OD-BOT15).** A one-time sign-in code may pass through the hub as plain text in the first version, with a notice. The operator's words are in [rulings.md](../rulings.md). This covers a one-time code. It does not cover a key that lasts (OD-BOT23).
 
-Does it block this change? **No.** It decides how smooth the sign-in step is, not whether the proposal can be written. Without a sealed channel, the operator can still sign in: the vendor's flow gives a code or a link to the operator's own browser, and the operator types it. Only the code passes through the hub. The hub already carries a password that the operator types in an SSH session in the same way. BOT-068 makes the pane for the sign-in a "secret entry" pane, and OD-BOT15 asks the operator to accept the disclosure. If the operator rules "sealed channel first", task BI8 waits for a new proposal for a sealed terminal, and v1 shows the vendor's sign-in command only, and the operator runs it in his own terminal. [NEEDS CLARIFICATION: whether a code of the "copy the URL, paste the code back" flow of Claude Code is useless to a reader of the traffic. The code is bound to the machine that made the request, but this was not read from the vendor's documents.]
+Does it block this change? **No.** The operator decided OD-BOT15 (R-153): the code passes through the hub as plain text with a notice. A sealed channel is not part of the first version. The hub already carries a password that the operator types in an SSH session in the same way. BOT-068 makes the pane for the sign-in a "secret entry" pane with a notice. [NEEDS CLARIFICATION: whether a code of the "copy the URL, paste the code back" flow of Claude Code is useless to a reader of the traffic. The code is bound to the machine that made the request, but this was not read from the vendor's documents.]
 
 ### Overlap check (PLN-004)
 
@@ -532,8 +532,8 @@ Does it block this change? **No.** It decides how smooth the sign-in step is, no
 ### Not in scope
 
 - Windows machines, rented bot machines (BOT-010), and machines that do not run `anima-daemon`.
-- Agent apps that run a server (T3 Code, Orca, Paseo) and OpenCode. They need a port and a pairing secret, and T3 Code with Claude uses the SDK that BOT-021 and BOT-032 ban. They wait for a later version of this section.
-- Cursor CLI, Grok Build, Copilot CLI and the agents of BOT-043 and BOT-044. They need a dated terms row first (BOT-038).
+- Agent apps that run a server (T3 Code, Orca, Paseo). They need a port and a pairing secret, and T3 Code with Claude uses the SDK that BOT-021 and BOT-032 ban. They wait for a later version of this section.
+- Grok Build, Copilot CLI, Antigravity (BOT-045) and the other agents of BOT-043 and BOT-044. They need a dated terms row first (BOT-038). The six agents of the first version are in BOT-077.
 - Automatic update, "update when idle", and a bulk "set up all my machines" action.
 - Showing a device code or a pairing link in the client.
 - Any claim in the marketing copy. That is for the business vault.
@@ -549,37 +549,37 @@ All requirements here are proposed and not approved. A requirement is not built 
 - **BOT-062.** The install must use, in this order: a signed package that the machine's own package manager gives and the machine already uses, or the script of the vendor. For a script, the daemon must download it to a file, check its checksum when the vendor gives one, write its SHA-256 and its source address to the audit log, and only then run it. The daemon must never send a download straight into a shell.
 - **BOT-063.** The daemon must run each step as the operator's own user. It must not use `sudo`. A step that needs root must stop and tell the operator which step, and must not ask for a password.
 - **BOT-064.** A recipe of the first version (BOT-077) must not open a port or start a service. A later recipe that opens a port must open it only on the address of the machine on the Anima.ing network, never on all addresses, and the review screen must say so.
-- **BOT-065.** The operator must start each install, update and removal, in the app or in the command line, and must approve it on the review screen. A schedule, an event, a bot, a standing permission (BOT-006) or an AI agent must not start one. A machine takes an install only when it takes work (USE-004).
+- **BOT-065.** The operator must be able to start each install, update and removal in the app or in the command line, and must approve it on the review screen (BOT-059). An install that an AI agent asks for through MCP follows the MCP setting (R-120, MCP-012, MCP-024, MCP-025; operator, R-153, OD-BOT17): in the state `allow` it runs without a question, in `ask` the person is asked, in `off` the tool is hidden. A schedule, an event, a bot or a standing permission (BOT-006) must not start an install. A machine takes an install only when it takes work (USE-004; operator, R-153, OD-BOT20). An install that an AI agent starts must show as started by an AI agent, with the name of the MCP client (BOT-073). [NEEDS CLARIFICATION: MCP-006 says that no tool runs a command on a device. An MCP install tool needs a narrow exception, OD-BOT21. Whether an agent may start a recipe before the operator confirmed its terms row on that machine is OD-BOT22.]
 - **BOT-066.** Each sign-in must happen on the machine, in the flow of the vendor, by the operator. This extends BOT-020 and BOT-023. Anima.ing must not read, copy, move or keep a token, key, cookie or login file. It must not run `claude setup-token`. It must give no field that takes an API key. It must never offer or automate the copy of a login file to another machine.
-- **BOT-067.** The sign-in flows, in order of preference, are: a device-code flow of the vendor, a browser on the machine itself, and, for a machine with no browser, the prompt of the vendor ("open this address on your own device and paste the code back"). The review screen must name each condition that the vendor sets. [NEEDS CLARIFICATION: read the sign-in page of each vendor again on the day of BI4. The commands in the table below are from 2026-11-18 and are not verified.]
-- **BOT-068.** The pane in which the operator signs in must be marked "secret entry". The hub must not record or log its bytes (RA-008, LOG-007). The audit log must say only that the sign-in started and finished, with the name of the method (BOT-022). The result that the page shows is only the exit code and the method name (BOT-024).
+- **BOT-067.** An agent has one of two sign-in kinds. (a) An account login of the vendor: Claude Code, Codex and Cursor CLI. The flows, in order of preference, are a device-code flow of the vendor, a browser on the machine itself, and, for a machine with no browser, the prompt of the vendor ("open this address on your own device and paste the code back"). (b) A key that the operator sets in the program on the machine: Gemini CLI, Aider and OpenCode (BOT-036, BOT-078). For kind (b) the review screen must say how the operator sets the key on the machine, and Anima.ing must open no pane for it in the first version (OD-BOT23). The review screen must name each condition that the vendor sets. See the table of recipes below for what is verified.
+- **BOT-068.** The pane in which the operator signs in must be marked "secret entry" and must show a notice: the hub relays this text and does not store it (operator, R-153, OD-BOT15). The hub must not record or log its bytes (RA-008, LOG-007). The audit log must say only that the sign-in started and finished, with the name of the method (BOT-022). The result that the page shows is only the exit code and the method name (BOT-024). The operator must open the sign-in pane in the app or in the command line. An MCP tool must not open it (MCP-006), and no MCP tool returns a code (MCP-004). The pane is for a one-time code. It is not for a key that lasts (BOT-078).
 - **BOT-069.** After the sign-in, the daemon must start the agent in a pane of the agent panes (AIS-013) in a folder that the operator chose. Until the panes are built, the daemon may start it in a `tmux` session that it names and owns. It must check that `tmux` is present and, if it is not, say so and stop. It must not install `tmux` when that needs root (BOT-063). [NEEDS CLARIFICATION: OD-BOT19.]
 - **BOT-070.** After the install, the daemon must check the program with the steps of BOT-022: the file in the path, the version, and the status command. The page must show the result with the states of BOT-024. A failed step must stop the install, name the step and the cause, and leave nothing half-installed that it made.
-- **BOT-071.** The default policy for an update is "Manual". The hub must compare the version of the daemon's probe with the version of the catalog and show "update available". A version that changed without Anima.ing must be logged as "changed by the vendor". An update must show what it changes, and a failed update must leave the old version working. In the first version there is no automatic update.
+- **BOT-071.** The default policy for an update is "Manual". The hub must compare the version of the daemon's probe with the version of the catalog and show "update available". A version that changed without Anima.ing must be logged as "changed by the vendor". Claude Code (native install) and Cursor CLI update themselves by default, so this log line is the normal case for them; the recipe must set the switch of the vendor that turns this off when the vendor has one. [NEEDS CLARIFICATION: whether each vendor has such a switch.] An update must show what it changes, and a failed update must leave the old version working. In the first version there is no automatic update by Anima.ing.
 - **BOT-072.** A removal must use the steps of the vendor, must keep the data of the operator unless the operator chooses otherwise, and must be in the audit log.
-- **BOT-073.** The audit log must hold one event for each of: terms confirmed; install requested, approved or denied; each install step (started, succeeded, failed, with the step name, the exit code and the time); install finished (result, version, SHA-256 of the script); sign-in started and finished (method name only); session started (pane, folder); update available, started, finished or rolled back; version changed by the vendor; removal. Each event must name the actor (operator in the app, operator in the command line, or an AI agent that asked), the device, the agent and the time. No event may hold a token, an account name, an email address, a pairing link, a password, the bytes of a sign-in pane, or the text of a script.
+- **BOT-073.** The audit log must hold one event for each of: terms confirmed; install requested, approved or denied; each install step (started, succeeded, failed, with the step name, the exit code and the time); install finished (result, version, SHA-256 of the script); sign-in started and finished (method name only); session started (pane, folder); update available, started, finished or rolled back; version changed by the vendor; removal. Each event must name the actor (operator in the app, operator in the command line, or an AI agent that asked, with the name of its MCP client as in MCP-026), the device, the agent and the time. No event may hold a token, an account name, an email address, a pairing link, a password, the bytes of a sign-in pane, or the text of a script.
 - **BOT-074.** The catalog must be able to switch one recipe off in a daemon release, for example when a vendor changes its terms. A person must read the terms row of BOT-038 again before each release, and a row that turns "restricted" must turn its recipe off in the same release.
-- **BOT-075.** The function must have the command `anima agents install`, `status`, `update` and `remove`, and the MCP read tools for the states and the versions (CMD-030). MCP must have no tool that installs, updates or removes (MCP-006). An AI agent that wants one of these must make a request (BOT-065) that the operator approves in the app or in the command line, whatever the default of MCP-024 is. No MCP tool may return a one-time value (MCP-004).
+- **BOT-075.** The function must have the command `anima agents install`, `status`, `update` and `remove`, and the MCP tools for the states and the versions (CMD-030). Install, update and remove are MCP change tools. They follow the MCP states and the switch "Ask before destructive actions" (MCP-012, MCP-024, MCP-025, R-153); `remove` has `destructiveHint` (MCP-009). Each call that runs without a question must be in the audit log (MCP-026, BOT-073). The tool starts only a recipe of the catalog (BOT-060, BOT-061). It must not open a session (MCP-006) and it must not take or return a secret (MCP-004). [NEEDS CLARIFICATION: OD-BOT21, the exception to MCP-006.]
 - **BOT-076.** The install runs on a machine of the operator, through the daemon. The images of rented machines and the hosted hub must carry no vendor program (BOT-031). The Claude Code recipe must work only on a machine that the operator owns, until open decision 6 above is ruled.
-- **BOT-077.** The first version must offer two recipes: Claude Code and Codex, on macOS and on Linux, on a machine that runs `anima-daemon`. Both are harnesses that run in a pane. No other recipe is in the first version.
+- **BOT-077.** The first version must offer six recipes (operator, R-153, OD-BOT18): Claude Code, Codex, Gemini CLI, Cursor CLI, Aider and OpenCode, on macOS and on Linux, on a machine that runs `anima-daemon`. Each one is a harness that runs in a pane. Each recipe must carry its row of the vendor terms table, or "terms not checked" (BOT-041). No other recipe is in the first version.
+- **BOT-078.** A recipe for an agent that takes a key (Gemini CLI, Aider, OpenCode) must install the program and must not take, show, store or relay the key. The operator sets the key in the program on the machine himself (BOT-036, BOT-066). A recipe must not offer, preselect or script a login of a vendor for a program that is not the program of that vendor: not an Anthropic subscription (BOT-021, BOT-032), not a ChatGPT login (BOT-033), and not a consumer Google login (BOT-036, BOT-045). The Gemini CLI recipe must say that Google gives Gemini CLI to Code Assist Standard and Enterprise licences and to a paid API or Vertex key (README of the program, read 2026-11-18).
 
-**The two recipes of the first version.** The commands are as the vendors gave them on 2026-11-18, read from a note of the operator's marketing bot. They are not verified here. [NEEDS CLARIFICATION: a person reads each vendor page again and writes the commands into the catalog in task BI4; a person tests each recipe by hand on a new Mac and a new Linux machine first.]
+**The six recipes of the first version (BOT-077).** The commands below were read from the official pages named in the table on 2026-11-18. A command that is marked "not verified" was not on those pages. It comes from a note of the operator's marketing bot or from memory, and a person must check it in task BI4 and in the hand test of BI11 before it enters the catalog. [NEEDS CLARIFICATION: every "not verified" item.] Each recipe also needs the probe of BOT-022 with an empty home folder (CAP-025); the daemon has probes for Claude Code and Codex only (`crates/daemon-core/src/inventory/tools.rs`), so each other agent needs a new `ToolName`.
 
-| | Claude Code | Codex |
-| --- | --- | --- |
-| Find | `claude`, `claude --version`, `claude auth status` (BOT-022) | `codex`, `codex --version`, `codex login status` |
-| Before the install | `curl`, network to the vendor, disk space, not root | `curl`, network to the vendor, not root |
-| Install | The script of the vendor; on a Mac that uses Homebrew, the Homebrew cask is the other way | The script of the vendor; the Homebrew cask or `npm` are other ways |
-| Sign in | `claude auth login` (browser, or an address and a pasted code) | `codex login --device-auth` on a machine with no browser, `codex login` with a browser. The device code can need a setting in the ChatGPT account first. |
-| Run | A pane (BOT-069) that runs `claude` in the folder | A pane that runs `codex` in the folder |
-| Update | `claude update`, or the script again | The script again, or `brew upgrade --cask codex` |
-| Terms row (BOT-038) | Restricted for a third party that drives the program; the unmodified `claude` with the operator's own login is allowed (2026-11-16) | Unclear for `codex exec` on a ChatGPT login (2026-11-16) |
+| Agent | Install (verified) | Sign in | Update | Limits that the pages give | Not verified |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` on macOS and Linux; then `claude --version`. Source: [setup page](https://docs.claude.com/en/docs/claude-code/setup), 2026-11-18. | Kind (a). The browser opens on the first start; or `claude auth login` first. Source: [authentication page](https://code.claude.com/docs/en/authentication), 2026-11-18. | The native install updates itself in the background (setup page). | The same pages list apt, dnf and apk packages that need root (BOT-063: not used). `claude setup-token` makes a long-lived token and is banned (BOT-066). Terms: BOT-032. | `claude auth status`; `claude update`. |
+| Codex | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` on macOS and Linux. Source: [Codex CLI page](https://developers.openai.com/codex/cli), 2026-11-18. | Kind (a). `codex login` opens the browser and is the default. Source: [auth page](https://developers.openai.com/codex/auth), 2026-11-18. `codex login --with-api-key` takes a key from standard input: not used (BOT-066). | The same install command updates it (Codex CLI page). | The auth page mentions device-code failures in the login log. The flag that starts a device-code flow was not read. Terms: BOT-033, open decision 7. | `codex --version`; `codex login status`; the device-code flag. |
+| Gemini CLI | `npm install -g @google/gemini-cli`, or `brew install gemini-cli`. Source: [README](https://raw.githubusercontent.com/google-gemini/gemini-cli/main/README.md), 2026-11-18. | Kind (b) in the first version. The README names a Google sign-in for Code Assist licences of an organisation, the `GEMINI_API_KEY` variable, and Vertex AI. | `npm install -g @google/gemini-cli@latest` (README). | The README says that Gemini CLI is for Gemini Code Assist Standard and Enterprise, and that free and Google AI plans moved to Antigravity CLI on 2026-06-18. BOT-036 and BOT-045 still ban a consumer Google login and Antigravity. | Whether `npm install -g` needs root on the machine (BOT-063); Node is a prerequisite. |
+| Cursor CLI | `curl https://cursor.com/install -fsS \| bash` on macOS, Linux and WSL; the program is `agent` (`agent --version`); `~/.local/bin` must be in the path. Source: [installation page](https://cursor.com/docs/cli/installation), 2026-11-18. | Kind (a). `agent login` opens the browser; `NO_OPEN_BROWSER=1` prints the address; `agent status`; `agent logout`. Source: [authentication page](https://cursor.com/docs/cli/reference/authentication), 2026-11-18. | It updates itself by default; `agent update` updates by hand (installation page). | BOT-034 names two program names, `agent` and `cursor-agent`. An API key in the environment is the other method: not used (BOT-066). | Whether the automatic update has a switch. |
+| Aider | `python -m pip install aider-install`, then `aider-install`; or `curl -LsSf https://aider.chat/install.sh \| sh`. Source: [install page](https://aider.chat/docs/install.html), 2026-11-18. | Kind (b). A provider key, given with `--api-key` or in the environment. Aider has no login of its own. | The page does not say. | Python 3.8 to 3.13 is needed, or the installer fetches its own (page). Aider is not named in BOT-043 or BOT-044, so its terms row is "terms not checked" (BOT-041). | The update command; the version command. |
+| OpenCode | `curl -fsSL https://opencode.ai/v2/install \| bash`; or `npm install -g @opencode/cli`; or `brew install anomalyco/tap/opencode-v2`. Source: [docs](https://opencode.ai/docs/), 2026-11-18. | Kind (b). The docs connect a provider with `/connect` inside the program. | The page does not say. | The page says that an older `mise` installs OpenCode 1. OpenCode is first in the order of BOT-043. Its providers include logins that BOT-021, BOT-032 and BOT-033 ban for a program that is not the vendor's own (BOT-078). | `opencode auth login`; the update and version commands. |
 
 ### Interfaces (CMD-030 order)
 
-1. **Hub API (K1).** A query for the install requests of a device and their steps. A mutation to make a request, one to approve or deny it, and one to cancel it. The request holds: device, agent, recipe version, state, steps. It holds no secret. Each new root field needs its command (CMD-031).
+1. **Hub API (K1).** A query for the install requests of a device and their steps. A mutation to make a request, one to approve or deny it, and one to cancel it. The request holds: device, agent, recipe version, state, steps, and who started it (the operator in the app, the operator in the command line, or an AI agent with the name of its MCP client). It holds no secret. Each new root field needs its command (CMD-031).
 2. **`anima` command.** `anima agents install <agent> --device <device>`, `anima agents status`, `anima agents update`, `anima agents remove`. The names follow `anima agents usage`, which exists. [NEEDS CLARIFICATION: the names are a suggestion for the interface review.]
-3. **MCP tool.** Read tools for the states and the versions (BOT-024) and a tool that makes a request that waits for the operator. No tool that runs the install (MCP-006). No tool takes or returns a secret.
+3. **MCP tool.** Read tools for the states and the versions (BOT-024), and the change tools install, update and remove. They follow the MCP states and the switch of MCP-025 (R-153, OD-BOT17). A tool starts only a recipe of the catalog. No tool opens a session, and no tool takes or returns a secret (MCP-004, MCP-006). [NEEDS CLARIFICATION: OD-BOT21, the narrow exception to MCP-006.]
 4. **Client.** The "Agents" section of the device page and the review screen. A mockup of the screens is in [mockup/agent-install/index.html](../mockup/agent-install/index.html) (state Proposed, PLN-019).
 5. **Daemon.** A new work type for the fixed list of USE-006 (OD-BOT16). The daemon asks for it. It listens on no port (USE-005).
 
@@ -593,7 +593,7 @@ Device: mac-mini                                   [ Overview | Checks | Session
 | Agent        State                                   Version   Action                |
 | Claude Code  installed, signed in (subscription)     2.x       [ Open ] [ Update ]   |
 | Codex        installed, signed out                   0.x       [ Sign in ]           |
-| (none)       Add Claude Code or Codex from the list                                  |
+| (none)       Add one of the six agents from the list                                 |
 +--------------------------------------------------------------------------------------+
 
 Review: Install Codex on mac-mini
@@ -621,10 +621,10 @@ operator --click--> client --mutation--> hub (request, approval, audit)
 sign-in:  operator --terminal (secret entry)--> vendor's own flow on the machine
 ```
 
-- The hub makes a request. The operator approves it on the review screen. The daemon takes it when it asks for work, runs the steps of the recipe, and reports each step. The hub never sends a command line.
+- The hub makes a request. From the app or the command line, the operator approves it on the review screen. From MCP, the state of the tool decides (BOT-065). The daemon takes it when it asks for work, runs the steps of the recipe, and reports each step. The hub never sends a command line.
 - The recipe is data in the catalog (BOT-060). It is the same catalog as BOT-040, with more fields. A recipe can be switched off by a new daemon release (BOT-074).
 - The sign-in uses the terminal that exists (R-062) until panes are built. The sign-in pane has a flag so that the relay of the hub keeps no content (BOT-068). The flag is the only new function in the relay.
-- Updates are detected from the probe that exists. They are never run without the operator (BOT-065, BOT-071).
+- Updates are detected from the probe that exists. An update or a removal starts by the rule of BOT-065, and never by Anima.ing on its own (BOT-071).
 
 ### Failure modes
 
@@ -636,9 +636,11 @@ sign-in:  operator --terminal (secret entry)--> vendor's own flow on the machine
 | The operator closes the client during an install | The daemon finishes or stops at a step boundary and reports. The page shows the state when it opens again. |
 | The machine goes off during an install | The request ends as "machine lost". Nothing is retried on its own. The operator can start again. |
 | The sign-in is not finished | The state stays "installed, signed out". No timer retries it (BOT-068). |
-| A vendor program changes itself | The version changed without Anima.ing is logged (BOT-071). |
+| A vendor program changes itself (Claude Code native install and Cursor CLI do so by default) | The version change is logged as "changed by the vendor" (BOT-071). The recipe sets the vendor's switch against it when there is one. |
 | `tmux` is missing and the panes are not built | The start step stops and says so (BOT-069). |
-| An AI agent asks for an install | It makes a request. Nothing runs until the operator approves (BOT-065, BOT-075). |
+| An AI agent starts an install while no operator is present (the MCP default is `allow`, R-120; R-153, OD-BOT17) | The install runs. What limits it: only a recipe of the catalog runs (BOT-060, BOT-061); no root and no port (BOT-063, BOT-064); the machine must take work (USE-004, OD-BOT20); the audit log has the event with the name of the MCP client (BOT-073, MCP-026); the page shows "started by an AI agent" (BOT-065); the catalog can switch the recipe off (BOT-074); the operator can set the tool to `ask` or `off` (MCP-012). Open: OD-BOT21 and OD-BOT22. |
+| An agent-started install and the plain-text sign-in (R-153, OD-BOT15) with no operator present | The install can finish with nobody at the machine. The sign-in cannot start by itself: it is a session, no MCP tool opens a session (MCP-006), and no MCP tool returns a code (MCP-004). The state stays "installed, signed out" until the operator opens the pane (BOT-068). The code passes through the hub only in the pane that the operator opens, with the notice, with no recording and no log (RA-008, LOG-007). If a later ruling lets a tool open that pane, the code would pass the hub with nobody to read it; the audit event and the notice are then the only limits. |
+| An operator wants to type an API key for Gemini CLI, Aider or OpenCode in a pane | Not offered in the first version. The key lasts, and R-153 covers a one-time code only (BOT-078, OD-BOT23). The review screen says how to set the key on the machine. |
 | The hub is hosted and the machine is behind a router | The daemon asks the hub for work, so no inbound port is needed (USE-005). |
 
 ### Test plan
@@ -648,17 +650,19 @@ sign-in:  operator --terminal (secret entry)--> vendor's own flow on the machine
 - A daemon test against a local web server that serves a script and a wrong checksum: the step stops (BOT-062).
 - A hub test: a request needs an approval; an AI-agent request does not run (BOT-065, BOT-075); the audit events of BOT-073 are in the chain and none holds a secret (LOG-007).
 - A test that the relay keeps no content of a "secret entry" session (BOT-068).
+- A hub test of the MCP states: `allow` starts the install and the audit event names the MCP client; `ask` asks; `off` hides the tool; no tool opens the sign-in pane (BOT-065, BOT-068, BOT-075, MCP-026).
+- For each of the six recipes: a validation test and a probe test with a fake program and an empty home (BOT-022, CAP-025).
 - The coverage test of the command line (CMD-031) for each new root field.
-- A check by a person on a new Mac and a new Linux machine for each recipe, with the real steps and the time written down. An entry in `docs/need-human-testing.md` (PLN-014). The target of five minutes from the click to the first prompt, without the sign-in, is an estimate and is not a requirement.
+- A check by a person on a new Mac and a new Linux machine for each of the six recipes, with the real steps and the time written down. An entry in `docs/need-human-testing.md` (PLN-014). The target of five minutes from the click to the first prompt, without the sign-in, is an estimate and is not a requirement.
 
 ### Scope review
 
 | Mode | What it means here | Verdict |
 | --- | --- | --- |
 | Expand | Add apps (T3 Code, Orca, Paseo), OpenCode, auto-update, bulk setup, Windows | No. Each one adds a port, a secret or a terms conflict (BOT-021, BOT-032, BOT-046). |
-| Selective | Take only what is new and not already in this document: the recipe runner, the review screen, the audit events, the secret-entry pane, update detection | Yes, with the reduction below. |
-| Hold | Write only the requirements and build nothing | Yes for approval: nothing is built until the operator rules the decisions OD-BOT15 to OD-BOT20. |
-| Reduce | Two harnesses, two platforms, manual update, no port | **Recommended for the first version** (BOT-077). It keeps the main promise (no login in Anima.ing) and avoids the terms conflicts. |
+| Selective | Take only what is new and not already in this document: the recipe runner, the review screen, the audit events, the secret-entry pane, update detection | Yes. This is the chosen mode. |
+| Hold | Write only the requirements and build nothing | Yes for approval: nothing is built until the operator approves BOT-058 to BOT-078 (BI0) and rules OD-BOT21 to OD-BOT23. OD-BOT15 to OD-BOT20 are decided (R-153). |
+| Reduce | Two harnesses (Claude Code and Codex), two platforms, manual update, no port | The Planner recommended this. The operator chose six agents instead (OD-BOT18, R-153). The mode is now Selective with six recipes, two platforms, manual update and no port (BOT-077). |
 
 ### Design scores
 
@@ -667,13 +671,13 @@ The scores are the judgement of the Planner on 2026-11-18, from 0 (bad) to 10 (g
 | Dimension | Score | Why, and what raises it |
 | --- | --- | --- |
 | Login safety (BOT-020, BOT-066) | 8 | No token is read or kept. Raise to 9 with the sandbox test in BI2 and BI8. |
-| Sign-in step safety | 5 | A code passes through the hub in plain text (OD-BOT15). A sealed channel would give 8. |
-| Fit with rulings | 6 | R-062, RA-008, USE-005, USE-006 and MCP-006 fit. R-120 does not fit unless installs are always requests (OD-BOT17). |
-| Dependency risk | 4 | Needs a work route (W1 or a narrow work type, OD-BOT16), BOT-022 to BOT-024 (not built) and a session that stays alive (OD-BOT19). |
-| Testability | 6 | Pure parts and the hub are easy to test. The vendor scripts change and need a hand check (PLN-014). |
+| Sign-in step safety | 5 | A one-time code passes through the hub in plain text, with a notice (decided, R-153). A sealed channel would give 8. A key that lasts has no pane (BOT-078). |
+| Fit with rulings | 5 | R-062, RA-008, USE-005, USE-006 and R-120 fit now that installs follow the MCP setting (R-153). MCP-006 (no command on a device) needs a narrow exception (OD-BOT21). BOT-045 still limits Gemini CLI. |
+| Dependency risk | 4 | Needs the narrow work type (decided, R-153), BOT-022 to BOT-024 (not built), four new `ToolName` values and probes, and a `tmux` session (decided, R-153). |
+| Testability | 5 | Pure parts and the hub are easy to test. Six vendors change their scripts, so each needs a hand check on two platforms (PLN-014). |
 | Reversibility | 8 | Every step is the vendor's own and can be removed (BOT-072). The catalog switch turns a recipe off. |
-| Effort realism | 6 | Eleven tasks of half a day to three days. The size is an estimate. About four to six weeks for one person, without panes and without W1 (an estimate of the source note). |
-| Clarity of the requirements | 7 | Each requirement tests as pass or fail. Three points still carry a clarification marker. |
+| Effort realism | 5 | Seventeen tasks of half a day to three days. The size is an estimate, and about six to eight weeks for one person, without panes and without W1. Six recipes cost more than two. |
+| Clarity of the requirements | 6 | Each requirement tests as pass or fail. Six "not verified" command sets and OD-BOT21 to OD-BOT23 still carry a marker. |
 
 ### Blast radius on shared contracts
 
@@ -685,7 +689,7 @@ The scores are the judgement of the Planner on 2026-11-18, from 0 (bad) to 10 (g
 | K8 `contracts/daemon-push.md` | A work type and the report of steps | The watchdog (WDG, G2), the update plan (U4, U6), the work route (W1) | Coordinate in one ruling for K8. Do not add a second route. |
 | K4 `contracts/tunnel.md` Section 8 | A flag "secret entry" on a terminal session | Terminal client, session list | A ruling if the flag is a frame. Otherwise none. [NEEDS CLARIFICATION: how the flag reaches the relay.] |
 | Audit log chain (LOG-021 to LOG-028) | New event kinds | `anima audit verify`, the redaction of `events/redaction` | Test that the new events pass redaction (LOG-007). |
-| MCP rules (MCP-004, MCP-006, MCP-002, MCP-024 to MCP-026) | Install is a request, never a tool that runs | Every MCP client | No change to the rules. This section applies them. |
+| MCP rules (MCP-004, MCP-006, MCP-002, MCP-012, MCP-024 to MCP-026) | Install, update and remove are change tools that follow the MCP states (R-153). MCP-006 needs a narrow exception for a catalog recipe (OD-BOT21). | Every MCP client | A ruling for OD-BOT21 before task BI6. No other rule changes. |
 | Daemon work rules (USE-004 to USE-006, JOB-011) | One more work type | Jobs, builds, runners, watchdog | OD-BOT16. The list must stay fixed. |
 | Catalog (BOT-040) and `ToolName` of `daemon-core` | Install fields; more names | Hub ignores a name that it does not know (K8 Section 4) | No break. Hub and daemon can differ in version. |
 | Design tokens (K5) | None. The mockup uses the tokens. | Mockup, client | None. |
@@ -693,22 +697,28 @@ The scores are the judgement of the Planner on 2026-11-18, from 0 (bad) to 10 (g
 
 ### Tasks
 
-One pull request for each task. The size of each task is a few hours to three days (an estimate). All tasks are Not started, and none starts before the operator approves this section with a ruling (PLN-007, PLN-013). A task does not start while its "Needs" column names an open decision.
+One pull request for each task. The size of each task is a few hours to three days (an estimate). All tasks are Not started. The operator decided OD-BOT15 to OD-BOT20 in R-153, but did not approve the requirements, so none starts before BI0 (PLN-007, PLN-013). A task does not start while its "Needs" column names an open decision.
 
 | Task | Wave | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| BI0 | 0 | The operator rules OD-BOT15 to OD-BOT20 and approves BOT-058 to BOT-077 with one ruling | The operator | Not started | — |
+| BI0 | 0 | The operator approves BOT-058 to BOT-078 with a ruling, and rules OD-BOT21 to OD-BOT23. OD-BOT15 to OD-BOT20 are already decided (R-153). | The operator | Not started | — |
 | BI1 | 1 | The contract text: K1, K2, K3 and K8 changes, and the entry in `hub-modules.json` (no code) | BI0; a ruling for CON-001 | Not started | — |
-| BI2 | 1 | `daemon-core`: the data of a recipe, its validation, and the entries of Claude Code and Codex. No execution. | BI0 | Not started | — |
+| BI2 | 1 | `daemon-core`: the types of a recipe and their pure validation. No entries and no execution. | BI0 | Not started | — |
+| BI2a | 2 | The recipe of Claude Code: probe, entry, tests | BI2 | Not started | — |
+| BI2b | 2 | The recipe of Codex: probe, entry, tests | BI2 | Not started | — |
+| BI2c | 2 | The recipe of Cursor CLI: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
+| BI2d | 2 | The recipe of OpenCode: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
+| BI2e | 2 | The recipe of Gemini CLI: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
+| BI2f | 2 | The recipe of Aider: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
 | BI3 | 2 | The hub: the domain for requests, approval, steps and audit events; the GraphQL | BI1 | Not started | — |
-| BI4 | 2 | The daemon: take the work type and run the fixed steps of a recipe | BI1, BI2; OD-BOT16 | Not started | — |
+| BI4 | 3 | The daemon: take the work type and run the fixed steps of a recipe | BI1, BI2 | Not started | — |
 | BI5 | 3 | `anima agents install`, `status`, `update`, `remove` | BI3 | Not started | — |
-| BI6 | 3 | The MCP read tools and the request tool | BI5 | Not started | — |
-| BI7 | 3 | The client: the Agents section, the review screen, the progress; the mockup is compared | BI3; the mockup | Not started | — |
-| BI8 | 4 | The sign-in step and the "secret entry" session | BI4, BI7; OD-BOT15 | Not started | — |
-| BI9 | 4 | The start of the session: panes, or the `tmux` fallback | BI4; OD-BOT19 | Not started | — |
-| BI10 | 4 | The detection of "update available" and "changed by the vendor" | BI3, BI4 | Not started | — |
-| BI11 | 5 | The security review, the entry in `need-human-testing.md`, and the hand test of both recipes | BI8, BI9 | Not started | — |
+| BI6 | 4 | The MCP read tools and the change tools install, update and remove | BI5; OD-BOT21 | Not started | — |
+| BI7 | 4 | The client: the Agents section, the review screen, the progress; the mockup is compared | BI3; the mockup | Not started | — |
+| BI8 | 5 | The sign-in step and the "secret entry" session | BI4, BI7 | Not started | — |
+| BI9 | 5 | The start of the session: panes, or the `tmux` fallback | BI4 | Not started | — |
+| BI10 | 5 | The detection of "update available" and "changed by the vendor" | BI3, BI4 | Not started | — |
+| BI11 | 6 | The security review, the entry in `need-human-testing.md`, and the hand test of the six recipes | BI8, BI9, BI2a to BI2f | Not started | — |
 
 #### Task briefs
 
@@ -725,22 +735,88 @@ One pull request for each task. The size of each task is a few hours to three da
 - Done: the commit that merges the contract text and sets BI1 to Done.
 - Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI1 of docs/proposals/bots.md (section 'Install an agent on a machine'). Write only the contract text for K1, K2, K3 and K8 and the hub-modules entry. Write no code. Run bun run quality:documents."
 
-**BI2. Recipe data in `daemon-core`.**
+**BI2. Recipe types in `daemon-core`.**
 - Why: a recipe must be data that a test can check before anything runs (BOT-060, BOT-061).
-- Current state: `crates/daemon-core/src/inventory/tools.rs` has 13 `ToolName` values and probes with no install fields.
-- Change: add the types for a recipe (steps as program plus arguments, checksum, source address, version, terms row key), a pure function that rejects a recipe that breaks BOT-061, BOT-063 or BOT-064, and the entries for Claude Code and Codex with the commands of the table above, marked unverified until BI4.
-- Acceptance: pass when a recipe with a step that takes free text, uses `sudo` or opens a port fails the validation in a test, and both entries pass; fail otherwise. No step runs.
+- Current state: `crates/daemon-core/src/inventory/tools.rs` has 13 `ToolName` values and probes with no install fields. Only Claude Code and Codex are agents there.
+- Change: add the types for a recipe (steps as program plus arguments, checksum, source address, version, terms row key, the sign-in kind of BOT-067) and a pure function that rejects a recipe that breaks BOT-061, BOT-063, BOT-064 or BOT-078. Add no entry. The entries are tasks BI2a to BI2f.
+- Acceptance: pass when a recipe with a step that takes free text, uses `sudo`, opens a port or offers a banned login fails the validation in a test, and a valid test recipe passes; fail otherwise. No step runs.
 - Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`.
-- Out of scope: running a step; the hub; the wire format.
+- Out of scope: any entry; running a step; the hub; the wire format.
 - Always: pure functions with time and input as parameters. Ask: before a new crate dependency. Never: read a login file or spawn a program.
 - Done: the commit that merges the types and tests and sets BI2 to Done.
-- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2 of docs/proposals/bots.md. Add recipe types and a pure validation to crates/daemon-core, with the entries for Claude Code and Codex. Run nothing that starts a program. Run cargo nextest run -p daemon-core and bun run gates."
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2 of docs/proposals/bots.md. Add recipe types and a pure validation to crates/daemon-core. Add no recipe entry. Run nothing that starts a program. Run cargo nextest run -p daemon-core and bun run gates."
+
+**BI2a. The recipe of Claude Code.**
+- Why: BOT-077 names Claude Code for the first version (operator, R-153, OD-BOT18).
+- Current state: Claude and its probe exist in `tools.rs` (`ToolName::Claude`, empty home).
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of Claude Code in the table of recipes above. The recipe uses the install script of the table above. It runs only the unmodified `claude` with the operator's own login, and only on a machine that the operator owns (BOT-032, BOT-076). Set the vendor's switch against the self-update if the vendor page names one. Write the sign-in kind (Kind (a); BOT-067) and the terms row key (the Claude row (BOT-032)). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `claude` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+- Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
+- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
+- Done: the commit that merges the entry and sets BI2a to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2a of docs/proposals/bots.md. Add the catalog entry and the probe for Claude Code to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
+
+**BI2b. The recipe of Codex.**
+- Why: BOT-077 names Codex for the first version (operator, R-153, OD-BOT18).
+- Current state: Codex and its probe exist in `tools.rs` (`ToolName::Codex`, empty home).
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of Codex in the table of recipes above. The recipe uses the install script of the table above, and the same command for the update. Show the terms row of BOT-033 (a ChatGPT login is not allowed for a hosted service; `codex exec` is unclear, open decision 7). Write the sign-in kind (Kind (a); BOT-067) and the terms row key (the Codex row (BOT-033)). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `codex` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+- Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
+- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
+- Done: the commit that merges the entry and sets BI2b to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2b of docs/proposals/bots.md. Add the catalog entry and the probe for Codex to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
+
+**BI2c. The recipe of Cursor CLI.**
+- Why: BOT-077 names Cursor CLI for the first version (operator, R-153, OD-BOT18).
+- Current state: No Cursor `ToolName` or probe exists.
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of Cursor CLI in the table of recipes above. Add a `ToolName` and a probe for both program names, `agent` and `cursor-agent` (BOT-034), with an empty home. Use the install line of the table above. Read the page again for a switch against the self-update. Write the sign-in kind (Kind (a); BOT-067) and the terms row key (the Cursor row (BOT-034)). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `agent` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+- Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
+- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
+- Done: the commit that merges the entry and sets BI2c to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2c of docs/proposals/bots.md. Add the catalog entry and the probe for Cursor CLI to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
+
+**BI2d. The recipe of OpenCode.**
+- Why: BOT-077 names OpenCode for the first version (operator, R-153, OD-BOT18).
+- Current state: No OpenCode `ToolName` or probe exists.
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of OpenCode in the table of recipes above. Add a `ToolName` and a probe with an empty home. Use the v2 install line of the table above, and check that the install gives OpenCode 2 and not OpenCode 1. The recipe must not preselect a provider login that BOT-021, BOT-032 or BOT-033 bans (BOT-078). Write the sign-in kind (Kind (b); BOT-067) and the terms row key (the OpenCode row of BOT-043, or "terms not checked"). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `opencode` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+- Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
+- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
+- Done: the commit that merges the entry and sets BI2d to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2d of docs/proposals/bots.md. Add the catalog entry and the probe for OpenCode to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
+
+**BI2e. The recipe of Gemini CLI.**
+- Why: BOT-077 names Gemini CLI for the first version (operator, R-153, OD-BOT18).
+- Current state: No Gemini `ToolName` or probe exists.
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of Gemini CLI in the table of recipes above. Add a `ToolName` and a probe with an empty home. Use `npm install -g` or `brew install`, whichever runs with no root (BOT-063); if neither does, the recipe stops with a message. State the limit of the README: Code Assist Standard and Enterprise, or a paid API or Vertex key. No consumer Google login (BOT-036, BOT-045, BOT-078). Write the sign-in kind (Kind (b); no sign-in pane (OD-BOT23); BOT-067) and the terms row key (the Google row of BOT-036 and BOT-045). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `gemini` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+- Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
+- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
+- Done: the commit that merges the entry and sets BI2e to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2e of docs/proposals/bots.md. Add the catalog entry and the probe for Gemini CLI to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
+
+**BI2f. The recipe of Aider.**
+- Why: BOT-077 names Aider for the first version (operator, R-153, OD-BOT18).
+- Current state: No Aider `ToolName` or probe exists.
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of Aider in the table of recipes above. Add a `ToolName` and a probe with an empty home. Use the one-liner or `aider-install` of the table above, whichever runs with no root. Aider is not in BOT-043 or BOT-044, so the terms row is "terms not checked" (BOT-041). Write the sign-in kind (Kind (b); no sign-in pane (OD-BOT23); BOT-067) and the terms row key ("terms not checked"). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `aider` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+- Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
+- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
+- Done: the commit that merges the entry and sets BI2f to Done.
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2f of docs/proposals/bots.md. Add the catalog entry and the probe for Aider to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
 
 **BI3. The hub domain.**
 - Why: the hub holds the request, the approval and the audit events (BOT-065, BOT-073). The hub API comes first (CMD-030).
 - Current state: no domain. `fleet/agent_usage/` is the nearest example.
-- Change: the domain `fleet/agent_installs` with `model.rs`, a pure state machine, `store.rs`, `graphql.rs` and tests. A request needs an approval by the operator. An AI-agent request stays pending. Write the events of BOT-073 to the audit chain.
-- Acceptance: pass when a request without approval never reaches the daemon queue, an AI-agent request stays pending, and no event holds a secret (a test with a seeded fake token); fail otherwise.
+- Change: the domain `fleet/agent_installs` with `model.rs`, a pure state machine, `store.rs`, `graphql.rs` and tests. A request that the operator starts in the app or the command line needs his approval. A request that an AI agent starts follows the MCP state of the tool (BOT-065); it records the MCP client name and the actor `agent`. Write the events of BOT-073 to the audit chain.
+- Acceptance: pass when an operator request without approval never reaches the daemon queue, an agent request with the tool `off` is refused and with `ask` waits, and no event holds a secret (a test with a seeded fake token); fail otherwise.
 - Check: `cargo nextest run -p anima-hub agent_installs`, `cargo clippy -p anima-hub --all-targets -- -D warnings`, `bun run quality:imports`.
 - Out of scope: the daemon, the command line, the client.
 - Always: typed errors; SQL only in `store.rs`. Ask: before a change to an existing table. Never: log request arguments that came from an AI agent without the clean-up of MCP-013.
@@ -770,15 +846,15 @@ One pull request for each task. The size of each task is a few hours to three da
 - Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI5 of docs/proposals/bots.md. Add the anima agents install, status, update and remove commands on the hub API of BI3, with tests and the CMD-031 coverage. Run bun run gates."
 
 **BI6. The MCP tools.**
-- Why: an AI agent must be able to read the states and ask for an install, and must not run one (BOT-075, MCP-006).
-- Current state: `anima_agents_usage` is an MCP tool.
-- Change: read tools for the states and versions, and one tool that makes a request. No tool approves or runs.
-- Acceptance: pass when no tool returns a one-time value, the request stays pending with the default of every state of MCP-002, and the tool list has no tool that runs an install; fail otherwise.
+- Why: an AI agent can read the states and start an install, update or removal, by the MCP setting (BOT-075, R-153 OD-BOT17).
+- Current state: `anima_agents_usage` is an MCP tool. Permission states `allow`, `ask`, `off` exist; the default of change tools is `off` until R-120 is built (task T11 of [cli-mcp-plan.md](../plans/cli-mcp-plan.md)).
+- Change: read tools for the states and versions; change tools for install, update and remove, with `destructiveHint` on `remove`; each call that runs without a question is written to the audit log with the MCP client name (MCP-026). The tools open no session and return no secret.
+- Acceptance: pass when `off` hides each tool, `ask` asks the person, `allow` starts the request and the audit event names the MCP client, no tool opens the sign-in pane, and no tool returns a one-time value; fail otherwise.
 - Check: `cargo nextest run -p anima-cli mcp`.
-- Out of scope: any change to MCP-002 or MCP-024.
-- Always: `destructiveHint` set. Ask: before a tool name. Never: take an approval from the tool call.
+- Out of scope: any change to MCP-002 or MCP-024; the sign-in pane.
+- Always: `destructiveHint` set on `remove`. Ask: before a tool name. Never: start a recipe that is not in the catalog; build before OD-BOT21 is ruled.
 - Done: the commit that merges the tools and sets BI6 to Done.
-- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI6 of docs/proposals/bots.md. Add the MCP read tools and the one request tool on the commands of BI5. Add a test that no tool approves or runs an install. Run bun run gates."
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI6 of docs/proposals/bots.md. Check first that OD-BOT21 is ruled. Add the MCP read tools and the install, update and remove tools on the commands of BI5. Add a test that no tool opens a session or returns a secret. Run bun run gates."
 
 **BI7. The client.**
 - Why: the operator reads what will run before it runs (BOT-058, BOT-059).
@@ -794,17 +870,17 @@ One pull request for each task. The size of each task is a few hours to three da
 **BI8. The sign-in step.**
 - Why: the operator signs in on the machine and the hub keeps no content (BOT-066 to BOT-068).
 - Current state: the SSH terminal relays bytes and keeps nothing (RA-008), with no flag.
-- Change: start the sign-in command of the vendor in a terminal session marked "secret entry"; write only the start, the end and the method name to the audit log.
+- Change: for an agent of kind (a) (BOT-067), start the sign-in command of the vendor in a terminal session marked "secret entry" with the notice; the operator opens it. For kind (b), show how to set the key on the machine, and open no pane. Write only the start, the end and the method name to the audit log.
 - Acceptance: pass when a test types a fake code and finds it in no log, no event and no database row; fail otherwise.
 - Check: `cargo nextest run -p anima-hub sessions`, `bun run --filter '*' test`.
 - Out of scope: a sealed channel; showing the code in the client.
-- Always: follow OD-BOT15. Ask: before a change to K4. Never: read the output of a sign-in pane.
+- Always: show the notice of BOT-068 (R-153, OD-BOT15). Ask: before a change to K4. Never: read the output of a sign-in pane; open the pane for a key that lasts (BOT-078).
 - Done: the commit that merges the step and sets BI8 to Done.
 - Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI8 of docs/proposals/bots.md. Add the secret-entry sign-in step. Test that a typed fake code is in no log, event or table. Run bun run gates."
 
 **BI9. The session that stays alive.**
 - Why: the agent must survive a closed client (BOT-069).
-- Current state: panes are direction only.
+- Current state: panes are direction only. The operator decided to use `tmux` when it is already installed (R-153, OD-BOT19).
 - Change: start the agent in a pane, or in a `tmux` session that the daemon names, in the folder of the operator; stop with a clear message when `tmux` is missing.
 - Acceptance: pass when the session lives after the client disconnects in a test with a fake program; fail otherwise.
 - Check: `cargo nextest run -p anima-daemon`.
@@ -827,30 +903,35 @@ One pull request for each task. The size of each task is a few hours to three da
 **BI11. The review and the check by a person.**
 - Why: the daemon now runs a program that the vendor wrote, and the gates cannot prove a real install (PLN-014).
 - Current state: no entry.
-- Change: a security review of BI3 to BI9 (the findings go in `docs/security-findings.md`); an entry HT-nnn with the steps for a new Mac and a new Linux machine, for each recipe.
+- Change: a security review of BI2a to BI2f and BI3 to BI10 (the findings go in `docs/security-findings.md`), with the questions of R-153: an agent-started install, the plain-text code, and the MCP exception; an entry HT-nnn with the steps for a new Mac and a new Linux machine, for each of the six recipes.
 - Acceptance: pass when each finding has a state and the entry gives steps and the expected result of each step; fail otherwise. The task is Done after the operator sets the entry to Passed.
 - Check: `bun run quality:documents`.
 - Out of scope: code changes (they are new tasks).
 - Always: write steps that the operator can do with no help. Ask: before a new identifier series. Never: mark the entry Passed.
 - Done: the commit that adds the findings and the entry; the entry is Passed.
-- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI11 of docs/proposals/bots.md. Review BI3 to BI9 for the BOT-066 to BOT-068 rules, write the findings, and add the human-testing entry. Change no code."
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI11 of docs/proposals/bots.md. Review BI2a to BI10 for the BOT-066 to BOT-068 and BOT-078 rules, write the findings, and add the human-testing entry. Change no code."
 
 ### Open decisions
 
-Each row has one question and a recommendation. Proposed, not ruled. Only the operator can rule it.
+Each row has one question and a recommendation. OD-BOT15 to OD-BOT20 are decided by R-153. The other rows are proposed, not ruled. Only the operator can rule them.
 
-| ID | Question | Recommendation |
-| --- | --- | --- |
-| OD-BOT15 | May a one-time sign-in code pass through the hub in plain text in the first version, with a disclosure, or must a sealed terminal come first? (allow with disclosure / sealed first) | Proposed, not ruled: Allow with disclosure. Every SSH session already passes the same way (R-062), the code is useless without the vendor login, and a sealed terminal is a separate proposal. |
-| OD-BOT16 | Does the recipe runner wait for the work route (W1), or does it get its own narrow work type `agent_install` in the fixed list of USE-006 now? (wait / narrow work type) | Proposed, not ruled: A narrow work type, written in the K8 contract, with the rules of USE-005 and USE-006, so that W1 can take it over. W1 waits for a ruling on R-115 and may take long. |
-| OD-BOT17 | Do install, update and removal always need the operator's approval, also when the MCP server is fully automatic by default (R-120)? (always / follow R-120) | Proposed, not ruled: Always. MCP-006 already says that no tool runs a command on a device. |
-| OD-BOT18 | Is the first version limited to Claude Code and Codex? (yes/no) | Proposed, not ruled: Yes. App recipes need a port and a pairing secret, and T3 Code with Claude conflicts with BOT-021 and BOT-032. |
-| OD-BOT19 | Until panes (AIS-009) are built, may the daemon start the agent in a `tmux` session? (yes/no) | Proposed, not ruled: Yes, if `tmux` is already on the machine. Do not install it with root. The session name allows a later move to panes. |
-| OD-BOT20 | Does an install need the machine's "takes work" switch (USE-004) to be on, or a new switch? (takes work / new switch) | Proposed, not ruled: Takes work. One switch is easier to explain, and the operator starts each install. |
+| ID | Question | Recommendation | Result |
+| --- | --- | --- | --- |
+| OD-BOT15 | May a one-time sign-in code pass through the hub in plain text in the first version, with a disclosure, or must a sealed terminal come first? (allow with disclosure / sealed first) | Proposed, not ruled: Allow with disclosure. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT15: yes, plain text through the hub with a notice." Yes, with a notice (BOT-068). |
+| OD-BOT16 | Does the recipe runner wait for the work route (W1), or does it get its own narrow work type `agent_install` in the fixed list of USE-006 now? (wait / narrow work type) | Proposed, not ruled: A narrow work type that W1 can take over. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT16: yes, add the narrow agent_install work type." The narrow work type. |
+| OD-BOT17 | Do install, update and removal always need the operator's approval, also when the MCP server is fully automatic by default (R-120)? (always / follow R-120) | Proposed, not ruled: Always (MCP-006). This was the Planner's recommendation. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT17: no, installs follow the MCP automatic setting." Against the recommendation. BOT-065 is amended. See OD-BOT21 and OD-BOT22. |
+| OD-BOT18 | Is the first version limited to Claude Code and Codex? (yes/no) | Proposed, not ruled: Yes. This was the Planner's recommendation. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT18: no, v1 should include more agents." He chose: Claude Code, Codex, Gemini CLI, Cursor CLI, Aider, OpenCode (BOT-077). |
+| OD-BOT19 | Until panes (AIS-009) are built, may the daemon start the agent in a `tmux` session? (yes/no) | Proposed, not ruled: Yes, if `tmux` is already on the machine. No root install. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT19: yes, use tmux when it is already installed." Yes. |
+| OD-BOT20 | Does an install need the machine's "takes work" switch (USE-004) to be on, or a new switch? (takes work / new switch) | Proposed, not ruled: Takes work. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT20: reuse the takes work switch (USE-004)." Takes work. |
+| OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/no) | Proposed, not ruled: yes, for a catalog recipe only. No tool opens a session, so the sign-in pane stays with the operator (BOT-068). Needed before task BI6. | Open |
+| OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Proposed, not ruled: no. The operator confirms the row once in the app for each recipe and machine, and then an agent may start it. | Open |
+| OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Aider, OpenCode) in the secret-entry pane, when R-153 covers a one-time code only (BOT-078)? (yes/no) | Proposed, not ruled: no in the first version. He sets the key on the machine himself. | Open |
 
 ### Review notes
 
-- 2026-11-18, version 4. The Planner moved the spec of the marketing bot into this document and replaced OCA-01 to OCA-12 with BOT-058 to BOT-077. The spec's app recipes and its auto-update are not in the first version.
-- Two rules of the spec conflict with rulings and are changed here: installs are never started by an AI agent, even with R-120 (BOT-065, BOT-075), and a persistent session cannot wait for panes (BOT-069).
-- Not verified: the vendor commands, the sign-in flows, the five-minute target, the size of the work, and whether the daemon-managed `tmux` session is acceptable to the panes plan (open decision 1 of Section 4.12.1).
+- 2026-11-18, version 4. The Planner moved the spec of the marketing bot into this document and replaced OCA-01 to OCA-12 with BOT-058 to BOT-078. The spec's app recipes and its auto-update are not in the first version.
+- Two rules of the spec conflicted with rulings. Persistent session: it cannot wait for the panes (BOT-069). Installs by an AI agent: the Planner said never, because of MCP-006 and R-120; the operator ruled that installs follow the MCP setting (R-153), so MCP-006 needs a narrow exception (OD-BOT21).
+- 2026-11-18, version 5. The operator decided OD-BOT15 to OD-BOT20 in R-153: plain text with a notice, the narrow work type, installs that follow the MCP setting (against the recommendation), six agents, `tmux`, and the takes-work switch. The Planner changed BOT-065, BOT-067, BOT-068, BOT-071, BOT-073, BOT-075 and BOT-077, added BOT-078, and split the recipe task into BI2 and BI2a to BI2f. The Planner also found two limits that the answers do not settle: MCP-006 and the terms rows (OD-BOT21, OD-BOT22), and the key that lasts (OD-BOT23). The state of this document stays Draft: no requirement is approved.
+- The commands of the six recipes were read from the official pages on 2026-11-18. Each "not verified" command is marked in the table of recipes.
+- Not verified: the vendor commands marked so, the sign-in flows of Claude Code and Codex on a machine with no browser, the five-minute target, the size of the work, and whether the daemon-managed `tmux` session is acceptable to the panes plan (open decision 1 of Section 4.12.1).
 - Nothing in this section is a promise to a user. The claim rules of the product stay: a planned item is not described as shipping.

@@ -87,7 +87,7 @@ ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--sp
 </head>
 <body>
 <h1 class="board">Add an agent</h1>
-<p class="about">The Agents section of the device page and the install of Claude Code or Codex on a machine (bots.md, section "Install an agent on a machine"). Proposed, not approved. The program names, the versions and the text of the terms row are examples.</p>
+<p class="about">The Agents section of the device page and the install of one of six agents on a machine (bots.md, section "Install an agent on a machine"). Proposed, not approved. The program names, the versions and the text of the terms row are examples.</p>
 
 <div class="frames">
   <figure>
@@ -98,9 +98,13 @@ ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--sp
         <tbody>
           <tr><td>Claude Code</td><td>Installed, signed in</td><td class="m">2.0.1</td><td><span class="actions"><span class="btn">Open</span><span class="btn">Update</span></span></td></tr>
           <tr><td>Codex</td><td>Installed, signed out</td><td class="m">0.9.0</td><td><span class="actions"><span class="btn primary">Sign in</span></span></td></tr>
+          <tr><td>Gemini CLI</td><td>Installed, key not set on this machine</td><td class="m">0.1.0</td><td><span class="actions"><span class="btn">How to set the key</span></span></td></tr>
+          <tr><td>Cursor CLI</td><td>Not installed</td><td class="m"></td><td><span class="actions"><span class="btn primary">Install</span></span></td></tr>
+          <tr><td>Aider</td><td>Not installed</td><td class="m"></td><td><span class="actions"><span class="btn primary">Install</span></span></td></tr>
+          <tr><td>OpenCode</td><td>Not installed</td><td class="m"></td><td><span class="actions"><span class="btn primary">Install</span></span></td></tr>
         </tbody>
       </table>
-      <p class="detail">Update available for Claude Code: 2.0.2. Updates are manual.</p>
+      <p class="detail">Update available for Claude Code: 2.0.2. Updates are manual. The six agents of the first version are listed (BOT-077).</p>
     </div>
     <figcaption>1. The Agents section. Each row shows the one action that fits its state: Install, Sign in, Open or Update (BOT-058). The account name of a login is not shown (BOT-066).</figcaption>
   </figure>
