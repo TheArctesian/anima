@@ -306,3 +306,5 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 ## Escalations
 
 None open.
+
+- **R-152 (operator, 2026-11-18; council follow-up).** Integrate the council findings into their owner plans and push the work. This names the preparation tasks HM-C1 to HM-C4, SP-C1, M-C1, U-C1, H-C1, AIS-C1, AIS-C2, PE-C1 and PE-C2. These tasks read, reconcile and prepare evidence only. They do not approve new product behaviour, a contract, a price, a charge, a deployment or an external trial. A task whose existing owner holds a claim stays with that owner. The open decisions in each owner document stay open.

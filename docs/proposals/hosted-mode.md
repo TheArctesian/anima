@@ -309,3 +309,16 @@ Tasks that a ruling names:
 | [shared-pool-hosting.md](shared-pool-hosting.md) | Remove Headscale from the instance stack; one relay for each pool host (Section 3, fact 4). Not done. |
 | Design specification | A delta for the account login of a hosted hub, NET-001 and the first run. Not written. |
 | S6 task breakdown | "Sign in" as the primary choice. The client does it (HM-T1); the S6 task breakdown does not yet name it. |
+
+## Council follow-up: first use and the service promise (2026-11-18)
+
+R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.
+
+| Task | Work and acceptance | Depends on | State |
+| --- | --- | --- | --- |
+| HM-C1 | Compare the published installer and its source commit with the hosted functions it carries. Read the release record and HT-022; keep the operator's existing sign-in proof. Produce one packet: artifact, version, checksum, included functions, missing proof. Do not infer that a development build is the published build. | Release owner; [releases.md](../procedures/releases.md); HT-022 | Not started. Preparation only (R-152) |
+| HM-C2 | Prepare one pilot worksheet: ordinary download, install, sign in, own computer visible, first useful session, quit and reopen the same hub. Record assistance, exclusions and the first failed step. Successful SSH, the ended session record and a fresh read after reopen are separate observations. HM-C1 supplies the artifact; this is one pilot, not one per agent. | HM-C1; the session path in HM-T12 to HM-T15; HM-D7; HMD-015; operator permission for the participant and target | Not started. Preparation only; live execution is blocked |
+| HM-C3 | Compare the explanation at sign-in with what the hub can read: private transport, server-readable credentials and client-sealed records are separate. Give the owner proposed wording with code evidence. Do not claim that a staff-access policy prevents technical access. | HMD-015; HM-D7; custody decisions of the owner | Not started. Preparation only; publishing new wording waits for owner review |
+| HM-C4 | Prepare three fixed timelines for hub sleep and daemon backfill. For each, separate readings stored later from checks performed at the time. A reconciliation timestamp is discovery time unless both actual sleep endpoints are known. List the missing source of an account-scoped sleep interval. | HMD-028; private sleep/wake owner; no new public interface is approved | Not started. Preparation only; display changes are blocked |
+
+HM-D2 and HM-D8 also need the case where an account keeps a device connected for the whole measurement period. A powered-on computer alone does not prove that its account link stayed connected. The private pool plan owns the cost and capacity calculation.

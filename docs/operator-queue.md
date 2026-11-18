@@ -25,7 +25,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
-| 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
+| 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.9 | Hosted applications | Agent: task H1 in hosted-applications-plan.md. Operator: nothing now |

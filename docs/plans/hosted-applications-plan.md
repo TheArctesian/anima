@@ -267,3 +267,11 @@ The order is hub API, `anima` command, MCP tool, client (CMD-030). A task is bui
 - The work route of [jobs.md](../proposals/jobs.md) for stage 2 (task W1, row 4.7 of the priority
   order). Stage 1 does not need it.
 - The ingestion contract of the engine for the location samples (R-145). The engine owns it.
+
+## Council follow-up: correct host and Compose provenance (2026-11-18)
+
+R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.
+
+| Task | Work and acceptance | Depends on | State |
+| --- | --- | --- | --- |
+| H-C1 | Reconcile H4 with two cases: known-running Docker on the correct host reached through the hosted route, and that same host with the route denied. Distinguish unreachable host from stopped container. Give H4's owner the acceptance gap, or record that the governing acceptance text is missing. For a proposed Compose provenance display, include equal project names on different hosts and unknown provenance. A path on screen does not authorize adopting or updating a deployment. | H1 to H4 owner; hosted TCP/SSH route; operator target for a live check; separate adoption decision before writes to existing external projects | Not started. Preparation only; no new H1 build or live check |

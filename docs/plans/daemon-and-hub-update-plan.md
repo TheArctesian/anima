@@ -334,3 +334,11 @@ U1 and U3 need no release. U2 and each later task need a release for their targe
 - A release for each target (task R7), which only the operator can do. No Linux release exists. Tasks U2 and U6 to U9 need one.
 - The security reviewer for ROL-010, ROL-015 and ROL-030 (a `security` task, U11).
 - R-139 gives the ruling for the change to K8 and to MET-002. The ruling number for the work route of OD-W10 stays open in [jobs.md](../proposals/jobs.md); this plan does not need it.
+
+## Council follow-up: mixed-version acknowledgement (2026-11-18)
+
+R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.
+
+| Task | Work and acceptance | Depends on | State |
+| --- | --- | --- | --- |
+| U-C1 | Give the U6 owner the regression cases for metrics receipt with an optional update instruction: valid instruction, invalid optional instruction and no instruction. Separate a stored metrics batch from update negotiation and execution; specify the observable sender and target outcomes. Do not turn a stored timestamp into proof of an update handoff. This is evidence for U6 and the U9 matrix, not a second update implementation. | U6 owner; approved K8 contract; an update-capable sender and target fixture | Not started. Preparation only; test implementation waits for assignment and the integrated U6 interface |

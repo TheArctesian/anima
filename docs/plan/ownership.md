@@ -54,3 +54,5 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Rulings and the state of each package | [rulings.md](../rulings.md), [handoff.md](../plans/phase-3/handoff.md) | R, CR |
 
 The proposals are drafts (Section 9 lists them). A proposal becomes a plan when the operator approves it with a ruling. Then its work gets a task table in the plan, or a work item in [work-items/](../work-items/README.md), and a row in Section 4 (PLN-012).
+
+The preparation of human-check identity and interrupted-task evidence is in [planning-evidence-plan.md](../plans/planning-evidence-plan.md). It changes no rule in Section 10.

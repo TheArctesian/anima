@@ -1365,3 +1365,12 @@ Anima is a personal application for one operator. Register each developer applic
 | Hosted vision model | Pay for use | Only if OD-E4 is yes |
 | SimpleFIN Bridge | About 15 USD each year | For the US accounts (OD-E3) |
 | OpenRouter and model providers | Pay for use | For the model gateway (Section 4.15). A local model has no cost. |
+
+## Council follow-up: a useful agent action (2026-11-18)
+
+R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.
+
+| Task | Work and acceptance | Depends on | State |
+| --- | --- | --- | --- |
+| AIS-C1 | Prepare a read-only machine-selection example with the existing capability query and its command/MCP surface. Use fixed reports with capable, stale and missing inventory. Report capability at the probe time; do not infer current reachability, credentials or successful execution. Compare one task with the user's current workflow; recruitment is separate. | CAP-030; existing tool inventory; no new scheduler or model gateway | Not started. Offline preparation only |
+| AIS-C2 | Prepare explicit, content-free evidence cases for an agent that needs input. Separate host presence, quiet output, a lost connection and an actual request. Each synthetic case gives pane identity, UTC times, prior state, sequence and the observation that ends the wait. Mark synthetic rules as synthetic. Give missing vendor evidence to the pane owner before proposing an adapter. | Pane owner and its source contract; approval of pane work before adoption | Not started. Preparation only; production protocol and adapter are blocked |
