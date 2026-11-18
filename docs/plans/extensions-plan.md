@@ -33,7 +33,7 @@ Read this section first. It says where the state is and what is next. It holds n
 | Item | What is next | Blocked by |
 | --- | --- | --- |
 | E0-1, E0-2 | Nothing. Compare each with the text of its work item, then set its state in the index. | — |
-| E0-3 | The operator: T0 of its table (OD-E2, OD-E21, OD-E22). No task can be built now. Its tier is 3b. | Row 4.8; OD-E2, OD-E21, OD-E22 |
+| E0-3 | An agent: T1, then T2, of its table (the shared redaction crate, R-166). T3 and T4 (the collector) are later: its tier is 3b. | Row 4.8 for T3 and T4 |
 | E0-4 | An agent: T9 (compare the hub and the tests with each rule of time and references, then set its state). Then T8, the live check, which the operator does. T7 is later work. | OD-E16 and OD-E17 for the parts that they name |
 | E0-5 | An agent: T1 of its table. T0 is decided (R-145). | — |
 | E0-6 | An agent: T1 of its table, after E0-5. T0 is decided (R-146, R-147). | — |
@@ -162,12 +162,12 @@ The hub is not on the public internet (SEC-008). This has two results:
 
 Many sources exist only on an operator computer: AI session files, an Obsidian vault, iMessage, photos. The hub cannot read them.
 
-- **COL-001.** The collector must be a separate Rust binary (`anima-collector`). It must start at login with launchd on macOS and systemd on Linux. It must run when the client is closed.
+- **COL-001.** The collector must be a part of `anima-daemon`. It must not be a separate program (R-166). Thus a computer has one program to install, and the collector runs when the client is closed. The additions to the daemon contract (K8) and the ingest protocol (K-E2) need a contract review before the daemon reads the text of a file.
 - **COL-002.** The collector must send records to the hub through the VPN only.
 - **COL-003.** Each collector source must use its own ingest token. An ingest token can only add records for one source account. It cannot read data.
 - **COL-004.** The collector must keep a read position for each file, so that it sends only new data.
 - **COL-005.** The collector must redact secrets before it sends text (Section 2.5).
-- **COL-006.** The operator must select each local folder that the collector reads. The collector must not follow symbolic links out of a selected folder.
+- **COL-006.** The operator must turn on each collector source. Each source has one root folder and a folder rule with one of three modes: all folders of the source, all folders but a list that the operator excludes, or only a list that the operator includes. The default mode is all folders of the source (R-166). "All folders" means the folders below the root of that source. It never means the computer. The collector must not read outside the root of the source, and it must not follow a symbolic link out of the folders that the rule permits.
 - **COL-007.** If the hub is not available, the collector must keep the records in a local queue and send them later. The queue must have a size limit.
 - **COL-008.** The parsers of the collector must be in a library crate with no I/O, so that tests can use fixture files.
 
@@ -1153,15 +1153,15 @@ These rows give the order of the work of each item. The work item holds the scop
 
 #### Tasks of E0-3, collector and redaction (PLN-006)
 
-The work item [E0-3](../work-items/engine/E0-3.md) governs: no collection is built without a feature that uses it, and no new redaction package is necessary without a user of it. E0-3 is tier 3b (row 4.8), so no row of this table can be built until the operator decides T0. A session of 2026-11-18 wrote code for T1 to T3 with no task row. That code is not on `main`. It is the commit `041d4920` on the branch `handoff/2026-11-18-collector-redaction`, on an old base (`cef2e917`), with the old name `anima-agent` (R-126). Its tests were run again at that commit on 2026-11-18: 8 tests of `collector` and 8 tests of `redaction` pass. The hub files that T1 moves did not change between that base and `main` of 2026-11-18.
+The work item [E0-3](../work-items/engine/E0-3.md) governs: no collection is built without a feature that uses it, and no new redaction package is necessary without a user of it. E0-3 is tier 3b (row 4.8). The operator decided T0 on 2026-11-18 (R-166): T1 and T2 are built now, and T3 and T4 stay later. A session of 2026-11-18 wrote code for T1 to T3 with no task row. That code is not on `main`. It is the commit `041d4920` on the branch `handoff/2026-11-18-collector-redaction`, on an old base (`cef2e917`), with the old name `anima-agent` (R-126). Its tests were run again at that commit on 2026-11-18: 8 tests of `collector` and 8 tests of `redaction` pass. The hub files that T1 moves did not change between that base and `main` of 2026-11-18.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| T0 | The operator decides: the form of the collector (OD-E2, with OD-C2 of [compute-plan.md](compute-plan.md)), if the shared redaction crate is built now (OD-E21), and the folder rule of COL-006 (OD-E22). Then change COL-001, COL-006 and K-E2 to agree with the decisions. | Not started | |
-| T1 | The crate `crates/redaction`: move the text redaction of the hub (`crates/hub/src/fleet/events/redaction/names.rs` and `text.rs`) into it with no change of behaviour; the event redaction of the hub imports it (RED-001, LOG-007). | Not started. Waits for OD-E21. | Saved, not on `main`: `041d4920` |
-| T2 | Redaction: the provider key shapes of RED-002 in each text, the redaction of a text of many lines with private key blocks, and the fixture of secret shapes (RED-002 to RED-004). This changes what the event log of the hub redacts. | Not started. Waits for OD-E21. | Saved, not on `main`: `041d4920` |
-| T3 | The crate `crates/collector` with no I/O: the folder rule and the read position of a file (COL-004, COL-006, COL-008). | Not started. Waits for OD-E2 and OD-E22. | Saved, not on `main`: `041d4920` |
-| T4 | The contract review of the additions to K8 (`contracts/daemon-push.md`) and of K-E2, before a program reads the text of a file. Then the reader, the queue and the ingestion (COL-002, COL-003, COL-005, COL-007), for the first feature that names its source. Write the rows of this work when T0 is decided. | Not started. Waits for T0. | |
+| T0 | The operator decides: the form of the collector (OD-E2, with OD-C2 of [compute-plan.md](compute-plan.md)), if the shared redaction crate is built now (OD-E21), and the folder rule of COL-006 (OD-E22). Then change COL-001, COL-006 and K-E2 to agree with the decisions. | Done (R-166, 2026-11-18): the collector is a part of `anima-daemon`; the redaction crate is built now (T1, T2); the folder rule has three modes below the root of a source. COL-001 and COL-006 are changed. K-E2 has no contract file yet (`contracts/extensions/collector.md` does not exist), so no contract is changed: T4 writes it for the daemon. OD-C2 stays open in the compute plan, and its recommendation does not agree with R-166. | |
+| T1 | The crate `crates/redaction`: move the text redaction of the hub (`crates/hub/src/fleet/events/redaction/names.rs` and `text.rs`) into it with no change of behaviour; the event redaction of the hub imports it (RED-001, LOG-007). | Not started. R-166 permits the build. | Saved, not on `main`: `041d4920` |
+| T2 | Redaction: the provider key shapes of RED-002 in each text, the redaction of a text of many lines with private key blocks, and the fixture of secret shapes (RED-002 to RED-004). This changes what the event log of the hub redacts. | Not started. R-166 permits the build. After T1. | Saved, not on `main`: `041d4920` |
+| T3 | The crate `crates/collector` with no I/O: the folder rule and the read position of a file (COL-004, COL-006, COL-008). | Not started. Later (R-166, tier 3b): it waits for the first feature that names its source. The saved code has the old name `anima-agent` and its rule does not yet take the root of the source as the limit of each list. | Saved, not on `main`: `041d4920` |
+| T4 | The contract review of the additions to K8 (`contracts/daemon-push.md`) and of K-E2, before a program reads the text of a file. Then the reader, the queue and the ingestion (COL-002, COL-003, COL-005, COL-007), for the first feature that names its source. Write the rows of this work when that feature is named. | Not started. Later (R-166, tier 3b). | |
 
 ### 5.2 Extension work packages
 
@@ -1242,7 +1242,7 @@ crates/
 │   └── work/             XP: projects/, writing/, assistant_sessions/
 ├── providers/            Pure provider normalisers, one module for each source (XP-owned)
 ├── redaction/            The redaction function (Section 2.5, E0)
-├── collector/            anima-collector binary (E0) and its parsers (XP-owned modules)
+├── collector/            The collector logic with no I/O (E0) and its parsers (XP-owned modules); `anima-daemon` runs it (COL-001)
 └── anima-cli/            The `anima run` and `anima secrets` commands (XP-04); the `anima gateway` commands (XP-15)
 ```
 
@@ -1255,7 +1255,7 @@ crates/
 | Number | Decision | Recommendation |
 | --- | --- | --- |
 | OD-E1 | Hub location for Class B data. | Decided: Class B records are on the hosted hub, sealed with one data key for each extension, different from the credential key (VLT-003). No home hub. (operator, 2026-11-18, R-146) |
-| OD-E2 | Collector form: a separate program (`anima-collector`, COL-001), or a part of `anima-daemon`? | Not decided. The work item [E0-3](../work-items/engine/E0-3.md) says that a separate program is not mandatory and that an addition to the daemon is considered first. A session note of 2026-11-18 (commit `041d4920`, not on `main`) says that the operator decided on 2026-11-16 that the collector is a part of the daemon; no ruling records this, so it is not first-hand. Recommendation: a part of `anima-daemon`, which already reads the session files for the counts (R-135). Thus a computer has one program to install. The additions to K8 and K-E2 need a contract review before the daemon reads the text of a file. OD-C2 of [compute-plan.md](compute-plan.md) recommends two programs and must agree. This decision blocks E0-3 T3 and T4. |
+| OD-E2 | Collector form: a separate program (`anima-collector`), or a part of `anima-daemon`? | Decided: a part of `anima-daemon`, not a separate program (COL-001). The daemon already reads the session files for the counts (R-135). The additions to K8 and K-E2 need a contract review before the daemon reads the text of a file. OD-C2 of [compute-plan.md](compute-plan.md) recommends two programs and is not changed by this decision. (operator, 2026-11-18, R-166) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org before payment. HSBC HK and Revolut use statement uploads. |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. |
@@ -1273,8 +1273,8 @@ crates/
 | OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. |
 | OD-E18 | PH-E-000 says that no extension work starts before the device manager build is finished. Is PH-E-000 released, changed or still in force? | Decided: released for the engine and Projects; in force for the other extensions until the Phase 3 acceptance run (WP-53). (operator, 2026-11-18, R-144) |
 | OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of photon.codes, of the agent of Nous Research and of OpenClaw (operator direction, 2026-11-18, R-148). Which channels, in which order, and which code is copied under which licence? | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first, then decide the channels one at a time. The Bots proposal ([bots.md](../proposals/bots.md)) names related work. |
-| OD-E21 | Is the shared redaction crate built now, before a collector or an upload uses it (E0-3 T1 and T2)? The work item E0-3 says that no new redaction package is necessary without a user of it, and E0-3 is tier 3b. The number OD-E20 is in use on the branch `engine/e0-5-places`. | Not decided. Recommendation: yes for T1 and T2. The code is written and its tests pass (commit `041d4920`). The event log of the hub uses it at once: an API key of a provider in an event text is then redacted (LOG-007, RED-002). The collector (T3, T4) stays later. |
-| OD-E22 | The folder rule of COL-006. Now: the operator selects each folder that the collector reads. The session note of 2026-11-18 (commit `041d4920`) gives a different rule, as a decision of the operator of 2026-11-16 that no ruling records: each source has one of three modes (all folders of the source, all but a list, only a list), and the default is all folders of the source. Which rule applies? | Not decided. Recommendation: the three modes, where "all folders" means the folders below the one root of the source and never the computer. The operator still selects each source. This agrees with the exclusions of AIS-008. This decision blocks E0-3 T3. |
+| OD-E21 | Is the shared redaction crate built now, before a collector or an upload uses it (E0-3 T1 and T2)? | Decided: yes, the redaction part only (T1 and T2). The event log of the hub uses it at once (LOG-007, RED-002). The collector (T3, T4) stays later. (operator, 2026-11-18, R-166) |
+| OD-E22 | The folder rule of COL-006: the operator selects each folder, or each source has one of three modes? | Decided: three modes for each source (all folders of the source, all but a list, only a list), and the default is all folders of the source. "All" means the folders below the one root of that source and never the computer. The operator still turns on each source. COL-006 has this text. (operator, 2026-11-18, R-166) |
 
 ## 8. Ideas taken from Auracle and HQ
 
@@ -1319,7 +1319,7 @@ Anima is a personal application for one operator. Register each developer applic
 | Protomaps PMTiles file | Map | Download a regional or planet build. No account. |
 | Photon geocoder | Map | Self-hosted with a country or region extract. No account. |
 | Garmin bridge | Health | Section 4.9.1 |
-| `anima-collector` | AI sessions, Writing, People | On each operator computer |
+| The collector in `anima-daemon` | AI sessions, Writing, People | On each operator computer (COL-001) |
 
 ### 9.2 Developer applications to register
 
