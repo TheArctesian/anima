@@ -5,6 +5,7 @@
 use std::{
     fs::Permissions,
     os::unix::fs::PermissionsExt as _,
+    path::Path,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
@@ -18,12 +19,19 @@ use uuid::Uuid;
 use crate::start::url_for;
 
 /// How long the hub may take to start and report its check.
-const DEADLINE: Duration = Duration::from_secs(30);
+pub const DEADLINE: Duration = Duration::from_secs(30);
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const LINK_SUBNET: &str = "fd41:4e49:4d41::/48";
 
 /// Kills the hub when the test ends, also when it fails.
-struct Running(Child);
+pub struct Running(Child);
+
+impl Running {
+    /// Whether the hub still runs.
+    pub fn runs(&mut self) -> bool {
+        self.0.try_wait().unwrap().is_none()
+    }
+}
 
 impl Drop for Running {
     fn drop(&mut self) {
@@ -33,12 +41,12 @@ impl Drop for Running {
 }
 
 /// The files of one hub and its database role, which lives as long as the test database.
-struct Home {
+pub struct Home {
     folder: tempfile::TempDir,
 }
 
 impl Home {
-    async fn new(pool: &PgPool) -> Self {
+    pub async fn new(pool: &PgPool) -> Self {
         let login = format!("anima_test_{}_hub", Uuid::now_v7().simple());
         sqlx::query(&format!("create role {login} login in role anima_runtime"))
             .execute(pool)
@@ -64,6 +72,17 @@ impl Home {
 
     /// Starts `anima-hub` on a free loopback port, in the hosted mode or not.
     fn start(&self, hosted: bool) -> Running {
+        let control = self.folder.path().join("control.sock");
+        self.start_beside(hosted.then_some(&control))
+    }
+
+    /// Starts `anima-hub` in the hosted mode, beside a link with this control socket.
+    pub fn start_hosted_beside(&self, control: &Path) -> Running {
+        self.start_beside(Some(control))
+    }
+
+    /// Starts `anima-hub`: hosted when it has the control socket of a link.
+    fn start_beside(&self, control: Option<&Path>) -> Running {
         let file = |name: &str| self.folder.path().join(name);
         let mut hub = Command::new(env!("CARGO_BIN_EXE_anima-hub"));
         hub.env_clear()
@@ -73,9 +92,9 @@ impl Home {
             .env("ANIMA_LISTEN", "127.0.0.1:0")
             .stdout(Stdio::null())
             .stderr(Stdio::inherit());
-        if hosted {
+        if let Some(control) = control {
             hub.env("ANIMA_LINK_SOCKET", file("link.sock"))
-                .env("ANIMA_LINK_CONTROL", file("control.sock"))
+                .env("ANIMA_LINK_CONTROL", control)
                 .env("ANIMA_HOSTED_CLOUD_KEY_FILE", file("cloud_key"));
         }
         Running(hub.spawn().unwrap())

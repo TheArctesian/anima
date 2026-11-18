@@ -48,6 +48,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
 | HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
 | HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
+| HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -573,7 +574,7 @@ Built: a hosted hub adds itself to its devices at each start, when no device has
 a different device has that name), the kind `hub`, the operating system Linux and the site `Link`. It has no
 SSH, RDP or VNC. It has one PUSH check, `Hub running`. The hub reports that check as Up at the start, and then
 two times in each interval of the check. The parts are `crates/hub/src/fleet/devices/hub_device.rs` (the
-device), `crates/hub/src/fleet/checks/push/alive.rs` (the check and its report) and
+device), `crates/hub/src/fleet/checks/push/own.rs` (the check and its report) and
 `crates/hub/src/upkeep/hub_device.rs` (the start and the timer). A hub that is not hosted adds nothing.
 
 The tests start the hub program in the hosted mode on a test database. No test uses a hub of the pool that was
@@ -598,6 +599,51 @@ server but otherwise it looks good"): the row `Hub` was Up, 100.00 %, with the h
 metrics". Two differences. The row shows the mark of Linux with no distribution: the hub reads a distribution
 over SSH only, and it has no SSH to itself (the image is Debian 13). The row shows the button "+ VNC", which
 adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
+
+### HT-029: the computer is Up while it is connected to the link (HM-T11)
+
+Built: a hosted hub keeps the check `Connected` for each device whose host is the link address of a computer
+on its link ([hosted-mode.md](proposals/hosted-mode.md) HMD-047, R-143). The link program of the computer
+(`anima-link device`, `link/devicelink/presence.go`) keeps one stream open to port 446 of the hub link and
+writes the line `here` on it each 15 seconds. The hub link (`link/presence/presence.go`, `link/hublink/hublink.go`) records the time of
+the last line, and `devices.list` gives it as `seen`. Each 15 seconds the hub
+(`crates/hub/src/upkeep/link_presence.rs`) reads that list. For a computer that was seen in the last
+45 seconds it adds the PUSH check `Connected` to the device, if the device does not have it, and reports the
+check as Up. For a computer that was seen before and is not seen any more it reports the check as Down one
+time, with the message "Not connected"; after that the check gets no report, and the retries of the check
+apply. The check opens no port of the computer.
+
+The application starts `anima-link device` and stops it when the application stops
+(`apps/desktop/src-tauri/src/link/device.rs`). Thus the computer is Down while the application is closed.
+
+After a start, and after a sleep, the hub does not count the time in which it did not run: each check
+`Connected` waits one whole interval again, and no computer is reported Down in the first 45 seconds.
+
+The tests use a hub link and a device link in one process, and the hub program beside a fake control socket.
+No test uses a hub of the pool that was made from a new hub image, the real application with the new link
+program, or a hub that sleeps and wakes. No test looks at the row in the application. A hub or an application
+with the old link program is not tested on a real link: the tests show only that the device link stays in
+operation when the hub link refuses port 446.
+
+Do these steps after the hub of the account was made again from the new hub image, with an application that
+was built from a checkout that has this change (`link/build.sh` makes the link program).
+
+1. Start the built app as in step 1 of HT-022, and sign in if the app asks. Wait 1 minute. Expected: the row
+   of this Mac is Up. It does not show "No checks yet".
+2. Open the device of this Mac. Expected: it has one check, `Connected`, and the check is Up.
+3. Wait 5 minutes with the app open. Expected: the device and the check are Up, and the history of the check
+   shows no Down.
+4. Quit the app. Wait 3 minutes. Look at the device list of the hub from a different computer or a phone, or
+   run `anima devices list` against the hub. Expected: the row of this Mac is Down. The history of the check
+   shows "Not connected". If no second client is available, do step 5 and look at the history of the check
+   there.
+5. Start the app again. Expected: the row of this Mac is Up again in 1 minute.
+6. Only for a free hub that sleeps: quit each client of the account, wait until the cloud says that the hub
+   sleeps, wait 10 minutes more, and start the app. Expected: the hub wakes and the row of this Mac is Up. The
+   history of the check `Connected` shows no Down for the time in which the hub slept. The history of the
+   check `Hub running` shows none for that time.
+
+Result: Open.
 
 ### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
 

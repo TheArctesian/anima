@@ -186,6 +186,25 @@ pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Che
     row.map(Check::try_from).transpose()
 }
 
+/// Moves the due time of each PUSH check with this name that is not paused to one whole
+/// interval after `now`, when it is earlier. A check with no due time keeps none.
+pub(super) async fn postpone_push_named(
+    db: &PgPool,
+    name: &str,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE checks.checks SET next_due_at = $2 + make_interval(secs => interval_seconds) \
+         WHERE type = 'push' AND name = $1 AND NOT paused \
+           AND next_due_at < $2 + make_interval(secs => interval_seconds)",
+    )
+    .bind(name)
+    .bind(now)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
 /// The device's oldest PUSH check with this name, if any.
 pub(super) async fn push_check_named(
     conn: &mut sqlx::PgConnection,

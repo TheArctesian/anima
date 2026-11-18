@@ -1,5 +1,6 @@
 // Package devicelink is the device side of the link: a loopback port that
-// reaches the hub, and a keepalive that holds the link ready.
+// reaches the hub, a keepalive that holds the link ready, and a stream that
+// tells the hub that the device is connected.
 package devicelink
 
 import (
@@ -83,6 +84,10 @@ type Link struct {
 	device *tunnel.Device // replaced when the key is renewed or the hub moves
 	saved  identity.Device
 	path   tunnel.Path
+	// reverse is the open stream to the reverse port, if there is one.
+	reverse net.Conn
+	// presentNow asks for a new stream to the reverse port with no wait.
+	presentNow chan struct{}
 }
 
 // tunnel is the device side of the tunnel for the device's current key.
@@ -113,8 +118,9 @@ func (l *Link) replaceTunnel(next *tunnel.Device, renewed identity.Device) (old 
 	return old
 }
 
-// Start opens the local port and starts the keepalive. It does not wait for
-// the hub: a hub that is off now is reached when it comes back.
+// Start opens the local port and starts the keepalive and the stream to the
+// reverse port. It does not wait for the hub: a hub that is off now is
+// reached when it comes back.
 func Start(cfg Config) (*Link, error) {
 	local, err := netip.ParseAddrPort(cfg.Listen)
 	if err != nil || !local.Addr().IsLoopback() {
@@ -135,7 +141,7 @@ func Start(cfg Config) (*Link, error) {
 	ctx, stop := context.WithCancel(context.Background())
 	link := &Link{
 		device: device, saved: cfg.Identity, listener: listener, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
-		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf,
+		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
 	}
 	if link.now == nil {
 		link.now = time.Now
@@ -157,8 +163,9 @@ func Start(cfg Config) (*Link, error) {
 	if every <= 0 {
 		every = DefaultKeepalive
 	}
-	link.done.Add(2)
+	link.done.Add(3)
 	go link.keepAlive(ctx, every)
+	go link.stayPresent(ctx, every)
 	go link.accept(ctx)
 	return link, nil
 }
@@ -208,6 +215,7 @@ func (l *Link) beat(ctx context.Context) {
 		cancel()
 		if registered {
 			path, _ = l.ping(ctx)
+			l.presentAgain()
 		}
 	}
 	l.mu.Lock()

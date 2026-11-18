@@ -92,6 +92,11 @@ anima-link ctl -state <DEVICE_STATE_DIR> status
 ```
 
 `devices.list` on the hub shows the path of each device, and the relay's name when it is relayed.
+It also shows `seen`: the time of the last sign of the device (HMD-047). The device link keeps one stream
+open to port 446 of the hub link (the reverse port) and writes the line `here` on it each 15 seconds. A device
+that gave no sign since the hub link started has no `seen`. A device link that is older than the reverse port
+gives no sign, and a hub link that is older refuses the stream: the device link then tries again each minute
+and its local port is not affected.
 
 What the device link does by itself:
 

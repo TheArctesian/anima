@@ -1,6 +1,8 @@
 //! The daily retention run reads the operator's periods once and gives each domain its own
 //! (HUB-005, D-25), also a period the operator set through `setRetention`.
 
+mod link_presence;
+
 use std::sync::Arc;
 
 use anima_hub::{

@@ -69,7 +69,7 @@ async fn ensure(db: &PgPool, bus: &Bus, clock: &dyn Clock) -> Result<CheckId, &'
             devices::Error::Database(_) => "database",
             _ => "devices",
         })?;
-    let check = checks::ensure_alive_check(&mut tx, device.id)
+    let check = checks::own::ensure(&mut tx, device.id, checks::OwnCheck::HubRunning)
         .await
         .map_err(|error| error.fault())?;
     tx.commit().await.map_err(|_| "database")?;
@@ -83,7 +83,8 @@ impl Alive {
     /// Reports the check as Up now and returns the wait before the next report.
     async fn report(&self) -> Duration {
         let now = self.clock.now();
-        let reported = checks::beat_alive(&self.db, &self.bus, self.check, now).await;
+        let up = checks::OwnReport::Up;
+        let reported = checks::own::report((&self.db, &self.bus), self.check, up, now).await;
         let interval = reported.unwrap_or_else(|error| {
             job_failed(JOB, error.fault());
             None

@@ -193,7 +193,7 @@ const UNKNOWN: &str = "No device on the link has this key.";
 fn control_of(ctx: &Context<'_>) -> Result<Control> {
     let config = schema_dependency::<Arc<Config>>(ctx)?;
     (config.link_control.clone())
-        .map(|path| Control::new(path, rustix::process::geteuid().as_raw()))
+        .map(Control::of_hub)
         .ok_or_else(|| to_graphql(&Error::Off, None))
 }
 

@@ -4,9 +4,10 @@
 //! the route answers 404 with an empty body for every token that is not a live PUSH check's.
 //! Neither the path nor the token reaches a log or an error message (LOG-007).
 //!
-//! The hub reports its own check through the same path, with no request ([`alive`], HMD-045).
+//! The hub reports its own checks through the same path, with no request ([`own`], HMD-045,
+//! HMD-047).
 
-mod alive;
+pub mod own;
 
 use std::{sync::Arc, time::Duration};
 
@@ -56,7 +57,7 @@ struct PushState {
     answer_time: Duration,
 }
 
-pub use alive::{beat_alive, ensure_alive_check};
+pub use own::{OwnCheck, OwnReport};
 
 /// `GET|POST /push/{token}`, answering within ten seconds. The caller mounts it behind the
 /// permitted-networks layer (NET-002) and inside `crate::logged`, which logs the path as

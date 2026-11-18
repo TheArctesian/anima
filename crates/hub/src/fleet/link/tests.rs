@@ -70,6 +70,24 @@ fn lnk_004_a_device_line_of_the_link_is_read_with_each_field() {
 }
 
 #[test]
+fn hmd_047_a_device_line_gives_when_the_link_last_saw_the_device_or_nothing() {
+    let read = |device: String| {
+        let line = format!(r#"{{"ok":true,"result":[{device}]}}"#);
+        let devices: Vec<ListedDevice> = parse_reply(line.as_bytes()).unwrap();
+        devices[0].seen.map(|seen| seen.to_rfc3339())
+    };
+    // An older link, and a device that the link never saw.
+    assert_eq!(read(DEVICE.to_owned()), None);
+    let seen = DEVICE.replace(
+        r#""streams":2"#,
+        r#""streams":2,"seen":"2030-05-06T07:08:09.5Z""#,
+    );
+    assert_eq!(read(seen).as_deref(), Some("2030-05-06T07:08:09.500+00:00"));
+    let never = DEVICE.replace(r#""streams":2"#, r#""streams":2,"seen":null"#);
+    assert_eq!(read(never), None);
+}
+
+#[test]
 fn frn_009_a_refusal_is_typed_by_its_code_and_keeps_no_message() {
     for (code, refusal) in [
         ("device_unknown", Refusal::DeviceUnknown),
