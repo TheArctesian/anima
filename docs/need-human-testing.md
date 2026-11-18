@@ -45,6 +45,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
+| HT-023 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -508,7 +509,27 @@ form of the WorkOS requests) is decided by step 2.
 
 Result: Open.
 
-## Not built yet
+### HT-023: a hub restored on a second server from its backup (FND-006, task F1)
+
+Built: the procedure [restore-and-move.md](procedures/restore-and-move.md). An agent did its database
+steps (3 and 6 to 10) on a new, empty setup in Docker on 2026-11-17; the section "Proof" of the
+procedure has the results.
+
+Not covered: a real server. No test joined the VPN, ordered the certificate, started the hub on the
+restored database or opened a session with a restored credential.
+
+1. On a second Linux server, do steps 1 to 5 of the procedure. Expected: each `bin/preflight` command
+   prints no refusal.
+2. Do steps 6 to 10 with the newest dump of the hub. Expected: "Restored ... into anima.", `migrate`
+   exits with code 0, and "Restore check passed".
+3. Do steps 11 and 12. Expected: `docker compose ps` shows `hub` as running, and the client connects
+   at the address of the hub.
+4. In the client, open the device list and the audit log, then open a session to a device that has a
+   stored credential. Expected: the devices and the log are those of the old hub, and the session
+   opens with no question for the credential.
+
+Result: Open.
+
 
 The Tools section of the Device page and the Tools filter of the device list
 ([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their

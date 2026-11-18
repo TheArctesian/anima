@@ -32,14 +32,9 @@ The table gives the order. The section of each row below the table gives the wor
 | --- | --- | --- | --- | --- | --- |
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
-<<<<<<< HEAD
-| 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-138). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
-=======
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | In progress. The sign-in path is built and merged; no device has signed in yet. | Operator: the first real sign-in (HT-022 in [need-human-testing.md](../need-human-testing.md)); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
-| 4.18 | 1 | Update the daemon and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
->>>>>>> origin/main
-| 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-138). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. FND-006 is approved for a hub on a server (R-140); task F1 is built. The operator starts fresh on the hosted hub (R-139). | Operator: the check HT-023 in [need-human-testing.md](../need-human-testing.md), or a ruling that it is not necessary |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
@@ -93,7 +88,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: The procedure to restore a backup on a new machine and to move the coordinator (FND-006)
 - Work items: No work item yet. The requirement is in [coordinator-standby.md](../proposals/coordinator-standby.md), which is a draft
-- State: Proposal. The operator put it here on 2026-11-12: directly after tier 0.
+- State: Proposal. The operator put it here on 2026-11-12: directly after tier 0. R-140 approves FND-006 for a hub on a server; task F1 of [coordinator-standby.md](../proposals/coordinator-standby.md) is built and waits for HT-023.
 
 ### 4.3 Decisions and approvals for the foundation
 

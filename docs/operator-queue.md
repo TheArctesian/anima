@@ -16,17 +16,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (16)
+## 1. In the order of the priorities (14)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
-| 4.17 | The hosted mode and the shared pool | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
-| 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
-| 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
+| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.2 | Restore a backup and move the coordinator | Operator: the check HT-023 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
 | 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
@@ -175,7 +173,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (69)
+## 4. Checks that only the operator can do (70)
 
 | Check | What |
 | --- | --- |
@@ -201,6 +199,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
+| HT-023 | a hub restored on a second server from its backup (FND-006, task F1) |
 | O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
 | O-2 | RDP: a changed certificate stops the session; the Warning badge |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
