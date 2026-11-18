@@ -9,9 +9,11 @@ export interface LogFilter {
   readonly severities: readonly Severity[];
   readonly sources: readonly EventSource[];
   readonly deviceId: string | null;
+  /** Words to find in the message or the device name, with case ignored (LOG-011); blank finds every event. */
+  readonly text: string;
 }
 
-export const DEFAULT_LOG_FILTER: LogFilter = { since: '24h', severities: [], sources: [], deviceId: null };
+export const DEFAULT_LOG_FILTER: LogFilter = { since: '24h', severities: [], sources: [], deviceId: null, text: '' };
 
 /** Rows kept in the panel; the oldest drop first (LOG-010). */
 export const LOG_CAP = 500;
@@ -37,6 +39,7 @@ export function eventVariables(filter: LogFilter, now: Date, after?: string | nu
     ...(filter.sources.length > 0 && { source: [...filter.sources] }),
     ...(filter.deviceId !== null && { deviceId: filter.deviceId }),
     ...(since !== null && { since: since.toISOString() }),
+    ...(filter.text.trim() !== '' && { text: filter.text.trim() }),
   };
   return {
     filter: parts,
@@ -63,8 +66,15 @@ export function matches(event: LogEvent, filter: LogFilter, now: Date): boolean 
     (filter.severities.length === 0 || filter.severities.includes(event.severity)) &&
     (filter.sources.length === 0 || filter.sources.includes(event.source)) &&
     (filter.deviceId === null || event.deviceId === filter.deviceId) &&
-    (since === null || new Date(event.at).getTime() >= since.getTime())
+    (since === null || new Date(event.at).getTime() >= since.getTime()) &&
+    holdsText(event, filter.text)
   );
+}
+
+/** Whether the message or the device name holds `text`, with case ignored, as the hub decides (LOG-011). */
+function holdsText(event: LogEvent, text: string): boolean {
+  const wanted = text.trim().toLowerCase();
+  return wanted === '' || `${event.message} ${event.deviceName ?? ''}`.toLowerCase().includes(wanted);
 }
 
 /**

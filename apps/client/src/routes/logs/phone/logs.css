@@ -3,6 +3,12 @@
  * chips of 44 px that scroll, and rows with the time in a column of 62 px, the severity and device on the first line and
  * the message in machine text on at most two lines. The selectors start at `:root` so they win over the list's scoped rules.
  */
+:root [data-logs-page] .pagehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 :root [data-logs-page] .pagehead h1 {
   margin: var(--space-1) 0 0;
   font-size: var(--text-display);
@@ -92,8 +98,14 @@
   color: var(--status-degraded-text);
 }
 
-:root [data-logs-page] .rows .warning .dot {
-  background: var(--status-degraded);
+:root [data-logs-page] .rows .dot {
+  display: none;
+}
+
+/* The icon keeps the quiet colour; only the word takes the severity's colour (mockup 6). */
+:root [data-logs-page] .rows .kind {
+  display: inline-flex;
+  color: var(--text-secondary);
 }
 
 :root [data-logs-page] .rows .source {

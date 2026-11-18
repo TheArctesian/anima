@@ -7,9 +7,9 @@ describe('the log chips of the phone layout', () => {
     for (const chip of CHIPS) expect(chipOf(chipFilter(chip.id, DEFAULT_LOG_FILTER))).toBe(chip.id);
   });
 
-  it('keeps the time window and the device when a chip is chosen', () => {
-    const filter = { ...DEFAULT_LOG_FILTER, since: '7d' as const, deviceId: 'd1', severities: ['ERROR' as const] };
-    expect(chipFilter('audit', filter)).toEqual({ since: '7d', deviceId: 'd1', severities: [], sources: ['ACCESS'] });
+  it('keeps the time window, the device and the search when a chip is chosen', () => {
+    const filter = { ...DEFAULT_LOG_FILTER, since: '7d' as const, deviceId: 'd1', severities: ['ERROR' as const], text: 'nas' };
+    expect(chipFilter('audit', filter)).toEqual({ since: '7d', deviceId: 'd1', severities: [], sources: ['ACCESS'], text: 'nas' });
   });
 
   it('shows All for a filter that no single chip sets', () => {
