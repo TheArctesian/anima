@@ -271,10 +271,10 @@ in the commit that builds the requirement.
 | HMD-018 | Not built | No usage line exists (HM-D2). R-159 (e) is a different case: a paid account that is past due. |
 | HMD-019 | Not built | Built in part, in the Stripe sandbox only: the site saves a card and opens the customer portal (private site, Stripe plan). Not built: the application does not show the plan and does not open the site for a change. Not checked: Apple Pay and Google Pay, and the live mode. R-159 (f) is the move to live; the private plans own it. |
 | HMD-020 | Built | An account has one hub: `POST /v1/hub` gives the hub that exists and makes no second one. |
-| HMD-021 | Not built | No pause and no deletion of a free hub that is not used. HM-D15 is open: the operator did not answer this question. |
+| HMD-021 | Not built | No pause and no deletion of a free hub that is not used. R-164 (HM-D15) confirms the rule; the private plan of the pool service owns the build. |
 | HMD-022 | Built | HM-T1 (a428809e, 6659c3c7); HT-022 Passed. |
 | HMD-023 | Built | HM-T1: one state for each step, and an error with a retry (`apps/client/src/routes/welcome/hosted/`). |
-| HMD-024 | Not built | The private service does not sleep a hub by use (its plan, T7: not started, with an open decision for what "use" is). HM-D15 is open. |
+| HMD-024 | Not built | The private service does not sleep a hub by use (its plan, T7: not started, with an open decision for what "use" is). R-164 (HM-D15) says what "use" is: a device connected on the link. |
 | HMD-025 | Changed | Built: `POST /v1/hub` wakes a hub that sleeps, and the application shows "Your hub is starting" (HMD-037). The start is one instruction to the private service; there is no job table. |
 | HMD-026 | Built | Measured on the first pool host on 2026-11-17: a wake in 0.2 seconds for a hub with no device (HM-D8). Not measured: a hub with devices, and many hubs on one host. |
 | HMD-027 | Not built | The private service stops a hub only on an instruction of the site, and no heartbeat exists (its plan, ACL-018, T7). |
