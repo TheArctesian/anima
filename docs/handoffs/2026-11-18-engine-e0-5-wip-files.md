@@ -14,13 +14,13 @@ Source Claude session: `4619ac0b-a4f1-476d-b0a1-6a3560c0a093` (local JSONL sessi
 
 ## Continue from here
 
-First resolve the stale Cargo.lock using the pinned toolchain and the existing manifest changes; inspect the resulting dependency diff. Format the two calls in `crates/anima-cli/tests/it/mcp/engine_records.rs`. Run targeted hub/CLI compilation, fix the actual diagnostics against K-E4/K-E5, and review upload streaming, encryption, EXIF permission, archive deletion and extraction confirmation. Run the full gates and the required live checks before integrating into `engine/e0-5-places`.
+The transfer refreshed the lockfile and formatted the two MCP-test calls. Next run targeted hub/CLI compilation, fix the actual diagnostics against K-E4/K-E5, and review upload streaming, encryption, EXIF permission, archive deletion and extraction confirmation. Run the full gates and the required live checks before integrating into `engine/e0-5-places`.
 
 ## Validation and limits
 
-The initial transfer check `cargo check --locked --offline -p anima-hub -p anima-cli` failed before compilation because Cargo.lock needs an update. `cargo fmt --check` failed in `crates/anima-cli/tests/it/mcp/engine_records.rs`. These are current observed failures; no source or test code was changed by this transfer.
+The initial `cargo check --locked --offline -p anima-hub -p anima-cli` stopped before compilation because Cargo.lock was stale. The transfer then ran `cargo update --offline --workspace`: the diff adds only the existing `http-body-util` and `tokio-util` dependency edges to anima-cli, with no package/version changes. `cargo metadata --locked --offline --no-deps --format-version 1` now passes. The two calls in `crates/anima-cli/tests/it/mcp/engine_records.rs` received wrapping and an optional trailing comma only; the rest of the non-whitespace source is identical. `cargo fmt --check` now passes. Hub/CLI compilation and full tests were not rerun after this metadata-only repair.
 
-The transfer reran `bun run quality:documents` successfully on this branch. The handoff commit changes documentation only; no application behaviour was changed or newly accepted. Full release gates, cross-platform/device tests and operator checks are not implied by preservation.
+The transfer reran `bun run quality:documents` successfully on this branch. The transfer commits change the handoff, lockfile metadata and test formatting only; no application behaviour was changed or newly accepted. Full release gates, cross-platform/device tests and operator checks are not implied by preservation.
 
 ## Resume on another account or machine
 
