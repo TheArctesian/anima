@@ -1,0 +1,14 @@
+{
+  "state": "reading",
+  "sessionDays": [
+    {
+      "source": "claude_code", "id": "6f0c2d9e-3b1a-4c55-9e7d-2a8b4c6d8e10", "day": "2026-11-08",
+      "startedAt": "2026-11-07T22:14:03Z", "endedAt": "2026-11-08T09:58:41Z",
+      "repository": "github.com/example/anima", "prompts": 6, "toolCalls": 41,
+      "models": [
+        { "model": "claude-opus-5-5", "inputTokens": 1520, "outputTokens": 18311,
+          "cacheReadTokens": 2210450, "cacheWriteTokens": 90112 }
+      ]
+    }
+  ]
+}

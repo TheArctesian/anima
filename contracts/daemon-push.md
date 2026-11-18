@@ -5,6 +5,8 @@ WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust type
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
+The `agentUsage` member of Section 4 was added by R-135 (operator, 2026-11-17; AIS-018, AIS-019, AIS-022 to
+AIS-024).
 Section 8 (the update), the `update` member of Section 4 and the two update routes were added by R-139
 (operator, 2026-11-17; ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045). They are ruled and
 not built: no hub and no daemon has them yet.
@@ -120,6 +122,20 @@ Request:
     "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
     "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "timed_out" } ],
     "buildTargets": ["aarch64-apple-darwin"]
+  },
+  "agentUsage": {
+    "state": "reading",
+    "sessionDays": [
+      {
+        "source": "claude_code", "id": "6f0c2d9e-3b1a-4c55-9e7d-2a8b4c6d8e10", "day": "2026-11-08",
+        "startedAt": "2026-11-07T22:14:03Z", "endedAt": "2026-11-08T09:58:41Z",
+        "repository": "github.com/example/anima", "prompts": 6, "toolCalls": 41,
+        "models": [
+          { "model": "claude-opus-5-5", "inputTokens": 1520, "outputTokens": 18311,
+            "cacheReadTokens": 2210450, "cacheWriteTokens": 90112 }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -186,6 +202,80 @@ Request:
   is 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, and starts with a digit; any other text is
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
+- `agentUsage`: optional (R-135; AIS-018, AIS-019). The use of the AI agent programs on the device: counts
+  only, never the text of a session, a title, the path of a folder, a login, the name of an account or a
+  usage limit (AIS-018, AIS-022). Absent means "nothing new": a daemon older than R-135 sends none and a hub
+  older than R-135 ignores it, so the change needs no `/daemon/v2/`.
+  - `state` says what the daemon can read: `reading` (it reads the session files of its user),
+    `system_unit` (it runs as the systemd system unit, which cannot see the files of a user, AIS-024) or
+    `turned_off` (the operator turned the function off on this computer, or its settings file cannot be
+    read). It is 1 to 32 bytes of `[a-z_]`; the hub ignores a `state` it does not know and keeps the one it
+    has. Only `reading` comes with session days: with any other `state`, `sessionDays` is `[]`.
+  - `sessionDays` holds 0 to 16 entries, no two with the same `source`, `id` and `day`. Each entry gives the
+    counts of one session on one UTC day, so the hub can sum exactly by day and by model:
+    - `source`: 1 to 32 bytes of `[a-z_]`. The sources the hub knows are `claude_code` and `codex`; the hub
+      drops an entry of any other source, so a newer daemon can talk to an older hub.
+    - `id`: the session ID of the program, 1 to 64 bytes of `[0-9A-Za-z_-]`. A sub-agent's use counts under
+      the session that started it: for Claude Code the session of the folder `<id>/subagents/`, for Codex
+      the root of the chain of `parent_thread_id`.
+    - `day`: the UTC day, `YYYY-MM-DD`, a real date. A count belongs to the day of the time of its line.
+    - `startedAt` and `endedAt`: the first and the last time of the whole session (all its days), K8 times
+      (Section 1), `startedAt` not after `endedAt`, and `day` from the date of `startedAt` to the date of
+      `endedAt`.
+    - `repository`: optional. The repository of the session's working folder (AIS-002, R-134): the `url` of
+      the remote `origin` in the git configuration of the folder (of the main repository for a worktree),
+      written `host/owner/name` with no scheme, user, password, token, port or `.git`. It is 1 to 200 bytes:
+      a host of `[a-z0-9.-]`, then 2 to 4 segments of 1 to 100 bytes of `[A-Za-z0-9._-]`, none `.` or `..`,
+      each after one `/`; the first segment is none of `Users`, `home`, `root`, `var`, `srv`, `opt`, `mnt`,
+      `Volumes`, `tmp`, `private` and `data`, in any letter case. The name is never a folder path of a
+      host (AU-5 security review): the daemon sends no `repository` for a local path, a `file://` URL, an
+      scp-form remote (`host:path`) whose path starts with `/`, and a URL whose path breaks this rule.
+      Absent when the folder has no such remote.
+    - `prompts`: the prompts the operator typed on that day; `toolCalls`: the tool calls of the program on
+      that day, sub-agents included.
+    - `models` holds 0 to 16 entries with unique `model` names: the tokens of that day by model. `model` is
+      1 to 64 bytes of `[0-9A-Za-z._:-]`; the daemon sends the name `other` for a model whose name breaks
+      this rule, and for the smallest models when a day has more than 16. `inputTokens` are the input tokens
+      not read from or written to the cache; `outputTokens` include reasoning; `cacheReadTokens` and
+      `cacheWriteTokens` are the input tokens read from and written to the cache.
+    - Every count (`prompts`, `toolCalls` and the four token counts) is a whole number from 0 to
+      9 007 199 254 740 991 (2^53 − 1).
+  - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
+    pass them.
+  - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files
+    `~/.claude/projects/*/<id>/subagents/**/agent-*.jsonl`, at most 3 folders down) and
+    `~/.codex/sessions/**/rollout-*.jsonl` (at most 4 folders down), and of the nearest folder at or
+    above each working folder that has a `.git`, and is below the home folder, only its `.git` link, the
+    `commondir` file of a worktree and the git `config` file (AIS-022). It never opens a credential or
+    settings file of the programs. It opens each of these files without following a symbolic link
+    (`O_NOFOLLOW`), and only a regular file. It follows the folder that a `gitdir:` line or a
+    `commondir` file names only when that folder is below the home folder, outside the guarded folders
+    below, and is the same folder when every link on its path is resolved (AU-5 security review);
+    else the session has no `repository`. On macOS it reads no git file under `~/Documents`,
+    `~/Desktop`, `~/Downloads` or `~/Library/Mobile Documents`, so the system asks the operator for no
+    access; such a session has no `repository`.
+  - Only a daemon that runs as the user of the operator reads the files: the launchd agent and the systemd
+    user unit (AIS-024). A daemon whose `HOME` is not set, or is the state folder of the system unit
+    (`/var/lib/anima-daemon`), or whose `ANIMA_DAEMON_HOME` is that folder, sends `system_unit`.
+  - The operator's settings are the file `agent-usage.json` in the daemon's folder (MET-002):
+    `{ "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"] }`,
+    each member optional, at most 64 KiB and at most 256 entries in each list. Each entry of
+    `excludedRepositories` is written as `repository` is (above; letter case ignored) and does not end
+    in `.git`. A session is not counted and not sent (AIS-008, AIS-023) when its working folder, or the
+    main folder of its repository, each as written and with its links resolved when it exists, is under
+    an excluded folder, as written or with its links resolved (by whole folder names; on macOS without
+    letter case); or when its repository is excluded (letter case ignored); or when any repository is
+    excluded and the name of its repository cannot be read (AU-5 security review). The daemon stops
+    reading a file at the first line that names an excluded folder, and sends nothing of a file before
+    a line of it has named its folder and the session is found not excluded. A settings file that
+    cannot be read or parsed, that has a member not named here, or an `excludedRepositories` entry of
+    another form, turns the function off (`turned_off`) and is logged once at start.
+  - The daemon reads the files at start and every 15 minutes; it reads each file from where it stopped
+    and skips a file whose size and modification time did not change. It sends `agentUsage` in its first batch
+    after start (with its `state`, even with no session days), and each session day whose counts changed;
+    at most 16 session days in one batch, the rest in the next batches; and the same until a batch is
+    accepted, except after `MALFORMED`: then it drops the session days of that batch until their counts
+    change. After a restart it sends every session day again, so the hub's upsert must be idempotent.
 - `update`: optional (R-139). What the daemon says about its own update, in each batch (Section 8). Absent
   means a daemon that cannot update itself (ROL-044), and a hub older than R-139 ignores it.
 
@@ -208,6 +298,14 @@ The hub:
 - with `inventory` present, replaces the device's tool inventory with it in the same transaction, the tools
   and the build targets included; an empty `tools` or `buildTargets` means the device has none now, and an
   absent `inventory` leaves it as it is (CAP-029). Deleting the device deletes its inventory;
+- with `agentUsage` present, in the same transaction (R-135; AIS-020, AIS-023): keeps its `state` as the
+  device's usage state when it knows the state; and for each session day of a known source, upserts the
+  session keyed by device, `source` and `id` (one session, never a copy: a later collector of the same
+  session uses the same key, AIS-023), sets its start, end and repository to those of the entry (no
+  `repository` clears it), and replaces the prompts, tool calls and model rows stored for that session
+  and `day` with those of the entry. Sending the same entry again changes nothing. A session's model is
+  the model of its rows with the most output tokens, the first by name on a tie. Absent `agentUsage`
+  changes nothing. Deleting the device deletes its sessions and its usage state;
 - keeps the `daemonVersion` of the newest accepted batch, or no version when that batch had none, and
   forgets it when it gives the device a new token (R-122). `Device.daemonVersion` serves it;
 - with `update` present, keeps it as the update state of the device (Section 8), and forgets it when it gives

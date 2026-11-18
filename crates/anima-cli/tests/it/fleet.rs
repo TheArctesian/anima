@@ -1,5 +1,6 @@
 //! The fleet nouns: devices and how they are reached.
 
+pub mod agents;
 pub mod capabilities;
 mod checks;
 mod daemons;

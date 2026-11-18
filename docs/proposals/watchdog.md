@@ -49,7 +49,7 @@ uses "Watchdog" only as the name of the function.
 - OD-W10 (operator, 2026-11-12) permits work on a machine through one program, `anima-daemon`,
   and no second binary. It has no ruling number yet. The work route is not built (task W1).
 - R-115 lists "read-only service discovery (systemd, Docker, listeners, cron and timers)" as
-  later work. HOST-001 of [hosted-applications.md](hosted-applications.md) asks for the same list.
+  later work. HOST-001 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md) asks for the same list.
 
 ## Proposal
 
@@ -265,7 +265,7 @@ machine, and the command to add one.
 | OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a program. |
 | OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). |
 | OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. |
-| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as the open decision of [hosted-applications.md](hosted-applications.md). Docker only until that is decided. |
+| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as [hosted-applications-plan.md](../plans/hosted-applications-plan.md): Docker only there (R-149, HOST-010). |
 | OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. |
 
 The tier of this proposal is decision OD-W22 of the work plan.

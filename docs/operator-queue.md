@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (14)
+## 1. In the order of the priorities (13)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -26,16 +26,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
-| 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
-| 4.9 | Hosted applications | Operator: approval of the proposal |
+| 4.9 | Hosted applications | Agent: task H1 in hosted-applications-plan.md. Operator: nothing now |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
-| 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
+| 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (101)
+## 2. Open decisions (117)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -48,7 +47,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), does that VPS hub stay as… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
-| OD-E1 | Hub location for Class B data. The hub is on the VPS (OD-9). | Seal Class B with separate data keys (VLT-003). Before XP-05, XP-06 and XP-08, decide if a home hub must keep Class B data and the VPS hub only the device manag… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -59,7 +57,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E11 | Path for a request to a local upstream (MGW-010). A program such as Claude Code has one base address, so it cannot select the path itself. | The `anima` program on each computer listens on the loopback address. It sends a request for a local upstream directly to the device on the VPN, sends all other… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. | [plans/extensions-plan.md](plans/extensions-plan.md) |
-| OD-E18 | PH-E-000 says that no extension work starts before the device manager build is finished. E0-1, E0-2, E0-4, E0-8 and Projects are built and are on `main`, and Ph… | Not decided. The operator directed each of those builds (work plan row 4.4 and row 4.6). Recommendation: record that PH-E-000 is released for the engine and Pro… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of… | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
@@ -95,6 +97,19 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-BOT5 | May an operator run `agy` or Gemini CLI on a consumer Google login in a pane that he drives by hand (BOT-045)? A reply on the Google tracker of 2026-11-12 says… | Proposed, not ruled: a bot never uses that login (BOT-036). A person's own terminal pane is his own use, and Anima.ing offers no entry for it. | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT6 | Do the agents that speak ACP only through a program that their vendor did not publish (Pi with `pi-acp`, Muse with an unofficial adapter) run through the ACP ad… | Proposed, not ruled: no. They stay terminal entries (BOT-039) until the operator rules. | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT7 | Do the 14 agents with no checked terms row show as "terms not checked" in the first release (BOT-041, BOT-043), or does a person read their terms first? | Proposed, not ruled: show them only as custom entries with "terms not checked" (Tier 3); read the rows of Tier 2 before the release (BOT-043). | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT8 | May Anima.ing start the unmodified `claude` program against a local server that is not Anthropic's (BOT-052)? Anthropic does not support it and has no text that… | Proposed, not ruled: yes, as an option, with the safe values of BOT-052 and a note in the pane that Anthropic does not support it. The traffic never goes to Ant… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT9 | What is the default mode of a fallback (BOT-051): off, ask each time, or start by itself? The operator ruled full auto for the security choices (R-120). Return… | Proposed, not ruled: ask each time. A model with less skill has the same rights, so a start by itself is a choice for each project. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT10 | Does AIS-022 ("must not read ... a usage limit"), which R-135 approved, forbid that the daemon notices the limit message that the program prints in a pane (BOT-… | Proposed, not ruled: no, because it reads no quota or account. The text of AIS-022 then needs one sentence. If the operator says yes, only the manual start stay… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT11 | Which local model does the fallback use? Stephen named Qwen 3.8. The open Qwen3.8 weights are the 27B and the 2.4T. | Proposed, not ruled: Anima.ing sets no default model. It offers the variants that the fit verdict of the device allows (BOT-048), with Qwen3.8-27B first for a d… | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT12 | Does the fallback keep the standing permissions of the stopped session (BOT-006, BOT-051)? | Proposed, not ruled: no. It starts with fewer rights (no push to a shared branch, no delete), and the operator adds them. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT13 | Is the server on the same device in the first version (BOT-049), or on any device of the operator? | Proposed, not ruled: the same device. A server on another device waits for the spike of the path from one device to another. | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT14 | Does the fallback also cover Codex when it stops on its limit? | Proposed, not ruled: later. Claude Code first. The terms of Codex are unclear (BOT-033). | [proposals/bots.md](proposals/bots.md) |
+| OD-PNL1 | Are Agents and Projects a part of the foundation, or extensions that are on by default? OD-E13 (operator, 2026-11-13) ruled that Projects is not a part of the f… | Proposed, not ruled: extensions that are on by default (PNL-006). It keeps EXT-005 and OD-E13, and the operator can still turn them off. Only EXT-001 and EXT-00… | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL4 | Does the first-start question of EXT-008 stay, with Devices, Agents and Projects already selected, or is it removed? | Proposed, not ruled: keep it for a local and a self-hosted first run, and leave it out of the hosted first run (HMD-037). | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL5 | Is the Agents page a new extension, or the extension "AI coding sessions" with its panes and its usage? The text of sessions (AIS-001 to AIS-008) needs the vaul… | Proposed, not ruled: one default-on extension "Agents" with the panes (AIS-009 to AIS-017), the usage (AIS-018 to AIS-024) and the bots (BOT). The session text… | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL6 | Does the phone layout show the same three panels? It has four destinations: Devices, Sessions, Logs and Settings (MOB-010). | Proposed, not ruled: not in the first version. Show Agents and Projects on the phone later. | [proposals/default-panels.md](proposals/default-panels.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D9 | Which sign-in methods does AuthKit show? | GitHub, Google and email with a code; passkeys offered after the first sign-in. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
@@ -121,7 +136,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-WDG-9 | Can an API key or an AI agent add, remove or pause a watch? | Pause and "Try again": yes, with a write key. Add and remove: no; add `addWatch` and `removeWatch` to the list of INT-003. A watch gives the right to restart a… | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-10 | macOS: watch only the jobs of the user, or also system jobs (LaunchDaemons), which need root | The jobs of the user and Docker only. The daemon on a Mac is a LaunchAgent (MET-019). | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-11 | The numbers of WDG-010, WDG-011 and WDG-014 to WDG-016 | As written. The operator can set the start time for each watch; the other numbers are fixed in the first version. | [proposals/watchdog.md](proposals/watchdog.md) |
-| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as the open decision of hosted-applications.md. Docker only until that is decided. | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-12 | Docker only, or Docker and Podman | The same answer as hosted-applications-plan.md: Docker only there (R-149, HOST-010). | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-13 | A probe to an address that is not on the machine | No (WDG-008). The hub already has checks for other addresses. | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
@@ -159,8 +174,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
+| [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Build state not checked |
-| [proposals/hosted-applications.md](proposals/hosted-applications.md) | Proposal | Draft |
 | [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |

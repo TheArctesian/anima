@@ -19,7 +19,7 @@ pub enum Target {
 pub(super) const ACCOUNT: &str = "anima-daemon";
 
 /// The system unit's state folder, which holds the token (`ANIMA_DAEMON_HOME` in the unit).
-pub(super) const SYSTEM_HOME: &str = "/var/lib/anima-daemon";
+pub(crate) const SYSTEM_HOME: &str = "/var/lib/anima-daemon";
 
 /// How long `launchctl bootstrap` waits before its one retry.
 const BOOTSTRAP_RETRY: Duration = Duration::from_secs(1);

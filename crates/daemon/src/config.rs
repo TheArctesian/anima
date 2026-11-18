@@ -1,6 +1,7 @@
 //! The daemon's own configuration file: which hub it speaks to and for which device
 //! (MET-002 lets the daemon write its own configuration).
 
+pub mod agent_usage;
 pub mod home;
 pub mod origin;
 pub mod private_file;

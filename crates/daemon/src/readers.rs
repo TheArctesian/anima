@@ -2,6 +2,7 @@
 //! the probes of the tool inventory (CAP-028). Parsing is `daemon_core::readings` and
 //! `daemon_core::inventory`; this module only fetches the bytes (MET-016).
 
+pub mod agent_sessions;
 pub mod command;
 pub mod gpu;
 mod inventory;

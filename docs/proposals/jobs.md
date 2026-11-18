@@ -31,7 +31,7 @@ artifact/result contracts". This proposal must use the same contracts, not a sec
 ## Rules for all work on machines
 
 These rules apply to jobs, to AI agent runs ([agent-runs.md](agent-runs.md)) and to hosted
-applications ([hosted-applications.md](hosted-applications.md)).
+applications ([hosted-applications-plan.md](../plans/hosted-applications-plan.md)).
 
 - **USE-001.** Models run on the machine directly. Jobs run in containers. The one exception is
   a native job on a Mac (JOB-004).

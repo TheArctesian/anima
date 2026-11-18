@@ -3,6 +3,7 @@
 //! the shape of Section 13 of the spec; K3 lists what one may use from another.
 
 pub mod access;
+pub mod agent_usage;
 pub mod builds;
 pub mod checks;
 pub mod credentials;
