@@ -56,7 +56,7 @@ fn transfer_json(transfer: TransferPolicy) -> Value {
     })
 }
 
-pub(super) fn site_added(site: &Site) -> TrailEntry {
+pub(in crate::fleet::devices) fn site_added(site: &Site) -> TrailEntry {
     TrailEntry {
         source: Source::Device,
         severity: Severity::Info,
@@ -68,7 +68,11 @@ pub(super) fn site_added(site: &Site) -> TrailEntry {
     }
 }
 
-pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool) -> TrailEntry {
+pub(in crate::fleet::devices) fn device_added(
+    device: &Device,
+    new: &NewDevice,
+    default_check: bool,
+) -> TrailEntry {
     let mut change = json!({
         "siteId": new.site.to_string(),
         "name": new.name,

@@ -1,6 +1,8 @@
 //! Starts the hub's background work: periodic jobs and the check, metrics and notification
 //! loops (R-072). Each only calls its domains (D-4, DB-004, DB-005, D-25; WP-36 D-2).
 
+pub mod hub_device;
+
 use std::{sync::Arc, time::Duration};
 
 use anima_hub::{

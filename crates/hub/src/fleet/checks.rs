@@ -54,7 +54,7 @@ pub use model::{
     Beat, Check, CheckChange, CheckDefaults, Definition, Due, FieldError, Heartbeat, HttpSetup,
     Missing, NewCheck, PushToken, Recorded, Sealer, SnmpSetup,
 };
-pub use push::push_router;
+pub use push::{beat_alive, ensure_alive_check, push_router};
 pub use scheduler::{Probing, spawn_scheduler};
 pub use uptime::UptimeWindow;
 

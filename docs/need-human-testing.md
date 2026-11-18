@@ -46,6 +46,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
 | HT-025 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
+| HT-026 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -557,6 +558,29 @@ The tests use a fake shell and a fake hub. No test reads the link devices of a r
 2. Open that device. Expected: its host is an address that starts with `fd41:4e49:4d41:`, its site is `Link`,
    and it has no check.
 3. Quit the app and start it again. Expected: the device list shows one row for this Mac, not two.
+
+Result: Open.
+
+### HT-026: the hosted hub is a device of its own device list (HM-T9)
+
+Built: a hosted hub adds itself to its devices at each start, when no device has the host `localhost`
+([hosted-mode.md](proposals/hosted-mode.md) HMD-045, R-137). The device has the name `Hub` (`Hub (hosted)` when
+a different device has that name), the kind `hub`, the operating system Linux and the site `Link`. It has no
+SSH, RDP or VNC. It has one PUSH check, `Hub running`. The hub reports that check as Up at the start, and then
+two times in each interval of the check. The parts are `crates/hub/src/fleet/devices/hub_device.rs` (the
+device), `crates/hub/src/fleet/checks/push/alive.rs` (the check and its report) and
+`crates/hub/src/upkeep/hub_device.rs` (the start and the timer). A hub that is not hosted adds nothing.
+
+The tests start the hub program in the hosted mode on a test database. No test uses a hub of the pool that was
+made from a new hub image, and no test looks at the row in the application. No test waits for the timer: the
+tests see the report of the start only.
+
+Do these steps after the pool has a new hub image and the hub of the account was made again from it.
+
+1. Start the built app as in step 1 of HT-022, and sign in if the app asks. Expected: the device list shows a
+   row `Hub`, and the row is Up. The row has no button to connect. Nothing asked for a step.
+2. Open the device `Hub`. Expected: it has one check, `Hub running`, and the check is Up.
+3. Wait 5 minutes and look at the device again. Expected: the device and the check are Up.
 
 Result: Open.
 

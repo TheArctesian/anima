@@ -175,6 +175,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
+    // A hosted hub is a device of its own list; its check is Up before the scheduler runs.
+    let alive = upkeep::hub_device::start(&config, &pool, &bus, &clock).await;
     let feed = metrics::Feed::new();
     // The sources reach only their declared API bases, through the same deny list (K-E1).
     let sources = anima_hub::source_reach(vec![projects::intake()], policy.clone())?;
@@ -193,7 +195,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vpn_feed: vpn::Feed::new(),
         sources,
     };
-    let background = upkeep::spawn(&dependencies);
+    let mut background = upkeep::spawn(&dependencies);
+    background.extend(alive.map(|alive| tokio::spawn(alive.keep_reporting())));
     // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = all_routes(dependencies, edge.clone());

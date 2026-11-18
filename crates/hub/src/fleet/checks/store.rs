@@ -186,6 +186,23 @@ pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Che
     row.map(Check::try_from).transpose()
 }
 
+/// The device's oldest PUSH check with this name, if any.
+pub(super) async fn push_check_named(
+    conn: &mut sqlx::PgConnection,
+    device: DeviceId,
+    name: &str,
+) -> Result<Option<CheckId>, Error> {
+    let id = sqlx::query_scalar(
+        "SELECT id FROM checks.checks WHERE device_id = $1 AND type = 'push' AND name = $2 \
+         ORDER BY created_at, id LIMIT 1",
+    )
+    .bind(device)
+    .bind(name)
+    .fetch_optional(conn)
+    .await?;
+    Ok(id)
+}
+
 /// For each device, the address of the ICMP, TCP or TLS check with the latest beat that has
 /// one. Only those probe the device's own host; an HTTP or DNS check can name another.
 pub(super) async fn resolved_ips(
