@@ -38,7 +38,7 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 | OD-W20 | The meaning of "must not be able to build or publish the Anima application" (PRO-028) | Decided (operator, 2026-11-16) |
 | OD-W21 | The order of the build work, and the tier of the correction of the release | Decided (operator, 2026-11-16) |
 | OD-W22 | The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open |
-| OD-W23 | The update of the daemon and the hub ([daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
+| OD-W23 | The update of the daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
 
 ### OD-W1. Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)?
 
@@ -128,6 +128,6 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 **Open.** Recommendation: approve it as a function of `anima-daemon`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. It needs the ruling number for OD-W10, because it changes MET-002.
 
-### OD-W23. The update of the daemon and the hub ([daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
+### OD-W23. The update of the daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
 
-**Decided (operator, 2026-11-16): tier 1, directly after the first release.** The operator's words: "thats fine were still pre release". Reason: the work route and the watchdog reach an installed machine only through an update (USE-008). The stages stay a recommendation: the versions show, the machines update, then the hub, after the restore procedure (FND-006) is written. OD-ROL-8 is decided: no Linux machine on ARM is in use. Open: the other OD-ROL decisions, and the operator's answer on the larger risk of the updater key (R-117, OD-ROL-2).
+**Decided (operator, 2026-11-16): tier 1, directly after the first release.** The operator's words: "thats fine were still pre release". Reason: the work route and the watchdog reach an installed machine only through an update (USE-008). The stages stay a recommendation: the versions show, the machines update, then the hub, after the restore procedure (FND-006) is written. OD-ROL-8 is decided: no Linux machine on ARM is in use. R-131 (operator, 2026-11-17) decided OD-ROL-1 to OD-ROL-14 and deferred the stage of the hub. Open: OD-ROL-15, where the key that signs a release is when the operator uses only a hosted hub.

@@ -1225,7 +1225,7 @@ GPU metrics sources (daemon, or SSH as the fallback):
 The daemon may read NVIDIA values through NVML in place of `nvidia-smi`. The values must be the same.
 
 - **MET-001.** The SSH collector must collect metrics every 30 seconds. The daemon rules are MET-014 and MET-015. (R-084)
-- **MET-002.** The SSH collector and the daemon must only read values on the device. Neither must change the device. The daemon may write only its own configuration, token and buffer files. (R-084)
+- **MET-002.** The SSH collector and the daemon must only read values on the device. Neither must change the device. The daemon may write only its own configuration, token and buffer files. One exception: a second unit of the daemon, which has no network access, may replace the program files of the daemon with a verified release and keep the previous version (ROL-015 to ROL-017). (R-084, R-131)
 - **MET-003.** The device detail view must show a chart for each metric for 1 hour, 24 hours and 7 days.
 - **MET-004.** The device card must show a metric in `--status-degraded` colour when the value is more than 85 percent.
 - **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add a daemon or WinRM. A device left at Other is first detected (DEV-025).
