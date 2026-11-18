@@ -10,7 +10,7 @@ The hub groups its domains under parent nouns so `crates/hub/src/` stays within 
 
 | Group | Modules |
 | --- | --- |
-| `crates/hub/src/fleet/` | The device manager: `access`, `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces` |
+| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces` |
 
 The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/plans/extensions-plan.md`) are added by the task that adds their first code.
 
@@ -211,6 +211,8 @@ policy, builder and daemon tokens per LOG-019) uses `Operator::hub()` and `Actor
 | `projects` (second slice, adds; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14; K-E1 Section 13) | `sources` (`Scheduling`, `ask`, `change`, `forget`, `standing`, `Keep`, `Reply`, `LiveFailure` too); `access` (`operator_only` only, and only in the files named `graphql.rs` of its sub-folders: the import gate reads `<domain>/graphql.rs` alone as the graphql module, so this edge is listed under `domains`); crates `provider-github` (already) and `source-exchange` (`Change`, its parts, `Settled`) |
 | `timeline` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3) | `events` (`before`, `EventSummary`, `Source` only) |
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
+| `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
+| `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -230,6 +232,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
 | `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`); and, from the second Projects slice (operator, 2026-11-14; ruling number to be assigned), on `codeFile`, `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow`, `setCommitStatus` (they join `API_KEY_REFUSED_ROOTS`) |
 | `timeline`, `links` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4) | `access` | the `Authenticated` guard on `timeline`, `recordLinks`, `linkRecords`, `unlinkRecords` |
+| `agent_usage` (R-135) | `access` | the `Authenticated` guard on `agentUsage` |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -517,6 +520,18 @@ pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 /// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
 pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
+```
+
+## agent_usage (R-135, operator, 2026-11-17; AIS-018 to AIS-024; AU-2)
+
+```rust
+/// Stores an accepted `agentUsage` member of a daemon batch in the batch's transaction (K8 Section 4).
+pub async fn record(conn: &mut PgConnection, device: DeviceId, usage: &daemon_core::agent_usage::AgentUsage) -> Result<(), Error>;
+/// The sums an Ask asks for, the total, and the usage state of each device the filter admits.
+/// agent_usage::graphql owns Query.agentUsage and joins each row to its Device (devices::list).
+pub async fn usage(db: &Db, ask: &Ask) -> Result<Report, Error>;
+/// The estimate of the cost of tokens of a model at the public list prices of PRICES_AS_OF; None for an unknown model (AIS-021).
+pub fn prices::estimate(model: &str, tokens: TokenSums) -> Option<f64>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

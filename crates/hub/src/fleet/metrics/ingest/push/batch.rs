@@ -1,22 +1,24 @@
 //! One accepted batch written in one transaction: the daemon's mark and version, the GPU set,
-//! the drives, the tool inventory, the series, the samples and their aggregates, and the event
-//! of a daemon that is fresh again (K8 Section 4; MET-006, MET-015, MET-018, CAP-029; R-098 a,
-//! b, e; R-122).
+//! the drives, the tool inventory, the agent usage, the series, the samples and their
+//! aggregates, and the event of a daemon that is fresh again (K8 Section 4; MET-006, MET-015,
+//! MET-018, CAP-029; R-098 a, b, e; R-122; R-135).
 //!
 //! The device row is taken first, the order a device delete and a revoke take the rows in, so
 //! none of them deadlock, and two batches of one device are written one after the other.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::{
+    agent_usage::AgentUsage,
     inventory::Inventory,
     readings::Drive,
     wire::{RefusalCode, TokenHash},
 };
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use super::samples::Rows;
 use crate::{
     fleet::{
+        agent_usage,
         devices::{self, MetricsSource},
         events::{self, ActorKind, Bus, NewEvent, Severity, Source},
         metrics::{
@@ -38,7 +40,8 @@ const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 /// the rest is room for disks, interfaces and drives that come and go within the hour.
 pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
-/// The batch's device and credential, and its GPUs, drives and inventory when it listed them.
+/// The batch's device and credential, and its GPUs, drives, inventory and agent usage when it
+/// listed them.
 pub(super) struct Push<'a> {
     pub(super) device: DeviceId,
     /// The device's name, for the event of a daemon that is fresh again.
@@ -53,6 +56,8 @@ pub(super) struct Push<'a> {
     pub(super) inventory: Option<&'a Inventory>,
     /// The version of the daemon that sent the batch; `None` from a daemon older than R-122.
     pub(super) daemon_version: Option<&'a str>,
+    /// `None`: nothing new; `Some`: its state and session days are stored (R-135, AIS-020).
+    pub(super) agent_usage: Option<&'a AgentUsage>,
 }
 
 /// What became of a batch that reached the store.
@@ -67,7 +72,8 @@ pub(super) enum Written {
 /// Writes the batch accepted at `now`, or nothing when it is refused here.
 ///
 /// # Errors
-/// `Database`, `Devices`, `Metrics` or `Events` when a read or write fails; nothing is stored.
+/// `Database`, `Devices`, `Metrics`, `AgentUsage` or `Events` when a read or write fails;
+/// nothing is stored.
 pub(super) async fn write(
     db: &PgPool,
     bus: &Bus,
@@ -93,6 +99,23 @@ pub(super) async fn write(
     if created > MAX_NEW_SERIES {
         return Ok(Written::Refused(RefusalCode::Malformed));
     }
+    write_announcements(&mut tx, &push, now).await?;
+    metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
+    let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;
+    if was_stale {
+        events::record(&mut tx, bus, now, fresh_again(push.device, push.name)).await?;
+    }
+    tx.commit().await?;
+    Ok(Written::Kept(kept))
+}
+
+/// Writes the lists the batch announced, each in place of the stored one: the GPU set, the
+/// drives, the tool inventory and the agent usage (K8 Section 4). An absent list is unchanged.
+async fn write_announcements(
+    tx: &mut PgConnection,
+    push: &Push<'_>,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
     if let Some(gpus) = push.gpus {
         // The daemon sends no boot time: its own discovery cadence (MET-006) replaces the
         // collector's boot check, which never runs for a daemon device.
@@ -101,21 +124,18 @@ pub(super) async fn write(
             boot_at: None,
             gpus,
         };
-        metrics_store::write_gpus(&mut tx, push.device, discovery).await?;
+        metrics_store::write_gpus(&mut *tx, push.device, discovery).await?;
     }
     if let Some(drives) = push.drives {
-        metrics_store::write_drives(&mut tx, push.device, drives, now).await?;
+        metrics_store::write_drives(&mut *tx, push.device, drives, now).await?;
     }
     if let Some(inventory) = push.inventory {
-        metrics_store::write_inventory(&mut tx, push.device, inventory, now).await?;
+        metrics_store::write_inventory(&mut *tx, push.device, inventory, now).await?;
     }
-    metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
-    let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;
-    if was_stale {
-        events::record(&mut tx, bus, now, fresh_again(push.device, push.name)).await?;
+    if let Some(usage) = push.agent_usage {
+        agent_usage::record(&mut *tx, push.device, usage).await?;
     }
-    tx.commit().await?;
-    Ok(Written::Kept(kept))
+    Ok(())
 }
 
 /// The one event of a daemon that sends again after it was marked stale (MET-018).
