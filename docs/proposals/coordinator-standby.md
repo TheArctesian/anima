@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (OD-W9). No requirement is approved. R-137 (2026-11-17): the operator starts fresh on the hosted hub, so FND-006 moves no data to the pool. Task F1 is Not started and waits for OD-FND-2.
+evidence: Direction decided (OD-W9). No requirement is approved. R-137 (2026-11-17): the operator starts fresh on the hosted hub, so FND-006 moves no data to the pool. R-138 names task F1 (FND-006 for a hub on a server), which is In progress.
 ---
 
 # Proposal: copies of the coordinator database, and how to move the coordinator
@@ -99,7 +99,6 @@ manager is accepted. The standbys come later, with the extensions.
   The client must show the age of this data (NET-004). The copy must not contain a credential.
   IOS-003 already requires this copy for iOS.
 
-<<<<<<< HEAD
 ## The hosted hub and FND-006 (R-130, R-137)
 
 The operator will use only the hosted version (R-130). This changes FND-006:
@@ -121,19 +120,13 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 | Number | Decision | Recommendation | Result |
 | --- | --- | --- | --- |
 | OD-FND-1 | When the operator goes to the hosted hub: move the data of the hub on the VPS, or start fresh? | Start fresh. Each machine joins again in the two cases, and the pool has no import. | Decided (R-137, operator, 2026-11-17): start fresh. |
-| OD-FND-2 | Is FND-006 now only the procedure for a person who runs a hub on a server: one document from the scripts that exist, tested by a restore on a new, empty setup in Docker, with no change to the VPS (task F1)? | Yes. | Open |
+| OD-FND-2 | Is FND-006 now only the procedure for a person who runs a hub on a server: one document from the scripts that exist, tested by a restore on a new, empty setup in Docker, with no change to the VPS (task F1)? | Yes. | Decided (R-138, operator, 2026-11-17): yes. |
 
-=======
->>>>>>> origin/main
 ## Tasks
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-<<<<<<< HEAD
-| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | OD-FND-2 | Not started | — |
-=======
-| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | The operator named it on 2026-11-17 ("Yes, build F1"); the branch `restore-and-move` records the ruling | Not started | — |
->>>>>>> origin/main
+| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-138 names it | In progress | — |
 
 ## Open points
 
