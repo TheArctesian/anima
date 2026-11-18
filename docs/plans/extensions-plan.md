@@ -863,6 +863,38 @@ Reminders deliver only to the devices of the operator.
 - **AIS-007.** Each session must be a timeline entry with the category "code".
 - **AIS-008.** The operator must be able to exclude a repository or a folder. The collector must not read sessions from an excluded folder.
 
+#### 4.12.0 Usage counts first (operator direction 2026-11-17)
+
+Status: the direction is decided (R-133: "Yes, counts only"). The requirements AIS-018 to AIS-023
+are proposed and not approved. They have no work package and no task. The map is
+[ai-direction.md](../proposals/ai-direction.md), step 1.
+
+**Purpose.** Show the use of each AI agent program on each machine before the vault and the
+collector exist. Counts have no text, so they are Class C and need no vault.
+
+- **AIS-018.** `anima-daemon` must read the session files of Claude Code and Codex (the table of
+  sources above) on its machine. For each session it must send only: the source, the external ID,
+  the model, the start, the end, and the counts of prompts, tool calls and tokens. It must not
+  send text, a title or the path of a folder.
+- **AIS-019.** The counts must be an optional member of the push batch of K8, as the tool
+  inventory is (CAP-029). The daemon makes no new call.
+- **AIS-020.** The hub must keep the counts and give them by device, by source, by model and by
+  day. The function must have its command and its MCP tool (CMD-030), then its page.
+- **AIS-021.** The hub must show an estimate of the cost: the tokens times the public price of
+  the model (MGW-014 holds the prices). The text must say that it is an estimate and not the bill
+  of the subscription.
+- **AIS-022.** The daemon must not read a login, the name of an account or a usage limit
+  (CAP-025). The function must not show the quota that is left on an account.
+- **AIS-023.** The exclusions of AIS-008 apply to the counts. When the collector reads the same
+  session (AIS-001), the hub must keep one session, not two.
+
+Open points:
+
+1. A daemon that runs as a system unit does not see the home folder of a user (HT-005). Does the
+   daemon of a user read the files, or does the system unit get a path for each user?
+2. Does the daemon send the name of the repository of a session (AIS-002)? It is not text, but it
+   is the name of a project.
+
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
 **Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
