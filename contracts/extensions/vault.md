@@ -1,19 +1,19 @@
-# K-E5 — Vault: data classes, data keys and operational keys (engine)
+# K-E5 — Vault: data classes, sealing keys and operational keys (engine)
 
-Status: approved for the engine build (R-148 of 2026-11-18). Section 1 is written with engine task E0-5, because the file store and the location samples seal with a data key. Sections 2 to 5 (operational keys, client-sealed records, reveal) are of E0-6 T1. Change it only through a programme ruling (CON-001). Requirement IDs: VLT-001 to VLT-007 of `docs/plans/extensions-plan.md`; R-146, R-147.
+Status: approved for the engine build (R-148 of 2026-11-18). Section 1 is written with engine task E0-5, because the file store and the location samples seal with a sealing key. Sections 2 to 5 (operational keys, client-sealed records, reveal) are of E0-6 T1. Change it only through a programme ruling (CON-001). Requirement IDs: VLT-001 to VLT-007 of `docs/plans/extensions-plan.md`; R-146, R-147.
 
-## 1. Data keys (VLT-003, R-146; `crates/hub/src/engine/sealing_keys.rs`, leaf)
+## 1. Sealing keys (VLT-003, R-146; `crates/hub/src/engine/sealing_keys.rs`, leaf)
 
-In the code a data key is a `SealingKey` and the folder of them is `SealingKeys`: the names gate (CQ-030) does not permit the word `data` in the name of a file or a type. The setting `ANIMA_DATA_KEY_DIR` and the folder `data-keys/` keep their names.
+This contract said "data keys" before R-167. The names gate (CQ-030) does not permit the word `data` in the name of a file or a type. The setting `ANIMA_DATA_KEY_DIR` and the folder `data-keys/` keep their names.
 
-A data key seals the records and the files of one extension on the hub. It is not the credential key (`ANIMA_KEY_FILE`, SEC-004), and no code seals a record or a file with the credential key.
+A sealing key seals the records and the files of one extension on the hub. It is not the credential key (`ANIMA_KEY_FILE`, SEC-004), and no code seals a record or a file with the credential key.
 
-- `ANIMA_DATA_KEY_DIR` names a folder. Each data key is one file in it, `<name>.key`: 32 random bytes in base64, in a file that only the hub user can read (mode 0600). `name` is the key of an extension (K-E7) or an engine name (`engine`, `locations`), in the form `^[a-z][a-z0-9_]{0,39}$`.
+- `ANIMA_DATA_KEY_DIR` names a folder. Each sealing key is one file in it, `<name>.key`: 32 random bytes in base64, in a file that only the hub user can read (mode 0600). `name` is the key of an extension (K-E7) or an engine name (`engine`, `locations`), in the form `^[a-z][a-z0-9_]{0,39}$`.
 - When a domain first asks for a key that has no file, the hub makes the file. Thus a new extension needs no step of the operator. A file that exists is never written again.
 - With no `ANIMA_DATA_KEY_DIR`, a domain that seals answers `UNAVAILABLE` and the other domains work. A local hub and a hub of the pool put the folder `data-keys/` in their root, beside `vault.key`.
-- At start the hub compares the identifier of each data key with the identifier of the credential key and with each other. Two equal keys stop the start (VLT-003).
+- At start the hub compares the identifier of each sealing key with the identifier of the credential key and with each other. Two equal keys stop the start (VLT-003).
 - The form of a sealed value is the form of the credential vault (XChaCha20-Poly1305, a context text in the additional data, the identifier of the key before the nonce). A value opens only with its key and its context. The context of a record is `<schema>.<table>:<id>` or the text that its contract gives. A file uses the stream form of K-E4 Section 9.
-- A data key has no version now. To change a data key is later work with the operational keys (Section 5).
+- A sealing key has no version now. To change a sealing key is later work with the operational keys (Section 5).
 
 ```rust
 pub struct SealingKeys { /* the folder */ }
@@ -42,7 +42,7 @@ An operational key is a credential, an API key or another runtime secret that a 
 
 `credentials.operational_key_consumers (key_id uuid not null references credentials.operational_keys, device_id uuid not null, workload text not null, granted_at timestamptz not null, granted_by text not null, held_version integer null, held_seen_at timestamptz null, fetched_version integer null, fetched_at timestamptz null, primary key (key_id, device_id, workload))`
 
-- **Name.** `name` has the form `^[a-z][a-z0-9_.-]{0,79}$`. It is not the name of a data key (Section 1) and not the vault key of Class A (Section 3): the three sorts have separate stores and separate functions, and no function takes a name of one sort for a different sort.
+- **Name.** `name` has the form `^[a-z][a-z0-9_.-]{0,79}$`. It is not the name of a sealing key (Section 1) and not the vault key of Class A (Section 3): the three sorts have separate stores and separate functions, and no function takes a name of one sort for a different sort.
 - **Value.** A value is 1 to 16 384 bytes. It is sealed with the credential vault (`ANIMA_KEY_FILE`, SEC-003) under the context `credentials.operational_key_versions:<version id>`. The metadata holds no value (LOG-007): `provider`, `purpose`, `instructions` (how to rotate it at the provider, at most 4 000 characters) and `provider_link` (an `https` address) are text of the operator.
 - **Versions.** `state` is `active`, `superseded`, `revoked` or `expired`. A key has at most one active version. A new value makes version `number + 1` active and sets the old one to `superseded` in one transaction; the hub gives a superseded version no more (R-147: no overlap). `revoke` ends the active version with no new one. A version whose key passed `expires_at` is given no more and reads as `expired`. A version that ended is never active again, and its sealed value is deleted 30 days after it ended.
 - **Rotation.** The hub cannot change a key at its provider. `rotate(key, new value, rotated_at_provider)` stores the replacement and records the actor and the time; `rotated_at_provider` records what the operator said about the provider. The API and each client say "recorded", not "rotated", when `rotated_at_provider` is false. `rotation_days` and `expires_at` give the due state: `due` when the last rotation is older than `rotation_days`, `expiring` in the 14 days before `expires_at`, `expired` after it. These are also expiry triggers of K-E6.
@@ -83,7 +83,7 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 - **Add a client (VLT-002).** A client that has the key shows a QR code; the new client reads it. The code holds a one-time public key exchange between the two clients, and the vault key goes from client to client sealed to that exchange. The hub can carry these sealed bytes (`Mutation.offerVaultKey`, `Query.vaultKeyOffer`, one use, 5 minutes) and cannot open them. Recovery is a printed recovery key, which is the vault key in words; the hub never sees it.
 - **Reveal (VLT-004, VLT-005).** The client opens a record and shows it only after `Mutation.recordReveal(owner)` succeeded. The hub writes one audit entry (`target_type` `sealed_record`, action `reveal`, the owner reference, the client; no value) and refuses with `TOTP_REQUIRED` when the last accepted TOTP code of this login is more than 5 minutes old; the call then takes a new code. On a hosted hub the operator has no TOTP on the hub (R-129): what replaces the check there is not decided (OD-E20), and until then `recordReveal` answers `UNAVAILABLE` on a hosted hub.
 - **Search (VLT-006).** The hub keeps no plain text of a sealed record. `sealed_index` is a search index that the client sealed with the vault key, or null; search runs on the client.
-- The data keys (Section 1) and the operational keys (Section 2) never seal a Class A record, and the retrieval of Section 2.1 has no path to `sealed_records`: `credentials` does not import `sealed_records`, and a test asserts it through `quality:imports`.
+- The sealing keys (Section 1) and the operational keys (Section 2) never seal a Class A record, and the retrieval of Section 2.1 has no path to `sealed_records`: `credentials` does not import `sealed_records`, and a test asserts it through `quality:imports`.
 
 | K1 | Behaviour |
 | --- | --- |
@@ -103,6 +103,6 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 | Question | State in this contract |
 | --- | --- |
 | What replaces the TOTP check of a reveal on a hosted hub (OD-E20) | Not decided. `recordReveal` is unavailable on a hosted hub. |
-| A new version of a data key (Section 1) | Not built. |
+| A new version of a sealing key (Section 1) | Not built. |
 | Automatic rotation at a provider | Not built and not promised. The hub records a rotation that the operator did. |
 | A key for a workload that is not on a machine with a daemon | Not built: retrieval needs a daemon token. |
