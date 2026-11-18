@@ -69,6 +69,34 @@ tick_test! {
         assert!(next >= now && next < now + TimeDelta::seconds(10), "{next}");
     }
 
+    async fn hmd_047_a_push_check_that_became_due_while_the_hub_slept_waits_its_interval_again(pool: PgPool) {
+        let token = || checks::Definition::Push(checks::PushToken::from_random(&[5; 32]));
+        let other = || checks::Definition::Push(checks::PushToken::from_random(&[6; 32]));
+        let slept = add(&pool, device(DOCKER_HOST), token(), 0).await;
+        let awake = add_check(&pool, new_check(device(DOCKER_HOST), "Awake", other(), 0)).await;
+        let now = database_now(&pool).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+        scheduler.tick(now - TimeDelta::hours(1), &mut rng()).await;
+        // Both became due after the start, so no rule of a start covers them.
+        due_at(&pool, slept, now - TimeDelta::minutes(5)).await;
+
+        scheduler.woke(now);
+        scheduler.tick(now, &mut rng()).await;
+        scheduler.finish_running(now).await;
+
+        assert_eq!(beats(&pool, slept).await.len(), 0);
+        let next = stored(&pool, slept).await.state.next_due_at;
+        assert_eq!(next, Some(now + TimeDelta::seconds(10)));
+
+        // A hub that ran all the time records the push that did not come.
+        let later = now + TimeDelta::seconds(20);
+        due_at(&pool, awake, later - TimeDelta::seconds(1)).await;
+        due_at(&pool, slept, later + TimeDelta::hours(1)).await;
+        scheduler.tick(later, &mut rng()).await;
+        scheduler.finish_running(later).await;
+        assert_eq!(beats(&pool, awake).await, ["down"]);
+    }
+
     async fn chk_001_a_new_due_time_never_replaces_one_set_meanwhile(pool: PgPool) {
         let id = add(&pool, device(DOCKER_HOST), tcp(22), 2).await;
         let now = database_now(&pool).await;

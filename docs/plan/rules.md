@@ -8,7 +8,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 | Version | 2.0 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. PLN-001 to PLN-017 are the text of the work plan, version 1.3. PLN-018 to PLN-023 and the new text of PLN-007 are of 2026-11-17 (R-123). |
+| Status | Approved. PLN-001 to PLN-017 are the text of the work plan, version 1.3. PLN-018 to PLN-023 and the new text of PLN-007 are of 2026-11-17 (R-123). PLN-011 has one more sentence of 2026-11-18 (R-155). |
 
 ## 10. Rules for plans and progress
 
@@ -31,7 +31,7 @@ These rules apply to each person and each agent (operator, 2026-11-15).
 - **PLN-008. Progress moves with the work.** Change the state of a task in the commit that does the work, or in its merge. Change Section 9 when the state of a plan changes.
 - **PLN-009. A state needs evidence.** "Done" must name a commit, an acceptance record or a ruling of the operator. Do not write "Done" for work that waits for a live check.
 - **PLN-010. Records are not plans.** A report, a log, a procedure or a review must not add a requirement. Put the requirement in its owner (Section 5).
-- **PLN-011. A plan on a branch.** A plan that is only on a branch is not a plan. Merge it with its row before work on it starts.
+- **PLN-011. A plan on a branch.** A plan that is only on a branch is not a plan. Merge it with its row before work on it starts. A plan, a contract and a ruling merge to `main` before the code that depends on them (operator, 2026-11-18, R-155). A session that finds a gap in a plan while it builds changes the plan, merges that change to `main`, and then builds on.
 - **PLN-012. No second store.** Do not keep a plan, a task, a decision, a defect or a deferred item in a GitHub issue, a project board or a label (operator, 2026-11-16, R-119). A new work item or a new defect is a document in [work-items/](../work-items/README.md) with a row in its index. A deferred item is a line in [deferred.md](../deferred.md). An open decision is a row in the "Open decisions" section of its plan. If a person outside the project opens an issue, move its content to a document and close the issue with the path of the document.
 - **PLN-013. Plan first.** A session that builds must start from a plan (operator, 2026-11-16: "The coding session should plan for or at least read from the plan and build or update the plan"). Before it changes code, the session must do one of these:
   1. Find the plan that owns the work (Section 5, Section 9), read it, and build from it.

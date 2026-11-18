@@ -157,6 +157,16 @@ fn warn_without_probe_deny(config: &Config) {
     }
 }
 
+/// The database of the hub, connected and ready for its use: the role is the runtime role,
+/// the audit entries are linked and the permitted networks are stored.
+async fn database(config: &Config) -> Result<PgPool, StartError> {
+    let pool = connect(config).await?;
+    events::check_runtime_role(&pool).await?;
+    link_audit_entries(&pool).await?;
+    permit_networks(&pool, config).await?;
+    Ok(pool)
+}
+
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
@@ -168,17 +178,20 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     warn_without_probe_deny(&config);
     let vault = vault(&config)?;
     let bucket = release_bucket(&config)?;
-    let pool = connect(&config).await?;
-    events::check_runtime_role(&pool).await?;
-    link_audit_entries(&pool).await?;
-    permit_networks(&pool, &config).await?;
+    let pool = database(&config).await?;
     // One deny list for every outbound connection; `tunnels` says which path takes it how.
-    let policy = AddressPolicy::new(config.probe_deny.clone());
+    // A hub with a link reaches the computers of the link through its dial socket (HMD-048).
+    let link_dial = config.link_control.as_deref();
+    let policy = AddressPolicy::new(config.probe_deny.clone())
+        .reaching_link(link_dial.and_then(anima_hub::config::dial_socket));
     let live = open_sessions(&pool, clock.now())
         .await?
         .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
+    // A hosted hub is a device of its own list, and it watches the computers of its link;
+    // its own checks are ready before the scheduler runs.
+    let hosted = upkeep::hosted(&config, &pool, &bus, &clock).await;
     let feed = metrics::Feed::new();
     // The sources reach only their declared API bases, through the same deny list (K-E1).
     let sources = anima_hub::source_reach(vec![projects::intake()], policy.clone())?;
@@ -197,7 +210,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vpn_feed: vpn::Feed::new(),
         sources,
     };
-    let background = upkeep::spawn(&dependencies);
+    let background = upkeep::spawn(&dependencies, hosted);
     // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = all_routes(dependencies, edge.clone());

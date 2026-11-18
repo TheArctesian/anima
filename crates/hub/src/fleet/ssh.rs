@@ -19,13 +19,11 @@ pub(crate) mod tests;
 
 use std::{borrow::Cow, time::Duration};
 
+use crate::fleet::targets::{self, AddressPolicy, Reached, TargetError};
 use russh::{
     Preferred,
     keys::{Algorithm, EcdsaCurve, HashAlg},
 };
-use tokio::net::TcpStream;
-
-use crate::fleet::targets::{self, AddressPolicy, TargetError};
 
 pub use link::{CommandOutput, Error as LinkError, FixedCommand, HexDigits, SshLink, link};
 pub(crate) use observer::Observer;
@@ -105,15 +103,16 @@ pub(crate) fn preferred() -> Preferred {
 }
 
 /// Connects to the first of `target`'s checked addresses ([`targets::resolve_checked`]) that
-/// answers.
+/// answers, with the hub's one connect function ([`targets::connect`]): a computer of the
+/// link is reached through the link (HMD-048).
 ///
 /// # Errors
 /// [`SshError::Unresolved`] when the host has no address, [`SshError::RefusedTarget`] when
 /// the policy refuses any address, [`SshError::Unreachable`] when no address answers.
-pub(crate) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
+pub(crate) async fn connect(target: Target<'_>) -> Result<Reached, SshError> {
     let addresses = targets::resolve_checked(target.host, target.port, target.policy).await?;
     for address in addresses {
-        if let Ok(stream) = TcpStream::connect(address).await {
+        if let Ok(stream) = targets::connect(target.policy, address).await {
             return Ok(stream);
         }
     }
@@ -128,7 +127,7 @@ pub(crate) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
 pub(crate) async fn connect_waking(
     target: Target<'_>,
     retry: Duration,
-) -> Result<TcpStream, SshError> {
+) -> Result<Reached, SshError> {
     loop {
         match connect(target).await {
             Err(SshError::Unresolved | SshError::Unreachable) => tokio::time::sleep(retry).await,

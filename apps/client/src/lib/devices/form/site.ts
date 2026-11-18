@@ -13,6 +13,9 @@ export type SitePlacement = { readonly kind: 'existing'; readonly id: string } |
 /** The VPN address range (NET-001): computers reached by their VPN address share one site. */
 export const VPN_SITE: NewSite = { name: 'VPN', subnet: '100.64.0.0/10' };
 
+/** The address range of the built-in link (HMD-044): the computers of a hosted hub share one site. */
+export const LINK_SITE: NewSite = { name: 'Link', subnet: 'fd41:4e49:4d41::/48' };
+
 const EMPTY: NewSite = { name: '', subnet: '' };
 
 /** The four octets of a dotted IPv4 address, or undefined. */

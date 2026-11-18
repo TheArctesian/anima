@@ -1,5 +1,7 @@
 // Package devicelink is the device side of the link: a loopback port that
-// reaches the hub, and a keepalive that holds the link ready.
+// reaches the hub, a keepalive that holds the link ready, and a stream that
+// tells the hub that the device is connected and gives the hub the local
+// ports that the person opened.
 package devicelink
 
 import (
@@ -58,6 +60,10 @@ type Config struct {
 	// LookupTXT reads the TXT records of a domain name, for a device whose
 	// identity has a HubName (LNK-007). Nil means the system's resolver.
 	LookupTXT func(ctx context.Context, name string) ([]string, error)
+	// OpenPort reports whether the hub may reach a local port of this
+	// computer through the link (HMD-048, HMD-049). It is asked for each
+	// request. Nil means that no port is open.
+	OpenPort func(port uint16) bool
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -83,6 +89,14 @@ type Link struct {
 	device *tunnel.Device // replaced when the key is renewed or the hub moves
 	saved  identity.Device
 	path   tunnel.Path
+	// reverse is the open stream to the reverse port, if there is one.
+	reverse net.Conn
+	// presentNow asks for a new stream to the reverse port with no wait.
+	presentNow chan struct{}
+	// openPort is Config.OpenPort; giving holds one value for each
+	// connection to a local port that the hub has now.
+	openPort func(port uint16) bool
+	giving   chan struct{}
 }
 
 // tunnel is the device side of the tunnel for the device's current key.
@@ -113,8 +127,9 @@ func (l *Link) replaceTunnel(next *tunnel.Device, renewed identity.Device) (old 
 	return old
 }
 
-// Start opens the local port and starts the keepalive. It does not wait for
-// the hub: a hub that is off now is reached when it comes back.
+// Start opens the local port and starts the keepalive and the stream to the
+// reverse port. It does not wait for the hub: a hub that is off now is
+// reached when it comes back.
 func Start(cfg Config) (*Link, error) {
 	local, err := netip.ParseAddrPort(cfg.Listen)
 	if err != nil || !local.Addr().IsLoopback() {
@@ -135,7 +150,8 @@ func Start(cfg Config) (*Link, error) {
 	ctx, stop := context.WithCancel(context.Background())
 	link := &Link{
 		device: device, saved: cfg.Identity, listener: listener, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
-		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf,
+		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
+		openPort: cfg.OpenPort, giving: make(chan struct{}, maxLocalConnections),
 	}
 	if link.now == nil {
 		link.now = time.Now
@@ -157,8 +173,9 @@ func Start(cfg Config) (*Link, error) {
 	if every <= 0 {
 		every = DefaultKeepalive
 	}
-	link.done.Add(2)
+	link.done.Add(3)
 	go link.keepAlive(ctx, every)
+	go link.stayPresent(ctx, every)
 	go link.accept(ctx)
 	return link, nil
 }
@@ -208,6 +225,7 @@ func (l *Link) beat(ctx context.Context) {
 		cancel()
 		if registered {
 			path, _ = l.ping(ctx)
+			l.presentAgain()
 		}
 	}
 	l.mu.Lock()

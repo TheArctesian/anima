@@ -1,6 +1,7 @@
 use reqwest::StatusCode;
 
-use super::{CloudError, api, name::device_name, workos};
+use super::{CloudError, api, device::cloud_device, name::device_name, workos};
+use crate::this_machine::OperatingSystem;
 
 #[test]
 fn hmd_043_a_device_name_is_lowercase_letters_digits_and_dashes_from_a_letter() {
@@ -16,6 +17,24 @@ fn hmd_043_a_device_name_is_lowercase_letters_digits_and_dashes_from_a_letter() 
     let long = device_name(&"a".repeat(80));
     assert_eq!(long.len(), 40);
     assert!(!device_name("a234567890123456789012345678901234567-9z").ends_with('-'));
+}
+
+#[test]
+fn hmd_044_the_cloud_device_has_the_link_name_the_computer_name_and_the_os() {
+    let device = cloud_device("Stephen's MacBook Pro", OperatingSystem::Macos);
+    assert_eq!(
+        serde_json::to_value(&device).ok(),
+        Some(serde_json::json!({
+            "name": "stephen-s-macbook-pro",
+            "computer": "Stephen's MacBook Pro",
+            "os": "MACOS",
+        }))
+    );
+    let unnamed = serde_json::to_value(cloud_device("", OperatingSystem::Linux)).ok();
+    assert_eq!(
+        unnamed,
+        Some(serde_json::json!({ "name": "computer", "computer": "", "os": "LINUX" }))
+    );
 }
 
 #[test]

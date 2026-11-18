@@ -15,7 +15,7 @@ use crate::{
             probe::{Failure, ProbeResult},
             scheduler::schedule::{
                 Timing, Watchdog, is_late, missed_push, needs_new_due, new_due, not_before_floor,
-                severity_of, status_message,
+                severity_of, slept, status_message,
             },
         },
         events::Severity,
@@ -179,6 +179,16 @@ fn chk_010_a_check_is_late_only_beyond_2_intervals() {
         now() - seconds(600),
         now()
     ));
+}
+
+#[test]
+fn hmd_047_a_wait_for_a_tick_of_more_than_30_seconds_means_the_hub_slept() {
+    assert!(!slept(None, now()));
+    assert!(!slept(Some(now() - seconds(1)), now()));
+    assert!(!slept(Some(now() - seconds(30)), now()));
+    assert!(slept(Some(now() - seconds(31)), now()));
+    // A clock that was set back is not a sleep.
+    assert!(!slept(Some(now() + seconds(3600)), now()));
 }
 
 #[test]

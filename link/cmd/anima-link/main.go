@@ -17,6 +17,7 @@ import (
 const usage = `usage: anima-link hub -state DIR -target SOCKET-PATH|127.0.0.1:PORT [-relay HOST[:PORT] [-replace-relay]] [-stop-with-stdin]
        anima-link device -state DIR [-listen 127.0.0.1:PORT] [-stop-with-stdin]
        anima-link join -state DIR [-hub-name NAME]   (the invite is read from standard input)
+       anima-link ports -state DIR [on|off PORT]   (the local ports that the hub may reach: 22, 5900)
        anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`
 
 // stdio is the three streams of the process. Tests give their own.
@@ -39,6 +40,7 @@ func run(ctx context.Context, args []string, streams stdio) int {
 		"hub":    runHub,
 		"device": runDevice,
 		"join":   runJoin,
+		"ports":  runPorts,
 		"ctl":    runCtl,
 	}
 	if len(args) == 0 || commands[args[0]] == nil {

@@ -81,7 +81,7 @@ The plan has two tiers:
 | --- | --- | --- |
 | OD-10, vpn.md Section 11 | `docs/procedures/setup/vpn.md` | No Headscale API key. Admin only through `headscale` on the VPS unix socket. Tier A does not call Headscale. |
 | vpn.md Section 11, steps 3 and 5 | `docs/procedures/setup/vpn.md` | Pre-auth keys are single use, last one hour, and stay out of command lines and logs. Use `--auth-key=file:` (vpn.md lines 486, 916). |
-| R-055 | `docs/rulings.md` | The broker is deferred. The proposal has exactly three verbs. Tier B waits for decision (b). |
+| R-055, R-154 | `docs/rulings.md` | The proposal has exactly three verbs. Decision (b), the hub-to-broker permission, is accepted (R-154, 2026-11-18; VP-3 of 2026-11-10 is the same decision). Decision (a), the embedded client, is open. |
 | R-061 | `docs/rulings.md`, `add-this-machine.md` | Device grants: one `/32`, from `tag:hub`, TCP only. Router test rows wait in `ROUTER_ROWS`. |
 | R-076 | `docs/rulings.md` | No grant on TCP 3389. This overrides the `3389` in `add-this-machine.md`. |
 | R-079 | `docs/rulings.md` | The app never changes VPN rules. Tier B item B5 needs a change to R-079. |
@@ -371,8 +371,8 @@ flags, because it supports one version.
 
 ## 5. Tier B: changes through the broker (after rulings)
 
-Tier B starts only after the operator rules on R-055 (b), on each broker verb, and on changes to
-vpn.md Section 11, R-079 and VPS-005. The embedded VPN client of R-055 (a) is a separate decision
+The operator accepted R-055 (b) (R-154, 2026-11-18; VP-3 of 2026-11-10). Tier B needs his ruling on each broker verb that R-055 does not name (VP-7 accepts `nodes` and `register`), and on changes to
+vpn.md Section 11, R-079 and VPS-005 (VP-4). The embedded VPN client of R-055 (a) is a separate decision
 and is not in this plan.
 
 ### 5.1 Threat model

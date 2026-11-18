@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/TheArctesian/anima/link/control"
 	"github.com/TheArctesian/anima/link/devicelink"
 	"github.com/TheArctesian/anima/link/identity"
+	"github.com/TheArctesian/anima/link/ports"
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
@@ -19,6 +22,46 @@ type deviceStatus struct {
 	// Path is "direct", "relayed" or "none" (LNK-006).
 	Path      string  `json:"path"`
 	LatencyMS float64 `json:"latencyMs"`
+	// OpenPorts is the local ports that the hub may reach (HMD-049).
+	OpenPorts []uint16 `json:"openPorts"`
+}
+
+// openPorts is the answer of the command "ports".
+type openPorts struct {
+	Open []uint16 `json:"open"`
+}
+
+// runPorts shows the list of open ports of the device on a state directory,
+// or turns one port on or off (HMD-049). The device link may run: it reads
+// the list at each request of the hub, so a change needs no restart.
+func runPorts(_ context.Context, args []string, streams stdio) error {
+	flags, statePath := stateFlags("ports")
+	if err := flags.Parse(args); err != nil || *statePath == "" || (flags.NArg() != 0 && flags.NArg() != 2) {
+		return errUsage
+	}
+	dir, err := statedir.Beside(*statePath)
+	if err != nil {
+		return err
+	}
+	if flags.NArg() == 2 {
+		port, err := strconv.ParseUint(flags.Arg(1), 10, 16)
+		if err != nil || (flags.Arg(0) != "on" && flags.Arg(0) != "off") {
+			return errUsage
+		}
+		if err := ports.Turn(dir, uint16(port), flags.Arg(0) == "on"); err != nil {
+			return err
+		}
+	}
+	open, err := ports.List(dir)
+	if err != nil {
+		return err
+	}
+	answer, err := json.Marshal(openPorts{Open: append([]uint16{}, open...)})
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(streams.out, string(answer))
+	return err
 }
 
 func runDevice(ctx context.Context, args []string, streams stdio) error {
@@ -39,9 +82,11 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
-	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: *listen, Save: func(renewed identity.Device) error {
-		return renewed.Save(dir)
-	}})
+	link, err := devicelink.Start(devicelink.Config{
+		Identity: device, Listen: *listen,
+		Save:     func(renewed identity.Device) error { return renewed.Save(dir) },
+		OpenPort: func(port uint16) bool { return ports.IsOpen(dir, port) },
+	})
 	if err != nil {
 		return err
 	}
@@ -60,10 +105,12 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	err = control.Serve(ctx, listener, map[string]control.Verb{
 		"status": func(context.Context, json.RawMessage) (any, error) {
 			path := link.Path()
+			open, err := ports.List(dir)
 			return deviceStatus{
 				Role: "device", Local: link.LocalAddr().String(),
 				Path: string(path.Kind), LatencyMS: float64(path.Latency.Microseconds()) / 1000,
-			}, nil
+				OpenPorts: append([]uint16{}, open...),
+			}, err
 		},
 	})
 	log.Info("the device link stopped")
