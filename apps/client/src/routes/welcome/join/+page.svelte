@@ -12,6 +12,7 @@
   import { finishJoin, joinHub } from './join';
   import JoinSteps from './JoinSteps.svelte';
   import { waitForHub, type StepId } from './steps';
+  import './phone.css';
 
   /** The invite as pasted: in this field only, never logged; dropped once the hub may have used it (LOG-007, MOB-035). */
   let invite = $state('');
@@ -95,7 +96,7 @@
 </script>
 
 <!-- Frame 2 of docs/mockup/mobile/index.html: "Paste invite", then "Joining" with one mark for each step (MOB-033). -->
-<div class="stack">
+<div class="stack" data-join>
 {#if device === null}
   <form onsubmit={join} novalidate transition:crossFade>
     <a class="back" href={resolve('/welcome/hub')}><Icon name="carbon:chevron-left" size="lg" />Back</a>
