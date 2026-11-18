@@ -157,10 +157,21 @@ fn ais_023_an_excluded_repository_is_not_counted() {
         excluded_repositories: vec!["github.com/me/app".to_owned()],
         ..UsageSettings::default()
     };
+    let mut sessions = AgentSessions::new(home.path().to_owned(), false, settings.clone());
+    assert_eq!(
+        scan(&mut sessions).len(),
+        0,
+        "s2's repository cannot be read, so it may be the excluded one (AU-5 security review)"
+    );
+    let other = "[remote \"origin\"]\n\turl = git@github.com:me/other.git\n";
+    write(
+        &home.path().join("private/app/.git/config"),
+        &[other.to_owned()],
+    );
     let mut sessions = AgentSessions::new(home.path().to_owned(), false, settings);
     let days = scan(&mut sessions);
     let ids: Vec<&str> = days.iter().map(|day| day.id.as_str()).collect();
-    assert_eq!(ids, ["s2"], "only the session outside the repository");
+    assert_eq!(ids, ["s2"], "only the session of another repository");
 }
 
 #[test]
@@ -199,4 +210,39 @@ fn ais_024_only_a_daemon_of_a_user_reads_sessions() {
     );
     assert_eq!(user_home(env(&[])), None, "no HOME");
     assert_eq!(user_home(env(&[("HOME", "relative")])), None);
+}
+
+/// Counts read before the file names its folder are not sent: a later line may name an
+/// excluded folder, and the hub would keep what it had (AIS-023, AU-5 security review).
+#[test]
+fn ais_023_nothing_of_a_file_is_sent_before_its_folder_is_known() {
+    let home = tempfile::tempdir().expect("a home");
+    let file = home.path().join(".claude/projects/-p/s9.jsonl");
+    let no_folder = r#"{"type":"assistant","timestamp":"2026-11-08T09:00:00Z","message":{"model":"m","usage":{"output_tokens":3}}}"#;
+    write(&file, &[no_folder.to_owned()]);
+    let mut sessions = AgentSessions::new(home.path().to_owned(), false, settings(home.path()));
+    assert_eq!(scan(&mut sessions).len(), 0, "no folder named yet");
+    append(&file, &claude_line(&home.path().join("private/app"), 1));
+    assert_eq!(scan(&mut sessions).len(), 0, "the folder is excluded");
+}
+
+/// A session recorded through a link to an excluded folder is excluded (AIS-008, AU-5
+/// security review).
+#[test]
+fn ais_008_a_working_folder_reached_through_a_link_is_excluded() {
+    let home = tempfile::tempdir().expect("a home");
+    let private = home.path().join("real/private");
+    fs::create_dir_all(private.join("app")).expect("a folder");
+    std::os::unix::fs::symlink(home.path().join("real"), home.path().join("via")).expect("a link");
+    let recorded = home.path().join("via/private/app");
+    write(
+        &home.path().join(".claude/projects/-via/s8.jsonl"),
+        &[claude_line(&recorded, 2)],
+    );
+    let settings = UsageSettings {
+        excluded_folders: vec![fs::canonicalize(&private).expect("real")],
+        ..UsageSettings::default()
+    };
+    let mut sessions = AgentSessions::new(home.path().to_owned(), false, settings);
+    assert_eq!(scan(&mut sessions).len(), 0);
 }

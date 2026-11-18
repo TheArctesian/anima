@@ -6,7 +6,8 @@
 //! - `.claude/projects/<project>/<id>/subagents/**/agent-*.jsonl`: its sub-agents (3 levels);
 //! - `.codex/sessions/**/rollout-*.jsonl` (4 levels): a Codex thread, named inside the file.
 
-use std::fs::{self, DirEntry};
+use std::fs::{self, DirEntry, File};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -38,6 +39,25 @@ pub(super) struct Found {
 pub(super) struct Stamp {
     pub size: u64,
     pub modified: Option<SystemTime>,
+}
+
+/// Opens the regular file at `path` for reading without following a link in its last part
+/// (`O_NOFOLLOW`), so a link swapped in after the walk is refused, and without waiting on a
+/// pipe (`O_NONBLOCK`).
+///
+/// # Errors
+/// The error of the open, or `InvalidInput` when the path is not a regular file.
+pub(super) fn open_no_link(path: &Path) -> io::Result<File> {
+    use rustix::fs::{Mode, OFlags};
+    let flags = OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC;
+    let file = File::from(rustix::fs::open(path, flags, Mode::empty())?);
+    if !file.metadata()?.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    Ok(file)
 }
 
 /// Every session file under `home`, at most [`MAX_FILES`]. A folder that is missing or cannot

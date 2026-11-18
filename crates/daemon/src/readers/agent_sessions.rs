@@ -43,6 +43,8 @@ pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
 /// The session files followed so far, and the repositories of their folders.
 pub struct AgentSessions {
     home: PathBuf,
+    /// The home folder with its links resolved (the home folder itself when it cannot be).
+    real_home: PathBuf,
     macos: bool,
     settings: UsageSettings,
     followed: HashMap<PathBuf, Followed>,
@@ -58,6 +60,7 @@ struct Followed {
 }
 
 /// Whether a file's session may be counted, known once the file names its working folder.
+/// Nothing of a file is sent before it is `Counted` (AIS-023).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Verdict {
     Unknown,
@@ -68,8 +71,10 @@ enum Verdict {
 impl AgentSessions {
     #[must_use]
     pub fn new(home: PathBuf, macos: bool, settings: UsageSettings) -> Self {
+        let real_home = std::fs::canonicalize(&home).unwrap_or_else(|_| home.clone());
         Self {
             home,
+            real_home,
             macos,
             settings,
             followed: HashMap::new(),
@@ -116,6 +121,7 @@ impl AgentSessions {
         }
         let bounds = Bounds {
             home: &self.home,
+            real_home: &self.real_home,
             macos: self.macos,
         };
         let (settings, repositories) = (&self.settings, &mut self.repositories);
@@ -159,7 +165,8 @@ impl AgentSessions {
             .collect();
         let mut sessions: BTreeMap<(Source, &str), Group> = BTreeMap::new();
         for (path, file) in &self.followed {
-            if file.verdict == Verdict::Excluded {
+            // A file whose folder is not known yet may still name an excluded one.
+            if file.verdict != Verdict::Counted {
                 continue;
             }
             let id = match (&file.found.session, file.tally.thread()) {
@@ -212,7 +219,9 @@ impl Followed {
 }
 
 /// Whether a session in `cwd` may be counted: not when the folder, the main folder of its
-/// repository or the repository is excluded. Remembers the repository of `cwd`.
+/// repository (each as written and with its links resolved) or the repository is excluded, or
+/// when a repository is excluded and this one's name cannot be read. Remembers the repository
+/// of `cwd`.
 fn decide(
     cwd: &str,
     settings: &UsageSettings,
@@ -226,11 +235,17 @@ fn decide(
     let repository = repositories
         .entry(cwd.to_owned())
         .or_insert_with(|| git::repository(folder, bounds));
-    let mut folders = vec![folder];
-    folders.extend(repository.main.as_deref());
-    folders.extend(daemon_core::agent_usage::repository::claude_worktree_main(
-        folder,
-    ));
+    let mut folders = vec![folder.to_path_buf()];
+    folders.extend(repository.main.clone());
+    folders.extend(
+        daemon_core::agent_usage::repository::claude_worktree_main(folder).map(Path::to_path_buf),
+    );
+    let resolved: Vec<PathBuf> = folders
+        .iter()
+        .filter_map(|folder| std::fs::canonicalize(folder).ok())
+        .collect();
+    folders.extend(resolved);
+    let folders: Vec<&Path> = folders.iter().map(PathBuf::as_path).collect();
     if settings.excludes(&folders, repository.name.as_deref()) {
         Verdict::Excluded
     } else {

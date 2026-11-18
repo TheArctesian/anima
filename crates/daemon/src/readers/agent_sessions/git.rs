@@ -1,11 +1,14 @@
 //! Finds the repository of a session's working folder (AIS-002, R-134): the nearest folder at
 //! or above it, below the home folder, that has a `.git`; for a worktree, the main repository
 //! through the `gitdir` link and its `commondir`. It reads only those two small files and the
-//! git `config` (AIS-022), never through a link. The name is read by
-//! `daemon_core::agent_usage::repository`.
+//! git `config` (AIS-022), and never opens a link. A `gitdir` or `commondir` is followed only
+//! to a folder below the home folder, outside the guarded folders, with no link on the way
+//! (AU-5 security review). The name is read by `daemon_core::agent_usage::repository`.
 
 use std::fs;
 use std::io::Read as _;
+
+use super::files::open_no_link;
 use std::path::{Component, Path, PathBuf};
 
 use daemon_core::agent_usage::repository::{gitdir_link, origin_url, remote_name};
@@ -37,6 +40,8 @@ pub(super) struct Repository {
 /// Where the git files may be read.
 pub(super) struct Bounds<'a> {
     pub home: &'a Path,
+    /// The home folder with its links resolved, which a resolved target is compared under.
+    pub real_home: &'a Path,
     pub macos: bool,
 }
 
@@ -57,7 +62,7 @@ pub(super) fn repository(cwd: &Path, bounds: &Bounds) -> Repository {
         let common = if kind.is_dir() {
             dot_git
         } else if kind.is_file() {
-            let Some(common) = common_folder(folder, &dot_git) else {
+            let Some(common) = common_folder(folder, &dot_git, bounds) else {
                 return Repository::default();
             };
             common
@@ -78,14 +83,27 @@ pub(super) fn repository(cwd: &Path, bounds: &Bounds) -> Repository {
     Repository::default()
 }
 
-/// The common git folder of a worktree whose `.git` file is `dot_git`, in `folder`.
-fn common_folder(folder: &Path, dot_git: &Path) -> Option<PathBuf> {
+/// The common git folder of a worktree whose `.git` file is `dot_git`, in `folder`; `None`
+/// when a link of it leads where [`allowed`] refuses.
+fn common_folder(folder: &Path, dot_git: &Path, bounds: &Bounds) -> Option<PathBuf> {
     let link = read_small(dot_git, LINK_LIMIT)?;
-    let gitdir = folder.join(gitdir_link(&link)?);
+    let gitdir = allowed(&folder.join(gitdir_link(&link)?), bounds)?;
     match read_small(&gitdir.join("commondir"), LINK_LIMIT) {
-        Some(common) => Some(lexical(&gitdir.join(common.trim()))),
-        None => Some(lexical(&gitdir)),
+        Some(common) => allowed(&gitdir.join(common.trim()), bounds),
+        None => Some(gitdir),
     }
+}
+
+/// `target` without `..`, when it is below the home folder, outside the guarded folders, and
+/// the same folder once every link is resolved, so no link lies on the way.
+fn allowed(target: &Path, bounds: &Bounds) -> Option<PathBuf> {
+    let plain = lexical(target);
+    let below = plain.strip_prefix(bounds.home).ok()?;
+    if guarded(&plain, bounds) {
+        return None;
+    }
+    let real = fs::canonicalize(&plain).ok()?;
+    (real == bounds.real_home.join(below)).then_some(plain)
 }
 
 /// `path` with each `..` taking out the folder before it, as git reads its relative links.
@@ -113,11 +131,8 @@ fn guarded(folder: &Path, bounds: &Bounds) -> bool {
 /// The text of a regular file (not a link), at most `limit` bytes; `None` when it is not one
 /// or cannot be read.
 fn read_small(path: &Path, limit: u64) -> Option<String> {
-    if !fs::symlink_metadata(path).ok()?.is_file() {
-        return None;
-    }
     let mut text = String::new();
-    fs::File::open(path)
+    open_no_link(path)
         .ok()?
         .take(limit)
         .read_to_string(&mut text)
@@ -134,21 +149,34 @@ mod tests {
         fs::write(path, text).expect("written");
     }
 
+    fn real(path: &Path) -> PathBuf {
+        fs::canonicalize(path).expect("a real path")
+    }
+
     const CONFIG: &str =
         "[remote \"origin\"]\n\turl = https://me:ghp_secret@github.com/me/app.git\n";
+
+    fn named() -> Repository {
+        Repository {
+            name: Some("github.com/me/app".to_owned()),
+            main: None,
+        }
+    }
 
     #[test]
     fn ais_002_a_folder_and_its_worktrees_name_the_main_repository() {
         let home = tempfile::tempdir().expect("a home");
+        let real_home = real(home.path());
         let bounds = Bounds {
             home: home.path(),
+            real_home: &real_home,
             macos: false,
         };
         let main = home.path().join("code/app");
         write(&main.join(".git/config"), CONFIG);
         let expected = Repository {
-            name: Some("github.com/me/app".to_owned()),
             main: Some(main.clone()),
+            ..named()
         };
         assert_eq!(
             repository(&main.join("crates/x"), &bounds),
@@ -173,9 +201,11 @@ mod tests {
     #[test]
     fn ais_002_no_repository_above_home_on_a_link_or_in_a_guarded_folder() {
         let home = tempfile::tempdir().expect("a home");
+        let real_home = real(home.path());
         write(&home.path().join(".git/config"), CONFIG);
         let bounds = Bounds {
             home: home.path(),
+            real_home: &real_home,
             macos: true,
         };
         assert_eq!(
@@ -189,5 +219,76 @@ mod tests {
         fs::create_dir_all(&linked).expect("a folder");
         std::os::unix::fs::symlink(guarded.join(".git"), linked.join(".git")).expect("a link");
         assert_eq!(repository(&linked, &bounds), Repository::default());
+        let config_link = home.path().join("config-link");
+        write(&config_link.join(".git/HEAD"), "ref: refs/heads/main\n");
+        std::os::unix::fs::symlink(guarded.join(".git/config"), config_link.join(".git/config"))
+            .expect("a link");
+        assert_eq!(
+            repository(&config_link, &bounds).name,
+            None,
+            "a linked config"
+        );
+    }
+
+    /// A worktree's `gitdir` or `commondir` that leads outside the home folder, into a guarded
+    /// folder or through a link is not followed (AIS-022, AU-5 security review).
+    #[test]
+    fn ais_022_a_worktree_link_is_followed_only_below_home_with_no_link_on_the_way() {
+        let home = tempfile::tempdir().expect("a home");
+        let outside = tempfile::tempdir().expect("another folder");
+        let real_home = real(home.path());
+        let bounds = Bounds {
+            home: home.path(),
+            real_home: &real_home,
+            macos: true,
+        };
+        let worktree = |name: &str, gitdir: &Path| {
+            let folder = home.path().join("wt").join(name);
+            write(
+                &folder.join(".git"),
+                &format!("gitdir: {}\n", gitdir.display()),
+            );
+            folder
+        };
+        write(&outside.path().join("app/.git/config"), CONFIG);
+        let away = worktree("away", &outside.path().join("app/.git"));
+        assert_eq!(
+            repository(&away, &bounds),
+            Repository::default(),
+            "outside home"
+        );
+        write(&home.path().join("Documents/app/.git/config"), CONFIG);
+        let guarded = worktree("guarded", &home.path().join("Documents/app/.git"));
+        assert_eq!(
+            repository(&guarded, &bounds),
+            Repository::default(),
+            "a guarded folder"
+        );
+        write(&home.path().join("code/app/.git/config"), CONFIG);
+        std::os::unix::fs::symlink(home.path().join("code"), home.path().join("via"))
+            .expect("a link");
+        let linked = worktree("linked", &home.path().join("via/app/.git"));
+        assert_eq!(
+            repository(&linked, &bounds),
+            Repository::default(),
+            "a link on the way"
+        );
+        let gitdir = home.path().join("code/app/.git/worktrees/common");
+        write(
+            &gitdir.join("commondir"),
+            &outside.path().join("app/.git").display().to_string(),
+        );
+        let common = worktree("common", &gitdir);
+        assert_eq!(
+            repository(&common, &bounds),
+            Repository::default(),
+            "commondir outside"
+        );
+        let good = worktree("good", &home.path().join("code/app/.git"));
+        assert_eq!(
+            repository(&good, &bounds).name,
+            named().name,
+            "a plain link is followed"
+        );
     }
 }

@@ -22,7 +22,7 @@ const COUNT_EVERY: Duration = Duration::from_mins(15);
 
 /// What the daemon does with the session files: read them, or say why it cannot (AIS-024).
 pub(super) enum Counting {
-    Reading(AgentSessions),
+    Reading(Box<AgentSessions>),
     Silent(UsageState),
 }
 
@@ -35,7 +35,7 @@ pub(super) fn counting(home: &Home, env: impl Fn(&str) -> Option<String>) -> Cou
     match UsageSettings::read(home) {
         Ok(settings) if !settings.off => {
             let macos = Platform::current() == Platform::Macos;
-            Counting::Reading(AgentSessions::new(user, macos, settings))
+            Counting::Reading(Box::new(AgentSessions::new(user, macos, settings)))
         }
         Ok(_) => Counting::Silent(UsageState::TurnedOff),
         Err(error) => {
@@ -54,7 +54,7 @@ pub(super) async fn count(
     stopping: Arc<AtomicBool>,
 ) {
     let mut sessions = match counting {
-        Counting::Reading(sessions) => sessions,
+        Counting::Reading(sessions) => *sessions,
         Counting::Silent(state) => {
             report::agent_usage(state);
             let silent = UsageReport {

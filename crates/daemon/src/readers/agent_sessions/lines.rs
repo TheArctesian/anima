@@ -2,11 +2,12 @@
 //! offset to the last newline, so a line the program is still writing waits for the next read.
 //! A line longer than [`MAX_LINE`] (a pasted image, a huge tool result) is skipped unread.
 
-use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read as _, Seek as _, SeekFrom};
 use std::path::Path;
 
 use daemon_core::agent_usage::Tally;
+
+use super::files::open_no_link;
 
 /// The longest line read; the longest line of a real session is a few MiB.
 const MAX_LINE: u64 = 16 * 1024 * 1024;
@@ -23,7 +24,7 @@ pub(super) fn read_new(
     tally: &mut Tally,
     halt: &mut dyn FnMut(&Tally) -> bool,
 ) -> io::Result<u64> {
-    let mut file = File::open(path)?;
+    let mut file = open_no_link(path)?;
     file.seek(SeekFrom::Start(offset))?;
     let mut reader = BufReader::with_capacity(64 * 1024, file);
     let mut offset = offset;
@@ -114,6 +115,18 @@ mod tests {
         };
         let offset = read_new(file.path(), 0, &mut tally, &mut halt).expect("read");
         assert_eq!((output(&tally), offset), (1, REPLY.len() as u64 + 1));
+    }
+
+    #[test]
+    fn ais_022_a_session_file_swapped_for_a_link_is_not_read() {
+        let folder = tempfile::tempdir().expect("a folder");
+        let target = folder.path().join("target.jsonl");
+        std::fs::write(&target, format!("{REPLY}\n")).expect("written");
+        let link = folder.path().join("s1.jsonl");
+        std::os::unix::fs::symlink(&target, &link).expect("a link");
+        let mut tally = Tally::new(Source::ClaudeCode);
+        assert!(read_new(&link, 0, &mut tally, &mut |_| false).is_err());
+        assert_eq!(tally.days().len(), 0);
     }
 
     #[test]

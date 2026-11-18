@@ -62,7 +62,9 @@ fn value_text(value: &str) -> &str {
 
 /// The `host/owner/name` of a remote URL: `https://user:token@host:8443/owner/name.git`,
 /// `ssh://git@host/owner/name`, `git@host:owner/name.git` and the like. `None` for a local
-/// path, a `file://` URL, or a name that breaks the K8 rule ([`is_repository`]).
+/// path, a `file://` URL, an scp path that starts with `/`, or a name that breaks the K8 rule
+/// ([`is_repository`]: more than 4 segments, or a first segment that is a root folder), so a
+/// folder path on the host is never sent (AIS-018).
 #[must_use]
 pub fn remote_name(url: &str) -> Option<String> {
     let url = url.trim();
@@ -73,9 +75,10 @@ pub fn remote_name(url: &str) -> Option<String> {
         }
         rest.split_once('/')?
     } else {
-        // The scp form `[user@]host:path`; a local path has a `/` before any `:`.
+        // The scp form `[user@]host:path`; a local path has a `/` before any `:`, and a path
+        // that starts with `/` after the `:` is a folder of the host.
         let (authority, path) = url.split_once(':')?;
-        if authority.is_empty() || authority.contains('/') {
+        if authority.is_empty() || authority.contains('/') || path.starts_with('/') {
             return None;
         }
         (authority, path)

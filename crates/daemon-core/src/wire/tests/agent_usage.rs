@@ -178,7 +178,14 @@ fn ais_019_a_session_day_that_breaks_a_text_rule_is_malformed() {
         let id = id.to_owned();
         assert_malformed("an ID", with_day(move |day| day.id = id));
     }
-    for name in ["/Users/me/app", "me:pw@github.com/a/b", "github.com/app"] {
+    for name in [
+        "/Users/me/app",
+        "me:pw@github.com/a/b",
+        "github.com/app",
+        "nas.local/Users/me/app",
+        "nas/home/me/app",
+        "host.example/a/b/c/d/e",
+    ] {
         let name = name.to_owned();
         assert_malformed(
             "a repository",

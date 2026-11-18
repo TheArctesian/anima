@@ -220,8 +220,12 @@ Request:
     - `repository`: optional. The repository of the session's working folder (AIS-002, R-134): the `url` of
       the remote `origin` in the git configuration of the folder (of the main repository for a worktree),
       written `host/owner/name` with no scheme, user, password, token, port or `.git`. It is 1 to 200 bytes:
-      a host of `[a-z0-9.-]`, then 2 to 8 segments of 1 to 100 bytes of `[A-Za-z0-9._-]`, none `.` or `..`,
-      each after one `/`. Absent when the folder has no such remote, or the remote is a local path.
+      a host of `[a-z0-9.-]`, then 2 to 4 segments of 1 to 100 bytes of `[A-Za-z0-9._-]`, none `.` or `..`,
+      each after one `/`; the first segment is none of `Users`, `home`, `root`, `var`, `srv`, `opt`, `mnt`,
+      `Volumes`, `tmp`, `private` and `data`, in any letter case. The name is never a folder path of a
+      host (AU-5 security review): the daemon sends no `repository` for a local path, a `file://` URL, an
+      scp-form remote (`host:path`) whose path starts with `/`, and a URL whose path breaks this rule.
+      Absent when the folder has no such remote.
     - `prompts`: the prompts the operator typed on that day; `toolCalls`: the tool calls of the program on
       that day, sub-agents included.
     - `models` holds 0 to 16 entries with unique `model` names: the tokens of that day by model. `model` is
@@ -238,20 +242,29 @@ Request:
     `~/.codex/sessions/**/rollout-*.jsonl` (at most 4 folders down), and of the nearest folder at or
     above each working folder that has a `.git`, and is below the home folder, only its `.git` link, the
     `commondir` file of a worktree and the git `config` file (AIS-022). It never opens a credential or
-    settings file of the programs. It does not follow a symbolic link. On macOS it reads no git file under `~/Documents`, `~/Desktop`, `~/Downloads` or
-    `~/Library/Mobile Documents`, so the system asks the operator for no access; such a session has no
-    `repository`.
+    settings file of the programs. It opens each of these files without following a symbolic link
+    (`O_NOFOLLOW`), and only a regular file. It follows the folder that a `gitdir:` line or a
+    `commondir` file names only when that folder is below the home folder, outside the guarded folders
+    below, and is the same folder when every link on its path is resolved (AU-5 security review);
+    else the session has no `repository`. On macOS it reads no git file under `~/Documents`,
+    `~/Desktop`, `~/Downloads` or `~/Library/Mobile Documents`, so the system asks the operator for no
+    access; such a session has no `repository`.
   - Only a daemon that runs as the user of the operator reads the files: the launchd agent and the systemd
     user unit (AIS-024). A daemon whose `HOME` is not set, or is the state folder of the system unit
     (`/var/lib/anima-daemon`), or whose `ANIMA_DAEMON_HOME` is that folder, sends `system_unit`.
   - The operator's settings are the file `agent-usage.json` in the daemon's folder (MET-002):
     `{ "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"] }`,
-    each member optional, at most 64 KiB and at most 256 entries in each list. A session whose working
-    folder, or the main folder of its repository, is under an excluded folder (by whole folder names), or
-    whose repository is excluded (letter case ignored), is not counted and not sent (AIS-008, AIS-023):
-    the daemon stops reading its file at the first line that names the folder. A settings file that
-    cannot be read or parsed, or that has a member not named here, turns the function off
-    (`turned_off`) and is logged once at start.
+    each member optional, at most 64 KiB and at most 256 entries in each list. Each entry of
+    `excludedRepositories` is written as `repository` is (above; letter case ignored) and does not end
+    in `.git`. A session is not counted and not sent (AIS-008, AIS-023) when its working folder, or the
+    main folder of its repository, each as written and with its links resolved when it exists, is under
+    an excluded folder, as written or with its links resolved (by whole folder names; on macOS without
+    letter case); or when its repository is excluded (letter case ignored); or when any repository is
+    excluded and the name of its repository cannot be read (AU-5 security review). The daemon stops
+    reading a file at the first line that names an excluded folder, and sends nothing of a file before
+    a line of it has named its folder and the session is found not excluded. A settings file that
+    cannot be read or parsed, that has a member not named here, or an `excludedRepositories` entry of
+    another form, turns the function off (`turned_off`) and is logged once at start.
   - The daemon reads the files at start and every 15 minutes; it reads each file from where it stopped
     and skips a file whose size and modification time did not change. It sends `agentUsage` in its first batch
     after start (with its `state`, even with no session days), and each session day whose counts changed;

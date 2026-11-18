@@ -15,8 +15,15 @@ const MAX_REPOSITORY: usize = 200;
 /// The longest segment of a repository path, in bytes.
 const MAX_SEGMENT: usize = 100;
 
-/// The fewest and most path segments after the host of a repository.
-const SEGMENTS: std::ops::RangeInclusive<usize> = 2..=8;
+/// The fewest and most path segments after the host of a repository: `owner/name` of a forge,
+/// up to two group levels more. A deeper path is more likely a folder on the host.
+const SEGMENTS: std::ops::RangeInclusive<usize> = 2..=4;
+
+/// The root folders of a file system: a remote path that starts with one is a folder on the
+/// host, not a repository of a forge, and is never sent (AIS-018).
+const ROOT_FOLDERS: [&str; 11] = [
+    "users", "home", "root", "var", "srv", "opt", "mnt", "volumes", "tmp", "private", "data",
+];
 
 /// A `state` or `source`: 1 to 32 bytes of `[a-z_]`.
 #[must_use]
@@ -51,8 +58,9 @@ pub fn model_or_other(name: &str) -> &str {
     if is_model(name) { name } else { OTHER_MODEL }
 }
 
-/// A repository: at most 200 bytes, a host of `[a-z0-9.-]`, then 2 to 8 segments of 1 to 100
-/// bytes of `[A-Za-z0-9._-]`, none `.` or `..`, each after one `/`.
+/// A repository: at most 200 bytes, a host of `[a-z0-9.-]`, then 2 to 4 segments of 1 to 100
+/// bytes of `[A-Za-z0-9._-]`, none `.` or `..`, each after one `/`, the first not a root folder
+/// of a file system ([`ROOT_FOLDERS`], any letter case).
 #[must_use]
 pub fn is_repository(text: &str) -> bool {
     let mut parts = text.split('/');
@@ -66,6 +74,11 @@ pub fn is_repository(text: &str) -> bool {
         && host_fits
         && SEGMENTS.contains(&segments.len())
         && segments.iter().all(|segment| is_segment(segment))
+        && !segments.first().is_some_and(|first| {
+            ROOT_FOLDERS
+                .iter()
+                .any(|root| first.eq_ignore_ascii_case(root))
+        })
 }
 
 fn is_segment(text: &str) -> bool {

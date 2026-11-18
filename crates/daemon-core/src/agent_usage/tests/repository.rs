@@ -68,6 +68,11 @@ fn ais_018_a_local_or_odd_remote_has_no_name() {
         "https://u:p/ss@host.example/me/app",
         "ftp://host.example/me/app",
         "https://host.example/me/../app",
+        "ssh://me@nas.local/Users/me/private/app.git",
+        "nas:/home/me/clients/acme/app.git",
+        "git@nas:/srv/git/app.git",
+        "ssh://nas/volumes/backup/app",
+        "https://host.example/a/b/c/d/e",
         "",
     ] {
         assert_eq!(remote_name(url), None, "{url}");
