@@ -126,7 +126,7 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-138 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker. It waits for HT-023 (PLN-014). |
+| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-138 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-023 (PLN-014). |
 
 ## Open points
 
