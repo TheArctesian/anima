@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Direction decided
-evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). R-129 makes the account the only way into a hosted hub and approves HMD-038 to HMD-041; HM-T2 to HM-T4 build the hub and client side. R-130 approves HMD-043 (the real cloud client in the shell, HM-T6) and HM-T7 (the hosted mode on a pool hub). HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to main (operator, 2026-11-17: "Yes, merge it"); HM-T4 is built in the private repositories. HT-022, the first real sign-in, is Passed (operator, 2026-11-17), so HM-T1 to HM-T7 are Done. HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). R-159 decides HM-D4 (a second factor is required before the first device with remote access) and HM-D7 (no review by a person from outside); HM-D14 and HM-D15 are open.
+state: Approved
+evidence: Approved: R-163 (operator, 2026-11-18) approves HMD-001 to HMD-036, and each of HMD-037 to HMD-041 and HMD-043 to HMD-050 has its ruling; approved does not mean built. The move of this document to `docs/plans/` (PLN-018, stage 3) is not done yet: it changes the links in 15 code files and in `contracts/schema.graphql`, so it needs the full gates and a commit of its own. Direction decided before (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). R-129 makes the account the only way into a hosted hub and approves HMD-038 to HMD-041; HM-T2 to HM-T4 build the hub and client side. R-130 approves HMD-043 (the real cloud client in the shell, HM-T6) and HM-T7 (the hosted mode on a pool hub). HM-T1 to HM-T3, HM-T6 and HM-T7 are built and merged to main (operator, 2026-11-17: "Yes, merge it"); HM-T4 is built in the private repositories. HT-022, the first real sign-in, is Passed (operator, 2026-11-17), so HM-T1 to HM-T7 are Done. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). R-159 decides HM-D4 (a second factor is required before the first device with remote access) and HM-D7 (no review by a person from outside); R-163 approves HMD-001 to HMD-036 with the text of the revision (Section 6.7 gives what is built: 15 Built, 5 Changed, 16 Not built) and decides HM-D14. HMD-051 is proposed. R-164 decides HM-D15 (a free hub sleeps after 15 minutes with no connected device and is deleted after 60 days with no sign-in). Open: HM-D2, HM-D8, HM-D11 and HM-D13.
 ---
 
 # Proposal: the hosted mode as the default first run
@@ -10,14 +10,15 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 From: the business planning session of 2026-11-16, after the operator tried release 0.2.0 on a
 second Mac (report of the S12 packaging session).
-Version: 6. Date: 2026-11-18. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
+Version: 7. Date: 2026-11-18. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 7 holds the approval of HMD-001 to HMD-036 (R-163): the approved text is in Sections 6.1 to 6.6, HM-D14 is decided and HMD-051 is proposed.
 Version 6 adds Section 6.7 (the revision of HMD-001 to HMD-036 for approval), R-159 and the open decisions HM-D14 and HM-D15.
 Version 5 adds the task table of Section 8, task HM-T1 (R-127), HMD-037 (R-128), HMD-038 to HMD-041 with tasks HM-T2 to HM-T4 (R-129), and HMD-043 with tasks HM-T6 and HM-T7 (R-130).
-Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements are not
-approved.
+Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements
+HMD-001 to HMD-041 and HMD-043 to HMD-050 are approved (Section 6; R-163 for HMD-001 to HMD-036; no requirement has the number HMD-042); HMD-051 is proposed.
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
 Section 1.3 (the hosted mode) and item S6 (first run), and [other-operators.md](other-operators.md)
 (OD-W2). This proposal serves row 4.17 of [priorities.md](../plan/priorities.md): tier 1
@@ -176,128 +177,124 @@ The free mode and the self-host mode keep OR-5: no directory can give access to 
 
 ## 6. Proposed requirements
 
-The prefix `HMD` is free on `main`. No requirement is approved. The cloud side of each requirement
+HMD-001 to HMD-036 are approved (R-163, operator, 2026-11-18: "Approve both"), with the text of the revision of Section 6.7. Approved does not mean built or checked: Section 6.7 gives the mark of each requirement. HMD-051 is proposed and not approved. The cloud side of each requirement
 is built in the private repository (fact 5); this repository holds the client and the hub side.
 
 ### 6.1 Account directory and site
 
-- **HMD-001.** The site must let a person make an account with single sign-on.
-- **HMD-002.** An account must own zero or more hubs. The directory must give the hubs of an account only to that account.
-- **HMD-003.** When a new account has no hub, the directory must make one hosted hub for it without a step from the person.
-- **HMD-004.** The directory must sign a device grant only for a signed-in account. A grant must name the account, the hub and one device key. A grant must stop after 5 minutes.
-- **HMD-005.** A hosted hub must accept a device only with a valid grant for that hub. The hub must keep the list of its device keys (LNK-004).
-- **HMD-006.** An account must have a second factor (a passkey, TOTP, or the second factor of the sign-on provider) before the directory signs a grant.
-- **HMD-007.** When a device joins, the hub must send a notice to each joined device, and the directory must send an email to the account.
-- **HMD-008.** The owner must be able to remove a device from each joined device and from the site. The hub must close the open sessions of that device.
-- **HMD-009.** The owner must be able to set that a joined device approves each new device. The default is off (HM-R2).
-- **HMD-010.** The directory must never hold a device credential, a session or a record of a hub.
+- **HMD-001.** The site must let a person make an account with single sign-on. Approved (R-163).
+- **HMD-002.** An account must own zero or more hubs. The directory must give the hubs of an account only to that account. Approved (R-163).
+- **HMD-003.** When a new account has no hub, the directory must make one hosted hub for it without a step from the person. Approved (R-163).
+- **HMD-004.** The directory must ask a hosted hub for a device invite and a one-time claim only for a signed-in account, and only for the hub of that account. The claim names one device and stops when its invite expires (HMD-039). Approved (R-163).
+- **HMD-005.** A hosted hub must admit a device only with an invite and a one-time claim that the cloud asked for with the cloud key of that hub (HMD-039, HMD-040). The link of the hub must keep the list of its device keys (LNK-004). Approved (R-163).
+- **HMD-006.** An account must have a second factor (a passkey, TOTP, or the second factor of the sign-on provider) before the first device with remote access is added to its hub. The sign-in stays one step. HM-D14 defines "remote access". Approved (R-163).
+- **HMD-007.** When a device joins, the hub must send a notice to each joined device, and the directory must send an email to the account. Approved (R-163).
+- **HMD-008.** The owner must be able to remove a device from each joined device and from the site. The hub must close the open sessions of that device. Approved (R-163).
+- **HMD-009.** The owner must be able to set that a joined device approves each new device. The default is off (HM-R2). Approved (R-163).
+- **HMD-010.** The directory must never hold a device credential, a session or a record of a hub. It passes the invite and the one-time claim of HMD-004 to the device and must not keep them. Approved (R-163).
 
 ### 6.2 Hosted hub
 
-- **HMD-011.** The server stack must run `anima-link`, and the hub must run in link mode (Section 3, fact 3). A hosted hub must have no public port other than the relay.
-- **HMD-012.** A hosted hub must run without Headscale and without the Tailscale client.
-- **HMD-013.** The pool must make a hub in less than 60 seconds. The site and the application must show the progress.
-- **HMD-014.** A hosted hub must have its own data, keys and backup. One hub must never read the data of a different hub.
-- **HMD-015.** Before the first hub is made, the site must tell the person in plain words what a hosted hub can read (the table "What a hosted hub can read" of [other-operators.md](other-operators.md)).
-- **HMD-016.** The person must be able to export the hub and to move it to a self-host hub or a hub on their computer.
+- **HMD-011.** The server stack must run `anima-link`, and the hub must run in link mode (Section 3, fact 3). A hosted hub must have no public port other than the relay. Approved (R-163).
+- **HMD-012.** A hosted hub must run without Headscale and without the Tailscale client. Approved (R-163).
+- **HMD-013.** The pool must make a hub in less than 60 seconds. The application must show the progress. Approved (R-163).
+- **HMD-014.** A hosted hub must have its own data, keys and backup. One hub must never read the data of a different hub. Approved (R-163).
+- **HMD-015.** Before the first hub is made, the site must tell the person in plain words what a hosted hub can read (the table "What a hosted hub can read" of [other-operators.md](other-operators.md)). The text must not say or imply that a person reviewed the isolation of the hubs. Approved (R-163).
+- **HMD-016.** The person must be able to export the hub and to move it to a self-host hub or a hub on their computer. Approved (R-163).
 
 ### 6.3 Usage line and payment
 
-- **HMD-017.** Each hosted hub must show its use against its limits (the "Your hub" card of [shared-pool-hosting.md](shared-pool-hosting.md) Section 2).
-- **HMD-018.** Above the usage line, the hub must ask the person to pay. It must slow down; it must not delete data.
-- **HMD-019.** Payment is on the site, through Stripe. The application must show the plan and open the site for a change. The checkout takes Apple Pay and Google Pay (HMD-030).
-- **HMD-020.** An account must have no more than one free hub.
-- **HMD-021.** A free hub with no sign-in for 60 days must be paused. The directory must warn the person by email before it deletes a paused hub.
-- **HMD-030.** On a mobile device, the checkout must offer Apple Pay and Google Pay first, and a normal card form when no wallet is available (HM-R7). The page of the checkout must be on `cloud.anima.ing`. Card and wallet details must never reach the directory or its logs. Only Stripe identifiers may.
-- **HMD-031.** The staff tools of the directory must show account, billing and job data only. Staff must not open a session on a customer's hub or read its content (HM-R8). Access to a hub is allowed only on a plan with a support tier that includes it, after the customer opts in, and the hub must write each access to its audit log.
+- **HMD-017.** Each hosted hub must show its use against its limits (the "Your hub" card of [shared-pool-hosting.md](shared-pool-hosting.md) Section 2). Approved (R-163).
+- **HMD-018.** Above the usage line, the hub must ask the person to pay. It must slow down; it must not delete data. Approved (R-163).
+- **HMD-019.** Payment is on the site, through Stripe. The application must show the plan and open the site for a change. The checkout takes Apple Pay and Google Pay (HMD-030). Approved (R-163).
+- **HMD-020.** An account must have no more than one free hub. Approved (R-163).
+- **HMD-021.** A free hub with no sign-in for 60 days must be paused. The directory must warn the person by email before it deletes a paused hub. Approved (R-163).
+- **HMD-051.** The hub of a paid account whose payment failed must be deleted 30 days after the first failed payment. The account must get warning emails before the deletion. Proposed, not approved: R-159 (e) holds the answer of the operator, and no ruling approves this text. HMD-018 is for a hub above the usage line, which is a different case.
+- **HMD-030.** On a mobile device, the checkout must offer Apple Pay and Google Pay first, and a normal card form when no wallet is available (HM-R7). The page of the checkout must be on `cloud.anima.ing`. Card and wallet details must never reach the directory or its logs. Only Stripe identifiers may. Approved (R-163).
+- **HMD-031.** The staff tools of the directory must show account, billing and job data only. Staff must not open a session on a customer's hub or read its content (HM-R8). Access to a hub is allowed only on a plan with a support tier that includes it, after the customer opts in, and the hub must write each access to its audit log. Approved (R-163).
 
 ### 6.4 First run
 
-- **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available. The first screen follows frame 1 of the mobile mockup: the doors, the title, "Sign in", then "Sign up" and "Join a hub" side by side under it. The other ways (an invite, a hub address, a hub on this computer) are on the page behind "Join a hub" (operator, 2026-11-17: "1st option is sign in ... the paste invite ... should be split into two buttons, sign up or join a hub"; the line under the title is removed).
-- **HMD-023.** The application must show one state for each step of Section 4.1, and a clear error with a retry for each failure.
+- **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available. The first screen follows frame 1 of the mobile mockup: the doors, the title, "Sign in", then "Sign up" and "Join a hub" side by side under it. The other ways (an invite, a hub address, a hub on this computer) are on the page behind "Join a hub" (operator, 2026-11-17: "1st option is sign in ... the paste invite ... should be split into two buttons, sign up or join a hub"; the line under the title is removed). Approved (R-163).
+- **HMD-023.** The application must show one state for each step of Section 4.1, and a clear error with a retry for each failure. Approved (R-163).
 
 ### 6.5 Sleep and wake of a free hub (HM-R6)
 
-- **HMD-024.** The pool must stop a free hub when no device of the account was connected for 15 minutes. A stopped hub must use disk only.
-- **HMD-025.** When a person opens the application or signs in, the cloud must start the hub of the account. The start is a job (the job table of the cloud). The application must show "Your hub is starting" until the link connects.
-- **HMD-026.** A free hub must start in less than 30 seconds. This number is a target; it is not measured.
-- **HMD-027.** The cloud, not the hub, must decide to stop a hub, from the heartbeat of the hub and the state of the link. A hub that sends no heartbeat must be stopped by the pool.
-- **HMD-028.** While a free hub sleeps, a daemon on a device must wait and try again without an error to the person. The application must say in plain words that checks, notifications and history need a hub that is always on.
-- **HMD-029.** A paid hub must never sleep. When a person pays, the hub must stay on from that moment without a move of data.
+- **HMD-024.** The pool must stop a free hub when no device of the account was connected for 15 minutes. A stopped hub must use disk only. Approved (R-163).
+- **HMD-025.** When a person opens the application or signs in, the cloud must start the hub of the account. The application must show "Your hub is starting" until the link connects. Approved (R-163).
+- **HMD-026.** A free hub must start in less than 30 seconds. Measured for a hub with no device only (HM-D8). Approved (R-163).
+- **HMD-027.** The cloud, not the hub, must decide to stop a hub, from the heartbeat of the hub and the state of the link. A hub that sends no heartbeat must be stopped by the pool. Approved (R-163).
+- **HMD-028.** While a free hub sleeps, a daemon on a device must wait and try again without an error to the person. The application must say in plain words that checks, notifications and history need a hub that is always on. Approved (R-163).
+- **HMD-029.** A paid hub must never sleep. When a person pays, the hub must stay on from that moment without a move of data. Approved (R-163).
 
 ### 6.6 Sign-in with WorkOS AuthKit (HM-R9)
 
-- **HMD-032.** The application must sign in with the device authorization flow of WorkOS AuthKit, as a public client. The application must hold only the client ID: no WorkOS API key and no client secret.
-- **HMD-033.** The cloud must accept a WorkOS access token only after it checks the signature, the issuer, the audience and the expiry. The cloud must find the account by the WorkOS user ID, not by the email address.
-- **HMD-034.** The application must keep the WorkOS refresh token in the key store of the system, never in a file or a log (LOG-007). It must replace the stored token after each exchange, and it must delete the tokens when WorkOS refuses one.
-- **HMD-035.** The WorkOS API key must be only in the private cloud (HCL-014). The open-source repository must hold only the client ID and the `ANIMA_CLOUD_URL` setting (HCL-002).
-- **HMD-036.** When the owner removes a device (HMD-008) or signs out on the site, the cloud must end the WorkOS sessions of that device and refuse its refresh token. How WorkOS ends one session is not checked.
+- **HMD-032.** The application must sign in with the device authorization flow of WorkOS AuthKit, as a public client. The application must hold only the client ID: no WorkOS API key and no client secret. Approved (R-163).
+- **HMD-033.** The cloud must accept a WorkOS access token only after it checks the signature (RS256 only), the issuer (`iss`), the client (`client_id`) and the expiry. The expected values of `iss` and `client_id` are read from one real Production token first. The cloud must find the account by the WorkOS user ID, not by the email address. Approved (R-163).
+- **HMD-034.** The application must keep the WorkOS refresh token in the key store of the system, never in a file or a log (LOG-007). It must replace the stored token after each exchange, and it must delete the tokens when WorkOS refuses one. Approved (R-163).
+- **HMD-035.** The WorkOS API key must be only in the private cloud (HCL-014). The open-source repository must hold only the client ID and the `ANIMA_CLOUD_URL` setting (HCL-002). Approved (R-163).
+- **HMD-036.** When the owner removes a device (HMD-008) or signs out on the site, the cloud must end the WorkOS sessions of that device and refuse its refresh token. How WorkOS ends one session is not checked. Approved (R-163).
 
-### 6.7 Revision of HMD-001 to HMD-036 for approval (2026-11-18)
+### 6.7 What is built of HMD-001 to HMD-036 (2026-11-18)
 
-The operator asked for a revision of the list before he approves it (2026-11-18: "B: revise first"). This
-table compares each requirement with the code on `main` (3dc5beae), with the private plans of the site and of
-the pool service, and with the rulings R-127 to R-159. It approves nothing: each requirement stays proposed
-until the operator approves the revision. The text of Sections 6.1 to 6.6 is not changed yet; the column
-"Proposed text" gives the new text only where the text changes.
+The operator asked for a revision of the list before he approved it (2026-11-18: "B: revise first"), and
+approved the revision with R-163 ("Approve both"). Sections 6.1 to 6.6 hold the approved text. This table is the
+record of the comparison: each requirement against the code on `main` (3dc5beae), the private plans of the
+site and of the pool service, and the rulings R-127 to R-159. The text changed for HMD-004, HMD-005, HMD-006,
+HMD-010, HMD-013, HMD-015, HMD-025, HMD-026 and HMD-033.
 
 The marks: **Built** (the function exists; the evidence says what is not checked), **Changed** (a ruling
-replaced the design; the evidence says what is built of the new design), **Not built**. A mark is not a result
-of a live check: only an entry of [need-human-testing.md](../need-human-testing.md) is. Count: 15 Built,
-5 Changed, 16 Not built.
+replaced the design; the evidence says what is built of the new design), **Not built**. An approved requirement
+is not built by its approval, and a mark is not a result of a live check: only an entry of
+[need-human-testing.md](../need-human-testing.md) is. Count: 15 Built, 5 Changed, 16 Not built. Change a mark
+in the commit that builds the requirement.
 
-| Requirement | Mark | Evidence | Proposed text |
-| --- | --- | --- | --- |
-| HMD-001 | Built | The site signs a person in with WorkOS AuthKit and makes the account at the first sign-in (private site, sign-in and callback routes). HT-022 Passed. | No change. |
-| HMD-002 | Built | `POST /v1/hub` of the site gives only the hub of the signed-in account; the private service refuses a hub of a different account (its plan, T9 and T23). An account has zero hubs or one hub: more than one is not built. | No change. |
-| HMD-003 | Built | The first `POST /v1/hub` of an account makes its hub on the plan `free`, with no card and no step (private site plan, HUB-D1). HT-022 Passed. | No change. |
-| HMD-004 | Changed | R-129 and R-130 replaced the signed grant of 5 minutes: the cloud asks the hub for a link invite and a one-time claim (`hostedDeviceInvite`), with the cloud key of that hub. Built: `crates/hub/src/fleet/link/graphql/hosted.rs`, `claims.rs` (HM-T2, 921ee045); HMD-039 holds the hub side. | The directory must ask a hosted hub for a device invite and a one-time claim only for a signed-in account, and only for the hub of that account. The claim names one device and stops when its invite expires (HMD-039). |
-| HMD-005 | Changed | The same rulings. The hub gives a login token only for the claim, to the device of its link that has the name of the claim (`claimDeviceToken`, HMD-040). The link keeps the device keys (`link/devices/`, LNK-004). HT-022 Passed. | A hosted hub must admit a device only with an invite and a one-time claim that the cloud asked for with the cloud key of that hub (HMD-039, HMD-040). The link of the hub must keep the list of its device keys (LNK-004). |
-| HMD-006 | Changed | R-159 (HM-D4): "C: required later". Not built: no code asks for a second factor. | An account must have a second factor (a passkey, TOTP, or the second factor of the sign-on provider) before the first device with remote access is added to its hub. The sign-in stays one step. HM-D14 defines "remote access" (open). |
-| HMD-007 | Not built | No notice to the joined devices and no email when a device joins: none is in the hub, the client or the private plans. | No change. |
-| HMD-008 | Not built | Built in part: the owner removes a device of the link from the client, and the hub link closes its streams (`revokeLinkDevice`, LNK-004). Not built: removal from the site. | No change. |
-| HMD-009 | Not built | No setting and no approval step exist. | No change. |
-| HMD-010 | Built | The cloud never receives the token of a device (HMD-040), and the private service keeps no invite and no claim (its plan, ACL-022). The cloud passes the invite and the claim to the device one time. | The directory must never hold a device credential, a session or a record of a hub. It passes the invite and the one-time claim of HMD-004 to the device and must not keep them. |
-| HMD-011 | Built | A hub of the pool runs `anima-local-hub` with the link and the hosted mode (HM-T7, 9babe035). Not checked: a scan of the open ports of a pool host. | No change. |
-| HMD-012 | Built | The same image: the link is the only path, with no Headscale and no Tailscale client (HM-T7). | No change. |
-| HMD-013 | Built | Measured on the first pool host on 2026-11-17: about 10 seconds from a make to a ready hub (HM-D8). The application shows the progress (HM-T1, HMD-037). The person makes the hub from the application, so the site shows no progress. | The pool must make a hub in less than 60 seconds. The application must show the progress. |
-| HMD-014 | Built | Each hub is one isolated instance with its own data, its own keys and limits (private service plan, ACL-003, T5). Not built: a backup of each hub. Not reviewed by a person (HM-D7, R-159). | No change. |
-| HMD-015 | Not built | The site has no such text. R-159 (HM-D7) adds a limit to the text. | Before the first hub is made, the site must tell the person in plain words what a hosted hub can read (the table "What a hosted hub can read" of [other-operators.md](other-operators.md)). The text must not say or imply that a person reviewed the isolation of the hubs. |
-| HMD-016 | Not built | A self-hosted hub has a backup and a restore on a second server (FND-006, HT-024 Open). A hub of the pool has no export. | No change. |
-| HMD-017 | Not built | No card "Your hub" and no limits. HM-D2 is open. | No change. |
-| HMD-018 | Not built | No usage line exists (HM-D2). R-159 (e) is a different case: a paid account that is past due. | No change. |
-| HMD-019 | Not built | Built in part, in the Stripe sandbox only: the site saves a card and opens the customer portal (private site, Stripe plan). Not built: the application does not show the plan and does not open the site for a change. Not checked: Apple Pay and Google Pay, and the live mode. R-159 (f) is the move to live; the private plans own it. | No change. |
-| HMD-020 | Built | An account has one hub: `POST /v1/hub` gives the hub that exists and makes no second one. | No change. |
-| HMD-021 | Not built | No pause and no deletion of a free hub that is not used. HM-D15 is open: the operator did not answer this question. | No change. |
-| HMD-022 | Built | HM-T1 (a428809e, 6659c3c7); HT-022 Passed. | No change. |
-| HMD-023 | Built | HM-T1: one state for each step, and an error with a retry (`apps/client/src/routes/welcome/hosted/`). | No change. |
-| HMD-024 | Not built | The private service does not sleep a hub by use (its plan, T7: not started, with an open decision for what "use" is). HM-D15 is open. | No change. |
-| HMD-025 | Changed | Built: `POST /v1/hub` wakes a hub that sleeps, and the application shows "Your hub is starting" (HMD-037). The start is one instruction to the private service; there is no job table. | When a person opens the application or signs in, the cloud must start the hub of the account. The application must show "Your hub is starting" until the link connects. |
-| HMD-026 | Built | Measured on the first pool host on 2026-11-17: a wake in 0.2 seconds for a hub with no device (HM-D8). Not measured: a hub with devices, and many hubs on one host. | A free hub must start in less than 30 seconds. Measured for a hub with no device only (HM-D8). |
-| HMD-027 | Not built | The private service stops a hub only on an instruction of the site, and no heartbeat exists (its plan, ACL-018, T7). | No change. |
-| HMD-028 | Not built | No text in the application says what needs a hub that is always on. The wait of a daemon while its hub sleeps is not tested, because no hub sleeps by use. | No change. |
-| HMD-029 | Not built | No hub sleeps by use, and no path changes a hub from free to paid yet (private site plan, HUB-C1). | No change. |
-| HMD-030 | Not built | Built in part: the card form is a page of Stripe, so card details do not reach the directory. Not built: a checkout on `cloud.anima.ing` that offers the wallets first. Not checked: Apple Pay and Google Pay. | No change. |
-| HMD-031 | Not built | No staff tool exists. No path lets staff open a hub. | No change. |
-| HMD-032 | Built | `apps/desktop/src-tauri/src/cloud/workos.rs`: the device authorization flow with the client ID only (HM-T6, 0518056e). HT-022 Passed. | No change. |
-| HMD-033 | Changed | R-159 (d): "A: add the checks". Built in the private site: the signature, the subject and the expiry, and the account by the WorkOS user ID. Not built: the checks of `iss` and `client_id`, and RS256 only. The site work is in the private repository. | The cloud must accept a WorkOS access token only after it checks the signature (RS256 only), the issuer (`iss`), the client (`client_id`) and the expiry. The expected values of `iss` and `client_id` are read from one real Production token first. The cloud must find the account by the WorkOS user ID, not by the email address. |
-| HMD-034 | Built | `apps/desktop/src-tauri/src/cloud/session.rs`: the refresh token is in the key store of the system (HM-T6). HT-022 Passed. | No change. |
-| HMD-035 | Built | This repository holds the client ID (`ANIMA_CLOUD_CLIENT_ID` at build time) and `ANIMA_CLOUD_URL` only. | No change. |
-| HMD-036 | Not built | No removal of a device from the site (HMD-008), and no code ends the WorkOS sessions of one device. | No change. |
+| Requirement | Mark | Evidence |
+| --- | --- | --- |
+| HMD-001 | Built | The site signs a person in with WorkOS AuthKit and makes the account at the first sign-in (private site, sign-in and callback routes). HT-022 Passed. |
+| HMD-002 | Built | `POST /v1/hub` of the site gives only the hub of the signed-in account; the private service refuses a hub of a different account (its plan, T9 and T23). An account has zero hubs or one hub: more than one is not built. |
+| HMD-003 | Built | The first `POST /v1/hub` of an account makes its hub on the plan `free`, with no card and no step (private site plan, HUB-D1). HT-022 Passed. |
+| HMD-004 | Changed | R-129 and R-130 replaced the signed grant of 5 minutes: the cloud asks the hub for a link invite and a one-time claim (`hostedDeviceInvite`), with the cloud key of that hub. Built: `crates/hub/src/fleet/link/graphql/hosted.rs`, `claims.rs` (HM-T2, 921ee045); HMD-039 holds the hub side. |
+| HMD-005 | Changed | The same rulings. The hub gives a login token only for the claim, to the device of its link that has the name of the claim (`claimDeviceToken`, HMD-040). The link keeps the device keys (`link/devices/`, LNK-004). HT-022 Passed. |
+| HMD-006 | Changed | R-159 (HM-D4): "C: required later". Not built: no code asks for a second factor. |
+| HMD-007 | Not built | No notice to the joined devices and no email when a device joins: none is in the hub, the client or the private plans. |
+| HMD-008 | Not built | Built in part: the owner removes a device of the link from the client, and the hub link closes its streams (`revokeLinkDevice`, LNK-004). Not built: removal from the site. |
+| HMD-009 | Not built | No setting and no approval step exist. |
+| HMD-010 | Built | The cloud never receives the token of a device (HMD-040), and the private service keeps no invite and no claim (its plan, ACL-022). The cloud passes the invite and the claim to the device one time. |
+| HMD-011 | Built | A hub of the pool runs `anima-local-hub` with the link and the hosted mode (HM-T7, 9babe035). Not checked: a scan of the open ports of a pool host. |
+| HMD-012 | Built | The same image: the link is the only path, with no Headscale and no Tailscale client (HM-T7). |
+| HMD-013 | Built | Measured on the first pool host on 2026-11-17: about 10 seconds from a make to a ready hub (HM-D8). The application shows the progress (HM-T1, HMD-037). The person makes the hub from the application, so the site shows no progress. |
+| HMD-014 | Built | Each hub is one isolated instance with its own data, its own keys and limits (private service plan, ACL-003, T5). Not built: a backup of each hub. Not reviewed by a person (HM-D7, R-159). |
+| HMD-015 | Not built | The site has no such text. R-159 (HM-D7) adds a limit to the text. |
+| HMD-016 | Not built | A self-hosted hub has a backup and a restore on a second server (FND-006, HT-024 Open). A hub of the pool has no export. |
+| HMD-017 | Not built | No card "Your hub" and no limits. HM-D2 is open. |
+| HMD-018 | Not built | No usage line exists (HM-D2). R-159 (e) is a different case: a paid account that is past due. |
+| HMD-019 | Not built | Built in part, in the Stripe sandbox only: the site saves a card and opens the customer portal (private site, Stripe plan). Not built: the application does not show the plan and does not open the site for a change. Not checked: Apple Pay and Google Pay, and the live mode. R-159 (f) is the move to live; the private plans own it. |
+| HMD-020 | Built | An account has one hub: `POST /v1/hub` gives the hub that exists and makes no second one. |
+| HMD-021 | Not built | No pause and no deletion of a free hub that is not used. R-164 (HM-D15) confirms the rule; the private plan of the pool service owns the build. |
+| HMD-022 | Built | HM-T1 (a428809e, 6659c3c7); HT-022 Passed. |
+| HMD-023 | Built | HM-T1: one state for each step, and an error with a retry (`apps/client/src/routes/welcome/hosted/`). |
+| HMD-024 | Not built | The private service does not sleep a hub by use (its plan, T7: not started, with an open decision for what "use" is). R-164 (HM-D15) says what "use" is: a device connected on the link. |
+| HMD-025 | Changed | Built: `POST /v1/hub` wakes a hub that sleeps, and the application shows "Your hub is starting" (HMD-037). The start is one instruction to the private service; there is no job table. |
+| HMD-026 | Built | Measured on the first pool host on 2026-11-17: a wake in 0.2 seconds for a hub with no device (HM-D8). Not measured: a hub with devices, and many hubs on one host. |
+| HMD-027 | Not built | The private service stops a hub only on an instruction of the site, and no heartbeat exists (its plan, ACL-018, T7). |
+| HMD-028 | Not built | No text in the application says what needs a hub that is always on. The wait of a daemon while its hub sleeps is not tested, because no hub sleeps by use. |
+| HMD-029 | Not built | No hub sleeps by use, and no path changes a hub from free to paid yet (private site plan, HUB-C1). |
+| HMD-030 | Not built | Built in part: the card form is a page of Stripe, so card details do not reach the directory. Not built: a checkout on `cloud.anima.ing` that offers the wallets first. Not checked: Apple Pay and Google Pay. |
+| HMD-031 | Not built | No staff tool exists. No path lets staff open a hub. |
+| HMD-032 | Built | `apps/desktop/src-tauri/src/cloud/workos.rs`: the device authorization flow with the client ID only (HM-T6, 0518056e). HT-022 Passed. |
+| HMD-033 | Changed | R-159 (d): "A: add the checks". Built in the private site: the signature, the subject and the expiry, and the account by the WorkOS user ID. Not built: the checks of `iss` and `client_id`, and RS256 only. The site work is in the private repository. |
+| HMD-034 | Built | `apps/desktop/src-tauri/src/cloud/session.rs`: the refresh token is in the key store of the system (HM-T6). HT-022 Passed. |
+| HMD-035 | Built | This repository holds the client ID (`ANIMA_CLOUD_CLIENT_ID` at build time) and `ANIMA_CLOUD_URL` only. |
+| HMD-036 | Not built | No removal of a device from the site (HMD-008), and no code ends the WorkOS sessions of one device. |
 
-Proposed, not approved, and with no identifier until the operator approves it: a requirement for R-159 (e).
-"The hub of a paid account whose payment failed must be deleted 30 days after the first failed payment. The
-account must get warning emails before the deletion." No requirement of this list holds that rule now. Built
-of it: the site sleeps the hub of an account that is past due (private site plan, HUB-D2). Not built: the
-deletion and the emails. HMD-018 ("it must not delete data") is for a hub above the usage line, which is a
-different case.
+Of HMD-051 (proposed): the site sleeps the hub of an account that is past due (private site plan, HUB-D2). The
+deletion after 30 days and the warning emails are not built.
 
-What the operator did not answer, so that it stays open:
+HM-D15 (a free hub that is not used: HMD-021, HMD-024) is decided by R-164. Open:
 
-- HM-D14: what "remote access" means in HMD-006.
-- HM-D15: a free hub that is not used (HMD-021, HMD-024).
 - HM-D2 (the usage line: HMD-017, HMD-018) and HM-D8 (the numbers of HMD-024 and HMD-026).
-- HM-D11 and HM-D13 are open in Section 7; no requirement of this list waits for them.
+- HM-D11 and HM-D13; no requirement of this list waits for them.
 
 ## 7. Open decisions
 
@@ -316,8 +313,8 @@ What the operator did not answer, so that it stays open:
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | The offer needs a VPN address (`apps/client/src/lib/desktop/this-machine.ts`). The link carries streams from the device to the hub only. | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the first real sign-in (2026-11-17: "the device doesn't auto add it should and the hub is not there as the default device"): the computer that signs in must be added with no step, and the hub must be in the list. |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Phones use the same claim join (a dependency, not a different design): the link library in the app (MOB-031, MOB-032) with the same `link_join`, `link_status` and `link_leave` commands (MOB-002), which turn on `deviceLink`. Not built: no phone has joined a hub (M1-4), the link in the mobile shell is on hold (M3-1, 2026-11-16), and phones have no key store (M5-1 deferred), so the hub token and the refresh token (HMD-034) are in memory only. On iOS the link stops in the background (MOB-036), so a phone must reconnect with its kept link state and token, with no new claim: the key store is required there. The relay path from a phone is not tested. | Build M5-1 with M3-1. Not ruled. |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | The pool proposal asks for a review before paying customers. HM-R2 adds the grant path. | Decided (R-159, operator, 2026-11-18): option D, "no review; rely on the design and the tests". No person from outside reviews the pool or the path from the account to a device before the launch. Consequence: no text for a customer may say or imply that a person reviewed the isolation (HMD-015). |
-| HM-D14 | What is "remote access" in the rule of the second factor (HM-D4, R-159)? | The row `Hub` of a hosted hub is in the device list from the start (HMD-045), and the computer that signs in is added with no step (HMD-044); neither has a session at that moment. A device has remote access when the hub can open a session on it: SSH, VNC or RDP. For a computer of the link that is the moment when its person turns a port on (HMD-049). For a device on a network that is the moment when a protocol or a credential is added to it. | Proposed, not ruled: an account needs a second factor before (1) a port of a computer of the link is turned on, and (2) SSH, VNC, RDP or a credential is added to a device of the hub. The rows of HMD-044 and HMD-045 and the check `Connected` need none. The operator confirms or changes this definition. |
-| HM-D15 | What occurs to a free hub that is not used? | HMD-021 pauses a free hub after 60 days with no sign-in and deletes it after a warning. HMD-024 stops it after 15 minutes with no connected device. R-159 gives a rule only for a paid account that is past due (deleted 30 days after the first failed payment). The private service does not sleep a hub by use yet: its plan has an open decision for what "use" is. | Not ruled. The operator did not answer this question. HMD-021 and HMD-024 stay as they are until he does. |
+| HM-D14 | What is "remote access" in the rule of the second factor (HM-D4, R-159)? | The row `Hub` of a hosted hub is in the device list from the start (HMD-045), and the computer that signs in is added with no step (HMD-044); neither has a session at that moment. A device has remote access when the hub can open a session on it: SSH, VNC or RDP. For a computer of the link that is the moment when its person turns a port on (HMD-049). For a device on a network that is the moment when a protocol or a credential is added to it. | Decided (R-163, operator, 2026-11-18: "Approve both"): an account needs a second factor before (1) a port of a computer of the link is turned on, and (2) SSH, VNC, RDP or a credential is added to a device of the hub. The rows of HMD-044 and HMD-045 and the check `Connected` need none. |
+| HM-D15 | What occurs to a free hub that is not used? | HMD-021 pauses a free hub after 60 days with no sign-in and deletes it after a warning. HMD-024 stops it after 15 minutes with no connected device. R-159 gives a rule only for a paid account that is past due (deleted 30 days after the first failed payment). The private service does not sleep a hub by use yet: its plan has an open decision for what "use" is. | Decided (R-164, operator, 2026-11-18: "A: sleep, delete at 60"). HMD-021 and HMD-024 stand as approved. "Use" means that a device is connected on the link of the hub (the presence of HMD-047). The site decides and instructs the pool, as for a failed payment. The private plan of the pool service owns the build (its T7 and AC-D32). Not answered: HMD-027 names a heartbeat of the hub as a source of that decision, and this answer names only the presence on the link; the text of HMD-027 is not changed. |
 
 ## 8. Work, in order
 
