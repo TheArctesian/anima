@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-139 (operator, 2026-11-17): the update of machines, stages A and B. Stage C (the hub of a server) is deferred and its requirements are marked "Not approved". Version 2 (2026-11-17). Tasks U1 (R-122) and U4 are Done. The other tasks are Not started. OD-ROL-15 is open.
+evidence: Approved by R-139 (operator, 2026-11-17): the update of machines, stages A and B. Stage C (the hub of a server) is deferred and its requirements are marked "Not approved". Version 2 (2026-11-17). Tasks U1 (R-122) and U4 are Done. The other tasks are Not started. OD-ROL-15 is decided (R-158): a release server signs.
 ---
 
 # Plan: update the daemon and the hub on each machine (one press, and automatic)
@@ -75,7 +75,9 @@ service makes from an image ([hosted-mode.md](../proposals/hosted-mode.md)). Thi
 - The pool updates a hub while its machines have the previous daemon. Thus ROL-034 and ROL-037 and
   their gates (task U9) are necessary for the pool also.
 - The hub of the operator on the VPS signs each release today (R-117). If that hub goes away, a
-  different place must sign. Decision OD-ROL-15 is open; task U2 waits for it.
+  different place must sign. Decision OD-ROL-15 is decided (R-158, 2026-11-18): a small server that
+  only makes releases signs, and the VPS hub signs until that server has published one release.
+  Task U12 is the move. Task U2 does not wait for the move: the record has the same form in the two places.
 
 ## Requirements
 
@@ -257,7 +259,7 @@ The build order is CMD-030: the hub API, the `anima` command, the MCP tool, then
 | A builder for each target (BLD-003) | `linux-x86_64` and `darwin-universal` only | A machine of a different target, for example Linux on ARM, gets no daemon file (OD-ROL-8). |
 | The local hub in the release (task R6; S4 T9) | Not started | ROL-020 needs it. |
 | A change to K8, which is frozen (CON-001) | Not asked | ROL-051 needs an optional member of the push. ROL-008 and ROL-009 need a new route, or the work route (task W1, not started). |
-| A ruling number for OD-W10, which changes R-115, and a change to MET-002 | Decided, with no ruling number | The daemon replaces a program on the machine. MET-002 permits it to write only its configuration, its token and its buffer. |
+| A ruling number for OD-W10, which changes R-115, and a change to MET-002 | R-160 (2026-11-18) is the ruling for OD-W10. R-139 gives the change to MET-002 for the update | The daemon replaces a program on the machine. MET-002 permits it to write only its configuration, its token and its buffer. |
 | The hub on the VPS is built there from source | No image is published | ROL-019 needs a published image and a program on the VPS with the Docker right. The first installation of that program is a change to the VPS (VPS-005). |
 | The restore procedure (FND-006, work plan tier 1) | Proposal, not written | It is the last way back when the hub cannot roll back (ROL-036). Decision OD-ROL-4 puts the hub after it. |
 | The isolation design and the security review (tasks W2 and S) | Not started | ROL-015, ROL-019 and ROL-030 are security subjects. |
@@ -302,7 +304,7 @@ programs. The operator must accept this again, or select a second key (OD-ROL-2)
 | OD-ROL-12 | A release whose database change the previous hub cannot read | Forbid it in the gates (ROL-034). Permit an exception that the record names, with a second confirmation and no automatic rollout (ROL-036). | Decided (R-139): forbidden in the gates, with the exception that the record names. |
 | OD-ROL-13 | On a computer that has the desktop application, who updates the daemon: the rollout, or the application when it updates itself | The rollout only. The application installs the daemon only when the computer has none (MET-019). Two updaters for one program can roll each other back. | Decided (R-139): the rollout only. |
 | OD-ROL-14 | Is the desktop application part of a rollout? | No. UPD-001 to UPD-006 stay. The application installs with no prompt and waits for "Restart to update". | Decided (R-139): no. |
-| OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), does that VPS hub stay as the one hub that signs releases? | Yes, until a different design is approved. A hosted hub is on a server that it shares with the hubs of other persons, and its key would sign a program for each machine of each person. Task U2 waits for this decision. | Open |
+| OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), which place holds the key and signs? The options A to E, with their risks, are in [release-four-platforms.md](../proposals/release-four-platforms.md) Section 5: (A) the VPS hub stays; (B) a small server that only makes releases, apart from the pool; (C) a server of the pool or a hosted hub; (D) the account service; (E) the computer of the operator. | Version 2 of this plan recommended: the VPS hub stays (option A), until a different design is approved. A hosted hub is on a server that it shares with the hubs of other persons, and its key would sign a program for each machine of each person. Task U2 waits for this decision. | Decided (R-158, operator, 2026-11-18: "B: release server"): option B. A small server that only makes releases holds the updater key and signs. It is at Hetzner and is not a host of the pool. The hub on the VPS signs until that server has published one release; then the VPS hub can go away. One updater key, moved one time; no new key. Task U12 is the move. |
 
 The tier of this proposal is decision OD-W23 of the work plan.
 
@@ -313,7 +315,7 @@ U1 and U4 are done. The other tasks are not started. The states obey PLN-007.
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
 | U1 | Stage A. The daemon reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | R-122 (operator, 2026-11-16): the optional member of K8 | Done | `e29e59db`, `553a6522`, `68b293fe`, `328f6ff4`, `d162234f`. Reviewed by an independent reviewer agent: accepted, no blocker. Open: the daemon test `r_122_each_batch_carries_the_version_of_the_daemon` runs only on Linux and has not run yet; the release builder does not build `anima-daemon` with `ANIMA_VERSION` yet (task U2). |
-| U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the daemon files and the record. | Tasks R5 to R7; OD-ROL-15; a release for each target | Not started | — |
+| U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the daemon files and the record. | Tasks R5 to R7; a release for each target. OD-ROL-15 is decided (R-158), and R-158 names this task | Not started | — |
 | U3 | A prototype on one Linux machine and one Mac: the second unit, the rename, the rollback of a version that stops at once and of one that does not answer, also after a restart of the machine (ROL-030). A record with measured results. | R-139 names it. The operator names one Linux machine and one Mac on which an agent can install a test unit and restart the machine | Not started | — |
 | U4 | The contract: how the hub tells a version, how a daemon gets the record and the file, the states of a machine. | R-139: the change to K8 and to MET-002 | Done | `5bd69f99`: K8 Section 8. The full gates passed on 2026-11-17 (21 of 21). The contract is ruled and not built: tasks U5 and U6 build it. |
 | U5 | The pure rules: the order of a rollout, the steps, the first machine, the states (ROL-023 to ROL-028, ROL-039 to ROL-041). | U4 | Not started | — |
@@ -323,17 +325,18 @@ U1 and U4 are done. The other tasks are not started. The states obey PLN-007.
 | U9 | The gates of ROL-034 and ROL-037. | The first release (task R7): before it, no earlier release exists to test against | Not started | — |
 | U10 | Stage C: the image of the hub in the release, the replacement of the hub with the backup and the check (ROL-019, ROL-033, ROL-035). | Deferred (R-139): not approved. U6, U9; FND-006; the operator for the first installation on the VPS (VPS-005) | Not started | — |
 | U11 | The security review of the update. | U6; then U10 | Not started | — |
+| U12 | The place that signs moves as OD-ROL-15 decides. An agent writes the procedure in `deploy/README.md` and in [releases.md](../procedures/releases.md): the set-up of the place, the two secret files of the updater key, the R2 token, the check that publishing is on, and how a builder connects to it. The operator moves the key and the token (UPD-012); an agent never reads them. One release is published from the new place before the old place is stopped. | R-158 names this task. The operator: the new server, each change to a server (VPS-005), and the move of the key and the token (UPD-012). An agent can write the procedure before the server exists | An entry in [need-human-testing.md](../need-human-testing.md): the start log of the new place shows publishing on, one release is published from it, and an installed application updates to it. | Not started | — |
 
 The release record in [releases.md](../procedures/releases.md) holds what is released. The macOS releases 0.2.0 and 0.2.1 do not have U1: its commits are not in them. Thus no machine has a released daemon that reports its version, and ROL-044 applies only to the daemons that the operator built by hand. The next release carries U1.
 U1 and U3 need no release. U2 and each later task need a release for their target.
 
 ## Needs
 
-- A decision on OD-ROL-15, before task U2.
+- For task U12: the release server of OD-ROL-15 (R-158), which only the operator makes.
 - For task U3: one Linux machine and one Mac on which an agent can install a test unit and restart the machine.
 - A release for each target (task R7), which only the operator can do. No Linux release exists. Tasks U2 and U6 to U9 need one.
 - The security reviewer for ROL-010, ROL-015 and ROL-030 (a `security` task, U11).
-- R-139 gives the ruling for the change to K8 and to MET-002. The ruling number for the work route of OD-W10 stays open in [jobs.md](../proposals/jobs.md); this plan does not need it.
+- R-139 gives the ruling for the change to K8 and to MET-002. The ruling for the work route of OD-W10 is R-160 (2026-11-18); this plan does not need it.
 
 ## Council follow-up: mixed-version acknowledgement (2026-11-18)
 
