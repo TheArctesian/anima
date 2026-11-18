@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Draft. Build state not checked
-evidence: Its status line: a proposal for a ruling (R-062).
+state: Done
+evidence: Ruled by R-062 (operator, 2026-11-06). Built and on `main`: WP-18 (merge `175eed7d`), the hub SSH client and the `/terminal` tunnel (`906374a9`, `crates/hub/src/fleet/sessions/terminal.rs`), K4 Section 8 (`contracts/tunnel.md`), and the client with xterm.js (`efd0825c`, `apps/client/src/lib/sessions/`). Recording and viewer sharing of SSH are deferred with RA-040 and RA-041 (R-113).
 ---
 
 # Proposal: SSH in a real terminal (hub SSH client, xterm.js in the app)

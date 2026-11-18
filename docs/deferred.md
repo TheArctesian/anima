@@ -933,7 +933,7 @@ Added 2026-11-10.
 - [ ] C2: three GPU vendor enums (`readings`, `wire`, the hub); keep one in agent-core.
 - [ ] C3: `readings::Vram` and `GpuReading.shared_memory_bytes` have no consumer until the agent lands.
 - [ ] C4: a GPU `label` allows bidi and format characters such as U+202E, so a name can spoof its chart label (the client escapes it; not an injection). Refuse `Cf` characters.
-- [ ] C6: `crates/hub/src/metrics/` and `metrics/collector/tests/` are at the 12-file limit.
+- [ ] C6: `crates/hub/src/fleet/metrics/` and `metrics/collector/tests/` are at the 12-file limit.
 - [ ] C7: every AMD card is named "AMD GPU"; read `product_name`.
 
 ## 12. Notes on the sources
