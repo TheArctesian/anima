@@ -1,0 +1,15 @@
+query AuditChain {
+  auditChain {
+    intact
+    links
+    dropped
+    headSeq
+    headHash
+    fault {
+      kind
+      seq
+      entryId
+      at
+    }
+  }
+}

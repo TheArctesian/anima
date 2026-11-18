@@ -181,6 +181,19 @@ policy, builder and daemon tokens per LOG-019) uses `Operator::hub()` and `Actor
 `access` adds `pub struct Declaration` (the agent declaration, `of_headers`, `of_payload`), `pub enum MadeFor
 { User, Agent }` and `pub const ACTOR_HEADER`; the decision itself is private to `access` (LOG-014).
 
+(R-136, LOG-021 to LOG-028) The hash chain of the audit log:
+
+```rust
+// audit() also writes the entry's link in `events.audit_chain`, in the caller's transaction, under the
+// chain's advisory lock until that transaction ends (LOG-024). Its signature does not change.
+pub async fn link_existing(db: &PgPool) -> Result<u64, Error>;   // LOG-026: links the stored entries when the chain is empty
+pub async fn check_chain_daily(db: &PgPool, bus: &Bus, now: DateTime<Utc>) -> Result<(), Error>;   // LOG-028: an Error event on a fault
+```
+
+Wiring only (called from `main.rs`, `operator.rs` and `upkeep.rs`, never from another domain): `link_existing` before
+anything writes an audit entry, and `check_chain_daily` through `run_daily`. The check itself and `Query.auditChain`
+are private to `events`.
+
 ### Allowed domain dependencies (the import-graph gate enforces this list; REPO-004)
 
 | Domain | May import (besides leaf modules) |

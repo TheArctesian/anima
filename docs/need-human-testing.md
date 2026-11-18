@@ -508,6 +508,28 @@ form of the WorkOS requests) is decided by step 2.
 
 Result: Open.
 
+### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
+
+Built: migration `0506_events_audit_chain.sql` and the hash chain of the audit log
+([design-spec.md](spec/design-spec.md) Section 3.8.2). At its first start the hub links each audit entry
+that exists. `anima audit verify` and the MCP tool `anima_audit_verify` check the chain.
+
+The tests use a throwaway database with a few entries. No test ran the migration and the first link
+on the real hub, with its year of entries, and no test ran the daily check there.
+
+1. Update the hub, start it, and look at its process log.
+   Expected: the hub starts. When the audit log had entries, one line says "audit entries linked in
+   the hash chain", with the count.
+2. Run `anima audit verify`.
+   Expected: "Chain whole". "Links" is the number of audit entries. "Head" shows a number and 64
+   hexadecimal characters. Write the head down outside the hub.
+3. Change something in the client, for example a tag of a device, and run `anima audit verify` again.
+   Expected: "Chain whole", with one more link than in step 2.
+4. The next day, open the Logs panel and filter for Error.
+   Expected: no event that says "The audit log chain is broken".
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list

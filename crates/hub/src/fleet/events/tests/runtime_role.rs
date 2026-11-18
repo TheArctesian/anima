@@ -184,7 +184,9 @@ async fn r_023_start_check_refuses_members_of_server_file_program_and_maintain_r
 }
 
 /// Each case gives the login one right that could change, remove, lock or pin log entries.
-const CHANGE_RIGHTS: [(&str, &str); 14] = [
+const CHANGE_RIGHTS: [(&str, &str); 16] = [
+    ("grant update on events.audit_chain to {role}", ""),
+    ("grant delete on events.audit_chain to {role}", ""),
     ("grant pg_write_all_data to {role}", ""),
     ("grant update on events.audit_log_20300505 to {role}", ""),
     (

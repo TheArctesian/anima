@@ -11,7 +11,7 @@ use anima_hub::{
 };
 use zeroize::Zeroizing;
 
-use crate::{StartError, connect, vault};
+use crate::{StartError, connect, link_audit_entries, vault};
 
 /// Bytes `operator create` reads at most: a password of up to 1024 bytes, a 32-character
 /// secret and a 6-digit code, each with its line end, fit; longer input is cut and refused.
@@ -21,6 +21,7 @@ const CREATE_INPUT_LIMIT: usize = 2048;
 pub(crate) async fn set(config: &Config, username: &str) -> Result<(), StartError> {
     let typed = read_password().map_err(|_| StartError::Stdin)?;
     let pool = connect(config).await?;
+    link_audit_entries(&pool).await?;
     let now = SystemClock.now();
     let before = builds::builders(&pool).await?;
     access::set_operator(&pool, username, access::Password::new(typed), now).await?;
@@ -41,6 +42,7 @@ pub(crate) async fn create(config: &Config, username: &str) -> Result<(), StartE
     let new = read_new_operator(username).map_err(|_| StartError::CreateInput)?;
     let vault = vault(config)?;
     let pool = connect(config).await?;
+    link_audit_entries(&pool).await?;
     let before = builds::builders(&pool).await?;
     let now = SystemClock.now();
     access::create_operator(&pool, &vault, new, now).await?;
@@ -66,6 +68,7 @@ pub(crate) async fn enrol_totp(config: &Config, username: &str) -> Result<(), St
     }
     let vault = vault(config)?;
     let pool = connect(config).await?;
+    link_audit_entries(&pool).await?;
     let before = builds::builders(&pool).await?;
     let enrolment = access::enrol_totp(&pool, &vault, username).await?;
     let removal = builds::Removal::CredentialsChanged;
@@ -96,6 +99,7 @@ pub(crate) fn new_totp(username: &str) -> Result<(), StartError> {
 /// in again; in the link mode no sign-in passes until a new secret is set (FRN-007).
 pub(crate) async fn disable_totp(config: &Config, username: &str) -> Result<(), StartError> {
     let pool = connect(config).await?;
+    link_audit_entries(&pool).await?;
     let before = builds::builders(&pool).await?;
     let now = SystemClock.now();
     access::disable_totp(&pool, username, now).await?;
