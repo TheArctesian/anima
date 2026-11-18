@@ -532,6 +532,10 @@ Result: Open. First try on 2026-11-17 (operator: "worked till up to here", with 
 `bun run --cwd apps/desktop dev`: the sign-in, the account, the hub and the join of the link worked (the log of the
 pool and of the shell); the trade of the claim failed for the origin of the debug pages (step 1). The wrong
 message is not corrected: a refusal of the hub by origin and no network give the same answer to the page.
+Second try on 2026-11-17 with the built app of step 1 (operator, with a picture of the empty device list of the
+hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
+The operator has not yet said Passed or Failed. In the same message the operator asked for more than this check
+covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
 
 ## Not built yet
 
