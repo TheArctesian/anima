@@ -12,6 +12,7 @@ pub(crate) mod tests;
 pub use error::KeystoreError;
 use tauri::{Runtime, Webview};
 use tauri_plugin_log::log;
+pub(crate) use token::SERVICE;
 use token::TokenKind;
 
 use crate::web_view::MAIN;

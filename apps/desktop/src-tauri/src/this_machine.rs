@@ -42,6 +42,13 @@ impl OperatingSystem {
     }
 }
 
+/// The name of this computer, as `this_machine_read` gives it; empty when the OS gives none.
+pub(crate) fn computer_name() -> String {
+    OperatingSystem::current()
+        .map(name::computer_name)
+        .unwrap_or_default()
+}
+
 /// This computer, as the Add device form needs it. Crosses to the client in camelCase.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

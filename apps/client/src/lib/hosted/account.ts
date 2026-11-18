@@ -6,8 +6,11 @@ import type { HubAccess } from './access';
  * itself (HMD-034, LOG-007); what the hub needs comes back sealed in a `HubAccess`.
  */
 export interface HostedAccount {
-  /** Starts the device sign-in: a short code to show and the page where the person signs in. */
-  readonly start: () => Promise<Answer<SignInCode>>;
+  /**
+   * Starts the device sign-in: a short code to show and the page where the person signs in, or `signed-in` when the
+   * account's session still holds and no browser step is needed (HMD-043).
+   */
+  readonly start: () => Promise<Answer<SignInCode | 'signed-in'>>;
   /** Opens `page` in the system browser. */
   readonly openPage: (page: string) => Promise<Answer<void>>;
   /** Asks once whether the person signed in with `code`. */
@@ -38,9 +41,11 @@ export type HubState = 'ready' | 'making' | 'waking';
 
 /**
  * Why a step stopped. `cancelled`: the person cancelled in the browser. `expired`: the code ran out before the
- * sign-in. `offline`: the cloud did not answer. `refused`: the cloud or the hub said no.
+ * sign-in. `offline`: the cloud did not answer. `refused`: the cloud or the hub said no. `signed-out`: the session of
+ * the account ended, so the person signs in again. `unconfigured`: this build has no account sign-in. `payment`: the
+ * payment of the account failed, so the cloud makes and wakes nothing.
  */
-export type Problem = 'cancelled' | 'expired' | 'offline' | 'refused';
+export type Problem = 'cancelled' | 'expired' | 'offline' | 'refused' | 'signed-out' | 'unconfigured' | 'payment';
 
 export type Answer<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly problem: Problem };
 

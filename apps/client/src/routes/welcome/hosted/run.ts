@@ -41,6 +41,7 @@ export async function runStep(step: HostedStep, parts: HostedParts, wait: Wait):
     case 'start': {
       const started = await account.start();
       if (!started.ok) return failed(started);
+      if (started.value === 'signed-in') return { kind: 'signed-in' };
       const opened = await account.openPage(started.value.page);
       return { kind: 'code', code: started.value, opened: opened.ok };
     }

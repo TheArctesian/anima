@@ -8,6 +8,8 @@ mod builder;
 #[cfg(desktop)]
 mod carried;
 #[cfg(desktop)]
+mod cloud;
+#[cfg(desktop)]
 mod command_line;
 #[cfg(desktop)]
 mod daemon;

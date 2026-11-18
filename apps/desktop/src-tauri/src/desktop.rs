@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::{
-    builder, command_line, daemon, hub_listener, keystore, link, local_hub, mcp_permissions,
+    builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub, mcp_permissions,
     process_log, stay_awake, system_browser, system_settings, this_machine, web_view,
 };
 
@@ -34,6 +34,11 @@ pub fn run() {
 fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         keystore::access_token_read,
+        cloud::cloud_sign_in_start,
+        cloud::cloud_sign_in_poll,
+        cloud::cloud_sign_in_resume,
+        cloud::cloud_hub,
+        cloud::cloud_hub_access,
         keystore::access_token_write,
         keystore::access_token_clear,
         keystore::builder_token_read,
@@ -91,6 +96,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
 /// Gives the application the state that its commands share, and what runs once at its start.
 fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     app.manage(web_view::Tabs::default())
+        .manage(cloud::Cloud::default())
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(daemon::Installing::default())

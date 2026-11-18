@@ -145,7 +145,19 @@ Each step has one heading, one line and at most one button. Back goes to the cho
   <figure><div class="frame gl failed">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
     <div class="step"><h2>Sign-in refused</h2><p class="line">Anima.ing refused the sign-in.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
-  </div><figcaption>Refused by the cloud. When the hub refuses the grant, the line is "Your hub refused this computer."</figcaption></figure>
+  </div><figcaption>Refused by the cloud. When the hub refuses this computer, the line is "Your hub refused this computer."</figcaption></figure>
+  <figure><div class="frame gd failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Sign in again</h2><p class="line">Your Anima.ing session ended.</p><div class="actions"><a>Back</a><button class="button primary">Sign in</button></div></div>
+  </div><figcaption>The session of the account ended at any step: the sign-in starts again (HMD-043).</figcaption></figure>
+  <figure><div class="frame gl failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Sign-in not available</h2><p class="line">This build of Anima.ing has no account sign-in.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
+  </div><figcaption>A build with no client ID (HMD-043).</figcaption></figure>
+  <figure><div class="frame gd failed">
+    <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
+    <div class="step"><h2>Payment failed</h2><p class="line">Pay on cloud.anima.ing, then retry.</p><div class="actions"><a>Back</a><button class="button primary">Retry</button></div></div>
+  </div><figcaption>The payment of the account failed: the cloud makes and wakes nothing (402 payment_failed).</figcaption></figure>
 </div>
 </body>
 </html>

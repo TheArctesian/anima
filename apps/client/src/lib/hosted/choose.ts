@@ -5,7 +5,7 @@ import { clearAccessToken, writeAccessToken } from '$lib/desktop/token';
 import { createRequestHub } from '$lib/hub/hub';
 import type { HubAccess } from './access';
 import type { Answer, HostedAccount } from './account';
-import { cloudAccount } from './cloud';
+import { cloudAccount } from '$lib/desktop/cloud/shell';
 import { joinHostedHub } from './join';
 import { markHosted } from './mark';
 import { parseFailure, standInAccount } from './stand-in';

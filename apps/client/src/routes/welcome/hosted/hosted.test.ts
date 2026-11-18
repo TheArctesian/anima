@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Problem, SignInCode } from '$lib/hosted/account';
 import { parseFailure, standInAccount, type StandInPlan } from '$lib/hosted/stand-in';
-import { cloudAccount } from '$lib/hosted/cloud';
+import { cloudAccount } from '$lib/desktop/cloud/shell';
 import { hostedParts, type HostedParts } from '$lib/hosted/choose';
 import { FIRST, nextStep, stepText, type HostedEvent, type HostedStep } from './hosted';
 import { runStep } from './run';
@@ -44,6 +44,16 @@ describe('nextStep (HMD-023)', () => {
     const hub: HostedStep = { kind: 'hub', job: null };
     expect(nextStep(hub, { kind: 'hub', hub: 'ready' })).toEqual({ kind: 'connecting' });
     expect(stepText(nextStep(hub, { kind: 'hub', hub: 'waking' })).line).toBe('Waking your hub.');
+  });
+
+  it('HMD-043: a session that still holds goes from the start straight to the hub', () => {
+    expect(nextStep(FIRST, { kind: 'signed-in' })).toEqual({ kind: 'hub', job: null });
+  });
+
+  it('HMD-043: an ended session at any step signs in again from the start', () => {
+    const failed = nextStep({ kind: 'connecting' }, { kind: 'failed', problem: 'signed-out' });
+    expect(stepText(failed)).toEqual({ title: 'Sign in again', line: 'Your Anima.ing session ended.', action: 'Sign in' });
+    expect(nextStep(failed, { kind: 'retry' })).toEqual(FIRST);
   });
 
   it('an event that does not belong to the step leaves it; done stays done', () => {
@@ -134,13 +144,13 @@ describe('the cloud of the first run', () => {
     expect(parseFailure(null)).toBeNull();
   });
 
-  it('HMD-032: the real cloud is a stub until the cloud API exists; it refuses the start', async () => {
-    expect(await walk({ account: cloudAccount(), join: () => Promise.reject(new Error('not reached')) })).toEqual([FIRST, { kind: 'failed', problem: 'refused', from: FIRST }]);
+  it('HMD-043: outside the desktop shell the real cloud has no sign-in', async () => {
+    expect(await walk({ account: cloudAccount(), join: () => Promise.reject(new Error('not reached')) })).toEqual([FIRST, { kind: 'failed', problem: 'unconfigured', from: FIRST }]);
   });
 
   it('only VITE_ANIMA_HOSTED=stand-in picks the stand-in, and ?fail tells it where to fail', async () => {
     const query = new URLSearchParams('fail=start:offline');
     expect(await hostedParts('stand-in', query).account.start()).toEqual({ ok: false, problem: 'offline' });
-    expect(await hostedParts(undefined, query).account.start()).toEqual({ ok: false, problem: 'refused' });
+    expect(await hostedParts(undefined, query).account.start()).toEqual({ ok: false, problem: 'unconfigured' });
   });
 });

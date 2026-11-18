@@ -27,6 +27,7 @@ export const FIRST: HostedStep = { kind: 'start' };
 
 /** Where Retry goes: a code that is cancelled, expired or refused is spent, so the sign-in starts again. */
 function retried(problem: Problem, from: HostedStep): HostedStep {
+  if (problem === 'signed-out') return FIRST;
   if (from.kind === 'waiting' && problem !== 'offline') return FIRST;
   if (from.kind === 'hub') return { kind: 'hub', job: null };
   return from;
@@ -49,6 +50,7 @@ export function nextStep(step: HostedStep, event: HostedEvent): HostedStep {
   if (event.kind === 'failed') return step.kind === 'done' || step.kind === 'failed' ? step : { kind: 'failed', problem: event.problem, from: step };
   switch (step.kind) {
     case 'start':
+      if (event.kind === 'signed-in') return { kind: 'hub', job: null };
       return event.kind === 'code' ? { kind: 'waiting', code: event.code, opened: event.opened } : step;
     case 'waiting':
       return afterWaiting(step, event);
@@ -81,6 +83,9 @@ const PROBLEM_TEXT: Readonly<Record<Problem, StepText>> = {
   expired: { title: 'The code expired', line: 'Sign in before the code runs out.', action: 'Get a new code' },
   offline: { title: 'No network', line: 'Anima.ing did not answer. Check the network.', action: 'Retry' },
   refused: { title: 'Sign-in refused', line: 'Anima.ing refused the sign-in.', action: 'Retry' },
+  'signed-out': { title: 'Sign in again', line: 'Your Anima.ing session ended.', action: 'Sign in' },
+  unconfigured: { title: 'Sign-in not available', line: 'This build of Anima.ing has no account sign-in.', action: 'Retry' },
+  payment: { title: 'Payment failed', line: 'Pay on cloud.anima.ing, then retry.', action: 'Retry' },
 };
 
 export function stepText(step: HostedStep): StepText {

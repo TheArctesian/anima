@@ -130,7 +130,7 @@ describe('joinHostedHub (R-129, HMD-037, S3)', () => {
 
 describe('the hosted mark (R-129)', () => {
   it('a hosted hub signs in again through the choices, never the password page', () => {
-    expect(signInPathFor(true)).toBe('/welcome');
+    expect(signInPathFor(true)).toBe('/welcome/hosted');
     expect(signInPathFor(false)).toBe('/sign-in');
   });
 

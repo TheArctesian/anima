@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (101)
+## 2. Open decisions (102)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -102,8 +102,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D10 | Do the sign-in pages use a domain of Anima.ing, for example `auth.anima.ing`? | Not at the launch. Add it when the cost is small against revenue. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D4 | Is the second factor (HMD-006) required for each account? | Proposed: required. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D5 | In which region is the first pool host? | Price a US host before the launch. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | Check against the real WorkOS before the first release. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D12 | When does a phone get the hosted sign-in? | Build the key store of the mobile shell (Keychain, Keystore) with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | A review by a person from outside, before the first account of a different person. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
