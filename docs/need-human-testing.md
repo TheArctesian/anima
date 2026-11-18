@@ -772,7 +772,7 @@ Result: Open.
 
 ### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
 
-Built: on the branch `offline-copy` (R-151). The application keeps the last answer of the hub for the device list,
+Built: on the branch `offline-copy` (R-157). The application keeps the last answer of the hub for the device list,
 one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). It does not keep the checks of a
 device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
 banner "Not on the network" gives its age. Sign-out deletes the copy.
