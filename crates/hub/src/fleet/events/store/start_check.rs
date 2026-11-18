@@ -25,7 +25,7 @@ pub(in crate::fleet::events) async fn start_refusal(
 
 /// One row: the code of the first refusal, in the order of `Refusal`, or null.
 ///
-/// `logs` is both log parents and every partition below them. `roles` is every role the login
+/// `logs` is both log parents, every partition below them and the links of the audit chain. `roles` is every role the login
 /// (`session_user`, not `current_user`, which a session role or `SET ROLE` changes) is a member
 /// of, itself included, so a right reached by `SET ROLE`, a grant without INHERIT or ADMIN
 /// OPTION counts. Write defaults to `anima_runtime` are 0001's own, for every other domain's
@@ -37,7 +37,7 @@ const START_REFUSAL: &str = "\
     ), logs (oid) as ( \
         select c.oid from pg_catalog.pg_class c \
         join events_schema n on n.oid = c.relnamespace \
-        where c.relname in ('event_log', 'audit_log') \
+        where c.relname in ('event_log', 'audit_log', 'audit_chain') \
         union \
         select i.inhrelid from pg_catalog.pg_inherits i join logs on i.inhparent = logs.oid \
     ), roles (oid) as ( \

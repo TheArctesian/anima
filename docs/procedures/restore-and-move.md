@@ -6,14 +6,14 @@
 | Version | 1.0 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Written and proved in part (R-140, task F1). The database steps were done on a new, empty setup in Docker on 2026-11-17; see "Proof". The steps on a real second server are not checked: HT-023 |
+| Status | Written and proved in part (R-141, task F1). The database steps were done on a new, empty setup in Docker on 2026-11-17; see "Proof". The steps on a real second server are not checked: HT-024 |
 | Kind | Procedure. It adds no requirement (PLN-010) |
 
 This procedure is for a person who runs the hub on a server with `deploy/compose.yaml`.
 
 - It is not for a hosted hub. The pool makes and restores the backup of a hosted hub (HMD-014).
 - It is not for a hub on your own computer. `anima-database` writes, checks and restores that backup.
-- It moves no data into a hosted hub (R-139).
+- It moves no data into a hosted hub (R-140).
 
 The owner of each step is the document that the step names. This document gives the order and the
 facts that those documents do not give. If a step here and its owner disagree, the owner is correct.
@@ -116,7 +116,7 @@ Section 7).
 
 ## Proof
 
-On 2026-11-17 an agent did steps 3 and 6 to 10 on this repository at the commit of R-140, with Docker
+On 2026-11-17 an agent did steps 3 and 6 to 10 on this repository at the commit of R-141, with Docker
 29.9.3 on a Mac, from two copies of the repository (an "old" and a "new" server):
 
 | Fact | Result |
@@ -130,5 +130,5 @@ On 2026-11-17 an agent did steps 3 and 6 to 10 on this repository at the commit 
 | The two devices by name, and the rights of `anima_runtime` | Present; it can read `devices.devices` and cannot delete from `events.audit_log` |
 
 Not proved there: the steps for the VPN, the certificate, the start of the hub and a session with a
-restored credential (steps 2, 5 and 11 to 13). They need a real server: HT-023 of
+restored credential (steps 2, 5 and 11 to 13). They need a real server: HT-024 of
 [need-human-testing.md](../need-human-testing.md).

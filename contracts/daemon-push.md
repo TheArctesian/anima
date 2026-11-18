@@ -5,7 +5,7 @@ WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust type
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
-Section 8 (the update), the `update` member of Section 4 and the two update routes were added by R-138
+Section 8 (the update), the `update` member of Section 4 and the two update routes were added by R-139
 (operator, 2026-11-17; ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045). They are ruled and
 not built: no hub and no daemon has them yet.
 
@@ -186,8 +186,8 @@ Request:
   is 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, and starts with a digit; any other text is
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
-- `update`: optional (R-138). What the daemon says about its own update, in each batch (Section 8). Absent
-  means a daemon that cannot update itself (ROL-044), and a hub older than R-138 ignores it.
+- `update`: optional (R-139). What the daemon says about its own update, in each batch (Section 8). Absent
+  means a daemon that cannot update itself (ROL-044), and a hub older than R-139 ignores it.
 
 The hub:
 
@@ -290,7 +290,7 @@ and tries again after its wait (Section 7).
   wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so daemons that
   failed together do not all try again together.
 
-## 8. Update (ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045; R-138)
+## 8. Update (ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045; R-139)
 
 The hub tells a daemon one thing: the version to have. The daemon gets the release record and its program
 file from its hub, and the machine verifies them by itself (ROL-010). The fields of the release record and
@@ -352,7 +352,7 @@ different version, and the batch had an `update` member, it answers 200 with `Ac
 ```
 
 - 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member always gets
-  204, so a daemon older than R-138 keeps working.
+  204, so a daemon older than R-139 keeps working.
 - `version` is the only instruction (ROL-009). The hub never sends an address, a path, a command or a file
   name. The text has the rule of `daemonVersion`; a daemon ignores an `Accepted` that breaks it.
 - `again`: true only after the operator pressed "Try again" (ROL-032). The machine then sets `tries` to 0 for

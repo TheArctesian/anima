@@ -143,3 +143,31 @@ async fn prj_028_audit_list_names_what_a_change_sent_to_github_did_and_to_what()
         "{other}"
     );
 }
+
+/// A K1 `AuditChainCheck`: whole with five links, or broken at link 3 by a changed entry.
+fn chain_check(broken: bool) -> Value {
+    let fault = broken.then(|| {
+        json!({ "kind": "CHANGED", "seq": 3,
+                "entryId": "0190a000-0000-7000-8031-000000000003", "at": "2026-11-13T08:00:00Z" })
+    });
+    json!({ "auditChain": {
+        "intact": !broken, "links": 5, "dropped": 0, "headSeq": 5,
+        "headHash": "ab".repeat(32), "fault": fault,
+    }})
+}
+
+#[tokio::test]
+async fn log_027_audit_verify_says_whole_or_broken_with_the_first_fault() {
+    for broken in [false, true] {
+        let hub = FakeHub::start().await;
+        hub.answer("AuditChain", data(chain_check(broken)));
+        let run = signed_in()
+            .run(&["audit", "verify", "--hub", &hub.origin])
+            .await;
+        assert_eq!(run.code, 0, "{run:?}");
+        let word = if broken { "broken" } else { "whole" };
+        assert!(run.stdout.contains(word), "{run:?}");
+        assert!(run.stdout.contains(&"ab".repeat(32)), "the head: {run:?}");
+        assert_eq!(run.stdout.contains("CHANGED at link 3"), broken, "{run:?}");
+    }
+}

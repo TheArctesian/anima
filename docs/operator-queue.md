@@ -24,7 +24,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
 | 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
-| 4.2 | Restore a backup and move the coordinator | Operator: the check HT-023 in need-human-testing.md, or a ruling that it is not necessary |
+| 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
 | 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
@@ -32,7 +32,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.9 | Hosted applications | Operator: approval of the proposal |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
-| 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
+| 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
 ## 2. Open decisions (101)
@@ -199,7 +199,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
-| HT-023 | a hub restored on a second server from its backup (FND-006, task F1) |
+| HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
 | O-2 | RDP: a changed certificate stops the session; the Warning badge |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
