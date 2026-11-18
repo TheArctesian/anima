@@ -1,12 +1,10 @@
 import type { DocumentNode } from 'graphql';
 import type { HubAddress } from '../address';
-import type { HubResult } from '../error';
-import { copiedQuery, copyKey, isShown, type CopyLimits, type CopyStore } from './copy';
+import { TOKEN_UNREADABLE, type HubResult } from '../error';
+import { copiedQuery, copyKey, isShown, type CopyPlace } from './copy';
 
 /** What the copy needs from the hub that it serves; every part is injected (CQ-021). */
-export interface RecentOptions {
-  readonly store: CopyStore;
-  readonly limits: CopyLimits;
+export interface RecentOptions extends CopyPlace {
   readonly address: HubAddress;
   readonly now: () => Date;
   /** Hears the time of each copy that is given in place of an answer, so that the status can show its age (NET-004). */
@@ -46,15 +44,27 @@ function keep(options: RecentOptions, key: string, value: unknown): void {
   done.catch(() => undefined);
 }
 
+/** Whether the hub itself refused the token; a token that this computer could not read is not that. */
+function refusedByHub(result: HubResult<unknown>): boolean {
+  return !result.ok && result.error.code === 'UNAUTHENTICATED' && result.error !== TOKEN_UNREADABLE;
+}
+
 export function createRecentCopy(options: RecentOptions): RecentCopy {
   return {
     async answer<TResult>(document: DocumentNode, variables: unknown, send: () => Promise<HubResult<TResult>>) {
+      const sentIn = options.era();
       const result = await send();
+      if (refusedByHub(result)) {
+        // The hub ended this sign-in, so its data must not stay here; the answer is the same if the store fails.
+        options.store.clear().catch(() => undefined);
+        return result;
+      }
       const query = copiedQuery(document);
       if (query === null) return result;
       const key = copyKey(options.address, query, variables);
       if (result.ok) {
-        keep(options, key, result.value);
+        // An answer to a request that was sent before the copy was removed (sign-out) is not kept.
+        if (sentIn === options.era()) keep(options, key, result.value);
         return result;
       }
       if (result.error.code !== 'unreachable') return result;

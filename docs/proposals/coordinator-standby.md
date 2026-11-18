@@ -124,16 +124,31 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 - The copy is kept at one place: where the application sends a request to the hub (`apps/client/src/lib/hub/recent/`).
   When the hub answers a query of the list, the application keeps the answer. When the hub does not answer, the
   application gives the kept answer of the same query, with the same variables, for the same hub.
-- The list of queries: the devices and one device, the tags and the sites of the device list, the checks of a device
-  and their heartbeats, the metrics of a device, and the event log. A query is added to the list only when its answer
-  holds no credential. The answer of a mutation is never kept.
+- The list of queries: the devices and one device, the tags and the sites of the device list, the metrics of a
+  device, and the event log. A query is added to the list only when its answer holds no credential. The answer of a
+  mutation is never kept.
+- The checks of a device are not kept. The settings of a check can hold a credential: a push path, a header, a body
+  or a URL. The device list and the device still show the status that the checks gave. To keep the checks, the hub
+  must first give them without these values; that is not planned.
+- The event log asks from a moment that moves with the clock. The copy does not use that moment, so the copy of the
+  last hour, of the last day and of the last week of one filter are one copy: the newest answer.
 - The copy is read-only. A change that the operator starts while the hub does not answer fails as before.
 - The age: the banner "Not on the network" shows the age of the oldest copy on the screen, also after a start of the
-  application with no hub (NET-004).
+  application with no hub (NET-004). When the hub answers again after a copy was shown, the page loads again, so
+  that no old data stays on the screen with no age. An open session stays open. Text in a form of that page is lost.
+- A chart of metrics from a copy that is older than its range ends at the newest point of the copy.
 - The size: at most 100 answers, each of at most 1 MB of text. The oldest answers go first. A copy older than 30 days
   is not shown.
 - The place: the IndexedDB store of the web view of the application, on this computer. It is not encrypted by the
-  application. Sign-out deletes it. If the delete fails, the application says so.
+  application. Sign-out deletes it, and so does "Leave this hub". If the delete fails, the application says so. The
+  application also deletes it when the hub refuses the access token. An answer that arrives after the delete is not
+  kept.
+- Not done: a hub at an `http` address on this computer gets no copy, because the application does not read its
+  token when no program listens there. "Load more" with no hub can add an older page below a newer one. The
+  IndexedDB store has no automatic test (PLN-014, HT-026).
+- A review by agents on 2026-11-18 found these defects in the first build, and they are corrected: the copy held the
+  settings of checks, the event log was never given from the copy, and an old copy stayed on the screen with no age
+  when the hub answered again.
 - Only the application on a computer keeps the copy. A browser keeps none: the hub serves its page, and the computer
   can be a shared one. The phone applications keep none here: IOS-003 and the mobile plan own that copy.
 - The hub has no new function, so there is no new `anima` command and no MCP tool (CMD-030).
@@ -152,7 +167,7 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
 | F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-141 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-024 (PLN-014). |
-| F2 | FND-007 for the application on a computer: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | R-149 names it | In progress | Built, not checked in the installed application: `apps/client/src/lib/hub/recent/`. The tests give the copy when the hub does not answer, the age in the banner, the limits and the delete at sign-out. The store was run in Chromium on 2026-11-18, not in the web view of the application. It waits for HT-026 (PLN-014). |
+| F2 | FND-007 for the application on a computer: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | R-149 names it | In progress | Built, not checked in the installed application: `apps/client/src/lib/hub/recent/`. The tests give the copy when the hub does not answer, the age in the banner, the limits, the delete at sign-out and when the hub refuses the token, and the load of the pages when the hub answers again. The store was run in Chromium on 2026-11-18, not in the web view of the application. It waits for HT-026 (PLN-014). |
 
 ## Open points
 

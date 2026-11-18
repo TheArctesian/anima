@@ -267,14 +267,18 @@ describe('signOut', () => {
     expect(await signOut({ api: accessApi(hub), address: ADDRESS, desktop: true, clearToken })).toBe(TOKEN_KEPT_UNCONFIRMED);
   });
 
-  it('FND-007: sign-out removes the copy of recent data after the token, and says so when the copy stayed', async () => {
+  it('FND-007: sign-out removes the copy of recent data, also when the token stays, and says so when the copy stayed', async () => {
     const { hub } = fakeHub({ Logout: failure('unreachable') });
     const order: string[] = [];
     const clearToken = () => Promise.resolve(void order.push('token'));
     const parts = { api: accessApi(hub), address: ADDRESS, desktop: true, clearToken };
     expect(await signOut({ ...parts, forgetCopy: () => Promise.resolve(void order.push('copy')) })).toBeNull();
-    expect(order).toEqual(['token', 'copy']);
+    expect(order).toEqual(['copy', 'token']);
     expect(await signOut({ ...parts, forgetCopy: () => Promise.reject(new Error('refused')) })).toBe(COPY_KEPT);
+    const forgetCopy = vi.fn(() => Promise.resolve());
+    const kept = await signOut({ ...parts, clearToken: () => Promise.reject(new Error('denied')), forgetCopy });
+    expect(kept).toBe(TOKEN_KEPT_UNCONFIRMED);
+    expect(forgetCopy).toHaveBeenCalledOnce();
   });
 
   it('CLI-003: a plain Error from the key store gives the token-kept text', async () => {

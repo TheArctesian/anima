@@ -4,7 +4,7 @@ import type { HubResult } from './error';
 import { sendRequest, type TokenProvider } from './request';
 import { createConnection, type LiveStatus } from './status/connection';
 import { createSocket, type Sink } from './socket/socket';
-import type { CopyLimits, CopyStore } from './recent/copy';
+import type { CopyPlace } from './recent/copy';
 import { createRecentCopy } from './recent/recent';
 
 export type { HubAddress } from './address';
@@ -79,7 +79,7 @@ export interface HubOptions {
    * Where the client keeps its read-only copy of recent answers, and how large it may be (FND-007). When given, a
    * copied query that the hub does not answer gives its last answer, and the status holds the age of that copy.
    */
-  readonly recent?: { readonly store: CopyStore; readonly limits: CopyLimits };
+  readonly recent?: CopyPlace;
 }
 
 /** A hub at `address`; its socket connects at once, so the status is true before any request (NAV-003, NET-004). */

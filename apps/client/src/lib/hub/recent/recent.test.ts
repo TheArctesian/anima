@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, parseHubAddress, UNREACHABLE, type Hub, type HubAddress } from '../hub';
+import { createHub, DEFAULT_HUB_ADDRESS, parseHubAddress, TOKEN_UNREADABLE, UNREACHABLE, type Hub, type HubAddress } from '../hub';
 import { FAKE_WEBSOCKET } from '../socket/fake';
 import type { CopyLimits, CopyStore } from './copy';
 import { memoryCopyStore } from './memory.fixture';
@@ -28,14 +28,17 @@ afterEach(async () => {
   await Promise.all(hubs.splice(0).map((hub) => hub.close()));
 });
 
-function hubWith(store: CopyStore | undefined, net = network(), address: HubAddress = DEFAULT_HUB_ADDRESS) {
+/** The era of the copy in a test; a test that removes the copy adds one. */
+const era = { current: 0 };
+
+function hubWith(store: CopyStore | undefined, net = network(), address: HubAddress = DEFAULT_HUB_ADDRESS, token = () => Promise.resolve('token')) {
   const hub = createHub({
     address,
-    token: () => Promise.resolve('token'),
+    token,
     fetch: net.fakeFetch,
     WebSocket: FAKE_WEBSOCKET,
     now: () => net.state.now,
-    ...(store === undefined ? {} : { recent: { store, limits: LIMITS } }),
+    ...(store === undefined ? {} : { recent: { store, limits: LIMITS, era: () => era.current } }),
   });
   hubs.push(hub);
   return { hub, state: net.state };
@@ -80,7 +83,30 @@ describe('the copy of recent hub answers (FND-007)', () => {
     state.answer = named('three');
     state.now = minutesLater(20);
     await hub.request(DEVICE, { id: 'd1' });
-    expect(hub.status.current).toEqual({ connection: 'connected', lastContactAt: minutesLater(20) });
+    expect(hub.status.current).toEqual({ connection: 'connected', lastContactAt: minutesLater(20), copyEnds: 1 });
+  });
+
+});
+
+describe('the age of the copy in the status (FND-007)', () => {
+  it('counts each time the hub answers again after a copy was shown, so that the pages load again', async () => {
+    const { hub, state } = hubWith(memoryCopyStore());
+    state.answer = named('mini');
+    await hub.request(DEVICE, { id: 'd1' });
+    await hub.request(DEVICE, { id: 'd1' });
+    expect(hub.status.current.copyEnds).toBeUndefined();
+    for (const ends of [1, 2]) {
+      state.answer = null;
+      await hub.request(DEVICE, { id: 'd1' });
+      state.answer = named('mini');
+      await hub.request(API_KEYS, {});
+      expect(hub.status.current.copyEnds).toBe(ends);
+    }
+    state.answer = null;
+    await hub.request(API_KEYS, {});
+    state.answer = named('mini');
+    await hub.request(API_KEYS, {});
+    expect(hub.status.current.copyEnds).toBe(2);
   });
 
   it('a copy answers only for the same variables and the same hub', async () => {
@@ -111,6 +137,60 @@ describe('what the copy holds (FND-007)', () => {
     expect(await hub.request(RENAME, { id: 'd1' })).toEqual({ ok: false, error: UNREACHABLE });
   });
 
+  it('the event log finds its copy though the request asks from a moment that moves with the clock', async () => {
+    const events = parse('query Events($filter: EventFilter) { events(filter: $filter) { totalCount } }') as TypedDocumentNode<
+      Record<string, unknown>,
+      { filter: { since: string; deviceId: string } }
+    >;
+    const { hub, state } = hubWith(memoryCopyStore());
+    state.answer = { data: { events: { totalCount: 7 } } };
+    await hub.request(events, { filter: { since: '2026-11-17T10:00:00.000Z', deviceId: 'd1' } });
+    state.answer = null;
+    const later = await hub.request(events, { filter: { since: '2026-11-17T10:05:00.123Z', deviceId: 'd1' } });
+    expect(later).toEqual({ ok: true, value: { events: { totalCount: 7 } } });
+    expect((await hub.request(events, { filter: { since: '2026-11-17T10:05:00.123Z', deviceId: 'd2' } })).ok).toBe(false);
+  });
+
+  it('keeps no checks of a device: the settings of a check can hold a credential', async () => {
+    const checks = parse('query DeviceChecks($id: ID!) { device(id: $id) { checks { config { pushPath } } } }') as Named;
+    const store = memoryCopyStore();
+    const { hub, state } = hubWith(store);
+    state.answer = { data: { device: { checks: [{ config: { pushPath: '/push/secret-token' } }] } } };
+    await hub.request(checks, { id: 'd1' });
+    expect(store.copies.size).toBe(0);
+  });
+
+});
+
+describe('when the copy is removed or not kept (FND-007)', () => {
+  it('removes the copy when the hub refuses the token, and keeps it when this computer could not read the token', async () => {
+    const store = memoryCopyStore();
+    const { hub, state } = hubWith(store);
+    state.answer = named('mini');
+    await hub.request(DEVICE, { id: 'd1' });
+    const unreadable = hubWith(store, network(), DEFAULT_HUB_ADDRESS, () => Promise.reject(new Error('key store')));
+    expect(await unreadable.hub.request(API_KEYS, {})).toEqual({ ok: false, error: TOKEN_UNREADABLE });
+    expect(store.copies.size).toBe(1);
+    state.answer = { errors: [{ message: 'Sign in again.', extensions: { code: 'UNAUTHENTICATED' } }] };
+    await hub.request(API_KEYS, {});
+    expect(store.copies.size).toBe(0);
+  });
+
+  it('does not keep an answer to a request that was sent before the copy was removed', async () => {
+    const store = memoryCopyStore();
+    const net = network();
+    let release: (response: Response) => void = () => undefined;
+    const slowFetch: typeof fetch = () => new Promise((resolve) => (release = resolve));
+    const { hub } = hubWith(store, { ...net, fakeFetch: slowFetch });
+    const pending = hub.request(DEVICE, { id: 'd1' });
+    await Promise.resolve();
+    await Promise.resolve();
+    era.current += 1;
+    release(new Response(JSON.stringify(named('mini'))));
+    expect((await pending).ok).toBe(true);
+    expect(store.copies.size).toBe(0);
+  });
+
   it('an error from the hub is given as it is, with no copy in its place', async () => {
     const { hub, state } = hubWith(memoryCopyStore());
     state.answer = named('mini');
@@ -119,6 +199,9 @@ describe('what the copy holds (FND-007)', () => {
     expect(await hub.request(DEVICE, { id: 'd1' })).toEqual({ ok: false, error: { code: 'UNAUTHENTICATED', message: 'Sign in again.' } });
   });
 
+});
+
+describe('the limits of the copy (FND-007)', () => {
   it('does not show a copy that is older than the limit', async () => {
     const { hub, state } = hubWith(memoryCopyStore());
     state.answer = named('mini');

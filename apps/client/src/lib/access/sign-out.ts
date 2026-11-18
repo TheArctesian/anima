@@ -48,16 +48,15 @@ function cookieGone(answer: HubResult<boolean> | null): boolean {
 export async function signOut({ api, address, desktop, clearToken, forgetCopy }: SignOut): Promise<string | null> {
   const answer = await logoutAnswer(api);
   if (!desktop) return cookieGone(answer) ? null : COOKIE_KEPT;
+  // The copy goes also when the token stays, so both are tried; a token that stayed is the first thing to tell.
+  const copyGone = await (forgetCopy?.() ?? Promise.resolve()).then(
+    () => true,
+    () => false,
+  );
   try {
     await clearToken(address);
   } catch {
     return answer?.ok === true ? TOKEN_KEPT_AFTER_LOGOUT : TOKEN_KEPT_UNCONFIRMED;
   }
-  try {
-    await forgetCopy?.();
-  } catch {
-    // The token is gone, so the operator is signed out; what stayed is told, since the copy holds the hub's data.
-    return COPY_KEPT;
-  }
-  return null;
+  return copyGone ? null : COPY_KEPT;
 }

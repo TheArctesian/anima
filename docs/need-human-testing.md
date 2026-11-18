@@ -734,8 +734,9 @@ None.
 ### HT-026: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
 
 Built: on the branch `offline-copy` (R-149). The application keeps the last answer of the hub for the device list,
-one device, its checks, its metrics and the event log (`apps/client/src/lib/hub/recent/`). When the hub does not
-answer, it shows that copy, and the banner "Not on the network" gives its age. Sign-out deletes the copy.
+one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). It does not keep the checks of a
+device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
+banner "Not on the network" gives its age. Sign-out deletes the copy.
 
 The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
 was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
@@ -745,11 +746,13 @@ looked at with the network off.
 2. Turn the network off (Wi-Fi off, or stop the VPN client). Quit the application and open it again. Expected: the
    banner "Not on the network" with "Data from" and an age of some minutes, and the device list with the devices of
    step 1.
-3. Open the device and the Logs of step 1. Expected: the same content as in step 1. A screen that was not opened in
-   step 1 shows that the hub did not answer.
+3. Open the device and the Logs of step 1. Expected: the same content as in step 1, and the charts of the device
+   show their lines. The checks of the device, and a screen that was not opened in step 1, show that the hub did
+   not answer.
 4. Try a change, for example rename the device. Expected: the application says that the hub did not answer, and the
    name does not change.
-5. Turn the network on. Expected: in less than one minute the banner goes away and the screens show live data.
+5. Turn the network on. Expected: in less than one minute the banner goes away, the page loads again by itself and
+   shows live data.
 6. Turn the network off again. In Settings, sign out. Quit the application, open it, and sign in is asked. Expected:
    no device of step 1 is shown anywhere before the sign-in.
 

@@ -171,7 +171,7 @@
       });
     });
 
-    return { api, clock, sessions, navigate, extensions, publishing };
+    return { hub, api, clock, sessions, navigate, extensions, publishing };
   }
 </script>
 
@@ -182,7 +182,7 @@
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
-  {@const { api, clock, sessions, navigate, extensions, publishing } = shell}
+  {@const { hub, api, clock, sessions, navigate, extensions, publishing } = shell}
   <div class="shell">
     <Nav
       pathname={page.url.pathname}
@@ -205,7 +205,8 @@
       <div class="stage">
         <!-- The pages stay mounted under a selected session tab (WP-14 E-2, R-044). -->
         <div class="pages" class:covered={sessions.active !== null} inert={sessions.active !== null}>
-          {#key page.url.pathname}
+          <!-- A page that showed the copy of an earlier answer loads again when the hub answers again (FND-007). -->
+          {#key `${page.url.pathname} ${String(hub.status.current.copyEnds ?? 0)}`}
             <div class="page" transition:crossFade>
               {@render children()}
             </div>
