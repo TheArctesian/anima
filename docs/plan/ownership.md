@@ -48,7 +48,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Contract freeze: only a ruling changes a contract | [implementation-plan.md](../archive/phase-1/implementation-plan.md) Section 4 defines CON-001. It is in the archive and is still in force | CON-001 |
 | The bundled database, the local hub and the first run of the one-click install (proposed spec deltas) | [s3-spec-delta.md](../plans/one-click/s3-spec-delta.md), [s4-spec-delta.md](../plans/one-click/s4-spec-delta.md), [s6-spec-delta.md](../plans/one-click/s6-spec-delta.md) | `DBL`, `LHB`, `FRN` (proposed; in table rows, not approved) |
 | The default panels of the client: Devices, Agents and Projects on in a new installation, and "Add runner" (proposed) | [default-panels.md](../proposals/default-panels.md) | PNL-001 to PNL-008 |
-| Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-057 |
+| Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-077 |
 | The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](../proposals/watchdog.md) | WDG-001 to WDG-041 |
 | The update of the daemon and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) | ROL-001 to ROL-052 |
 | Rulings and the state of each package | [rulings.md](../rulings.md), [handoff.md](../plans/phase-3/handoff.md) | R, CR |
