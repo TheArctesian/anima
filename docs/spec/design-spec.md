@@ -301,6 +301,49 @@ These requirements change the frozen contracts K1, K2 and K7 (CON-001). The oper
 
 `AuditEntry.operatorName` is required in K1. The ruling must also decide its value for a Hub entry.
 
+#### 3.8.2 Hash chain of the audit log
+
+State: approved (operator, 2026-11-17, R-138). The operator said on 2026-11-17: "Lets build out the Tamper-evident audit log". Only phase L0 of [GH-2](../work-items/device-manager/GH-2.md) is in scope (OD-W9).
+
+Purpose: a change to an old audit log entry, or the removal of an entry, shows. The chain does not stop a change. It does not protect against a person who can write to the database and writes a new chain (see "Limits" below).
+
+- **LOG-021.** Each audit log entry must have one link in the hash chain. A link has a sequence number, the hash of the link before it, and its own hash. Sequence numbers start at 1 and have no gap. The hub must write the entry and its link in the same transaction.
+- **LOG-022.** The hash of a link is SHA-256 of the UTF-8 bytes of one JSON object in the canonical form of RFC 8785 (JCS). The object has these 14 members, each always present:
+
+  | Member | Value |
+  | --- | --- |
+  | `seq` | The sequence number, a JSON number |
+  | `previous` | The hash of the link before, 64 lower-case hexadecimal characters |
+  | `id` | The entry ID, a UUID in lower case with hyphens |
+  | `at` | The time of the entry in UTC, `YYYY-MM-DDTHH:MM:SS.ffffffZ` (6 digits) |
+  | `operatorId` | A UUID in lower case with hyphens |
+  | `operatorName`, `action`, `targetType`, `targetId` | The stored text |
+  | `clientAddr` | The address only: IPv4 in dotted decimal, IPv6 in the form of RFC 5952 |
+  | `change` | The stored JSON value, after the redaction (LOG-007) |
+  | `actorKind`, `tokenKind` | The stored text (`user`, `agent`, `hub`; `login`, `browser`, `api_key`), or `null` |
+  | `apiKeyName` | The stored text, or `null` |
+
+  The hub must compute the hash from the values that the database stored (the values that the insert returns), not from the values that it sent.
+- **LOG-023.** The link with sequence number 1 is the first link. Its previous hash is 64 zeros.
+- **LOG-024.** Before the hub reads the newest link, it must take one lock for the chain: a PostgreSQL transaction advisory lock with a fixed key. The lock stays until the end of the transaction. Thus two writes at the same time make one chain. The sequence number is the primary key of the links, so a write that does not take the lock fails and writes nothing.
+- **LOG-025.** The links are in the table `events.audit_chain`. The table has no partitions. The hub role can only read and insert links (R-016). A link holds only the sequence number, the entry ID and time, and two hashes. It holds no value of the entry (LOG-007). Thus a link stays when the retention drops its entry (one year, LOG-006), and the chain stays whole from link 1.
+- **LOG-026.** The migration adds the table and changes no entry (LOG-006). When the chain is empty, the hub must link each entry that exists, in the order of time and then ID, before it writes an audit entry: at start, before it serves a request or starts a task, and in each `anima-hub operator` command that writes to the audit log. After that, the hub must not link an entry that it did not write.
+- **LOG-027.** The check of the chain reads each link in the order of the sequence number, and each entry. It must report the first fault that it finds, with the sequence number, the entry ID and the time. The faults are:
+  - Changed: the hash of the entry and the link do not agree. This shows a changed field, and two entries that changed places.
+  - Missing: a link has no entry, and the UTC day of the entry is in the retention period.
+  - Broken: a sequence number is missing, or the previous hash of a link is not the hash of the link before it.
+  - Not linked: an entry has no link. This shows an entry that the hub did not write.
+
+  The check must also report the number of links, the number of entries that the retention dropped, and the hash and sequence number of the newest link (the head). The check changes nothing.
+- **LOG-028.** The check runs when the operator asks for it (the API, `anima audit verify`, the MCP tool `anima_audit_verify`) and once each day in the hub. When the daily check finds a fault, the hub must write an event log entry with the severity Error, the source Hub and the actor kind Hub. The client shows this event in the Logs panel (LOG-009); it has no other place for the check. The hub must continue to work and to write entries. It must not repair the chain.
+
+Limits (what L0 does not protect against):
+
+- A person who can write to the database can change entries and then write new links from that point to the end. The check then passes. This person can be the owner role, a superuser, root on the host, the customer in the container of a hosted hub (root there), or a person who edits a backup. The only defence is a copy of the head that is kept outside the hub: when the head later does not agree with the copy, the chain was written again. L0 keeps no such copy (the anchor is deferred, [deferred.md](../deferred.md)). The operator can write down the head that `anima audit verify` shows.
+- The removal of the newest entries together with their links shows only against such a copy.
+- A restore of a backup (FND-006) gives a chain that passes. It has no entry that was written after the backup.
+- The chain shows a change. It does not show who made the change, and it does not get the old value back.
+
 ### 3.9 Desktop releases and updates
 
 The desktop app updates itself, as Sparkle does on macOS. The hub queues each release and builder computers build and publish it (Section 3.10). The app downloads a new version in the background and asks the operator to restart.

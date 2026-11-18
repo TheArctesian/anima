@@ -41,3 +41,13 @@ pub struct AuditList;
     skip_serializing_none
 )]
 pub struct EventAdded;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/events/verify.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct AuditChain;

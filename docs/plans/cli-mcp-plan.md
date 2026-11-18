@@ -136,7 +136,7 @@ read key; change commands with a write key).
 | `check` | `list`, `get`, `create`, `update`, `delete`, `pause`, `resume`, `heartbeats`, `defaults get\|set`, `notifications set`, `watch` |
 | `maintenance` | `list`, `create`, `update`, `delete`, `start`, `stop` |
 | `event` | `list`, `watch` |
-| `audit` | `list` (`--actor user\|agent\|hub`, LOG-020) |
+| `audit` | `list` (`--actor user\|agent\|hub`, LOG-020), `verify` (the hash chain, LOG-027, R-138) |
 | `session` | `list`, `end`, `watch` |
 | `ssh <device>` L | A terminal on the device through the hub (K4 Section 8). The credential stays on the hub. |
 | `files` L | `ls`, `get`, `put` (K4 Section 9) |
@@ -370,7 +370,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 | `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
-| `events` | `anima_events_search`, `anima_audit_list` | |
+| `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
 | `sessions` | `anima_sessions_list` | `anima_session_end` |
 | `notifications` | `anima_notifications_overview` (channels with no addresses, settings, deliveries) | `anima_notification_send_test`, `anima_check_set_notifications` |
 | `web` | (in `anima_device_get`) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete` |

@@ -14,6 +14,7 @@ use super::{
 use crate::ids::{DeviceId, EventId, OperatorId};
 
 mod audit_targets;
+mod chain;
 mod partition_grants;
 mod partitions;
 mod privileges;

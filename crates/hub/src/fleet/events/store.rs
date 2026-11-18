@@ -6,12 +6,14 @@ use uuid::Uuid;
 
 use super::{
     actor::{ActorKind, TokenKind},
+    chain::StoredEntry,
     model::{AuditRecord, EventFilter, EventSummary, NewAudit, NewEvent, Severity, Source},
     page::Position,
     retention::{LOGS, Log},
 };
 use crate::ids::{DeviceId, EventId};
 
+pub(super) mod chain;
 mod start_check;
 pub(super) use start_check::start_refusal;
 
@@ -124,21 +126,24 @@ pub(super) async fn insert_event(
     })
 }
 
-/// Inserts the audit entry as given; the caller has already redacted `change`. The actor's
-/// kind, token kind and key name go in their own columns; never the token (LOG-018).
+/// Inserts the audit entry as given and returns it as stored; the caller has already redacted
+/// `change`. The actor's kind, token kind and key name go in their own columns; never the token
+/// (LOG-018).
 pub(super) async fn insert_audit(
     conn: &mut PgConnection,
     at: DateTime<Utc>,
     entry: &NewAudit,
-) -> Result<(), sqlx::Error> {
+) -> Result<StoredEntry, sqlx::Error> {
     ensure_day_partition(conn, "audit_log", at).await?;
     let actor = &entry.operator.actor;
-    sqlx::query(
+    let stored: chain::EntryRow = sqlx::query_as(&format!(
         "insert into events.audit_log \
          (id, at, operator_id, operator_name, action, target_type, target_id, client_addr, \
          change, actor_kind, token_kind, api_key_name) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-    )
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) \
+         returning {}",
+        chain::ENTRY_COLUMNS
+    ))
     .bind(Uuid::now_v7())
     .bind(at)
     .bind(entry.operator.id)
@@ -151,9 +156,9 @@ pub(super) async fn insert_audit(
     .bind(actor.kind().as_str())
     .bind(actor.token().map(TokenKind::as_str))
     .bind(actor.api_key_name())
-    .execute(&mut *conn)
+    .fetch_one(&mut *conn)
     .await?;
-    Ok(())
+    Ok(stored.into())
 }
 
 /// A stored `event_log` row.

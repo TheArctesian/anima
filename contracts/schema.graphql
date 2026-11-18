@@ -1213,6 +1213,43 @@ type AuditConnection {
   pageInfo: PageInfo!
 }
 
+"(R-138, LOG-027) The check of the hash chain of the audit log. It changes nothing."
+type AuditChainCheck {
+  "True when the check found no fault."
+  intact: Boolean!
+  "The links that the check read, up to the first fault."
+  links: Int!
+  "The links whose entry the retention dropped (one year)."
+  dropped: Int!
+  "The sequence number of the newest link that the check read; null for an empty chain."
+  headSeq: Int
+  "Its SHA-256 hash, 64 lower-case hexadecimal characters. Keep a copy outside the hub: a later head that does not continue it shows that the chain was written again."
+  headHash: String
+  "The first fault; null when intact."
+  fault: AuditChainFault
+}
+
+"(R-138, LOG-027) The first place where the chain and the entries do not agree."
+type AuditChainFault {
+  kind: AuditChainFaultKind!
+  "The link; null for NOT_LINKED."
+  seq: Int
+  entryId: ID!
+  at: DateTime!
+}
+
+"(R-138, LOG-027)"
+enum AuditChainFaultKind {
+  "The entry does not give the hash of its link: a field changed, or entries changed places."
+  CHANGED
+  "The link has no entry, and the entry's day is inside the retention."
+  MISSING
+  "A sequence number is missing, or a previous hash is not the hash of the link before."
+  BROKEN
+  "An entry has no link: the hub did not write it."
+  NOT_LINKED
+}
+
 # ---------------------------------------------------------------- notifications (WP-45)
 # NOT-001..007, D-16..D-22.
 
@@ -2566,6 +2603,8 @@ type Query {
   events(filter: EventFilter, first: Int = 100, after: String): EventConnection!
   "actorKind (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned): only the entries of that kind; an entry with no recorded kind matches none (LOG-020)."
   audit(first: Int = 100, after: String, actorKind: ActorKind): AuditConnection!
+  "(R-138, LOG-027) Checks the hash chain of the audit log. It changes nothing."
+  auditChain: AuditChainCheck!
 
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
 

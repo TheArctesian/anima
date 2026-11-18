@@ -1,20 +1,27 @@
 //! The events GraphQL part: the `events` and `audit` lists and the `eventAdded` subscription
 //! (K1; LOG-004, LOG-005, LOG-010, API-003, API-006).
 
+mod chain;
 mod connection;
 
 use async_graphql::{
     Context, ID, InputObject, Object, Result,
     futures_util::{Stream, stream},
 };
+use std::sync::Arc;
+
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
-use self::connection::{AuditConnection, EventConnection, EventNode};
+use self::{
+    chain::ChainCheckNode,
+    connection::{AuditConnection, EventConnection, EventNode},
+};
 use super::{
     Bus, Signal,
     actor::ActorKind,
+    chain::check_chain,
     model::{EventFilter, EventSummary, Severity, Source},
     page::{MAX_PAGE_SIZE, Position, decode_cursor, fetch_limit, page_size, split_page},
     retention::Log,
@@ -22,6 +29,7 @@ use super::{
 };
 use crate::{
     api_errors::{FieldError, internal, invalid, schema_dependency},
+    clock::Clock,
     fleet::access::Authenticated,
 };
 
@@ -95,6 +103,16 @@ impl Query {
             .await
             .map_err(internal)?;
         Ok(split_page(rows, size).into())
+    }
+
+    /// The check of the hash chain of the audit log (LOG-027). It changes nothing.
+    #[graphql(guard = "Authenticated")]
+    async fn audit_chain(&self, ctx: &Context<'_>) -> Result<ChainCheckNode> {
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        let check = check_chain(schema_dependency::<PgPool>(ctx)?, now)
+            .await
+            .map_err(internal)?;
+        ChainCheckNode::try_from(check).map_err(internal)
     }
 }
 

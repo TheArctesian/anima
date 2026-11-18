@@ -120,6 +120,30 @@ async fn pro_037_release_publishing_says_whether_the_hub_can_publish() {
 }
 
 #[tokio::test]
+async fn log_027_audit_verify_returns_the_first_fault_and_the_head() {
+    let hub = hub().await;
+    hub.answer(
+        "AuditChain",
+        data(json!({ "auditChain": {
+            "intact": false, "links": 2, "dropped": 0, "headSeq": 2, "headHash": "cd".repeat(32),
+            "fault": { "kind": "MISSING", "seq": 3,
+                       "entryId": "0190a000-0000-7000-8031-000000000003",
+                       "at": "2026-11-13T08:00:00Z" } } })),
+    );
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
+    let answer = session.call("anima_audit_verify", json!({})).await;
+    let found = structured(&answer);
+    assert_eq!(found["intact"], false, "{answer}");
+    assert_eq!(
+        (&found["fault"]["kind"], &found["fault"]["seq"]),
+        (&json!("MISSING"), &json!(3))
+    );
+    assert_eq!(found["headHash"], "cd".repeat(32));
+    session.finish().await;
+}
+
+#[tokio::test]
 async fn mcp_009_vpn_status_gives_short_nodes_unless_detail() {
     let hub = hub().await;
     let node = json!({
