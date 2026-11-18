@@ -62,7 +62,7 @@ fn ais_021_a_dated_model_name_has_the_price_of_its_name() {
 fn ais_021_an_unknown_model_gives_no_estimate_never_a_guess() {
     let few = tokens(1000.0, 2000.0, 0.0, 0.0);
     for model in [
-        "claude-opus-5-5",
+        "claude-opus-9-9",
         "other",
         "claude-opus",
         "gpt-5-codex-max",

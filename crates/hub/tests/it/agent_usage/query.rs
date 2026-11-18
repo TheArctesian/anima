@@ -28,7 +28,7 @@ async fn seeded(pool: &PgPool) -> (Daemons, NaiveDate) {
     };
     let models = json!([
         tokens("claude-opus-4-5", [1_000_000, 0, 0, 0]),
-        tokens("claude-opus-5-5", [100, 200, 0, 0])
+        tokens("claude-opus-9-9", [100, 200, 0, 0])
     ]);
     let pve = Pusher::new(&daemons, PVE_01, now).await;
     pve.reading(json!([
@@ -99,7 +99,7 @@ async fn ais_020_ais_021_the_last_30_days_sum_with_an_estimate_and_each_daemon_s
     let answer = usage(&daemons, json!({}), &[]).await;
     assert_eq!(answer["firstDay"], (today - Days::new(29)).to_string());
     assert_eq!(answer["lastDay"], today.to_string());
-    assert_eq!(answer["pricesAsOf"], "2025-11-30");
+    assert_eq!(answer["pricesAsOf"], "2026-11-17");
     assert_eq!(answer["rowsLeftOut"], 0);
     let total = &answer["total"];
     assert_eq!(
@@ -108,7 +108,7 @@ async fn ais_020_ais_021_the_last_30_days_sum_with_an_estimate_and_each_daemon_s
         "the session 30 days ago is outside the default range"
     );
     // Opus 4.5: 1M input ($5) and 1M output ($25); GPT-5 Codex: 1M input ($1.25); Sonnet 4.5:
-    // 1M cache read ($0.30). claude-opus-5-5 has no price: its 300 tokens are not estimated.
+    // 1M cache read ($0.30). claude-opus-9-9 has no price: its 300 tokens are not estimated.
     assert_cost(total, 31.55);
     assert_eq!(total["unpricedTokens"], 300.0);
     assert_eq!(rows(&answer), &vec![total.clone()], "no dimension: one row");
@@ -171,7 +171,7 @@ async fn ais_020_rows_group_by_device_source_day_and_model_in_a_fixed_order(pool
                 &json!(0.0)
             ],
             [
-                &json!("claude-opus-5-5"),
+                &json!("claude-opus-9-9"),
                 &json!(0),
                 &json!(0.0),
                 &json!(300.0)

@@ -25,7 +25,7 @@ fn row(device: Option<(&str, &str)>, source: Option<&str>, cost: Option<f64>) ->
 pub fn usage() -> Value {
     json!({ "agentUsage": {
         "firstDay": "2026-10-19", "lastDay": "2026-11-17", "rowsLeftOut": 0,
-        "pricesAsOf": "2025-11-30",
+        "pricesAsOf": "2026-11-17",
         "rows": [
             row(Some((MAC, "mac-office-1")), Some("CLAUDE_CODE"), Some(31.554)),
             row(Some((MAC, "mac-office-1")), Some("CODEX"), None),
@@ -78,7 +78,7 @@ async fn ais_020_agents_usage_shows_each_group_the_total_and_what_the_estimate_i
         lines[4..],
         [
             "Days 2026-10-19 to 2026-11-17 (UTC).",
-            "The cost is an estimate from the public list prices of 2025-11-30; it is not the \
+            "The cost is an estimate from the public list prices of 2026-11-17; it is not the \
              bill of a subscription.",
             "300 tokens of models with no known price are not in the estimate.",
             "linux-pc-home: This daemon runs as a system unit and cannot see the sessions of a \
