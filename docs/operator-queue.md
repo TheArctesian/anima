@@ -30,21 +30,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.7 | Jobs, builds and AI agent runs | Agent: task W1, the contract of the work route, in projects-and-builds-plan.md (R-160 is the ruling that changes R-115). Operator: the acceptance of the contract (W1) and of the design (W2); the security review of the work route comes before code |
 | 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
-| 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI1 to OD-TUI8 in cli-mcp-plan.md Section 11.7. Agent: None. TU1 to TU10 wait for OD-TUI1 and R8d |
+| 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (110)
+## 2. Open decisions (104)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
-| OD-TUI1 | Do you confirm four answers that Anima Product Ideas relayed from its chat: `anima tui` is a subcommand; version 1 is a read-only dashboard that hands the termi… | Open. Relayed, not first-hand. Needs the operator's own words (PLN-021). | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
-| OD-TUI2 | Do you approve the wording change of the design specification Section 2 and Section 6.10 (11.3): the full-screen view is part of the command line, and neither i… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
-| OD-TUI3 | Does a bare `anima` with no subcommand stay a usage failure, exit code 2 (TUI-005)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
-| OD-TUI4 | Does the screen wait for OD-25 (sign-in of the standalone command line to a hosted hub)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
-| OD-TUI5 | Is Windows out of scope for the screen and for `anima ssh` (TUI-060)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
-| OD-TUI8 | May TU1, the measurement of size and dependencies, run before R8d, as a record in `docs/research/` (PLN-007 allows a measurement in the state Draft)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |

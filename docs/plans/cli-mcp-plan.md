@@ -1,16 +1,16 @@
 ---
 kind: Plan
 state: In progress
-evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started. Section 11 (2026-11-18) is a draft for `anima tui`, a read-only terminal screen: operator direction relayed by Anima Product Ideas, needs first-hand confirmation (OD-TUI1); no TUI requirement is approved and no TU task is built.
+evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built; tasks T11 to T13 build it (R-156), all Not started. Section 11 (2026-11-18) is the direction for `anima tui`, a read-only terminal screen. R-168 (operator, 2026-11-18, first-hand) decided OD-TUI1 to OD-TUI5 and OD-TUI8 and names task TU1. No TUI requirement is approved and no TU task is built.
 ---
 
 # Anima command line and MCP plan
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version 0.3 (draft, 2026-11-18): Section 11 adds `anima tui`, a read-only full-screen view of the
-hub in a terminal (TUI-001 to TUI-083, tasks TU1 to TU10). It is a draft. The direction is relayed
-by Anima Product Ideas and needs the operator's own confirmation (OD-TUI1). The idea folder
+Version 0.3 (2026-11-18): Section 11 adds `anima tui`, a read-only full-screen view of the
+hub in a terminal (TUI-001 to TUI-083, tasks TU1 to TU10). The operator decided the direction in
+R-168 (first-hand, 2026-11-18). The requirements are not approved. The idea folder
 `docs/ideas/terminal-ui/` is deleted by the commit that adds the section (PLN-018).
 
 Version 0.2 (2026-11-16): the MCP server is fully automatic by default (R-120, MCP-024 to
@@ -599,7 +599,7 @@ test of CMD-031 passes; an MCP client lists the tools and reads the device list.
 
 ## 11. The terminal screen: `anima tui`
 
-Status: Draft. Version 0.3 (2026-11-18). The operator approved nothing in this section. The direction below comes from Anima Product Ideas, which relays four answers of the operator from its own chat of 2026-11-18. They are not first-hand to the Planner. They are not a ruling and they have no `R-` number. OD-TUI1 asks the operator to confirm them in one step. Until then, build nothing from this section (PLN-007). The idea folder `docs/ideas/terminal-ui/` is deleted in the commit that adds this section (PLN-018).
+Status: Direction decided (PLN-007). Version 0.3 (2026-11-18). R-168 (operator, 2026-11-18, first-hand, Grok Bot chat) decided OD-TUI1 to OD-TUI5 and OD-TUI8: `anima tui` is a subcommand; version 1 is a read-only dashboard that hands off to `anima ssh`; the work starts after R8a to R8d; the screen has row 4.20; the design specification wording is changed; a bare `anima` stays exit 2; the screen does not wait for OD-25; Windows is out of scope; and TU1 may run before R8d. Before R-168, Anima Product Ideas had relayed the first answers from its own chat; the operator confirmed them himself. **The requirements TUI-001 to TUI-083 are not approved.** R-168 decides the open decisions only. The one task that a ruling names is TU1 (a measurement, a record only). TU2 to TU10 are not free to build. OD-TUI6 and OD-TUI7 are open until TU1. The idea folder `docs/ideas/terminal-ui/` is deleted in the commit that adds this section (PLN-018).
 
 This section is part of this plan and not a new document. The plan already owns the command line (CMD), and a terminal screen shows functions that the command line already has (PLN-004). It uses a new identifier prefix, `TUI-nnn`, so that the numbers of the other proposals of the command line are not used (CMD-032 to CMD-038 belong to [shell-prompt.md](../proposals/shell-prompt.md)). A search of every branch on 2026-11-18 found no `TUI-` identifier, no `TU` task and no row 4.20.
 
@@ -678,15 +678,15 @@ Why Ratatui. It is the common Rust library for full-screen terminal programs: ve
 - **TUI-082.** A test of the end-to-end suite (`crates/anima-cli/tests/it/end_to_end/`, which runs against the real hub with `RealHub`) must start `anima tui` on the pseudo-terminal of `tests/it/kit/terminal.rs`, find a device name from the real hub on the drawn screen, press `q`, and prove that the terminal mode is restored (`assert_modes_restored`, as the sign-in tests do). A second test must press `t` against the test SSH server of `tests/it/kit/tunnel_hub.rs` and prove that the hand-off runs and returns.
 - **TUI-083.** Each failure of 11.5 must have a test. A human check must exist for a real terminal (macOS Terminal, a Linux console over SSH, `tmux`, a resize, a window below 80 by 24). The entry in [need-human-testing.md](../need-human-testing.md) is added in the commit of task TU10 (PLN-014). A task is Done only after the operator sets it to Passed.
 
-### 11.3 The change to the design specification (proposed, not made)
+### 11.3 The change to the design specification (made, R-168)
 
-The design specification Section 2 says that the command line "is not the client". A terminal screen does not conflict with this, because of TUI-003: it adds no function, it uses K1 like the command line, and the `CLI-nnn` rules of the graphical client (the client uses the same user interface code on all platforms) do not apply to it. The words must still say it, or a reader can think that the command line became a client. The proposed text is below. The specification is not changed in this commit: a change of the specification needs the operator (checkpoint 3, SPEC).
+The design specification Section 2 says that the command line "is not the client". A terminal screen does not conflict with this, because of TUI-003: it adds no function, it uses K1 like the command line, and the `CLI-nnn` rules of the graphical client (the client uses the same user interface code on all platforms) do not apply to it. The words must still say it, or a reader can think that the command line became a client. The operator approved the change (OD-TUI2, R-168), and the commit that records R-168 made it. The table gives the old and the new text.
 
-| Place | Now | Proposed |
+| Place | Before | Now |
 | --- | --- | --- |
 | Section 2, term "Command line" | "The `anima` program. The operator and scripts use it in a terminal (Section 6.10). It is not the client." | "The `anima` program. The operator and scripts use it in a terminal (Section 6.10). Its full-screen view, `anima tui`, is part of it. Neither is the client." |
 | Section 6.10 | No text about a full-screen view. | One sentence: "`anima tui` is a read-only full-screen view of the hub in a terminal. It shows functions that the command line already has (TUI-003)." |
-| [ownership.md](../plan/ownership.md) of the plans, row of the command line | Concerns CMD and MCP. | Concerns CMD, MCP and TUI. This commit makes that change. |
+| [ownership.md](../plan/ownership.md) of the plans, row of the command line | Concerns CMD and MCP. | Concerns CMD, MCP and TUI. |
 
 ### 11.4 The screen
 
@@ -805,48 +805,48 @@ The other states, in words:
 | The standalone `anima` file (R8b) and the crate (R8a) | The file and the crate grow | Not measured. TU1 measures it (TUI-070). The Homebrew channel is the reason for the limit. |
 | The MCP server (`src/mcp/`) | None | A test must show that `anima mcp` starts and lists the same tools. |
 | The hub, K1 to K7, the application, the daemon | None | TUI-003. The gates `cargo nextest run --workspace` and `bun run gates` must pass unchanged. |
-| The design specification | One proposed change (11.3) | Needs the operator. |
+| The design specification | Section 2 and Section 6.10, one sentence each (11.3, R-168) | Made in the commit of R-168. |
 | `docs/` | This section, the row 4.20, the mockup, the ownership row | The documents gate. |
 
 **NOT in scope** (kept short): a mouse, a login form, a change tool, a terminal pane, Windows, Linux aarch64, the views of other ideas, a theme file, a configuration file for keys.
 
 ### 11.7 Open decisions
 
-PLN-018 asks for one question for each row that the operator answers with yes, no or one choice, and a recommendation. OD-TUI1 is the one step that the operator can use to confirm the relayed direction.
+PLN-018 asks for one question for each row that the operator answers with yes, no or one choice, and a recommendation. R-168 decided OD-TUI1 to OD-TUI5 and OD-TUI8. OD-TUI6 and OD-TUI7 are open.
 
 | Id | Question | Recommendation | State |
 | --- | --- | --- | --- |
-| OD-TUI1 | Do you confirm four answers that Anima Product Ideas relayed from its chat: `anima tui` is a subcommand; version 1 is a read-only dashboard that hands the terminal to `anima ssh` (a terminal pane later); it starts after R8a to R8d of R-151; and it has a new priorities row of its own (row 4.20)? | Yes. It matches what was relayed. | Open. Relayed, not first-hand. Needs the operator's own words (PLN-021). |
-| OD-TUI2 | Do you approve the wording change of the design specification Section 2 and Section 6.10 (11.3): the full-screen view is part of the command line, and neither is the client? | Yes. The `CLI-nnn` rules of the graphical client stay for the application only. | Open. |
-| OD-TUI3 | Does a bare `anima` with no subcommand stay a usage failure, exit code 2 (TUI-005)? | Yes. A script that runs `anima` by mistake must not wait on a screen. A person types `anima tui`. | Open. |
-| OD-TUI4 | Does the screen wait for OD-25 (sign-in of the standalone command line to a hosted hub)? | No. It works with a read API key now (TUI-052). Only the hand-off waits for a login token. | Open. |
-| OD-TUI5 | Is Windows out of scope for the screen and for `anima ssh` (TUI-060)? | Yes. The crate does not build on Windows today, and R8b has no Windows file. | Open. |
+| OD-TUI1 | Do you confirm four answers that Anima Product Ideas relayed from its chat: `anima tui` is a subcommand; version 1 is a read-only dashboard that hands the terminal to `anima ssh` (a terminal pane later); it starts after R8a to R8d of R-151; and it has a new priorities row of its own (row 4.20)? | Yes. It matches what was relayed. | Decided: yes, R-168 (operator, first-hand: "OD-TUI1: yes, I confirm."). |
+| OD-TUI2 | Do you approve the wording change of the design specification Section 2 and Section 6.10 (11.3): the full-screen view is part of the command line, and neither is the client? | Yes. The `CLI-nnn` rules of the graphical client stay for the application only. | Decided: yes, R-168 ("OD-TUI2: yes."). Made in the design specification. |
+| OD-TUI3 | Does a bare `anima` with no subcommand stay a usage failure, exit code 2 (TUI-005)? | Yes. A script that runs `anima` by mistake must not wait on a screen. A person types `anima tui`. | Decided: yes, R-168 ("OD-TUI3: yes."). |
+| OD-TUI4 | Does the screen wait for OD-25 (sign-in of the standalone command line to a hosted hub)? | No. It works with a read API key now (TUI-052). Only the hand-off waits for a login token. | Decided: no, do not wait, R-168 ("OD-TUI4: no, don't wait."). |
+| OD-TUI5 | Is Windows out of scope for the screen and for `anima ssh` (TUI-060)? | Yes. The crate does not build on Windows today, and R8b has no Windows file. | Decided: yes, R-168 ("OD-TUI5: yes, Windows out of scope."). |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler, more load), or a subscription for each list including checks (four sockets). | Three subscriptions, a re-read of the lists every 60 seconds and of the selected device every 15 seconds. TU1 measures the load before the numbers are fixed. | Open. |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Ask after TU1. The measure comes first, so the question has a number. | Open until TU1. |
-| OD-TUI8 | May TU1, the measurement of size and dependencies, run before R8d, as a record in `docs/research/` (PLN-007 allows a measurement in the state Draft)? | Yes. It builds no product code, and its result can change OD-TUI7 before R8 ends. | Open. |
+| OD-TUI8 | May TU1, the measurement of size and dependencies, run before R8d, as a record in `docs/research/` (PLN-007 allows a measurement in the state Draft)? | Yes. It builds no product code, and its result can change OD-TUI7 before R8 ends. | Decided: yes, R-168 ("OD-TUI8: yes."). TU1 may run before R8d. |
 
 ### 11.8 Tasks of the terminal screen (TU1 to TU10)
 
-No task is free to build until OD-TUI1 is confirmed by the operator and R8d is Done (the relayed direction). TU1 can run earlier if OD-TUI8 is yes. Build in the waves below. One pull request for each task. Each task starts with a claim ([claims/](../claims/README.md), PLN-022) and ends with its state in this table (PLN-008, PLN-009).
+TU1 is free to build now: R-168 decided OD-TUI8 (yes) and names TU1. It writes a record in `docs/research/terminal-ui/` and no product code. TU2 to TU10 are not free to build: they need the result of TU1 (go), R8d Done (R-151, OD-TUI1) and an approval of the requirements by ruling (PLN-007). Build in the waves below. One pull request for each task. Each task starts with a claim ([claims/](../claims/README.md), PLN-022) and ends with its state in this table (PLN-008, PLN-009).
 
 | Task | Wave | Content | Builder | Tag | State | Commits |
 | --- | --- | --- | --- | --- | --- | --- |
-| TU1 | 1 | Spike and decision record: dependency count, file size, build time, the `crossterm` features, the event stream on a `current_thread` runtime, the socket limit of the hub, the load of the polling | Opus | | Not started | — |
-| TU2 | 2 | The skeleton: the dependency, `anima tui`, the guard, the refusal off a terminal, an empty frame, `q`, the `TestBackend` helper, the bare `anima` test | Sonnet | | Not started | — |
-| TU3 | 3 | State, actions and the pure `update`: types, keys, selection, filter, order, stale | Sonnet | | Not started | — |
-| TU4 | 4 | The feed: the first loads, the three subscriptions, the polling, the backoff, the loss of sign-in | Opus | security | Not started | — |
-| TU5 | 4 | The devices view and the detail pane, with the header and the footer, and the hiding of the detail under 100 columns | Sonnet | | Not started | — |
-| TU6 | 5 | The events view | Sonnet | | Not started | — |
-| TU7 | 5 | The sessions view | Sonnet | | Not started | — |
-| TU8 | 5 | The hand-off to `anima ssh` | Opus | security | Not started | — |
-| TU9 | 6 | The end-to-end tests on a pseudo-terminal, each failure of 11.6, the hostile-text test | Opus | security | Not started | — |
-| TU10 | 7 | The help text, the completion, the entry in need-human-testing.md, the mockup comparison, the state of this section | Sonnet | | Not started | — |
+| TU1 | 1 | Spike and decision record: dependency count, file size, build time, the `crossterm` features, the event stream on a `current_thread` runtime, the socket limit of the hub, the load of the polling | Opus | | Not started. Free to build (R-168, OD-TUI8) | — |
+| TU2 | 2 | The skeleton: the dependency, `anima tui`, the guard, the refusal off a terminal, an empty frame, `q`, the `TestBackend` helper, the bare `anima` test | Sonnet | | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU3 | 3 | State, actions and the pure `update`: types, keys, selection, filter, order, stale | Sonnet | | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU4 | 4 | The feed: the first loads, the three subscriptions, the polling, the backoff, the loss of sign-in | Opus | security | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU5 | 4 | The devices view and the detail pane, with the header and the footer, and the hiding of the detail under 100 columns | Sonnet | | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU6 | 5 | The events view | Sonnet | | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU7 | 5 | The sessions view | Sonnet | | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU8 | 5 | The hand-off to `anima ssh` | Opus | security | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU9 | 6 | The end-to-end tests on a pseudo-terminal, each failure of 11.6, the hostile-text test | Opus | security | Not started. Waits for TU1, R8d and approval of the requirements | — |
+| TU10 | 7 | The help text, the completion, the entry in need-human-testing.md, the mockup comparison, the state of this section | Sonnet | | Not started. Waits for TU1, R8d and approval of the requirements | — |
 
 Waves: TU4 and TU5 can run at the same time, because they need only TU3 and touch different folders. TU6, TU7 and TU8 can run at the same time. TU8 needs only TU5.
 
 **TU1. Spike and decision record.**
 - Why: three facts decide the cost and none is measured: the growth of the file, the effect of the `crossterm` features, and the load on the hub.
-- Needs: OD-TUI1 or OD-TUI8. A copy of the repository on a branch of its own. It produces no product code.
+- Needs: nothing more. R-168 (OD-TUI8) lets it run before R8d. A copy of the repository on a branch of its own. It produces no product code.
 - Change: add `ratatui` 0.30 to a throwaway branch. Build the release `anima` for the host before and after, and write both sizes (stripped), the build time and the number of new crates (`cargo tree`). Read the features that `crossterm` has after the change. Run a small `event-stream` loop on the `current_thread` runtime and press keys and resize the window. Read the hub code for a limit of sockets for each token, and test three sockets against the loopback hub. Count the requests of the polling of TUI-021 for a hub with 50 devices. Write the result in `docs/research/terminal-ui/spike.md` (a record, PLN-010) and put the numbers in OD-TUI6 and OD-TUI7.
 - Acceptance: pass when the record holds each number named above, says whether `anima ssh` signals still work, and says "go" or "stop" against the limit of OD-TUI7 (or "ask" if the operator has not named one); fail otherwise.
 - Check: `cargo build --release -p anima-cli`, `cargo tree -p anima-cli --edges normal | wc -l`, `ls -l target/release/anima`, `bun run quality:documents`.
@@ -857,7 +857,7 @@ Waves: TU4 and TU5 can run at the same time, because they need only TU3 and touc
 
 **TU2. The skeleton.**
 - Why: every later task needs the command, the guard and a way to test a frame.
-- Needs: TU1 (go), OD-TUI1, OD-TUI3.
+- Needs: TU1 (go), R8d Done, an approval of TUI-001, TUI-002, TUI-005, TUI-030 and TUI-071 by ruling.
 - Change: add `ratatui` 0.30 to the workspace and to `anima-cli`. Add `src/tui/` with `terminal.rs` (the guard that uses `RawMode` and the alternate screen, and the signal code of `anima ssh`) and `anima tui` as a variant of the `program` group. Off a terminal it fails with a usage failure (TUI-002). It draws one empty frame with the header text and ends on `q` or `Ctrl-C`. Add the `TestBackend` helper. Add a test that a bare `anima` is exit 2.
 - Acceptance: pass when `anima tui` on a pseudo-terminal draws a frame and `q` restores the terminal, `anima tui | cat` and `anima tui --json` exit 2 with the hint of TUI-002, a bare `anima` exits 2, and `anima mcp` lists the same tools as before; fail otherwise.
 - Check: `cargo nextest run -p anima-cli`, `cargo clippy -p anima-cli --all-targets -- -D warnings`, `bun run gates`.
