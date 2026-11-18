@@ -48,6 +48,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [plans/one-click/s6-spec-delta.md](../plans/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [proposals/add-this-machine.md](../proposals/add-this-machine.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
 | [proposals/agent-runs.md](../proposals/agent-runs.md) | Proposal | Draft | Not approved. |
+| [proposals/ai-direction.md](../proposals/ai-direction.md) | Proposal | Draft | Version 1 (2026-11-17). R-131 and R-132 decide two points of the direction. No requirement is approved. It defines no requirement; its open decisions are OD-AI1 to OD-AI7. |
 | [proposals/bots.md](../proposals/bots.md) | Proposal | Draft | Version 1 (2026-11-17). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-038. It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet. |
 | [proposals/bulk-data-placement.md](../proposals/bulk-data-placement.md) | Proposal | Direction decided | Direction decided (OD-W9). No requirement is approved. |
 | [proposals/cloud-machines.md](../proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-024. |

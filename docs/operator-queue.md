@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (101)
+## 2. Open decisions (108)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -82,6 +82,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI2 | Does the first usage function send counts only, read by `anima-daemon`, before the vault exists? | Yes. Counts have no text, so they need no vault. The text of sessions (AIS-004, AIS-005) waits for the vault and the collector. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI3 | Does the usage page show the quota that is left on an account? | No. It shows tokens and an estimate of the cost at the public price of the model. To read a limit, Anima must read the account, which is not permitted. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-ROL-1 | Where a daemon gets its files: from its hub, or from the release host | From its hub (ROL-008). MET-020 and the VPN rules stay, and a machine with no internet access can update. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the daemon and the hub | One key in the first version, with the program name in the signed record (ROL-013). It is one key to keep safe and to back up. A second key is correct if the op… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | An image file on the release host, with its digest in the signed record. GitHub is not in the release path (R-107), and a build from source is slow and needs th… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
@@ -141,7 +148,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (27)
+## 3. Documents that wait for an approval (28)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -153,6 +160,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Build state not checked |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
+| [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal | Draft |
 | [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
