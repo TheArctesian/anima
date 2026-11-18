@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (115)
+## 2. Open decisions (117)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -60,6 +60,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of… | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-3 | Do you approve HOST-015 to HOST-024 (the functions that the comparison with Arcane found), and in which stage is each one? | Yes, in three groups. With stage 1, because they only read through the SSH link: HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021. With stage 2, because they… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025), so that the lists of other persons work in Anima? | Yes, for reading. Anima makes its own list for OwnTracks Recorder and Dawarich in the same form. A list of a different person is off until the operator adds its… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |

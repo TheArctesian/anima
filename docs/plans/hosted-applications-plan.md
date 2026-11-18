@@ -1,15 +1,17 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). All tasks after H0 are Not started. OD-HOST-1 and OD-HOST-2 are open.
+evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 3 (2026-11-18) adds HOST-015 to HOST-025 from a comparison with Arcane; they are proposed and marked "Not approved" (OD-HOST-3, OD-HOST-4). All tasks after H0 are Not started. OD-HOST-1 to OD-HOST-4 are open.
 ---
 
 # Plan: hosted applications (containers that run all the time)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 2. Date: 2026-11-18. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
-approves it in two stages and decides the open decisions of version 1.
+Version: 3. Date: 2026-11-18. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
+approves it in two stages and decides the open decisions of version 1. Version 3 adds the comparison
+with Arcane and the proposed requirements HOST-015 to HOST-025 (operator, 2026-11-18: "find more of
+their features and styling components that we could use, and expand our plan"). It approves nothing.
 From: the planning session of 2026-11-12. The operator wants easy self-hosting of published
 applications on the owned machines: the container management part of Portainer, not the build
 pipeline of Coolify. On 2026-11-18 the operator said: "a portainer clone also does need to be built
@@ -19,7 +21,7 @@ Status: the header of this document holds the state (PLN-020). History: a propos
 the operator approved it on 2026-11-18 (R-149). A requirement with the words "Not approved" has no
 ruling and is not built (PLN-007).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9.
-Identifiers: HOST-001 to HOST-014.
+Identifiers: HOST-001 to HOST-025.
 
 ## Problem
 
@@ -104,6 +106,54 @@ No ruling names these requirements. They are not built (PLN-007).
 - **HOST-009.** Not approved. Anima does not build source code, supply a reverse proxy, or make
   preview deployments. Use Vercel or Coolify for these.
 
+### Proposed from Arcane (not approved)
+
+The operator asked for these on 2026-11-18 as an expansion of the plan. No ruling names them, so they
+are not built (PLN-007). OD-HOST-3 asks for the approval. Each one says how it reads or changes a
+machine, because Arcane uses the Docker socket and Anima does not.
+
+- **HOST-015.** Not approved. The log of a container has a search, a filter by level, a switch for
+  line wrap, a switch for timestamps and a download of the lines that are shown. The client does this
+  work on the lines that HOST-001 gives. No new hub function.
+- **HOST-016.** Not approved. The log of a container can follow new lines. It needs a stream from
+  the machine, so it waits for the daemon path of stage 2. No MCP tool returns it (MCP-004).
+- **HOST-017.** Not approved. The operator can see the details of one container, read-only: the
+  command, the restart policy, the health check and its last result, the mounts, the networks with
+  the addresses, the labels and the processes. The values of environment variables can hold a
+  secret: the hub gives the names only (LOG-007), and no MCP tool returns them.
+- **HOST-018.** Not approved. Each row of the container table can show the processor use and the
+  memory use of the container. The daemon measures them and pushes them with its readings; the hub
+  starts no command for them. [deferred.md](../deferred.md), "Ideas from Coolify Sentinel", has the
+  calculation.
+- **HOST-019.** Not approved. A Compose project has one state that the hub makes from the states of
+  its containers, for example "Partly running" when one container of three has stopped. One rule
+  gives the same state in the client, the `anima` command and the MCP tool.
+  [deferred.md](../deferred.md), "Container status rules", has the order of the states.
+- **HOST-020.** Not approved. The operator can see the images, the volumes and the networks of a
+  machine, read-only, with the size of each image and volume, the containers that use it, and the
+  space that a clean-up can free.
+- **HOST-021.** Not approved. Anima shows when a newer image exists for a container: the hub
+  compares the digest of the image on the machine with the digest of the same tag in its registry.
+  It reads public registries only in the first version. It updates nothing by itself (ETH-004); the
+  update is HOST-002.
+- **HOST-022.** Not approved. The install of HOST-003 has an editor for the Compose file and for
+  its environment file, with a check of the syntax before the install, and a function that changes
+  a `docker run` command into a Compose file. The values of the environment file are a secret of
+  the operator: the hub keeps them sealed and writes none of them to a log (LOG-007).
+- **HOST-023.** Not approved. The operator can remove stopped containers, unused images, unused
+  networks and unused volumes of a machine. Anima shows what each choice removes and how much
+  space it frees, and asks before it removes a volume (HOST-014). It is a fixed work type of the
+  work route (USE-006).
+- **HOST-024.** Not approved. The operator can open a terminal in a running container. It is a
+  session of the hub (design specification Section 6.3), with the same access rules and the same
+  record as an SSH session. No MCP tool opens it (cli-mcp-plan.md, Section 7).
+- **HOST-025.** Not approved. The catalogue of HOST-012 reads a list of recipes from an address
+  that the operator adds. Each entry has an identifier, a name, a description, a version, an
+  author, tags, and the addresses of the Compose file, the environment file, the documentation and
+  the icon. This is the form of the template registry of Arcane, so a list that is made for Arcane
+  also works in Anima (OD-HOST-4). Anima shows the Compose file before the install and installs
+  nothing by itself.
+
 ## Work that already exists
 
 - [deferred.md](../deferred.md), "Ideas from Coolify (hub)": the rules that make one status from many containers,
@@ -114,7 +164,8 @@ No ruling names these requirements. They are not built (PLN-007).
 ## Reference: Arcane
 
 The operator named Arcane (`https://github.com/getarcaneapp/arcane`) on 2026-11-18 as a product to
-learn from for this plan. It is a reference. It adds no requirement and changes no task.
+learn from for this plan, and asked on the same day for a wider comparison. This section is a
+reference. It adds no requirement. The comparison read the commit `40e65a7` (2026-11-18).
 
 - Licence: BSD 3-Clause. Code can be copied if its copyright notice stays with the copied part.
 - Its client is Svelte 5 with SvelteKit, as `apps/client` is. Its styles are Tailwind and
@@ -122,11 +173,50 @@ learn from for this plan. It is a reference. It adds no requirement and changes 
   and the names of this repository (`AGENTS.md`).
 - Its server is Go and uses the Docker socket. Stage 1 here is the hub with fixed commands through
   its SSH link. Read its server to learn the behaviour; do not copy it.
-- For task H3: the container table and its helpers (`frontend/src/routes/(app)/containers/`), with
-  the state of each container, the group of a Compose project, and the log panel.
-- For tasks H6 and H7: the screens for a Compose project and for templates
-  (`frontend/src/routes/(app)/projects/`).
-- Not used: Podman, Swarm, GitOps, image builds and the vulnerability scan (HOST-009, HOST-010).
+
+### Functions
+
+Paths are from `frontend/src/routes/(app)/` of Arcane, unless the row gives a different root.
+
+| Function of Arcane | Where | Use in Anima |
+| --- | --- | --- |
+| Container table: name, image, state, status text, ports, address, created; rows in groups by Compose project | `containers/components/container-table.svelte`, `containers/container-table.helpers.ts` | Task H3 (HOST-001, HOST-013) |
+| Log viewer: tail, search, level filter, wrap, timestamps, download, structured JSON lines, ANSI colours | `frontend/src/lib/components/logs/` | Task H3 for the tail. The other functions are HOST-015 and HOST-016 |
+| Container detail: overview, configuration, environment, storage, network, health check, processes, inspect | `containers/components/container-*.svelte` | HOST-017 |
+| Processor and memory use in each row and on the detail page | `containers/components/container-stats*.svelte` | HOST-018 |
+| Start, stop, restart, pause, redeploy, update, remove, kill | `containers/container-table.actions.ts` | Tasks H5 and H6 (HOST-002, HOST-014). Pause and kill are not planned |
+| Compose projects: table, services panel, logs of the project, one state for the project | `projects/` | Task H6 (HOST-003). The one state is HOST-019 |
+| Compose editor, environment editor, `docker run` converter | `frontend/src/lib/components/compose/` | HOST-022 |
+| Templates: gallery, card, registries that the operator adds, default template, global variables | `projects/templates/`, `projects/variables/`, `backend/internal/template/` | Task H7 (HOST-012). The registry form is HOST-025 |
+| Images, volumes, networks, ports: tables and detail pages | `images/`, `volumes/`, `networks/`, `ports/` | HOST-020 |
+| Updates: containers and projects that have a newer image | `updates/`, `backend/internal/imageupdate/` | HOST-021 |
+| Prune, with a choice of what to remove | `frontend/src/lib/components/prune/` | HOST-023 |
+| Terminal in a container | `containers/components/container-shell.svelte` | HOST-024 |
+| Dashboard: a list of what needs attention, space that can be freed, the containers that use most memory | `dashboard/` | Not in this plan. The device list and the checks own the overview (design specification Section 6) |
+| Events of Docker | `events/` | Not in this plan. The event log of Anima owns events (design specification Section 3.8) |
+| Volume file browser and volume backup | `volumes/`, `frontend/src/lib/components/file-browser/` | Not in this plan. HOST-005 and OD-HOST-1 own the copy of data |
+| Podman, Swarm, GitOps, image builds, vulnerability scan, hardened images | `podman/`, `swarm/`, `gitops/`, `images/build*`, `security/` | Not used (HOST-009, HOST-010). The CVE proposal owns scans |
+| Users, roles, OIDC, API keys, notifications, agents | `system/`, `agents/`, `account/` | Not used. Anima has these functions |
+
+### Parts of the interface
+
+Paths are from `frontend/src/lib/components/` of Arcane. "Anima has" names the part of
+`apps/client/src/lib/` that does the same job. Change that part; do not add a second one.
+
+| Part of Arcane | What it does | Anima has | Use |
+| --- | --- | --- | --- |
+| `arcane-table/` | A table with sort, text filter, filters by value, groups, column choice, pages, and a card layout on a narrow screen | `tables/`, `rows/` | Take the groups and the card layout as a design, if `tables/` has none. Do not take its code: it is built on shadcn |
+| `logs/` | Log rows, controls, structured entries | `process-log/`, `sessions/` | Take `log-viewer.utils.ts` (levels, search, ANSI) as the model for HOST-015 |
+| `lifecycle-indicator/`, `action-buttons.svelte` | Shows "starting", "stopping", "restarting" on a row while an action runs | `motion/`, `states/` | Take the behaviour for task H5 |
+| `badges/port-badge.svelte`, `badges/label-badges.svelte` | A port as a link to its address; labels as small marks | None | Take for task H3 |
+| `stat-strip/`, `stat-card.svelte`, `metric-ring.svelte`, `memory-ring.svelte` | Small numbers and rings for use | `charts/`, `metrics/` | Use the charts of Anima for HOST-018. Take no ring |
+| `resource-detail/` | Sections and key and value grids of a detail page | `page/`, `rows/` | Take the layout as a design for HOST-017 |
+| `network-diagram/` | A drawing of the networks and their containers | None | Later, with HOST-020. Not in the first version |
+| `compose/`, `code-editor/`, `resizable-split.svelte`, `editor-tab-strip.svelte` | The Compose editor with a split view | None | Take for HOST-022, after a check of the size of the editor library |
+| `terminal/` | xterm with controls | `sessions/` | Not taken. Anima has a terminal |
+| `prune/prune-mode-picker.svelte`, `confirm-dialog/`, `operation-watch-dialog.svelte` | The choice of what to prune; a dialog that shows the steps of a long action | `overlay/` | Take the two behaviours for HOST-023 and task H6 |
+| `states/empty-state.svelte`, `ui/skeleton`, `virtual-rows.svelte`, `pinned-scroll-region.svelte` | Empty and loading states, long lists | `states/`, `scroll/` | Not taken. Anima has these |
+| `lib/themes/*.json`, `accent-color/`, `application-theme/` | 12 colour themes, an accent colour, a theme import | `theme/`, `palette/`, `design/tokens/palettes/` | Not taken. The tokens of Anima own colour (design specification Section 5) |
 
 ## Decisions
 
@@ -145,6 +235,8 @@ learn from for this plan. It is a reference. It adds no requirement and changes 
 | --- | --- | --- |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by [bulk-data-placement.md](../proposals/bulk-data-placement.md). It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. |
 | OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. |
+| OD-HOST-3 | Do you approve HOST-015 to HOST-024 (the functions that the comparison with Arcane found), and in which stage is each one? | Yes, in three groups. With stage 1, because they only read through the SSH link: HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021. With stage 2, because they need the daemon or change a machine: HOST-016, HOST-018, HOST-022 and HOST-023. Later, after a security review of the session: HOST-024. It blocks no task of this plan; H1 to H4 are built without them. |
+| OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025), so that the lists of other persons work in Anima? | Yes, for reading. Anima makes its own list for OwnTracks Recorder and Dawarich in the same form. A list of a different person is off until the operator adds its address. It blocks no task before H7. |
 
 ## Tasks
 
