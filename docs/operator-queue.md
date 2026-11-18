@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (115)
+## 2. Open decisions (117)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -58,6 +58,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of… | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
