@@ -225,6 +225,7 @@ are private to `events`.
 | `timeline` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3) | `events` (`before`, `EventSummary`, `Source` only) |
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
 | `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
+| `containers` (work, new; R-149, operator, 2026-11-18; HOST-001, HOST-010) | `devices` (`Device`, `get`, `Error` only), `ssh` (`link`, `FixedCommand`, `HexDigits`, `CommandOutput`, `LinkError` only), `credentials` (`Vault` only) |
 | `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
@@ -246,6 +247,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`); and, from the second Projects slice (operator, 2026-11-14; ruling number to be assigned), on `codeFile`, `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow`, `setCommitStatus` (they join `API_KEY_REFUSED_ROOTS`) |
 | `timeline`, `links` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4) | `access` | the `Authenticated` guard on `timeline`, `recordLinks`, `linkRecords`, `unlinkRecords` |
 | `agent_usage` (R-135) | `access` | the `Authenticated` guard on `agentUsage` |
+| `containers` (R-149) | `access` | the `Authenticated` guard on `containers` and `containerLog`; `containerLog` joins `API_KEY_REFUSED_ROOTS` (a log can hold a secret) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -716,6 +718,24 @@ pub async fn standing(conn: &mut PgConnection, accounts: &[SourceAccountId]) -> 
 ```
 
 Sub-folders of `projects/`, each with its face file: `forge/` (repository row to account and `RepositoryAccess`, `LiveFailure` and `Settled` to K7 codes and fixed words, cursors, the change entries of the audit), `pull_requests/`, `issues/`, `workflows/`, `history/` (commits, branches, releases, checks, commit status), `code/`. `projects/graphql.rs` merges the old and new roots and keeps the names `projects::graphql::Query` and `Mutation`, so `schema.rs` does not change. The fork rule reads the agent declaration from `events::Operator` (as `openGithubConnect` does). `fleet/events/model.rs` gains `AuditTarget::Repository` and `AuditAction::Merge`. The engine still imports no extension.
+
+## containers (work; R-149, operator, 2026-11-18; HOST-001, HOST-010)
+
+Folder `crates/hub/src/work/containers/` (group `work/`). Stage 1 of hosted applications: the containers of a device, read-only. The domain has no table and no store: each read opens an SSH link to the device and runs one fixed `docker` command (CHK-012). It writes no event and no log line (LOG-007). No domain imports `containers`; `schema.rs` merges `containers::graphql::Query`.
+
+```rust
+/// What a link needs besides the device.
+pub struct Reach<'a> { pub db: &'a Db, pub vault: &'a credentials::Vault, pub policy: &'a AddressPolicy }
+/// The containers of a device, running or not, newest first. Nothing is kept.
+pub async fn list(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc>) -> Result<Vec<Container>, Error>;
+/// The last lines of the log of one container, both output streams, oldest first. Nothing is kept.
+pub async fn log(reach: Reach<'_>, device: DeviceId, tail: &Tail, now: DateTime<Utc>) -> Result<ContainerLog, Error>;
+/// The only operator values that reach a command: 12 to 64 lower-case hex digits, and 1 to 1000 lines (default 200).
+pub struct ContainerId(/* ssh::HexDigits */);  pub struct LineCount(/* u16 */);
+pub struct Tail { pub container: ContainerId, pub lines: LineCount }
+```
+
+`ssh` gains for this domain (same ruling): `HexDigits` (1 to 64 hex digits kept as values), `FixedCommand::hex(self, &HexDigits)` and `FixedCommand::number(self, u32)`. Both render from values, so operator text still cannot enter a command.
 
 ## guac-protocol crate (WP-08)
 

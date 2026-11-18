@@ -5,6 +5,7 @@ mod bearer;
 mod browser;
 mod builds;
 mod checks;
+mod containers;
 mod contract;
 mod credentials;
 mod daemon;

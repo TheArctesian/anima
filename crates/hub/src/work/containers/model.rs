@@ -1,8 +1,14 @@
 //! Domain types of the containers of a device (HOST-001, HOST-010): what `docker ps` says of a
 //! container, the last lines of its log, and the two values the operator gives, checked.
 
+#![expect(
+    clippy::unused_async_trait_impl,
+    reason = "the async-graphql Enum derive generates async trait impls"
+)]
+
 use std::fmt;
 
+use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 
 use super::Error;
@@ -15,20 +21,20 @@ const LONGEST_ID: usize = 64;
 /// The most log lines one read asks for.
 const MOST_LINES: u16 = 1000;
 /// The log lines a read asks for when the operator names no number.
-pub(super) const DEFAULT_LINES: u16 = 200;
+const DEFAULT_LINES: u16 = 200;
 
 /// A container identifier the hub accepts: 12 to 64 lower-case hex digits (HOST-001). It is
 /// the only text from the operator that reaches a command, and it reaches it as digits the
 /// hub renders.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct ContainerId(HexDigits);
+pub struct ContainerId(HexDigits);
 
 impl ContainerId {
     /// The identifier in `text`.
     ///
     /// # Errors
     /// [`Error::InvalidContainerId`] when `text` is not 12 to 64 lower-case hex digits.
-    pub(super) fn parse(text: &str) -> Result<Self, Error> {
+    pub fn parse(text: &str) -> Result<Self, Error> {
         if !(SHORTEST_ID..=LONGEST_ID).contains(&text.len()) {
             return Err(Error::InvalidContainerId);
         }
@@ -37,21 +43,22 @@ impl ContainerId {
             .ok_or(Error::InvalidContainerId)
     }
 
-    pub(super) const fn digits(&self) -> &HexDigits {
+    #[must_use]
+    pub const fn digits(&self) -> &HexDigits {
         &self.0
     }
 }
 
 /// How many of the last log lines to read: 1 to 1000 (HOST-001).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct LineCount(u16);
+pub struct LineCount(u16);
 
 impl LineCount {
     /// `lines`, or [`DEFAULT_LINES`] when it is `None`.
     ///
     /// # Errors
     /// [`Error::InvalidLineCount`] when `lines` is not 1 to 1000.
-    pub(super) fn new(lines: Option<i32>) -> Result<Self, Error> {
+    pub fn new(lines: Option<i32>) -> Result<Self, Error> {
         let Some(lines) = lines else {
             return Ok(Self(DEFAULT_LINES));
         };
@@ -62,21 +69,22 @@ impl LineCount {
             .ok_or(Error::InvalidLineCount)
     }
 
-    pub(super) fn get(self) -> u32 {
+    #[must_use]
+    pub fn get(self) -> u32 {
         u32::from(self.0)
     }
 }
 
 /// The log read the operator asked for: one container, its last lines.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct Tail {
-    pub(super) container: ContainerId,
-    pub(super) lines: LineCount,
+pub struct Tail {
+    pub container: ContainerId,
+    pub lines: LineCount,
 }
 
-/// What Docker says the container is doing (`State` of `docker ps`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum ContainerState {
+/// What Docker says the container is doing (`State` of `docker ps`; K1 `ContainerState`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+pub enum ContainerState {
     Running,
     Exited,
     Restarting,
@@ -88,9 +96,10 @@ pub(super) enum ContainerState {
     Unknown,
 }
 
-/// What the status text says of the container's health check.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Health {
+/// What the status text says of the container's health check (K1 `ContainerHealth`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "ContainerHealth")]
+pub enum Health {
     Healthy,
     Unhealthy,
     Starting,
@@ -100,29 +109,38 @@ pub(super) enum Health {
 
 /// One container, as one line of `docker ps` describes it. Every text comes from the device.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct Container {
-    pub(super) id: String,
-    /// Docker's names; the first is the one it shows.
-    pub(super) names: Vec<String>,
-    pub(super) image: String,
-    pub(super) state: ContainerState,
-    pub(super) status: String,
-    pub(super) health: Health,
-    pub(super) ports: String,
-    pub(super) created_at: Option<DateTime<Utc>>,
-    pub(super) compose_project: Option<String>,
-    pub(super) compose_service: Option<String>,
+pub struct Container {
+    pub id: String,
+    /// The first name Docker shows.
+    pub name: String,
+    pub image: String,
+    pub state: ContainerState,
+    pub status: String,
+    pub health: Health,
+    /// Each published or exposed port, as Docker writes it (`0.0.0.0:8080->80/tcp`).
+    pub ports: Vec<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub compose_project: Option<String>,
+    pub compose_service: Option<String>,
+}
+
+/// One line of a container's log: what the container wrote to either output stream.
+#[derive(Clone, PartialEq, Eq)]
+pub struct LogLine {
+    /// When Docker took the line; `None` when the line has no time Docker wrote.
+    pub at: Option<DateTime<Utc>>,
+    pub text: String,
 }
 
 /// The last lines of one container's log. Never kept by the hub and never logged: it can hold
 /// a secret (LOG-007).
 #[derive(Clone, PartialEq, Eq)]
-pub(super) struct ContainerLog {
+pub struct ContainerLog {
     /// Oldest first.
-    pub(super) lines: Vec<String>,
+    pub lines: Vec<LogLine>,
     /// The output reached the link's cap: the lines are the oldest of the tail and the newest
     /// are missing.
-    pub(super) cut: bool,
+    pub cut: bool,
 }
 
 /// Shows the number of lines, never their text, so a logged value holds no log (LOG-007).

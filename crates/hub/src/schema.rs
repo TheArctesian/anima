@@ -26,7 +26,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::projects,
+    work::{containers, projects},
 };
 
 // One line per domain in each root (K3).
@@ -36,6 +36,7 @@ pub struct Query(
     agent_usage::graphql::Query,
     builds::graphql::Query,
     checks::graphql::Query,
+    containers::graphql::Query,
     devices::graphql::Query,
     events::graphql::Query,
     extensions::graphql::Query,

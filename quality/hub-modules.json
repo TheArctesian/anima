@@ -117,6 +117,11 @@
     "link": [],
     "agent_usage": [
       "devices"
+    ],
+    "containers": [
+      "devices",
+      "ssh",
+      "credentials"
     ]
   },
   "graphql": {
@@ -179,6 +184,9 @@
       "events"
     ],
     "agent_usage": [
+      "access"
+    ],
+    "containers": [
       "access"
     ]
   }

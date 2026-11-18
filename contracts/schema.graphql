@@ -898,6 +898,60 @@ enum NotUsableReason {
   FAILED
 }
 
+# The containers of a device (R-149; HOST-001, HOST-010; stage 1 of hosted applications). Read now from the device
+# through the hub's SSH link with fixed docker commands; the hub keeps nothing of them (LOG-007).
+"What Docker says a container is doing. UNKNOWN is a state this hub does not know."
+enum ContainerState {
+  RUNNING
+  EXITED
+  RESTARTING
+  PAUSED
+  CREATED
+  REMOVING
+  DEAD
+  UNKNOWN
+}
+
+"What the status text of a container says of its health check. NONE: no health check, or not running."
+enum ContainerHealth {
+  HEALTHY
+  UNHEALTHY
+  STARTING
+  NONE
+}
+
+"One container of a device (HOST-001). Every text is from the device."
+type Container {
+  "The full identifier of Docker: 64 hexadecimal characters."
+  id: String!
+  name: String!
+  image: String!
+  state: ContainerState!
+  "The status text of Docker, for example: Up 3 hours (healthy)."
+  status: String!
+  health: ContainerHealth!
+  "Each published or exposed port, as Docker writes it, for example: 0.0.0.0:8080->80/tcp."
+  ports: [String!]!
+  createdAt: DateTime
+  "The Compose project of the container; null when it has none."
+  composeProject: String
+  composeService: String
+}
+
+"One line of the log of a container: what it wrote to either output stream."
+type ContainerLogLine {
+  "When Docker took the line; null when the line has no time."
+  at: DateTime
+  text: String!
+}
+
+"The last lines of the log of one container, oldest first. The hub keeps none of them (LOG-007)."
+type ContainerLog {
+  lines: [ContainerLogLine!]!
+  "True when the lines passed 4 MiB: the newest lines are missing."
+  cut: Boolean!
+}
+
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
 "The AI agent program a session comes from (AIS-018)."
 enum AgentSource {
@@ -2740,6 +2794,10 @@ type Query {
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+  "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
+  containers(deviceId: ID!): [Container!]!
+  "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
+  containerLog(deviceId: ID!, containerId: String!, lines: Int): ContainerLog!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
