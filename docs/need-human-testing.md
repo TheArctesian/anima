@@ -52,6 +52,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -724,7 +725,7 @@ on the real hub, with its year of entries, and no test ran the daily check there
 
 Result: Open.
 
-### HT-024: an SSH session on a phone, with the key row
+### HT-033: an SSH session on a phone, with the key row
 
 Built: on the branch `mobile/m1-shell` (mobile plan M4-1, MOB-020, RA-050; mockup 8). In the phone
 layout an SSH session fills the screen. A bar holds back, the device and the time, "Hide keyboard"

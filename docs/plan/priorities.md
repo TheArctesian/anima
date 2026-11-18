@@ -46,7 +46,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 | 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
 
