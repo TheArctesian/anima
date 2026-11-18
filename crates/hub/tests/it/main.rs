@@ -23,6 +23,7 @@ mod metrics;
 mod networks;
 mod notifications;
 mod operator;
+mod places;
 mod projects;
 mod retention;
 mod sessions;

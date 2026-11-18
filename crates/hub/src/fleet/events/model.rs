@@ -14,8 +14,8 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ProjectId, RecordLinkId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId,
-        WindowId,
+        PlaceId, ProjectId, RecordLinkId, ReleaseId, RepositoryId, SessionId, SiteId,
+        SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -285,6 +285,8 @@ pub enum AuditTarget {
     Repository(RepositoryId),
     /// A link between two records (RLK-001).
     RecordLink(RecordLinkId),
+    /// A place, or the site rows that point at it (PLC-001, PLC-006).
+    Place(PlaceId),
 }
 
 impl AuditTarget {
@@ -313,6 +315,7 @@ impl AuditTarget {
             Self::Project(_) => "project",
             Self::Repository(_) => "repository",
             Self::RecordLink(_) => "record_link",
+            Self::Place(_) => "place",
         }
     }
 
@@ -340,6 +343,7 @@ impl AuditTarget {
             Self::Project(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),
             Self::RecordLink(id) => id.to_string(),
+            Self::Place(id) => id.to_string(),
         }
     }
 }

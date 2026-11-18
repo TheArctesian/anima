@@ -224,6 +224,7 @@ are private to `events`.
 | `projects` (second slice, adds; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14; K-E1 Section 13) | `sources` (`Scheduling`, `ask`, `change`, `forget`, `standing`, `Keep`, `Reply`, `LiveFailure` too); `access` (`operator_only` only, and only in the files named `graphql.rs` of its sub-folders: the import gate reads `<domain>/graphql.rs` alone as the graphql module, so this edge is listed under `domains`); crates `provider-github` (already) and `source-exchange` (`Change`, its parts, `Settled`) |
 | `timeline` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3) | `events` (`before`, `EventSummary`, `Source` only) |
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
+| `places` (engine, new; R-148; K-E4 Section 8) | `links` (`retarget`, `retarget_named`, `count`, `Titles`, `Unavailable` only), `events` (the trail types), `records` (leaf) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -242,6 +243,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
 | `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`); and, from the second Projects slice (operator, 2026-11-14; ruling number to be assigned), on `codeFile`, `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow`, `setCommitStatus` (they join `API_KEY_REFUSED_ROOTS`) |
+| `places` (R-148; K-E4 Section 8) | `access`, `devices` | the `Authenticated` guard on `places`, `place` and the six place mutations; `devices::sites` to check that a site exists in `setSitePlace` |
 | `timeline`, `links` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4) | `access` | the `Authenticated` guard on `timeline`, `recordLinks`, `linkRecords`, `unlinkRecords` |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
@@ -675,6 +677,10 @@ pub async fn read(adapters: &Adapters, db: &Db, ask: &Ask) -> Result<Page, Error
 pub async fn connect(conn: &mut PgConnection, new: NewLink, (at, by): (DateTime<Utc>, &str)) -> Result<(Link, Outcome), Error>;
 pub async fn disconnect(conn: &mut PgConnection, id: RecordLinkId) -> Result<Option<Link>, Error>;
 pub async fn touching(db: &Db, record: &Reference) -> Result<Vec<Link>, Error>;
+pub async fn retarget(conn: &mut PgConnection, from: &Reference, to: &Reference) -> Result<u64, Error>;          // PLC-004
+pub async fn retarget_named(conn: &mut PgConnection, ids: &[RecordLinkId], (from, to): (&Reference, &Reference)) -> Result<u64, Error>;   // split
+pub async fn count(conn: &mut PgConnection, record: &Reference) -> Result<u64, Error>;   // all links of a record, not the newest 200
+pub trait Titles { /* K-E4 Section 4: built; places is its first user */ }
 
 // fleet::events, added for the timeline (TML-007)
 pub async fn before(db: &Db, (from, before): (DateTime<Utc>, (DateTime<Utc>, Uuid)), sources: Option<Vec<Source>>, limit: i64) -> Result<Vec<EventSummary>, Error>;

@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, links, sources, timeline},
+    engine::{extensions, links, places, sources, timeline},
     fleet::{
         access, builds, checks,
         credentials::Vault,
@@ -43,6 +43,7 @@ pub struct Query(
     maintenance::graphql::Query,
     metrics::graphql::Query,
     notifications::graphql::Query,
+    places::graphql::Query,
     projects::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
@@ -66,6 +67,7 @@ pub struct Mutation(
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
+    places::graphql::Mutation,
     projects::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
@@ -202,6 +204,10 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(projects::KeyChanges::default())
         // timeline: one adapter for each domain that has records to show (K-E3)
         .data(timeline::Adapters::new(vec![timeline::event_log()]))
+        // links: the title of each kind of record that a domain owns (K-E4 Section 4)
+        .data(links::TitleSources::new(vec![places::record_titles()]))
+        // places: the later domains that hold a PlaceId (none yet)
+        .data(places::Holders::default())
         .finish()
 }
 

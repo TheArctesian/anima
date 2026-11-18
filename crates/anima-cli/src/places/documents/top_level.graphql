@@ -1,0 +1,21 @@
+mutation PlaceTopLevel($id: ID!, $latitude: Float!, $longitude: Float!, $radiusM: Int!) {
+  updatePlace(
+    id: $id
+    input: { parentId: null, latitude: $latitude, longitude: $longitude, radiusM: $radiusM }
+  ) {
+    id
+    parentId
+    name
+    title
+    latitude
+    longitude
+    radiusM
+    category
+    icon
+    aliases
+    geocoderName
+    siteIds
+    createdAt
+    updatedAt
+  }
+}

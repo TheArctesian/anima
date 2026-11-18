@@ -113,6 +113,10 @@
     "links": [
       "events"
     ],
+    "places": [
+      "links",
+      "events"
+    ],
     "link": []
   },
   "graphql": {
@@ -169,6 +173,10 @@
     ],
     "links": [
       "access"
+    ],
+    "places": [
+      "access",
+      "devices"
     ],
     "link": [
       "access",

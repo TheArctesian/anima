@@ -1,0 +1,18 @@
+mutation PlaceMerge($from: ID!, $into: ID!) {
+  mergePlaces(from: $from, into: $into) {
+    id
+    parentId
+    name
+    title
+    latitude
+    longitude
+    radiusM
+    category
+    icon
+    aliases
+    geocoderName
+    siteIds
+    createdAt
+    updatedAt
+  }
+}

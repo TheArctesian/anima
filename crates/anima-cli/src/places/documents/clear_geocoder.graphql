@@ -1,0 +1,18 @@
+mutation PlaceClearGeocoder($id: ID!) {
+  updatePlace(id: $id, input: { geocoderName: null }) {
+    id
+    parentId
+    name
+    title
+    latitude
+    longitude
+    radiusM
+    category
+    icon
+    aliases
+    geocoderName
+    siteIds
+    createdAt
+    updatedAt
+  }
+}
