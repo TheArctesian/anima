@@ -39,14 +39,14 @@ function links(platform: Capabilities, buildsOn = true): HTMLAnchorElement[] {
 
 it('BLD-080: the desktop app has a Builds item between Devices and Settings', () => {
   const found = links(DESKTOP_MAC);
-  expect(found.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/builds', '/settings']);
-  expect(found[1]?.querySelector('.words')?.textContent).toBe('Builds');
+  expect(found.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/builds', '/settings']);
+  expect(found[2]?.querySelector('.words')?.textContent).toBe('Builds');
 });
 
 it('PRO-038: the desktop app shows no Builds item for a hub that cannot publish', () => {
-  expect(links(DESKTOP_MAC, false).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/settings']);
+  expect(links(DESKTOP_MAC, false).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/settings']);
 });
 
 it('BLD-080: a browser has no Builds item', () => {
-  expect(links(BROWSER).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/settings']);
+  expect(links(BROWSER).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/settings']);
 });

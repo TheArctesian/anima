@@ -27,7 +27,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Bulk data on the operator's machines | [bulk-data-placement.md](../proposals/bulk-data-placement.md) | STO-001 to STO-011 |
 | Rules for all work on machines, and jobs | [jobs.md](../proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-027 |
 | AI agent runs | [agent-runs.md](../proposals/agent-runs.md) | AGN-001 to AGN-014 |
-| Hosted applications | [hosted-applications.md](../proposals/hosted-applications.md) | HOST-001 to HOST-009 |
+| Hosted applications | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) | HOST-001 to HOST-014 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | PRO-001 to PRO-053 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](../spec/design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
@@ -47,7 +47,8 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | The work plan: principles and the rules for plans | [plan/purpose.md](purpose.md), [plan/rules.md](rules.md) | ETH-001 to ETH-009, PLN-001 to PLN-023 |
 | Contract freeze: only a ruling changes a contract | [implementation-plan.md](../archive/phase-1/implementation-plan.md) Section 4 defines CON-001. It is in the archive and is still in force | CON-001 |
 | The bundled database, the local hub and the first run of the one-click install (proposed spec deltas) | [s3-spec-delta.md](../plans/one-click/s3-spec-delta.md), [s4-spec-delta.md](../plans/one-click/s4-spec-delta.md), [s6-spec-delta.md](../plans/one-click/s6-spec-delta.md) | `DBL`, `LHB`, `FRN` (proposed; in table rows, not approved) |
-| Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-046 |
+| The default panels of the client: Devices, Agents and Projects on in a new installation, and "Add runner" (proposed) | [default-panels.md](../proposals/default-panels.md) | PNL-001 to PNL-008 |
+| Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-057 |
 | The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](../proposals/watchdog.md) | WDG-001 to WDG-041 |
 | The update of the daemon and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) | ROL-001 to ROL-052 |
 | Rulings and the state of each package | [rulings.md](../rulings.md), [handoff.md](../plans/phase-3/handoff.md) | R, CR |

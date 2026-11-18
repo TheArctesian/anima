@@ -1,8 +1,13 @@
-//! `anima-daemon run`: three tasks and the clock. One samples every 2 seconds and hands points
-//! over; one probes the tool inventory at start and every 15 minutes (CAP-027); the other keeps
-//! the buffer and pushes every 10 seconds, so a slow hub or a slow probe never delays sampling
-//! (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
+//! `anima-daemon run`: four tasks and the clock. One samples every 2 seconds and hands points
+//! over; one probes the tool inventory at start and every 15 minutes (CAP-027); one reads the
+//! session files of the AI agent programs at start and every 15 minutes (AIS-018); the other
+//! keeps the buffer and pushes every 10 seconds, so a slow hub, probe or read never delays
+//! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
 
+mod agent_usage;
+
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use chrono::Utc;
@@ -21,6 +26,7 @@ use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
 use crate::sampling::inventory::InventoryWatch;
 use crate::token_store::{TokenStore, TokenStoreError};
+use agent_usage::{count, counting};
 
 /// The time between samplings (MET-014).
 const SAMPLE_EVERY: Duration = Duration::from_secs(2);
@@ -58,6 +64,12 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
     let (pusher, device) = prepare(home)?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
+    let stopping = Arc::new(AtomicBool::new(false));
+    let usage = tokio::spawn(count(
+        counting(home, |name| std::env::var(name).ok()),
+        sender.clone(),
+        Arc::clone(&stopping),
+    ));
     let mut sampling = tokio::spawn(sample(Platform::current(), sender));
     report::running(device);
     let outcome = tokio::select! {
@@ -74,6 +86,10 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
     sampling.abort();
     // Aborting drops a probe that is running, and its child with it (`kill_on_drop`).
     probing.abort();
+    // A read in progress runs on a blocking thread, which an abort does not stop: the flag
+    // ends it between two lines, so the daemon stops at once.
+    stopping.store(true, Ordering::Relaxed);
+    usage.abort();
     outcome
 }
 

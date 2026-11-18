@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::BatchInventory;
+use super::{BatchAgentUsage, BatchInventory};
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
 
@@ -37,6 +37,15 @@ pub struct Batch {
         skip_serializing_if = "Option::is_none"
     )]
     pub daemon_version: Option<String>,
+    /// The use of the AI agent programs: the daemon's state and the session days whose counts
+    /// changed; absent means nothing new (R-135, AIS-019). A daemon older than R-135 never
+    /// sends it.
+    #[serde(
+        rename = "agentUsage",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub agent_usage: Option<BatchAgentUsage>,
 }
 
 /// The lists a batch announces besides its points, each `None` when unchanged (K8 Section 4).
@@ -45,6 +54,7 @@ pub struct Announcements {
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
     pub inventory: Option<BatchInventory>,
+    pub agent_usage: Option<BatchAgentUsage>,
 }
 
 /// One column of a batch. `kind` is text, so a kind this hub does not know can be ignored.
@@ -149,7 +159,7 @@ impl Batch {
     /// The batch of `points` for `device`: its series are every series of the points, in
     /// [`SeriesKey`] order, and a point holds `null` for a series it has no value of (K8
     /// Section 4). Give it the points of an [`Outgoing`](crate::points::Outgoing), and the
-    /// GPUs, drives and inventory to announce, if any.
+    /// GPUs, drives, inventory and agent usage to announce, if any.
     #[must_use]
     pub fn new<'a>(
         device: Uuid,
@@ -172,6 +182,7 @@ impl Batch {
             drives: announced.drives,
             inventory: announced.inventory,
             daemon_version: None,
+            agent_usage: announced.agent_usage,
         }
     }
 

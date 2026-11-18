@@ -1,8 +1,10 @@
 //! The daemon's log lines, in one place: what happened, by code or cause, never a token, a
 //! code or a body (LOG-007). Called from the I/O edge only.
 
+use daemon_core::agent_usage::UsageState;
 use daemon_core::wire::RefusalCode;
 
+use crate::config::agent_usage::SettingsError;
 use crate::hub::answer::Cause;
 use crate::token_store::TokenStoreError;
 
@@ -59,6 +61,20 @@ pub fn renewal_failed(cause: Cause) {
 
 pub fn running(device: uuid::Uuid) {
     tracing::info!(%device, "the daemon is running");
+}
+
+/// Once at start: whether the daemon reads the session files of the AI agent programs.
+pub fn agent_usage(state: UsageState) {
+    tracing::info!(state = state.as_str(), "agent usage counts");
+}
+
+/// Once at start: the settings of the agent usage cannot be read, so it is off (AIS-008).
+pub fn agent_usage_settings_refused(error: &SettingsError) {
+    tracing::error!(%error, "agent usage counts are off until the settings file is corrected");
+}
+
+pub fn agent_usage_read_failed() {
+    tracing::error!("reading the agent session files stopped: its task panicked");
 }
 
 pub fn stopping() {

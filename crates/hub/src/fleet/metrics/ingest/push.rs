@@ -100,6 +100,7 @@ async fn push(
         drives: drives.as_deref(),
         inventory: accepted.inventory.as_ref(),
         daemon_version: daemon_version.as_deref(),
+        agent_usage: accepted.agent_usage.as_ref(),
     };
     drop(token);
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;

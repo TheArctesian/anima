@@ -20,16 +20,50 @@ pub(super) fn deserialize<'de, D: Deserializer<'de>>(input: D) -> Result<DateTim
 }
 
 fn parse(text: &str) -> Option<DateTime<Utc>> {
-    let shaped = text.len() == FORM.len()
-        && text.bytes().zip(FORM).all(|(byte, form)| match form {
-            b'0' => byte.is_ascii_digit(),
-            _ => byte == *form,
-        });
-    if !shaped {
+    if !shaped(text, FORM) {
         return None;
     }
     let at = NaiveDateTime::parse_from_str(&text[..19], "%Y-%m-%dT%H:%M:%S")
         .ok()?
         .and_utc();
     (at.timestamp_subsec_nanos() == 0).then_some(at)
+}
+
+/// Whether `text` has the shape of `form`: a digit where `form` has `0`, the same byte elsewhere.
+fn shaped(text: &str, form: &[u8]) -> bool {
+    text.len() == form.len()
+        && text.bytes().zip(form).all(|(byte, form)| match form {
+            b'0' => byte.is_ascii_digit(),
+            _ => byte == *form,
+        })
+}
+
+/// UTC days in K8 bodies: `YYYY-MM-DD`, a real date (K8 Section 4, `agentUsage`).
+pub(super) mod days {
+    use chrono::NaiveDate;
+    use serde::{Deserialize as _, Deserializer, Serializer, de::Error as _};
+
+    const FORM: &[u8; 10] = b"0000-00-00";
+
+    #[expect(
+        clippy::trivially_copy_pass_by_ref,
+        reason = "serde's `serialize_with` passes a reference"
+    )]
+    pub(in super::super) fn serialize<S: Serializer>(
+        day: &NaiveDate,
+        out: S,
+    ) -> Result<S::Ok, S::Error> {
+        out.serialize_str(&day.format("%Y-%m-%d").to_string())
+    }
+
+    /// Reads exactly `YYYY-MM-DD` of a date that exists; the error never holds the text.
+    pub(in super::super) fn deserialize<'de, D: Deserializer<'de>>(
+        input: D,
+    ) -> Result<NaiveDate, D::Error> {
+        let text = String::deserialize(input)?;
+        super::shaped(&text, FORM)
+            .then(|| NaiveDate::parse_from_str(&text, "%Y-%m-%d").ok())
+            .flatten()
+            .ok_or_else(|| D::Error::custom("not a K8 day"))
+    }
 }

@@ -3,12 +3,14 @@ import type { IconName } from '$lib/icons/icons';
 
 /** One destination of the navigation bar. */
 export interface NavDestination {
-  readonly href: '/devices' | '/projects' | '/builds' | '/logs' | '/settings';
+  readonly href: '/devices' | '/agents/usage' | '/projects' | '/builds' | '/logs' | '/settings';
   readonly label: string;
   readonly icon: IconName;
 }
 
 export const DEVICES: NavDestination = { href: '/devices', label: 'Devices', icon: 'carbon:bare-metal-server' };
+/** The use of the AI agent programs (AIS-020); always there, because the page explains itself when no daemon reports. */
+export const AGENT_USAGE: NavDestination = { href: '/agents/usage', label: 'Agent usage', icon: 'carbon:chart-line' };
 /** Shown only while the Projects extension is on (EXT-002). */
 export const PROJECTS: NavDestination = { href: '/projects', label: 'Projects', icon: 'carbon:folder' };
 export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'carbon:tool-kit' };
