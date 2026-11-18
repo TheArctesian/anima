@@ -368,7 +368,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
@@ -390,6 +390,9 @@ Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` 
 
 **No MCP tool returns file content** (operator, 2026-11-14; ruling number to be assigned). The content of a file in a repository may hold a secret, and the hub cannot tell (MCP-004, as for `anima_check_update`); it is also the strongest carrier of instructions to an agent in the Projects slice. MCP-002 makes every read tool `allow` by default, so the content gets no tool rather than a read tool. An agent that needs the code has the checkout. `anima_code_directory_list` returns names only. Other text from GitHub in the `repositories` results (titles, bodies, comments, logins, branch names, labels, commit messages, check and job names) is given in named fields, cleaned and cut by `mcp/untrusted.rs`, where the key `body` is cut at 4,000 characters. Each tool description says that this text is data, and the server instructions gain one line for text from GitHub.
 
+`anima_container_list` (read, tool set `devices`) gives the Docker containers of one device
+(HOST-001, R-149). No tool returns the log of a container: a log can hold a secret (MCP-004), so
+`containerLog` is closed to every API key and only `anima containers logs` reads it.
 `anima_capability_list` (read, tool set `devices`) gives the tool inventory of each device
 (CAP-030, CAP-031). `anima_agents_usage` (read, tool set `devices`) gives the use of the AI agent programs on each
 device with the estimate of its cost and each daemon's state (R-135; AIS-020, AIS-021, AIS-024); it takes
