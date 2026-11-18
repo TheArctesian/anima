@@ -13,7 +13,11 @@
   import AddDeviceModal from '$lib/devices/add/AddDeviceModal.svelte';
   import type { SitePlacement } from '$lib/devices/form/site';
   import type { DeviceFormValues, SiteOption } from '$lib/devices/form/values';
-  import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
+  import { browserStorage, machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
+  import { readCloudDevice } from '$lib/desktop/cloud/device';
+  import { isHostedHub } from '$lib/hosted/mark';
+  import { addThisComputer } from '$lib/hosted/this-computer';
+  import { linkApi } from '$lib/link/api';
   import { useHub } from '$lib/hub/context';
   import type { HubError, HubResult } from '$lib/hub/hub';
   import { sessionsApi } from '$lib/sessions/api';
@@ -41,6 +45,8 @@
   /** The app opened Add device itself, to ask about `machine`. */
   let asking = $state(false);
   let loadingSites = false;
+  /** Goes up when a device was added with no form, so the list is read again. */
+  let listVersion = $state(0);
 
   /** This computer, where the client can read it; elsewhere nothing to offer (R-060). */
   function readHere(): Promise<ThisMachine | null> {
@@ -104,9 +110,27 @@
     show(found, offered, true);
   }
 
+  /**
+   * On a hosted hub this computer becomes a device with no question (HMD-044). Such a hub reaches it by the link, not
+   * the VPN, so there is nothing to ask about.
+   */
+  async function meetThisMachine(): Promise<void> {
+    const storage = browserStorage();
+    if (storage === null || !isHostedHub(storage, hub.address.origin)) return askAboutThisMachine();
+    const added = await addThisComputer({
+      device: readCloudDevice,
+      linkDevices: () => linkApi(hub).devices(),
+      hosts: () => devices.hosts(),
+      sites: () => devices.sites(),
+      createSite: (name, subnet) => devices.createSite(name, subnet),
+      createDevice: (input) => devices.create(input),
+    });
+    if (added) listVersion += 1;
+  }
+
   // Once, when the page mounts; nothing the prompt reads should run it again.
   $effect(() => {
-    untrack(() => void askAboutThisMachine());
+    untrack(() => void meetThisMachine());
   });
 
   function create(values: DeviceFormValues, site: SitePlacement) {
@@ -152,7 +176,9 @@
   {#if addError !== null}
     <p class="notice" role="alert">Could not open Add device: {addError.message}</p>
   {/if}
-  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} {screenSharing} />
+  {#key listVersion}
+    <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} {screenSharing} />
+  {/key}
 </section>
 
 <AddDeviceModal

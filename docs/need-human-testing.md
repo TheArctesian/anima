@@ -45,6 +45,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
+| HT-025 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -537,6 +538,27 @@ Second try on 2026-11-17 with the built app of step 1 (operator, with a picture 
 hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
 In the same message the operator asked for more than this check
 covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
+
+### HT-025: the computer that signs in is a device of the hosted hub (HM-T8)
+
+Built: when the app opens the device list of a hosted hub, it adds the computer it runs on as a device with
+no question ([hosted-mode.md](proposals/hosted-mode.md) HMD-044, R-136). The shell command `cloud_device`
+(`apps/desktop/src-tauri/src/cloud.rs`) gives the device name that the sign-in sent, the computer name and
+the OS. The client (`apps/client/src/lib/hosted/this-computer.ts`) finds the link device of the hub with that
+name, and adds a device with the link address as its host, in the site `Link`, when no device has that host.
+The device has the kind `workstation`, no SSH and no check. A hosted hub does not ask "Add this Mac?".
+
+The tests use a fake shell and a fake hub. No test reads the link devices of a real hosted hub, makes the site
+`Link` with the range `fd41:4e49:4d41::/48` on a real hub, or adds a device through a real link.
+
+1. Start the built app as in step 1 of HT-022, from a checkout that has this change, and sign in if the app
+   asks. Expected: the device list of the hosted hub opens and shows one row with the name of this Mac. No
+   window asked "Add this Mac?".
+2. Open that device. Expected: its host is an address that starts with `fd41:4e49:4d41:`, its site is `Link`,
+   and it has no check.
+3. Quit the app and start it again. Expected: the device list shows one row for this Mac, not two.
+
+Result: Open.
 
 ## Not built yet
 

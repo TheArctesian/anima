@@ -31,7 +31,7 @@ pub enum OperatingSystem {
 
 impl OperatingSystem {
     /// The system this build runs on; `None` off macOS and Linux.
-    fn current() -> Option<Self> {
+    pub(crate) fn current() -> Option<Self> {
         if cfg!(target_os = "macos") {
             Some(Self::Macos)
         } else if cfg!(target_os = "linux") {
