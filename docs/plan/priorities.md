@@ -36,14 +36,14 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.18 | 1 | Update the daemon and the hub | Foundation | Plan, in progress (R-139). Tasks U1 and U4 are done. | Agent: task U5 in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md). Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. FND-006 is approved for a hub on a server (R-141); task F1 is built. The operator starts fresh on the hosted hub (R-140). | Operator: the check HT-024 in [need-human-testing.md](../need-human-testing.md), or a ruling that it is not necessary |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
-| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
+| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-5 T1 of [extensions-plan.md](../plans/extensions-plan.md) Section 5.1. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7 |
 | 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.6 | 3a | Projects | See | In progress. | Nothing now. The parts that are not built wait for later plans: a hosting provider as a source (PRO-005, Q1), the Operations area of the project page (PRO-006, Q2), task W1 (PRO-006, Q3) and a second forge (PRO-007, Q4); see [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0" |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
 | 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
-| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. The standbys are deferred (R-142). The copy in the application on a computer (FND-007) is approved; task F2 is built. | Operator: the check HT-026 in [need-human-testing.md](../need-human-testing.md) |
-| 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
+| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. The standbys are deferred (R-149). The copy in the application on a computer (FND-007) is approved; task F2 is built. | Operator: the check HT-026 in [need-human-testing.md](../need-human-testing.md) |
+| 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
@@ -160,7 +160,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Bulk data in encrypted pieces on the operator's machines
 - Work items: No work item yet. It changes the file store of [E0-5](../work-items/engine/E0-5.md)
-- State: Proposal. Its direction is decided (OD-W9). Decide it before [E0-5](../work-items/engine/E0-5.md) starts.
+- State: Proposal. Its direction is decided (OD-W9). E0-5 builds the file store in a folder of the hub and does not wait for it (R-145).
 
 ### 4.12 Level 2: one model across machines
 
