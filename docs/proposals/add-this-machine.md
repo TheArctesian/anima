@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Draft. Build state not checked
-evidence: Its status line: a proposal for a ruling.
+state: Draft. Deferred; partly built
+evidence: Deferred by R-058 (operator, 2026-11-06; [deferred.md](../deferred.md)). Checked on `main` at `ec965cdb` (2026-11-18): the machine ID is not built (no `machineId` or `deviceByMachineId` in `contracts/schema.graphql`). The offer for a device whose host is the link address of this computer (R-060) is built in `apps/client/src/lib/devices/add/this-machine.ts`.
 ---
 
 # Proposal: "Add this machine" after sign-in

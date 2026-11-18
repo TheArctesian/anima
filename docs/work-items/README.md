@@ -96,7 +96,7 @@ Rules:
 
 | Identifier | Title | Kind | State | Tier (work plan Section 4) | Owner | Was issue |
 | --- | --- | --- | --- | --- | --- | --- |
-| [GH-2](device-manager/GH-2.md) | Tamper-evident audit log: a hash chain so a change to an old entry shows | Work item | Open at import | 4 (hash chain for the audit log) | [design-spec.md](../spec/design-spec.md) Section 3.8 (LOG-005, LOG-006) | #2 |
+| [GH-2](device-manager/GH-2.md) | Tamper-evident audit log: a hash chain so a change to an old entry shows | Work item | Built (L0-T1 to L0-T4; commits `33295a96`, `468d9eed`, `9113ee8d`, merge `30423554`, 2026-11-17). Not Done: the check HT-023 waits for the operator | 4 (hash chain for the audit log) | [design-spec.md](../spec/design-spec.md) Section 3.8 (LOG-005, LOG-006) | #2 |
 | [GH-55](device-manager/GH-55.md) | Defer Phase 6 site operations and optional traffic metadata | Work item | Open at import | 4 (Phase 6) | [design-spec.md](../spec/design-spec.md) Section 9 (Phase 6) | #55 |
 | [GH-56](device-manager/GH-56.md) | Audit log: record who did it — User, Agent or Hub | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.8.1 (LOG-012 to LOG-020) | #56 |
 | [GH-57](device-manager/GH-57.md) | Put the anima command line in the .dmg and the AppImage | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.11 (INS-001 to INS-009) | #57 |
