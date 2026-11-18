@@ -5,16 +5,22 @@
 // hub can tell which devices are connected.
 //
 // The hub link opens no stream to a device, so this stream is also where the
-// hub will ask a device for a local port (HMD-048).
+// hub asks a device for a local port (HMD-048): the hub link writes the
+// lines of package dial on it.
 package presence
 
 import (
 	"bufio"
+	"errors"
+	"io"
 	"net"
 	"net/netip"
 	"sync"
 	"time"
 )
+
+// ErrNotConnected means that the device has no stream on the reverse port.
+var ErrNotConnected = errors.New("presence: the device is not connected")
 
 const (
 	// Here is the line that a device writes.
@@ -25,6 +31,8 @@ const (
 	// Silence is how long a stream can be silent before the hub link closes
 	// it: three lines of the device did not come.
 	Silence = 45 * time.Second
+	// writeLimit is how long one line of the hub may take to leave.
+	writeLimit = 5 * time.Second
 )
 
 // Book is the stream on which each device says that it is connected, and the
@@ -37,6 +45,8 @@ type Book struct {
 	mu      sync.Mutex
 	streams map[netip.Addr]net.Conn
 	seen    map[netip.Addr]time.Time
+	// writing keeps the lines of the hub whole when two of them go at once.
+	writing sync.Mutex
 }
 
 // Hold makes a stream the stream of a device and returns the one that it
@@ -79,6 +89,26 @@ func (b *Book) Seen(device netip.Addr) (time.Time, bool) {
 	defer b.mu.Unlock()
 	at, seen := b.seen[device]
 	return at, seen
+}
+
+// Write writes one line of the hub on the stream of a device. It returns
+// ErrNotConnected when the device has no stream, or when the line did not
+// leave: the stream is then closed, and the device opens a new one.
+func (b *Book) Write(device netip.Addr, line string) error {
+	b.mu.Lock()
+	stream := b.streams[device]
+	b.mu.Unlock()
+	if stream == nil {
+		return ErrNotConnected
+	}
+	b.writing.Lock()
+	defer b.writing.Unlock()
+	_ = stream.SetWriteDeadline(time.Now().Add(writeLimit))
+	if _, err := io.WriteString(stream, line); err != nil {
+		stream.Close()
+		return ErrNotConnected
+	}
+	return nil
 }
 
 // Read reads the lines of a device and calls here for each line "here". It

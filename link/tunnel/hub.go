@@ -209,9 +209,12 @@ const (
 	// NoticePort is where a device reads the hub's next address (LNK-007).
 	NoticePort uint16 = 445
 	// ReversePort is where a device keeps a stream open so that the hub
-	// knows it is connected, and later asks it for a local port (HMD-047,
-	// HMD-048).
+	// knows it is connected, and where the hub asks it for a local port
+	// (HMD-047, HMD-048).
 	ReversePort uint16 = 446
+	// OpenPort is where a device gives the hub the connection to one of its
+	// local ports that the hub asked for on the reverse port (HMD-048).
+	OpenPort uint16 = 447
 )
 
 // Join copies bytes between two streams in both directions until both have
