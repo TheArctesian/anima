@@ -17,5 +17,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 Recommendation: off by default; the operator sets each client computer on.
 
+Note of 2026-11-18: OD-W10 and R-160 ("A: on everywhere") say that a machine with the daemon takes work by default, on each hub. [jobs.md](../../proposals/jobs.md), "Decision", says that this recommendation and CMP-002 must change to agree. The owner, the compute plan Section 15, makes that change; until then this item stays open.
+
 **Plan:** [Section 15](../../plans/compute-plan.md)
 **Requirements:** OD-C8

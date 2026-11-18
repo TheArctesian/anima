@@ -51,6 +51,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-078 |
 | The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](../proposals/watchdog.md) | WDG-001 to WDG-041 |
 | The update of the daemon and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) | ROL-001 to ROL-052 |
+| One release for the four targets (macOS, Linux, iOS, Android): one version and one commit, the keys of each target, the order of the release work across the plans (proposed) | [release-four-platforms.md](../proposals/release-four-platforms.md). It points to the owners of each part: the design specification Sections 3.9 to 3.12, [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md), [mobile-plan.md](../plans/mobile-plan.md) | RLS-001 to RLS-014 |
 | Rulings and the state of each package | [rulings.md](../rulings.md), [handoff.md](../plans/phase-3/handoff.md) | R, CR |
 | Handoff notes between sessions (a record, not a plan; no requirement) | [handoffs/README.md](../handoffs/README.md) | None (PLN-010) |
 
