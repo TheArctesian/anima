@@ -18,7 +18,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 | See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [watchdog.md](../proposals/watchdog.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../proposals/new-sources.md) |
-| Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](../plans/compute-plan.md). [jobs.md](../proposals/jobs.md), [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [agent-runs.md](../proposals/agent-runs.md), [hosted-applications.md](../proposals/hosted-applications.md) |
+| Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](../plans/compute-plan.md). [jobs.md](../proposals/jobs.md), [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [agent-runs.md](../proposals/agent-runs.md), [hosted-applications-plan.md](../plans/hosted-applications-plan.md) |
 
 The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](../plans/cli-mcp-plan.md); design specification Section 6.10). They are built and are on `main`, except the rulings that the header of [cli-mcp-plan.md](../plans/cli-mcp-plan.md) names as not built (R-120). A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
 
@@ -41,8 +41,8 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.6 | 3a | Projects | See | In progress. | Nothing now. The parts that are not built wait for later plans: a hosting provider as a source (PRO-005, Q1), the Operations area of the project page (PRO-006, Q2), task W1 (PRO-006, Q3) and a second forge (PRO-007, Q4); see [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0" |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
-| 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
-| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. The standbys are deferred (R-149). The copy in the application on a computer (FND-007) is approved; task F2 is built. | Operator: the check HT-026 in [need-human-testing.md](../need-human-testing.md) |
+| 4.9 | 3c | Hosted applications | Use | Plan, in progress (R-149). Stage 1 is built now; stage 2 waits for task W1 of row 4.7. | Agent: task H1 in [hosted-applications-plan.md](../plans/hosted-applications-plan.md). Operator: nothing now |
+| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. The standbys are deferred (R-151). The copy in the application on a computer (FND-007) is approved; task F2 is built. | Operator: the check HT-030 in [need-human-testing.md](../need-human-testing.md) |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
@@ -143,8 +143,8 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 3c
 - Category: Use
 - Work: Hosted applications
-- Work items: No work item yet
-- State: Proposal. Not approved.
+- Work items: none. The tasks H0 to H7 are in [hosted-applications-plan.md](../plans/hosted-applications-plan.md)
+- State: Plan, in progress (R-149, 2026-11-18). Stage 1 (see the containers of a machine) is built now. Stage 2 (control, install, the catalogue) waits for task W1 of row 4.7. The tier is not changed.
 
 ### 4.10 Standby copies of the coordinator database
 

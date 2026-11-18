@@ -76,7 +76,8 @@
       "devices",
       "ssh",
       "credentials",
-      "events"
+      "events",
+      "agent_usage"
     ],
     "notifications": [
       "events",
@@ -113,7 +114,10 @@
     "links": [
       "events"
     ],
-    "link": []
+    "link": [],
+    "agent_usage": [
+      "devices"
+    ]
   },
   "graphql": {
     "devices": [
@@ -173,6 +177,9 @@
     "link": [
       "access",
       "events"
+    ],
+    "agent_usage": [
+      "access"
     ]
   }
 }

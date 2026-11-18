@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Usage Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
+<style>
+/* Layout: a review board. Frame 1 is the page with use; frame 2 is a page with no daemon that sent counts; frame 3 is a page with
+   no use in the days (extensions-plan.md Section 4.12.0, AIS-020, AIS-021, AIS-024). Each frame is the page area of the app. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+:root[data-theme="light"] { color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3; }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, sizes, type). A frame is dark (.gd) or light (.gl) on purpose. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 24px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+
+/* One frame: the page (routes/agents/usage, lib/agent-usage/AgentUsageScreen.svelte). */
+.frame { max-inline-size: 1040px; border: 1px solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); padding: var(--space-8); display: grid; gap: var(--space-4); align-content: start; }
+.frame h1 { margin: 0; font-size: var(--text-display); font-weight: var(--weight-light); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+.frame p { margin: 0; line-height: var(--leading-normal); }
+.detail { color: var(--text-secondary); }
+
+/* The choices (UsageFilters.svelte): days as a segmented choice, then three menus. */
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding-block-end: var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.seg { display: inline-flex; border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.seg span { padding: 0 var(--space-3); block-size: var(--control-sm); line-height: var(--control-sm); font-size: var(--text-sm); color: var(--text-secondary); }
+.seg .on { background: var(--surface-raised); color: var(--text); font-weight: var(--weight-medium); }
+.menu { display: inline-flex; align-items: center; gap: var(--space-2); block-size: var(--control-md); padding: 0 var(--space-2); color: var(--text-secondary); }
+
+.summary { font-size: var(--text-lg); line-height: var(--leading-tight); }
+
+/* The table (lib/tables/Table.svelte, dense): counts are right-aligned figures in the mono font. */
+table { inline-size: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+th, td { padding: 0 var(--space-3); block-size: var(--control-sm); border-block-end: var(--border-thin) solid var(--border-subtle); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+thead th { background: var(--surface-raised); color: var(--text-secondary); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+td.n, th.n { text-align: end; font-variant-numeric: tabular-nums; }
+td.n { font-family: var(--font-mono); }
+td.none { color: var(--text-secondary); }
+
+/* The notes under the table are text; each device that sends no counts says why. */
+.notes { display: grid; gap: var(--space-3); }
+.notes ul { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; color: var(--text-secondary); font-size: var(--text-sm); line-height: var(--leading-normal); }
+.notes b { color: var(--text); font-weight: var(--weight-medium); }
+
+/* The empty states (EmptyState.svelte). */
+.empty { display: grid; justify-items: center; gap: var(--space-2); padding: var(--space-6) var(--space-4); text-align: center; }
+.empty h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.empty p { max-inline-size: 36ch; color: var(--text-secondary); }
+.empty a { color: var(--accent); }
+</style>
+</head>
+<body>
+<h1 class="board">Agent usage</h1>
+<p class="about">The page of the use of Claude Code and Codex on the devices of the operator (AIS-020). It shows counts only. The cost is an estimate (AIS-021).</p>
+
+<div class="frames">
+  <figure>
+    <div class="frame gd">
+      <div>
+        <h1>Agent usage</h1>
+        <p class="detail">The use of Claude Code and Codex on your devices, from counts only. No text of a session leaves a device.</p>
+      </div>
+      <div class="filters" role="group" aria-label="Usage filters">
+        <div class="seg"><span>7 days</span><span class="on">30 days</span><span>90 days</span></div>
+        <span class="menu">Group by (2)</span>
+        <span class="menu">Device: All devices</span>
+        <span class="menu">Program: All programs</span>
+      </div>
+      <p class="summary">17 sessions, 1.4B tokens, estimated cost $12.40</p>
+      <table>
+        <thead><tr>
+          <th>Device</th><th>Program</th><th class="n">Sessions</th><th class="n">Prompts</th><th class="n">Tool calls</th><th class="n">Input</th><th class="n">Output</th><th class="n">Cache read</th><th class="n">Cache write</th><th class="n">Est. cost (USD)</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>mac-mini</td><td>Claude Code</td><td class="n">12</td><td class="n">140</td><td class="n">1210</td><td class="n">18.3k</td><td class="n">420.0k</td><td class="n">2.2M</td><td class="n">61.0k</td><td class="n">12.40</td></tr>
+          <tr><td>mac-mini</td><td>Codex</td><td class="n">3</td><td class="n">20</td><td class="n">90</td><td class="n">950</td><td class="n">4.0k</td><td class="n">0</td><td class="n">0</td><td class="n">&lt;0.01</td></tr>
+          <tr><td>gpu-box</td><td>Codex</td><td class="n">2</td><td class="n">9</td><td class="n">30</td><td class="n">1.4B</td><td class="n">800</td><td class="n">0</td><td class="n">0</td><td class="n none">No price</td></tr>
+        </tbody>
+      </table>
+      <div class="notes">
+        <ul>
+          <li>The cost is an estimate from the public list prices of 2026-11-01. It is not the bill of a subscription.</li>
+          <li>1.4B tokens have no price and are not in the estimate.</li>
+          <li>40 rows are not shown.</li>
+        </ul>
+        <ul aria-label="Devices that send no counts">
+          <li><b>nas</b>: This daemon runs as a system unit and cannot see the sessions of a user.</li>
+          <li><b>gpu-box</b>: The use counts are turned off in the settings of the daemon on this device.</li>
+        </ul>
+      </div>
+    </div>
+    <figcaption>1. A page with use, 1040 px wide. A note about the tokens with no price shows only when there are some; so does the count of rows that are not shown. The two device notes show for a daemon that is a system unit and for one that is turned off.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame gl">
+      <div>
+        <h1>Agent usage</h1>
+        <p class="detail">The use of Claude Code and Codex on your devices, from counts only. No text of a session leaves a device.</p>
+      </div>
+      <div class="empty">
+        <h3>No use counts yet</h3>
+        <p>The daemon of each device reports the use of the AI agent programs. Install the daemon on a device to start.</p>
+        <a href="#">Install daemon</a>
+      </div>
+    </div>
+    <figcaption>2. No daemon sent counts. The filters are not shown. The action leads to the Devices page, where each device has its Install daemon panel.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame gl">
+      <div>
+        <h1>Agent usage</h1>
+        <p class="detail">The use of Claude Code and Codex on your devices, from counts only. No text of a session leaves a device.</p>
+      </div>
+      <div class="filters" role="group" aria-label="Usage filters">
+        <div class="seg"><span class="on">7 days</span><span>30 days</span><span>90 days</span></div>
+        <span class="menu">Group by (2)</span>
+        <span class="menu">Device: mac-mini</span>
+        <span class="menu">Program: Codex</span>
+      </div>
+      <p class="summary">0 sessions, 0 tokens, estimated cost $0.00</p>
+      <div class="empty">
+        <h3>No use in these days</h3>
+        <p>Change the days or the filters.</p>
+      </div>
+      <div class="notes">
+        <ul><li>The cost is an estimate from the public list prices of 2026-11-01. It is not the bill of a subscription.</li></ul>
+      </div>
+    </div>
+    <figcaption>3. A daemon reads, and the days and filters give no use. The filters stay, so the operator can widen them.</figcaption>
+  </figure>
+</div>
+</body>
+</html>

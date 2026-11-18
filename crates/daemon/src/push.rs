@@ -5,6 +5,7 @@
 
 pub mod pacing;
 pub mod renewal;
+pub mod usage;
 
 use std::time::Duration;
 
@@ -19,8 +20,10 @@ use crate::hub::HubClient;
 use crate::hub::answer::Answer;
 
 use crate::report;
+use crate::sampling::agent_usage::UsageReport;
 use crate::token_store::{Credential, TokenStore};
 use pacing::{Action, Backoff, RHYTHM};
+use usage::UsageBacklog;
 
 /// The version of this daemon, sent with each batch (R-122); `build.rs` sets it for a release.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -34,6 +37,8 @@ pub enum Event {
     Drives(Vec<BatchDrive>),
     /// The tool inventory probed at start or after a change; sent in the next batch (CAP-027).
     Inventory(BatchInventory),
+    /// The daemon's agent usage state and the session days that changed (AIS-019).
+    AgentUsage(UsageReport),
 }
 
 /// Everything the pusher keeps between pushes.
@@ -45,6 +50,8 @@ pub struct Pusher {
     backlog: Backlog,
     /// The GPUs, drives and inventory waiting to ride along with the next batch.
     announced: Announcements,
+    /// The agent usage waiting for the hub, a part of it in each batch.
+    usage: UsageBacklog,
     backoff: Backoff,
     /// The largest batch to try; smaller after `TOO_LARGE`.
     limit: usize,
@@ -65,6 +72,7 @@ impl Pusher {
             store,
             backlog: Backlog::new(),
             announced: Announcements::default(),
+            usage: UsageBacklog::default(),
             backoff: Backoff::default(),
             limit: BATCH_POINTS,
             stopped_until: None,
@@ -86,6 +94,7 @@ impl Pusher {
             Event::Gpus(gpus) => self.announced.gpus = Some(gpus),
             Event::Drives(drives) => self.announced.drives = Some(drives),
             Event::Inventory(inventory) => self.announced.inventory = Some(inventory),
+            Event::AgentUsage(report) => self.usage.take(report),
         }
     }
 
@@ -128,13 +137,17 @@ impl Pusher {
             let Some(receipt) = outgoing.receipt() else {
                 return Round::Sent;
             };
-            let batch = Batch::new(self.device, outgoing.points(), self.announced.clone())
-                .from_daemon(VERSION);
+            let announced = Announcements {
+                agent_usage: self.usage.outgoing(),
+                ..self.announced.clone()
+            };
+            let batch = Batch::new(self.device, outgoing.points(), announced).from_daemon(VERSION);
             let answer = self.hub.push(&self.credential.token, &batch).await;
             match pacing::action(&answer) {
                 Action::Remove => {
                     self.backlog.remove_through(receipt);
                     self.announced = Announcements::default();
+                    self.usage.done();
                     self.limit = pacing::grown(count);
                     self.recovered();
                     return Round::Sent;
@@ -148,6 +161,7 @@ impl Pusher {
                     // points also waits for the next discovery or change.
                     if code == RefusalCode::Malformed {
                         self.announced = Announcements::default();
+                        self.usage.done();
                     }
                     return Round::Sent;
                 }

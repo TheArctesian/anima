@@ -46,7 +46,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
-| HT-026 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
+| HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
+| HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -731,9 +732,47 @@ One visit to a machine can close many rows.
 
 None.
 
-### HT-026: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
+### HT-026: the use of AI agent programs from real session files
 
-Built: on the branch `offline-copy` (R-149). The application keeps the last answer of the hub for the device list,
+Built: `crates/daemon-core/src/agent_usage/`, `crates/daemon/src/readers/agent_sessions/`, the hub
+domain `crates/hub/src/fleet/agent_usage/` with the migration `1020_agent_usage_schema.sql`,
+`anima agents usage`, the MCP tool `anima_agents_usage` and the page "Agent usage" (AIS-018 to
+AIS-024, tasks AU-1 to AU-4). The tests use synthetic session files, a scripted hub and the mock
+hub. The push test of the daemon runs only on Linux and did not run on the Mac of the build. The
+browser specs of the page did not run. No person compared the mockup with the page.
+
+The hub and the daemon must be of this build. A local hub is sufficient
+([setup/local-hub.md](procedures/setup/local-hub.md)).
+
+1. Start a hub of this build. On a Mac that has sessions of Claude Code or Codex, enrol and start
+   the `anima-daemon` of this build as the launchd agent of the user.
+2. Wait 2 minutes. Run `anima agents usage`. Expected: one row for the Mac and each program, with
+   sessions, tokens and an estimate. macOS shows no window that asks for access to a folder.
+3. Run `anima agents usage --by model,day --days 7`. Compare the rows of one day with what you know
+   you ran on that day. Expected: the models are the models that you used.
+4. Run `anima agents usage --by repository`. Expected: the names of your repositories, in the form
+   `host/owner/name`, with no user name, no token and no path of a folder.
+5. Open the page "Agent usage" in the client. Expected: the same numbers as step 2, and under the
+   table the text that the cost is an estimate and not the bill of a subscription.
+6. Compare the page with its mockup (`docs/mockup/agent-usage/index.html`). Write down each
+   difference.
+7. Read the log of the daemon. Expected: no text of a session, no title and no path of a folder
+   (LOG-007).
+8. Add one folder to `excludedFolders` in `agent-usage.json` in the folder of the daemon. Start a
+   new session of an AI agent program in that folder, and start the daemon again. Wait 2 minutes.
+   Expected: the new session is not in `anima agents usage`.
+9. Set `off` in the same file and start the daemon again. Expected: the command and the page say
+   that the counts are off in the settings of the daemon of this device.
+10. On a Linux computer, install the daemon as a system unit and start it. Expected: the command
+    and the page say "This daemon runs as a system unit and cannot see the sessions of a user."
+11. Stop and start the daemon of the Mac. Wait 2 minutes. Expected: the numbers of step 2 do not
+    change, apart from new use.
+
+Result: Open.
+
+### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
+
+Built: on the branch `offline-copy` (R-151). The application keeps the last answer of the hub for the device list,
 one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). It does not keep the checks of a
 device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
 banner "Not on the network" gives its age. Sign-out deletes the copy.

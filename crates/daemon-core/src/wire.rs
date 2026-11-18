@@ -5,6 +5,7 @@
 //! Member names are camelCase, unknown members are ignored, and times are RFC 3339 UTC with
 //! `Z` and whole seconds (K8 Section 1).
 
+mod agent_usage;
 mod batch;
 mod bodies;
 mod check;
@@ -15,6 +16,7 @@ mod secrets;
 mod tests;
 mod times;
 
+pub use agent_usage::{BatchAgentUsage, BatchModel, BatchSessionDay};
 pub use batch::{
     Announcements, Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, DriveKind, GpuVendor,
 };

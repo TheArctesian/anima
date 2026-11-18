@@ -1,0 +1,42 @@
+# `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, AIS-021, AIS-024).
+fragment UsageSums on AgentUsageRow {
+  device {
+    id
+    name
+  }
+  source
+  model
+  repository
+  day
+  sessions
+  prompts
+  toolCalls
+  inputTokens
+  outputTokens
+  cacheReadTokens
+  cacheWriteTokens
+  estimatedCostUsd
+  unpricedTokens
+}
+
+query AgentUsage($filter: AgentUsageFilter, $by: [AgentUsageDimension!]!) {
+  agentUsage(filter: $filter, by: $by) {
+    firstDay
+    lastDay
+    rowsLeftOut
+    pricesAsOf
+    rows {
+      ...UsageSums
+    }
+    total {
+      ...UsageSums
+    }
+    devices {
+      device {
+        id
+        name
+      }
+      state
+    }
+  }
+}

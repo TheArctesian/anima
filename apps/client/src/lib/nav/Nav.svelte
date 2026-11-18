@@ -14,7 +14,7 @@
   import { watchHubBanner } from './banner-shift';
   import { phoneLayout } from './phone/layout.svelte';
   import './phone/bar.css';
-  import { DEVICES, LOGS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
+  import { AGENT_USAGE, DEVICES, LOGS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -82,6 +82,8 @@
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />
+  <!-- The phone bar has four destinations (MOB-010), so the page is not in it. -->
+  {#if !phoneLayout()}{@render destination(AGENT_USAGE)}{/if}
   {#each optionalDestinations(projectsOn, capabilities().builds && buildsOn) as item (item.href)}
     {@render destination(item)}
   {/each}
