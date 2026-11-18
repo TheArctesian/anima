@@ -52,7 +52,7 @@ Together they run every test `cargo test` runs, no more and no fewer.
 Gate 3 runs the libtest tests with [cargo-nextest](https://nexte.st): one process per test, all test binaries at once.
 `.config/nextest.toml` sets no retries (a test that passes only on a second try fails the gate) and fail-fast.
 nextest does not run doctests, so gate 4 runs them; the workspace has none today, and the gate keeps a new one from going unrun.
-`anima-desktop`'s `pinning` target is not libtest (`harness = false`, R-069) and nextest cannot list it, so
+`anima-app`'s `pinning` target is not libtest (`harness = false`, R-069) and nextest cannot list it, so
 `.config/nextest.toml` leaves it out and gate 5 runs it with cargo (it proves the macOS trust hook; elsewhere it prints `skipped`).
 Gates 4 and 5 pass `--workspace` so cargo reuses gate 3's build instead of resolving features for one package.
 The root `Cargo.toml` sets `[profile.dev.build-override] debug = 0`: left at cargo's default, a build script's or proc

@@ -1,5 +1,5 @@
 [package]
-name = "anima-desktop"
+name = "anima-app"
 description = "Anima shell for desktop and mobile: window, key store and bundle (REPO-003, MOB-001)"
 version.workspace = true
 edition.workspace = true
@@ -9,7 +9,7 @@ publish.workspace = true
 # The shell is a library so that iOS and Android can load it (MOB-001). The desktop program
 # below starts it.
 [lib]
-name = "anima_desktop_lib"
+name = "anima_app_lib"
 path = "src/lib.rs"
 crate-type = ["staticlib", "cdylib", "rlib"]
 

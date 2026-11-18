@@ -4,8 +4,8 @@
 //! one loads, and that a mismatched one is cancelled, also after the view moves window.
 //!
 //! Not libtest (`harness = false`): Tauri's event loop must own the main thread, and libtest
-//! runs every test on a thread of its own. `cargo test -p anima-desktop` runs it with the rest;
-//! alone: `cargo test -p anima-desktop --test pinning`. It prints `PASS|FAIL <check> <detail>`
+//! runs every test on a thread of its own. `cargo test -p anima-app` runs it with the rest;
+//! alone: `cargo test -p anima-app --test pinning`. It prints `PASS|FAIL <check> <detail>`
 //! and exits 0 only if every check passed. Every window stays hidden and the app takes the
 //! Accessory policy, so it neither shows nor takes the screen.
 //!
