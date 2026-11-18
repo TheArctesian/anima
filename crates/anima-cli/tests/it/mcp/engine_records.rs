@@ -1,5 +1,6 @@
 //! The `timeline` and `records` tool sets against the scripted hub (MCP-002, MCP-017;
-//! TML-007, RLK-001, RLK-002).
+//! TML-007, RLK-001, RLK-002), with the file and extraction tools of `records` (FIL-001,
+//! FIL-004, VIS-001, VIS-004). No tool carries the bytes of a file (CMD-030).
 
 use serde_json::{Value, json};
 
@@ -86,5 +87,113 @@ async fn mcp_017_the_link_tools_list_add_and_remove_a_link() {
         .await;
     assert_eq!(structured(&removed)["removed"], ID);
     assert_eq!(sent(&hub, "RecordLinkRemove")[0], json!({ "id": ID }));
+    session.finish().await;
+}
+
+const FILE_ID: &str = "0190a000-0000-7000-9100-000000000002";
+
+fn proposal(state: &str) -> Value {
+    json!({ "id": FILE_ID, "attachmentId": null, "owner": "book:1", "form": "book",
+            "origin": "CLIENT", "state": state, "createdAt": "2026-11-18T10:00:00+00:00",
+            "decidedAt": null,
+            "fields": [{ "name": "title", "type": "TEXT", "value": "Emma",
+                         "confidence": null }] })
+}
+
+#[tokio::test]
+async fn cmd_030_no_tool_uploads_or_downloads_the_bytes_of_a_file() {
+    let hub = hub().await;
+    let desk = Desk::new();
+    let mut session = writing(&hub, &desk).await;
+    let names = session.tool_names().await;
+    for name in [
+        "anima_files_list",
+        "anima_file_remove",
+        "anima_file_archive_add",
+        "anima_file_archive_remove",
+        "anima_extractions_list",
+        "anima_extraction_propose",
+        "anima_extraction_confirm",
+        "anima_extraction_reject",
+    ] {
+        assert!(names.iter().any(|listed| listed == name), "{name}");
+    }
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.contains("upload") || name.contains("download"))
+    );
+    session.finish().await;
+}
+
+#[tokio::test]
+async fn mcp_017_the_file_tools_list_and_remove_a_file() {
+    let hub = hub().await;
+    let file = json!({ "id": FILE_ID, "owner": "book:1", "name": "cover.jpg",
+        "mediaType": "image/jpeg", "hash": "ab", "key": "engine", "size": 10,
+        "archiveId": null, "latitude": null, "longitude": null,
+        "createdAt": "2026-11-18T10:00:00+00:00" });
+    hub.answer("AttachmentList", data(json!({ "attachments": [file] })));
+    hub.answer(
+        "AttachmentRemove",
+        data(json!({ "deleteAttachment": FILE_ID })),
+    );
+    let desk = Desk::new();
+    let mut session = writing(&hub, &desk).await;
+
+    let listed = session
+        .call("anima_files_list", json!({ "owner": "book:1" }))
+        .await;
+    let removed = session
+        .call("anima_file_remove", json!({ "id": FILE_ID }))
+        .await;
+
+    assert_eq!(structured(&listed)["files"][0]["name"], "cover.jpg");
+    assert_eq!(structured(&removed)["removed"], FILE_ID);
+    assert_eq!(sent(&hub, "AttachmentRemove")[0], json!({ "id": FILE_ID }));
+    session.finish().await;
+}
+
+#[tokio::test]
+async fn vis_004_a_proposal_without_a_confidence_is_sent_and_read_as_null() {
+    let hub = hub().await;
+    hub.answer(
+        "ExtractionPropose",
+        data(json!({ "proposeExtraction": proposal("PROPOSED") })),
+    );
+    hub.answer(
+        "ExtractionConfirm",
+        data(json!({ "confirmExtraction": proposal("CONFIRMED") })),
+    );
+    let desk = Desk::new();
+    let mut session = writing(&hub, &desk).await;
+    let fields = json!([{ "name": "title", "type": "TEXT", "value": "Emma" }]);
+
+    let proposed = session
+        .call(
+            "anima_extraction_propose",
+            json!({ "owner": "book:1", "form": "book",
+            "extension": "library", "origin": "CLIENT", "fields": fields }),
+        )
+        .await;
+    let confirmed = session
+        .call(
+            "anima_extraction_confirm",
+            json!({ "id": FILE_ID, "fields": fields }),
+        )
+        .await;
+
+    assert_eq!(
+        structured(&proposed)["proposal"]["fields"][0]["confidence"],
+        Value::Null
+    );
+    assert_eq!(structured(&confirmed)["proposal"]["state"], "CONFIRMED");
+    let input = &sent(&hub, "ExtractionPropose")[0]["input"];
+    assert_eq!(input["fields"][0]["confidence"], Value::Null);
+    assert_eq!(input["origin"], "CLIENT");
+    assert_eq!(
+        sent(&hub, "ExtractionConfirm")[0]["fields"][0]["type"],
+        "TEXT"
+    );
     session.finish().await;
 }

@@ -26,6 +26,8 @@ const TLS_CERT_FILE: &str = "ANIMA_TLS_CERT_FILE";
 const TLS_KEY_FILE: &str = "ANIMA_TLS_KEY_FILE";
 const PUBLIC_ORIGIN: &str = "ANIMA_PUBLIC_ORIGIN";
 const WEB_ROOT: &str = "ANIMA_WEB_ROOT";
+const DATA_KEY_DIR: &str = "ANIMA_DATA_KEY_DIR";
+const FILES_DIR: &str = "ANIMA_FILES_DIR";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
@@ -68,6 +70,12 @@ pub struct Config {
     pub web_root: Option<PathBuf>,
     /// Where releases are published; `None` turns publishing off (R-108).
     pub releases: Option<Releases>,
+    /// The folder of the data keys (K-E5 Section 1, VLT-003). `None`: a domain that seals
+    /// answers `UNAVAILABLE` and the other domains work.
+    pub data_key_dir: Option<PathBuf>,
+    /// The folder of the sealed file pieces (K-E4 Section 9, FIL-001). `None`: the hub has no
+    /// file store.
+    pub files_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -327,6 +335,8 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         )?,
         web_root: optional_root(env, WEB_ROOT)?,
         releases: releases::from_env(env)?,
+        data_key_dir: optional_root(env, DATA_KEY_DIR)?,
+        files_dir: optional_root(env, FILES_DIR)?,
     })
 }
 

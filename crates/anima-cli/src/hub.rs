@@ -5,6 +5,7 @@
 //! [`TIMEOUT`]. It logs nothing; no error it returns holds the token or the body (CMD-014).
 
 pub mod answer;
+pub mod attachments;
 pub mod error;
 pub mod origin;
 pub mod scalars;

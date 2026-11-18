@@ -12,6 +12,7 @@ mod devices;
 mod edge;
 mod events;
 mod extensions;
+mod files;
 mod graphql;
 mod hub;
 mod link;

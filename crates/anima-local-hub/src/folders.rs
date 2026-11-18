@@ -5,6 +5,8 @@
 //! <root>/programs/current/   the programs the unit runs
 //! <root>/programs/next/      a copy in progress; never run
 //! <root>/vault.key           the hub's ANIMA_KEY_FILE
+//! <root>/data-keys/          the hub's ANIMA_DATA_KEY_DIR: one data key for each extension
+//! <root>/files/              the hub's ANIMA_FILES_DIR: the sealed pieces of the files
 //! <root>/log/                one log for each member of the group
 //! <root>/link/               the state of `anima-link hub`: its key, devices, control socket
 //! <root>/lock                held by the one `run` of this root
@@ -92,6 +94,19 @@ impl Folders {
     #[must_use]
     pub fn vault_key(&self) -> PathBuf {
         self.root.join("vault.key")
+    }
+
+    /// The hub's `ANIMA_DATA_KEY_DIR`, beside `vault.key` (K-E5 Section 1). It holds secrets;
+    /// the hub makes it and its keys.
+    #[must_use]
+    pub fn data_keys(&self) -> PathBuf {
+        self.root.join("data-keys")
+    }
+
+    /// The hub's `ANIMA_FILES_DIR`: the sealed pieces of the files (K-E4 Section 9).
+    #[must_use]
+    pub fn files(&self) -> PathBuf {
+        self.root.join("files")
     }
 
     /// The state folder of `anima-link hub`. It holds the link's key.

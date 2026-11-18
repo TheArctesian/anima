@@ -47,6 +47,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
 | HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
+| HT-027 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -766,5 +767,32 @@ The hub and the daemon must be of this build. A local hub is sufficient
     and the page say "This daemon runs as a system unit and cannot see the sessions of a user."
 11. Stop and start the daemon of the Mac. Wait 2 minutes. Expected: the numbers of step 2 do not
     change, apart from new use.
+
+Result: Open.
+
+### HT-027: a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4)
+
+Built: on the branch of E0-5 T2 and T4 (files part). The hub keeps files as sealed pieces in
+`ANIMA_FILES_DIR`, sealed with a data key of `ANIMA_DATA_KEY_DIR`; the local hub gives both folders in
+its root. `anima file upload|download|list|remove` and `anima file archive add|remove` use them.
+
+The tests use a JPEG that the test makes, a generated body of 256 MB + 1 byte, and a store in a
+temporary folder. Not covered: a photo of a real camera (with its maker notes, XMP and thumbnail), a
+viewer of the operating system, a real network, and a hub that runs as the installed program.
+
+1. Install the local hub of this build and start it. Expected: the root of the hub has the folders
+   `data-keys/` and `files/` after the first upload, and `data-keys/engine.key` has the mode 0600.
+2. Take a photo with a phone that records the location. Copy it as a JPEG to this computer. Run
+   `anima file upload <photo> --owner book:1 --keep-location`. Expected: the answer shows the size and
+   the hash; `anima file list book:1` shows the place of the photo in the column LOCATION.
+3. Run `anima file download <id> --output copy.jpg`. Expected: "Location removed: yes". Open `copy.jpg`
+   in the photo viewer of the system and show its information. Expected: the photo looks the same and
+   has no location.
+4. Upload the same photo again without `--keep-location`. Expected: LOCATION is `-` for the new file,
+   and the folder `files/engine/` holds one piece for the two files.
+5. Upload a file of about 200 MB, then download it to a new file, and compare the two with
+   `shasum -a 256`. Expected: the same hash. Then try a file larger than 256 MB. Expected: the upload is
+   refused, and no new piece is in `files/`.
+6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.

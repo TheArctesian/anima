@@ -191,6 +191,9 @@ fn hub_environment(
             folders.database().url_file(Role::Hub).into(),
         ),
         ("ANIMA_KEY_FILE", folders.vault_key().into()),
+        // The data keys and the file pieces, beside the key (K-E5 Section 1, K-E4 Section 9).
+        ("ANIMA_DATA_KEY_DIR", folders.data_keys().into()),
+        ("ANIMA_FILES_DIR", folders.files().into()),
         ("ANIMA_GUACD", gateway.to_string().into()),
         ("ANIMA_LOG", "info".into()),
         // The link mode (S5): the hub listens on loopback with plain HTTP (NET-003) and on the

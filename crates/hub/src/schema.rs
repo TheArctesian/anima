@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, links, sources, timeline},
+    engine::{extensions, files, links, sources, timeline},
     fleet::{
         access, agent_usage, builds, checks,
         credentials::Vault,
@@ -51,6 +51,8 @@ pub struct Query(
     sources::graphql::GithubConnectQuery,
     timeline::graphql::Query,
     vpn::graphql::Query,
+    files::graphql::Query,
+    files::graphql::ProposalQuery,
 );
 
 #[derive(MergedObject, Default)]
@@ -78,6 +80,8 @@ pub struct Mutation(
     vpn::graphql::Mutation,
     vpn::graphql::RouteMutation,
     web_interfaces::graphql::Mutation,
+    files::graphql::Mutation,
+    files::graphql::ProposalMutation,
 );
 
 #[derive(MergedSubscription, Default)]
@@ -126,6 +130,9 @@ pub struct Dependencies {
     /// The sources' one registry, transport, token store and feed: the scheduler gets a clone
     /// of this same value, so `sourceAccountChanged` sees its runs (K-E1).
     pub sources: sources::Reach,
+    /// The file store and its data keys (K-E4 Section 9): the `/files/v1` routes get a clone of
+    /// this same value. [`files::Store::off`] when `ANIMA_FILES_DIR` is not set.
+    pub files: files::Store,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -151,6 +158,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         vpn_feed,
         vpn_broker,
         sources,
+        files,
     } = dependencies;
     let builder = harden(
         Schema::build(
@@ -203,6 +211,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(projects::KeyChanges::default())
         // timeline: one adapter for each domain that has records to show (K-E3)
         .data(timeline::Adapters::new(vec![timeline::event_log()]))
+        // files: the pieces, the data keys and the domains that derive records (K-E4 Section 9)
+        .data(files)
         .finish()
 }
 

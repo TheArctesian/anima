@@ -3,6 +3,7 @@
 
 pub mod agents;
 pub mod api;
+pub mod attachments;
 pub mod auth;
 pub mod builders;
 pub mod capabilities;
@@ -15,6 +16,7 @@ pub mod devices;
 pub mod environment;
 pub mod events;
 pub mod extensions;
+pub mod extractions;
 pub mod failure;
 pub mod forge;
 pub mod hub;

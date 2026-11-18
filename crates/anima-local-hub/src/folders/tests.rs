@@ -54,6 +54,8 @@ fn a_given_root_holds_everything_but_the_socket() {
         folders.programs_being_copied(),
         folders.programs_replaced(),
         folders.vault_key(),
+        folders.data_keys(),
+        folders.files(),
         folders.logs(),
         folders.lock_file(),
         folders.state_file(),

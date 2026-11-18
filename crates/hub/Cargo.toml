@@ -43,7 +43,9 @@ rustls-pki-types.workspace = true
 argon2.workspace = true
 getrandom.workspace = true
 rpassword.workspace = true
-futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+# The parts of a file as they stream in and out of the store (K-E4 Section 9, FIL-005).
+bytes.workspace = true
 # The WebSocket errors axum wraps, to tell an oversize or non-UTF-8 message from a lost
 # client (R-039). Same semver range as axum's own, so the lockfile keeps one copy.
 tungstenite = { version = "0.29", default-features = false }

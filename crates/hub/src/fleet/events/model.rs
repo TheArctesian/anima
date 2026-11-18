@@ -13,9 +13,9 @@ use uuid::Uuid;
 use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
-        ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ProjectId, RecordLinkId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId,
-        WindowId,
+        ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
+        EventId, OperatorId, ProjectId, ProposalId, RecordLinkId, ReleaseId, RepositoryId,
+        SessionId, SiteId, SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -285,6 +285,12 @@ pub enum AuditTarget {
     Repository(RepositoryId),
     /// A link between two records (RLK-001).
     RecordLink(RecordLinkId),
+    /// A file of one record (FIL-001).
+    Attachment(AttachmentId),
+    /// An archive of one import (FIL-004).
+    Archive(ArchiveId),
+    /// An extraction proposal (VIS-001).
+    ExtractionProposal(ProposalId),
 }
 
 impl AuditTarget {
@@ -313,6 +319,9 @@ impl AuditTarget {
             Self::Project(_) => "project",
             Self::Repository(_) => "repository",
             Self::RecordLink(_) => "record_link",
+            Self::Attachment(_) => "attachment",
+            Self::Archive(_) => "archive",
+            Self::ExtractionProposal(_) => "extraction_proposal",
         }
     }
 
@@ -340,6 +349,9 @@ impl AuditTarget {
             Self::Project(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),
             Self::RecordLink(id) => id.to_string(),
+            Self::Attachment(id) => id.to_string(),
+            Self::Archive(id) => id.to_string(),
+            Self::ExtractionProposal(id) => id.to_string(),
         }
     }
 }

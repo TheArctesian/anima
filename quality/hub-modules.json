@@ -17,7 +17,8 @@
     "fingerprint",
     "core_dumps",
     "records",
-    "instants"
+    "instants",
+    "data_keys"
   ],
   "wiring": [
     "main",
@@ -117,6 +118,11 @@
     "link": [],
     "agent_usage": [
       "devices"
+    ],
+    "files": [
+      "events",
+      "extensions",
+      "access"
     ]
   },
   "graphql": {
@@ -179,6 +185,9 @@
       "events"
     ],
     "agent_usage": [
+      "access"
+    ],
+    "files": [
       "access"
     ]
   }
