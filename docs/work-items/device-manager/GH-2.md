@@ -20,7 +20,7 @@ The requirements come first (PLN-013). The build follows CMD-030.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| L0-T1 | The requirements of the hash chain in the design specification Section 3.8, and the ruling | In progress (branch `claude/audit-hash-chain-f3d8ea`) | |
+| L0-T1 | The requirements LOG-021 to LOG-028 in the design specification Section 3.8.2, and the ruling R-136 | In progress (branch `claude/audit-hash-chain-f3d8ea`). Written; waits for the approval of the operator | |
 | L0-T2 | The hub: the migration, the chain on each audit write, the check of the chain, the GraphQL field (K1, K2, K3) | Not started. Waits for L0-T1 | |
 | L0-T3 | The `anima audit` command and the MCP tool for the check | Not started. Waits for L0-T2 | |
 | L0-T4 | The client: show if the chain is whole | Not started. Waits for L0-T3 | |

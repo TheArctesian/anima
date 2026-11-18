@@ -31,6 +31,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | PRO-001 to PRO-053 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](../spec/design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
+| The hash chain of the audit log, so that a change to an old entry shows | [design-spec.md](../spec/design-spec.md) Section 3.8.2 | LOG-021 to LOG-028 |
 | Installation: the disk image and the AppImage, with the `anima` program inside | [design-spec.md](../spec/design-spec.md) Section 3.11 | INS-001 to INS-009 |
 | The marketing website with the install links | [design-spec.md](../spec/design-spec.md) Section 3.12 | SITE-001 to SITE-012 |
 | Stay awake: the desktop application keeps its computer on | [design-spec.md](../spec/design-spec.md) Section 3.13 | AWK-001 to AWK-008 |
