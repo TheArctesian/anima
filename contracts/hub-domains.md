@@ -224,6 +224,7 @@ are private to `events`.
 | `projects` (second slice, adds; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14; K-E1 Section 13) | `sources` (`Scheduling`, `ask`, `change`, `forget`, `standing`, `Keep`, `Reply`, `LiveFailure` too); `access` (`operator_only` only, and only in the files named `graphql.rs` of its sub-folders: the import gate reads `<domain>/graphql.rs` alone as the graphql module, so this edge is listed under `domains`); crates `provider-github` (already) and `source-exchange` (`Change`, its parts, `Settled`) |
 | `timeline` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3) | `events` (`before`, `EventSummary`, `Source` only) |
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
+| `credentials` (operational keys, adds; R-147, R-148; K-E5 Section 2) | `events` (the trail types, `audit`, `NewAudit`, `ClientAddr`, `Operator`); `access` (`Authenticated`, `operator_only`) only in `credentials/graphql.rs`, a graphql edge. A device is a `DeviceId` value only: the consumer rows reference `devices.devices` with a cascading foreign key, so `credentials` imports no `devices` code. `metrics` (its daemon ingest) calls `credentials::operational::{fetch, current_for, record_held}` |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -342,6 +343,7 @@ Context values (R-010). Each caller uses exactly this byte string, so a value se
 | TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
 | (Phase 3) Notification channel secrets (WP-45) | `notifications.channels:<channel_id>` |
 | (operator, 2026-11-13; ruling number to be assigned; K-E1) Source secret, such as a GitHub App key | `credentials.source_secrets:<account_id>` |
+| (R-147; K-E5 Section 2) One version of an operational key | `credentials.operational_key_versions:<version_id>` |
 
 The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `devices` (they return `SshSettings`). They call `store_ssh` / `clear_ssh` in the same transaction as the audit entry (`events::audit`), and the audit `change` never contains the secret.
 
@@ -367,6 +369,27 @@ pub enum Error { /* as before */ UnknownSourceSecret }   // load_source_secret: 
 ```
 
 A secret opens only with its own account ID (context in the table above). `load_source_secret` has one caller: the token minter in `engine/sources`. For a GitHub App key the plaintext is built by `sources` (K-E1 Section 6); `credentials` treats it as opaque bytes.
+
+(R-147, R-148; K-E5 Section 2.) Operational keys, in `credentials/operational/` (rows in `credentials.operational_keys`, `operational_key_versions` and `operational_key_consumers`, K2 range 2070). The K1 part is `credentials/graphql.rs` (`credentials::graphql::{Query, Mutation}`). Each change runs in the caller's transaction and writes its rows, one audit entry and one event through the `Trail` it takes:
+
+```rust
+pub async fn keys(db: &Db, now: DateTime<Utc>) -> Result<Vec<OperationalKey>, operational::Error>;
+pub async fn key(db: &Db, name: &str, now: DateTime<Utc>) -> Result<Option<OperationalKey>, operational::Error>;
+pub async fn create(conn: &mut PgConnection, vault: &Vault, new: NewKey, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn update(conn: &mut PgConnection, name: &str, metadata: Metadata, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn rotate(conn: &mut PgConnection, vault: &Vault, (name, value, rotated_at_provider): (&str, Secret, bool), trail: Trail<'_>) -> Result<Ending, operational::Error>;
+pub async fn revoke(conn: &mut PgConnection, name: &str, trail: Trail<'_>) -> Result<Ending, operational::Error>;
+pub async fn remove(conn: &mut PgConnection, name: &str, trail: Trail<'_>) -> Result<Ending, operational::Error>;
+pub async fn grant(conn: &mut PgConnection, grant: Grant, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn ungrant(conn: &mut PgConnection, grant: Grant, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn fetch(db: &Db, vault: &Vault, (device, name): (DeviceId, &str), (now, client): (DateTime<Utc>, ClientAddr)) -> Result<Option<FetchedKey>, operational::Error>;   // None: the one NO_KEY answer
+pub async fn current_for(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Vec<KeyVersion>, operational::Error>;
+pub async fn record_held(db: &Db, device: DeviceId, held: &[KeyVersion], now: DateTime<Utc>) -> Result<(), operational::Error>;
+pub async fn forget_ended(db: &Db, now: DateTime<Utc>) -> Result<u64, operational::Error>;   // the daily retention run of upkeep.rs
+pub enum Error { Database, Trail, Sealing, Invalid(Vec<Problem>), NameTaken, UnknownKey, UnknownDevice, NoGrant }
+```
+
+`FetchedKey`, `KeyVersion` and `KeyValue` are the K8 types of `daemon_core::wire`. `metrics::daemon_router` takes `((db, bus, clock), feed, vault)`: the vault opens a fetched key.
 
 ## checks (WP-09)
 

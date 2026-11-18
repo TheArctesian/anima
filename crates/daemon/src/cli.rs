@@ -1,15 +1,16 @@
-//! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run` and
-//! `anima-daemon install [--system]` (MET-012, MET-019).
+//! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run`,
+//! `anima-daemon install [--system]` (MET-012, MET-019), and `anima-daemon key read <name>` and
+//! `anima-daemon key forget` (K-E5 Section 2.1).
 
 use std::io::{BufRead, Read as _};
 
-use daemon_core::wire::EnrolmentCode;
+use daemon_core::wire::{EnrolmentCode, is_key_name};
 use zeroize::Zeroizing;
 
 use crate::config::origin::{Origin, OriginError};
 use crate::units::plan::Target;
 
-pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]";
+pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]\n       anima-daemon key read <name>\n       anima-daemon key forget";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
@@ -22,6 +23,10 @@ pub enum Command {
     Run,
     /// Write the unit that starts `run` at login or boot, and start it (MET-019, D-10).
     Install { target: Target },
+    /// Write the cached value of one operational key to standard output (K-E5 Section 2.1).
+    KeyRead { name: String },
+    /// Delete the whole key cache, as when the daemon leaves the machine.
+    KeyForget,
 }
 
 /// Where the enrolment code comes from: the command line, or standard input for `-`.
@@ -38,6 +43,8 @@ pub enum CliError {
     NotACode,
     #[error("--hub: {0}")]
     Hub(#[from] OriginError),
+    #[error("that is not a key name (a-z, 0-9, _, . and -, starting with a letter)")]
+    NotAKeyName,
 }
 
 /// Reads the arguments after the program name.
@@ -50,8 +57,22 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
         Some("run") if args.next().is_none() => Ok(Command::Run),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
+        Some("key") => key(args),
         _ => Err(CliError::Usage),
     }
+}
+
+fn key(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let command = match (args.next().as_deref(), args.next()) {
+        (Some("read"), Some(name)) if is_key_name(&name) => Command::KeyRead { name },
+        (Some("read"), Some(_)) => return Err(CliError::NotAKeyName),
+        (Some("forget"), None) => return Ok(Command::KeyForget),
+        _ => return Err(CliError::Usage),
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    Ok(command)
 }
 
 fn install(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
@@ -134,6 +155,28 @@ mod tests {
 
     fn args(text: &str) -> Vec<String> {
         text.split_whitespace().map(str::to_owned).collect()
+    }
+
+    #[test]
+    fn r_147_key_read_takes_one_key_name_and_forget_none() {
+        let Ok(Command::KeyRead { name }) = parse(args("key read cloudflare.dns")) else {
+            panic!("key read with a name reads");
+        };
+        assert_eq!(name, "cloudflare.dns");
+        assert!(matches!(parse(args("key forget")), Ok(Command::KeyForget)));
+        assert!(matches!(
+            parse(args("key read Bad/Name")),
+            Err(CliError::NotAKeyName)
+        ));
+        for line in [
+            "key",
+            "key read",
+            "key read a b",
+            "key forget now",
+            "key list",
+        ] {
+            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
+        }
     }
 
     #[test]

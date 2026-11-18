@@ -8,7 +8,7 @@ use anima_hub::{
     engine::sources,
     fleet::{
         access, builds, checks,
-        credentials::Vault,
+        credentials::{Vault, operational},
         events::{self, Bus},
         metrics, notifications,
         retention::{self, Subject},
@@ -165,7 +165,8 @@ impl Builds {
     }
 }
 
-/// Reads the periods once, then runs each domain's retention job with its own. A failed read
+/// Reads the periods once, then runs each domain's retention job with its own, and empties the
+/// sealed values of the operational key versions that ended 30 days ago. A failed read
 /// skips the run, so a period is never guessed. A failed job does not stop the others; the
 /// first fault is returned and the whole run is retried.
 async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
@@ -182,7 +183,16 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
     let deliveries = notifications::keep_deliveries(db, now, periods.keep(Subject::Deliveries))
         .await
         .map_err(|e| e.fault());
-    checks.and(event_logs).and(samples).and(deliveries)
+    // The sealed value of an ended operational key version goes after 30 days (R-147).
+    let ended_keys = operational::forget_ended(db, now)
+        .await
+        .map(drop)
+        .map_err(|_| "credentials");
+    checks
+        .and(event_logs)
+        .and(samples)
+        .and(deliveries)
+        .and(ended_keys)
 }
 
 /// Every 30 seconds, ends the build leases that ran out, so the Builds view is true without a

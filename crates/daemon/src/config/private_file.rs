@@ -66,6 +66,17 @@ pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileErro
 /// # Errors
 /// [`PrivateFileError::Exposed`] for such a file, [`PrivateFileError::Io`] for a read failure.
 pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError> {
+    read_within(path, LIMIT)
+}
+
+/// [`read`] for a file that may hold up to `limit` bytes, such as the key cache.
+///
+/// # Errors
+/// As [`read`]; [`PrivateFileError::Io`] also for a file of more than `limit` bytes.
+pub fn read_within(
+    path: &Path,
+    limit: usize,
+) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError> {
     let file = match File::open(path) {
         Ok(file) => file,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
@@ -79,7 +90,7 @@ pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError>
     ) {
         return Err(PrivateFileError::Exposed);
     }
-    Ok(Some(read_limited(file, LIMIT)?))
+    Ok(Some(read_limited(file, limit)?))
 }
 
 /// Reads at most `limit` bytes from `reader` into one buffer that has room for `limit + 1` from

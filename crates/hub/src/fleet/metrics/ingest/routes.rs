@@ -1,5 +1,6 @@
-//! `POST /daemon/v1/enrol`, `POST /daemon/v1/push` and `POST /daemon/v1/renew` (K8 Sections 1, 3
-//! to 6); the push itself is answered in `push`.
+//! `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` and
+//! `POST /daemon/v1/keys/fetch` (K8 Sections 1, 3 to 6; K-E5 Section 2.1); the push itself is
+//! answered in `push`, the fetch in `keys`.
 //!
 //! Signed out of GraphQL: the enrolment code in the body or the daemon token in the
 //! `Authorization` header is the only credential. A body is read only up to its limit, held in
@@ -27,7 +28,7 @@ use zeroize::Zeroizing;
 use super::{
     Error,
     admission::{Admitted, Stop, admit},
-    credential, enrolment, push, random,
+    credential, enrolment, keys, push, random,
     refusals::{self, Recorder, Refused, Route},
     renewal,
     turns::{DAEMON_REQUESTS, Turn, Turns},
@@ -35,6 +36,7 @@ use super::{
 use crate::{
     clock::Clock,
     fleet::{
+        credentials::Vault,
         events::{Bus, ClientAddr},
         metrics::Feed,
     },
@@ -71,23 +73,31 @@ pub(super) struct DaemonState {
     pub(super) feed: Feed,
     pub(super) bus: Bus,
     pub(super) clock: Arc<dyn Clock>,
+    /// Opens the operational key a daemon fetches (K-E5 Section 2.1).
+    pub(super) vault: Vault,
     pub(super) turns: Turns,
     recorder: Recorder,
     deadlines: Deadlines,
 }
 
-/// `POST /daemon/v1/enrol`, `POST /daemon/v1/push` and `POST /daemon/v1/renew`, each answering
-/// within ten seconds (K8).
+/// `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` and
+/// `POST /daemon/v1/keys/fetch`, each answering within ten seconds (K8). `vault` opens the
+/// operational keys a daemon fetches (R-147).
 /// The caller mounts it inside `crate::logged` and behind the permitted-networks layer, whose
 /// client address every refusal event names (NET-002); without that layer each request is
 /// refused as `UNAVAILABLE`.
-pub fn daemon_router(db: PgPool, feed: Feed, bus: Bus, clock: Arc<dyn Clock>) -> Router {
+pub fn daemon_router(
+    (db, bus, clock): (PgPool, Bus, Arc<dyn Clock>),
+    feed: Feed,
+    vault: Vault,
+) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());
     routes(DaemonState {
         db,
         feed,
         bus,
         clock,
+        vault,
         turns: Turns::new(DAEMON_REQUESTS, Deadlines::HUB.request),
         recorder,
         deadlines: Deadlines::HUB,
@@ -109,6 +119,7 @@ pub(in crate::fleet::metrics) fn daemon_router_within(
         feed: Feed::new(),
         bus,
         clock,
+        vault: crate::fleet::credentials::test_vault(),
         turns: Turns::new(DAEMON_REQUESTS, deadlines.request),
         recorder,
         deadlines,
@@ -120,6 +131,7 @@ fn routes(state: DaemonState) -> Router {
         .route("/daemon/v1/enrol", post(enrol))
         .route("/daemon/v1/push", post(push))
         .route("/daemon/v1/renew", post(renew))
+        .route("/daemon/v1/keys/fetch", post(fetch_key))
         .with_state(state)
 }
 
@@ -136,6 +148,11 @@ async fn push(State(state): State<DaemonState>, request: Request) -> Response {
 async fn renew(State(state): State<DaemonState>, request: Request) -> Response {
     let limit = state.deadlines.answer;
     within(limit, serve_renew(state, request)).await
+}
+
+async fn fetch_key(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, keys::serve_fetch(state, request)).await
 }
 
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back

@@ -1,4 +1,4 @@
-//! The daemon's one HTTP client and its three calls to the hub (K8 Section 1).
+//! The daemon's one HTTP client and its calls to the hub (K8 Section 1; K-E5 Section 2.1).
 //!
 //! The client verifies certificates against the web PKI roots, follows no redirect, ignores
 //! proxy variables, keeps no cookie, and gives up after 10 seconds (MET-020). It logs nothing:
@@ -12,7 +12,8 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use daemon_core::wire::{
-    Batch, DaemonToken, EnrolRequest, Enrolled, EnrolmentCode, RenewRequest, Renewed,
+    Batch, DaemonToken, EnrolRequest, Enrolled, EnrolmentCode, FetchedKey, KeyFetch, PushAccepted,
+    RenewRequest, Renewed,
 };
 use reqwest::{Client, Url, redirect};
 use zeroize::Zeroizing;
@@ -27,13 +28,13 @@ pub const TIMEOUT: Duration = Duration::from_secs(10);
 #[error("the HTTP client could not be built")]
 pub struct HubError;
 
-/// One request: its route, its bearer (none for enrolment), its JSON body and the status that
-/// means success.
+/// One request: its route, its bearer (none for enrolment), its JSON body and the statuses that
+/// mean success. A push takes `204`, and `200` with `Accepted` (K8 Section 8.2).
 struct Call<'a> {
     route: &'static str,
     bearer: Option<&'a DaemonToken>,
     body: Zeroizing<Vec<u8>>,
-    ok_status: u16,
+    ok: &'static [u16],
 }
 
 /// A client for one hub.
@@ -65,20 +66,35 @@ impl HubClient {
             route: "daemon/v1/enrol",
             bearer: None,
             body: json(&EnrolRequest { code }),
-            ok_status: 200,
+            ok: &[200],
         };
-        self.post(call, read_json).await
+        self.post(call, |_, body| read_json(body)).await
     }
 
-    /// `POST /daemon/v1/push` (K8 Section 4).
-    pub async fn push(&self, token: &DaemonToken, batch: &Batch) -> Answer<()> {
+    /// `POST /daemon/v1/push` (K8 Section 4): `None` for `204`, the `Accepted` of a `200`.
+    pub async fn push(&self, token: &DaemonToken, batch: &Batch) -> Answer<Option<PushAccepted>> {
         let call = Call {
             route: "daemon/v1/push",
             bearer: Some(token),
             body: json(batch),
-            ok_status: 204,
+            ok: &[204, 200],
         };
-        self.post(call, |_| Some(())).await
+        // An `Accepted` that does not read is ignored; the batch is stored either way.
+        self.post(call, |status, body| {
+            Some((status == 200).then(|| read_json(body)).flatten())
+        })
+        .await
+    }
+
+    /// `POST /daemon/v1/keys/fetch` (K-E5 Section 2.1).
+    pub async fn fetch_key(&self, token: &DaemonToken, asked: &KeyFetch) -> Answer<FetchedKey> {
+        let call = Call {
+            route: "daemon/v1/keys/fetch",
+            bearer: Some(token),
+            body: json(asked),
+            ok: &[200],
+        };
+        self.post(call, |_, body| read_json(body)).await
     }
 
     /// `POST /daemon/v1/renew` with the current token (K8 Section 5).
@@ -87,12 +103,16 @@ impl HubClient {
             route: "daemon/v1/renew",
             bearer: Some(token),
             body: json(&RenewRequest {}),
-            ok_status: 200,
+            ok: &[200],
         };
-        self.post(call, read_json).await
+        self.post(call, |_, body| read_json(body)).await
     }
 
-    async fn post<T>(&self, call: Call<'_>, read_ok: impl FnOnce(&[u8]) -> Option<T>) -> Answer<T> {
+    async fn post<T>(
+        &self,
+        call: Call<'_>,
+        read_ok: impl FnOnce(u16, &[u8]) -> Option<T>,
+    ) -> Answer<T> {
         let Ok(url) = self.base.join(call.route) else {
             return Answer::Failed(Cause::Unreadable);
         };
@@ -121,7 +141,12 @@ impl HubClient {
                 Err(error) => return Answer::Failed(cause(&error)),
             }
         }
-        answer(status, bytes.bytes(), call.ok_status, read_ok)
+        if call.ok.contains(&status) {
+            let read = read_ok(status, bytes.bytes());
+            return read.map_or(Answer::Failed(Cause::Unreadable), Answer::Accepted);
+        }
+        // Not a success status, so the reader of a success is never called.
+        answer(status, bytes.bytes(), call.ok[0], |_| None)
     }
 }
 

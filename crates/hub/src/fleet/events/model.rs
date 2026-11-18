@@ -13,9 +13,9 @@ use uuid::Uuid;
 use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
-        ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ProjectId, RecordLinkId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId,
-        WindowId,
+        ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperationalKeyId,
+        OperatorId, ProjectId, RecordLinkId, ReleaseId, RepositoryId, SessionId, SiteId,
+        SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -214,6 +214,8 @@ pub enum AuditAction {
     Send,
     /// A pull request merged on GitHub (PRJ-028, OD-E14).
     Merge,
+    /// An operational key a daemon fetched (R-147, K-E5 Section 2.1).
+    Fetch,
 }
 
 impl AuditAction {
@@ -239,6 +241,7 @@ impl AuditAction {
             Self::Cancel => "cancel",
             Self::Send => "send",
             Self::Merge => "merge",
+            Self::Fetch => "fetch",
         }
     }
 }
@@ -285,6 +288,8 @@ pub enum AuditTarget {
     Repository(RepositoryId),
     /// A link between two records (RLK-001).
     RecordLink(RecordLinkId),
+    /// An operational key, its versions and its consumers (R-147); never its value.
+    OperationalKey(OperationalKeyId),
 }
 
 impl AuditTarget {
@@ -313,6 +318,7 @@ impl AuditTarget {
             Self::Project(_) => "project",
             Self::Repository(_) => "repository",
             Self::RecordLink(_) => "record_link",
+            Self::OperationalKey(_) => "operational_key",
         }
     }
 
@@ -340,6 +346,7 @@ impl AuditTarget {
             Self::Project(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),
             Self::RecordLink(id) => id.to_string(),
+            Self::OperationalKey(id) => id.to_string(),
         }
     }
 }

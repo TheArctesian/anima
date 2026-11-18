@@ -26,8 +26,13 @@
 //! one sealed row per account, bound to the account id so a row moved or copied to another
 //! account does not open (SRC-008, PRJ-018). Only the source token minter reads it back
 //! ([`load_source_secret`]).
+//!
+//! The operational keys of the operator's servers, with their versions and consumers, are in
+//! [`operational`]; their K1 part is in [`graphql`] (R-147, K-E5 Section 2).
 
+pub mod graphql;
 mod host;
+pub mod operational;
 mod password;
 mod secret;
 mod source;
@@ -37,6 +42,13 @@ mod vault;
 
 #[cfg(test)]
 mod tests;
+
+/// A vault over a fixed throwaway key, for the tests of the domains that seal or open with it;
+/// never a real key (SEC-004).
+#[cfg(test)]
+pub(crate) fn test_vault() -> Vault {
+    Vault::from_key(zeroize::Zeroizing::new([7_u8; 32]))
+}
 
 use std::collections::HashSet;
 

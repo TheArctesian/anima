@@ -134,20 +134,21 @@ pub fn web_fallback(root: Option<&Path>, origin: &fleet::access::PublicOrigin) -
 }
 
 /// The routes devices push to, logged by their templates only, never their tokens (LOG-007,
-/// R-028): `/push/{token}` for push checks, and the daemon's enrolment and metrics batches (K8).
+/// R-028): `/push/{token}` for push checks, and the daemon's enrolment, metrics batches and
+/// operational key fetches (K8, K-E5 Section 2.1).
 pub fn pushes(dependencies: &schema::Dependencies) -> Router {
     let schema::Dependencies {
         clock,
         pool,
         bus,
         metrics_feed,
+        vault,
         ..
     } = dependencies;
     let daemon = fleet::metrics::daemon_router(
-        pool.clone(),
+        (pool.clone(), bus.clone(), clock.clone()),
         metrics_feed.clone(),
-        bus.clone(),
-        clock.clone(),
+        vault.clone(),
     );
     logged(fleet::checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(daemon))
 }

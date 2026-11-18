@@ -36,7 +36,10 @@ async fn met_020_a_push_reaches_the_hub_at_the_local_port_of_the_link() {
     let link = anima_daemon::config::origin::Origin::parse(hub.url.as_str().trim_end_matches('/'))
         .expect("the local port of the link is a hub origin");
     let client = HubClient::new(link.url().clone(), TIMEOUT).expect("a client");
-    assert_eq!(client.push(&token(), &batch()).await, Answer::Accepted(()));
+    assert_eq!(
+        client.push(&token(), &batch()).await,
+        Answer::Accepted(None)
+    );
     assert_eq!(hub.seen("push").len(), 1);
 }
 
@@ -69,7 +72,7 @@ async fn proxy_child() {
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(
         answer,
-        Answer::Accepted(()),
+        Answer::Accepted(None),
         "the push must not go through a proxy"
     );
 }

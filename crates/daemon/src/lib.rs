@@ -3,14 +3,15 @@
 //! `contracts/daemon-push.md`).
 //!
 //! Pure core: [`cli`], [`config`] (origin, file contents), [`hub::answer`], [`push::pacing`],
-//! [`push::renewal`] and [`sampling`] decide and parse from their parameters. I/O sits at the
-//! edge: [`hub`] (HTTP), [`config::home`] and [`token_store`] (files, Keychain), [`readers`]
+//! [`push::renewal`], [`keys::cache`] and [`sampling`] decide and parse from their parameters. I/O sits at the
+//! edge: [`hub`] (HTTP), [`config::home`], [`token_store`] and [`keys::store`] (files, Keychain), [`readers`]
 //! (commands, `/proc`), [`push`] (the buffer and its rhythm) and [`runtime`] (tasks, clock,
 //! signals).
 
 pub mod cli;
 pub mod config;
 pub mod hub;
+pub mod keys;
 pub mod push;
 pub mod readers;
 pub mod report;

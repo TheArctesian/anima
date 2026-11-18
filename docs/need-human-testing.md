@@ -589,6 +589,35 @@ so the relay never answered. The iPhone simulator stopped answering before the j
 
 Result: Open.
 
+### HT-026: a server gets, follows and drops an operational key (E0-6 T2, R-147)
+
+Built: on the branch of E0-6 T2 (K-E5 Section 2, K8 Section 9). The hub keeps operational keys in the
+`credentials` domain (`crates/hub/src/fleet/credentials/operational/`) and gives them to the daemon of a granted
+device (`POST /daemon/v1/keys/fetch`). The daemon keeps a cache beside its token (`crates/daemon/src/keys/`)
+and reads it with `anima-daemon key read <name>`.
+
+The tests use a throwaway database and in-process requests. The daemon cache was tested as pure logic and as a
+file on this machine. No test used the macOS Keychain item `key-cache`, a real daemon pushing to a real hub, two
+machines, or a wait of 7 days. There is no `anima key` command yet (the noun waits for a ruling), so the steps use
+GraphQL through the client's developer tools or `curl` with a login token.
+
+1. On a Linux server with an enrolled `anima-daemon` of this branch, and on the hub, make a key with
+   `createOperationalKey` (value `test-value-1`) and grant it to the server with `grantOperationalKey`.
+   Expected: within one push interval, `operationalKey` shows the consumer with `heldVersion` 1.
+2. On the server, run `anima-daemon key read <name> | cat`. Expected: `test-value-1`. Run it with no pipe.
+   Expected: a refusal that says standard output is a terminal, and no value.
+3. On Linux, look at the file `keys` in the daemon's folder. Expected: mode `0600`, owner the daemon's user.
+4. On the hub, `rotateOperationalKey` with `test-value-2`. Expected: within one push interval, `key read` gives
+   `test-value-2` and `heldVersion` is 2.
+5. `revokeOperationalKey`. Expected: within one push interval, `key read` says the machine holds no such key.
+6. Do steps 1 and 2 on a Mac. Expected: the same; Keychain Access shows the item `ing.anima.daemon` /
+   `key-cache`. Then delete the device on the hub. Expected: the daemon logs that its token is refused, and the
+   Keychain item is gone.
+7. Grant a key to a server, stop the hub for more than 7 days (or set the server's clock 8 days ahead), and run
+   `key read`. Expected: no value, and the cache record is gone.
+
+Result: Open.
+
 ## Not built yet
 ### HT-024: a hub restored on a second server from its backup (FND-006, task F1)
 

@@ -11,12 +11,13 @@ use std::time::Duration;
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::points::{BATCH_POINTS, Backlog, Point};
 use daemon_core::wire::{
-    Announcements, Batch, BatchDrive, BatchGpu, BatchInventory, RefusalCode, Renewed,
+    Announcements, Batch, BatchDrive, BatchGpu, BatchInventory, PushAccepted, RefusalCode, Renewed,
 };
 use uuid::Uuid;
 
 use crate::hub::HubClient;
 use crate::hub::answer::Answer;
+use crate::keys::keeper::{Asking, Keeper};
 
 use crate::report;
 use crate::token_store::{Credential, TokenStore};
@@ -53,6 +54,8 @@ pub struct Pusher {
     renewal_tried: Option<DateTime<Utc>>,
     /// Where the spread of each retry wait comes from: a number from 0 to 1.
     spread: fn() -> f64,
+    /// The operational key cache; `None` for a pusher that keeps none and sends no `keys`.
+    keys: Option<Keeper>,
 }
 
 impl Pusher {
@@ -70,6 +73,17 @@ impl Pusher {
             stopped_until: None,
             renewal_tried: None,
             spread: os_spread,
+            keys: None,
+        }
+    }
+
+    /// The same pusher with the operational key cache of `keeper`: each batch says what it
+    /// holds, and each answer that names the keys updates it (K-E5 Section 2.1).
+    #[must_use]
+    pub fn with_keys(self, keeper: Keeper) -> Self {
+        Self {
+            keys: Some(keeper),
+            ..self
         }
     }
 
@@ -98,6 +112,9 @@ impl Pusher {
     /// One round at `now`: renew when due, drop stale points, then send batches oldest first
     /// until none is left or one fails. Returns how long to wait before the next round.
     pub async fn push_due(&mut self, now: DateTime<Utc>) -> Duration {
+        if let Some(keys) = &mut self.keys {
+            keys.expire(now);
+        }
         if self.stopped_until.is_none() {
             self.renew_if_due(now).await;
         }
@@ -128,8 +145,11 @@ impl Pusher {
             let Some(receipt) = outgoing.receipt() else {
                 return Round::Sent;
             };
-            let batch = Batch::new(self.device, outgoing.points(), self.announced.clone())
+            let mut batch = Batch::new(self.device, outgoing.points(), self.announced.clone())
                 .from_daemon(VERSION);
+            if let Some(keys) = &self.keys {
+                batch = batch.with_keys(keys.held());
+            }
             let answer = self.hub.push(&self.credential.token, &batch).await;
             match pacing::action(&answer) {
                 Action::Remove => {
@@ -137,6 +157,9 @@ impl Pusher {
                     self.announced = Announcements::default();
                     self.limit = pacing::grown(count);
                     self.recovered();
+                    if let Answer::Accepted(Some(accepted)) = answer {
+                        self.follow_keys(accepted, now).await;
+                    }
                     return Round::Sent;
                 }
                 Action::Drop(code) => {
@@ -166,7 +189,20 @@ impl Pusher {
         }
     }
 
-    fn failed(&mut self, answer: &Answer<()>) -> Duration {
+    /// Updates the key cache from the hub's `Accepted`, when it named the keys.
+    async fn follow_keys(&mut self, accepted: PushAccepted, now: DateTime<Utc>) {
+        let (Some(keys), Some(current)) = (&mut self.keys, accepted.keys) else {
+            return;
+        };
+        let asking = Asking {
+            hub: &self.hub,
+            token: &self.credential.token,
+            device: self.device,
+        };
+        keys.follow(asking, &current, now).await;
+    }
+
+    fn failed<T>(&mut self, answer: &Answer<T>) -> Duration {
         if !self.backoff.is_failing() {
             match answer {
                 Answer::Failed(cause) => report::push_failed(*cause),
@@ -186,10 +222,16 @@ impl Pusher {
         self.backoff.recovered();
     }
 
-    /// Stops pushing for 10 minutes. Logs only when it was pushing before (K8 Section 6).
+    /// Stops pushing for 10 minutes. Logs only when it was pushing before (K8 Section 6). A
+    /// refused token also deletes the whole key cache (R-147).
     fn stop(&mut self, code: RefusalCode, now: DateTime<Utc>) -> Duration {
         if self.stopped_until.is_none() {
             report::token_refused(code);
+        }
+        if code == RefusalCode::TokenRefused
+            && let Some(keys) = &mut self.keys
+        {
+            keys.forget();
         }
         let wait = TimeDelta::from_std(pacing::REFUSED_RETRY).unwrap_or(TimeDelta::minutes(10));
         self.stopped_until = Some(now + wait);

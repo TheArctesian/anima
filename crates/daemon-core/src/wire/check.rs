@@ -9,7 +9,10 @@ use std::collections::BTreeSet;
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
-use super::{Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, RefusalCode};
+use super::{
+    Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, KeyVersion, RefusalCode,
+    versions_fit,
+};
 use crate::inventory::Inventory;
 use crate::points::{
     Kind, MAX_GPU_INDEX, MAX_LABELS, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling,
@@ -36,6 +39,8 @@ pub struct Accepted {
     pub drives: Option<Vec<BatchDrive>>,
     pub inventory: Option<Inventory>,
     pub daemon_version: Option<String>,
+    /// The versions the daemon's key cache holds, when the batch had a `keys` member (R-147).
+    pub keys: Option<Vec<KeyVersion>>,
 }
 
 impl Batch {
@@ -55,7 +60,11 @@ impl Batch {
         let shaped = points_fit(&self.points, &keys)
             && gpus_fit(self.gpus.as_deref())
             && drives_fit(self.drives.as_deref())
-            && self.daemon_version.as_deref().is_none_or(is_version);
+            && self.daemon_version.as_deref().is_none_or(is_version)
+            && self
+                .keys
+                .as_ref()
+                .is_none_or(|keys| versions_fit(&keys.held));
         if !shaped {
             return Err(RefusalCode::Malformed);
         }
@@ -77,6 +86,7 @@ impl Batch {
             drives: self.drives,
             inventory,
             daemon_version: self.daemon_version,
+            keys: self.keys.map(|keys| keys.held),
         })
     }
 }

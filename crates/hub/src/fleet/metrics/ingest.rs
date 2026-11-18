@@ -9,6 +9,7 @@
 mod admission;
 mod credential;
 mod enrolment;
+mod keys;
 mod push;
 mod refusals;
 mod renewal;
@@ -55,6 +56,8 @@ pub(super) enum Error {
     Devices(#[source] devices::Error),
     #[error("the metrics cannot be stored")]
     Metrics(#[from] super::Error),
+    #[error("the operational key cannot be given")]
+    Keys(#[source] crate::fleet::credentials::operational::Error),
 }
 
 impl From<devices::Error> for Error {

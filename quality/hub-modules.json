@@ -29,7 +29,9 @@
   ],
   "domains": {
     "events": [],
-    "credentials": [],
+    "credentials": [
+      "events"
+    ],
     "access": [
       "events",
       "credentials"
@@ -173,6 +175,9 @@
     "link": [
       "access",
       "events"
+    ],
+    "credentials": [
+      "access"
     ]
   }
 }

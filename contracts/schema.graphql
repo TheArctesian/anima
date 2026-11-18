@@ -2694,6 +2694,12 @@ type Query {
   # S6: the device link (FRN-009, OR-S6-3)
   "The devices the link permits, in the link's order (LNK-004)."
   linkDevices: [LinkDevice!]!
+
+  # Operational keys (R-147; K-E5 Section 2.2). No field holds a value.
+  "Each operational key that is not removed, by name. Open to a read key: no field holds a value."
+  operationalKeys: [OperationalKey!]!
+  "Null when no operational key that is not removed has this name."
+  operationalKey(name: String!): OperationalKey
 }
 
 type Mutation {
@@ -2871,6 +2877,22 @@ type Mutation {
   linkRecords(input: RecordLinkInput!): RecordLink!
   "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
   unlinkRecords(id: ID!): ID!
+
+  # Operational keys (R-147; K-E5 Section 2.2). A value goes in and never comes out: only a daemon gets one (K8). Each change writes one audit entry and one event, neither with a value.
+  "Makes the key with its first value as version 1. VALIDATION for a field or a value of a length a key cannot have; CONFLICT when a key, removed or not, has the name. Login or browser token only (D-23, R-147)."
+  createOperationalKey(input: CreateOperationalKeyInput!): OperationalKey!
+  "Replaces the metadata. NOT_FOUND for an unknown name. Login or browser token only (D-23, R-147)."
+  updateOperationalKey(name: String!, input: UpdateOperationalKeyInput!): OperationalKey!
+  "Ends the active version and the retrieval of the key; the name stays taken. The answer holds the key as it was and the consumers that held the ended version. Login or browser token only (D-23, R-147)."
+  removeOperationalKey(name: String!): OperationalKeyEnding!
+  "Makes value the active version and supersedes the old one at once (R-147). rotatedAtProvider records what the operator says: the hub changes nothing at the provider, so a client says recorded, not rotated, when it is false. Login or browser token only (D-23, R-147)."
+  rotateOperationalKey(name: String!, value: String!, rotatedAtProvider: Boolean!): OperationalKeyEnding!
+  "Ends the active version with no new one. Login or browser token only (D-23, R-147)."
+  revokeOperationalKey(name: String!): OperationalKeyEnding!
+  "Lets the daemon of device fetch the key for workload: a trust decision. No change when the grant exists. NOT_FOUND for an unknown name or device. Login or browser token only (D-23, R-147)."
+  grantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
+  "Ends a grant; the daemon drops the key at its next report. NOT_FOUND when there is no such grant. Login or browser token only (D-23, R-147)."
+  ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
 }
 
 type Subscription {
@@ -2900,4 +2922,103 @@ type HeartbeatAdded {
   checkId: ID!
   deviceId: ID!
   heartbeat: Heartbeat!
+}
+
+# Operational keys (R-147; K-E5 Section 2). No type holds a value.
+
+"An operational key: a credential or a runtime secret that a server of the operator needs. No field holds its value."
+type OperationalKey {
+  id: ID!
+  "1 to 80 of a-z, 0-9, _, . and -; starts with a letter."
+  name: String!
+  provider: String!
+  purpose: String!
+  "How to rotate the key at its provider; at most 4000 characters."
+  instructions: String!
+  "An https address at the provider."
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+  due: OperationalKeyDue!
+  "The number of the active version; null when no version is active."
+  activeVersion: Int
+  "When the newest version was recorded, and the operator who recorded it."
+  lastRotatedAt: DateTime!
+  lastRotatedBy: String!
+  createdAt: DateTime!
+  createdBy: String!
+  "Newest first."
+  versions: [OperationalKeyVersion!]!
+  consumers: [OperationalKeyConsumer!]!
+}
+
+"DUE: the last rotation is older than rotationDays. EXPIRING: in the 14 days before expiresAt. EXPIRED: after it; the key is given no more."
+enum OperationalKeyDue {
+  CURRENT
+  DUE
+  EXPIRING
+  EXPIRED
+}
+
+"A key has at most one ACTIVE version. A version that ended is never active again; its sealed value is deleted 30 days after it ended."
+enum OperationalKeyVersionState {
+  ACTIVE
+  SUPERSEDED
+  REVOKED
+  EXPIRED
+}
+
+type OperationalKeyVersion {
+  number: Int!
+  state: OperationalKeyVersionState!
+  createdAt: DateTime!
+  createdBy: String!
+  endedAt: DateTime
+  "What the operator said: the key was also changed at its provider."
+  rotatedAtProvider: Boolean!
+}
+
+"A server that may fetch the key: the device of its daemon and the workload that uses the key there."
+type OperationalKeyConsumer {
+  deviceId: ID!
+  "1 to 40 of a-z, 0-9, _, . and -; starts with a letter."
+  workload: String!
+  grantedAt: DateTime!
+  grantedBy: String!
+  "The version in the daemon's cache at its last report (heldSeenAt); null when it held none."
+  heldVersion: Int
+  heldSeenAt: DateTime
+  fetchedVersion: Int
+  fetchedAt: DateTime
+}
+
+"The answer of a change that ends a version."
+type OperationalKeyEnding {
+  key: OperationalKey!
+  "The version that ended; null when no version was active."
+  endedVersion: Int
+  "The consumers whose daemon held the ended version at its last report. A connected daemon drops it at its next report; a server with no contact keeps its copy, so revoke the key at the provider when a server is lost."
+  stillHeldBy: [OperationalKeyConsumer!]!
+}
+
+input CreateOperationalKeyInput {
+  name: String!
+  provider: String!
+  purpose: String!
+  instructions: String! = ""
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+  "The first value: 1 to 16384 bytes."
+  value: String!
+}
+
+"The whole metadata; it replaces the stored one."
+input UpdateOperationalKeyInput {
+  provider: String!
+  purpose: String!
+  instructions: String!
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
 }

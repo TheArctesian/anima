@@ -2,6 +2,11 @@
 //! adds a document for a field deletes its entry here; the coverage test fails until they do,
 //! and for any K1 root field that is neither used nor listed.
 
+/// The operational keys have no command yet: K-E5 Section 2.2 names `anima key`, the API key noun.
+const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anima key`, which is \
+    already the API key noun (INT-003, `key list|create|revoke`); the noun waits for a ruling \
+    (E0-6 T3)";
+
 pub const EXCEPTIONS: &[(&str, &str)] = &[
     (
         "Mutation.hostedDeviceInvite",
@@ -31,4 +36,13 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "Mutation.reportBuildUploaded",
         "builder token only: the desktop builder (BLD-022)",
     ),
+    ("Query.operationalKeys", NO_KEY_NOUN),
+    ("Query.operationalKey", NO_KEY_NOUN),
+    ("Mutation.createOperationalKey", NO_KEY_NOUN),
+    ("Mutation.updateOperationalKey", NO_KEY_NOUN),
+    ("Mutation.removeOperationalKey", NO_KEY_NOUN),
+    ("Mutation.rotateOperationalKey", NO_KEY_NOUN),
+    ("Mutation.revokeOperationalKey", NO_KEY_NOUN),
+    ("Mutation.grantOperationalKey", NO_KEY_NOUN),
+    ("Mutation.ungrantOperationalKey", NO_KEY_NOUN),
 ];

@@ -8,6 +8,7 @@ use super::{Accepted, Announcements, Batch, RefusalCode};
 mod bodies;
 mod drives;
 mod inventory;
+mod keys;
 mod range;
 mod secrets;
 mod series;
