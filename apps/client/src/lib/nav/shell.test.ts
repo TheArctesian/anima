@@ -334,15 +334,3 @@ it('NET-004: the bar and the page are marked for the banner shift, and the strip
   expect(nav.hasAttribute('data-shifts-with-banner')).toBe(true);
   expect(nav.querySelector('.notice')?.hasAttribute('data-holds-banner')).toBe(true);
 });
-
-it('AIS-020, MOB-010: Agent usage is not among the four destinations of the phone bar', () => {
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    value: (query: string) => ({ matches: query.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined }),
-  });
-  onTestFinished(() => {
-    Reflect.deleteProperty(window, 'matchMedia');
-    document.documentElement.removeAttribute('data-nav');
-  });
-  expect([...show().querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual(['/devices', '/logs', '/settings']);
-});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANSWER, DEVICES, row } from './agent-usage.fixture';
+import { ANSWER, DEVICES, row } from '../agent-usage.fixture';
 import { dollars, tokens } from './units';
 import { SYSTEM_UNIT, TURNED_OFF, deviceNotes, notes, summaryLine } from './words';
 

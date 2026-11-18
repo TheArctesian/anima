@@ -1,6 +1,6 @@
-import { expect, test } from './test-hub';
-import { HUB_ORIGIN } from './synthetic/access';
-import { installSyntheticHub } from './synthetic/synthetic-hub';
+import { expect, test } from '../test-hub';
+import { HUB_ORIGIN } from '../synthetic/access';
+import { installSyntheticHub } from '../synthetic/synthetic-hub';
 
 // The Agent usage page over the synthetic hub: the fixture Mac with Claude Code and Codex, a system unit, a device turned off.
 

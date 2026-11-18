@@ -1,6 +1,6 @@
 import type { AgentUsageDimension } from '$lib/hub/generated/graphql';
 import type { Column } from '$lib/tables/table';
-import type { UsageRow } from './api';
+import type { UsageRow } from '../api';
 import { tokens, whole } from './units';
 import { costText, sourceName } from './words';
 

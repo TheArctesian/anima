@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { UsageAnswer } from './api';
-  import { deviceNotes, notes } from './words';
+  import { deviceNotes, notes } from './report/words';
 
   const { answer }: { answer: UsageAnswer } = $props();
   const lines = $derived(notes(answer));

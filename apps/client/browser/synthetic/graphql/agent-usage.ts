@@ -1,5 +1,5 @@
-import type { Row } from './fixtures';
-import { deviceOf, type HubState } from './model';
+import type { Row } from '../fixtures';
+import { deviceOf, type HubState } from '../model';
 
 // The use of the AI agent programs, so the Agent usage page has something to show (AIS-020, AIS-021, AIS-024). A Mac with
 // Claude Code and Codex on several days, models and repositories, one model with no price; a Linux box whose daemon is a system

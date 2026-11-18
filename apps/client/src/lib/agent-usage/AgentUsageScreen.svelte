@@ -5,12 +5,12 @@
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import LoadingState from '$lib/states/LoadingState.svelte';
-  import { usageColumns, usageRowKey } from './columns';
+  import { usageColumns, usageRowKey } from './report/columns';
   import type { UsageQuery } from './query';
   import type { UsageStore } from './store.svelte';
   import UsageFilters from './UsageFilters.svelte';
   import UsageNotes from './UsageNotes.svelte';
-  import { summaryLine } from './words';
+  import { summaryLine } from './report/words';
 
   interface Props {
     store: UsageStore;

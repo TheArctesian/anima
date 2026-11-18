@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
 import type { Row } from '../fixtures';
-import { agentUsageFields } from '../agent-usage';
+import { agentUsageFields } from './agent-usage';
 import { vpnFields } from '../vpn';
 import { allDevices, channelView, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 

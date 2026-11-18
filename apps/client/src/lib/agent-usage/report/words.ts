@@ -1,5 +1,5 @@
 import type { AgentSource, AgentUsageState } from '$lib/hub/generated/graphql';
-import type { UsageAnswer, UsageDevice, UsageSums } from './api';
+import type { UsageAnswer, UsageDevice, UsageSums } from '../api';
 import { NO_PRICE, dollars, tokens } from './units';
 
 // The words of the page. Where the command says the same thing, the wording is the command's (report.rs, AIS-021, AIS-024).
