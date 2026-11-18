@@ -1133,7 +1133,7 @@ These rows give the order of the work of each item. The work item holds the scop
 | Item | Task | Content | State | Commits |
 | --- | --- | --- | --- | --- |
 | [E0-5](../work-items/engine/E0-5.md) | T0 | The operator decides: the location provider, the rules to match an event with a sample (tolerance, age, uncertainty), and where bulk data is kept. | Done (R-145, 2026-11-18): samples from Dawarich, then OwnTracks, then the Anima phone apps, through one ingestion contract; 2 minutes for "at the time", 10 minutes for "nearest, inferred", then unknown, and "uncertain" with no accuracy or an accuracy worse than 200 m; sealed pieces in a folder of the hub. Class B is on the hosted hub (R-146). | |
-| E0-5 | T1 | Contract: the places and files parts of K-E4 (`contracts/extensions/shared-records.md`), which E0-4 left open. | Not started | |
+| E0-5 | T1 | Contract: the places and files parts of K-E4 (`contracts/extensions/shared-records.md`), which E0-4 left open. | Done (2026-11-18): K-E4 Sections 8 to 13 (places, files, extraction proposals, location samples, the context of a transfer event, the API), the data keys of K-E5 Section 1 (`contracts/extensions/vault.md`), and the ranges 2040 to 2069 in K-E8. | this commit |
 | E0-5 | T2 | Hub: places (PLC-001 to PLC-006), the file store (FIL-001 to FIL-005) and extraction proposals (VIS-001 to VIS-004). | Not started | |
 | E0-5 | T3 | Hub: location samples from the selected provider through the source framework of E0-2, and the context of a transfer event at the SSH and SFTP boundary. | Not started | |
 | E0-5 | T4 | The `anima` commands and the MCP tools of T2 and T3 (CMD-030). | Not started | |
