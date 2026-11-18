@@ -322,6 +322,7 @@ dependencies = [
  "rand 0.10.3",
  "rcgen",
  "rdp-test-device",
+ "redaction",
  "reqwest 0.12.28",
  "ring",
  "rpassword",
@@ -350,7 +351,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tungstenite",
- "unicode-normalization",
  "updater-signature",
  "uuid",
  "x509-parser",
@@ -6161,6 +6161,13 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "x509-parser",
+]
+
+[[package]]
+name = "redaction"
+version = "0.1.0"
+dependencies = [
+ "unicode-normalization",
 ]
 
 [[package]]

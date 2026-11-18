@@ -57,7 +57,7 @@ const PUBLIC_KEYS: [&str; 4] = ["hostkey", "publickey", "nodekey", "authorizedke
 
 /// What a name says about its value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Secrecy {
+pub enum Secrecy {
     /// Not a secret.
     Plain,
     /// Holds credentials (`credential`, `sshCredential`): a scalar value is a secret, and so is
@@ -68,7 +68,8 @@ pub(super) enum Secrecy {
     Secret,
 }
 
-pub(super) fn secrecy(name: &str) -> Secrecy {
+#[must_use]
+pub fn secrecy(name: &str) -> Secrecy {
     let words = words(name);
     let joined = words.concat();
     let has_word = |wanted: &str| words.iter().any(|word| word == wanted);
@@ -98,7 +99,8 @@ pub(super) fn secrecy(name: &str) -> Secrecy {
 }
 
 /// The name in lower-case ASCII letters and digits only.
-pub(super) fn normalise(name: &str) -> String {
+#[must_use]
+pub fn normalise(name: &str) -> String {
     words(name).concat()
 }
 

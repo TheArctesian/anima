@@ -4,6 +4,7 @@
 use super::{
     REDACTED,
     names::{Secrecy, secrecy},
+    provider_keys::mask_provider_keys,
 };
 
 /// Text that marks a whole string as a secret, compared case-sensitively.
@@ -21,8 +22,9 @@ const CREDENTIAL_MIN_LEN: usize = 8;
 
 /// `"[redacted]"` if `text` holds a private key, an `otpauth://` URI or an `Authorization:`
 /// header; otherwise `text` with every URL password, secret `key=value` or `key: value`, scheme
-/// credential and JWT masked. Each pass takes time linear in the length of `text`.
-pub(in crate::fleet::events) fn redact_text(text: &str) -> String {
+/// credential, JWT and provider key masked. Each pass takes time linear in the length of `text`.
+#[must_use]
+pub fn redact_text(text: &str) -> String {
     if is_secret_text(text) {
         return REDACTED.to_owned();
     }
@@ -31,7 +33,8 @@ pub(in crate::fleet::events) fn redact_text(text: &str) -> String {
     // first would hide the scheme word and leave the credential after it.
     let masked = mask_after_words(&masked, &SCHEMES, scheme_credential);
     let masked = mask_key_values(&masked);
-    mask_jwts(&masked)
+    let masked = mask_jwts(&masked);
+    mask_provider_keys(&masked)
 }
 
 fn is_secret_text(text: &str) -> bool {
@@ -64,7 +67,7 @@ fn looks_like_credential(token: &str) -> bool {
 
 /// Whether a word may start at byte `index`: at the start or after a byte that is not an ASCII
 /// letter or digit.
-fn starts_word(text: &str, index: usize) -> bool {
+pub(super) fn starts_word(text: &str, index: usize) -> bool {
     index == 0 || !text.as_bytes()[index - 1].is_ascii_alphanumeric()
 }
 
