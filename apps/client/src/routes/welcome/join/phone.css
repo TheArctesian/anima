@@ -1,0 +1,99 @@
+/*
+ * The invite steps in the phone layout (MOB-033), with the sizes of frame 2 of docs/mockup/mobile/index.html: 20 px at
+ * each side, a row of 44 px for Back, a field of 148 px, buttons of 48 px with 16 px text, 16 px between the parts, and
+ * step rows in 16 px text. The tokens have some of these values and not others.
+ *
+ * The rules start at `[data-join]`, the page's root, so they stand above each component's own rules. The width is the
+ * compact breakpoint, as in `lib/nav/phone/layout.svelte.ts`.
+ */
+@media (max-width: 767.98px) {
+  :root .screen.bare {
+    padding-inline: var(--space-5);
+  }
+
+  :root [data-join] form,
+  :root [data-join] .joining {
+    gap: var(--space-4);
+  }
+
+  :root [data-join] .back {
+    gap: var(--border-focus);
+    margin-inline-start: calc((var(--space-2) + var(--border-focus)) * -1);
+    padding-inline: var(--space-1) var(--space-2);
+  }
+
+
+  /* 6 px above the title and 8 px below it, inside the 16 px of the stack. */
+  :root [data-join] :is(form, .joining) h1 {
+    margin: calc(var(--space-2) * -1 - var(--border-focus)) 0 calc(var(--space-2) * -1);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.01em;
+  }
+
+  /* The joining view has no Back: an empty row of the same 44 px keeps its title where the paste view has it. */
+  :root [data-join] .joining {
+    padding-block-start: var(--target-min-touch);
+  }
+
+  :root [data-join] .joining h1 {
+    margin-block-start: calc(var(--space-1) + var(--border-focus));
+  }
+
+  /* 6 px between the label and its field. */
+  :root [data-join] label {
+    margin-block-end: calc(var(--space-2) * -1 - var(--border-focus));
+    line-height: var(--leading-tight);
+  }
+
+  :root [data-join] textarea {
+    block-size: calc(var(--space-12) * 3 + var(--space-1));
+    padding: var(--space-3) calc(var(--space-3) + var(--border-focus));
+    background: none;
+    line-height: 1.45;
+    resize: none;
+  }
+
+  /* With no refusal the line is out of the stack and takes no room, so Paste is 16 px below the field. */
+  :root [data-join] form .problem:empty {
+    position: absolute;
+  }
+
+  :root [data-join] button {
+    gap: calc(var(--space-2) + var(--border-focus));
+    block-size: var(--space-12);
+    padding-inline: var(--space-4);
+    font-size: var(--text-lg);
+  }
+
+  :root [data-join] button:not(.ghost) {
+    font-weight: var(--weight-medium);
+  }
+
+  /* Paste is a line button: no fill, the edge of a control. */
+  :root [data-join] button.secondary {
+    border-color: var(--border-strong);
+    background: none;
+  }
+
+  :root [data-join] .fine {
+    line-height: 1.45;
+  }
+
+  :root [data-join] .steps {
+    margin-block-start: var(--space-5);
+  }
+
+  :root [data-join] .steps li {
+    box-sizing: border-box;
+    font-size: var(--text-lg);
+  }
+
+  :root [data-join] .steps .mark {
+    border-width: 1.5px;
+  }
+
+  :root [data-join] .end {
+    inset-inline: var(--space-5);
+    inset-block-end: calc(var(--safe-block-end) + var(--space-2) + var(--border-focus));
+  }
+}

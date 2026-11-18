@@ -129,6 +129,11 @@
     "places": [
       "links",
       "events"
+    ],
+    "containers": [
+      "devices",
+      "ssh",
+      "credentials"
     ]
   },
   "graphql": {
@@ -198,6 +203,9 @@
       "access"
     ],
     "credentials": [
+      "access"
+    ],
+    "containers": [
       "access"
     ],
     "files": [

@@ -241,7 +241,9 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// A link invite admits a device to the hub, and a revocation is a trust decision: login or
 /// browser token only (FRN-009, OR-S6-3). An operational key change takes a secret or is a
 /// trust decision (a grant): login or browser token only (R-147, K-E5 Section 2.2).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 53] = [
+/// The log of a container can hold a secret, as private code can: login or browser token only
+/// (HOST-001, MCP-004, R-149).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 54] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -295,6 +297,7 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 53] = [
     "revokeOperationalKey",
     "grantOperationalKey",
     "ungrantOperationalKey",
+    "containerLog",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

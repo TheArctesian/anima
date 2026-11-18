@@ -4,7 +4,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Item | Value |
 | --- | --- |
-| Document | The decisions OD-W1 to OD-W23, each with the words of the operator |
+| Document | The decisions OD-W1 to OD-W25, each with the words of the operator |
 | Version | 2.0 |
 | Date | 2026-11-16 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
@@ -39,6 +39,8 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 | OD-W21 | The order of the build work, and the tier of the correction of the release | Decided (operator, 2026-11-16) |
 | OD-W22 | The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Decided (R-162, operator, 2026-11-18) |
 | OD-W23 | The update of the daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
+| OD-W24 | Can an entry of [need-human-testing.md](../need-human-testing.md) have the state "Deferred", with the reason and the ruling, for a check that can run only against the hub on the VPS or its VPN? The sorting of 2026-11-18 proposes it for fifteen checks ([sort-2026-11-18.md](../research/human-checks/sort-2026-11-18.md)). | Decided (R-169, operator, 2026-11-18: "Approve the sorting"): yes. PLN-014 has the rule. |
+| OD-W25 | What is the acceptance run of Phase 3 (WP-53, row 4.1) on a hosted hub? R-169 defers eight of its seventeen checks (P-1 to P-6, P-14, P-16), which can run only against the hub on the VPS or its VPN, and gives new steps to eight more. | Open. No recommendation of the operator's side yet. The choices: (a) the run is the nine checks that stay, done on the hosted hub; (b) the run waits for the self-host path; (c) Phase 3 is accepted by a ruling with the deferred rows named. |
 
 ### OD-W1. Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)?
 
@@ -131,3 +133,11 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 ### OD-W23. The update of the daemon and the hub ([daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
 
 **Decided (operator, 2026-11-16): tier 1, directly after the first release.** The operator's words: "thats fine were still pre release". Reason: the work route and the watchdog reach an installed machine only through an update (USE-008). The stages stay a recommendation: the versions show, the machines update, then the hub, after the restore procedure (FND-006) is written. OD-ROL-8 is decided: no Linux machine on ARM is in use. R-139 (operator, 2026-11-17) decided OD-ROL-1 to OD-ROL-14 and deferred the stage of the hub. Open: OD-ROL-15, where the key that signs a release is when the operator uses only a hosted hub.
+
+### OD-W24. Can an entry of the list of human checks have the state "Deferred"?
+
+**Decided (R-169, operator, 2026-11-18: "Approve the sorting"): yes.** The fifteen checks of the sorting are deferred, the restore check HT-024 included; the orchestrating session had recommended to keep that one open. PLN-014 has the rule. The entries change in a later commit (R-169). The text before the decision: the states of an entry are Open, Passed and Failed (PLN-014; [need-human-testing.md](../need-human-testing.md), "How to use this list"). The operator will use only the hosted hub (R-130), and some checks can run only against the hub on the VPS or its VPN. The operator asked for a sorting of the open checks on 2026-11-18 ("Yes, sort them"); [sort-2026-11-18.md](../research/human-checks/sort-2026-11-18.md) is that sorting, and it proposes to put fifteen checks aside. No rule has a state for that. Recommendation: add the state "Deferred". Only a ruling of the operator sets it. The entry gives the reason and the ruling, stays in the list, and goes back to Open when the self-host path is in work again. A task that waits for a deferred check is not Done (PLN-009). Until the operator decides, no entry has this state.
+
+### OD-W25. What is the acceptance run of Phase 3 (WP-53) on a hosted hub?
+
+**Open.** The acceptance run of Phase 3 is the checks P-1 to P-17 of [need-human-testing.md](../need-human-testing.md) (steps: [phase-3-acceptance.md](../plans/phase-3/phase-3-acceptance.md)). Row 4.1 of the priorities waits for it. R-169 defers P-1 to P-6, P-14 and P-16 for the self-host path, gives P-7 to P-13 and P-15 new steps for a hosted hub, and points P-17 to REL-1. The run can thus not end as it is written. The operator did not answer this question on 2026-11-18. The choices are in the table above. Until he decides, row 4.1 stays as it is and no agent sets WP-53.

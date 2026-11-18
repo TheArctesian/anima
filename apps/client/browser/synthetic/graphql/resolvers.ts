@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
 import type { Row } from '../fixtures';
 import { agentUsageFields } from './agent-usage';
+import { containerFields } from './containers';
 import { vpnFields } from '../vpn';
 import { allDevices, channelView, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 
@@ -113,5 +114,6 @@ export function rootValue(state: HubState): Record<string, unknown> {
     endSession: (args: { id: string }) => endSession(state, args),
     ...vpnFields(state.now),
     ...agentUsageFields(state),
+    ...containerFields(state),
   };
 }

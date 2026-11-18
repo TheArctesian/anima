@@ -1,14 +1,17 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { asset } from '$app/paths';
+  import { page } from '$app/state';
 
   const { children }: { children: Snippet } = $props();
+  // The invite steps start with Back, as frame 2 of docs/mockup/mobile/index.html draws them: no name above it.
+  const bare = $derived(page.route.id === '/welcome/join');
 </script>
 
 <!-- The first run in the sign-in page's language (UR-7): one column on the bare ground, no bar (NAV-009, FRN-001). -->
-<div class="screen">
+<div class="screen" class:bare>
   <div class="panel">
-    <p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima.ing</p>
+    {#if !bare}<p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima.ing</p>{/if}
     {@render children()}
   </div>
 </div>
@@ -21,6 +24,16 @@
     justify-items: center;
     align-items: start;
     padding: var(--space-16) var(--space-4) var(--space-6);
+  }
+
+  .screen.bare {
+    padding-block-start: var(--space-8);
+  }
+
+  @media (max-width: 767.98px) {
+    .screen.bare {
+      padding-block-start: var(--space-2);
+    }
   }
 
   .panel {
@@ -51,7 +64,8 @@
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
   }
 
-  .panel :global(h1) {
+  /* No weight of its own beyond one element, so a page's own heading rule wins. */
+  :where(.panel) :global(h1) {
     margin: 0 0 var(--space-2);
     font-size: var(--text-display);
     font-weight: var(--weight-light);

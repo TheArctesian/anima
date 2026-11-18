@@ -25,7 +25,7 @@ use russh::{
     keys::{Algorithm, EcdsaCurve, HashAlg},
 };
 
-pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
+pub use link::{CommandOutput, Error as LinkError, FixedCommand, HexDigits, SshLink, link};
 pub(crate) use observer::Observer;
 pub(crate) use sign_in::authenticate;
 

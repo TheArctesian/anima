@@ -1,0 +1,14 @@
+query ContainerList($deviceId: ID!) {
+  containers(deviceId: $deviceId) {
+    id
+    name
+    image
+    state
+    status
+    health
+    ports
+    createdAt
+    composeProject
+    composeService
+  }
+}

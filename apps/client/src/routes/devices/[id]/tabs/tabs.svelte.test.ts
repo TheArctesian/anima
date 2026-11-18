@@ -148,8 +148,8 @@ it('D-9: a given skeleton replaces the list rows while loading', () => {
 });
 const loaded = () => document.querySelector('.loaded');
 
-it('6.7: the device page has five tabs in order', () => {
-  expect(TAB_ITEMS.map((tab) => tab.label)).toEqual(['Overview', 'Checks', 'Sessions', 'Logs', 'Settings']);
+it('6.7, HOST-013: the device page has six tabs in order', () => {
+  expect(TAB_ITEMS.map((tab) => tab.label)).toEqual(['Overview', 'Checks', 'Containers', 'Sessions', 'Logs', 'Settings']);
 });
 
 describe('TabPanel (D-9, Loading role)', () => {

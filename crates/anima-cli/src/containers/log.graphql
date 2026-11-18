@@ -1,0 +1,9 @@
+query ContainerLogRead($deviceId: ID!, $containerId: String!, $lines: Int) {
+  containerLog(deviceId: $deviceId, containerId: $containerId, lines: $lines) {
+    lines {
+      at
+      text
+    }
+    cut
+  }
+}
