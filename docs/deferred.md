@@ -953,3 +953,18 @@ Items found during Phase 3 reviews that are not fixed in Phase 3. Tagged by pack
 Added 2026-11-12.
 
 Deferred items from these packages. Full detail is in `docs/plans/phase-3/WP-53.md`, `WP-55.md` and `phase-3-acceptance.md`.
+
+### The use of AI agent programs: AU-1 to AU-5 (up to cbbc1122)
+
+Added 2026-11-17.
+
+Deferred items from the build of AIS-018 to AIS-024 ([extensions-plan.md](plans/extensions-plan.md) Section 4.12.0).
+
+- The daemon does not keep its read position. After each start it reads each session file again and sends each session day again. The result is correct; the first scan of 4.5 GB took 15 to 21 seconds.
+- The counts have no retention period. The plan names none.
+- The estimate has no price for Claude Haiku 5.5, because its price depends on the length of each prompt. It prices each cache write at the 5-minute price.
+- A daemon can report very large counts and distort the totals of its own hub (finding 7 of the security review). A limit for each device is not built.
+- The page "Agent usage" is not in the phone bar, which has four destinations (MOB-010). The operator decides if a phone gets an entry.
+- The daemon reads only `~/.claude` and `~/.codex`. It does not follow `CLAUDE_CONFIG_DIR` or `CODEX_HOME`.
+- The browser specs of the page (`browser/acceptance/agent-usage`) did not run: the installed browsers of Playwright do not agree with its version.
+

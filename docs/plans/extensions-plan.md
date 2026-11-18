@@ -866,7 +866,8 @@ Reminders deliver only to the devices of the operator.
 #### 4.12.0 Usage counts first (operator direction 2026-11-17)
 
 Status: approved for build (R-135, operator, 2026-11-17: "Approve and build"). The requirements
-AIS-018 to AIS-024 are approved. R-133 and R-134 decided their direction. The map is
+AIS-018 to AIS-024 are approved. They are built and wait for HT-023 of
+[need-human-testing.md](../need-human-testing.md). R-133 and R-134 decided their direction. The map is
 [ai-direction.md](../proposals/ai-direction.md), step 1. The tasks are below.
 
 **Purpose.** Show the use of each AI agent program on each machine before the vault and the
@@ -900,11 +901,11 @@ result gives them in named fields with a length limit (MCP-008).
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| AU-1 | The contract: the optional member `agentUsage` of the push batch (K8), the query in K1, the table (K2). The daemon: the pure parse of the session files of Claude Code and Codex in `daemon-core`, the reader, the exclusions (AIS-018, AIS-019, AIS-022 to AIS-024) | Not started | — |
-| AU-2 | The hub: `fleet/agent_usage/` keeps the counts of each session and gives them by device, source, model, repository and day, with the estimate of the cost (AIS-020, AIS-021, AIS-023) | Not started | — |
-| AU-3 | `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, CMD-030, CMD-031) | Not started | — |
-| AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | Not started | — |
-| AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | Not started | — |
+| AU-1 | The contract: the optional member `agentUsage` of the push batch (K8), the query in K1, the table (K2). The daemon: the pure parse of the session files of Claude Code and Codex in `daemon-core`, the reader, the exclusions (AIS-018, AIS-019, AIS-022 to AIS-024) | In progress: built in 7b066fb2, 36739f06, b605aad1. Waits for HT-023. | See the state |
+| AU-2 | The hub: `fleet/agent_usage/` keeps the counts of each session and gives them by device, source, model, repository and day, with the estimate of the cost (AIS-020, AIS-021, AIS-023) | In progress: built in 934b0288, ee2a726c. Waits for HT-023. | See the state |
+| AU-3 | `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, CMD-030, CMD-031) | In progress: built in 2a001a34. Waits for HT-023. | See the state |
+| AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | In progress: built in 4b3823cd, 8bd2579e, 51f77f8f. The browser specs did not run and the mockup is not compared. Waits for HT-023. | See the state |
+| AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | In progress: the review found six faults of the daemon, corrected in cbbc1122. The entry is HT-023, which is open. | See the state |
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
