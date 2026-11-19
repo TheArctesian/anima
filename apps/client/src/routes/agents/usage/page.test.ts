@@ -77,5 +77,5 @@ it('DEF-002: the hub that this client marked as hosted gets the empty state with
   markHosted(localStorage, HUB);
   await open('');
   expect(document.querySelector('a')).toBeNull();
-  expect(document.body.textContent).toContain('A daemon cannot connect to a hub that Anima.ing hosts yet');
+  expect(document.body.textContent).toContain('the application will install the daemon on this computer. That is not built yet');
 });

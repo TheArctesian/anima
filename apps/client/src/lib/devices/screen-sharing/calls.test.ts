@@ -25,6 +25,15 @@ describe('screenSharingCalls (R-079)', () => {
     expect(shell.invoke).toHaveBeenCalledWith('this_machine_read', { loginServer: 'https://hs.anima.ing' });
   });
 
+  it('DEF-005: for a hub at a port of this computer nothing is asked, so the VPN client is not run', async () => {
+    shell.answers = DESKTOP_MAC;
+    const { hub, requests: asked } = fakeHub(LOGIN);
+    const linked = { ...hub, address: { ...hub.address, origin: 'http://127.0.0.1:41001' } };
+    await expect(screenSharingCalls(linked).thisMachine()).resolves.toBeNull();
+    expect(shell.invoke).not.toHaveBeenCalled();
+    expect(asked).toEqual([]);
+  });
+
   it('R-079, CLI-001: with the browser answers Sharing is not offered and this computer is not read', async () => {
     shell.answers = BROWSER;
     const calls = screenSharingCalls(fakeHub(LOGIN).hub);

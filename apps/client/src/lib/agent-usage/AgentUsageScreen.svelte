@@ -15,14 +15,15 @@
   const REPORTS = 'The daemon of each device reports the use of the AI agent programs.';
   /** The daemon is installed for one device, in its settings; the Devices page is where a device is opened. */
   const WHERE_TO_INSTALL = 'To install it, open a device, then Settings, then Daemon.';
-  const NOT_ON_HOSTED = 'A daemon cannot connect to a hub that Anima.ing hosts yet, so this page stays empty on this hub.';
+  /** R-206: the application will install the daemon on this computer; until that is built there is nothing to open. */
+  const NOT_ON_HOSTED = 'On this hub the application will install the daemon on this computer. That is not built yet, so this page stays empty for now.';
 
   interface Props {
     store: UsageStore;
     query: UsageQuery;
     onQueryChange: (query: UsageQuery) => void;
     onRetry: () => void;
-    /** The hub is one that Anima.ing hosts: the daemon of a computer cannot reach it yet (HM-D16), so no action is offered. */
+    /** The hub is one that Anima.ing hosts: no control installs the daemon of a computer there yet (R-206), so no action is offered. */
     hosted?: boolean;
   }
 

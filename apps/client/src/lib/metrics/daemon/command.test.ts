@@ -128,15 +128,6 @@ describe('installCommand refuses hostile input (MET-019, LOG-007)', () => {
     expect(installCommand(input({ origin, release: null, target: null }))).toEqual({ ok: false, refusal: 'origin' });
   });
 
-  it('DEF-002: a hub behind the local port of the link gives no command, with a sentence that names the link', () => {
-    for (const change of [{}, { release: null, target: null }]) {
-      const result = installCommand(input({ origin: 'http://127.0.0.1:41001', ...change }));
-      expect(result).toEqual({ ok: false, refusal: 'link' });
-    }
-    expect(refusalMessage('link')).toBe('No install command: this application reaches the hub through its link, and a daemon cannot use that path yet.');
-    expect(installCommand(input({ origin: 'http://127.0.0.1:41001/x' }))).toEqual({ ok: false, refusal: 'origin' });
-  });
-
   it('MET-020: the origins the daemon takes give a command: no port, or port 443 written out', () => {
     for (const origin of ['https://hub.test', 'https://hub.test:443']) {
       expect(made({ origin }).text).toContain(`--hub '${origin}' -`);
@@ -158,4 +149,13 @@ describe('installCommand refuses hostile input (MET-019, LOG-007)', () => {
     expect(outsideQuotes(text)).not.toContain('id;');
     expect(outsideQuotes(text)).not.toContain('1.0.0');
   });
+});
+
+it('DEF-002: a hub behind the local port of the link gives no command, with a sentence that names the link', () => {
+  for (const change of [{}, { release: null, target: null }]) {
+    const result = installCommand(input({ origin: 'http://127.0.0.1:41001', ...change }));
+    expect(result).toEqual({ ok: false, refusal: 'link' });
+  }
+  expect(refusalMessage('link')).toBe('No install command: this application reaches the hub through its link, and a daemon cannot use that path yet.');
+  expect(installCommand(input({ origin: 'http://127.0.0.1:41001/x' }))).toEqual({ ok: false, refusal: 'origin' });
 });
