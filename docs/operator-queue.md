@@ -29,14 +29,14 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.4 | The engine (E0) | Agent: the rest of E0-7 T3 (`Subscription.reminderFirings`) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035, HT-040 and HT-043. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: nothing; task W0 (the Unix socket between the daemon and the link, R-172) is built and waits for the check HT-037, and no code of W3 or W4 comes before the two acceptances |
-| 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker. Agent: nothing now; stage 2 (H5) waits for task W1 of row 4.7 |
+| 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker; the decisions OD-HOST-5 to OD-HOST-12 of hosted-applications-stage-2.md, of which OD-HOST-5 and OD-HOST-6 unblock stage 2. Agent: nothing now |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (116)
+## 2. Open decisions (124)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -119,6 +119,14 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PNL4 | Does the first-start question of EXT-008 stay, with Devices, Agents and Projects already selected, or is it removed? | Proposed, not ruled: keep it for a local and a self-hosted first run, and leave it out of the hosted first run (HMD-037). | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL5 | Is the Agents page a new extension, or the extension "AI coding sessions" with its panes and its usage? The text of sessions (AIS-001 to AIS-008) needs the vaul… | Proposed, not ruled: one default-on extension "Agents" with the agent tools (Herdr and Hermes Agent, agent-tools-as-extensions.md; AIS-009 to AIS-017 and the na… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL6 | Does the phone layout show the same three panels? It has four destinations: Devices, Sessions, Logs and Settings (MOB-010). | Proposed, not ruled: not in the first version. Show Agents and Projects on the phone later. | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-HOST-5 | Do you accept the work route contract, and how do the container work types join it? | B: accept version 0.3 now, and approve Section 4 as the text for a security review; it joins the contract when the review has no finding that you have not decid… | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-6 | What may a Compose file from the hub do on a machine? | B: a switch at the machine that is off after the install, and the profile `contained` unless the owner sets `full` at the machine. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-7 | May Anima manage a stack that it did not install? | B: yes, after the owner adopts it at the machine; start, stop, restart and update in place; no change of its file in the first version. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-8 | Do you approve HOST-008: each installed application gets a check and a web interface entry? | Yes. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-9 | The reverse proxy: does Anima run one, manage one that exists, or stay out? This reverses HOST-009. | A, in stage 3: Anima installs its own, only where you ask, and refuses when ports 80 or 443 are in use. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-10 | Deploys from git: a Compose file from a repository first, or a build from source first? | A: the Compose file first. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-11 | Does a catalogue ship with the product? | A: a small list that is tested, and the lists that you add by address. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
+| OD-HOST-12 | Are databases a kind of their own? | A: yes, as catalogue entries with more knowledge, PostgreSQL first. | [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D9 | Which sign-in methods does AuthKit show? | GitHub, Google and email with a code; passkeys offered after the first sign-in. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
@@ -157,7 +165,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (28)
+## 3. Documents that wait for an approval (29)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -177,6 +185,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Deferred; not built |
+| [proposals/hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) | Proposal, with a task table | Draft |
 | [proposals/hosted-web-hub.md](proposals/hosted-web-hub.md) | Proposal | Draft |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |

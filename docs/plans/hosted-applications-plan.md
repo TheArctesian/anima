@@ -267,6 +267,8 @@ The order is hub API, `anima` command, MCP tool, client (CMD-030). A task is bui
 
 ## Needs
 
+- Container work types in the contract of the work route. The contract has the types `build` and `runner` only, so the acceptance of task W1 alone starts no task of stage 2. [hosted-applications-stage-2.md](../proposals/hosted-applications-stage-2.md) proposes the types and the changes of tasks H5, H6, H10 and H11; it is a proposal, and this plan does not change until a ruling approves it.
+
 - The work route of [jobs.md](../proposals/jobs.md) for stage 2 (task W1, row 4.7 of the priority
   order). Stage 1 does not need it.
 - The ingestion contract of the engine for the location samples (R-145). The engine owns it.
