@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (121)
+## 2. Open decisions (122)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -56,6 +56,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C21 | When are tools in the chat built: in their own stage after stage 1 and the security review (CH15), with the grants for each member after stage 2? | Yes. Strength: stage 1 ships without the risk of tools, and the review comes first. Weakness: tools come later than the other functions of the benchmark. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -122,7 +123,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL4 | Does the first-start question of EXT-008 stay, with Devices, Agents and Projects already selected, or is it removed? | Proposed, not ruled: keep it for a local and a self-hosted first run, and leave it out of the hosted first run (HMD-037). | [proposals/default-panels.md](proposals/default-panels.md) |
-| OD-PNL5 | Is the Agents page a new extension, or the extension "AI coding sessions" with its panes and its usage? The text of sessions (AIS-001 to AIS-008) needs the vaul… | Proposed, not ruled: one default-on extension "Agents" with the panes (AIS-009 to AIS-017), the usage (AIS-018 to AIS-024) and the bots (BOT). The session text… | [proposals/default-panels.md](proposals/default-panels.md) |
+| OD-PNL5 | Is the Agents page a new extension, or the extension "AI coding sessions" with its panes and its usage? The text of sessions (AIS-001 to AIS-008) needs the vaul… | Proposed, not ruled: one default-on extension "Agents" with the agent tools (Herdr and Hermes Agent, agent-tools-as-extensions.md; AIS-009 to AIS-017 and the na… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL6 | Does the phone layout show the same three panels? It has four destinations: Devices, Sessions, Logs and Settings (MOB-010). | Proposed, not ruled: not in the first version. Show Agents and Projects on the phone later. | [proposals/default-panels.md](proposals/default-panels.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | Set it after the load test of shared-pool-hosting.md. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
