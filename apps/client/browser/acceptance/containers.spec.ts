@@ -64,7 +64,7 @@ test.describe('signed in, more to read of Docker', () => {
     await page.getByRole('button', { name: 'Details of tracks-app-1' }).click();
     const details = page.getByRole('region', { name: 'Details of tracks-app-1' });
     await expect(details.getByRole('region', { name: 'Environment' })).toContainText('SECRET_KEY_BASE');
-    await expect(details.getByRole('region', { name: 'Environment' })).toContainText('Anima never reads a value');
+    await expect(details.getByRole('region', { name: 'Environment' })).toContainText('Anima never reads the value of an environment variable');
     await expect(details.getByRole('region', { name: 'Mounts' })).toContainText('volume tracks-data → /data (read-write)');
     await expect(page.getByRole('heading', { name: 'Log of tracks-app-1' })).toHaveCount(0);
 

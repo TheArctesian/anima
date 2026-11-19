@@ -12,9 +12,9 @@ vi.mock('motion', async (importOriginal) => ({
 
 const LOG: ContainerLog = {
   lines: [
+    { at: null, text: 'GET /health 200' },
     { at: '2026-11-18T18:00:00+00:00', text: 'INFO listening on :3000' },
     { at: '2026-11-18T18:00:01+00:00', text: 'ERROR <b>connection refused</b>' },
-    { at: null, text: 'GET /health 200' },
   ],
   cut: false,
 };
@@ -62,14 +62,19 @@ it('HOST-015: the search and the level show only the lines that agree, and say h
   expect(document.body.textContent).toContain('No line has this text and this level.');
 });
 
-it('HOST-015: the switches turn the line wrap and the timestamps off and on', () => {
-  expect(document.querySelector('.lines')?.classList.contains('nowrap')).toBe(false);
-  expect(document.querySelectorAll('.lines time')).toHaveLength(3);
+it('HOST-015: each switch turns only its own thing off and on', () => {
+  const wrapped = () => document.querySelector('.lines')?.classList.contains('nowrap') === false;
+  const times = () => document.querySelectorAll('.lines time').length;
+  expect([wrapped(), times()]).toEqual([true, 3]);
   control('Wrap lines')?.click();
+  flushSync();
+  expect([wrapped(), times()]).toEqual([false, 3]);
   control('Show timestamps')?.click();
   flushSync();
-  expect(document.querySelector('.lines')?.classList.contains('nowrap')).toBe(true);
-  expect(document.querySelectorAll('.lines time')).toHaveLength(0);
+  expect([wrapped(), times()]).toEqual([false, 0]);
+  control('Wrap lines')?.click();
+  flushSync();
+  expect([wrapped(), times()]).toEqual([true, 0]);
 });
 
 it('HOST-015: the download is the lines that are shown, in a file named for the container', async () => {
@@ -79,8 +84,13 @@ it('HOST-015: the download is the lines that are shown, in a file named for the 
   expect(saved).toHaveLength(1);
   expect(saved[0]?.[0]).toBe('tracks-app-1.log');
   expect(await saved[0]?.[1].text()).toBe('2026-11-18T18:00:01+00:00 ERROR <b>connection refused</b>\n');
+  // With the timestamps off, the file has no time.
+  control('Show timestamps')?.click();
+  flushSync();
+  button('Download')?.click();
+  expect(await saved[1]?.[1].text()).toBe('ERROR <b>connection refused</b>\n');
   // With no line shown there is nothing to download.
   type('nothing has this');
   button('Download')?.click();
-  expect(saved).toHaveLength(1);
+  expect(saved).toHaveLength(2);
 });

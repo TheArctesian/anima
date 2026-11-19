@@ -105,6 +105,8 @@ export class ContainersStore {
     const result = await this.calls.updates();
     if (generation !== this.#updatesGeneration) return;
     if (!result.ok) {
+      // An old answer beside the reason would read as the answer of this try.
+      this.updates = [];
       this.updatesProblem = result.error.message;
       this.updatesStatus = 'failed';
       return;

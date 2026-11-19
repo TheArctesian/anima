@@ -11,6 +11,7 @@
   const health = $derived(healthRows(detail));
 </script>
 
+<p class="note">A command, a health-check test, a label and a process line are shown as Docker has them, and can hold a secret. Anima keeps none of this.</p>
 <div class="detail">
   <section aria-label="Container">
     <h4>Container</h4>
@@ -52,7 +53,7 @@
   </section>
   <section aria-label="Environment">
     <h4>Environment</h4>
-    <p class="none">Names only. Anima never reads a value: a value can hold a secret.</p>
+    <p class="none">Names only. Anima never reads the value of an environment variable: it can hold a secret.</p>
     {#if detail.environmentNames.length > 0}
       <ul class="mono names">{#each detail.environmentNames as name, index (index)}<li>{name}</li>{/each}</ul>
     {/if}
@@ -140,8 +141,13 @@
     font-family: var(--font-mono);
   }
 
-  .none {
+  .none,
+  .note {
     margin: 0;
     color: var(--text-secondary);
+  }
+
+  .note {
+    font-size: var(--text-sm);
   }
 </style>

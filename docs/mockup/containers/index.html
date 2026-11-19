@@ -165,23 +165,24 @@ td.act { text-align: end; }
   <div class="frame gd">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
     <div><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span></div>
-    <div class="bar"><span class="grow">4 containers, 1 with a newer image</span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
+    <div class="bar"><span class="grow">2 containers, 1 with a newer image</span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
     <table>
       <colgroup><col class="name"><col class="state"><col class="status"><col><col class="ports"><col class="act"></colgroup>
       <thead><tr><th>Name</th><th>State</th><th>Status</th><th>Image</th><th>Ports</th><th></th></tr></thead>
       <tbody>
-        <tr class="group"><th colspan="6">tracks<span class="state warning"><span class="dot"></span>Partly running</span><small>2 of 3 running</small></th></tr>
+        <tr class="group"><th colspan="6">tracks<span class="state up"><span class="dot"></span>Running</span><small>2 of 2 running</small></th></tr>
         <tr class="selected"><th>tracks-app-1<span class="id">4f5c1d2e3a4b</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td><span class="mono">example/tracks:0.36</span><span class="mark newer">Newer image</span></td><td class="mono">0.0.0.0:3000-&gt;3000/tcp</td><td class="act"><span class="btn ghost on">Details</span><span class="btn ghost">Log</span></td></tr>
         <tr><th>tracks-db-1<span class="id">9a1b2c3d4e5f</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td><span class="mono">postgres:17</span><span class="mark">Up to date</span></td><td class="mono">5432/tcp</td><td class="act"><span class="btn ghost">Details</span><span class="btn ghost">Log</span></td></tr>
       </tbody>
     </table>
     <div class="bar"><span class="title">Details of tracks-app-1</span><span class="btn">Refresh</span><span class="btn ghost">✕</span></div>
+    <p class="secondary">A command, a health-check test, a label and a process line are shown as Docker has them, and can hold a secret. Anima keeps none of this.</p>
     <div class="detail">
       <section><h4>Container</h4><dl><dt>Image</dt><dd class="mono">example/tracks:0.36</dd><dt>Command</dt><dd class="mono">/entrypoint.sh serve</dd><dt>Working directory</dt><dd class="mono">/app</dd><dt>User</dt><dd>The default of the image</dd><dt>Restart policy</dt><dd>unless-stopped</dd><dt>Restarts</dt><dd>0</dd><dt>Started</dt><dd>18/11/2026, 08:00:00</dd><dt>Finished</dt><dd>Never</dd><dt>Exit status</dt><dd>0</dd></dl></section>
       <section><h4>Health check</h4><dl><dt>Test</dt><dd class="mono">CMD-SHELL curl -f localhost:3000/health</dd><dt>Interval</dt><dd>30 s</dd><dt>Health</dt><dd>Healthy</dd><dt>Failed in a row</dt><dd>0</dd><dt>Last run</dt><dd>Exit status 0, 18/11/2026, 10:59:30</dd></dl></section>
       <section><h4>Mounts</h4><p class="mono">volume tracks-data → /data (read-write)</p></section>
       <section><h4>Networks</h4><p class="mono">tracks_default  172.18.0.3</p></section>
-      <section><h4>Environment</h4><p class="secondary">Names only. Anima never reads a value: a value can hold a secret.</p><p class="mono">DATABASE_URL  SECRET_KEY_BASE  PATH</p></section>
+      <section><h4>Environment</h4><p class="secondary">Names only. Anima never reads the value of an environment variable: it can hold a secret.</p><p class="mono">DATABASE_URL  SECRET_KEY_BASE  PATH</p></section>
       <section><h4>Labels</h4><dl><dt class="mono">com.docker.compose.project</dt><dd class="mono">tracks</dd></dl></section>
       <section><h4>Processes</h4><p class="mono">1  root  /entrypoint.sh serve</p></section>
     </div>

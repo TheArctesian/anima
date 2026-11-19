@@ -48,9 +48,12 @@ it('HOST-017: the details of a container are read when the operator asks, and sh
   expect(calls.detailsAsked).toEqual([APP_ID]);
   expect(document.querySelector('.detail h3')?.textContent).toBe('Details of tracks-app-1');
   const text = document.querySelector('.detail')?.textContent ?? '';
-  for (const part of ['web-entrypoint.sh bin/rails server', 'on-failure:3', 'CMD-SHELL curl -f localhost:3000', 'volume tracks-data → /data (read-write)', 'tracks_default  172.18.0.3', 'DATABASE_PASSWORD', '805  root  bin/rails server', 'Anima never reads a value']) {
+  for (const part of ['web-entrypoint.sh bin/rails server', 'on-failure:3', 'CMD-SHELL curl -f localhost:3000', 'volume tracks-data → /data (read-write)', 'tracks_default  172.18.0.3', 'DATABASE_PASSWORD', '805  root  bin/rails server', 'Anima never reads the value of an environment variable']) {
     expect(text).toContain(part);
   }
+  // The environment is a list of names: nothing in it has the form of a name with its value.
+  const names = [...document.querySelectorAll('[aria-label="Environment"] li')].map((each) => each.textContent);
+  expect(names).toEqual(['DATABASE_PASSWORD', 'RAILS_ENV']);
   // A label of a container is text: it never becomes an element of the page.
   expect(text).toContain('<i>tracks</i>');
   expect(document.querySelector('.detail i')).toBeNull();
@@ -93,6 +96,54 @@ it('HOST-021: the hub looks for newer images only when the operator asks, and ea
     ['Built here, or the tag moved', false],
   ]);
   expect(document.querySelector('.count')?.textContent.replace(/\s+/g, ' ').trim()).toBe('4 containers, 1 with a newer image');
+});
+
+it('HOST-021: after a refresh the count is of the rows that are shown, and a failed new try drops the old marks', async () => {
+  button('Look for newer images')?.click();
+  await settle();
+  calls.containers = calls.containers.filter((each) => each.id !== APP_ID);
+  await store.load();
+  flushSync();
+  expect(document.querySelector('.count')?.textContent.replace(/\s+/g, ' ').trim()).toBe('3 containers, 0 with a newer image');
+  calls.fail = { code: 'UNAVAILABLE', message: 'Docker was not read: the device cannot be reached over SSH.' };
+  button('Look for newer images')?.click();
+  await settle();
+  expect(document.querySelector('.mark')).toBeNull();
+  expect(document.querySelector('.problem')).not.toBeNull();
+});
+
+it('HOST-017: an answer that comes after the operator closed the details, or chose a different container, is dropped', async () => {
+  let answer: (() => void) | undefined;
+  const real = calls.detail;
+  calls.detail = async (id) => {
+    await new Promise<void>((resolve) => (answer = resolve));
+    return real(id);
+  };
+  button('Details of tracks-app-1')?.click();
+  await settle();
+  const first = answer;
+  button('Close the details')?.click();
+  first?.();
+  await settle();
+  expect([store.detail, store.detailStatus]).toEqual([null, 'idle']);
+  expect(document.querySelector('.below')).toBeNull();
+});
+
+it('HOST-020: a refresh that fails keeps the last list and says why, and an empty list can be read again', async () => {
+  view('networks')?.click();
+  await settle();
+  calls.fail = { code: 'UNAVAILABLE', message: 'Docker was not read: the device cannot be reached over SSH.' };
+  button('Refresh')?.click();
+  await settle();
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('cannot be reached over SSH');
+  expect(rowTexts()).toHaveLength(2);
+  calls.fail = null;
+  calls.networks = () => Promise.resolve({ ok: true, value: [] });
+  button('Refresh')?.click();
+  await settle();
+  expect(document.body.textContent).toContain('No networks');
+  expect(document.querySelector('.count')?.textContent).toBe('0 networks');
+  expect(button('Refresh')).toBeDefined();
 });
 
 it('HOST-021: when the hub cannot look, the reason is shown and the table stays', async () => {

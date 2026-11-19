@@ -27,7 +27,10 @@
   const selected = $derived(store.containers.find((container) => container.id === store.selected) ?? null);
   const lineOptions = LINE_CHOICES.map((value) => ({ value, label: value }));
 
-  /** The lists of HOST-020 are read when the operator first opens one: the read of the sizes is slow. */
+  /**
+   * The lists of HOST-020 are read when the operator first opens one: the read of the sizes is slow. An arrow key only
+   * moves the focus in the two choices here, so passing a choice on the way to a different one starts no read.
+   */
   function show(next: View): void {
     view = next;
     if (next === 'networks') void store.storage.networks.open();
@@ -36,14 +39,14 @@
 </script>
 
 <section class="containers" aria-label="Containers">
-  <div class="views"><Segmented label="What to show" size="sm" options={[...VIEWS]} value={view} onchange={show} /></div>
+  <div class="views"><Segmented label="What to show" size="sm" arrowsChoose={false} options={[...VIEWS]} value={view} onchange={show} /></div>
   {#if view === 'containers'}
     <ContainerTable {store} />
     {#if selected !== null && store.shown === 'log'}
       <section class="below log" aria-label="Log of {selected.name}">
         <header class="bar">
           <h3>Log of {selected.name}</h3>
-          <Segmented label="Lines" size="sm" options={lineOptions} value={store.lines} onchange={(lines) => void store.setLines(lines)} />
+          <Segmented label="Lines" size="sm" arrowsChoose={false} options={lineOptions} value={store.lines} onchange={(lines) => void store.setLines(lines)} />
           <FormButton size="sm" icon="carbon:renew" busy={store.logStatus === 'loading'} onclick={() => void store.readLog()}>Refresh</FormButton>
           <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the log" onclick={() => { store.close(); }} />
         </header>

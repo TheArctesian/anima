@@ -19,12 +19,18 @@ export function usedBy(count: number | null | undefined, names: readonly string[
   return more > 0 ? `${names.join(', ')} and ${String(more)} more` : names.join(', ');
 }
 
+/** `repository:tag`; the repository alone for an image with no tag; the first digits of the identifier for one with no name. */
+function imageName(image: ContainerImage): string {
+  if (image.repository == null) return image.id.replace(/^sha256:/, '').slice(0, 12);
+  return image.tag == null ? image.repository : `${image.repository}:${image.tag}`;
+}
+
 export function imageRows(images: readonly ContainerImage[]): StorageTable {
   return {
     columns: ['Image', 'Size', 'Only this image', 'Used by'],
     rows: images.map((image) => ({
       key: `${image.id} ${image.repository ?? ''} ${image.tag ?? ''}`,
-      cells: [image.repository == null ? image.id.replace(/^sha256:/, '').slice(0, 12) : `${image.repository}:${image.tag ?? 'none'}`, image.size, image.uniqueSize, usedBy(image.containerCount, image.containers)],
+      cells: [imageName(image), image.size, image.uniqueSize, usedBy(image.containerCount, image.containers)],
     })),
   };
 }
@@ -47,6 +53,11 @@ export function networkRows(networks: readonly ContainerNetwork[]): StorageTable
 }
 
 const USAGE_TYPE: Readonly<Record<Exclude<StorageKind, 'networks'>, string>> = { images: 'Images', volumes: 'Local Volumes' };
+
+/** "3 images", "1 volume". */
+export function countWords(count: number, kind: StorageKind): string {
+  return `${String(count)} ${count === 1 ? kind.slice(0, -1) : kind}`;
+}
 
 /** "470.4MB in use, 49.63MB (10%) can be freed by a clean-up" for the type; empty when Docker gave no line for it. */
 export function usageLine(usage: ContainerStorage['usage'], kind: Exclude<StorageKind, 'networks'>): string {

@@ -29,5 +29,7 @@ it('HOST-017: the health check has its test, its interval and its last result, a
 it('HOST-017: a mount names its volume or its path on the device, and a network gives the addresses', () => {
   expect(DETAIL.mounts.map(mountLine)).toEqual(['volume tracks-data → /data (read-write)', 'bind /srv/config → /config (read-only)']);
   expect(DETAIL.networks.map(networkLine)).toEqual(['tracks_default  172.18.0.3']);
+  // A tmpfs mount has no volume and no path on the device.
+  expect(mountLine({ type: 'tmpfs', name: null, source: '', destination: '/run', readOnly: false })).toBe('tmpfs → /run (read-write)');
   expect(networkLine({ network: 'host', ipv4: null, ipv6: null, gateway: null, macAddress: null })).toBe('host');
 });

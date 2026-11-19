@@ -2,7 +2,7 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
-  import { imageRows, networkRows, usageLine, volumeRows, type StorageKind } from './rows';
+  import { countWords, imageRows, networkRows, usageLine, volumeRows, type StorageKind } from './rows';
   import type { StorageStore } from './storage.svelte';
 
   /**
@@ -18,31 +18,37 @@
   const usage = $derived(kind === 'networks' ? '' : usageLine(store.storage.value?.usage ?? [], kind));
 </script>
 
-{#if read.status === 'failed'}
+{#if read.value === null && read.status === 'failed'}
   <ErrorState message={read.problem} onRetry={() => void read.load()} />
 {:else if read.value === null}
   <p class="reading" role="status">Reading the {kind} of the device…</p>
-{:else if table.rows.length === 0}
-  <EmptyState title="No {kind}" line="Docker on this device has none." />
 {:else}
   <header class="bar">
-    <p class="count" aria-live="polite">{table.rows.length} {kind}{usage === '' ? '' : `. ${usage}`}</p>
+    <p class="count" aria-live="polite">{countWords(table.rows.length, kind)}{usage === '' ? '' : `. ${usage}`}</p>
     <FormButton size="sm" icon="carbon:renew" busy={read.status === 'loading'} onclick={() => void read.load()}>Refresh</FormButton>
   </header>
-  <table>
-    <caption>The {kind} of Docker on this device</caption>
-    <thead>
-      <tr>{#each table.columns as column (column)}<th scope="col">{column}</th>{/each}</tr>
-    </thead>
-    <tbody>
-      {#each table.rows as row (row.key)}
-        <tr>
-          <th scope="row" class="text mono" title={row.cells[0]}>{row.cells[0]}</th>
-          {#each row.cells.slice(1) as cell, index (index)}<td class="text" title={cell}>{cell}</td>{/each}
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  {#if read.status === 'failed'}
+    <!-- The last answer stays below; the reason says why it is not a new one. -->
+    <p class="reading" role="alert">{read.problem}</p>
+  {/if}
+  {#if table.rows.length === 0}
+    <EmptyState title="No {kind}" line="Docker on this device has none." />
+  {:else}
+    <table>
+      <caption>The {kind} of Docker on this device</caption>
+      <thead>
+        <tr>{#each table.columns as column (column)}<th scope="col">{column}</th>{/each}</tr>
+      </thead>
+      <tbody>
+        {#each table.rows as row (row.key)}
+          <tr>
+            <th scope="row" class="text mono" title={row.cells[0]}>{row.cells[0]}</th>
+            {#each row.cells.slice(1) as cell, index (index)}<td class="text" title={cell}>{cell}</td>{/each}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/if}
 {/if}
 
 <style>

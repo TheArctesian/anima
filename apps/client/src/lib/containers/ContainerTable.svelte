@@ -12,7 +12,8 @@
   const { store }: { store: ContainersStore } = $props();
 
   const groups = $derived(projectGroups(store.containers, store.updates));
-  const newer = $derived(store.updates.filter((update) => update.state === 'NEWER_IMAGE').length);
+  /** The count is of the rows that are shown: a container that is gone after a refresh is not counted. */
+  const newer = $derived(groups.flatMap((group) => group.rows).filter((row) => row.update?.newer === true).length);
   const pressed = (id: string, shown: 'log' | 'detail') => id === store.selected && store.shown === shown;
 </script>
 

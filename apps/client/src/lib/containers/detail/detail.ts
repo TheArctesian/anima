@@ -49,7 +49,9 @@ export function healthRows(detail: ContainerDetail): readonly DetailRow[] {
 
 /** One mount as "volume app-data → /data (read-write)". */
 export function mountLine(mount: ContainerDetail['mounts'][number]): string {
-  return `${mount.type} ${mount.name ?? mount.source} → ${mount.destination} (${mount.readOnly ? 'read-only' : 'read-write'})`;
+  // A tmpfs mount has no volume and no path on the device.
+  const from = [mount.type, mount.name ?? mount.source].filter((part) => part !== '').join(' ');
+  return `${from} → ${mount.destination} (${mount.readOnly ? 'read-only' : 'read-write'})`;
 }
 
 /** One network as its name and the addresses of the container on it. */
