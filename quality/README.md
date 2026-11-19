@@ -52,7 +52,7 @@ A missing executable is a failure, never a skip (CQ-024). The gate list and runn
 
 `bun quality/bin/gates.ts --fast` runs a part of the list, chosen by the paths that are different from the
 merge base with `origin/dev` (`FAST_BASE` names a different ref): committed, staged, not staged and new files.
-The rule is `choose` in `src/gates/tier.ts`; `tests/tier.test.ts` tests it.
+The rule is `choose` in `src/gates/tier.ts`; `tests/gates/tier.test.ts` tests it.
 
 | Changed paths | Gates |
 | --- | --- |
@@ -124,7 +124,7 @@ of the operator (R-198).
 
 ### Numbers at a merge
 
-`bin/numbers.ts --check` fails when a placeholder of a number (`R-NEW-` and a name; `src/numbers.ts` has the series) is in the repository;
+`bin/numbers.ts --check` fails when a placeholder of a number (`R-NEW-` and a name; `src/merge/numbers.ts` has the series) is in the repository;
 `--assign` gives each its number. `bin/merge.ts <branch>` merges a branch into `dev` with them
 (`AGENTS.md`, "Numbers and generated files at a merge"). `merge-rule.json` holds the two rules
 of R-NEW-gaterule and R-NEW-automerge; the two are on.

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { checkDocuments, MOCKUP, parseKnown } from "../src/documents/documents.ts";
 import { QUEUE } from "../src/documents/queue.ts";
 import { REGISTER } from "../src/documents/register.ts";
-import { isShared, placeholders } from "../src/numbers.ts";
+import { isShared, placeholders } from "../src/merge/numbers.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
 import { report } from "../src/report.ts";
 

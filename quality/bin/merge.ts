@@ -4,7 +4,7 @@
 // `--push` it pushes nothing and prints the command. It never pushes to `main`.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { conflictsForAHand, gatesRefusal, GENERATED, mergeMessage, parseMergeRule, type CheckRun } from "../src/merge.ts";
+import { conflictsForAHand, gatesRefusal, GENERATED, mergeMessage, parseMergeRule, type CheckRun } from "../src/merge/rules.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";

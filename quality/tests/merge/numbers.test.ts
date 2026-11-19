@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assign, isShared, placeholders } from "../src/numbers.ts";
+import { assign, isShared, placeholders } from "../../src/merge/numbers.ts";
 
 const RULINGS = "- **R-205 (operator).** A ruling.\n- **R-206 (operator).** A ruling.\n";
 const CHECKS = "### HT-043: a check\n\n### HT-044: a check\n";

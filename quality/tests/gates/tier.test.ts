@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { gateList, ofGroups } from "../src/gates/gates.ts";
-import { choose, describeChoice, fastGates, type Layout } from "../src/gates/tier.ts";
+import { gateList, ofGroups } from "../../src/gates/gates.ts";
+import { choose, describeChoice, fastGates, type Layout } from "../../src/gates/tier.ts";
 
 const LAYOUT: Layout = {
   crates: [

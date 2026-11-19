@@ -3,7 +3,7 @@
 // the working tree; the merge script runs it (PLN-021).
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { assign, placeholders, type TextFile } from "../src/numbers.ts";
+import { assign, placeholders, type TextFile } from "../src/merge/numbers.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 function trackedTextFiles(): TextFile[] {
@@ -13,7 +13,7 @@ function trackedTextFiles(): TextFile[] {
   return paths.flatMap((path) => {
     const bytes = readFileSync(join(REPO_ROOT, path));
     // A file with a zero byte is not text; the tests and the source of this rule name placeholders as examples.
-    if (bytes.includes(0) || /^quality\/(src\/numbers\.ts|tests\/(numbers|merge)\.test\.ts)$/.test(path)) return [];
+    if (bytes.includes(0) || /^quality\/(src\/merge\/|tests\/merge\/)/.test(path)) return [];
     return [{ path, text: bytes.toString("utf8") }];
   });
 }

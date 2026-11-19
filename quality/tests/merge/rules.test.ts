@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { conflictsForAHand, gatesRefusal, mergeMessage, parseMergeRule } from "../src/merge.ts";
+import { conflictsForAHand, gatesRefusal, mergeMessage, parseMergeRule } from "../../src/merge/rules.ts";
 
 describe("the merge of a branch into dev", () => {
   test("PLN-020 a conflict in a generated file needs no hand; each other conflict does", () => {
@@ -22,7 +22,7 @@ describe("the merge of a branch into dev", () => {
 
 describe("the two rules of a merge (quality/merge-rule.json; R-NEW-gaterule, R-NEW-automerge)", () => {
   test("the rule file of the repository has the two rules on", () => {
-    const text = readFileSync(join(import.meta.dir, "..", "merge-rule.json"), "utf8");
+    const text = readFileSync(join(import.meta.dir, "..", "..", "merge-rule.json"), "utf8");
     expect(parseMergeRule(text)).toEqual({ fullGates: "github", mergeWithoutCheck: true });
   });
 
