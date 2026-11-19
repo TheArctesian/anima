@@ -2,12 +2,15 @@
 # docs/plans/projects-and-builds-plan.md). The procedure for the operator is in
 # docs/procedures/releases.md, "The release workflow".
 #
-# A tag `v<version>` on a commit of `main` builds, signs and publishes, with no approval
-# (R-182); the version must be the version of the commit (R-183, deploy/bin/commit-version).
-# R-184 decided a different start, each change of `main`; it is not built, and task B8g of the
-# plan changes this trigger only after the operator has seen its design. A run by hand is a
-# trial: it builds, signs and checks everything, and publishes nothing. No pull request starts
-# this workflow.
+# Each push to `main` is a release of the desktop application when it changed after its
+# published version (R-184, R-198 to R-200), with no approval (R-182). The first job decides,
+# with deploy/bin/release-decision; when it says "nothing", no other job runs and the summary
+# of the run gives the reason. The version is the version of the commit (R-183, R-201,
+# deploy/bin/commit-version). A run by hand is a trial: it builds, signs and checks
+# everything, and publishes nothing. No pull request and no tag starts this workflow.
+#
+# The switch of the operator: the repository variable ANIMA_PUBLIC_RELEASES. While it is not
+# `on`, a push builds nothing and publishes nothing; the summary says what it would do.
 #
 # Each secret is in an environment of its own, so a job has only the secrets of its work:
 #   release           the Developer ID certificate and the notary credentials   job `macos`
@@ -20,8 +23,8 @@ name: release
 
 on:
   push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -29,8 +32,12 @@ on:
         required: true
         type: string
 
+# One release at a time, in the order of the pushes. GitHub keeps one run that waits and
+# cancels an older one that waits; the run that comes next compares with the published
+# version, so it carries the changes of a run that was cancelled. A run in progress is never
+# cancelled. A trial has a group of its own: it neither waits for a release nor cancels one.
 concurrency:
-  group: release
+  group: ${{ github.event_name == 'workflow_dispatch' && 'release-trial' || 'release' }}
   cancel-in-progress: false
 
 permissions: {}
@@ -40,13 +47,15 @@ env:
   CI: "true"
 
 jobs:
-  # The version, and the proof that the commit is on `main` (BLD-041).
+  # The version, the proof that the commit is on `main` (BLD-041), and the decision: is this
+  # push a release (R-184)? It holds no secret and reads only the public feeds.
   commit:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
     outputs:
+      release: ${{ steps.read.outputs.release }}
       version: ${{ steps.read.outputs.version }}
       sha: ${{ steps.read.outputs.sha }}
       time: ${{ steps.read.outputs.time }}
@@ -57,37 +66,71 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - id: read
-        name: Read the version and refuse a commit that is not on main
+        name: Read the version, refuse a commit that is not on main, and decide
         env:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
           TRIAL_VERSION: ${{ inputs.version }}
+          SWITCH: ${{ vars.ANIMA_PUBLIC_RELEASES }}
+          FEEDS: https://releases.anima.ing
         run: |
           set -eu
-          case "$EVENT:$REF" in
-            push:refs/tags/v*) version=${REF#refs/tags/v} ;;
-            workflow_dispatch:*) version=$TRIAL_VERSION ;;
-            *) echo "::error::Only a tag v<version> or a run by hand starts a release."; exit 1 ;;
-          esac
-          if ! echo "$version" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$'; then
-            echo "::error::The version is not like 0.2.2."
-            exit 1
-          fi
           sha=$(git rev-parse 'HEAD^{commit}')
-          # The version of a release is the version of its commit (R-183). A trial keeps the
-          # version of its input, so that it signs nothing with the version of a release.
-          of_commit=$(sh deploy/bin/commit-version "$sha")
-          if [ "$EVENT" = push ] && [ "$version" != "$of_commit" ]; then
-            echo "::error::The tag gives $version, and the commit $sha has the version $of_commit (R-183)."
-            exit 1
-          fi
           git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
           if ! git merge-base --is-ancestor "$sha" refs/remotes/origin/main; then
             echo "::error::The commit $sha is not on main (BLD-041)."
             exit 1
           fi
+          # The version that a feed gives now, or `none` for a feed that does not exist. Any
+          # other answer stops the run: a release is not decided on a guess.
+          published() {
+            code=$(curl -sS --max-time 30 --retry 3 -o feed.json -w '%{http_code}' "$FEEDS/$1/latest.json")
+            case "$code" in
+              200) jq -er '.version | select(type == "string")' feed.json ;;
+              404) echo none ;;
+              *) echo "::error::The feed $1 answered $code." >&2; return 1 ;;
+            esac
+          }
+          case "$EVENT:$REF" in
+            push:refs/heads/main)
+              mac_arm=$(published darwin-aarch64)
+              mac_intel=$(published darwin-x86_64)
+              linux=$(published linux-x86_64)
+              decided=$(sh deploy/bin/release-decision --before "$BEFORE" "$sha" desktop "$mac_arm" "$mac_intel" "$linux")
+              version=$(sh deploy/bin/commit-version "$sha")
+              {
+                echo "### The desktop application"
+                echo "Commit \`$sha\`, version $version. Published now: macOS $mac_arm and $mac_intel, Linux $linux."
+              } >> "$GITHUB_STEP_SUMMARY"
+              case "$decided" in
+                "release $version") release=true ;;
+                nothing:*) release=false ;;
+                *) echo "::error::release-decision gave no answer."; exit 1 ;;
+              esac
+              if [ "$release" = true ] && [ "$SWITCH" != on ]; then
+                release=false
+                decided="nothing: this push is a release of $version, and public releases are off (the variable ANIMA_PUBLIC_RELEASES is not \`on\`)"
+              fi
+              echo "Decision: $decided" >> "$GITHUB_STEP_SUMMARY"
+              echo "$decided"
+              ;;
+            workflow_dispatch:*)
+              # A trial keeps the version of its input, so that it signs nothing with the
+              # version of a release.
+              version=$TRIAL_VERSION
+              release=true
+              echo "A trial of the version $version. It publishes nothing." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *) echo "::error::Only a push to main or a run by hand starts a release."; exit 1 ;;
+          esac
+          if ! echo "$version" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$'; then
+            echo "::error::The version is not like 0.2.2."
+            exit 1
+          fi
           key=$(jq -er '.plugins.updater.pubkey' apps/desktop/src-tauri/tauri.conf.json)
           {
+            echo "release=$release"
             echo "version=$version"
             echo "sha=$sha"
             echo "time=$(git show -s --format=%ct "$sha")"
@@ -98,6 +141,7 @@ jobs:
   # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
   gates:
     needs: commit
+    if: needs.commit.outputs.release == 'true'
     runs-on: macos-15
     timeout-minutes: 150
     permissions:
@@ -137,6 +181,7 @@ jobs:
   # that hold a key run this file and compile nothing.
   tool:
     needs: commit
+    if: needs.commit.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -168,6 +213,7 @@ jobs:
   # the Developer ID identity that tauri.conf.json names, checked, notarized and stapled.
   macos:
     needs: commit
+    if: needs.commit.outputs.release == 'true'
     runs-on: macos-15
     timeout-minutes: 180
     environment: release
@@ -300,6 +346,7 @@ jobs:
   # downloads linuxdeploy with no hash check.
   linux:
     needs: commit
+    if: needs.commit.outputs.release == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     permissions:
@@ -428,10 +475,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # Only for a tag. The checks that the hub makes for a queued job (BLD-002, BLD-064 to
+  # Only for a push to `main` that is a release, and only while the switch of the operator is
+  # on. The checks that the hub makes for a queued job (BLD-002, BLD-064 to
   # BLD-069), by the same code: `anima-hub release publish`. It writes each feed last.
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'
     needs: [commit, tool, macos, linux, sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 60

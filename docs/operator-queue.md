@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (120)
+## 2. Open decisions (113)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -44,13 +44,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
-| OD-W40 | Who can publish, when each change of `main` is a release (R-184) and no person approves (R-182)? Each push to `main` that changes code is then a public, signed… | Open. Recommendation: (A) only together with a rule that blocks force pushes on `main`, and after the gates of the workflow have passed on GitHub in some runs.… | [plan/decisions.md](plan/decisions.md) |
-| OD-W41 | How often does `main` release? 18 changes of code reached `main` in the 24 hours before the note, and one run takes about one hour. The choices: (A) each change… | Open. Recommendation: (B), each night. A wrong commit then has some hours in which a person can see it before it is public, and an installed application gets on… | [plan/decisions.md](plan/decisions.md) |
-| OD-W42 | Which commits count for the version (R-183)? He selected "every commit". Merge commits then count, and a merged branch adds each of its commits at one time. The… | Open. Recommendation: (A), as he selected and as task B8f is built. The numbers of (B) are lower, so a change to (B) is not possible after the first release. | [plan/decisions.md](plan/decisions.md) |
-| OD-W43 | Can a build by hand on a branch show a version that a commit of `main` also has (R-183 item 4)? projects-and-builds-plan.md, "A release for each change of `main… | Open. Recommendation: yes. A local build does not update itself and Settings already says that it is a local build (DEF-001). | [plan/decisions.md](plan/decisions.md) |
-| OD-W44 | Is a change of only tests or only comments inside the folders of an application a release (R-184)? projects-and-builds-plan.md, "A release for each change of `m… | Open. Recommendation: yes. A rule of paths cannot tell such a change from a change of the program, and a wrong "not affected" ships nothing with no error. | [plan/decisions.md](plan/decisions.md) |
-| OD-W45 | Which application joins the release workflow after the desktop application: `anima` alone by Homebrew (tasks R8a to R8d), the iOS application to TestFlight, or… | Open. No recommendation; `anima` alone is the smallest job. | [plan/decisions.md](plan/decisions.md) |
-| OD-W46 | The secrets of GitHub that the workflow does not read: `APPLE_SIGNING_IDENTITY` in `release`; `ACCOUNT_ID`, `S3_API` and `TOKEN_VALUE` in `release-publish`; and… | Open. Recommendation: yes to both. The operator does it (R-180, R-195). | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -224,7 +217,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-026 | the use of AI agent programs from real session files |
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
-| HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192) |
+| HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-198 to R-201) |
 | HT-038 | the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8) |
 | HT-039 | a newer image for a container, with real public registries (HOST-021; task H13) |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |

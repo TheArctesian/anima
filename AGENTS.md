@@ -10,10 +10,12 @@ cite requirement IDs (for example `CHK-011`) in commits and pull requests.
 Do these steps in this order in each session, before you change code. The planning documents are
 the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry point.
 
-1. **Get `main`, in a worktree of your own.** Run `git fetch origin`. Do not work in the
+1. **Get `dev`, in a worktree of your own.** Run `git fetch origin`. Do not work in the
    operator's main checkout and do not change its branch: make a worktree,
-   `git worktree add ../<name> origin/main`, and read the documents there. A plan that is only on
-   a branch is not a plan (PLN-011).
+   `git worktree add ../<name> origin/dev`, and read the documents there. `dev` is the branch of
+   the daily work (R-198); see "The branches `dev` and `main`". If `origin/dev` does not exist,
+   tell the operator and stop: do not make it, and do not use `main` in its place. A plan that
+   is only on a branch of a task is not a plan (PLN-011).
 2. **Find the work.** If the operator named the work, find the plan that owns it in
    [docs/plan/ownership.md](docs/plan/ownership.md) and [docs/plan/register.md](docs/plan/register.md).
    If the operator named no work, open [docs/plan/priorities.md](docs/plan/priorities.md) and take the
@@ -28,31 +30,31 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
    [docs/plan/ownership.md](docs/plan/ownership.md); if a plan owns the subject, say which
    requirement has it or change that plan; if none does, record the idea and stop
    ([docs/ideas/README.md](docs/ideas/README.md)). "Build" means that the operator asked for code.
-4. **Read the claims.** Look at [docs/claims/](docs/claims/README.md) on `origin/main`. If a claim
+4. **Read the claims.** Look at [docs/claims/](docs/claims/README.md) on `origin/dev`. If a claim
    holds the task, a different session builds it. Take the next task or ask the operator.
 5. **Claim the task.** Make the claim in a small worktree of its own, so that it never carries
-   your other changes: `git worktree add --detach ../claim-<task> origin/main` (for example
+   your other changes: `git worktree add --detach ../claim-<task> origin/dev` (for example
    `../claim-e0-5`). If that folder already exists, a session of this computer has or had this
    claim in progress. Do not use the folder. Look at it and ask the operator. In the worktree,
    write `docs/claims/<task>.md` with the task, the plan, the name of this machine in Anima, your
    coding agent, the branch and the day. If the task is new, add its row to the plan in the same
    commit and run `bun run quality:register`. Run `bun run quality:documents`, commit, and run
-   `git push origin HEAD:main`. If the push is refused, run `git fetch origin` and
-   `git reset --hard origin/main` in the same worktree, and read the claims again. The reset
+   `git push origin HEAD:dev`. If the push is refused, run `git fetch origin` and
+   `git reset --hard origin/dev` in the same worktree, and read the claims again. The reset
    removes your claim commit. If the task is free, write the claim file again, commit, and push
    again. When the push has succeeded, or you give the task up, run
-   `git worktree remove ../claim-<task>`. Then start or update your branch from `origin/main`
-   (`git switch -c <branch> origin/main`, or `git merge origin/main` on a branch that exists), so
+   `git worktree remove ../claim-<task>`. Then start or update your branch from `origin/dev`
+   (`git switch -c <branch> origin/dev`, or `git merge origin/dev` on a branch that exists), so
    that it holds the claim (PLN-022).
 6. **Build** on a branch, in its own worktree, from the task and the requirements that it names.
    Build in the order hub API, `anima` command, MCP tool, client (CMD-030). If you change the
    layout of a screen that has a mockup, change the mockup in the same commit (PLN-019). If the
    gates cannot prove the function, add its entry to
    [docs/need-human-testing.md](docs/need-human-testing.md) (PLN-014).
-7. **Finish.** Run `bun run gates`. In the commit that merges the work: set the state of the task
-   with its commit (PLN-008), delete your claim, and run `bun run quality:register` if the state of
-   the plan changed (PLN-020).
-8. **If you stop before the end,** delete your claim on `main` with the same steps as step 5 (a
+7. **Finish.** Run `bun run gates`. Merge the work into `dev`, never into `main`. In the commit
+   that merges the work: set the state of the task with its commit (PLN-008), delete your claim,
+   and run `bun run quality:register` if the state of the plan changed (PLN-020).
+8. **If you stop before the end,** delete your claim on `dev` with the same steps as step 5 (a
    small worktree `../claim-<task>`, a commit that deletes the file, a push), and write in the task row what is
    built, unless you will continue on the same machine. Push your branch, so that a different
    session can find the work.
@@ -60,6 +62,22 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
 A question that only the operator can answer does not stop the session. Write it as a row in the
 open decisions of the plan, run `bun run quality:register` so that it is in
 [docs/operator-queue.md](docs/operator-queue.md) (PLN-023), tell the operator, and take a different task.
+
+## The branches `dev` and `main`
+
+`main` is what is released: each push to `main` that changes an application is a public, signed
+update of each installed application, with no approval (R-182, R-198;
+[docs/procedures/releases.md](docs/procedures/releases.md), "The release workflow").
+
+- Work, claims and merges go to `dev`. An agent does not push to `main`, does not merge into
+  `main` and does not move `main` in any way, unless the operator tells it to release in that
+  conversation.
+- `dev` comes into `main` only by a merge commit whose first parent is the tip of `main`
+  (`git merge --no-ff`), never by a fast-forward and never by force: the version of a release
+  is the number of commits on the first line of `main` (R-201).
+- Where a rule or a document says "on `main`" for the daily work (a plan, a claim, a ruling that
+  must be recorded before work that depends on it), read `dev`.
+- The base of a gates run does not change (`BASE_REF`, default `phase-2`).
 
 ## Before you change code
 

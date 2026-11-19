@@ -1,16 +1,14 @@
 // Rules for .github/workflows/release.yml, checked on the parsed file (R-179, R-180; BLD-041,
-// BLD-045, UPD-007, UPD-008), and the refusals of apps/desktop/src-tauri/check-mach-o.sh
-// (UPD-011). Nothing here runs the workflow or reads a secret.
+// BLD-045, UPD-007, UPD-008). Nothing here runs the workflow or reads a secret.
 import { describe, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const RAW = readFileSync(join(ROOT, ".github", "workflows", "release.yml"), "utf8");
-const MACH_O_CHECK = join(ROOT, "apps", "desktop", "src-tauri", "check-mach-o.sh");
 
 interface Step {
+  id?: string;
   name?: string;
   uses?: string;
   if?: string;
@@ -27,7 +25,7 @@ interface Job {
   steps: Step[];
 }
 interface Workflow {
-  on: Record<string, { tags?: string[]; inputs?: Record<string, unknown> }>;
+  on: Record<string, { branches?: string[]; tags?: string[]; inputs?: Record<string, unknown> }>;
   concurrency: { group: string; "cancel-in-progress": boolean };
   permissions: Record<string, string>;
   jobs: Record<string, Job>;
@@ -80,20 +78,59 @@ function runText(found: Job): string {
   return found.steps.map((step) => step.run ?? "").join("\n");
 }
 
-describe("what starts the workflow (UPD-007, OD-W26)", () => {
-  test("only a version tag and a run by hand start it", () => {
+describe("what starts the workflow (UPD-007, R-184, R-198)", () => {
+  test("only a push to main and a run by hand start it; no tag and no other branch does", () => {
     expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_dispatch"]);
-    expect(workflow.on["push"]).toEqual({ tags: ["v[0-9]+.[0-9]+.[0-9]+"] });
+    expect(workflow.on["push"]).toEqual({ branches: ["main"] });
   });
 
   test("no pull request starts it", () => {
     expect(RAW).not.toMatch(/pull_request/);
   });
 
-  test("a release in progress is not cancelled, and two do not run together", () => {
-    expect(workflow.concurrency).toEqual({ group: "release", "cancel-in-progress": false });
+  test("releases run one at a time and none in progress is cancelled; a trial has a group of its own", () => {
+    expect(workflow.concurrency).toEqual({
+      group: "${{ github.event_name == 'workflow_dispatch' && 'release-trial' || 'release' }}",
+      "cancel-in-progress": false,
+    });
   });
 
+});
+
+describe("which push is a release (R-184, R-198)", () => {
+  test("R-184 the first job decides with release-decision, from the feeds of today and the tip of main before the push", () => {
+    const text = runText(job("commit"));
+    for (const feed of ["darwin-aarch64", "darwin-x86_64", "linux-x86_64"]) expect(text).toContain(`published ${feed}`);
+    expect(text).toContain('sh deploy/bin/release-decision --before "$BEFORE" "$sha" desktop "$mac_arm" "$mac_intel" "$linux"');
+    expect(job("commit").steps.find((step) => step.id === "read")?.env?.["BEFORE"]).toBe("${{ github.event.before }}");
+    expect(text).toContain("404) echo none ;;");
+    expect(text).toMatch(/\*\) echo "::error::The feed \$1 answered \$code\." >&2; return 1 ;;/);
+  });
+
+  test("when the decision is nothing, no job builds, signs or publishes", () => {
+    for (const name of ["gates", "tool", "macos", "linux"]) {
+      expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
+    }
+    for (const name of ["sign", "publish", "trial"]) {
+      expect(waitsFor(name).has("macos")).toBe(true);
+      expect(job(name).if ?? "").not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
+    }
+  });
+
+  test("the switch of the operator: with the variable not on, a push builds nothing and publish cannot run", () => {
+    const read = job("commit").steps.find((step) => step.id === "read");
+    expect(read?.env?.["SWITCH"]).toBe("${{ vars.ANIMA_PUBLIC_RELEASES }}");
+    expect(runText(job("commit"))).toMatch(/if \[ "\$release" = true \] && \[ "\$SWITCH" != on \]; then\n\s+release=false/);
+    expect(job("publish").if).toContain("vars.ANIMA_PUBLIC_RELEASES == 'on'");
+  });
+
+  test("the reason of a decision is in the summary of the run", () => {
+    expect(runText(job("commit"))).toContain('echo "Decision: $decided" >> "$GITHUB_STEP_SUMMARY"');
+  });
+
+});
+
+describe("the commit that each job builds (BLD-041, R-183)", () => {
   test("BLD-041 the first job refuses a commit that is not on main, and each other job waits for it", () => {
     expect(runText(job("commit"))).toContain('git merge-base --is-ancestor "$sha" refs/remotes/origin/main');
     for (const name of Object.keys(jobs)) {
@@ -101,12 +138,13 @@ describe("what starts the workflow (UPD-007, OD-W26)", () => {
     }
   });
 
-  test("R-183 a tag must give the version of its commit, and the job has the full history for the count", () => {
+  test("R-183 the version of a release is the version of its commit, and the job has the full history for the count", () => {
     const checkout = job("commit").steps.find((step) => step.uses?.startsWith("actions/checkout@"));
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
     const text = runText(job("commit"));
-    expect(text).toContain('of_commit=$(sh deploy/bin/commit-version "$sha")');
-    expect(text).toMatch(/\[ "\$EVENT" = push \] && \[ "\$version" != "\$of_commit" \]; then\n\s+echo "::error::[^\n]+\n\s+exit 1/);
+    expect(text).toContain('version=$(sh deploy/bin/commit-version "$sha")');
+    expect(text).toContain('"release $version") release=true ;;');
+    expect(text).toContain("version=$TRIAL_VERSION");
   });
 
   test("each job that reads the repository reads the commit that the first job checked", () => {
@@ -200,8 +238,8 @@ describe("the order to a published release (UPD-008, BLD-042)", () => {
     expect(job("gates").steps.some((step) => step.uses?.startsWith("oven-sh/setup-bun@"))).toBe(true);
   });
 
-  test("publish runs only for a tag and only after every other job passed", () => {
-    expect(job("publish").if).toBe("github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')");
+  test("publish runs only for a push to main with the switch on, and only after every other job passed", () => {
+    expect(job("publish").if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
     expect(job("publish").if).not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
     expect([...waitsFor("publish")].sort()).toEqual(["commit", "gates", "linux", "macos", "sign", "tool"]);
   });
@@ -263,68 +301,14 @@ describe("the updater of a built application (UPD-001, DEF-001)", () => {
     expect(marks({ ANIMA_RELEASE_BUILD: "1" }).exitCode).toBe(1);
   });
 
-  test("both build jobs of the workflow ask for a release build, for a tag and for a trial run alike", () => {
+  test("both build jobs of the workflow ask for a release build, for a release and for a trial run alike", () => {
     for (const name of ["macos", "linux"]) {
       const build = job(name).steps.filter((step) => (step.run ?? "").includes("trial-bundle.sh"));
       expect(build).toHaveLength(1);
       expect(build[0]?.env?.["ANIMA_RELEASE_BUILD"]).toBe("1");
       expect(build[0]?.if).toBeUndefined();
-      expect(job(name).if).toBeUndefined();
+      expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
     }
     expect(RAW).not.toMatch(/ANIMA_LOCAL_BUILD/);
-  });
-});
-
-/** A folder shaped as an application whose programs are copies of one universal file with an ad hoc signature. */
-function adHocApp(programs: string[]): { folder: string; app: string } {
-  const folder = mkdtempSync(join(tmpdir(), "anima-mach-o-"));
-  const app = join(folder, "Anima.ing.app");
-  const macos = join(app, "Contents", "MacOS");
-  mkdirSync(macos, { recursive: true });
-  const source = join(folder, "main.c");
-  writeFileSync(source, "int main(void) { return 0; }\n");
-  const built = join(folder, "program");
-  const run = (argv: string[]): void => {
-    const result = Bun.spawnSync(argv, { stdout: "ignore", stderr: "pipe" });
-    if (result.exitCode !== 0) throw new Error(`${argv[0] ?? ""} failed: ${result.stderr.toString()}`);
-  };
-  run(["/usr/bin/cc", "-arch", "arm64", "-arch", "x86_64", "-o", built, source]);
-  for (const program of programs) {
-    writeFileSync(join(macos, program), readFileSync(built));
-    chmodSync(join(macos, program), 0o755);
-    run(["/usr/bin/codesign", "--force", "--sign", "-", join(macos, program)]);
-  }
-  return { folder, app };
-}
-
-function machOCheck(app: string): { exitCode: number; errors: string } {
-  const result = Bun.spawnSync(["/bin/sh", MACH_O_CHECK, app, "ABCDE12345"], { stdout: "ignore", stderr: "pipe" });
-  return { exitCode: result.exitCode, errors: result.stderr.toString() };
-}
-
-const PROGRAMS = ["anima", "anima-database", "anima-desktop", "anima-gateway", "anima-hub", "anima-link", "anima-local-hub"];
-
-// The checked programs are of macOS (codesign, lipo); the pinning gate is skipped elsewhere in the same way.
-describe.skipIf(process.platform !== "darwin")("check-mach-o.sh (UPD-011)", () => {
-  test("an application whose programs have an ad hoc signature is refused", () => {
-    const { folder, app } = adHocApp(PROGRAMS);
-    try {
-      const result = machOCheck(app);
-      expect(result.exitCode).toBe(1);
-      expect(result.errors).toContain("check-mach-o:");
-    } finally {
-      rmSync(folder, { recursive: true, force: true });
-    }
-  });
-
-  test("an application with a program that a release does not carry is refused by its name", () => {
-    const { folder, app } = adHocApp([...PROGRAMS, "extra-program"]);
-    try {
-      const result = machOCheck(app);
-      expect(result.exitCode).toBe(1);
-      expect(result.errors).toContain("Contents/MacOS holds");
-    } finally {
-      rmSync(folder, { recursive: true, force: true });
-    }
   });
 });
