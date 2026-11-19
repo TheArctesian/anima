@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: Version 2 (2026-11-19). R-207 (operator, first-hand, Grok Bot chat, 2026-11-19, 14:03 to 14:11 PT) decides OD-UD1 to OD-UD13, so the direction is decided (PLN-007). The requirements UDOC-001 to UDOC-049 are not approved: that is task UD20. No task is named by a ruling, so no task may start. Version 1 was made from the idea `user-documentation` (`3e5910d0`) and pushed to `dev` (`0400d45a`). Code state checked on `origin/dev` at `3353f648` (version 1) and `0400d45a` (version 2); `anima-site` checked at `3d71012`. Serves row 4.22 of the priorities (tier 1, after row 4.3; R-207, OD-UD4).
+evidence: Version 3 (2026-11-19). R-208 (operator, first-hand, 14:17 and 14:18 PT) adds UDOC-050: the docs say that the free hosted hub is good for about 5 machines, a guide and not a limit. Version 2: R-207 (operator, first-hand, Grok Bot chat, 2026-11-19, 14:03 to 14:11 PT) decides OD-UD1 to OD-UD13, so the direction is decided (PLN-007). The requirements UDOC-001 to UDOC-050 are not approved: that is task UD20. No task is named by a ruling, so no task may start. Version 1 was made from the idea `user-documentation` (`3e5910d0`) and pushed to `dev` (`0400d45a`). Code state checked on `origin/dev` at `3353f648` (version 1) and `0400d45a` (version 2); `anima-site` checked at `3d71012`. Serves row 4.22 of the priorities (tier 1, after row 4.3; R-207, OD-UD4).
 ---
 
 # Proposal: user documentation and the docs site docs.anima.ing
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the user documentation of Anima.ing. The pages for each task and each concept, the generated references, a copy that an AI agent can read, and the site docs.anima.ing that publishes them |
-| Version | 2 |
+| Version | 3 |
 | Date | 2026-11-19 |
 | Language | ASD-STE100 Simplified Technical English (STE). This rule applies to this proposal. It does not apply to the user pages in `docs/user/`, which use the plain style guide (R-207, OD-UD9) |
-| Status | The header of this document holds the state (PLN-020). History: Version 1 (Draft) was made from the idea `user-documentation` (PLN-018); that commit deleted the idea folder. Version 2 records R-207: the operator decided OD-UD1 to OD-UD13 first-hand. Two answers are against the recommendation: the docs site may use Vercel Web Analytics (OD-UD7), and the docs may describe the paid hosted option (OD-UD8). The idea `agent-readable-surface` is folded in (OD-UD10); this commit deletes its folder. The state is Direction decided. The requirements are not approved (task UD20). |
+| Status | The header of this document holds the state (PLN-020). History: Version 1 (Draft) was made from the idea `user-documentation` (PLN-018); that commit deleted the idea folder. Version 2 records R-207: the operator decided OD-UD1 to OD-UD13 first-hand. Two answers are against the recommendation: the docs site may use Vercel Web Analytics (OD-UD7), and the docs may describe the paid hosted option (OD-UD8). The idea `agent-readable-surface` is folded in (OD-UD10); this commit deletes its folder. The state is Direction decided. The requirements are not approved (task UD20). Version 3 records R-208: UDOC-050, the text of the docs about the free hosted hub. |
 | Serves | Row 4.22 of [priorities.md](../plan/priorities.md): tier 1, after row 4.3 (R-207, OD-UD4) |
 | Related | [design-spec.md](../spec/design-spec.md) Section 3.12 (SITE-001 to SITE-012), Section 3.11 (INS); [cli-mcp-plan.md](../plans/cli-mcp-plan.md) (CMD, MCP); [agent-tools-as-extensions.md](agent-tools-as-extensions.md) (AXT-036, `llms.txt` of the catalogue pages); [hosted-mode.md](hosted-mode.md); the idea `agent-readable-surface`, folded in and deleted (R-207, OD-UD10) |
-| Identifiers | UDOC-001 to UDOC-049, OD-UD1 to OD-UD13 (decided, R-207), tasks UD0 to UD20 |
+| Identifiers | UDOC-001 to UDOC-050, OD-UD1 to OD-UD13 (decided, R-207), tasks UD0 to UD20 |
 
 ## 1. Goal
 
@@ -175,6 +175,12 @@ The docs are in the `anima` program, so an agent gets the docs of the version th
 - **UDOC-048.** A fresh coding agent session must be able to install `anima`, run `anima mcp` and list the machines, from `llms-full.txt` or the skill file only (the measure of the idea `agent-readable-surface`). This is part of the check of UDOC-047.
 
 - **UDOC-049.** (R-207, OD-UD10, OD-UD13.) This repository must have an `INSTALL.md` at its root that a coding agent can follow ("follow INSTALL.md"). It holds only a short prompt and a link to the install page of the docs, so the steps have one owner (PLN-016). The install page of the docs is the page that `www.anima.ing` links to for the install steps (SITE-005 changes, task UD17).
+- **UDOC-050.** (R-208.) The page "The hosted option" and the page "The first run" must describe the free hosted hub. They must say that it is good for about 5 machines. This number is a guide, not a limit: the hub does not stop a sixth machine, and the page must not call it a limit. The pages must also say, with the hosted-mode rules as the source of each fact:
+  - the free hub sleeps when no device of the account is connected for 15 minutes, so checks, notifications and history need a hub that is always on (HMD-024, HMD-028);
+  - an account has one free hub (HMD-020);
+  - a free hub with no sign-in for 60 days is paused, and the person gets an email before a paused hub is deleted (HMD-021).
+
+  The number 5 comes from the operator (R-208). It is not measured: no load test of a free hub exists, the size of the slice of a free hub is not defined (HM-D1, HM-D8 of [hosted-mode.md](hosted-mode.md)), and the estimates in [shared-pool-hosting.md](shared-pool-hosting.md) Section 5 are not measured. [NEEDS CLARIFICATION: check the number again after the load test of the shared pool, and change the page if the operator changes the number.] If the numbers of HMD-021 or HMD-024 change (HM-D8), the pages change with them; UDOC-050 does not change a hosted-mode rule.
 
 ## 7. Changes to other documents (at approval, not now)
 
@@ -348,14 +354,14 @@ One pull request for each task. The size of each task is a few hours to three da
 
 | Task | Wave | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| UD20 | 0 | The operator approves UDOC-001 to UDOC-049 with a ruling, and answers the [NEEDS CLARIFICATION] markers that are his (UDOC-005 if the analytics script writes a cookie; UDOC-020 for a price). OD-UD1 to OD-UD13 are decided (R-207) | The operator | Not started | — |
+| UD20 | 0 | The operator approves UDOC-001 to UDOC-050 with a ruling, and answers the [NEEDS CLARIFICATION] markers that are his (UDOC-005 if the analytics script writes a cookie; UDOC-020 for a price; UDOC-050 after the load test). OD-UD1 to OD-UD13 are decided (R-207) | The operator | Not started | — |
 | UD0 | 0 | A record only, in `docs/research/`: the inventory of each outbound connection of each program, with its code path (for UDOC-041); the count of commands with no help text; the size of all pages compressed (UDOC-033); if `quality:documents` reads `docs/user/` | A ruling that names UD0 (it can come before UD20, because it is a record) | Not started | — |
 | UD1 | 0 | `docs/user/README.md` (the folder rules), `docs/user/STYLE.md` (UDOC-017 to UDOC-020; plain style, R-207), the folder skeleton of Section 6.2.1, the row in work-plan.md | UD20 | Not started | — |
 | UD2 | 1 | The CLI reference generator and its golden test (UDOC-021, UDOC-023 to UDOC-025); `docs/user/reference/cli.md`; `quality/generated.txt` | UD1 | Not started | — |
 | UD3 | 1 | The MCP tools reference generator and its golden test (UDOC-022, UDOC-023); `docs/user/reference/mcp-tools.md` | UD1 | Not started | — |
 | UD4 | 1 | `apps/docs`: the static SvelteKit site, the side menu, the page layout, the tokens, the CSP and headers, the build checks (UDOC-003 to UDOC-006, UDOC-008, UDOC-009, UDOC-011, UDOC-046); Vercel Web Analytics from the site origin, and the check that it writes no cookie (UDOC-005); the mockups compared (PLN-019) | UD1 | Not started | — |
 | UD5 | 2 | The agent copy: `.md` pages, `/llms.txt`, `/llms-full.txt`, `/search-index.json`, the search box with Cmd+K (UDOC-015, UDOC-026, UDOC-027, UDOC-029) | UD4 | Not started | — |
-| UD6 | 2 | Pages of Get started: What Anima.ing is, Install (the page that `www.anima.ing` links to), The first run, The hosted option (UDOC-020: public facts only, no price), Add your first machine, Add a phone; `INSTALL.md` at the root (UDOC-049) | UD1 | Not started | — |
+| UD6 | 2 | Pages of Get started: What Anima.ing is, Install (the page that `www.anima.ing` links to), The first run (UDOC-050), The hosted option (UDOC-020: public facts only, no price; UDOC-050: the free hub, "good for about 5 machines", its sleep, one per account, the pause after 60 days), Add your first machine, Add a phone; `INSTALL.md` at the root (UDOC-049) | UD1 | Not started | — |
 | UD7 | 2 | Pages of Reach your machines: Remote access (with the table), SSH, Desktop, Web interfaces | UD1 | Not started | — |
 | UD8 | 3 | Pages: The VPN, Stay awake; and Watch your machines: Uptime checks, Metrics, Notifications, Prometheus | UD1 | Not started | — |
 | UD9 | 3 | Pages of Use AI agents: The command line, `anima mcp`, What an agent can do, MCP permissions; the skill file and "Install with an agent" (UDOC-031, UDOC-032; R-207, OD-UD10) | UD1, UD3 | Not started | — |
@@ -381,7 +387,7 @@ One pull request for each task. The size of each task is a few hours to three da
 | UD4 | Pass when `bun run --cwd apps/docs build` gives static files only, the CSP has the values of UDOC-005, the analytics script loads from the site origin and writes no cookie and no local storage, no request goes to another origin (checked in the browser network panel and by a test of the built HTML), and the mockup row names the commit of the comparison; fail otherwise | `bun run --cwd apps/docs build`, `bun run --cwd apps/docs check`, `bun run --cwd apps/docs test`, `bun run quality:documents` | Page content; deploy |
 | UD5 | Pass when each page has a `.md` copy with the same text, `llms-full.txt` holds all pages in menu order, and the search finds the fixture queries in Rust and TypeScript the same; fail otherwise | `bun run --cwd apps/docs test`, `bun run --cwd apps/docs build` | `Accept` choice, a query address |
 | UD20 | Pass when a ruling approves the requirements, or names the ones that are not approved; fail otherwise | `bun run quality:register`, `bun run quality:documents` | A build |
-| UD6 to UD10, UD15 | Pass when each page of the task obeys UDOC-011 to UDOC-014 and UDOC-017 to UDOC-020, each command in it runs as written on the date of the commit or the page says it is not verified, and the build passes; fail otherwise | `bun run --cwd apps/docs build`, `bun run quality:documents` | Pages of other groups |
+| UD6 to UD10, UD15 | Pass when each page of the task obeys UDOC-011 to UDOC-014 and UDOC-017 to UDOC-020 (and, for UD6, UDOC-050: the free hub is "good for about 5 machines" as a guide, not a limit), each command in it runs as written on the date of the commit or the page says it is not verified, and the build passes; fail otherwise | `bun run --cwd apps/docs build`, `bun run quality:documents` | Pages of other groups |
 | UD11 | Pass when each connection of the UD0 record has a row with when, where, what and off, and a source note; fail otherwise | `bun run --cwd apps/docs build` | A gate for new connections |
 | UD12 | Pass when `anima docs search` and `show` work with no hub and no network (test), and `--json` follows the output rules; fail otherwise | `cargo nextest run -p anima-cli`, `bun run gates` | A remote server |
 | UD13 | Pass when the two tools are listed with no token, return cleaned text under `RESULT_CAP`, and pass their JSON-RPC tests (MCP-017); fail otherwise | `cargo nextest run -p anima-cli` | Change tools |
@@ -401,6 +407,7 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 
 ## 11. Not verified
 
+- The number of UDOC-050 (about 5 machines on a free hosted hub). It is the operator's guide, not a measurement; no load test of a free hub exists (R-208).
 - If the script of Vercel Web Analytics writes a first-party cookie or local storage. Vercel's page says only "without using any third-party cookies" and a hash of the request (read 2026-11-19). UD4 checks it.
 - A public pricing page: `www.anima.ing/pricing` gives HTTP 404 on 2026-11-19 (UDOC-020).
 - The quality of the help text of `anima`, and the count of commands with no text: the crate did not build on the box (`rustc` too old). UD0 measures it.
@@ -416,3 +423,4 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 
 - 2026-11-19: version 1. The Planner made the proposal from the idea `user-documentation` (`3e5910d0`). The idea folder is deleted in this commit. The idea `agent-readable-surface` is not deleted, because OD-UD10 is open.
 - 2026-11-19: version 2. R-207 records the first-hand answers of the operator to OD-UD1 to OD-UD13 (14:03 to 14:11 PT). The state is Direction decided. Changes: UDOC-004, UDOC-005, UDOC-044 and the privacy frame for Vercel Web Analytics (OD-UD7); UDOC-020 and D3 for the paid hosted option (OD-UD8); the idea `agent-readable-surface` folded in and deleted, UDOC-031 and UDOC-032 unconditional, UDOC-049 added (OD-UD10); UD16 and UD17 for SITE-005 (OD-UD13); row 4.22 moved to tier 1 (OD-UD4); the ownership row (OD-UD5); task UD20 for the approval.
+- 2026-11-19: version 3. R-208 (operator, first-hand, 14:17 and 14:18 PT): UDOC-050, the free hosted hub is "good for about 5 machines" in the docs, a guide and not a limit, not measured. Task UD6 and its acceptance are changed. No hosted-mode rule changes.
