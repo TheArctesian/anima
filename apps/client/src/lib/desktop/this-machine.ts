@@ -1,6 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import type { OperatingSystem } from '$lib/hub/generated/graphql';
-import type { Hub } from '$lib/hub/hub';
+import { isOnThisComputer, type Hub } from '$lib/hub/hub';
 import { vpnApi } from '$lib/vpn/api';
 
 /** The computer the desktop app runs on, as the shell reads it (R-058, R-060). Nothing here is logged (LOG-007). */
@@ -49,9 +49,13 @@ function thisMachineFrom(answer: unknown): ThisMachine | null {
  * does not name its login server, when the shell fails, or when the computer is not on the VPN: in each case there is
  * nothing to fill the Add device form with, so the form opens empty as before. The shell's error carries only a code,
  * and none of them changes that outcome.
+ *
+ * A hub at a port of this computer is not reached over the VPN (a hosted hub is reached through the link). For such a
+ * hub nothing is asked: the shell's read runs the VPN client, which starts the Tailscale application on a Mac where it
+ * was quit (DEF-005).
  */
 export async function readThisMachine(hub: Hub): Promise<ThisMachine | null> {
-  if (!isTauri()) return null;
+  if (!isTauri() || isOnThisComputer(hub.address)) return null;
   const loginServer = await vpnApi(hub).loginServer();
   if (!loginServer.ok) return null;
   try {

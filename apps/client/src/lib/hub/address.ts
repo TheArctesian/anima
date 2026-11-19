@@ -41,6 +41,14 @@ function refused(problem: AddressProblem): AddressResult {
   return { ok: false, error: { problem, message: MESSAGES[problem] } };
 }
 
+/**
+ * Whether the client reaches the hub at a port of this computer: through its link (a hosted hub, HMD-037) or as a hub of
+ * this computer. Such a hub is not reached over the VPN, so nothing about the VPN client of this computer applies to it.
+ */
+export function isOnThisComputer(address: Pick<HubAddress, 'origin'>): boolean {
+  return URL.canParse(address.origin) && LOOPBACK_HOSTS.includes(new URL(address.origin).hostname);
+}
+
 /** Parse an address the operator typed. A bare host name means `https://` (NET-005); `http://` is only for `127.0.0.1` (CLI-002, F-1). */
 export function parseHubAddress(text: string): AddressResult {
   const trimmed = text.trim();

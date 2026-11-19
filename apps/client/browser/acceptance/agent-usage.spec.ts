@@ -33,13 +33,14 @@ test.describe('signed in', () => {
   });
 });
 
-test('AIS-020: with no device the page is an empty state with Install daemon', async ({ browser }) => {
+test('AIS-020: with no device the page is an empty state that leads to the Devices page', async ({ browser }) => {
   const context = await browser.newContext();
   const hub = await installSyntheticHub(context, { fixtures: (loaded) => ({ ...loaded, devices: [] }) });
   await hub.signIn();
   const page = await context.newPage();
   await page.goto(`${HUB_ORIGIN}/agents/usage`);
   await expect(page.getByText('No use counts yet')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Install daemon' })).toBeVisible();
+  await expect(page.getByText('To install it, open a device, then Settings, then Daemon.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Devices' })).toBeVisible();
   await context.close();
 });
