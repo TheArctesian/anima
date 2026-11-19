@@ -60,7 +60,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
-| HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator with the three environments set, the Apple and updater secrets, the bucket token, a Mac with 0.2.1 installed, a Linux computer | Open |
+| HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 
 ### What a check on the hosted hub needs
 
@@ -901,32 +901,41 @@ GraphQL through the client's developer tools or `curl` with a login token.
 
 Result: Open.
 
-### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180)
+### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-187)
 
-Built: on the branch `release/github-workflow`. `.github/workflows/release.yml` builds the macOS and the Linux
+Built: on `main` since 3ae44093. `.github/workflows/release.yml` builds the macOS and the Linux
 application on machines of GitHub, signs the macOS one with the Developer ID and has it notarized, signs the two
 updater files with the updater key, and publishes with `anima-hub release publish`
-(`crates/hub/src/fleet/builds/publishing/built/`). The steps of the operator are in
+(`crates/hub/src/fleet/builds/publishing/built/`). The state of GitHub and the steps of the operator are in
 [releases.md](procedures/releases.md), "The release workflow".
 
 The tests ran the three `anima-hub release` commands against a bucket in the process of the test, with a
 throwaway key. `actionlint` read the workflow file, and a test reads its rules. `check-mach-o.sh` was run on the
-installed application 0.2.1. No test ran the workflow: not one job ran on a machine of GitHub, no secret of
-GitHub was read, the certificate was not imported, nothing was sent to the notary service, the R2 bucket was
-not reached, and no AppImage was started on a Linux computer.
+installed application 0.2.1. No test runs the workflow, reads a secret of GitHub, imports the certificate,
+sends anything to the notary service or reaches the R2 bucket. The operator says that an older AppImage of
+Anima ran on a Linux computer (R-187); the repository has no record of a start of the AppImage of today.
 
-1. Do the steps of "Before the first run, by the operator". Expected: three environments, each with you as the
-   required reviewer and with its rules for tags and branches.
-2. Do "A trial that publishes nothing" with the version `0.0.1`. Expected: each job passes, `publish` is
-   skipped, and no feed of `https://releases.anima.ing` changed. `stapler validate` and `spctl` accept the DMG
-   and the application of the artifact `macos`. The AppImage of the artifact `linux` starts on a Linux computer.
-   In each of the two, Settings > Updates does not say "This is a local build", and it offers the published
-   version (the build of the workflow has the updater; a build by hand with `trial-bundle.sh` has not, DEF-001).
-3. Do "The first real release". Expected: the three feeds give the new version; `stapler validate` and `spctl`
-   accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1 that was installed from its DMG offers
-   the new version and starts it after "Restart to update".
-4. Put the same tag text on a commit that is not on `main` in a test (for example a tag `v9.9.9` on a branch
-   commit; delete it after). Expected: the job `commit` fails with "is not on main", and no other job starts.
+1. Read "The state of GitHub". Expected: three environments with no required reviewer (R-182), each with its
+   rules for tags and branches, and the secrets under the names of the table.
+2. Do "A trial that publishes nothing" with the version `0.0.1`. Expected: no approval is asked, each job
+   passes, `publish` is skipped, and no feed of `https://releases.anima.ing` changed. `stapler validate` and
+   `spctl` accept the DMG and the application of the artifact `macos`. The AppImage of the artifact `linux`
+   starts on a Linux computer; the first public release waits for this (R-187). In each of the two, Settings >
+   Updates does not say "This is a local build", and it offers the published version (the build of the workflow
+   has the updater; a build by hand with `trial-bundle.sh` has not, DEF-001).
+3. Do "The first public release". Expected: the tag is `v` with the version that
+   `sh deploy/bin/commit-version origin/main` prints (R-183); the three feeds give that version; `stapler validate`
+   and `spctl` accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1 that was installed from its
+   DMG offers the version and starts it after "Restart to update".
+4. Put a tag `v9.9.9` on a commit of `main`, and delete it after. Expected: the job `commit` fails, because the
+   tag does not give the version of its commit (R-183), and no other job starts. The same check with a correct
+   version on a commit that is not on `main` must fail with "is not on main".
+
+Observation (2026-11-18, evening; 2026-11-19 UTC; read from GitHub by an agent, not a result of the operator):
+the operator started a trial, run 44468487102, from `main` at 9f056a5a with the version `0.0.1`. No approval
+was asked. The jobs `commit`, `tool`, `linux` (24 minutes) and `macos` (53 minutes: the
+Developer ID signature, the check of each Mach-O file, the notary service and the staple) passed. The job
+`gates` still ran after 57 minutes when this was written, so `sign` and `trial` had not started.
 
 Result: Open.
 
