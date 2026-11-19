@@ -1,5 +1,5 @@
 #!/bin/sh
-# Decides if a commit of `main` is a release of one application (R-184, R-197, R-200), and
+# Decides if a commit of `main` is a release of one application (R-184, R-198, R-201), and
 # prints one line:
 #
 #   release <version>     the application changed after its published version, and the
@@ -15,7 +15,7 @@
 # commit at that position on the first line of the history (deploy/bin/commit-version).
 #
 # --before is the tip of `main` before the push. If it is not on the first line of the
-# commit, `main` did not move by a commit whose first parent is its tip before (R-200): the
+# commit, `main` did not move by a commit whose first parent is its tip before (R-201): the
 # count of the first line is then not safe, and the command fails. It also fails for a commit
 # or a version that it cannot read. It reads no network and writes nothing.
 set -eu
@@ -38,9 +38,9 @@ sh "$HERE/affected-applications" --all | grep -Fxq -- "$APPLICATION" || refuse "
 # A push that makes a new branch gives 40 zeros as the commit before.
 if [ -n "$BEFORE" ] && [ -n "$(echo "$BEFORE" | tr -d 0)" ]; then
     BEFORE=$(git rev-parse --verify --quiet --end-of-options "$BEFORE^{commit}") \
-        || refuse "the tip of main before the push is not in the history; main was moved by force (R-200)"
+        || refuse "the tip of main before the push is not in the history; main was moved by force (R-201)"
     git rev-list --first-parent "$COMMIT" | grep -Fxq -- "$BEFORE" \
-        || refuse "main did not move by a commit whose first parent is its tip before ($BEFORE is not on the first line of $COMMIT); the version is not safe (R-200)"
+        || refuse "main did not move by a commit whose first parent is its tip before ($BEFORE is not on the first line of $COMMIT); the version is not safe (R-201)"
 fi
 
 VERSION=$(sh "$HERE/commit-version" "$COMMIT")

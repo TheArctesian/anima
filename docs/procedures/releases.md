@@ -85,19 +85,19 @@ updater files; they come only from the hub in the Builds flow. If the hub cannot
 it is not the key of `ANIMA_UPDATER_PUBLIC_KEY`, the hub starts with publishing off and its log
 says why.
 
-## The release workflow (R-179, R-180, R-182 to R-184, R-190 to R-195, R-197 to R-203)
+## The release workflow (R-179, R-180, R-182 to R-184, R-190 to R-195, R-198 to R-204)
 
 The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testing.md) holds the check of its runs. The [projects and builds plan](../plans/projects-and-builds-plan.md) owns the workflow design and its open decisions. This section gives the state of GitHub and the operator's steps.
 
 `.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub (R-173: the job signs; R-191: the workflow publishes; R-190: it runs the gates first).
 
-**Each push to `main` can be a release (R-184, R-197, R-198).** The first job of a run compares the pushed commit with the version that each feed gives now. If a path of the desktop application changed after that version, the run builds, signs and publishes the version of the pushed commit. If none changed, the run ends after that one job, and its summary says "nothing" with the reason. `deploy/release/applications.txt` is the map of the paths; each change inside the folders of the application counts, tests and comments too (R-199). A run by hand is a trial that publishes nothing. No tag and no pull request starts the workflow.
+**Each push to `main` can be a release (R-184, R-198, R-199).** The first job of a run compares the pushed commit with the version that each feed gives now. If a path of the desktop application changed after that version, the run builds, signs and publishes the version of the pushed commit. If none changed, the run ends after that one job, and its summary says "nothing" with the reason. `deploy/release/applications.txt` is the map of the paths; each change inside the folders of the application counts, tests and comments too (R-200). A run by hand is a trial that publishes nothing. No tag and no pull request starts the workflow.
 
-**No approval (R-182).** No person approves a run. To bring `dev` into `main` is the act that releases (R-197).
+**No approval (R-182).** No person approves a run. To bring `dev` into `main` is the act that releases (R-198).
 
 **The switch.** While the repository variable `ANIMA_PUBLIC_RELEASES` is not `on`, a push to `main` builds nothing and publishes nothing; the summary of the run says what it would release. The variable does not exist today, so public releases are off. "To switch public releases on" below has the steps.
 
-### The version of a release (R-183, R-200)
+### The version of a release (R-183, R-201)
 
 The version of a commit of `main` is `0.<N div 100>.<N mod 100>`, where N is the number of commits on the first line of its history (the own line of `main`; a branch that is merged adds one commit, its merge). This command prints it:
 
@@ -105,11 +105,11 @@ The version of a commit of `main` is `0.<N div 100>.<N mod 100>`, where N is the
 sh deploy/bin/commit-version origin/main
 ```
 
-On 2026-11-18 the first line of `main` had 800 commits, which gives 0.8.0; it is more than the published 0.2.1. No person writes a version, and no file holds one. A build by hand with `trial-bundle.sh` and no version gets the version of the commit that is checked out: on `dev` that is a number of the line of `dev`, which a commit of `main` can also have (R-201). Such a build does not update itself. The command refuses a shallow clone.
+On 2026-11-18 the first line of `main` had 800 commits, which gives 0.8.0; it is more than the published 0.2.1. No person writes a version, and no file holds one. A build by hand with `trial-bundle.sh` and no version gets the version of the commit that is checked out: on `dev` that is a number of the line of `dev`, which a commit of `main` can also have (R-202). Such a build does not update itself. The command refuses a shallow clone.
 
-**The condition (R-200).** `main` must move only by a commit whose first parent is the tip of `main` before it: a merge of `dev` with `--no-ff`, or a commit directly on `main`. A fast-forward of `main` to a branch can make the count fall or jump. The first job of a run fails, with no release, when the tip of `main` before the push is not on the first line of the pushed commit.
+**The condition (R-201).** `main` must move only by a commit whose first parent is the tip of `main` before it: a merge of `dev` with `--no-ff`, or a commit directly on `main`. A fast-forward of `main` to a branch can make the count fall or jump. The first job of a run fails, with no release, when the tip of `main` before the push is not on the first line of the pushed commit.
 
-### The branch `dev` and the act that releases (R-197)
+### The branch `dev` and the act that releases (R-198)
 
 The daily work goes to the branch `dev`. Agents start from `origin/dev`, merge into `dev` and push their claims to `dev`; they do not push to `main` (AGENTS.md). `main` holds what is released.
 
@@ -217,7 +217,7 @@ To switch them off again: `gh variable delete ANIMA_PUBLIC_RELEASES --repo TheAr
 
 ### The first public release
 
-It waits for the two conditions above, and nothing makes it urgent before the LLC exists. It carries macOS and Linux. Its version is the version of its commit (R-183, R-200).
+It waits for the two conditions above, and nothing makes it urgent before the LLC exists. It carries macOS and Linux. Its version is the version of its commit (R-183, R-201).
 
 1. Keep the three feeds of today, for a rollback:
 
@@ -245,11 +245,11 @@ It waits for the two conditions above, and nothing makes it urgent before the LL
 ### What the operator accepts with this form
 
 - The updater key that each installed application trusts, the Developer ID certificate and the bucket token are in the secrets of GitHub. GitHub the company can read them.
-- No person approves a release (R-182), and each push to `main` that changes the application is one (R-197, R-198). An update is signed and published for each person or program that can push to `main` as your account: your account, a token of it, and each coding agent that runs with your `gh` or git credentials on your computer. The rule that agents use `dev` is a rule of AGENTS.md; GitHub does not hold an agent to it, because the agent acts as you. The workflow file of the pushed commit is the one that runs, so a push with a changed workflow can skip each check of this document, the switch also.
+- No person approves a release (R-182), and each push to `main` that changes the application is one (R-198, R-199). An update is signed and published for each person or program that can push to `main` as your account: your account, a token of it, and each coding agent that runs with your `gh` or git credentials on your computer. The rule that agents use `dev` is a rule of AGENTS.md; GitHub does not hold an agent to it, because the agent acts as you. The workflow file of the pushed commit is the one that runs, so a push with a changed workflow can skip each check of this document, the switch also.
 - The protections that stay: only your account writes; the switch `ANIMA_PUBLIC_RELEASES`; each environment permits only named branches and tags; each key is in an environment of its own, so the builds do not hold the updater key or the bucket token; the gates run before the job that signs (R-190); no pull request starts the workflow.
 - The actions of GitHub that the workflow uses are pinned to a commit, but the machines, the images and the tools that they install (Homebrew, apt, `linuxdeploy`, the crates and packages of the lock files) are code of other people that runs in the jobs that build.
 - The hub on the VPS also holds a copy of the updater key, and the Builds path can still sign through it. The operator left it for now (R-194). One key is in two places until he decides.
-- The secrets that the workflow does not read stay where they are (R-203): `APPLE_SIGNING_IDENTITY` and the six iOS secrets in `release`, and `ACCOUNT_ID`, `S3_API` and `TOKEN_VALUE` in `release-publish`. The job of each environment has them in its memory.
+- The secrets that the workflow does not read stay where they are (R-204): `APPLE_SIGNING_IDENTITY` and the six iOS secrets in `release`, and `ACCOUNT_ID`, `S3_API` and `TOKEN_VALUE` in `release-publish`. The job of each environment has them in its memory.
 - The workflow puts no tag. The record of a release is the feed, the folder `<target>/<version>/` of the bucket and the release record of this document; the commit of a version is the commit at that position on the first line of `main`. A tag by the workflow would need a write permission on the repository in a job, and the rule set `release tags` permits a tag `v…` only to an administrator.
 - The standard runners of GitHub cost nothing for a public repository (R-193 has the source). If the repository becomes private, each macOS minute is charged.
 

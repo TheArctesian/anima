@@ -13,7 +13,7 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
 1. **Get `dev`, in a worktree of your own.** Run `git fetch origin`. Do not work in the
    operator's main checkout and do not change its branch: make a worktree,
    `git worktree add ../<name> origin/dev`, and read the documents there. `dev` is the branch of
-   the daily work (R-197); see "The branches `dev` and `main`". If `origin/dev` does not exist,
+   the daily work (R-198); see "The branches `dev` and `main`". If `origin/dev` does not exist,
    tell the operator and stop: do not make it, and do not use `main` in its place. A plan that
    is only on a branch of a task is not a plan (PLN-011).
 2. **Find the work.** If the operator named the work, find the plan that owns it in
@@ -66,7 +66,7 @@ open decisions of the plan, run `bun run quality:register` so that it is in
 ## The branches `dev` and `main`
 
 `main` is what is released: each push to `main` that changes an application is a public, signed
-update of each installed application, with no approval (R-182, R-197;
+update of each installed application, with no approval (R-182, R-198;
 [docs/procedures/releases.md](docs/procedures/releases.md), "The release workflow").
 
 - Work, claims and merges go to `dev`. An agent does not push to `main`, does not merge into
@@ -74,7 +74,7 @@ update of each installed application, with no approval (R-182, R-197;
   conversation.
 - `dev` comes into `main` only by a merge commit whose first parent is the tip of `main`
   (`git merge --no-ff`), never by a fast-forward and never by force: the version of a release
-  is the number of commits on the first line of `main` (R-200).
+  is the number of commits on the first line of `main` (R-201).
 - Where a rule or a document says "on `main`" for the daily work (a plan, a claim, a ruling that
   must be recorded before work that depends on it), read `dev`.
 - The base of a gates run does not change (`BASE_REF`, default `phase-2`).

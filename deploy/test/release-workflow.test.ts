@@ -78,7 +78,7 @@ function runText(found: Job): string {
   return found.steps.map((step) => step.run ?? "").join("\n");
 }
 
-describe("what starts the workflow (UPD-007, R-184, R-197)", () => {
+describe("what starts the workflow (UPD-007, R-184, R-198)", () => {
   test("only a push to main and a run by hand start it; no tag and no other branch does", () => {
     expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_dispatch"]);
     expect(workflow.on["push"]).toEqual({ branches: ["main"] });
@@ -97,7 +97,7 @@ describe("what starts the workflow (UPD-007, R-184, R-197)", () => {
 
 });
 
-describe("which push is a release (R-184, R-197)", () => {
+describe("which push is a release (R-184, R-198)", () => {
   test("R-184 the first job decides with release-decision, from the feeds of today and the tip of main before the push", () => {
     const text = runText(job("commit"));
     for (const feed of ["darwin-aarch64", "darwin-x86_64", "linux-x86_64"]) expect(text).toContain(`published ${feed}`);

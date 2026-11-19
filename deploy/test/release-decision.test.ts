@@ -1,5 +1,5 @@
 // deploy/bin/affected-applications and deploy/bin/release-decision: which push to `main` is a
-// release of the desktop application (R-184, R-197, R-199, R-200). Each repository here is made
+// release of the desktop application (R-184, R-198, R-200, R-201). Each repository here is made
 // in a temporary folder; the commands under test are the files of this repository, and the map
 // is deploy/release/applications.txt.
 import { afterAll, describe, expect, test } from "bun:test";
@@ -61,7 +61,7 @@ function repository(): string {
 const affected = (folder: string, from: string, to: string): Ran => run(["/bin/sh", join(BIN, "affected-applications"), from, to], folder);
 const decision = (folder: string, ...given: string[]): Ran => run(["/bin/sh", join(BIN, "release-decision"), ...given], folder);
 
-describe("which change affects the desktop application (R-184, R-199)", () => {
+describe("which change affects the desktop application (R-184, R-200)", () => {
   const folder = repository();
   const start = git(folder, "rev-parse", "HEAD");
 
@@ -78,7 +78,7 @@ describe("which change affects the desktop application (R-184, R-199)", () => {
 
   test.each([
     ["the client", ["apps/client/src/lib/devices/list.ts"]],
-    ["only a test inside the client (R-199)", ["apps/client/src/lib/devices/list.test.ts"]],
+    ["only a test inside the client (R-200)", ["apps/client/src/lib/devices/list.test.ts"]],
     ["the shell", ["apps/desktop/src-tauri/src/desktop.rs"]],
     ["a program that the application carries", ["crates/anima-cli/src/main.rs"]],
     ["the link", ["link/tunnel/tunnel.go"]],
@@ -113,7 +113,7 @@ describe("which change affects the desktop application (R-184, R-199)", () => {
   });
 });
 
-describe("is this commit of main a release (R-184, R-200)", () => {
+describe("is this commit of main a release (R-184, R-201)", () => {
   test("the first release: a feed that does not exist releases, also after a change of documents only", () => {
     const folder = repository();
     change(folder, "docs/a.md");
@@ -170,8 +170,8 @@ describe("is this commit of main a release (R-184, R-200)", () => {
 
 });
 
-describe("how main must move for the version to be safe (R-200)", () => {
-  test("R-200 dev comes into main by a merge commit: one release, with the next number of main", () => {
+describe("how main must move for the version to be safe (R-201)", () => {
+  test("R-201 dev comes into main by a merge commit: one release, with the next number of main", () => {
     const folder = repository();
     const tip = git(folder, "rev-parse", "HEAD");
     git(folder, "switch", "--quiet", "-c", "dev");
@@ -183,7 +183,7 @@ describe("how main must move for the version to be safe (R-200)", () => {
     expect(decision(folder, "--before", tip, "HEAD", "desktop", "0.0.1", "0.0.1").printed).toBe("release 0.0.2");
   });
 
-  test("R-200 a fast-forward of main to a branch is refused: the first line is then not the line of main", () => {
+  test("R-201 a fast-forward of main to a branch is refused: the first line is then not the line of main", () => {
     const folder = repository();
     git(folder, "switch", "--quiet", "-c", "dev");
     change(folder, "apps/client/src/a.ts");

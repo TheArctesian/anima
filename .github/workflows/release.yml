@@ -3,9 +3,9 @@
 # docs/procedures/releases.md, "The release workflow".
 #
 # Each push to `main` is a release of the desktop application when it changed after its
-# published version (R-184, R-197 to R-199), with no approval (R-182). The first job decides,
+# published version (R-184, R-198 to R-200), with no approval (R-182). The first job decides,
 # with deploy/bin/release-decision; when it says "nothing", no other job runs and the summary
-# of the run gives the reason. The version is the version of the commit (R-183, R-200,
+# of the run gives the reason. The version is the version of the commit (R-183, R-201,
 # deploy/bin/commit-version). A run by hand is a trial: it builds, signs and checks
 # everything, and publishes nothing. No pull request and no tag starts this workflow.
 #

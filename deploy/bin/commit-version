@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prints the version of a commit (R-183, R-200): N is the number of commits on the first line
+# Prints the version of a commit (R-183, R-201): N is the number of commits on the first line
 # of its history (`git rev-list --count --first-parent`), and the version is
 # 0.<N div 100>.<N mod 100>, with no zero before a number. Commit 1 gives 0.0.1, commit 100
 # gives 0.1.0, commit 795 gives 0.7.95. The first number stays 0 until the operator decides on
@@ -12,7 +12,7 @@
 # The number names one release only for a commit of `main`, and only while `main` moves by a
 # commit whose first parent is its tip before: the first line of `main` then only gets
 # longer. A different branch has a first line of its own, so a build by hand on `dev` shows a
-# number of `dev` (R-201 permits that it is also a number of `main`). A shallow clone does not
+# number of `dev` (R-202 permits that it is also a number of `main`). A shallow clone does not
 # hold the full history and is refused. The release workflow and trial-bundle.sh use this.
 set -eu
 

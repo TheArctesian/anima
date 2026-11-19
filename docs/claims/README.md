@@ -8,7 +8,7 @@
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | Approved (operator, 2026-11-17: a light commit to the documents on `main` when a session starts the work) |
 
-Claims are on the branch `dev`, the branch of the daily work (R-197, AGENTS.md); where a sentence below says `main`, read `dev`. A claim is one small file in this folder. It says which machine and which coding agent builds one task now. The files in this folder on `origin/dev` are the list of the work that is taken. There is no second list.
+Claims are on the branch `dev`, the branch of the daily work (R-198, AGENTS.md); where a sentence below says `main`, read `dev`. A claim is one small file in this folder. It says which machine and which coding agent builds one task now. The files in this folder on `origin/dev` are the list of the work that is taken. There is no second list.
 
 A claim is not a state. The task table of the plan holds the state of the task (PLN-006). A claim only says who has the task.
 

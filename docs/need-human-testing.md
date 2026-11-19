@@ -901,7 +901,7 @@ GraphQL through the client's developer tools or `curl` with a login token.
 
 Result: Open.
 
-### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-197 to R-200)
+### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-198 to R-201)
 
 Built: on `main` since 3ae44093; the trigger on a push to `main`, the decision and the switch (task B8g) on the
 branch `release/each-push`. `.github/workflows/release.yml` builds the macOS and the Linux
@@ -929,7 +929,7 @@ Anima ran on a Linux computer (R-192); the repository has no record of a start o
    push is a release of <version>, and public releases are off" (the Linux feed does not exist, so each push is
    a release until the first one is published). Nothing is built, and no feed changed.
 4. Do "To switch public releases on" and "The first public release". Expected: the push builds and publishes
-   the version that `sh deploy/bin/commit-version origin/main` prints (R-183, R-200); the three feeds give that
+   the version that `sh deploy/bin/commit-version origin/main` prints (R-183, R-201); the three feeds give that
    version; `stapler validate` and `spctl` accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1
    that was installed from its DMG offers the version and starts it after "Restart to update".
 5. After that release, push a change of a document only to `main`. Expected: only the job `commit` runs, and the
@@ -939,7 +939,7 @@ Anima ran on a Linux computer (R-192); the repository has no record of a start o
 7. Start the first job of an old run again ("Re-run all jobs" on a run before the newest release). Expected:
    the summary says "nothing: the version ... is not more than the published ...", and nothing is built.
 
-This entry names "Re-run" and pushes to `main`; each push to `main` is a release when the switch is on (R-197).
+This entry names "Re-run" and pushes to `main`; each push to `main` is a release when the switch is on (R-198).
 
 Observation (2026-11-18, evening; 2026-11-19 UTC; read from GitHub by an agent, not a result of the operator):
 the operator started a trial, run 44468487102, from `main` at 9f056a5a with the version `0.0.1`. No approval

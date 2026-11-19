@@ -1,5 +1,5 @@
 // deploy/bin/commit-version: the version of a commit from the number of commits on the first
-// line of its history (R-183, R-200). Each repository here is made in a temporary folder.
+// line of its history (R-183, R-201). Each repository here is made in a temporary folder.
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -75,7 +75,7 @@ describe("the version of a commit of a repository", () => {
     expect(version(folder).printed).toBe("0.0.4");
   });
 
-  test("R-200 only the first line counts: a merged branch adds one commit, however many it holds", () => {
+  test("R-201 only the first line counts: a merged branch adds one commit, however many it holds", () => {
     const merged = repositoryWith(2);
     expect(run(["git", "switch", "--quiet", "-c", "dev"], merged).exitCode).toBe(0);
     for (const made of ["a", "b", "c"]) {
