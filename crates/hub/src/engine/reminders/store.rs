@@ -249,7 +249,8 @@ pub(super) async fn firing_for_send(
     .await
 }
 
-/// Sets the state of a firing: `sent` with its time, or `suppressed` with its reason.
+/// Sets the state of a firing: `sent` with its time, or `suppressed` with its reason and no
+/// time of a send.
 pub(super) async fn decide(
     conn: &mut PgConnection,
     id: FiringId,
@@ -258,7 +259,7 @@ pub(super) async fn decide(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE reminders.firing SET state = $2, reason = $3, snoozed_until = NULL, \
-         sent_at = CASE WHEN $2 = 'sent' THEN $4 ELSE sent_at END, \
+         sent_at = CASE WHEN $2 = 'sent' THEN $4 ELSE NULL END, \
          decided_at = CASE WHEN $2 = 'sent' THEN decided_at ELSE $4 END WHERE id = $1",
     )
     .bind(id)

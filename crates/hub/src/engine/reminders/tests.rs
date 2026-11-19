@@ -8,6 +8,7 @@ use uuid::Uuid;
 mod codec;
 mod places;
 mod rules;
+mod sent;
 mod stored;
 mod swept;
 mod times;

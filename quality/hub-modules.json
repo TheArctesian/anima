@@ -143,7 +143,10 @@
     ],
     "reminders": [
       "places",
-      "locations"
+      "locations",
+      "notifications",
+      "credentials",
+      "events"
     ]
   },
   "graphql": {
