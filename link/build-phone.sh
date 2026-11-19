@@ -28,16 +28,18 @@ android_clang() {
 targets=${*:-aarch64-apple-ios-sim aarch64-apple-ios aarch64-linux-android}
 for target in $targets; do
   extra=
+  build_vcs=auto
   case $target in
     aarch64-apple-ios-sim) os=ios mode=c-archive file=libphonelink.a cc="$(xcrun --sdk iphonesimulator --find clang) -isysroot $(xcrun --sdk iphonesimulator --show-sdk-path) -arch arm64 -mios-simulator-version-min=17.0" ;;
     aarch64-apple-ios) os=ios mode=c-archive file=libphonelink.a cc="$(xcrun --sdk iphoneos --find clang) -isysroot $(xcrun --sdk iphoneos --show-sdk-path) -arch arm64 -miphoneos-version-min=17.0" ;;
     # Android has no /etc/resolv.conf, so Go's own resolver finds no DNS server: netcgo uses the system's.
-    aarch64-linux-android) os=android mode=c-shared file=libphonelink.so extra=netcgo; cc=$(android_clang) ;;
+    # F-Droid removes a test fixture, which would otherwise change Go's VCS dirty flag.
+    aarch64-linux-android) os=android mode=c-shared file=libphonelink.so extra=netcgo build_vcs=false; cc=$(android_clang) ;;
     *) echo "link/build-phone.sh: unknown target $target" >&2; exit 1 ;;
   esac
   out="../target/phonelink/$target"
   mkdir -p "$out"
-  GOOS=$os GOARCH=arm64 CGO_ENABLED=1 CC="$cc" go build -trimpath -ldflags="-s -w" -tags "$tags${extra:+,$extra}" \
+  GOOS=$os GOARCH=arm64 CGO_ENABLED=1 CC="$cc" go build -buildvcs="$build_vcs" -trimpath -ldflags="-s -w" -tags "$tags${extra:+,$extra}" \
     -buildmode=$mode -o "$out/$file" ./cmd/phonelink
   echo "$out/$file: $(wc -c <"$out/$file" | tr -d ' ') bytes"
 done
