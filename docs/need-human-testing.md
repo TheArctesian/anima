@@ -71,6 +71,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-046 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
+| HT-047 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 
 ### What a check on the hosted hub needs
 
@@ -969,6 +970,35 @@ the operator (MOB-006).
 4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-045, step 5.
 5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
    higher.
+
+Result: Open.
+
+### HT-047: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
+
+Built: on the branch `mobile/native-sign-in`. On an iPhone "Sign in" shows the page of the Anima.ing account over the
+application (the web authentication session of iOS) and comes back by itself; there is no code and no browser to go
+to. The shell uses the authorization code flow of WorkOS with PKCE and listens for the return at
+`http://127.0.0.1:47113/sign-in`.
+
+The tests cover the code challenge (the example of RFC 7636), the address of the page, the listener with a real
+connection, the check of the state, a stopped sign-in, and the fields of the trade of the code. Not covered: the Swift
+part, the page on a screen, a real answer of WorkOS, the refresh after this flow, and the rest of the sign-in
+(HT-045). No build of this branch ran on a simulator or a phone.
+
+1. In the WorkOS dashboard, in the production environment: Applications, the application of Anima.ing, the tab
+   Redirects. Add `http://127.0.0.1:47113/sign-in`. Do not make it the default. Expected: the dashboard takes it. If it
+   refuses the address, write the words of the refusal here and stop.
+2. Open a build of this branch on the iPhone simulator or an iPhone. Tap "Sign in". Expected: iOS asks once to let
+   "Anima.ing" use a website to sign in; after "Continue" the page of the account shows over the application, with
+   the methods of the account (Apple, Google, GitHub, password).
+3. Sign in. Expected: the page goes away by itself, with no code shown; "Your hub is starting", then "Connecting",
+   then the device list of the hosted hub.
+4. Sign out, tap "Sign in" again, and tap "Cancel" on the page of the account. Expected: "Sign-in cancelled" with the
+   line "The sign-in was closed." and "Try again".
+5. Leave the application open for more than one hour on the device list, then open a device. Expected: no new
+   sign-in. (This is the refresh of the session with no secret.)
+6. If Safari on the phone is signed in to the account, do step 2 again after a sign-out. Expected: the page signs in
+   with no password.
 
 Result: Open.
 

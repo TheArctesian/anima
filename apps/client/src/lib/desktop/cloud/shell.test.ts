@@ -24,6 +24,17 @@ beforeEach(() => {
   shell.isTauri.mockReturnValue(true);
 });
 
+describe('the sign-in inside the iPhone app (mobile plan M3-5)', () => {
+  it('M3-5: a new sign-in has no code: the shell shows the page and answers signed in or cancelled', async () => {
+    answering({ cloud_sign_in_resume: false, cloud_sign_in_session: true });
+    expect(await cloudAccount(true).start()).toEqual({ ok: true, value: 'signed-in' });
+    answering({ cloud_sign_in_resume: false, cloud_sign_in_session: fails('cancelled') });
+    expect(await cloudAccount(true).start()).toEqual({ ok: false, problem: 'cancelled' });
+    answering({ cloud_sign_in_resume: true });
+    expect(await cloudAccount(true).start()).toEqual({ ok: true, value: 'signed-in' });
+  });
+});
+
 describe('the real cloud account (HMD-043)', () => {
   it('a session that still holds signs in again with no browser step (item 6)', async () => {
     answering({ cloud_sign_in_resume: true });

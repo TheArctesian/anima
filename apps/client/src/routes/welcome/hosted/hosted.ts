@@ -88,11 +88,21 @@ const PROBLEM_TEXT: Readonly<Record<Problem, StepText>> = {
   payment: { title: 'Payment failed', line: 'Pay on cloud.anima.ing, then retry.', action: 'Retry' },
 };
 
-/** The words of `step`. `here` names what signs in: a phone says "this device" (MOB-016). */
-export function stepText(step: HostedStep, here: 'this computer' | 'this device' = 'this computer'): StepText {
+/** The words of a failed step: a refusal by the hub names the hub, and a sign-in closed inside the app names no browser. */
+function failedText(step: Extract<HostedStep, { kind: 'failed' }>, here: string, inApp: boolean): StepText {
+  if (step.problem === 'refused' && step.from.kind === 'connecting') return { ...PROBLEM_TEXT.refused, line: `Your hub refused ${here}.` };
+  if (inApp && step.problem === 'cancelled') return { ...PROBLEM_TEXT.cancelled, line: 'The sign-in was closed.' };
+  return PROBLEM_TEXT[step.problem];
+}
+
+/**
+ * The words of `step`. `here` names what signs in: a phone says "this device" (MOB-016). With `inApp` the sign-in
+ * page shows inside the app, so no step names a code or a browser (mobile plan M3-5).
+ */
+export function stepText(step: HostedStep, here: 'this computer' | 'this device' = 'this computer', inApp = false): StepText {
   switch (step.kind) {
     case 'start':
-      return { title: 'Starting', line: 'Getting a code.', action: null };
+      return { title: 'Starting', line: inApp ? 'Opening the sign-in.' : 'Getting a code.', action: null };
     case 'waiting':
       return {
         title: 'Continue in your browser',
@@ -106,7 +116,6 @@ export function stepText(step: HostedStep, here: 'this computer' | 'this device'
     case 'done':
       return { title: 'Your hub is ready', line: 'Opening your devices.', action: null };
     case 'failed':
-      if (step.problem === 'refused' && step.from.kind === 'connecting') return { ...PROBLEM_TEXT.refused, line: `Your hub refused ${here}.` };
-      return PROBLEM_TEXT[step.problem];
+      return failedText(step, here, inApp);
   }
 }

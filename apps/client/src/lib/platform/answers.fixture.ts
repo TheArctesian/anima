@@ -20,6 +20,7 @@ export const DESKTOP_MAC: Capabilities = {
   localHub: true,
   deviceLink: true,
   cloudAccount: true,
+  accountSession: false,
   overlayTitleBar: true,
   recentCopy: true,
 };
@@ -27,5 +28,8 @@ export const DESKTOP_MAC: Capabilities = {
 /** A browser: every desktop-only feature off. */
 export const BROWSER: Capabilities = browserCapabilities;
 
-/** The mobile app: the key store, the device link, the account sign-in and no desktop-only feature (MOB-004). */
+/** The mobile app on Android: the key store, the device link, the account sign-in and no desktop-only feature (MOB-004). */
 export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true, cloudAccount: true };
+
+/** The mobile app on an iPhone or an iPad: it also signs in inside the app (mobile plan M3-5). */
+export const MOBILE_APPLE: Capabilities = { ...MOBILE, accountSession: true };

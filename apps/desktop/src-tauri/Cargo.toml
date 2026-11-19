@@ -42,6 +42,11 @@ reqwest.workspace = true
 tokio.workspace = true
 getrandom = "0.3"
 tauri-plugin-opener = "2"
+# The sign-in inside the iPhone app (mobile plan M3-5): the page of iOS, the code challenge (PKCE) and the
+# listener at the loopback return address.
+tauri-plugin-account-session = { path = "../account-session" }
+sha2.workspace = true
+base64.workspace = true
 
 # The dependencies of the desktop application. A phone has the window, the access token, the link and the account sign-in only, so it
 # builds none of them (MOB-002, MOB-003).

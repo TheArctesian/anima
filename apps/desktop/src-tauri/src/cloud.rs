@@ -12,11 +12,17 @@ mod api;
 #[cfg(desktop)]
 mod device;
 mod error;
+#[cfg(mobile)]
+pub mod in_app;
+#[cfg(any(target_os = "ios", test))]
+mod loopback;
 #[cfg(any(mobile, test))]
 mod memory_session;
 mod name;
 #[cfg(any(mobile, test))]
 mod phone;
+#[cfg(any(target_os = "ios", test))]
+mod pkce;
 #[cfg(desktop)]
 mod session;
 #[cfg(test)]

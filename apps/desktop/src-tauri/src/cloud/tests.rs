@@ -189,3 +189,17 @@ fn m3_4_the_memory_session_keeps_one_refresh_token_for_each_client() {
     memory_session::clear(one).unwrap();
     assert!(memory_session::read(one).unwrap().is_none());
 }
+
+#[test]
+fn m3_5_the_trade_of_a_code_sends_the_verifier_and_no_secret() {
+    let form = workos::code_form("client_123", "the-code", "the-verifier");
+    assert_eq!(
+        form,
+        [
+            ("grant_type", "authorization_code"),
+            ("client_id", "client_123"),
+            ("code", "the-code"),
+            ("code_verifier", "the-verifier"),
+        ]
+    );
+}

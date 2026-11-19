@@ -12,6 +12,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_keyboard::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_account_session::init())
         .manage(memory_tokens::MemoryTokens::default())
         .manage(cloud::Cloud::default())
         .setup(|app| {
@@ -28,6 +29,7 @@ pub fn run() {
             cloud::cloud_sign_in_start,
             cloud::cloud_sign_in_poll,
             cloud::cloud_sign_in_resume,
+            cloud::in_app::cloud_sign_in_session,
             cloud::cloud_hub,
             cloud::cloud_hub_access,
             phone_browser::system_browser_open,

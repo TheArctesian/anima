@@ -6,6 +6,7 @@
   import type { HostedParts } from '$lib/hosted/choose';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { isMobile } from '$lib/platform/mobile';
+  import { capabilities } from '$lib/platform/platform';
   import { FIRST, nextStep, stepText, type HostedEvent, type HostedStep } from './hosted';
   import { runStep } from './run';
   import './phone.css';
@@ -25,7 +26,7 @@
   let gone = false;
   /** Each run of a step has a number; the answer of an older run is dropped. */
   let turn = 0;
-  const text = $derived(stepText(step, isMobile(navigator) ? 'this device' : 'this computer'));
+  const text = $derived(stepText(step, isMobile(navigator) ? 'this device' : 'this computer', capabilities().accountSession));
   const canLeave = $derived(step.kind === 'start' || step.kind === 'waiting' || step.kind === 'failed');
 
   onMount(() => {

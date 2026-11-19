@@ -3,7 +3,7 @@ import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { shellCapabilities } from '$lib/desktop/capabilities';
-import { DESKTOP_MAC, MOBILE } from './answers.fixture';
+import { DESKTOP_MAC, MOBILE, MOBILE_APPLE } from './answers.fixture';
 import { browserCapabilities } from './browser';
 import { isMac } from './mac';
 import { isMobile } from './mobile';
@@ -43,13 +43,13 @@ describe('shellCapabilities (WP-42 D-4)', () => {
   });
 
   it('MOB-004, MOB-031, M3-4: the mobile app keeps the access token, runs the device link and signs in to the account, and has no desktop-only feature, on an iPhone and on Android', () => {
-    expect(shellCapabilities(touch(IPHONE))).toEqual(MOBILE);
+    expect(shellCapabilities(touch(IPHONE))).toEqual(MOBILE_APPLE);
     expect(shellCapabilities(touch(ANDROID))).toEqual(MOBILE);
     expect(Object.entries(MOBILE).filter(([, answer]) => answer)).toEqual([['keyStore', true], ['deviceLink', true], ['cloudAccount', true]]);
   });
 
   it('MOB-004: an iPad that asks for the desktop site still gets the mobile answers', () => {
-    expect(shellCapabilities(touch(MAC))).toEqual(MOBILE);
+    expect(shellCapabilities(touch(MAC))).toEqual(MOBILE_APPLE);
   });
 });
 
