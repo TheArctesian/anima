@@ -9,7 +9,7 @@ export const CLIENT_ORIGINS: readonly string[] = ["tauri://localhost", "http://t
 export const FOREIGN_ORIGIN = "https://evil.example";
 
 /**
- * The roots an API key may never select: a copy of `API_KEY_REFUSED_ROOTS` in `crates/hub/src/fleet/access/guard.rs`, in its
+ * The roots an API key may never select: a copy of `API_KEY_REFUSED_ROOTS` in `crates/hub/src/fleet/access/guard/refused.rs`, in its
  * order, with the VPN roots (VP-7, VP-10) and without the recording roots (R-113); a test keeps the lists equal (D-23,
  * R-100, R-107).
  */
@@ -68,10 +68,11 @@ export const REFUSED_ROOTS: readonly string[] = [
   "grantOperationalKey",
   "ungrantOperationalKey",
   "containerLog",
+  "containerDetail",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */
-export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "containerLog"];
+export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "containerLog", "containerDetail"];
 
 /**
  * An argument no field has: a document that selects it fails validation, so it can never reach a resolver, even if

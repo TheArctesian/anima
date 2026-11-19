@@ -6,7 +6,9 @@ use chrono::{TimeZone, Utc};
 use super::{ID, LISTED};
 use crate::{
     fleet::ssh::CommandOutput,
-    work::containers::{Container, ContainerId, ContainerState, Error, Health, LineCount, docker},
+    work::containers::{
+        Container, ContainerId, ContainerState, Error, Health, LineCount, ProjectState, docker,
+    },
 };
 
 fn output(stdout: &str, exit_status: Option<u32>) -> CommandOutput {
@@ -34,6 +36,7 @@ fn host_001_the_list_gives_name_image_state_status_ports_and_compose_project() {
         created_at: Some(Utc.with_ymd_and_hms(2026, 11, 18, 18, 0, 0).unwrap()),
         compose_project: Some("dawarich".to_owned()),
         compose_service: Some("app".to_owned()),
+        project_state: Some(ProjectState::Running),
     };
     assert_eq!(containers[0], app);
     let db = &containers[1];

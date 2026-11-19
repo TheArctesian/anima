@@ -10,6 +10,7 @@ use serde::Deserialize;
 use super::{
     Error,
     model::{Container, ContainerLog, ContainerState, Health, LogLine, Tail},
+    project,
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
@@ -66,7 +67,7 @@ struct Line {
 }
 
 /// Why a command that did not exit 0 failed, from its status alone.
-const fn failure(output: &CommandOutput) -> Error {
+pub(super) const fn failure(output: &CommandOutput) -> Error {
     match output.exit_status {
         Some(NOT_FOUND_STATUS) => Error::NoDocker,
         _ => Error::DockerFailed,
@@ -93,7 +94,11 @@ pub(super) fn containers(output: &CommandOutput) -> Result<Vec<Container>, Error
                 .map(container)
                 .map_err(|_| Error::Unreadable)
         })
-        .collect()
+        .collect::<Result<Vec<_>, _>>()
+        .map(|mut containers| {
+            project::mark(&mut containers);
+            containers
+        })
 }
 
 fn container(line: Line) -> Container {
@@ -108,12 +113,13 @@ fn container(line: Line) -> Container {
         created_at: created(&line.created),
         compose_project: Some(line.project).filter(|project| !project.is_empty()),
         compose_service: Some(line.service).filter(|service| !service.is_empty()),
+        project_state: None,
     }
 }
 
 /// The container's own name among the comma-separated `Names`: the first with no `/`, which
 /// a name that a link of another container gives has.
-fn shown_name(names: &str) -> String {
+pub(super) fn shown_name(names: &str) -> String {
     names
         .split(',')
         .find(|name| !name.contains('/'))
@@ -122,7 +128,7 @@ fn shown_name(names: &str) -> String {
         .to_owned()
 }
 
-fn state(text: &str) -> ContainerState {
+pub(super) fn state(text: &str) -> ContainerState {
     match text {
         "running" => ContainerState::Running,
         "exited" => ContainerState::Exited,
@@ -192,7 +198,7 @@ pub(super) fn log(output: &CommandOutput) -> Result<ContainerLog, Error> {
 
 /// Whether the last line is Docker's own error for an unknown container. Only that line is
 /// read, and only from its start, so a line that the container wrote cannot make this answer.
-fn says_no_container(text: &str) -> bool {
+pub(super) fn says_no_container(text: &str) -> bool {
     text.lines()
         .rev()
         .find(|line| !line.trim().is_empty())
