@@ -61,6 +61,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
+| HT-037 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 
 ### What a check on the hosted hub needs
 
@@ -951,6 +952,59 @@ Corrected on the branch `release/operator-decisions`: the job `gates` installs `
 full history, because the documents gate (gate 20) fails in a shallow clone; that second fault was found by a
 run of gates 17 to 21 in a shallow clone on a computer, not by the trial. The operator starts the next trial
 after the merge.
+
+Result: Open.
+
+### HT-037: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
+
+Built: in the hub domain `crates/hub/src/work/containers/`, `Query.containerDetail`,
+`Query.containerStorage`, `Query.containerNetworks` and the field `Container.composeProjectState`;
+`anima containers inspect`, `images`, `volumes` and `networks`; the MCP tools
+`anima_container_storage` and `anima_container_networks`. The client does not show them yet (task H9).
+The tests use a test SSH server that answers with fixed text, and a scripted hub. The fixed text is
+what Docker 29.9.3 wrote on the build machine (a Mac) for the same command lines, run in a shell and
+not through the hub. No test ran the commands through the hub on a device, on Linux, or on an older
+Docker.
+
+The check only reads. It starts, stops, removes and changes nothing on the device (VPS-005, R-050).
+The hub must be of this build; a local hub is sufficient
+([setup/local-hub.md](procedures/setup/local-hub.md)). Use the device of HT-032: Docker with at least
+one Compose project, SSH on, the host key accepted, the SSH credential in Anima. Use a login for
+step 1 to step 4; on a hosted hub, where the command line has only an API key, write that step 1 to
+step 4 were not possible (OD-25).
+
+1. Run `anima containers inspect <device> <name of a running container>`. Expected: the command, the
+   restart policy, the mounts, the networks with the addresses, the labels and the processes agree
+   with `docker inspect <name>` and `docker top <name>` on the device.
+2. Look at the row "Environment". Expected: the names of the environment variables of the container,
+   and no value. Run the command with `--json`. Expected: no value of an environment variable is in
+   the output.
+3. Run the command for a container that has a health check. Expected: the health check, the health
+   and the exit status of its last run. Run it for a stopped container. Expected: its details, the
+   exit status of its last run, and no process.
+4. Run `anima containers inspect <device> nosuchname`. Expected: "The device has no container named
+   nosuchname."
+5. Run `anima containers inspect` with an API key in `ANIMA_TOKEN`. Expected: the hub refuses with
+   FORBIDDEN.
+6. Run `anima containers list <device>`. Expected: the last column gives, for each container of a
+   Compose project, the name of the project and its state, for example `dawarich (running)`. If the
+   device has a project of which one container is stopped with an exit status that is not 0, its
+   state is "partly running". Do not stop a container for this step.
+7. Run `anima containers images <device>`. Expected: one row for each image of `docker image ls` on
+   the device, with the same size, and in the last column the names of the containers that use it
+   (or a number when the hub could not find the names). The line below the table gives the space
+   that `docker system df` shows as reclaimable for images.
+8. Run `anima containers volumes <device>`. Expected: one row for each volume of `docker volume ls`,
+   with the size that `docker system df -v` shows and the containers that mount it. Write down how
+   long the command took.
+9. Run `anima containers networks <device>`. Expected: one row for each network of
+   `docker network ls`, with the containers on it.
+10. In an MCP client, call `anima_container_storage` and `anima_container_networks` for the device.
+    Expected: the same images, volumes and networks. No tool gives the details of a container.
+11. Read the log of the hub for the time of the steps. Expected: no name of a container, of an
+    image, of a volume or of a network, no label and no name of an environment variable (LOG-007).
+12. On the device, run `docker ps -a`, `docker image ls` and `docker volume ls` again. Expected:
+    nothing changed because of the steps.
 
 Result: Open.
 
