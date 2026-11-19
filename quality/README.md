@@ -176,6 +176,37 @@ glob imports (`use crate::checks::*;` then a bare `store::x`), names re-bound by
 and re-exports (`pub use` counts as a use at the re-exporting file only).
 Aliases bound by `use` (`use crate::checks as c; c::store::x`) are followed within the same file.
 
+## The build cache
+
+`.cargo/config.toml` gives each cargo command of each worktree the wrapper `quality/bin/rustc-cache.sh`:
+sccache when it is on `PATH`, the compiler alone when it is not. It also sets the size of the cache to
+40 GiB; the default of 10 GiB was full. The gates add `CARGO_INCREMENTAL=0` (`src/gates/cache.ts`); a
+cargo command of a session keeps incremental builds for the crates of the workspace, and sccache then
+caches only the dependencies. `RUSTC_WRAPPER=` (empty) runs a command without the cache.
+
+Measured on 2026-11-19 on the Mac of the operator (18 cores), while other sessions built (the load was
+12 to 29, so each time is too high and only the comparison counts). The command was
+`cargo check -p anima-hub -p anima-daemon -p anima-cli --all-targets`, 624 Rust compile steps, with a
+cache of its own so that other sessions did not change the counts.
+
+| Case | Time | What it shows |
+| --- | --- | --- |
+| New worktree, no cache | 170 s (114 s at a load of 12) | The start of today for a cargo command of a session |
+| New worktree, sccache, a cache that a different worktree filled | 122 s to 140 s; 438 steps from the cache, 186 compiled | The dependencies come from the cache; the crates of the workspace and what depends on their path do not |
+| The same with `SCCACHE_BASEDIRS` | The same 438 and 186 | That setting does not help Rust; it is not used |
+| The same folder again, cache full for that path | 66 s; 624 steps from the cache | What a second run in one worktree gets after `cargo clean` |
+| One `CARGO_TARGET_DIR` for two worktrees, one after the other | 127 s, then 1 s | The fastest start, and the reason below not to use it |
+| The same, two worktrees at the same time | Each build waited for the lock | Two sessions do not build at the same time |
+| The same, a second worktree with a fault in a source file that is older than the build | `cargo check` passed in 0.3 s; with its own `target/` it fails | cargo compares times, not contents: a session can pass with the build of a different branch |
+| One changed line in the hub, incremental builds on | 22 s | The work loop of a session |
+| One changed line in the hub, sccache with incremental builds off | 71 s | Why a session keeps incremental builds on |
+
+Thus: sccache for each cargo command, incremental builds on outside the gates, one `target/` for each
+worktree, and no shared `CARGO_TARGET_DIR`. When two sessions build at the same time, each compiles in its
+own `target/`; they share only the cache, which serves the two with no lock that a build waits for. If
+the two compile the same dependency in the same minute, each compiles it one time and the second write
+replaces the first with the same content.
+
 ## Machine requirements
 
 Linux machines that run `bun run gates` need the webkit2gtk-4.1 development headers (and libsoup-3.0, librsvg2, libdbus-1) because gates 1-5 compile the Tauri shell (`apps/desktop/src-tauri`). macOS needs nothing extra.
