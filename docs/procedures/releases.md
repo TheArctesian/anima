@@ -87,13 +87,13 @@ says why.
 
 ## The release workflow (R-179, R-180)
 
-State: built on the branch `release/github-workflow`, not merged and not run. The check of the first run is HT-036 of [need-human-testing.md](../need-human-testing.md). The plan section "The release workflow on the runners of GitHub" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) owns the design, the names of the secrets and the open decisions; this section owns the steps of the operator.
+The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testing.md) holds the check of the first run. The [projects and builds plan](../plans/projects-and-builds-plan.md) owns the workflow design and its open decisions. This section gives the operator's steps.
 
 `.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub (R-173: the job signs; that the workflow also publishes is OD-W33, open). A tag `v<version>` on a commit of `main` starts a release. A run by hand is a trial and publishes nothing. The jobs `sign` and `publish` run `anima-hub release`, which makes the checks that the hub makes for a job of the Builds view.
 
 ### Before the first run, by the operator
 
-Agents never do these steps (R-180, UPD-012). Never put a key or a password in a chat, a commit or a log. R-116 says that the environment `release` and seven of its secrets exist; nobody confirmed that for this work, so look at each one.
+Agents never do these steps (R-180, UPD-012). Never put a key or a password in a chat, a commit or a log. See the inventory below for the secret names already present on GitHub.
 
 1. **Who can write.** Settings > Collaborators and teams: only your account has the Write or Admin role. Each account with write access can put a tag and can thus ask for a release.
 2. **Workflows from forks.** Settings > Actions > General > "Approval for running fork pull request workflows from contributors": select "Require approval for all external contributors". A workflow that a pull request from a fork starts gets no secret of the repository in a public repository, and the release workflow has no pull request trigger. On the same page, "Workflow permissions": "Read repository contents and packages permissions".
@@ -130,6 +130,21 @@ Agents never do these steps (R-180, UPD-012). Never put a key or a password in a
    | `R2_SECRET_ACCESS_KEY` | Secret | The Secret Access Key of that token |
    | `RELEASES_ENDPOINT` | Variable | `https://<account ID>.r2.cloudflarestorage.com` |
 8. **The state of `main`.** The job `gates` runs `bun run gates` on the release commit. On 2026-11-18 `main` did not pass the limits gate (two files of `docs/ideas/browser-first-run/`), so a release from that commit stops at the gates.
+
+### GitHub secret inventory
+
+Checked on 2026-11-18 with `gh secret list --repo TheArctesian/anima.ing --env release`. GitHub lists the names and update times. The workflow must prove that it can use the stored values.
+
+| Environment | Use | Secret names present |
+| --- | --- | --- |
+| `release` | macOS Developer ID signing and notarization | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
+| `release` | Existing entries that the current workflow does not read from this environment | `APPLE_SIGNING_IDENTITY`, `TAURI_SIGNING_PRIVATE_KEY` |
+| `release` | iOS app signing | `IOS_DISTRIBUTION_P12_BASE64`, `IOS_DISTRIBUTION_P12_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64` |
+| `release` | App Store Connect upload | `ASC_API_PRIVATE_KEY`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID` |
+
+The iOS `.p12` holds the Apple Distribution certificate and its private key. The profile is the App Store Connect profile for `ing.anima.mobile`. The operator verified the export password against the `.p12` before setting that secret. The upload key is an App Store Connect team key with the Developer role. The iOS job is pending.
+
+Only `release` existed when checked. Steps 6 and 7 give the required entries for `release-sign` and `release-publish`. No Android signing secret was present.
 
 ### A trial that publishes nothing
 
