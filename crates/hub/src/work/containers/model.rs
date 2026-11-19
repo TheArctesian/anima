@@ -143,6 +143,12 @@ pub struct Container {
     pub created_at: Option<DateTime<Utc>>,
     pub compose_project: Option<String>,
     pub compose_service: Option<String>,
+    /// The folder from which Compose started the project, as Docker says; `None` with no
+    /// project, or when the project was started with no such label.
+    pub compose_working_dir: Option<String>,
+    /// The Compose files of the project, as paths on the device, in the order Compose read
+    /// them. Anima reads this and changes no file (R-211).
+    pub compose_files: Vec<String>,
     /// The one state of the container's Compose project (HOST-019); `None` with no project.
     pub project_state: Option<ProjectState>,
 }

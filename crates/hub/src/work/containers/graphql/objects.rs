@@ -50,6 +50,16 @@ impl Container {
         self.compose_service.as_deref()
     }
 
+    /// The folder from which Compose started the project, as Docker says.
+    async fn compose_working_dir(&self) -> Option<&str> {
+        self.compose_working_dir.as_deref()
+    }
+
+    /// The Compose files of the project, as paths on the device.
+    async fn compose_files(&self) -> &[String] {
+        &self.compose_files
+    }
+
     /// The one state of the container's Compose project (HOST-019); null with no project.
     async fn compose_project_state(&self) -> Option<ProjectState> {
         self.project_state

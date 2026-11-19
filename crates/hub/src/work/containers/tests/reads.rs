@@ -41,7 +41,9 @@ async fn host_001_the_list_runs_one_fixed_read_only_docker_command(pool: PgPool)
             r#""image":{{json .Image}},"state":{{json .State}},"status":{{json .Status}},"#,
             r#""ports":{{json .Ports}},"created":{{json .CreatedAt}},"#,
             r#""project":{{json (.Label "com.docker.compose.project")}},"#,
-            r#""service":{{json (.Label "com.docker.compose.service")}}}'"#,
+            r#""service":{{json (.Label "com.docker.compose.service")}},"#,
+            r#""dir":{{json (.Label "com.docker.compose.project.working_dir")}},"#,
+            r#""files":{{json (.Label "com.docker.compose.project.config_files")}}}'"#,
         )
     );
     assert!(!heard[0].contains(".Labels"), "{heard:?}");
