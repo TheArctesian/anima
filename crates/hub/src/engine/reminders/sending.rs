@@ -9,7 +9,7 @@ use sqlx::PgConnection;
 use super::{
     Error,
     evaluation::{day_start, evaluate},
-    model::{Class, Known, Moment, Occurrence, Trigger},
+    model::{Class, Known, Moment, Occurrence, PlaceChange, Rule, Trigger},
     store,
 };
 use crate::ids::{ChannelId, FiringId, ReminderRuleId};
@@ -19,6 +19,73 @@ const KNOWN_BACK: TimeDelta = TimeDelta::hours(50);
 
 /// The reason of a firing that is not sent because its rule changed, was set off or is gone.
 pub const RULE_CHANGED: &str = "rule_changed";
+
+/// What the hub knew before a moment, as the store keeps it: the newest time of each sort of
+/// record and the newest measure of each key.
+pub(super) struct WasKnown {
+    records: Vec<(String, String, DateTime<Utc>)>,
+    measures: HashMap<String, f64>,
+}
+
+impl WasKnown {
+    pub(super) async fn read(conn: &mut PgConnection, now: DateTime<Utc>) -> Result<Self, Error> {
+        let stored = store::known(conn, now - KNOWN_BACK).await?;
+        let mut known = Self {
+            records: Vec::new(),
+            measures: HashMap::new(),
+        };
+        for (sort, name, value, at) in stored {
+            match (sort.as_str(), name.split_once(':'), value) {
+                ("measure", _, Some(value)) => {
+                    known.measures.insert(name, value);
+                }
+                ("record", Some((source, kind)), _) => {
+                    known.records.push((source.to_owned(), kind.to_owned(), at));
+                }
+                _ => {}
+            }
+        }
+        Ok(known)
+    }
+
+    /// What `rule` can read: the records since the start of its day.
+    fn since(&self, start: DateTime<Utc>) -> Known {
+        let records_today: HashSet<(String, String)> = self
+            .records
+            .iter()
+            .filter(|(_, _, at)| *at >= start)
+            .map(|(source, kind, _)| (source.clone(), kind.clone()))
+            .collect();
+        Known {
+            records_today,
+            measures: self.measures.clone(),
+        }
+    }
+}
+
+/// Evaluates `rule` at `now` with the new occurrences and the place changes, and stores each
+/// firing; gives how many were new.
+pub(super) async fn fire(
+    conn: &mut PgConnection,
+    (rule, was_known): (&Rule, &WasKnown),
+    (new, places): (&[Occurrence], &[PlaceChange]),
+    now: DateTime<Utc>,
+) -> Result<u64, Error> {
+    let start = day_start(rule, now);
+    let history = store::history(conn, rule.id, start).await?;
+    let known = was_known.since(start);
+    let moment = Moment {
+        now,
+        new,
+        places,
+        known: &known,
+    };
+    let mut stored = 0;
+    for due in evaluate(rule, &history, &moment) {
+        stored += u64::from(store::insert_firing(conn, &due, now).await?);
+    }
+    Ok(stored)
+}
 
 /// Evaluates the rules that wait for occurrences, in the transaction of the caller, and stores
 /// each firing: `pending`, or `suppressed` with its reason. Then it keeps the new records and
@@ -34,37 +101,11 @@ pub async fn notice(
     if new.is_empty() {
         return Ok(());
     }
-    let stored = store::known(conn, now - KNOWN_BACK).await?;
-    let measures: HashMap<String, f64> = stored
-        .iter()
-        .filter(|(sort, ..)| sort == "measure")
-        .filter_map(|(_, name, value, _)| Some((name.clone(), (*value)?)))
-        .collect();
+    let known = WasKnown::read(conn, now).await?;
     for stored_rule in store::enabled_rules(conn).await? {
         let rule = stored_rule.rule;
-        if matches!(rule.trigger, Trigger::Time(_) | Trigger::Place { .. }) {
-            continue;
-        }
-        let start = day_start(&rule, now);
-        let records_today: HashSet<(String, String)> = stored
-            .iter()
-            .filter(|(sort, _, _, at)| sort == "record" && *at >= start)
-            .filter_map(|(_, name, ..)| name.split_once(':'))
-            .map(|(source, kind)| (source.to_owned(), kind.to_owned()))
-            .collect();
-        let known = Known {
-            records_today,
-            measures: measures.clone(),
-        };
-        let history = store::history(conn, rule.id, start).await?;
-        let moment = Moment {
-            now,
-            new,
-            places: &[],
-            known: &known,
-        };
-        for due in evaluate(&rule, &history, &moment) {
-            store::insert_firing(conn, &due, now).await?;
+        if !matches!(rule.trigger, Trigger::Time(_) | Trigger::Place { .. }) {
+            fire(conn, (&rule, &known), (new, &[]), now).await?;
         }
     }
     for occurrence in new {

@@ -7,6 +7,10 @@ use serde_json::Value;
 use sqlx::{PgConnection, types::Json};
 use uuid::Uuid;
 
+mod sweeping;
+
+pub(super) use sweeping::{cursor, lock_sweep, place_states, put_place_state, set_cursor};
+
 use super::{
     codec,
     model::{Class, Due, History, Limits, Rule},
