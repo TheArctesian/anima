@@ -1,9 +1,13 @@
 //! `anima containers`: the containers of a device, read through the hub's SSH link (HOST-001,
-//! HOST-013, CMD-030). The list is open to any token; a log needs a login (D-23).
+//! HOST-013, HOST-017 to HOST-020, CMD-030). The lists are open to any token; a log and the
+//! details of a container need a login (D-23).
 
 pub mod documents;
+pub mod inspect;
 pub mod list;
 pub mod logs;
+pub mod networks;
+pub mod storage;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -15,6 +19,16 @@ pub enum ContainerCommand {
     List(list::ListArgs),
     /// Print the last lines of the log of one container (needs a login, not an API key).
     Logs(logs::LogsArgs),
+    /// Show the details of one container: command, restart policy, health check, mounts,
+    /// networks, labels, processes, and the names of its environment variables (needs a
+    /// login, not an API key).
+    Inspect(inspect::InspectArgs),
+    /// List the images of a device, with the size of each and the space a clean-up can free.
+    Images(storage::StorageArgs),
+    /// List the volumes of a device, with the size of each and the space a clean-up can free.
+    Volumes(storage::StorageArgs),
+    /// List the networks of Docker on a device, with the containers on each.
+    Networks(networks::NetworksArgs),
 }
 
 impl ContainerCommand {
@@ -27,6 +41,10 @@ impl ContainerCommand {
         match self {
             Self::List(args) => args.run(invocation).await,
             Self::Logs(args) => args.run(invocation).await,
+            Self::Inspect(args) => args.run(invocation).await,
+            Self::Images(args) => args.images(invocation).await,
+            Self::Volumes(args) => args.volumes(invocation).await,
+            Self::Networks(args) => args.run(invocation).await,
         }
     }
 }
