@@ -381,7 +381,7 @@ Before `ANIMA_IOS_BUILD` is set, the operator does these steps. No agent does th
 
 Two environments and not one: the job that builds runs the code of the commit, and the key that can upload to your App Store Connect account does not need to be there.
 
-Not proven, each until a real run: that the phone shell builds on a machine of GitHub; that the script signs from a keychain and an installed profile, with no window; that `xcrun altool --upload-app` of the machine takes the file with the API key; the time of the job; what App Store Connect answers for the first build of a new app (it can ask for export compliance and for a review of the beta). HT-042 has the checks.
+Not proven, each until a real run: that the phone shell builds on a machine of GitHub; that the script signs from a keychain and an installed profile, with no window; that `xcrun altool --upload-app` of the machine takes the file with the API key; the time of the job; what App Store Connect answers for the first build of a new app (it can ask for export compliance and for a review of the beta). HT-045 has the checks.
 
 ### To stop or undo a release
 
