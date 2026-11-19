@@ -110,7 +110,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
 - **BOT-019.** The configurator must offer one adapter for each of these agents: Claude Code
   (`claude`), Codex (`codex`), Cursor (`agent`), Grok Build (`grok`) and any ACP agent. Each adapter must
   start the vendor's own program on the chosen machine, as the operator's own user, and must use the
-  login that this program holds. This extends the rule of BOT-003 (a fixed model, the cheapest model,
+  login that this program holds. This extends the rule of BOT-003 (withdrawn, R-196: a fixed model, the cheapest model,
   or local first) with the choice of the agent and the subscription.
 - **BOT-020.** Anima.ing must not read, copy, move, keep or relay the login of a vendor program. It
   must not keep a token or a password of a subscription in the hub, the database, a log, a backup, an
@@ -140,7 +140,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
 - **BOT-024.** The device page must show, for each device, a list of agents with one state each: not
   installed, installed and signed out, installed and signed in (with the method: subscription, API key or
   other), or installed and not checked. The probe of BOT-022 must run when the agent starts, when
-  the operator opens the page and when the operator makes a bot. The configurator (BOT-015, BOT-017)
+  the operator opens the page and when the operator makes a bot. The configurator (BOT-015 (withdrawn, R-196), BOT-017 (withdrawn, R-196))
   must use the same result. The state must not show the name or the email of the account.
 - **BOT-025.** Withdrawn (R-196): Hermes Agent is the assistant. A conversation with a bot can change the agent or the model between two replies. The
   operator can do it at any time. A rule can do it, for example "my Claude subscription, then Codex when
@@ -169,7 +169,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   or a member of the staff of Anima.ing use the subscription of another person. It must not share a login
   between two operators or between two machines of different owners.
 - **BOT-030.** Anima.ing must not pay for, resell or include the use of a subscription in any plan, price
-  or credit. BOT-009 stays true: the Bots extension is free on every plan. The charge for a rented machine
+  or credit. BOT-009 is withdrawn (R-196); the agent tools that replace the bot runtime are free on every plan (AXT-027 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md)). The charge for a rented machine
   (CVM-009) must not include the use of a model of a vendor.
 - **BOT-031.** The images of rented machines and the hosted hub must not contain a preinstalled vendor
   program. The operator installs it on the machine and signs in on it. The reason is the
@@ -248,17 +248,19 @@ Codex, and does only that (`crates/daemon-core/src/inventory/tools.rs` prints th
 read their session files for counts, AIS-018). This proposal names an adapter for 3 more (BOT-019,
 BOT-034, BOT-035, BOT-036: Cursor, Grok Build, and Antigravity on an API key only). It covers 14 only
 as "any ACP agent" (BOT-037). 15 have no entry. A generic runner (BOT-039) gives breadth for the cost of
-the agent panes (AIS-009 to AIS-013). A named adapter gives depth and is worth building only for
+a pane (the agent panes AIS-009 to AIS-013 are withdrawn by R-196; Herdr is hosted in their place). A named adapter gives depth and is worth building only for
 the agents of Tier 1. BOT-039 to BOT-046 are proposed. A requirement here does not change BOT-019 to
 BOT-038.
 
 - **BOT-039.** Tier 0, the generic runner. The operator must be able to add an agent that has no adapter
   as a custom entry: a name, the program, the launch line, how the first prompt goes in (an argument, a
-  flag, or text typed after the start), and the sign-in command. The runner must start the program in an
-  agent pane (AIS-013) on a machine that the operator chose, as the operator's own user. The state of
-  the pane must come from terminal activity (AIS-010). The runner needs no status adapter and no
-  structured chat. It does not work until the agent panes are approved and built: AIS-009 to AIS-013 are
-  direction only. The terms gate (BOT-041) applies to each entry.
+  flag, or text typed after the start), and the sign-in command. Re-planning (R-196 withdrew AIS-009 to AIS-013): the runner must start the program
+  on a machine that the operator chose, as the operator's own user, in a Herdr pane when Herdr is installed
+  (the Herdr tool extension of [agent-tools-as-extensions.md](agent-tools-as-extensions.md), AXT-026), or
+  else in a `tmux` session that the daemon names and owns (as BOT-069). The runner needs no status adapter
+  and no structured chat. [NEEDS CLARIFICATION: where the state of the runner comes from: version 1
+  leaves the state of each agent to Herdr (R-196, OD-AXT10); the text was "from terminal activity
+  (AIS-010)".] The terms gate (BOT-041) applies to each entry.
 - **BOT-040.** The daemon must read one catalog of known agents, with one entry for each: the program
   name (or names: Cursor has `agent` and `cursor-agent`, BOT-034), the version command, the sign-in status command (or "not verified", BOT-022), how the first
   prompt goes in, and the row of the vendor terms table (BOT-038) or "terms not checked". A new entry
@@ -294,7 +296,7 @@ BOT-038.
   the machine. A catalog entry or a custom entry for these programs must not give a bot a consumer
   Google login. The generic runner (BOT-039) must not be a way around BOT-036.
 - **BOT-046.** A catalog entry must not set up a second login of the same vendor, and it must not
-  rotate or pool logins (BOT-025, BOT-029). The configurator must keep to one login of each vendor on
+  rotate or pool logins (BOT-025 (withdrawn, R-196), BOT-029). The configurator must keep to one login of each vendor on
   each machine until open decision 8 is ruled. A multi-account switcher is not a feature of any entry.
 
 Terms limits that the note found, and that the requirements above already carry: Claude only through the
@@ -442,7 +444,7 @@ Sources, read on 2026-11-18. Not legal advice.
 | OD-BOT13 | Is the server on the same device in the first version (BOT-049), or on any device of the operator? | Proposed, not ruled: the same device. A server on another device waits for the spike of the path from one device to another. |
 | OD-BOT14 | Does the fallback also cover Codex when it stops on its limit? | Proposed, not ruled: later. Claude Code first. The terms of Codex are unclear (BOT-033). |
 
-**Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1; BOT-039 needs AIS-009 to AIS-013, which are direction only), the rule engine (ENG-001), and
+**Depends on.** Model gateway (XP-15), the Herdr tool extension of agent-tools-as-extensions.md (R-196 withdrew the agent panes of Section 4.12.1, AIS-009 to AIS-017; BOT-039 uses a Herdr pane or `tmux`), the rule engine (ENG-001), and
 for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the
 cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010). The install of an agent (BOT-058 to BOT-078) depends on a work type for the daemon (OD-BOT16; the work route of task W1 in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)), on BOT-022 to BOT-024 and BOT-040, and on a session that stays alive (OD-BOT19).
 
@@ -486,7 +488,7 @@ cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010
 
 **Install an agent on a machine (proposed 2026-11-18, version 4; the operator decided the open decisions on 2026-11-18 in R-153, version 5; the requirements are not approved).** This section adds one action to the configurator of BOT-014 to BOT-018: "Add an agent". The operator picks a machine and a coding agent, reads what will run, and clicks once. The daemon installs the vendor's own program as the operator's user, the operator signs in on the machine in the vendor's own flow, and the agent starts in a session that stays alive. It is a change to this proposal and not a new document (PLN-004, PLN-016): this document owns the agent catalog (BOT-040), the device states (BOT-024), the vendor terms gate (BOT-038, BOT-041) and the sign-in rules (BOT-020, BOT-023). The text comes from a spec of the operator's marketing bot of 2026-11-18. Its private part stays in the business vault. Its placeholder identifiers OCA-01 to OCA-12 are replaced by BOT-058 to BOT-078. The operator decided OD-BOT15 to OD-BOT20 on 2026-11-18 (R-153). He chose six agents for the first version, and he chose that installs follow the MCP setting. Nothing is built. Nothing here is approved, built or claimed as a function (PLN-007).
 
-Serves: no row of Section 4 of the work plan names Bots yet. The nearest row is 4.8, "The other extensions" (AI coding sessions, agent panes AIS-009 to AIS-016). [NEEDS CLARIFICATION: the operator names the row that Bots serves (PLN-003) before approval.]
+Serves: no row of Section 4 of the work plan names Bots yet. The nearest row is 4.8, "The other extensions" (AI coding sessions; the agent panes AIS-009 to AIS-017 are withdrawn by R-196). [NEEDS CLARIFICATION: the operator names the row that Bots serves (PLN-003) before approval.]
 
 ### Goal
 
@@ -502,7 +504,7 @@ A person who has a machine with `anima-daemon` can put Claude Code, Codex, Gemin
 | The catalog of known agents (BOT-040) and the generic runner (BOT-039) | Not built | same |
 | Any way for the hub to make the daemon run something | Not built. The daemon only sends reports out (K8). It reads no work and listens on no port. | `crates/daemon/src/push/`, `contracts/daemon-push.md`; USE-005 and USE-006 say how work will come |
 | The work route (claim, report, log, stop) and its fixed list of work types | Not built. Task W1 is Not started. R-160 (2026-11-18) is the ruling that changes R-115; the contract and the security review come before code. | `docs/plans/projects-and-builds-plan.md`, task W1; `docs/proposals/jobs.md`, JOB-011 |
-| Agent panes (AIS-009 to AIS-016) | Direction only. No work package. | `docs/plans/extensions-plan.md` Section 4.12.1 |
+| Agent panes (AIS-009 to AIS-017) | Withdrawn (R-196). Herdr is hosted as a tool extension in their place. | `docs/plans/extensions-plan.md` Section 4.12.1; [agent-tools-as-extensions.md](agent-tools-as-extensions.md) |
 | SSH terminal in the client (the hub opens SSH and relays bytes) | Built | R-062, `contracts/tunnel.md` Section 8, `crates/hub/src/fleet/sessions/terminal/` |
 | Agent usage counts (AU-1 to AU-5) | Built; waits for HT-026 | `crates/hub/src/fleet/agent_usage/` |
 | The MCP server: change tools, the rule that no tool runs a command on a device | Built (the default of R-120 is ruled and not built) | `docs/plans/cli-mcp-plan.md`, MCP-002, MCP-006, MCP-024 to MCP-026 |
@@ -515,7 +517,7 @@ The question: is terminal traffic sealed from end to end, so that a one-time sig
 - **Ruled.** SSH sessions run from the hub. The hub opens the SSH connection with `russh` and relays terminal bytes to the client over a WebSocket (R-062, K4 Section 8). The hub decrypts and encrypts the bytes at its own end of both connections. So the terminal is **not** sealed from end to end, by design. `crates/hub/src/fleet/sessions/terminal/relay.rs` is the relay.
 - **Ruled.** The hub must not record the content of a session (RA-008) and no log may hold the content of a session (LOG-007). Recording is deferred (RA-040, R-113).
 - **Not ruled.** No requirement says that terminal bytes must be sealed. In the extensions plan, "sealed" means encrypted at rest with a data key, and "client-sealed" means encrypted on the client (Sections 1.3 and 2.4). Neither word is about the terminal.
-- **Open.** Agent panes (AIS-009 to AIS-014) have no transport design. How a client attaches to a pane is not decided.
+- **Decided (R-196).** The agent panes (AIS-009 to AIS-017) are withdrawn. A pane is a Herdr pane, opened in the SSH terminal of the device (AXT-014 of agent-tools-as-extensions.md).
 - **Decided (R-153, 2026-11-18, OD-BOT15).** A one-time sign-in code may pass through the hub as plain text in the first version, with a notice. The operator's words are in [rulings.md](../rulings.md). This covers a one-time code. It does not cover a key that lasts (OD-BOT23).
 
 Does it block this change? **No.** The operator decided OD-BOT15 (R-153): the code passes through the hub as plain text with a notice. A sealed channel is not part of the first version. The hub already carries a password that the operator types in an SSH session in the same way. BOT-068 makes the pane for the sign-in a "secret entry" pane with a notice. [NEEDS CLARIFICATION: whether a code of the "copy the URL, paste the code back" flow of Claude Code is useless to a reader of the traffic. The code is bound to the machine that made the request, but this was not read from the vendor's documents.]
@@ -525,7 +527,7 @@ Does it block this change? **No.** The operator decided OD-BOT15 (R-153): the co
 | Subject | Owner today | Result |
 | --- | --- | --- |
 | Configurator, agent states, terms gate, catalog, sign-in rules | This document (BOT-014 to BOT-046) | Change this document. |
-| Agent panes and the session that stays alive | [extensions-plan.md](../plans/extensions-plan.md) Section 4.12.1 (AIS-009 to AIS-017) | Use it. Do not copy it. BOT-069 names a fallback. |
+| Agent panes and the session that stays alive | Herdr, as a tool extension of [agent-tools-as-extensions.md](agent-tools-as-extensions.md) (R-196 withdrew AIS-009 to AIS-017 of the extensions plan) | Use it. Do not copy it. BOT-069 names the `tmux` fallback. |
 | Work that the daemon takes, and its fixed list of work types | [jobs.md](../proposals/jobs.md) (USE-004 to USE-006, JOB-011); task W1 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | Use it. The install is one more work type (OD-BOT16). |
 | Containers and recipes of hosted applications | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (HOST-003, HOST-012) | Different subject: containers, not agent programs. No overlap in code. |
 | Machine profiles (copy a setup to a new computer) | [machine-profiles.md](../proposals/machine-profiles.md) (REP-022) | Proposal only. It can use the catalog later. |
@@ -553,7 +555,7 @@ All requirements here are proposed and not approved. A requirement is not built 
 - **BOT-062.** The install must use, in this order: a signed package that the machine's own package manager gives and the machine already uses, or the script of the vendor. For a script, the daemon must download it to a file, check its checksum when the vendor gives one, write its SHA-256 and its source address to the audit log, and only then run it. The daemon must never send a download straight into a shell.
 - **BOT-063.** The daemon must run each step as the operator's own user. It must not use `sudo`. A step that needs root must stop and tell the operator which step, and must not ask for a password.
 - **BOT-064.** A recipe of the first version (BOT-077) must not open a port or start a service. A later recipe that opens a port must open it only on the address of the machine on the Anima.ing network, never on all addresses, and the review screen must say so. A tool extension of agent-tools-as-extensions.md may listen on the loopback address of the device only (AXT-008; R-196, OD-AXT4).
-- **BOT-065.** The operator must be able to start each install, update and removal in the app or in the command line, and must approve it on the review screen (BOT-059). An install that an AI agent asks for through MCP follows the MCP setting (R-120, MCP-012, MCP-024, MCP-025; operator, R-153, OD-BOT17): in the state `allow` it runs without a question, in `ask` the person is asked, in `off` the tool is hidden. A schedule, an event, a bot or a standing permission (BOT-006) must not start an install. A machine takes an install only when it takes work (USE-004; operator, R-153, OD-BOT20). An install that an AI agent starts must show as started by an AI agent, with the name of the MCP client (BOT-073). Exception (R-196, OD-AXT5): an AI agent must not install Hermes Agent through MCP in any state, `allow` included; the install of Hermes always needs the click of the operator (AXT-021). [NEEDS CLARIFICATION: MCP-006 says that no tool runs a command on a device. An MCP install tool needs a narrow exception, OD-BOT21. Whether an agent may start a recipe before the operator confirmed its terms row on that machine is OD-BOT22.]
+- **BOT-065.** The operator must be able to start each install, update and removal in the app or in the command line, and must approve it on the review screen (BOT-059). An install that an AI agent asks for through MCP follows the MCP setting (R-120, MCP-012, MCP-024, MCP-025; operator, R-153, OD-BOT17): in the state `allow` it runs without a question, in `ask` the person is asked, in `off` the tool is hidden. A schedule, an event, a bot or a standing permission (BOT-006 (withdrawn, R-196)) must not start an install. A machine takes an install only when it takes work (USE-004; operator, R-153, OD-BOT20). An install that an AI agent starts must show as started by an AI agent, with the name of the MCP client (BOT-073). Exception (R-196, OD-AXT5): an AI agent must not install Hermes Agent through MCP in any state, `allow` included; the install of Hermes always needs the click of the operator (AXT-021). [NEEDS CLARIFICATION: MCP-006 says that no tool runs a command on a device. An MCP install tool needs a narrow exception, OD-BOT21. Whether an agent may start a recipe before the operator confirmed its terms row on that machine is OD-BOT22.]
 - **BOT-066.** Each sign-in must happen on the machine, in the flow of the vendor, by the operator. This extends BOT-020 and BOT-023. Anima.ing must not read, copy, move or keep a token, key, cookie or login file. It must not run `claude setup-token`. It must give no field that takes an API key. It must never offer or automate the copy of a login file to another machine.
 - **BOT-067.** An agent has one of two sign-in kinds. (a) An account login of the vendor: Claude Code, Codex and Cursor CLI. The flows, in order of preference, are a device-code flow of the vendor, a browser on the machine itself, and, for a machine with no browser, the prompt of the vendor ("open this address on your own device and paste the code back"). (b) A key that the operator sets in the program on the machine: Gemini CLI, Pi and OpenCode (BOT-036, BOT-078). For kind (b) the review screen must say how the operator sets the key on the machine, and Anima.ing must open no pane for it in the first version (OD-BOT23). The review screen must name each condition that the vendor sets. See the table of recipes below for what is verified.
 - **BOT-068.** The pane in which the operator signs in must be marked "secret entry" and must show a notice: the hub relays this text and does not store it (operator, R-153, OD-BOT15). The hub must not record or log its bytes (RA-008, LOG-007). The audit log must say only that the sign-in started and finished, with the name of the method (BOT-022). The result that the page shows is only the exit code and the method name (BOT-024). The operator must open the sign-in pane in the app or in the command line. An MCP tool must not open it (MCP-006), and no MCP tool returns a code (MCP-004). The pane is for a one-time code. It is not for a key that lasts (BOT-078).
@@ -887,10 +889,10 @@ One pull request for each task. The size of each task is a few hours to three da
 **BI9. The session that stays alive.**
 - Why: the agent must survive a closed client (BOT-069).
 - Current state: panes are direction only. The operator decided to use `tmux` when it is already installed (R-153, OD-BOT19).
-- Change: start the agent in a pane, or in a `tmux` session that the daemon names, in the folder of the operator; stop with a clear message when `tmux` is missing.
+- Change: start the agent in a Herdr pane when Herdr is installed (AXT-026), or in a `tmux` session that the daemon names, in the folder of the operator; stop with a clear message when `tmux` is missing.
 - Acceptance: pass when the session lives after the client disconnects in a test with a fake program; fail otherwise.
 - Check: `cargo nextest run -p anima-daemon`.
-- Out of scope: pane states and alerts (AIS-010 to AIS-012).
+- Out of scope: pane states and alerts (AIS-010 to AIS-012 are withdrawn by R-196; version 1 leaves agent state to Herdr).
 - Always: the session name carries a prefix of Anima.ing. Ask: before installing `tmux`. Never: use root.
 - Done: the commit that merges the start and sets BI9 to Done.
 - Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI9 of docs/proposals/bots.md. Start a chosen agent in a tmux session that the daemon owns, or in a pane when panes exist. Test with a fake program. Run bun run gates."
@@ -943,3 +945,4 @@ Each row has one question and a recommendation. OD-BOT15 to OD-BOT20 are decided
 - Nothing in this section is a promise to a user. The claim rules of the product stay: a planned item is not described as shipping.
 - 2026-11-18, a pointer only. [agent-tools-as-extensions.md](agent-tools-as-extensions.md) proposes to withdraw BOT-001 to BOT-018 and BOT-025 to BOT-028, to park BOT-047 to BOT-057, and to keep BOT-019 to BOT-024, BOT-029 to BOT-046 and BOT-058 to BOT-078 (OD-AXT3). It also proposes the Hermes and Herdr recipes, Hermes first in "Add an agent" (AXT-021 to AXT-024), and a loopback-only port for a tool (AXT-008, a change to BOT-064). The operator direction is relayed and not first-hand. No requirement of this document changes until a ruling.
 - 2026-11-18, version 6. R-196 (operator, first-hand) decides OD-AXT1 to OD-AXT18 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md). This document marks BOT-001 to BOT-018 and BOT-025 to BOT-028 Withdrawn and BOT-047 to BOT-057 Parked, keeps BOT-019 to BOT-024, BOT-029 to BOT-046 and BOT-058 to BOT-078, replaces Aider with Pi in BOT-077 and task BI2f (the commands of Pi are read from its README and are not verified on a machine; it needs the adapter `pi-acp` for ACP), adds the recipes of Hermes Agent, Herdr and T3 Code to BOT-077, adds the named exception for T3 Code before "The claim of T3 Code, checked", the exception for Hermes to BOT-065 and the loopback rule for tools to BOT-064, and changes BOT-069 (a Herdr pane or `tmux`). No requirement is approved.
+- 2026-11-18, version 6.1. A follow-up pass after R-196: the requirements that stay (BOT-019, BOT-024, BOT-030, BOT-039, BOT-046, BOT-065), the overlap table, the "Depends on" line and task BI9 now say where they cite a withdrawn requirement or the withdrawn agent panes. BOT-039 is marked for re-planning: a Herdr pane or `tmux`, with a [NEEDS CLARIFICATION] marker for the state of the runner. No requirement is approved.

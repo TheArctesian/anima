@@ -4,7 +4,7 @@
 - Source: the vault note "Product Ideas from Research" (idea 4) and the private working note "Agent Here, Execution on a Managed Machine"
 - Status: Framed
 - Serves: No row names it (gap). Closest: row 4.7 Jobs, builds and AI agent runs (inferred); the cloud machines proposal is `cloud-machines.md`. Not confirmed.
-- Owner if it becomes work: Open. Candidates: `bots.md` (BOT-010), `agent-runs.md` (AGN), `cloud-machines.md`.
+- Owner if it becomes work: Open. Candidates: `bots.md` (BOT-010, withdrawn by R-196; [NEEDS CLARIFICATION: Hermes Agent on a managed machine, through [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md)]), `agent-runs.md` (AGN), `cloud-machines.md`.
 - Effort: L (estimate). Recommendation: should (the research verdict, not a decision)
 
 ## The idea
@@ -21,7 +21,7 @@ A bot option where the agent runs on the user's own machine but executes command
 Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../plan/register.md) and [deferred.md](../../deferred.md).
 
 - ownership.md: AI agent runs belong to `agent-runs.md`; cloud machines to `cloud-machines.md` (proposal).
-- bots.md: BOT-010 gives a bot its own computer. agent-runs.md: AGN-003 and AGN-004 (no coordinator credentials, a tool allow list).
+- bots.md: BOT-010 gave a bot its own computer (withdrawn by R-196). agent-runs.md: AGN-003 and AGN-004 (no coordinator credentials, a tool allow list).
 - No network allow list or key hiding in any of them. deferred.md line 774 mentions an "MV-008 allow-list" that does not exist; it is a different subject and was not read in detail.
 - register.md: `cloud-machines.md` is a proposal, not approved (state not rechecked 2026-11-18).
 - Checked on 2026-11-18 against the repository at commit `866f667f`. This is a keyword search, not a full read.
