@@ -565,6 +565,21 @@ Recommendation: A. It keeps one place that signs, it adds no secret, and a job t
 
 The Developer ID identity of the Mac is a different question: the macOS bundle is signed on the Mac (BLD-083), and a runner job as the build user has no keychain of the operator (PRO-022). Task W2 designs a signing identity for one job. Until W2 is accepted, a runner job cannot make the macOS release.
 
+### The result of task R11 (2026-11-18)
+
+The question: can one computer build for a hub that is not the hub of its sign-in? The record with each request and each answer is [r11-two-hubs.md](../research/builds/r11-two-hubs.md). Two hubs ran on one Mac; the desktop application did not run.
+
+| Part | Answer | How it is known |
+| --- | --- | --- |
+| The hub | Yes. A builder is its token and the address of its enrolment. The hub that makes releases accepted its builder while the command line was signed in to the two hubs, and the other hub refused that token | Tested |
+| The `anima` command line | Yes for two sign-ins at the same time (`--context`) and for `anima builder enrol` at the second hub. It has no builder loop, so it cannot build | Tested |
+| The desktop application | No. It has one hub address, and its builder loop runs for that address only (`provideDesktopBuilder`). The key store already keeps a builder token for each hub origin | From the code. Not run |
+| `anima-daemon` | One daemon has one hub. On a Mac the token is one fixed entry of the Keychain, so a second daemon would write over the first. On Linux the token is a file of the home folder, so two homes are possible in the code | From the code. Not tested |
+
+What this means for the runner path (R-170). The builder of that path is `anima-daemon`, and a daemon has one hub. Thus the hub that gives the runner work to a machine is the hub at which the daemon of that machine is enrolled: for the operator, the hub that he uses each day. The hub that signs is a different hub (R-158). The files of a runner job must thus go from the job to the hub that signs with no enrolment of the machine there. Choice A of OD-W31 does that: the job proves what it is with the identity token of GitHub. With choice A, no computer needs to be a builder of two hubs, and the smallest change below is not necessary for the runner path. This gives OD-W30 a third choice, (C), in [decisions.md](../plan/decisions.md).
+
+The smallest change for the desktop builder, if the operator wants it (task R14): the builder loop takes a hub origin of its own, apart from the hub of the sign-in, with one sign-in at that hub for the enrolment. It is only for the Builds path of today; the runner path does not need it.
+
 ### What stays an act of the operator
 
 - The accounts and the keys: the Apple Developer account, the Developer ID certificate and the notary profile in the keychain of the Mac (R-116); the updater key and its copy (UPD-012); the R2 token. An agent reads none of them.
@@ -604,8 +619,9 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 | R8d | The operator publishes the first formula and the first crate version (INS-012; OD-24, OD-26). A human task, with an entry in [need-human-testing.md](../need-human-testing.md). | R8a; R8b; R8c | `cargo install anima-cli --locked` and `brew install` print the release version. The operator sets the entry to Passed. | Not started. Planned only. The agent publishes nothing. | — |
 | R9 | The bucket keeps the 3 newest published versions of each target (BLD-086). The code, its migration and its tests are on the branch `builds/keep-three-versions`, which is not merged. That branch is older than the move of the documents: it changes `docs/design-spec.md`, `docs/programme/programme.md` and `docs/releases.md`, which are now `docs/spec/design-spec.md`, `docs/rulings.md` and `docs/procedures/releases.md`. Bring it to `main`: merge `origin/main` into it, put BLD-086 in Section 3.10 of the design specification, give the migration a number that is free, and give its ruling the next free number (the branch calls it R-118, which a different ruling has; PLN-021). The branch gives the operator's words of 2026-11-12 for the ruling; they are not on `main`. Source of this row: [release-four-platforms.md](../proposals/release-four-platforms.md), RLS-007. | — | `bun run gates` passes. The pruning tests of the branch pass. After the next release of a target that has 4 versions, the bucket holds 3. | Not started. Built on the branch, not merged. | — |
 | R10 | The release has a target for the Android application. The hub checks the size, the SHA-256 and the signing certificate of the APK, writes it under `<target>/<version>/`, copies the stable name and writes the feed of the target (RLS-006, RLS-012 of [release-four-platforms.md](../proposals/release-four-platforms.md); as BLD-060 to BLD-066). It needs new BLD requirements in the design specification Section 3.10 first. Hub API, then `anima`, then MCP (CMD-030). | R-158 names it (OD-REL-4) and approves RLS-006 and RLS-012. The new BLD requirements go in the design specification in the first commit of the task (PLN-013). The check of a real APK needs task M5-5 of [mobile-plan.md](mobile-plan.md); the hub side can be built before it, with a test APK that the test signs | An APK that a different key signed is refused. An APK of the release key is at its stable name, and its feed gives the version. | Not started | — |
-| R11 | Find out if one computer can build for a hub that is not the hub of its sign-in: the desktop application as a builder for the release server (R-158) while the application is signed in to the hosted hub, and the same for `anima-daemon` (PRO-008, BLD-021 to BLD-024, BLD-029). Read the code, then try it with two local hubs. Build nothing. Write the result in this plan, below "The automatic release of Anima", and in the row OD-W30 of [decisions.md](../plan/decisions.md). | — | The result names the files and the test that show it. If the answer is no, the result names the smallest change, as a new task row. | Not started | — |
+| R11 | Find out if one computer can build for a hub that is not the hub of its sign-in: the desktop application as a builder for the release server (R-158) while the application is signed in to the hosted hub, and the same for `anima-daemon` (PRO-008, BLD-021 to BLD-024, BLD-029). Read the code, then try it with two local hubs. Build nothing. Write the result in this plan, below "The automatic release of Anima", and in the row OD-W30 of [decisions.md](../plan/decisions.md). | — | The result names the files and the test that show it. If the answer is no, the result names the smallest change, as a new task row. | Done, on the branch `release/runner-path` (2026-11-18; not on `main`). The hub: yes. The command line: yes for the sign-ins and the enrolment, and it has no builder loop. The desktop application: no, it builds only for the hub of its sign-in (from the code, not run). The daemon: one hub for one daemon (from the code). The result is in "The result of task R11"; the record is [r11-two-hubs.md](../research/builds/r11-two-hubs.md). The smallest change is task R14. | The commit that adds this text |
 | R12 | The start rule of a release. The hub that can publish reads the Anima repository at a slow interval and, when it finds the version mark that OD-W26 decides on a commit that is an ancestor of `origin/main` (BLD-041) with a version that is more than each published version (BLD-002), it queues the release for each target that has a builder. A setting of the hub sets the rule on; it is off by default. The hub does not start a release two times for one mark (PRO-021). It writes the start to the audit log with the actor kind of the hub (BLD-082, LOG-012), and it sends a failed release to the notification channels. New BLD requirements go in the design specification Section 3.10 in the first commit (PLN-013), with the changes of BLD-001, UPD-007 and OD-12 that the ruling gives. Hub API, then `anima release`, then MCP, then the Settings row (CMD-030). | The rulings of OD-W26 and OD-W27. R11. | A test: a mark on a commit of `main` makes one release, and a second read makes no second one. A mark on a commit that is not on `main` makes none. A version that is not more than the published one makes none. With the setting off, nothing starts. | Not started. Not on the path of R-170: OD-W27 selected the runner path, where a workflow file reads the mark and GitHub is the scheduler (PRO-047). The row stays, because no ruling cancels it and OD-W26 can still select a start rule of the hub. Do not build it. | — |
+| R14 | The desktop builder can build for a hub that is not the hub of its sign-in (result of task R11): `provideDesktopBuilder` takes a hub origin of its own; the Settings row "Build releases on this computer" names that hub and asks for one sign-in there for the enrolment (BLD-021). The key store already keeps the builder token by hub origin. | A need: the operator keeps the Builds path of today while he uses a different hub each day (OD-W30, choice A). The runner path does not need it. A change of BLD-020, BLD-021 and BLD-026 in the design specification first (PLN-013) | A test: the application is signed in to hub A, and its builder claims and reports at hub B. | Not started. No ruling names it; do not build it before OD-W30 is decided. | — |
 | R13 | The first release that starts with no act of the operator. A human check, with an entry in [need-human-testing.md](../need-human-testing.md) that the commit of B8 adds. | B8 (R-170; it was R12); the ruling of OD-W26; U12; R7 for Linux; a runner machine of each target in operation | The operator puts the mark on `main` and does nothing in Anima. Each feed gives the new version. An installed application updates. The operator sets the entry to Passed. | Not started | — |
 
 ## Tasks R8a to R8d: the command line alone by Homebrew and Cargo
@@ -734,7 +750,7 @@ table has the order.
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. It states that a job reads the local copy that Anima holds and does not call the service (PRO-006, Q3). | R-160 (2026-11-18) is the ruling that changes R-115 ([jobs.md](../proposals/jobs.md), "Needs"); this task no longer waits for a ruling. The contract and the security review of the work route come before code | The programme accepts the contract. | Not started | — |
+| W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. It states that a job reads the local copy that Anima holds and does not call the service (PRO-006, Q3). | R-160 (2026-11-18) is the ruling that changes R-115 ([jobs.md](../proposals/jobs.md), "Needs"); this task no longer waits for a ruling. The contract and the security review of the work route come before code | The programme accepts the contract. | In progress. The contract is written as a proposal: [work-route.md](../../contracts/work-route.md) (K10, version 0.2). Its security review is done as a separate pass; the twelve findings are SF-003 to SF-014 of [security-findings.md](../security-findings.md), four of severity High, and each is Open. Version 0.2 has the changes that the review asked for. Four findings need a decision of the operator (SF-003, SF-004, SF-006, SF-013). The sentence with which he accepts the contract is in its Section 14. Not Done before his ruling (CON-001). No code of W3 or W4 before that. | Branch `release/runner-path` |
 | W2 | The isolation design, with prototypes: the container runtime on Linux, a workflow that needs Docker, the build user on a Mac, a signing identity for one job (PRO-029). | — | A record with measured results on one Linux machine and one Mac. The security reviewer and the operator accept it. | Not started | — |
 | W3 | The hub: one queue for work, the placement function, the log store (PRO-050, PRO-051). Hub API, then `anima`, then MCP. | W1 | The gates pass. The release of Anima still works through the old path. | Not started | — |
 | W4 | The daemon: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). A test proves that a job reads the local copy and does not call the service (PRO-006, Q3). | W1, W2 | A test proves that a job cannot read the daemon token or the home folder, and that nothing stays after a stop. | Not started | — |
@@ -745,7 +761,7 @@ Group B: runners.
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| B1 | Prove the facts that the documentation does not state, on a test repository of the operator: the labels of a JIT runner (F12), the life of an unused JIT configuration (F6), `vars` in `runs-on` for a branch and for a fork (F13), the memory of one idle runner. | The operator's account | Each result is in the table "Facts of GitHub". | Not started | — |
+| B1 | Prove the facts that the documentation does not state, on a test repository of the operator: the labels of a JIT runner (F12), the life of an unused JIT configuration (F6), `vars` in `runs-on` for a branch and for a fork (F13), the memory of one idle runner. | The operator's account. The steps are in "Task B1: the steps for the operator" below this table, with one more fact for OD-W31 (the identity token of a job) and one for the contract K10 (how the runner takes the JIT configuration) | Each result is in the table "Facts of GitHub". | Not started. The steps are written (2026-11-18); the operator does them. | — |
 | B2 | The GitHub provider: make a JIT configuration, remove a runner, list runners, read queued jobs, read the fork settings (PRO-049). | A contract change for the new `Change` values (K-E1 Section 13) | Each function has a test with a recorded answer. The JIT configuration is not in a log or in `Debug` output. | Not started | — |
 | B3 | The daemon, work type `runner`: get the program, check it, run it in isolation for one job, delete it (PRO-039, PRO-043). | W4, B1 | A workflow of the test repository runs on a Linux machine and on a Mac. Nothing stays on the machine. | Not started | — |
 | B4 | The hub: runners on and off for a project, warm mode, the next runner after each job, the audit entries (PRO-042, PRO-046). Hub API, `anima runner`, MCP tools (PRO-053). | W3, B2 | With runners on, two jobs in sequence each get a new runner. With runners off, GitHub lists no runner of Anima. | Not started | — |
@@ -754,6 +770,135 @@ Group B: runners.
 | B7 | Runners for an organisation (PRO-048). | A need of the operator; a new permission | Parked. | Not started | — |
 | B9 | The set-up for a coding agent, and the text to copy (PRO-054 to PRO-058; R-170). The section for runners on the project page with each step and its state; the query, the command `anima runner setup` and its read tool; the refusals of PRO-057 with their sentences; the text of PRO-058 from one source, with `anima runner prompt` and the "Copy" control; the test of the text. Hub API, then `anima`, then MCP, then the client (CMD-030). The mockup of the project page changes in the same commit (PLN-019). | B4, B5. The approval of PRO-054 to PRO-058 (R-170 gives the direction only) | A coding agent that gets only the text and the MCP server brings a private test repository to the merge that the person makes, and says which steps the person must do. The test of the text passes. An entry in [need-human-testing.md](../need-human-testing.md), which the operator sets. | Not started | — |
 | B8 | The release of Anima as a workflow of GitHub Actions on an owned machine (model (b)). A workflow file that runs only for the version mark of OD-W26 on `main` and never for a pull request; a hub function that takes the bundle of a runner job, with the checks of BLD-060 to BLD-066 before the hub signs; the signing identity of the Mac for one job (W2). The updater key and the R2 token do not go to GitHub (R-114, R-117). It needs new BLD requirements in the design specification first, and the changes of UPD-007, BLD-029 and Section 3.10 that the ruling gives. | R-171 decided OD-W28. The rulings of OD-W29, OD-W31 and OD-W32; OD-W30 after task R11. B5. S. OD-W18: no runner for `TheArctesian/anima.ing` before W2 and S are accepted. The hub that signs: task U12, or the VPS hub while it signs (R-158). OD-W26 only for the start with no act of the operator: until it is decided, the operator starts the release in Anima and the hub starts the workflow (PRO-020, BLD-001). | A release that the operator starts makes one workflow run on an owned machine, and the hub publishes its files. With the ruling of OD-W26, a mark on `main` does the same with no act in Anima (task R13). A pull request from a fork cannot start the workflow and cannot get the signing identity: a test for each claim. | Not started. R-170 and R-171 put it on the path. Blocked until OD-W29, OD-W31 and OD-W32 are decided and its tasks are done. | — |
+
+### Task B1: the steps for the operator
+
+An agent does not use the GitHub account of the operator, and it did not use the `gh` program of this computer for this task. These are the steps that the operator does. They take about 1 hour of work, and then three short looks in the next 2 days. `<you>` is the name of the personal account. Each command is `gh`, signed in as the owner.
+
+Rules for these steps:
+
+- Never paste an `encoded_jit_config`, a token or the content of a file `cfg-*` into a chat, a document or an issue. A JIT configuration is a secret (PRO-040). The commands below keep it in a file with the mode 600 and print only the fields that are not secret.
+- No runner is registered for `TheArctesian/anima.ing` (OD-W18). Use only the two test repositories.
+- The runner program runs on the Mac as the operator, in a folder that he deletes at the end. That is acceptable only because the one workflow of the test repository is the file below, which he writes himself. Do not start it for a different repository.
+
+What each step proves:
+
+| Step | Fact | Why the plan needs it |
+| --- | --- | --- |
+| 1 | The labels of a JIT runner (F12), and the runner group of a personal account (F5) | PRO-041: which labels the hub must send |
+| 2 | The life of a JIT configuration that no runner used (F6) | PRO-042: how long a registration can wait before a machine starts it; Section 6.2 of the contract K10 |
+| 3 | How the runner program takes the JIT configuration with no command line (W1-P2 of K10) | PRO-040: a command line can be read by each user of the machine |
+| 4 | The memory and the disk of one idle runner | PRO-042: the cost of warm mode, one idle runner for each repository |
+| 5 | `vars` in `runs-on`, for a branch (F13) | "One press": on and off with no second merge |
+| 6 | `vars` in `runs-on`, for a pull request from a fork (F13, F20) | PRO-044: what the author of a fork can select |
+| 7 | The fields of the identity token of a job on a self-hosted runner | OD-W31, choice A: what the hub can check before it takes the files of a release |
+| 8 | Clean-up | Nothing stays |
+
+Step 0. Make the test repository, private, and a work folder.
+
+```sh
+gh repo create <you>/anima-runner-test --private --add-readme
+mkdir -m 700 ~/b1 && cd ~/b1
+```
+
+Step 1. Make a JIT configuration and read the labels that GitHub gave. The command keeps the configuration in a file and prints only the id and the labels.
+
+```sh
+umask 077
+gh api -X POST repos/<you>/anima-runner-test/actions/runners/generate-jitconfig \
+  -f name=b1-a -F runner_group_id=1 -f 'labels[]=anima-b1' > raw-a.json
+jq -r .encoded_jit_config raw-a.json > cfg-a && jq '{id: .runner.id, labels: [.runner.labels[].name]}' raw-a.json && rm raw-a.json
+gh api repos/<you>/anima-runner-test/actions/runners --jq '.runners[] | {id, name, status, labels: [.labels[].name]}'
+```
+
+Send back: the two printed objects. If `runner_group_id=1` is refused, send the error text. The question: did GitHub add `self-hosted`, the operating system and the architecture, or only `anima-b1`?
+
+Step 2. Make three more configurations at the same time and do not start them: `b1-1h`, `b1-6h`, `b1-24h` (the same commands, with `name=b1-1h` and the file `cfg-1h`, and so on). Write the time. Leave `b1-a` unused for the whole test.
+
+- After 1 hour, after 6 hours and after 24 hours: run the list command of step 1, and start the configuration of that time as step 3 says. Send back for each time: is the runner in the list, and did the runner program start with it or refuse it (the text of the refusal).
+- After 48 hours: run the list command one more time. Send back: is `b1-a` still in the list.
+
+Step 3. Get the runner program and start it with a configuration. Take the newest version and its SHA-256 from the release page of `actions/runner`; the page gives both.
+
+```sh
+V=<version>; curl -fL -o runner.tar.gz https://github.com/actions/runner/releases/download/v$V/actions-runner-osx-arm64-$V.tar.gz
+shasum -a 256 runner.tar.gz        # compare with the release page before the next line
+mkdir r1 && tar -xzf runner.tar.gz -C r1 && du -sh r1
+```
+
+First try with no command line argument, in a second terminal window so that the first one stays free:
+
+```sh
+cd ~/b1/r1 && ACTIONS_RUNNER_INPUT_JITCONFIG="$(cat ../cfg-1h)" ./run.sh
+```
+
+If the program asks for a configuration or stops, start it with the argument: `./run.sh --jitconfig "$(cat ../cfg-1h)"`. Send back: which of the two forms started the runner, and the first 5 lines that it printed. While it runs with the argument form, run `ps -axo command | grep -c jitconfig` in the first window and send back the number: it shows if the configuration is in the list of processes.
+
+Each runner does one job and then stops. For each later start, make a new copy of the folder (`mkdir r2 && tar -xzf runner.tar.gz -C r2`).
+
+Step 4. While a runner waits for a job and no job is queued, wait 5 minutes, then:
+
+```sh
+ps -axo rss,command | grep -i '[R]unner\.' | awk '{sum+=$1} END {print sum/1024 " MiB"}'
+```
+
+Send back: the number, and the result of `du -sh r1`.
+
+Step 5. Add the workflow and the variable. The workflow names the runner by a variable and falls back to a runner of GitHub.
+
+```sh
+gh variable set RUNNER_LABEL --repo <you>/anima-runner-test --body anima-b1
+```
+
+The file `.github/workflows/b1.yml` of the test repository:
+
+```yaml
+name: b1
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  where:
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    steps:
+      - run: echo "runner=${{ runner.name }} environment=${{ runner.environment }} label=${{ vars.RUNNER_LABEL }}"
+      - name: identity token fields
+        run: |
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=anima-b1" \
+            | jq -r .value | cut -d. -f2 | tr '_-' '/+' | awk '{ while (length($0) % 4) $0 = $0 "="; print }' | base64 -d \
+            | jq '{iss, aud, repository, repository_visibility, ref, sha, event_name, workflow_ref, job_workflow_ref, runner_environment, actor}'
+```
+
+The second step prints only named fields of the token, not the token. Commit the file on a branch `b1-branch` and push it. Then:
+
+```sh
+gh run list --repo <you>/anima-runner-test --limit 3
+gh api repos/<you>/anima-runner-test/actions/runs/<run id>/jobs --jq '.jobs[] | {status, labels, runner_name}'
+```
+
+Send back: the `labels` of the job while it is queued. Then start a runner with a new configuration that has the label `anima-b1` (steps 1 and 3) and send back: the `runner_name` of the job after it ran, and the two printed lines of its log (`gh run view <run id> --log`). Then delete the variable (`gh variable delete RUNNER_LABEL --repo <you>/anima-runner-test`), start the workflow by hand (`gh workflow run b1.yml --repo <you>/anima-runner-test --ref b1-branch`) and send back the `labels` and the `runner_name` of that job: it must be a runner of GitHub.
+
+Step 6. The fork. A personal account cannot fork its own repository, so this step needs a second account, or an organisation that the operator owns. If he has none, he says so and the fact stays not proved. No runner is started in this step: the question is only which labels the job asks for.
+
+- Make a second test repository that is public, `<you>/anima-runner-test-public`, with the same workflow file on its default branch and the same variable `RUNNER_LABEL`. Register no runner for it.
+- From the second account, fork it, change one line of the README on a branch, and open a pull request to `<you>/anima-runner-test-public`. Approve the run if GitHub asks (F18).
+- Run the two commands of step 5 for that repository. Send back: the `labels` of the queued job. `["anima-b1"]` means that a workflow of a fork pull request reads `vars`. `["ubuntu-latest"]` means that it gets an empty text. If the job ran on a runner of GitHub, send back also what the step "identity token fields" printed, or its error: the documentation says that a fork pull request gets no token with the right to ask for one.
+- Cancel the run if it waits (`gh run cancel <run id> --repo <you>/anima-runner-test-public`).
+
+Step 7. The identity token on a self-hosted runner is the second printed object of the run of step 5 that ran on the Mac. Send back that object, and the same object of the run that used a runner of GitHub. The question: are `repository`, `ref`, `sha`, `event_name`, `job_workflow_ref` and `runner_environment` present on a self-hosted runner, and what `runner_environment` says there.
+
+Step 8. Clean up.
+
+```sh
+gh api repos/<you>/anima-runner-test/actions/runners --jq '.runners[].id' | xargs -I{} gh api -X DELETE repos/<you>/anima-runner-test/actions/runners/{}
+rm -rf ~/b1
+gh repo delete <you>/anima-runner-test --yes && gh repo delete <you>/anima-runner-test-public --yes
+```
+
+The last line needs the scope `delete_repo`; to archive the two repositories in the settings page is also sufficient.
+
+What the operator sends back, in one message: the answers of steps 1 to 7, as text. An agent then writes each result in the table "Facts of GitHub" (F5, F6, F12, F13), in W1-P2 of the contract K10 and in OD-W31, and sets task B1 to Done with that commit. A value in these steps that the documentation of GitHub does not state (the variable `ACTIONS_RUNNER_INPUT_JITCONFIG`, the group number 1, the names of the fields of the token) is a thing to prove, not a fact: if a command does not work as written, the error text is the result.
 
 Group A: builds of Anima's own.
 
