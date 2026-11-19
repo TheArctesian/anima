@@ -2,10 +2,10 @@
 
 - From: the operator, 2026-11-18 (17:04 PT and 22:27 PT)
 - Source: the vault note "User Documentation"
-- Status: Framed
-- Serves: No row names it (gap). Closest: row 4.16 One-click install (the first guide a user needs is the install), with row 4.1 (the first release). Not confirmed. The operator can ask the Planner for a row of its own.
+- Status: Ready for Planner
+- Serves: a new row of its own, which the Planner adds (operator, 2026-11-19).
 - Owner if it becomes work: Open. The marketing website is owned by design-spec.md Section 3.12 (SITE-001 to SITE-012, `ownership.md`). Docs on that site need a change to that section. The Planner decides.
-- Effort: M for a first version (install, first device, remote access, CLI reference); L for full docs. These are estimates. Recommendation: should, with a narrow first version.
+- Effort: L for the full set, which the operator chose for the first version (an estimate). Recommendation: should.
 
 ## The idea
 
@@ -50,9 +50,19 @@ Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../pl
 2. Is the source Markdown written in this repository (`docs/user/`) and published by the website? (yes/no. Recommended: yes, so a docs change and a code change go in one commit.)
 3. How big is the first version? (one choice: install, first device, remote access and CLI reference; or the full set. Recommended: the first four.)
 
+## Answers (operator, 2026-11-19)
+
+1. Where the docs live: a separate site at docs.anima.ing.
+2. Source: yes. Markdown in this repository (`docs/user/`), published by the docs site.
+3. First version: the full set.
+4. Serves: a new row of its own, which the Planner adds.
+
+Points for the Planner: docs.anima.ing is a new site outside design-spec Section 3.12 (SITE-001 to SITE-012), so it needs an owner; decide whether SITE-007, SITE-008 and SITE-012 also apply to it; rule whether STE applies to user docs; and decide whether the Agent-Readable Surface idea folds in.
+
 ## Reviews
 
 - 2026-11-18: round 1. The bot framed the idea from the operator's two messages and a read of the Rex and Ghostty docs. The Serves row is not confirmed.
+- 2026-11-19: round 2. The operator answered all questions and asked for a new row. Ready for Planner.
 
 ## Source text
 
