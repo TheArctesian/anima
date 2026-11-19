@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observability suite mockups (status pages and errors)</title>
+<style>
+/* Layout: a review board for observability-suite.md (Draft, not approved).
+   Frame 1 is the public status page, written as static files (OBS-010 to OBS-018).
+   Frame 2 is the Status pages screen of the client (OBS-010, OBS-012, OBS-015, OBS-016).
+   Frame 3 is the Errors page of the client (OBS-020 to OBS-030).
+   No font, script or image comes from a third party. IBM Plex is named, and the system font is the fallback. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). Maintenance uses aurora-15 (#B48EAD) in both; the light text value is not checked. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.pad { padding: var(--space-8); display: grid; gap: var(--space-6); }
+h2 { margin: 0; font-weight: var(--weight-light); font-size: var(--text-display); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); }
+h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.muted { color: var(--text-secondary); font-size: var(--text-sm); }
+.banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); }
+.dot { inline-size: 0.75rem; block-size: 0.75rem; border-radius: 50%; flex: none; }
+.sq { border-radius: 2px; }
+.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; }
+.up { background: var(--status-up); } .down { background: var(--status-down); } .deg { background: var(--status-degraded); }
+.mnt { background: var(--status-maintenance); } .nod { background: var(--status-unknown); }
+.comp { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.bars { display: grid; grid-template-columns: repeat(90, 1fr); gap: 2px; block-size: 1.75rem; }
+.bars i { display: block; border-radius: 1px; }
+.legend { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.inc { padding: var(--space-4); border-inline-start: 3px solid var(--status-degraded); background: var(--surface-raised); display: grid; gap: var(--space-1); }
+.app { display: grid; grid-template-columns: 13rem 1fr; min-block-size: 30rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-2); align-content: start; }
+.nav { color: var(--text-secondary); } .nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+table { border-collapse: collapse; inline-size: 100%; }
+th, td { text-align: start; padding: var(--space-2) var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); vertical-align: top; }
+th { font-weight: var(--weight-medium); color: var(--text-secondary); font-size: var(--text-sm); }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.btn.pri { background: var(--accent); color: var(--surface-base); border-color: var(--accent); }
+.chip { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: 0.75rem; color: var(--text-secondary); }
+.warn { color: var(--status-down); font-size: var(--text-sm); }
+code { font-family: var(--font-mono); font-size: 0.8125rem; }
+</style>
+</head>
+<body>
+<h1 class="board">Observability suite</h1>
+<p class="about">Mockups for <a href="../../proposals/observability-suite.md" style="color:inherit">observability-suite.md</a> (Draft). The proposal is not approved. All names and numbers are examples. The public page shows only the display names that the operator writes: no address, host name or device name (OBS-012).</p>
+<div class="frames">
+
+<figure>
+<div class="frame gl"><div class="pad">
+  <div class="row"><h2>Example Project status</h2><span class="muted">Updated 15:20 PT</span></div>
+  <div class="banner"><span class="dot deg tri" aria-hidden="true"></span><strong>Partial outage</strong><span class="muted">1 of 3 components is degraded</span></div>
+  <div class="inc"><strong>Slow sign-in: Monitoring</strong><span class="muted">15:05 PT. The fix is out. We watch the response time.</span><span class="muted">14:40 PT. Identified. A database query is slow.</span></div>
+  <div>
+    <div class="comp"><div class="row"><h3>Website</h3><span><span class="dot up" style="display:inline-block"></span> Operational</span></div><div class="bars" data-pattern="up"></div><div class="row muted"><span>90 days ago</span><span>99.98 % uptime</span><span>Today</span></div></div>
+    <div class="comp"><div class="row"><h3>Sign-in</h3><span><span class="dot deg tri" style="display:inline-block"></span> Degraded</span></div><div class="bars" data-pattern="deg"></div><div class="row muted"><span>90 days ago</span><span>99.71 % uptime</span><span>Today</span></div></div>
+    <div class="comp"><div class="row"><h3>API</h3><span><span class="dot up" style="display:inline-block"></span> Operational</span></div><div class="bars" data-pattern="mnt"></div><div class="row muted"><span>90 days ago</span><span>100 % uptime (maintenance not counted)</span><span>Today</span></div></div>
+  </div>
+  <div class="legend muted"><span><i class="dot up"></i>Operational</span><span><i class="dot deg tri"></i>Degraded</span><span><i class="dot down sq"></i>Down</span><span><i class="dot mnt"></i>Maintenance</span><span><i class="dot nod"></i>No data (the hub slept or no beat)</span></div>
+  <p class="muted">Static files. No cookie, no analytics, no request to the hub. If this page is older than 15 minutes it says "Status not current" (OBS-014).</p>
+</div></div>
+<figcaption>Frame 1, the public status page (light). OBS-011 (states and 90 daily bars from the day aggregates), OBS-013 (static bundle), OBS-014 (stale rule and No data), OBS-015 (incident updates). A state has a word and a shape, not only a color.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd"><div class="app">
+  <div class="side"><div class="group">Fleet</div><span class="nav">Devices</span><span class="nav">Checks</span><span class="nav on">Status pages</span><span class="nav">Errors</span><div class="group">Extensions</div><span class="nav">Projects</span></div>
+  <div class="pad">
+    <div class="row"><h2>Example Project status</h2><span><span class="btn">Download bundle</span> <span class="btn pri">Publish now</span></span></div>
+    <table>
+      <tr><th>Display name (public)</th><th>Check (private)</th><th>State</th><th></th></tr>
+      <tr><td>Website</td><td class="muted">HTTP(S) check</td><td>Operational</td><td><span class="chip">Up</span></td></tr>
+      <tr><td>Sign-in</td><td class="muted">Group check, 2 children</td><td>Degraded</td><td><span class="chip">Draft incident offered</span></td></tr>
+      <tr><td><code>api.example.com</code></td><td class="muted">HTTP(S) check</td><td>Operational</td><td class="warn">Refused: looks like a host name. Write a display name (OBS-012).</td></tr>
+    </table>
+    <div class="banner"><span class="dot up" aria-hidden="true"></span><span>Publish target: a branch of a GitHub repository (OD-OBS9). Last publish 15:20 PT. Each 5 minutes and at each change.</span></div>
+    <p class="muted">Each publish and each incident is in the audit log (OBS-019). The hub never publishes an incident that you did not write or confirm (OBS-015).</p>
+  </div>
+</div></div>
+<figcaption>Frame 2, the Status pages screen of the client (dark). OBS-010, OBS-012 (the address gate names the field), OBS-015, OBS-016 and OBS-017. The target is open until OD-OBS8 and OD-OBS9.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd"><div class="app">
+  <div class="side"><div class="group">Fleet</div><span class="nav">Devices</span><span class="nav">Checks</span><span class="nav">Status pages</span><span class="nav on">Errors</span><div class="group">Extensions</div><span class="nav">Projects</span></div>
+  <div class="pad">
+    <div class="row"><h2>Errors</h2><span><span class="chip">Unresolved</span> <span class="chip">All devices</span> <span class="chip">Last 24 hours</span></span></div>
+    <table>
+      <tr><th>Error group</th><th>Program</th><th>Count</th><th>Last</th><th>State</th></tr>
+      <tr><td><strong>ConnectionRefused</strong> connect to &lt;host&gt;:&lt;n&gt; failed<br><span class="muted">New 14:38 PT. 1 notification sent.</span></td><td>container <code>web</code> on Studio</td><td>212</td><td>15:19</td><td><span class="chip">Unresolved</span></td></tr>
+      <tr><td><strong>Restart loop</strong> 4 restarts in 15 minutes<br><span class="muted">From CHK-014</span></td><td>unit <code>worker.service</code> on Shelf</td><td>4</td><td>15:02</td><td><span class="chip">Unresolved</span></td></tr>
+      <tr><td><strong>TypeError</strong> cannot read &lt;field&gt; of undefined<br><span class="muted">Occurs again after Resolved. SDK event, loopback (OD-OBS10)</span></td><td>app <code>dashboard</code> on Studio</td><td>9</td><td>13:47</td><td><span class="chip">Regressed</span></td></tr>
+    </table>
+    <p class="muted">Messages are redacted before they are stored (OBS-024). Each group links to its log lines and its device (OBS-028). An error group does not change a check or the uptime (OBS-031).</p>
+  </div>
+</div></div>
+<figcaption>Frame 3, the Errors page of the client (dark). OBS-020 to OBS-030. The fingerprint replaces numbers, hosts and fields with placeholders (OBS-021). The SDK row exists only if OD-OBS10 permits SDK events.</figcaption>
+</figure>
+</div>
+<script>
+/* Draws the 90 example bars of frame 1. Example data only. */
+for (const el of document.querySelectorAll('.bars')) {
+  const p = el.dataset.pattern;
+  for (let d = 0; d < 90; d++) {
+    const i = document.createElement('i');
+    let c = 'up';
+    if (d < 6) c = 'nod';
+    if (p === 'deg' && (d === 61 || d === 89)) c = 'deg';
+    if (p === 'deg' && d === 40) c = 'down';
+    if (p === 'mnt' && (d === 30 || d === 74)) c = 'mnt';
+    i.className = c;
+    el.appendChild(i);
+  }
+}
+</script>
+</body>
+</html>

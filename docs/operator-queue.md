@@ -36,7 +36,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (116)
+## 2. Open decisions (130)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -129,6 +129,20 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D17 | At which address does the browser meet a hosted hub for Connect GitHub? | Open. Section 7.2 has the choices, with what is for and against each. Recommendation: the local port of the link (choice A there), after an agent verifies its t… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D18 | What R-206 left open for the daemon of a computer: (a) while the application is closed; (b) a question before the installation; (c) a computer with no applicati… | Open. Section 7.1 has each point with a recommendation: (a) first build with gaps and say so on the page, then decide if the link becomes a unit of the user; (b… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| OD-OBS1 | Which pieces are in scope? (one choice: all four, including product and web analytics, as relayed; status pages and error tracking; status pages only) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS2 | Are short links (Dub, named in the post) out of scope? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS3 | In what order? (one choice: status pages and error tracking together, as relayed; status pages first) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS4 | Do they ship inside the hub and the daemon as extensions that are off by default, with no separate binary? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS5 | Which priority row? (one choice: under row 4.8, as relayed; a new row 4.23 at tier 3) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS6 | Do you reverse OD-E6 ("No custom telemetry endpoint") so that Anima.ing stores product analytics events of its own? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS7 | Does SITE-008 and OD-21 change, so that an Anima.ing collector can count page views? (one choice: no change, Vercel Web Analytics stays; a collector for the ope… | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS8 | How does a status page reach the public? (one choice: static export that the hub publishes outbound to a target; a separate public program on the VPS, as the we… | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS9 | Is the first publish target a branch of a GitHub repository through the Projects GitHub App? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS10 | Which events can the error tracker accept? (one choice: only what Anima.ing reads now, container logs and restart loops; also Sentry SDK events on the daemon lo… | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS11 | Are the new extensions outside "the 15 extensions" of EXT-009, as the "Agent tools" switch is (R-196)? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS12 | Where in the order of XP-005? (one choice: right after XP-02 Projects; at the end) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS13 | Does R-144 (PH-E-000 until the acceptance run WP-53) also hold these extensions? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
+| OD-OBS14 | Does this stay a separate proposal now, and move into extensions-plan.md and design-spec.md (INT-004) at approval? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
@@ -157,7 +171,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (28)
+## 3. Documents that wait for an approval (29)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -182,6 +196,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |
 | [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
+| [proposals/observability-suite.md](proposals/observability-suite.md) | Proposal, with a task table | Draft |
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
