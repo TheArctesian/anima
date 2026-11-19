@@ -101,6 +101,14 @@ describe("what starts the workflow (UPD-007, OD-W26)", () => {
     }
   });
 
+  test("R-183 a tag must give the version of its commit, and the job has the full history for the count", () => {
+    const checkout = job("commit").steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+    expect(checkout?.with?.["fetch-depth"]).toBe(0);
+    const text = runText(job("commit"));
+    expect(text).toContain('of_commit=$(sh deploy/bin/commit-version "$sha")');
+    expect(text).toMatch(/\[ "\$EVENT" = push \] && \[ "\$version" != "\$of_commit" \]; then\n\s+echo "::error::[^\n]+\n\s+exit 1/);
+  });
+
   test("each job that reads the repository reads the commit that the first job checked", () => {
     for (const [name, found] of Object.entries(jobs)) {
       for (const step of found.steps.filter((one) => one.uses?.startsWith("actions/checkout@"))) {

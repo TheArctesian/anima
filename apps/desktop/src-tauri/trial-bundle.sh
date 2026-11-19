@@ -16,7 +16,8 @@
 # By hand it is NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007)
 # or from the release workflow.
 #
-#   trial-bundle.sh [version]
+#   trial-bundle.sh [version]    with no version: the version of the commit that is checked
+#                                out, from deploy/bin/commit-version (R-183)
 #   trial-bundle.sh --marks      prints the marks that a build with this environment gets, and
 #                                builds nothing (for the test of the two modes)
 #
@@ -43,13 +44,14 @@ set -eu
 
 MARKS_ONLY=false
 if [ "${1:-}" = --marks ]; then MARKS_ONLY=true; shift; fi
-VERSION=${1:-0.1.0}
+HERE=$(cd "$(dirname "$0")" && pwd)
+ROOT=$(cd "$HERE/../../.." && pwd)
+# With no version, the version of the commit that is checked out (R-183).
+VERSION=${1:-$(cd "$ROOT" && sh deploy/bin/commit-version)}
 IDENTITY=${SIGN_IDENTITY:-}
 # The identity goes into a JSON text: no quote and no backslash.
 case "$IDENTITY" in *\"* | *\\*) echo "trial-bundle: SIGN_IDENTITY holds a quote or a backslash" >&2; exit 1 ;; esac
 echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || { echo "trial-bundle: the version is not like 0.1.0" >&2; exit 1; }
-HERE=$(cd "$(dirname "$0")" && pwd)
-ROOT=$(cd "$HERE/../../.." && pwd)
 TARGET_FOLDER=${CARGO_TARGET_DIR:-$ROOT/target}
 STAGE=$HERE/binaries
 RUST_PROGRAMS="anima anima-local-hub anima-hub anima-database anima-gateway"

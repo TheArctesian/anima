@@ -2,9 +2,12 @@
 # docs/plans/projects-and-builds-plan.md). The procedure for the operator is in
 # docs/procedures/releases.md, "The release workflow".
 #
-# A tag `v<version>` on a commit of `main` builds, signs and publishes (OD-W26 is open: the tag
-# is the recommendation of that decision). A run by hand is a trial: it builds, signs and
-# checks everything, and publishes nothing. No pull request starts this workflow.
+# A tag `v<version>` on a commit of `main` builds, signs and publishes, with no approval
+# (R-182); the version must be the version of the commit (R-183, deploy/bin/commit-version).
+# R-184 decided a different start, each change of `main`; it is not built, and task B8g of the
+# plan changes this trigger only after the operator has seen its design. A run by hand is a
+# trial: it builds, signs and checks everything, and publishes nothing. No pull request starts
+# this workflow.
 #
 # Each secret is in an environment of its own, so a job has only the secrets of its work:
 #   release           the Developer ID certificate and the notary credentials   job `macos`
@@ -22,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Trial only: the version to build, as 0.2.2. Nothing is published."
+        description: "Trial only: the version to build. Use 0.0.1, never the version of a release. Nothing is published."
         required: true
         type: string
 
@@ -71,6 +74,13 @@ jobs:
             exit 1
           fi
           sha=$(git rev-parse 'HEAD^{commit}')
+          # The version of a release is the version of its commit (R-183). A trial keeps the
+          # version of its input, so that it signs nothing with the version of a release.
+          of_commit=$(sh deploy/bin/commit-version "$sha")
+          if [ "$EVENT" = push ] && [ "$version" != "$of_commit" ]; then
+            echo "::error::The tag gives $version, and the commit $sha has the version $of_commit (R-183)."
+            exit 1
+          fi
           git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
           if ! git merge-base --is-ancestor "$sha" refs/remotes/origin/main; then
             echo "::error::The commit $sha is not on main (BLD-041)."
@@ -84,9 +94,8 @@ jobs:
             echo "updater_public_key=$key"
           } >> "$GITHUB_OUTPUT"
 
-  # The gates of the repository on the release commit (BLD-042). OD-W32 is open: R-005 and
-  # CQ-010 say that GitHub Actions runs no gate. If the answer is no, delete this job and its
-  # name in `needs` of `sign`.
+  # The gates of the repository on the release commit (BLD-042). R-185: the release workflow
+  # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
   gates:
     needs: commit
     runs-on: macos-15
