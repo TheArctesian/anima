@@ -163,11 +163,13 @@ describe("is this commit of main a release (R-184, R-201)", () => {
 
   test("the published 0.2.1 of the old numbers is below a first line of 800 commits", () => {
     const folder = repository();
-    for (let made = 2; made <= 205; made += 1) git(folder, "commit", "--quiet", "--allow-empty", "-m", `commit ${String(made)}`);
+    // 204 commits in one process: one process for each commit is too slow on a busy computer.
+    const made = run(["/bin/sh", "-c", 'n=2; while [ "$n" -le 205 ]; do git commit --quiet --allow-empty -m "commit $n" || exit 1; n=$((n + 1)); done'], folder);
+    expect(made.exitCode).toBe(0);
     change(folder, "apps/client/src/second.ts");
     expect(decision(folder, "HEAD", "desktop", "0.2.1", "0.2.1", "none").printed).toBe("release 0.2.6");
     expect(decision(folder, "HEAD", "desktop", "0.2.1", "0.2.1").printed).toBe("release 0.2.6");
-  });
+  }, 120_000);
 
 });
 
