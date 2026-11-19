@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Draft
-evidence: Directions of the operator (2026-11-19, first-hand to the orchestrating session, relayed to the session that wrote this): he wants a hosted hub in a browser at `hub.anima.ing`, agreed to one front door with the account sign-in ("yeah thats fine."), and gave the flow of the sign-in. No ruling has a number yet, and no requirement is approved. Nothing is built and nothing here is verified on a server.
+state: Direction decided
+evidence: Direction decided: R-207 (operator, 2026-11-19, relayed) holds his eight answers: one front door at `hub.anima.ing` in the form A1, no second factor at first, a security review before other people, each hosted plan, the name moves straight away, GitHub connected once, a browser session counts as use, a browser may be first. The requirements are HMD-059 to HMD-070 of hosted-mode.md, proposed and not approved. Nothing is built and nothing here is verified on a server.
 ---
 
 # Proposal: a hosted hub in a browser at `hub.anima.ing`
@@ -9,9 +9,9 @@ evidence: Directions of the operator (2026-11-19, first-hand to the orchestratin
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 From: the session that recorded the defects of the first use of a hosted hub (DEF-002 to DEF-005), on the word of the orchestrating session, 2026-11-19.
-Version: 2. Date: 2026-11-19. Version 2 adds his agreement to the shape and Section 4, the flow.
-Status: the header of this document holds the state (PLN-020). History: Draft. It is a proposal: do not build from it (PLN-007).
-Map: [work-plan.md](../work-plan.md), row 4.17 (the hosted mode and the shared pool). Parent: [hosted-mode.md](hosted-mode.md). It adds no requirement identifier; if the operator chooses an option, the requirements go into the parent.
+Version: 3. Date: 2026-11-19. Version 3 records R-207: Section 7 has his answers, Section 6 the task lists for the other repositories and what comes off the old hub before the name moves. Version 2 added his agreement to the shape and Section 4, the flow.
+Status: the header of this document holds the state (PLN-020). History: Draft; Direction decided (R-207). It is a proposal: build only a task of [hosted-mode.md](hosted-mode.md) Section 8 whose requirement is approved (PLN-007).
+Map: [work-plan.md](../work-plan.md), row 4.17 (the hosted mode and the shared pool). Parent: [hosted-mode.md](hosted-mode.md). It adds no requirement identifier: the requirements are HMD-059 to HMD-070 of the parent (its Section 6.9), and the tasks of this repository are HM-T25 to HM-T32 there.
 
 ## 1. The direction
 
@@ -19,7 +19,7 @@ The operator, 2026-11-19: "I still would love a web hub like the old app so we c
 
 Thus he wants: a person opens `https://hub.anima.ing` in a browser, signs in with the Anima.ing account, and uses the hosted hub of that account, as he used his own hub on the VPS. It is a wish and a direction. It is not a ruling on a design.
 
-The same day the orchestrating session put the shape to him: one front door at `hub.anima.ing`, the sign-in with the Anima.ing account, and the browser passed through to the hub of the account. His answer: "yeah thats fine." On the flow: "It should be you have to sign in or when you sign in/up you are redirected to hub.anima.ing does that makes sense". That agrees with option A of Section 3. He did not choose between its forms A1 and A2, and did not answer the questions of Section 7. No ruling records these words yet; the session that wrote this took no ruling number for them, because they came as a direction for a proposal.
+The same day the orchestrating session put the shape to him: one front door at `hub.anima.ing`, the sign-in with the Anima.ing account, and the browser passed through to the hub of the account. His answer: "yeah thats fine." On the flow: "It should be you have to sign in or when you sign in/up you are redirected to hub.anima.ing does that makes sense". That agrees with option A of Section 3. He did not choose between its forms A1 and A2, and did not answer the questions of Section 7. R-207 records these words and his eight answers to the questions of Section 7.
 
 ## 2. What exists
 
@@ -95,7 +95,9 @@ Each hub gets a name, for example `https://<hub>.hub.anima.ing`. The pool routes
 | For | No new surface and no new work in the pool. The design of today stays whole |
 | Against | It is not what he asked for. A phone needs the mobile application; a computer with no application has no way in. Connect GitHub needs a different answer (HM-D17) |
 
-### Recommendation
+### Recommendation, and what he decided
+
+Decided (R-207): option A in the form A1. The text below is the recommendation as it was put to him. He did not take one part of it: the second factor at each browser sign-in (Section 7, answer 2).
 
 A1: one address, the gateway routes and each hub authenticates. It is the only option that gives him the name he asked for, and with A1 it keeps two checks as B does. Three conditions before it is turned on for a person other than the operator: HMD-006 is built and a browser sign-in always needs the second factor; the gateway keeps no body of a request and gives the staff no session (HM-R8); and a review of the security of the gateway and of the browser session of the hub, by a person or a second model, although R-159 chose no review for the pool: this is the first public door.
 
@@ -121,12 +123,12 @@ Then, at `hub.anima.ing`, with a session of the gateway, one of these:
 | A paid account that is past due (R-159 e; HMD-051, proposed) | The hub, with the notice to pay and a link to the account site, until the hub is deleted after 30 days; then the page of the row above | HMD-018: slow down, do not delete data, above the usage line |
 | No session of the hub can be made (the hub does not start, the pool does not answer) | A page with plain words and "Try again" | It names no server and shows no detail of the pool |
 
-The second factor in this path:
+The second factor in this path (R-207, answer 2: "later password and SSO for now"):
 
-- By R-159 and R-163 the sign-in stays one step, and a second factor is needed before the first device with remote access is added (HMD-006).
-- Recommended here (question 2): the gateway asks for the second factor at each browser sign-in. A person who has none sets one up (a passkey first) between the sign-in and the first sight of the hub. The first sign-up in a browser then is: sign up, set up a passkey, "Your hub is starting", the hub.
-- If he keeps the letter of HMD-006 instead: the gateway lets a person with no second factor in, and the hub refuses, in a browser session as in the application, each step that adds remote access until the account has one. A browser session of a hub that already has remote access must then still need the second factor, or the rule protects nothing.
-- In both cases the second factor is checked by the account (AuthKit), and the gateway reads the result. The hub does not ask for a code.
+- At first a browser sign-in is by password or by the sign-on provider, with no second factor. The first sign-up in a browser is: sign up, "Your hub is starting", the hub.
+- What stays in the design, because it costs a person no step (HMD-062): a session ends after 30 minutes with no request and at the latest after 12 hours; the account page lists the open sessions with "Sign out"; the sign-in limits the attempts.
+- HMD-006 is not changed: an account needs a second factor before the first device with remote access is added. It is not built. When it is built, the hub refuses that step in a browser session as in the application until the account has one.
+- A second factor at the browser sign-in is a planned later step. Until then a stolen browser session, or a stolen password of an account that has no sign-on provider, is the whole hub of that account from any computer, for the life of the session. The review (answer 3) must say whether that is acceptable for other people; HMD-067 has the conditions.
 
 Signing out: "Sign out" in the web client ends the session of the hub and of the gateway. The account page lists the open browser sessions with "Sign out" for each.
 
@@ -139,35 +141,70 @@ Signing out: "Sign out" in the web client ends the session of the hub and of the
 - Not settled: the hub of the one-click installation on the computer of a person has no public address and gets none from this. DEF-003 stays open for it.
 - Not settled: the daemon of a computer (R-206) and the path from the hub to a port of a computer (HMD-048). A browser session shows what the hub has; it adds no path to a device.
 
-## 6. What it needs in the other repositories
+## 6. The task lists for the other repositories
 
-A list for their owners. Nothing there is changed by this proposal.
+For their owners. Nothing there is changed by this proposal; the orchestrating session hands the lists on. The requirement numbers are those of [hosted-mode.md](hosted-mode.md) Section 6.9.
 
-- `anima-cloud` (the pool): the gateway, or the route from a gateway to each hub (ACL-022 and AC-D28 change); the wake of a sleeping hub for a browser; the request of a browser session at the hub with the cloud key; `ANIMA_PUBLIC_ORIGIN` in the environment of each hub (it is not set today, DEF-003); the web client in the image of the hub, if the image does not carry it (not verified); limits against abuse.
-- `anima-site` (the account), a list for its owner:
-  - after each sign-in and each sign-up, send the browser to `hub.anima.ing`, except when the request names a page of the account to come back to;
-  - accept the gateway as a place to come back to after the sign-in, and no other host (a fixed list, so that the sign-in cannot send a session to a foreign address);
-  - give the gateway what it needs to know the account and its hub, and the result of the second factor; the WorkOS tokens stay at the site and the gateway;
-  - the setup of a second factor (a passkey first) in the path of the first browser sign-in;
-  - the page of the account reachable from the hub, with the list of the open browser sessions and "Sign out" for each;
-  - the hub of an account that has none yet, asked for by a browser and not by the application; the pages for a paused, a deleted and a past-due hub;
-  - a browser sign-in counts as a sign-in for the delete after 60 days (HMD-021);
-  - the plan of the account, if browser access is a paid function.
-- DNS and the certificate: the record `hub.anima.ing` goes from the VPN address of the VPS to the gateway; a certificate for it at the gateway (with B, a wildcard record and certificate). The old hub renews the certificate of this name by DNS-01 today; its token for that must be withdrawn in the same change.
-- The old hub on the VPS: it holds the name today. Before the name moves: the releases must be checked, signed and published elsewhere, because that hub holds the updater key (R-117, R-158); a copy of the updater key must exist in the business vault; the data of the old hub that he wants must be exported; and each installed client that still has `hub.anima.ing` as a typed or default address of a self-hosted hub will reach the gateway and must get a plain page there, not an error.
-- This repository, if he chooses A or B: the browser session of a hosted hub (K1, the hosted contract, HMD-038 changes, because the hub then has a second way in, which is still the account); the web client for a hosted hub (no hub address page, the hosted mark); the default hub address of the clients, which then means "the hosted service".
+### 6.1 `anima-cloud` (the pool and the gateway)
 
-## 7. The questions for the operator
+1. The gateway at `https://hub.anima.ing`: TLS for the name, the session of the gateway, the sign-in by the account site, the route to the hub of the account (HMD-059, HMD-061). It routes only: it does not check a session of a hub.
+2. A network route from the gateway to each hub, and nothing else to a hub. ACL-022 and AC-D28 of the private plan change: today the service reaches a hub only with one fixed command in its container.
+3. The request of a browser session at the hub for the account, signed with the cloud key (the hub side is task HM-T26 of this repository; the contract is HM-T25).
+4. `ANIMA_PUBLIC_ORIGIN=https://hub.anima.ing` in the environment of each hosted hub (HMD-069). It is not set today.
+5. The web client in the image of a hosted hub (`ANIMA_WEB_ROOT`). Not verified whether the image carries it.
+6. The wake of a sleeping hub on a visit, and "Your hub is starting" in the browser while it wakes or is made (HMD-063, HMD-066).
+7. A browser session counts as use: the pool does not stop a free hub while a browser session is open (HMD-064; the hub reports it, task HM-T28).
+8. No body of a request and no query of an address in a log (the ticket and the code of GitHub pass in an address, Section 7.2 of the parent). No session for the staff (HM-R8).
+9. A limit of requests for each address and each account.
+10. The pages for a paused, a deleted and a past-due hub, and for a hub that does not start (HMD-063), or their hand-over to the account site.
+11. A name of a deleted hub or account must never route to a different hub.
 
-Each with the recommendation of the session that wrote this.
+### 6.2 `anima-site` (the account)
 
-| # | Question | Recommendation |
-| --- | --- | --- |
-| 1 | A browser at one address (A), a name for each hub (B), or the application only (C)? He agreed to the shape of A on 2026-11-19 ("yeah thats fine."). Still his: the form, A1 (each hub checks its own session) or A2 (the hub trusts the gateway) | A1 |
-| 2 | The second factor for a browser: at each browser sign-in from the first day, or only when the hub has a device with remote access (the letter of HMD-006)? | At each browser sign-in. A browser session is remote access by itself. This is stricter than "required later" (R-159), so it needs his word |
-| 3 | A review of the security of the gateway before it is open to other people? In R-159 he chose no review for the pool. | Yes, for this part: it is the first public door to the hub of each customer |
-| 4 | Is browser access for each account, or a function of a paid plan? A visit wakes a free hub. | Each account. A wake by a browser counts as use (HM-D15, R-164) |
-| 5 | When does the name move? The old hub signs each release today. | The gateway is built and checked under a second name first. `hub.anima.ing` moves after the releases are signed elsewhere and he has what he wants from the old hub. Until then the old hub keeps the name |
-| 6 | Connect GitHub until this is built: wait, or build the choice "local port of the link" of HM-D17 now? | Wait, if he chooses A or B and it is among the next work. Build only the refusal with plain words (DEF-003), so that no ticket goes to the old hub |
-| 7 | Does an open browser session count as use, so that a free hub does not stop while a person works in the browser, and does a browser sign-in count for the 60 days? R-164 names only a device on the link. | Yes to both. The session of the gateway has a short life with no activity, so a forgotten tab does not keep a hub awake |
-| 8 | May a browser be the first sign-in of an account, before any application? The hub then has no computer of the person. | Yes. The first page then offers the application |
+1. After each sign-in and each sign-up, send the browser to `https://hub.anima.ing`, except when the request names a page of the account to come back to (HMD-060).
+2. Accept the gateway as a place to come back to after the sign-in, from a fixed list of hosts, so that the sign-in cannot send a session to a foreign address.
+3. Give the gateway what it needs to know the account and its hub. The WorkOS tokens stay at the site and the gateway.
+4. The hub of an account that has none yet, asked for by a browser and not by the application (HMD-066).
+5. The account page reachable from the hub, with the list of the open browser sessions and "Sign out" for each (HMD-062).
+6. The limit of the sign-in attempts (HMD-062), if AuthKit does not give it.
+7. A browser sign-in counts as a sign-in for the delete after 60 days (HMD-064, HMD-021).
+8. Browser access on each hosted plan, the free one too (HMD-065).
+9. Later, not now: the setup of a second factor in the path of the browser sign-in.
+
+### 6.3 DNS and the certificate
+
+1. The record `hub.anima.ing` goes from the VPN address of the VPS to the gateway.
+2. A certificate for the name at the gateway.
+3. The token with which the old hub renews the certificate of this name by DNS-01 is withdrawn in the same change.
+
+### 6.4 The old hub on the VPS, before the name moves
+
+R-207, answer 5: "B: move it straight away". The releases are signed in the release workflow of GitHub now ([releases.md](../procedures/releases.md), "The release workflow"), so that reason to wait is gone. For the operator, what must be taken off the old hub first; the session that wrote this did not look at the server:
+
+1. The copy of the updater key that the old hub holds: make sure that the business vault has the key, then remove it from the hub.
+2. His data: an export or a backup of the database of the hub and of its key file, if he wants any of it (devices, credentials, checks, projects, events). A hosted hub has no import of it today.
+3. The GitHub App of the old hub: its callbacks are at `hub.anima.ing`. Delete the App at GitHub, or it stays as an App whose address is now the gateway.
+4. Each client that has `https://hub.anima.ing` as the address of his own hub: his devices with the application, the command line and the daemons. After the move they reach the gateway. Sign them in to the hosted hub, or remove them, first.
+5. The other names of the VPS do not move with this one: the VPN login server (`hs.anima.ing`) and the push channel. Each device that is still on the VPN keeps working until he turns the VPS off.
+6. The tokens of the old hub at Cloudflare (DNS-01, and the publishing token if it has one): withdraw them.
+
+### 6.5 This repository
+
+The tasks HM-T25 to HM-T32 of [hosted-mode.md](hosted-mode.md) Section 8. Not free today: each waits for the approval of its text (Section 6.10 there), and the contract of the browser session (HM-T25) needs it by CON-001.
+
+## 7. The questions, and his answers (R-207)
+
+Each question was put to him on 2026-11-19 with the recommendation of the session that wrote this. The answers are relayed, not first-hand to that session.
+
+| # | Question | Recommendation | His answer |
+| --- | --- | --- | --- |
+| 1 | The form of the gateway: A1 (each hub checks its own session) or A2 (the hub trusts the gateway)? | A1 | "A1: each hub checks" |
+| 2 | The second factor at each browser sign-in from the first day? | Yes | "later password and SSO for now". No second factor at first. The protections that cost no step stay (HMD-062); the orchestrating session told him so |
+| 3 | A review of the security of the gateway before it is open to other people? | Yes | "A: yes, before others". It gates the opening to other people, not the build and not his own use |
+| 4 | Browser access for each account, or a paid function? | Each account | "all hosted plans". Read by the orchestrating session as each hosted plan, the free one too; that reading is ours |
+| 5 | When does the name move? | After the releases are signed elsewhere, under a second name first | "B: move it straight away". No second name. Section 6.4 lists what comes off the old hub first |
+| 6 | Connect GitHub until this is built? | Wait; build only the refusal | "The github app should only need to be signed into once. This should be able to work". Read as: once for the account, and it works on a hosted hub. The design is Section 7.2 of the parent. The refusal (HMD-070) is a separate small step for the days before the gateway, and needs his approval |
+| 7 | Does an open browser session count as use, and a browser sign-in for the 60 days? | Yes | "A: yes, it counts" |
+| 8 | May a browser be the first sign-in? | Yes | "A: yes" |
+
+What is still his: the approval of the text of HMD-059 to HMD-070 ([hosted-mode.md](hosted-mode.md) Section 6.10), with the numbers 30 minutes and 12 hours of HMD-062; and when a second factor at the browser sign-in is built.

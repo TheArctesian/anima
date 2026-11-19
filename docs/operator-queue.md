@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (116)
+## 2. Open decisions (114)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -126,8 +126,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | The forms of the shell stay. The refresh of a real token is step 4 of HT-022. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D17 | At which address does the browser meet a hosted hub for Connect GitHub? | Open. Section 7.2 has the choices, with what is for and against each. Recommendation: the local port of the link (choice A there), after an agent verifies its t… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D18 | What R-206 left open for the daemon of a computer: (a) while the application is closed; (b) a question before the installation; (c) a computer with no applicati… | Open. Section 7.1 has each point with a recommendation: (a) first build with gaps and say so on the page, then decide if the link becomes a unit of the user; (b… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
@@ -176,7 +174,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Deferred; not built |
-| [proposals/hosted-web-hub.md](proposals/hosted-web-hub.md) | Proposal | Draft |
+| [proposals/hosted-web-hub.md](proposals/hosted-web-hub.md) | Proposal | Direction decided |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |

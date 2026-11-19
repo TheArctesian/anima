@@ -14,12 +14,13 @@ Version: 7. Date: 2026-11-18. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 9 records R-207 (a hosted hub in a browser at `hub.anima.ing`; HM-D17 decided) and R-208 (HM-D18 decided: the link runs as a unit too), the proposed requirements HMD-058 to HMD-070 (Sections 6.8 and 6.9), the list for one approval (Section 6.10) and tasks HM-T24 to HM-T33.
 Version 8 records R-206 (the desktop application includes the daemon; HM-D16 decided), the proposed requirements HMD-052 to HMD-057 (Section 6.8), tasks HM-T16 to HM-T23, and the open decisions HM-D17 and HM-D18.
 Version 7 holds the approval of HMD-001 to HMD-036 (R-163): the approved text is in Sections 6.1 to 6.6, HM-D14 is decided and HMD-051 is proposed.
 Version 6 adds Section 6.7 (the revision of HMD-001 to HMD-036 for approval), R-159 and the open decisions HM-D14 and HM-D15.
 Version 5 adds the task table of Section 8, task HM-T1 (R-127), HMD-037 (R-128), HMD-038 to HMD-041 with tasks HM-T2 to HM-T4 (R-129), and HMD-043 with tasks HM-T6 and HM-T7 (R-130).
 Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements
-HMD-001 to HMD-041 and HMD-043 to HMD-050 are approved (Section 6; R-163 for HMD-001 to HMD-036; no requirement has the number HMD-042); HMD-051 and HMD-052 to HMD-057 are proposed.
+HMD-001 to HMD-041 and HMD-043 to HMD-050 are approved (Section 6; R-163 for HMD-001 to HMD-036; no requirement has the number HMD-042); HMD-051 and HMD-052 to HMD-070 are proposed (Section 6.10 lists them for one approval).
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
 Section 1.3 (the hosted mode) and item S6 (first run), and [other-operators.md](other-operators.md)
 (OD-W2). This proposal serves row 4.17 of [priorities.md](../plan/priorities.md): tier 1
@@ -299,14 +300,58 @@ HM-D15 (a free hub that is not used: HMD-021, HMD-024) is decided by R-164. Open
 
 ### 6.8 The daemon of a computer at a hosted hub (R-206; the text is proposed)
 
-R-206 decides that the desktop application includes the daemon. The text of each requirement below is proposed by the session that recorded the ruling and is not approved. Section 7.1 has the facts.
+R-206 decides that the desktop application includes the daemon, and R-208 the four points that it left open. The text of each requirement below is proposed by the session that recorded the rulings. His words cover the substance; the exact text is in the list for one approval (Section 6.10). Section 7.1 has the facts.
 
 - **HMD-052.** The desktop application for macOS and the AppImage for Linux must carry `anima-daemon`, built from the commit of the application and signed as the other programs of the bundle. A local build (`trial-bundle.sh`) must carry it too.
-- **HMD-053.** When the application opens a hosted hub, at the sign-in and at each start, it must enrol the daemon for the computer it runs on and install it as a unit of the user: a `LaunchAgent` on macOS, a systemd user unit on Linux. It must not ask for an administrator password. It must do nothing when the daemon of this computer is installed and enrolled at this hub. When a step fails, the device of this computer must say which step failed, with a button that tries again; the application must not try again by itself more than once for each start. (If point b of HM-D18 is decided the other way, the first installation waits for the answer of the person.)
-- **HMD-054.** The daemon of HMD-053 must reach the hub only through the Unix socket of the link of this computer (K8 Section 1, R-172). The application must give its link the socket. The daemon must send nothing to a TCP port.
+- **HMD-053.** When the application opens a hosted hub, at the sign-in and at each start, it must enrol the daemon for the computer it runs on and install it as a unit of the user: a `LaunchAgent` on macOS, a systemd user unit on Linux. It must not ask for an administrator password. It must do nothing when the daemon of this computer is installed and enrolled at this hub. When a step fails, the device of this computer must say which step failed, with a button that tries again; the application must not try again by itself more than once for each start.
+- **HMD-054.** The daemon of HMD-053 must reach the hub only through the Unix socket of the link of this computer (K8 Section 1, R-172). The link of HMD-058 must make the socket. The daemon must send nothing to a TCP port.
 - **HMD-055.** When the application starts and the daemon that it carries is newer than the installed one, it must replace the installed copy and start the unit again, with no new enrolment. It must never install an older daemon over a newer one.
 - **HMD-056.** When the person signs out of the hosted hub on a computer, or turns the daemon off in Settings, the application must stop and remove the unit, remove the copy of the daemon and the token of the daemon, and revoke the daemon at the hub. When the hub cannot be reached, it must still remove what is on the computer and say that the hub still lists the daemon.
 - **HMD-057.** The installation of HMD-053 must turn on only what the daemon reports today: the metrics, the tool inventory (CAP-029) and the use counts of the AI agent programs (AIS-018, counts only). It must turn on no collector source: a source that reads the text of a file stays off until the person turns it on, with one of the three folder modes of COL-006 (R-166). The first run must say in one sentence what the daemon reports.
+- **HMD-058.** On a computer that is signed in to a hosted hub, the link of the computer must run as a unit of the user (a `LaunchAgent` on macOS, a systemd user unit on Linux) that starts at the login, so that the daemon reports while the person is logged in and the application is closed (R-208 a). The application must use that link and must not start a second one. The installation, the update and the removal of the unit must follow HMD-053, HMD-055 and HMD-056. No administrator password.
+
+### 6.9 A hosted hub in a browser at `hub.anima.ing` (R-207; the text is proposed)
+
+R-207 holds the eight answers of the operator. [hosted-web-hub.md](hosted-web-hub.md) has the options, the flow and the lists for the other repositories. The text of each requirement below is proposed; the exact text is in the list for one approval (Section 6.10).
+
+- **HMD-059.** `https://hub.anima.ing` must be the one address of the hosted hubs in a browser. It must show nothing of a hub to a browser that is not signed in: it must send that browser to the sign-in of the Anima.ing account and take it back after the sign-in.
+- **HMD-060.** After each sign-in and each sign-up at the account site, the site must send the browser to `hub.anima.ing`, unless the request names a page of the account to come back to.
+- **HMD-061.** The gateway at `hub.anima.ing` must only route: it finds the hub of the account and passes the browser to it. Each hub must set and check its own browser session (form A1). A hub must make a browser session only on a request of the cloud for the account of the hub, signed with the cloud key, as it makes an invite of a device. This is a second form of the way in by the account; HMD-038 stays: the hub has no password that a person knows.
+- **HMD-062.** A browser session of a hosted hub must end after 30 minutes with no request and at the latest 12 hours after the sign-in. The account page must list the open browser sessions and must be able to end each one. The sign-in must limit the attempts. At first the sign-in is by password or by the sign-on provider, with no second factor (R-207, answer 2). HMD-006 stays: when it is built, it applies in a browser as in the application.
+- **HMD-063.** With a session of the gateway, the browser must show one of: "Your hub is starting" while the hub is made or wakes; the hub; a page for a paused or a deleted hub with one button; the hub with the notice to pay for an account that is past due; a page with plain words and "Try again" when no session of the hub can be made.
+- **HMD-064.** An open browser session must count as use of the hub for HMD-024, and a browser sign-in as a sign-in for HMD-021.
+- **HMD-065.** Browser access must be part of each hosted plan, the free plan too.
+- **HMD-066.** A browser may be the first sign-in of an account. The hub is then made on that visit, and its first page must offer the application.
+- **HMD-067.** Before a person other than the operator can use `hub.anima.ing`, these must be true: the review of the security of the gateway and of the browser session of the hub is done and its findings of the class "must correct" are corrected; HMD-062 is built; the gateway keeps no body of a request and gives the staff no session (HM-R8). A second factor at the browser sign-in is a later step; it is not a condition of this requirement.
+- **HMD-068.** The connection of a hub to GitHub must be made once for the account: after it, each device and each browser of the account uses it, and no second sign-in to GitHub is asked for it. On a hosted hub the flow must work. Its pages are below `https://hub.anima.ing/connect/github`, which is the one callback address of each hosted hub, and the gateway passes each request to the hub of the signed-in account.
+- **HMD-069.** The pool must give each hosted hub `ANIMA_PUBLIC_ORIGIN` with the value `https://hub.anima.ing`.
+- **HMD-070.** A hub that runs in the link mode with no public origin of its own must refuse to start the Connect GitHub flow, with words that say that this hub has no address for a browser, and must make no ticket. (Until HMD-069 is true for a hosted hub, and for the hub of the one-click installation.)
+
+### 6.10 The list for one approval
+
+His words (R-206, R-207, R-208) decide the substance of each requirement below. The rules ask for his approval of the text before a task is built from it (PLN-007). One answer can approve all: "Approve HMD-052 to HMD-070 as written", or the same with the numbers that he wants changed.
+
+| Requirement | In one line | The ruling that covers its substance | A point of the text that is not his word |
+| --- | --- | --- | --- |
+| HMD-052 | The application carries `anima-daemon`, the local build too | R-206 | None |
+| HMD-053 | Enrolment and installation at the sign-in, a unit of the user, no administrator password, no question | R-206, R-208 b | At most one try again for each start |
+| HMD-054 | The daemon reaches the hub only through the socket of the link | R-206 (A names the socket), R-172 | None |
+| HMD-055 | The daemon is updated with the application, never to an older one | R-206 | "Never an older one" |
+| HMD-056 | Removal at the sign-out and by the switch in Settings | R-208 b (the switch) | The removal at the sign-out; what occurs when the hub cannot be reached |
+| HMD-057 | Only metrics, tool inventory and use counts; no collector source; one sentence | R-208 b (the sentence), R-166 | The list of what is turned on |
+| HMD-058 | The link runs as a unit of the user | R-208 a | Lingering is not turned on, on Linux |
+| HMD-059 | One address, always a sign-in | R-207, his words on the flow | None |
+| HMD-060 | The site sends the browser to `hub.anima.ing` after a sign-in or a sign-up | R-207, his words on the flow | The exception for a named page of the account |
+| HMD-061 | The gateway routes, each hub checks its own session | R-207 (1) | The cloud key as the proof of the request |
+| HMD-062 | The life of a session, the list of sessions, the limit of attempts; no second factor at first | R-207 (2) | The numbers 30 minutes and 12 hours. The orchestrating session told him that these protections stay; he did not object |
+| HMD-063 | The pages for each state of the hub | R-207, the flow | The words of each page |
+| HMD-064 | A browser session counts as use and as a sign-in | R-207 (7) | None |
+| HMD-065 | Each hosted plan, the free one too | R-207 (4) | "The free one too" is the reading of the orchestrating session of his words "all hosted plans"; it told him so |
+| HMD-066 | A browser may be the first sign-in | R-207 (8) | None |
+| HMD-067 | What must be true before other people use it | R-207 (2), (3) | The list of conditions |
+| HMD-068 | GitHub is connected once for the account, and it works on a hosted hub | R-207 (6) | The two requirements are the reading of the orchestrating session of his words; it told him so |
+| HMD-069 | The pool sets the public origin of each hosted hub | Follows from HMD-068 | All of it |
+| HMD-070 | A refusal with plain words until then | Not his word. A step for the days before the gateway exists, so that no ticket goes to the old hub | All of it. It changes K-E1 by one refusal |
 
 ## 7. Open decisions
 
@@ -328,8 +373,8 @@ R-206 decides that the desktop application includes the daemon. The text of each
 | HM-D14 | What is "remote access" in the rule of the second factor (HM-D4, R-159)? | The row `Hub` of a hosted hub is in the device list from the start (HMD-045), and the computer that signs in is added with no step (HMD-044); neither has a session at that moment. A device has remote access when the hub can open a session on it: SSH, VNC or RDP. For a computer of the link that is the moment when its person turns a port on (HMD-049). For a device on a network that is the moment when a protocol or a credential is added to it. | Decided (R-163, operator, 2026-11-18: "Approve both"): an account needs a second factor before (1) a port of a computer of the link is turned on, and (2) SSH, VNC, RDP or a credential is added to a device of the hub. The rows of HMD-044 and HMD-045 and the check `Connected` need none. |
 | HM-D15 | What occurs to a free hub that is not used? | HMD-021 pauses a free hub after 60 days with no sign-in and deletes it after a warning. HMD-024 stops it after 15 minutes with no connected device. R-159 gives a rule only for a paid account that is past due (deleted 30 days after the first failed payment). The private service does not sleep a hub by use yet: its plan has an open decision for what "use" is. | Decided (R-164, operator, 2026-11-18: "A: sleep, delete at 60"). HMD-021 and HMD-024 stand as approved. "Use" means that a device is connected on the link of the hub (the presence of HMD-047). The site decides and instructs the pool, as for a failed payment. The private plan of the pool service owns the build (its T7 and AC-D32). Not answered: HMD-027 names a heartbeat of the hub as a source of that decision, and this answer names only the presence on the link; the text of HMD-027 is not changed. |
 | HM-D16 | Can the daemon of a computer of a person (`anima-daemon`, not the daemon in the container of the hub, HMD-046) enrol at a hosted hub and push to it, and by which path? | HMD-028 names "a daemon on a device" of a hosted hub. K8 says that the daemon connects only to the hub (MET-020). A computer reaches a hosted hub through the link, at a loopback address. No document shows such an enrolment, and no check ran one. The checks HT-002, HT-018, HT-026 and P-13 need it on a hosted hub ([sort-2026-11-18.md](../research/human-checks/sort-2026-11-18.md), groups 3 and 4; R-169). The sign-in of the command line to a hosted hub is a different open decision: OD-25 of the design specification. | Decided (R-206, operator, 2026-11-19; relayed twice): the desktop application includes the daemon and installs it on the computer it runs on (choice A). Section 7.1 has the facts; Section 6.8 has the proposed requirements, and tasks HM-T16 to HM-T23 the work. What he did not rule on is HM-D18. History: open on 2026-11-18; task W0 (R-172) changed the path to a Unix socket of the link (K8 Section 1). |
-| HM-D17 | At which address does the browser meet a hosted hub for Connect GitHub? | The hub builds the link and the manifest of its GitHub App from `ANIMA_PUBLIC_ORIGIN`, whose default is `https://hub.anima.ing`. A hosted hub has no public address, so the browser opens the old hub ([DEF-003](../work-items/defects/DEF-003.md)). The same is so for the hub of the one-click installation. | Open. Section 7.2 has the choices, with what is for and against each. Recommendation: the local port of the link (choice A there), after an agent verifies its three doubts; a refusal with plain words before that, which needs a word of the operator because it changes K-E1. |
-| HM-D18 | What R-206 left open for the daemon of a computer: (a) while the application is closed; (b) a question before the installation; (c) a computer with no application; (d) the SSH pull. | R-206 decides that the application includes the daemon. The link of the application stops with the application, so the daemon cannot push while it is closed. The fork that put the question recommended one line to paste for a computer with no application, and the SSH pull only as a fallback; the operator did not rule on those. | Open. Section 7.1 has each point with a recommendation: (a) first build with gaps and say so on the page, then decide if the link becomes a unit of the user; (b) no question, one sentence at the first run and a switch in Settings; (c) yes, later, as a task of its own; (d) keep it, change nothing. |
+| HM-D17 | At which address does the browser meet a hosted hub for Connect GitHub? | The hub builds the link and the manifest of its GitHub App from `ANIMA_PUBLIC_ORIGIN`, whose default is `https://hub.anima.ing`. A hosted hub has no public address, so the browser opens the old hub ([DEF-003](../work-items/defects/DEF-003.md)). | Decided (R-207, operator, 2026-11-19; relayed): at the gateway, `https://hub.anima.ing`, which is the one callback address; the result reaches the hub of the person; the connection is made once for the account. HMD-068 and HMD-069 have the proposed text, Section 7.2 the design, tasks HM-T29 and HM-T30 the work. Not decided by it: the hub of the one-click installation, which gets no public address (DEF-003 stays open for it). |
+| HM-D18 | What R-206 left open for the daemon of a computer: (a) while the application is closed; (b) a question before the installation; (c) a computer with no application; (d) the SSH pull. | R-206 decides that the application includes the daemon. The link of the application stopped with the application. | Decided (R-208, operator, 2026-11-19; relayed): (a) the link runs as a background unit of the user too, so the daemon reports while the person is logged in and the application is closed (HMD-058, task HM-T24), and this comes before the daemon ships; (b) no question: the installation at the sign-in, one sentence at the first run, a switch in Settings; (c) a one-line installation for a server, later (task HM-T33); (d) the SSH pull stays as a fallback, with no change. |
 
 ### 7.1 HM-D16: the daemon of a computer at a hosted hub (decided, R-206)
 
@@ -347,14 +392,22 @@ Facts, from the code of `dev` at `3353f648`. The fork that put the question to h
 - The link of the application stops when the application stops (`-stop-with-stdin`). The socket of the daemon goes with it.
 - On a hosted hub this computer is a device already (HMD-044), so the enrolment code has a device to belong to.
 
-What R-206 did not decide (HM-D18), each with the recommendation of the session that wrote this section:
+What R-206 did not decide was HM-D18. The operator decided it on 2026-11-19 (R-208):
 
-| Point | The question | Recommendation | Why |
-| --- | --- | --- | --- |
-| a | While the application is closed, the daemon has no path to the hub. Is that accepted, or does the link become a unit of the user that starts at the login? | First build with the link of the application (tasks HM-T16 to HM-T23), and show on the device that the reports stop while the application is closed. Decide the unit after he has used it | His words are about uptime, so gaps will matter. But a link as a unit is a second key store, a second update path and a second removal, and it changes who owns the link key. It is better decided with the first build in his hands |
-| b | Does the application install the daemon at the sign-in with no question, or after one question? | No question. One sentence at the first run that says what the daemon reports, and a switch in Settings that removes it | He asked for one click. HMD-044 already adds this computer with no question. The sentence and the switch keep the person in control |
-| c | A computer with no application (a server): one line to paste that installs the link and the daemon as units | Yes, later, as a task of its own after HM-T16 to HM-T23 | It needs an invite for a unit and the installation of two units, which is the larger half of the old choice B. Nothing of the first build blocks it |
-| d | The SSH pull of metrics as a fallback | Keep it as it is. Change nothing | It works today on each hub that reaches port 22 of the device, and it costs nothing to keep. On a hosted hub it needs the open port 22 of HMD-049 |
+| Point | His answer | What follows |
+| --- | --- | --- |
+| a. While the application is closed | "B: yes, link runs too" | The link of the computer is a unit of the user that starts at the login, as the daemon is. The application uses that link and does not start a second one. HMD-058; task HM-T24, before HM-T19. The recommendation was to build with the gap first; he decided against it |
+| b. A question before the installation | "A: no question" | HMD-053 as written: the installation at the sign-in, one sentence at the first run (HMD-057), a switch in Settings (HMD-056) |
+| c. A computer with no application | "A: yes, later" | Task HM-T33, after the installation by the application works |
+| d. The SSH pull | "A: keep as fallback" | No change |
+
+What a link as a unit changes, to be answered in task HM-T24 and its review (HM-T23):
+
+- The link program must be outside the bundle, as the daemon is (`~/.local/bin`): an application that is moved or updated must not break the unit.
+- The key of the link is then used by a program that runs with no application open. Its state folder stays readable only by the user.
+- One link for each computer and each hub: the application must find the running unit (its local port and its socket) and must not start a child of its own. When the unit is not running, the application starts it, not a second link.
+- The update and the removal of the link go with those of the daemon (HMD-055, HMD-056).
+- On Linux a unit of the user stops at the logout unless lingering is on. "While the person is logged in" is what R-208 asks for, so lingering is not turned on.
 
 Security questions that the tasks must answer before the installation with no question is built (task HM-T23):
 
@@ -365,34 +418,38 @@ Security questions that the tasks must answer before the installation with no qu
 
 Not part of this decision: the sign-in of the command line to a hosted hub (OD-25 of the design specification).
 
-### 7.2 HM-D17: the question for the operator (2026-11-19)
+### 7.2 HM-D17: Connect GitHub on a hosted hub (decided, R-207)
 
-Not decided. This section adds no requirement; it puts the decision HM-D17 as a question.
+Decided on 2026-11-19 (R-207, answer 6). His words: "The github app should only need to be signed into once. This should be able to work". The orchestrating session read them as two requirements and told him so: the connection to GitHub is made once for the account, not for each hub or device; and it must work on a hosted hub. HMD-068 has the proposed text. This section is the design; it adds no requirement.
 
-A wider answer is possible: the operator wants a hosted hub in a browser at `hub.anima.ing` (2026-11-19). [hosted-web-hub.md](hosted-web-hub.md) has that proposal; if he chooses its option A or B, each hosted hub has a public address for these pages, and the choices below are needed only for the hub of the one-click installation.
+What "once" means here:
 
-Why now: on his hosted hub the operator started Connect GitHub and the browser opened the old hub at `https://hub.anima.ing` ([DEF-003](../work-items/defects/DEF-003.md)).
+- An account has one hosted hub. That hub makes one GitHub App by the manifest flow and gets one installation of it (K-E1 Section 7a). The key of the App stays in the hub. Each device and each browser of the account talks to that hub, so each uses the same connection. The person meets GitHub once: "Create GitHub App" and "Install".
+- If an account has more than one hub later, "once" would need one App that several hubs use, so its key would have to leave a hub. That is against K-E1 and is not designed here. Today it does not occur.
+- A hub that is deleted and made again is a new hub: it has no key, and the person connects again. To keep the connection over a deletion, the key would have to be kept outside the hub; not designed.
 
-Facts, from the code of `dev` at `3353f648`:
+The steps on a hosted hub, with the values of each:
 
-- Each hub makes a GitHub App of its own by the manifest flow of GitHub (K-E1 Section 7a). The key of the App stays in the hub. The business has no key of it.
-- The flow needs one `https` address of the hub that the browser of the person can open: the hub puts it in the link that the application opens and in the manifest (`redirect_url`, `setup_url`), and it sets a cookie `__Host-anima-connect` with `Secure` there.
-- The hub takes that address from `ANIMA_PUBLIC_ORIGIN`. A hosted hub has none: each computer reaches it through the link, at a local port.
-- The secret values of the flow pass through the browser: the one-time ticket, and the code that GitHub gives after "Create GitHub App". Who has that code can get the key of the App from GitHub once.
-- The webhook of the App is not active at the hub today, so GitHub does not have to reach the hub.
-
-The question: at which address does the browser meet a hosted hub for Connect GitHub?
-
-| Choice | What it is | For | Against |
+| Step | Who | The value | Who can read it |
 | --- | --- | --- | --- |
-| A. The local port of the link | The pages of the flow are opened at `http://127.0.0.1:<port>/connect/github` on the computer that runs the application. The application tells the hub which origin it uses, and the hub puts that origin in the link and in the manifest | No public address and no new server. No secret value passes a server of the business. The hub stays reachable only through the link, as HMD-048 and Section 4.3 have it. The same build serves the hub of the one-click installation | Three things are not verified: that GitHub accepts an `http` address of this computer as `redirect_url` of a manifest; that each browser keeps the cookie on `http` (the prefix `__Host-` and `Secure` must go for this origin; Safari is the doubt); that the port is the same when GitHub sends the browser back. It works only in a browser on the computer that runs the application, so not from a phone. K-E1 Section 7a changes: the origin is no longer one fixed value of the configuration, and the check of `Origin` must name a set |
-| B. A public name for each hosted hub, for these pages only | The pool gives each hub a name, for example `https://<hub>.hubs.anima.ing`, and passes only `/connect/github*` to the hub. The pool sets `ANIMA_PUBLIC_ORIGIN` | The flow and K-E1 do not change. It works in each browser and from a phone. A webhook can be made active later | A hosted hub gets a public surface, which the hosted mode does not have today. TLS ends at the pool, so the pool can read the ticket and the code: the business could get the key of the App of a person. A wildcard name and certificate, a wake of a sleeping hub for a request from the internet, and an abuse limit. Work in the private repositories. It does not serve the one-click local hub |
-| C. The account site carries the pages | `https://anima.ing/connect/github` receives the browser and hands the result to the hub through the pool | One fixed host, which the person already trusts. Works in each browser | As B for the secrets: the site reads the ticket and the code. The site gets a function of the hub, so the contract between site, pool and hub grows. The manifest names `anima.ing` as the address of each App. Work in both private repositories. It does not serve the one-click local hub |
-| D. One GitHub App of Anima.ing for all hosted hubs | No manifest flow. The person installs the App of the business; the pool gives each hub the tokens of its installation | The least work for the person: one "Install" at GitHub. The usual form of a hosted product | The business holds one key that can write to the repositories of each person (the manifest asks for 22 write permissions). That is against the design of K-E1, where the key never leaves the hub. A new contract and a review of security. A self-hosted hub keeps the old flow, so there are two |
+| 1. The person starts Connect GitHub in the application or in the web client | Client to hub | A one-time ticket: one use, 5 minutes, valid only at the hub that made it | The client, the hub |
+| 2. The browser opens `https://hub.anima.ing/connect/github` with the ticket | Browser to gateway | The ticket in the address. The session cookie of the gateway, if the browser has one | The gateway reads the ticket: TLS ends there. It must not log the query of an address |
+| 3. No session of the gateway: the sign-in of the account, then back to the same address | Browser, account site, gateway | The session cookie of the gateway | The gateway |
+| 4. The gateway passes the request to the hub of the account of the session | Gateway to hub | The ticket | The hub claims it and sets the cookie of the flow (`__Host-anima-connect`) for this browser |
+| 5. The hub sends the browser to GitHub with the manifest | Browser to GitHub | The state S1. In the manifest: `redirect_url` and `setup_url` below `https://hub.anima.ing/connect/github` | GitHub |
+| 6. GitHub sends the browser back to `/connect/github/created` | Browser to gateway to hub | The code of GitHub (one use) and S1 | The gateway reads the code. Who has the code can get the key of the App from GitHub once. This is the one new trust of this design, and the review (HMD-067) must look at it |
+| 7. The hub trades the code at GitHub | Hub to GitHub | The key of the App, the webhook secret | The hub only |
+| 8. The person presses "Install"; GitHub sends the browser back to `/connect/github/installed` | Browser to gateway to hub | The installation number and the state S2; neither is trusted, the hub asks GitHub with the App | The gateway, the hub |
+| 9. Later use | Hub to GitHub | Installation tokens that the hub makes with the key, each valid 1 hour | The hub only |
 
-Recommendation of the session that wrote this section: A, after an agent verifies its three doubts on a hub in the link mode on this Mac (no cloud is needed). A is the only choice that keeps the two properties that the design has now: the hub has no public surface, and no server of the business sees a value from which the key of an App can be got. If GitHub or the cookie refuses A, then B, with the fact written plainly that the pool can read the code. Not D without a security review.
+A ticket of hub X that reaches the gateway in a browser of account Y goes to the hub of Y, which does not know it and refuses. So a ticket is of use only with the session of its own account.
 
-Whatever the choice, one correction needs no decision of design, only his word, because it changes K-E1 and needs a new image of the hub: a hub in the link mode with no public origin of its own refuses to start the flow with plain words, and so sends no ticket to `hub.anima.ing` (DEF-003, "To do").
+The hub side changes little: `ANIMA_PUBLIC_ORIGIN` is `https://hub.anima.ing` (HMD-069), and the check of `Origin` on `POST /connect/github/open` then holds as it is. The cookie of the flow is per browser, and each browser reaches one hub, so the shared origin does not mix two flows.
+
+Two cases stay outside:
+
+- The days before the gateway exists: HMD-070, a refusal with plain words, as a small step of its own (task HM-T30). It is not the end state.
+- The hub of the one-click installation on the computer of a person: it has no public address and gets none from the gateway. DEF-003 stays open for it; the choice "local port of the link" of the earlier form of this section is the candidate, with its three doubts not verified.
 
 ## 8. Work, in order
 
@@ -443,13 +500,23 @@ Tasks that a ruling names:
 | HM-T14 | VNC and RDP through the path (HMD-048): the gateway reaches a computer on the link through the hub. | R-143 | Not started. |
 | HM-T15 | The link program for Windows (HMD-050): `link/build.sh` builds it, the Windows application carries it. Built and not tested on Windows. | R-143 | Not started. |
 | HM-T16 | The bundle carries `anima-daemon` (HMD-052): `trial-bundle.sh` (the list of programs and `externalBin`), the release build, `check-mach-o.sh` (its list of programs), "What a release carries" and the release map of [releases.md](../procedures/releases.md). `tauri.release.conf.json` names the daemon alone and is used by nothing: join it with the list of the bundle or delete it. | R-206 | Not started. Small and certain; it changes what a release carries, so it is a task of its own with a release check. |
-| HM-T17 | The link of the application makes the socket of the daemon (HMD-054): the shell starts `anima-link device` with `-daemon-socket <path>` in a folder that only the user can reach, and reports the path. | R-206 | Not started. |
+| HM-T17 | The link makes the socket of the daemon (HMD-054): `anima-link device` runs with `-daemon-socket <path>` in a folder that only the user can reach, and the shell reports the path. Since R-208 the link is the unit of HM-T24, so this task is a part of HM-T24. | R-206, R-208 | Not started. |
 | HM-T18 | The installation accepts a link origin (HMD-053, HMD-054): the shell (`daemon/request.rs`) and the panel accept `unix:<path>` of HM-T17, and "Install on this computer" is offered when the device is this computer by its link address (DEF-005). Then K8 Section 3 and MET-019 name the path. | R-206 | Not started. It waits for HM-T17. |
-| HM-T19 | The enrolment and the installation at the sign-in and at each start (HMD-053), with the state of each step on the device of this computer. | R-206; HM-D18 point b | Not started. It waits for HM-T18, for HM-T23 and for point b. |
+| HM-T19 | The enrolment and the installation at the sign-in and at each start (HMD-053), with the state of each step on the device of this computer. | R-206, R-208 b | Not started. It waits for HM-T18, HM-T23 and HM-T24. |
 | HM-T20 | The update of the daemon with the application (HMD-055). | R-206 | Not started. It waits for HM-T19. |
 | HM-T21 | The removal (HMD-056): a command of the daemon that removes its unit, its copy and its token, and the call of it at the sign-out and from Settings, with the revocation at the hub. | R-206 | Not started. |
 | HM-T22 | The words and the switch (HMD-057): the sentence of the first run, the switch in Settings, and on the page Agent usage the control that installs the daemon on this computer in the place of the sentence of DEF-002. The mockup of the page changes in the same commit (PLN-019). | R-206 | Not started. It waits for HM-T19. |
 | HM-T23 | The security review of the daemon on a computer of a person (Section 7.1, "Security questions"; SF-004; W0): the place of the token, the copy in `~/.local/bin`, a job of the same user. Its findings go to [security-findings.md](../security-findings.md). | R-206 | Not started. It comes before HM-T19. |
+| HM-T24 | The link as a unit of the user (HMD-058, R-208 a): the unit files for macOS and Linux, a command of the link or of the shell that installs, starts and removes the unit, the link program outside the bundle, and the application that uses the running link in place of a child of its own. It comes before HM-T19. | R-208 | Not started. It needs a short design first (Section 7.1, "What a link as a unit changes") and is part of the review HM-T23. |
+| HM-T25 | The contract of the browser session of a hosted hub (HMD-061, HMD-062): the call of the cloud with the cloud key (K1 and the hosted contract), the cookie, the life of the session, the list and the end of sessions. | R-207 | Not started. It waits for the approval of the text (Section 6.10; CON-001). |
+| HM-T26 | The hub side of HM-T25, with its command and its MCP tool where the plan of the command line asks for them (CMD-030). | R-207 | Not started. It waits for HM-T25. |
+| HM-T27 | The web client on a hosted hub (HMD-059, HMD-063, HMD-066): no hub address page and no password page, "Sign out" that ends the session of the gateway too, the page that offers the application when the hub has no computer. The image of a hosted hub carries the web client. | R-207 | Not started. It waits for HM-T26. |
+| HM-T28 | The use by a browser (HMD-064): the hub tells the pool that a browser session is open, as it tells the presence of a device, so that a free hub does not stop. | R-207 (7) | Not started. It waits for HM-T26 and for the pool (private plan). |
+| HM-T29 | Connect GitHub on a hosted hub (HMD-068): nothing in the flow of the hub changes; a test runs the flow with the public origin of the gateway, and the words of the application say that the browser must be signed in at `hub.anima.ing`. The live check is an entry of [need-human-testing.md](../need-human-testing.md). | R-207 (6) | Not started. It waits for HMD-069 at the pool and for the gateway. |
+| HM-T30 | The refusal of HMD-070: K-E1 gets the refusal, the hub makes no ticket, the application shows the sentence. | Not named by a ruling | Not started. It waits for the approval of HMD-070 (Section 6.10) and needs a new image of the hub. |
+| HM-T31 | The default hub address of the clients (NET-005, DNS-001, INS-013): after the name moves, `hub.anima.ing` is the hosted service. What the application, the command line and the daemon do with that default must be decided and written before the name moves. | R-207 (5) | Not started. A design task first. |
+| HM-T32 | The review of the security of the gateway and of the browser session (HMD-067; R-207, answer 3). It gates the opening to other people, not the build and not the use by the operator. | R-207 (3) | Not started. It waits for HM-T26 and for the gateway. |
+| HM-T33 | A one-line installation of the link and of the daemon for a computer with no application (R-208 c). | R-208 | Not started. Later, after HM-T19. |
 | HM-T1 | Step 6 without the cloud: the first-run screens of "Sign in" in the client (HMD-022, HMD-023, HMD-037). One state for each step of Section 4.1, then the device list, and an error with a retry for cancelled, expired, no network and refused. The cloud is behind the interface `HostedAccount` in `apps/client/src/lib/hosted/`. After the sign-in, its call `access` gives one opaque `HubAccess` (what `link_join` takes, and the hub access token of this device). The app joins with it silently (`join.ts`: the link join, the token in the key store, the address). Two implementations: a stand-in for the tests and for `VITE_ANIMA_HOSTED=stand-in` (`?fail=step:problem` makes it fail once), and the real cloud, which is a stub that refuses each call. Not built: the cloud API (step 3), the hub side (step 4), the device key, the AuthKit device flow, the key store for the refresh token (HMD-034), and the opening of the system browser. Mockup: [first-run/index.html](../mockup/first-run/index.html). | R-127, R-128 | Done: built in a428809e, 6659c3c7 (screens), 875ddfc8, d2a9564b (mockup); merged to main with HM-T2 to HM-T7; HT-022 Passed (operator, 2026-11-17). |
 
 ## 9. Changes that this proposal needs in other documents
