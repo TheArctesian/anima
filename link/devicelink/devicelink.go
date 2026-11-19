@@ -134,8 +134,16 @@ func (l *Link) replaceTunnel(next *tunnel.Device, renewed identity.Device) (old 
 
 // Start opens the local port and starts the keepalive and the stream to the
 // reverse port. It does not wait for the hub: a hub that is off now is
-// reached when it comes back.
+// reached when it comes back. A start that fails closes Config.DaemonSocket.
 func Start(cfg Config) (*Link, error) {
+	link, err := start(cfg)
+	if err != nil && cfg.DaemonSocket != nil {
+		cfg.DaemonSocket.Close()
+	}
+	return link, err
+}
+
+func start(cfg Config) (*Link, error) {
 	local, err := netip.ParseAddrPort(cfg.Listen)
 	if err != nil || !local.Addr().IsLoopback() {
 		return nil, ErrListen

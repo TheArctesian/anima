@@ -65,6 +65,17 @@ func runPorts(_ context.Context, args []string, streams stdio) error {
 	return err
 }
 
+// listenForDaemon makes the socket of the metrics daemon at path; an empty
+// path means no socket. The daemon sends its token there, so the socket is
+// made before the link starts: a path that other users can reach stops the
+// start.
+func listenForDaemon(path string) (net.Listener, error) {
+	if path == "" {
+		return nil, nil
+	}
+	return statedir.ListenOwned(path)
+}
+
 func runDevice(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("device")
 	listen := flags.String("listen", "127.0.0.1:0", "the local loopback address, host:port")
@@ -84,13 +95,9 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
-	// The daemon sends its token here, so the socket is made before the
-	// link starts: a path that other users can reach stops the start.
-	var forDaemon net.Listener
-	if *daemonSocket != "" {
-		if forDaemon, err = statedir.ListenOwned(*daemonSocket); err != nil {
-			return err
-		}
+	forDaemon, err := listenForDaemon(*daemonSocket)
+	if err != nil {
+		return err
 	}
 	link, err := devicelink.Start(devicelink.Config{
 		Identity: device, Listen: *listen, DaemonSocket: forDaemon,
@@ -98,9 +105,6 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 		OpenPort: func(port uint16) bool { return ports.IsOpen(dir, port) },
 	})
 	if err != nil {
-		if forDaemon != nil {
-			forDaemon.Close()
-		}
 		return err
 	}
 	defer link.Close()
