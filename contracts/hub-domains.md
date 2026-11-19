@@ -257,7 +257,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `agent_usage` (R-135) | `access` | the `Authenticated` guard on `agentUsage` |
 | `files` (R-148; K-E4) | `access` | the `Authenticated` guard on `attachments`, `deleteAttachment`, `createArchive`, `deleteArchive`, `extractionProposals`, `proposeExtraction`, `confirmExtraction`, `rejectExtraction` |
 | `locations` (R-145; K-E4 Section 13) | `access` | the `Authenticated` guard on `locationSamples`, `locationIngestTokens`, `transferContext`, `recordLocationSamples`, `createLocationIngestToken`, `revokeLocationIngestToken`; `operator_only` on `createLocationIngestToken`, which joins `API_KEY_REFUSED_ROOTS` (it returns a secret) |
-| `containers` (R-149) | `access` | the `Authenticated` guard on `containers` and `containerLog`; `containerLog` joins `API_KEY_REFUSED_ROOTS` (a log can hold a secret) |
+| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage` and `containerNetworks`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -797,6 +797,22 @@ pub async fn log(reach: Reach<'_>, device: DeviceId, tail: &Tail, now: DateTime<
 pub struct ContainerId(/* ssh::HexDigits */);  pub struct LineCount(/* u16 */);
 pub struct Tail { pub container: ContainerId, pub lines: LineCount }
 ```
+
+Additions of R-150 (operator, 2026-11-18; HOST-017, HOST-019, HOST-020; task H8), with no new import edge and no table:
+
+```rust
+/// The details of one container: command, restart policy, health check, mounts, networks, labels, processes,
+/// and the names of the environment variables. The command asks Docker for no value of one (LOG-007).
+pub async fn detail(reach: Reach<'_>, device: DeviceId, container: &ContainerId, now: DateTime<Utc>) -> Result<ContainerDetail, Error>;
+/// The images and the volumes, with the size of each, the containers that use it and the space a clean-up can free.
+pub async fn storage(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc>) -> Result<Storage, Error>;
+/// The networks of Docker, each with the containers on it.
+pub async fn networks(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc>) -> Result<Vec<Network>, Error>;
+/// The one state of a Compose project (K1 `ComposeProjectState`); `list` writes it on each container of a project.
+pub enum ProjectState { Running, Unhealthy, PartlyRunning, Failing, Paused, Stopped, Unknown }
+```
+
+Each read is one fixed command line of `docker` words that only read (`container inspect`, `top`, `system df`, `network ls`, `ps`), joined with `&&`. The only operator value in one is the container identifier.
 
 `ssh` gains for this domain (same ruling): `HexDigits` (1 to 64 hex digits kept as values), `FixedCommand::hex(self, &HexDigits)` and `FixedCommand::number(self, u32)`. Both render from values, so operator text still cannot enter a command.
 

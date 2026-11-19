@@ -1,0 +1,10 @@
+query ContainerNetworkList($deviceId: ID!) {
+  containerNetworks(deviceId: $deviceId) {
+    id
+    name
+    driver
+    scope
+    internal
+    containers
+  }
+}

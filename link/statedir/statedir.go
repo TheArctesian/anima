@@ -176,6 +176,12 @@ func (d *Dir) Listen(name string) (net.Listener, error) {
 	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
+	return listenOwnerOnly(path)
+}
+
+// listenOwnerOnly makes the Unix socket at path, which only the owner can
+// connect to.
+func listenOwnerOnly(path string) (net.Listener, error) {
 	listener, err := net.Listen("unix", path)
 	if err != nil {
 		return nil, err

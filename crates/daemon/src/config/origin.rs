@@ -1,45 +1,90 @@
-//! The hub's origin: HTTPS on port 443, or the local port of `anima-link` in the link mode;
+//! The hub's origin: HTTPS on port 443, or the Unix socket of `anima-link` in the link mode;
 //! nothing after the host (MET-020, K8 Section 1).
+
+use std::path::{Component, Path, PathBuf};
 
 use reqwest::Url;
 
 /// The hub's public origin when the operator names none (K8 Section 1).
 pub const DEFAULT_HUB: &str = "https://hub.anima.ing";
 
-/// The lowest port a link origin may name. It only refuses a port that `anima-link`, which runs
-/// as a plain user, does not listen on; it protects nothing.
-const LOWEST_LINK_PORT: u16 = 1024;
+/// What starts a link origin: `unix:` and the absolute path of the socket of `anima-link`.
+const SOCKET_PREFIX: &str = "unix:";
 
-/// An `https` origin, scheme and host on port 443, or a link origin, `http://127.0.0.1:<port>`
-/// (MET-020); with no user, path, query or fragment.
+/// The longest socket path: the smaller of the macOS and Linux limits, less the end byte.
+const LONGEST_SOCKET_PATH: usize = 103;
+
+/// An `https` origin, scheme and host on port 443, or a link origin, `unix:<path>` (MET-020);
+/// with no user, path, query or fragment after a host.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Origin(Url);
+pub struct Origin(Spelled);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Spelled {
+    Https(Url),
+    LinkSocket(PathBuf),
+    /// `http://127.0.0.1:<port>`, the link origin before R-172. A stored file can still hold it
+    /// (ROL-018); the daemon never sends to the port.
+    OldLinkPort(Url),
+}
+
+/// How the daemon reaches the hub of an [`Origin`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reach<'a> {
+    /// HTTPS to this URL.
+    Https(&'a Url),
+    /// The socket of `anima-link` at this path.
+    LinkSocket(&'a Path),
+    /// The socket of `anima-link` in the daemon's own folder: the origin is an old link origin.
+    OwnLinkSocket,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OriginError {
     #[error("the hub origin is not a URL")]
     NotUrl,
-    #[error("the hub origin must start with https://, or be http://127.0.0.1:<port> of anima-link")]
+    #[error(
+        "the hub origin must start with https://, or be unix:<path> of the socket of anima-link"
+    )]
     Scheme,
     #[error("the hub origin must be only scheme and host, like https://hub.anima.ing")]
     NotOrigin,
     #[error("the hub origin must use port 443")]
     Port,
     #[error(
-        "the link origin must name the port of anima-link, from 1024, like http://127.0.0.1:8443"
+        "the daemon no longer sends to a port of anima-link: start `anima-link device` with -daemon-socket <path> and give --hub unix:<path>"
     )]
     LinkPort,
+    #[error(
+        "the link origin must be unix: and the absolute path of the socket, like unix:/home/me/.config/anima-daemon/link.sock"
+    )]
+    SocketPath,
 }
 
 impl Origin {
-    /// The origin `text` spells; refuses `http` to any host but `127.0.0.1`, and anything beyond
-    /// scheme, host and port.
+    /// The origin `text` spells: `https`, or `unix:` and the path of the socket of the link.
+    /// Refuses `http` to every host, and anything beyond scheme and host.
     ///
     /// # Errors
     /// [`OriginError`] naming what is wrong.
     pub fn parse(text: &str) -> Result<Self, OriginError> {
+        match Self::parse_kept(text)? {
+            Self(Spelled::OldLinkPort(_)) => Err(OriginError::LinkPort),
+            origin => Ok(origin),
+        }
+    }
+
+    /// The origin a file of the daemon holds: as [`Origin::parse`], and also the link origin of
+    /// before R-172, `http://127.0.0.1:<port>`, which the daemon reaches by its own socket.
+    ///
+    /// # Errors
+    /// [`OriginError`] naming what is wrong.
+    pub fn parse_kept(text: &str) -> Result<Self, OriginError> {
+        if let Some(path) = text.strip_prefix(SOCKET_PREFIX) {
+            return socket_path(path).map(|path| Self(Spelled::LinkSocket(path)));
+        }
         let url = Url::parse(text).map_err(|_| OriginError::NotUrl)?;
-        let link = match url.scheme() {
+        let old_link = match url.scheme() {
             "https" => false,
             // The URL parser spells every form of an IPv4 address as four decimal numbers.
             "http" if url.host_str() == Some("127.0.0.1") => true,
@@ -55,11 +100,11 @@ impl Origin {
         if !bare {
             return Err(OriginError::NotOrigin);
         }
-        match (link, url.port()) {
-            (false, None) => Ok(Self(url)),
+        match (old_link, url.port()) {
+            (false, None) => Ok(Self(Spelled::Https(url))),
             (false, Some(_)) => Err(OriginError::Port),
-            (true, Some(port)) if port >= LOWEST_LINK_PORT => Ok(Self(url)),
-            (true, _) => Err(OriginError::LinkPort),
+            (true, Some(_)) => Ok(Self(Spelled::OldLinkPort(url))),
+            (true, None) => Err(OriginError::LinkPort),
         }
     }
 
@@ -73,16 +118,44 @@ impl Origin {
         Self::parse(DEFAULT_HUB).expect("the default hub origin is an https origin")
     }
 
-    /// The origin as a URL, the base the hub client joins its routes to.
+    /// How the daemon reaches this hub. No answer names a TCP port of this computer.
     #[must_use]
-    pub const fn url(&self) -> &Url {
-        &self.0
+    pub fn reach(&self) -> Reach<'_> {
+        match &self.0 {
+            Spelled::Https(url) => Reach::Https(url),
+            Spelled::LinkSocket(path) => Reach::LinkSocket(path),
+            Spelled::OldLinkPort(_) => Reach::OwnLinkSocket,
+        }
     }
 
-    /// The origin as text without a trailing slash, for the config file.
+    /// The origin as text, as it was given, without a trailing slash: for the files of the
+    /// daemon, which keep an old link origin as it is (ROL-018).
     #[must_use]
     pub fn as_text(&self) -> String {
-        self.0.origin().ascii_serialization()
+        match &self.0 {
+            Spelled::Https(url) | Spelled::OldLinkPort(url) => url.origin().ascii_serialization(),
+            Spelled::LinkSocket(path) => format!("{SOCKET_PREFIX}{}", path.display()),
+        }
+    }
+}
+
+/// The path of a socket: absolute, with no `.`, `..` or empty part, and short enough to bind.
+/// The count of the parts refuses what the path type drops without a word (`/./`, `//`).
+fn socket_path(text: &str) -> Result<PathBuf, OriginError> {
+    let path = Path::new(text);
+    let plain = path.is_absolute()
+        && path.file_name().is_some()
+        && !text.ends_with('/')
+        && text.len() <= LONGEST_SOCKET_PATH
+        && !text.chars().any(char::is_control)
+        && path
+            .components()
+            .all(|part| matches!(part, Component::RootDir | Component::Normal(_)))
+        && path.components().count() == text.split('/').count();
+    if plain {
+        Ok(path.to_path_buf())
+    } else {
+        Err(OriginError::SocketPath)
     }
 }
 
@@ -108,10 +181,62 @@ mod tests {
     }
 
     #[test]
-    fn met_020_the_local_port_of_the_link_is_an_origin() {
-        let link = Origin::parse("http://127.0.0.1:8443").expect("a link origin");
-        assert_eq!(link.as_text(), "http://127.0.0.1:8443");
-        assert_eq!(link.url().as_str(), "http://127.0.0.1:8443/");
+    fn k8_1_the_socket_of_the_link_is_an_origin() {
+        let link = Origin::parse("unix:/home/me/.config/anima-daemon/link.sock").expect("a link");
+        assert_eq!(
+            link.as_text(),
+            "unix:/home/me/.config/anima-daemon/link.sock"
+        );
+        assert_eq!(
+            link.reach(),
+            Reach::LinkSocket(Path::new("/home/me/.config/anima-daemon/link.sock"))
+        );
+    }
+
+    #[test]
+    fn k8_1_a_socket_origin_is_one_plain_absolute_path() {
+        let long = format!("unix:/{}", "a".repeat(LONGEST_SOCKET_PATH));
+        for text in [
+            "unix:",
+            "unix:link.sock",
+            "unix:./link.sock",
+            "unix:/",
+            "unix:/run/anima/",
+            "unix:/run/../etc/link.sock",
+            "unix:/run/./link.sock",
+            "unix:/run//link.sock",
+            "unix:///run/link.sock",
+            "unix:/run/link.sock\n",
+            long.as_str(),
+        ] {
+            assert_eq!(
+                Origin::parse(text),
+                Err(OriginError::SocketPath),
+                "{text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn k8_1_a_port_of_the_link_is_no_origin_to_enrol_at() {
+        for text in [
+            "http://127.0.0.1:8443",
+            "http://127.0.0.1:1024",
+            "http://127.0.0.1",
+        ] {
+            assert_eq!(Origin::parse(text), Err(OriginError::LinkPort), "{text}");
+        }
+    }
+
+    #[test]
+    fn rol_018_a_stored_old_link_origin_reads_keeps_its_text_and_names_no_port_to_reach() {
+        let old = Origin::parse_kept("http://127.0.0.1:8443").expect("a stored old link origin");
+        assert_eq!(old.as_text(), "http://127.0.0.1:8443");
+        assert_eq!(old.reach(), Reach::OwnLinkSocket);
+        let https = Origin::parse_kept(DEFAULT_HUB).expect("an https origin");
+        assert!(
+            matches!(https.reach(), Reach::Https(url) if url.as_str() == "https://hub.anima.ing/")
+        );
     }
 
     #[test]
@@ -127,33 +252,23 @@ mod tests {
             "http://127.0.0.1:8443@evil.example",
             "http://[::ffff:127.0.0.1]:8443",
         ] {
-            assert_eq!(Origin::parse(text), Err(OriginError::Scheme), "{text}");
+            assert_eq!(Origin::parse_kept(text), Err(OriginError::Scheme), "{text}");
         }
     }
 
     #[test]
-    fn met_020_a_link_origin_names_a_port_from_1024() {
-        for text in [
-            "http://127.0.0.1",
-            "http://127.0.0.1:80",
-            "http://127.0.0.1:0",
-            "http://127.0.0.1:1023",
-        ] {
-            assert_eq!(Origin::parse(text), Err(OriginError::LinkPort), "{text}");
-        }
-        assert!(Origin::parse("http://127.0.0.1:1024").is_ok());
-        assert!(Origin::parse("http://127.0.0.1:65535").is_ok());
-    }
-
-    #[test]
-    fn met_020_a_link_origin_with_more_than_scheme_host_and_port_is_refused() {
+    fn met_020_an_old_link_origin_with_more_than_scheme_host_and_port_is_refused() {
         for text in [
             "http://127.0.0.1:8443/daemon",
             "http://user@127.0.0.1:8443",
             "http://127.0.0.1:8443/?x=1",
             "http://127.0.0.1:8443/#top",
         ] {
-            assert_eq!(Origin::parse(text), Err(OriginError::NotOrigin), "{text}");
+            assert_eq!(
+                Origin::parse_kept(text),
+                Err(OriginError::NotOrigin),
+                "{text}"
+            );
         }
     }
 

@@ -35,6 +35,31 @@ pub const fn parent_replaceable(mode: u32) -> bool {
     mode & 0o002 != 0 && mode & 0o1000 == 0
 }
 
+/// Whether `dir` is a folder that only the running user can reach and that no other user can
+/// replace: a real folder (not a link), owned by the running user, with no access for group or
+/// others, below no folder that others can write to without the sticky bit. The folders above
+/// are read as the path stands, not with links resolved; their owner and their group access
+/// are not checked.
+///
+/// # Errors
+/// An I/O error when the folder or one above it cannot be read.
+pub fn folder_private(dir: &Path) -> io::Result<bool> {
+    let metadata = std::fs::symlink_metadata(dir)?;
+    let running = running_user()?;
+    if !metadata.is_dir() || folder_exposed(metadata.permissions().mode(), metadata.uid(), running)
+    {
+        return Ok(false);
+    }
+    for parent in dir.ancestors().skip(1) {
+        if !parent.as_os_str().is_empty()
+            && parent_replaceable(std::fs::metadata(parent)?.permissions().mode())
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum PrivateFileError {
     #[error("file access failed: {0}")]

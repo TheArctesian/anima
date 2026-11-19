@@ -1,9 +1,7 @@
 //! Refusing GraphQL requests without a signed-in operator (API-003): the field guard and the
 //! schema-wide backstop for a resolver that forgets the guard.
 
-mod refused_roots;
-
-pub(super) use refused_roots::API_KEY_REFUSED_ROOTS;
+mod refused;
 
 use std::{
     future::{Future, ready},
@@ -20,6 +18,7 @@ use async_graphql::{
     },
 };
 
+pub(super) use self::refused::API_KEY_REFUSED_ROOTS;
 use super::{Error, Identity, Scope, TokenKind};
 use crate::{api_errors::schema_dependency, clock::Clock};
 

@@ -194,20 +194,30 @@ anima-link hub -state <HUB_STATE_DIR> -target <FOLDER>/link.sock
 - `anima-link` connects only to a socket that its own user owns, in a folder that no other
   user can reach or replace. It writes the cause to its log when it refuses.
 
-The metrics daemon of a device uses the link too (K8 Section 1):
+The metrics daemon of a device uses the link too, over a Unix socket (K8 Section 1, R-172):
 
 ```sh
-# On the device. The port is the -listen port of `anima-link device`, 1024 or higher.
-anima-daemon enrol - --hub http://127.0.0.1:<LOCAL_PORT>
+# On the device, as the user that runs the daemon. The folder is the daemon's own folder:
+# ~/.config/anima-daemon on Linux, ~/Library/Application Support/anima-daemon on a Mac.
+mkdir -p -m 700 "<FOLDER>"
+anima-link device -state <DIR> -daemon-socket "<FOLDER>/link.sock"
+anima-daemon enrol - --hub "unix:<FOLDER>/link.sock"
 ```
 
-- Give `anima-link device` a fixed `-listen` port on a device that runs the daemon. Without
-  `-listen` the link uses a different port at each start. The daemon keeps its token for that
-  origin, port included, and refuses to send it to another.
-- Keep `anima-link device` in operation while the agent runs. While the link is stopped, a
-  program of any local user of that device can listen on the port, and it then receives the
-  daemon token. Nothing shows that this occurred. If you think that it did, revoke the token
-  (`revokeDaemonToken`) or enrol the daemon again: the new token replaces the old one.
+- The link makes the socket with mode 0600. It does not start when other users can reach the
+  folder of the socket. The daemon makes the same check before it sends its token.
+- The daemon sends nothing to the local port of the link. `--hub http://127.0.0.1:<PORT>` is
+  refused.
+- A daemon that was enrolled at a port of the link before this change needs no new enrolment.
+  After its update it uses the socket `link.sock` in its own folder: start `anima-link device`
+  with `-daemon-socket "<FOLDER>/link.sock"`. Until the link has that socket, the daemon keeps
+  its samples and sends none.
+- While `anima-link device` is stopped the daemon cannot push. Only a program of the same user
+  can make a socket at that path.
+- The desktop application starts its own `anima-link device` with no socket for the daemon. A
+  state folder serves one process, so a second link for the daemon needs a state folder and an
+  invite of its own. Who starts the link of the daemon on a computer of a person is not decided
+  (HM-D16 of [hosted-mode.md](../../proposals/hosted-mode.md)).
 
 ## 8. Limits and known faults
 

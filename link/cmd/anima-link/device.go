@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"strconv"
 
 	"github.com/TheArctesian/anima/link/control"
@@ -64,9 +65,21 @@ func runPorts(_ context.Context, args []string, streams stdio) error {
 	return err
 }
 
+// listenForDaemon makes the socket of the metrics daemon at path; an empty
+// path means no socket. The daemon sends its token there, so the socket is
+// made before the link starts: a path that other users can reach stops the
+// start.
+func listenForDaemon(path string) (net.Listener, error) {
+	if path == "" {
+		return nil, nil
+	}
+	return statedir.ListenOwned(path)
+}
+
 func runDevice(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("device")
 	listen := flags.String("listen", "127.0.0.1:0", "the local loopback address, host:port")
+	daemonSocket := flags.String("daemon-socket", "", "the path of a Unix socket for the metrics daemon")
 	stopWithStdin := flags.Bool("stop-with-stdin", false, "stop when standard input closes")
 	if err := flags.Parse(args); err != nil || *statePath == "" || flags.NArg() != 0 {
 		return errUsage
@@ -82,8 +95,12 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
+	forDaemon, err := listenForDaemon(*daemonSocket)
+	if err != nil {
+		return err
+	}
 	link, err := devicelink.Start(devicelink.Config{
-		Identity: device, Listen: *listen,
+		Identity: device, Listen: *listen, DaemonSocket: forDaemon,
 		Save:     func(renewed identity.Device) error { return renewed.Save(dir) },
 		OpenPort: func(port uint16) bool { return ports.IsOpen(dir, port) },
 	})
@@ -101,7 +118,7 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if *stopWithStdin {
 		go stopWhenClosed(streams.in, stop)
 	}
-	log.Info("the device link is ready", "local", link.LocalAddr().String(), "key", device.Key.Public())
+	log.Info("the device link is ready", "local", link.LocalAddr().String(), "daemonSocket", *daemonSocket, "key", device.Key.Public())
 	err = control.Serve(ctx, listener, map[string]control.Verb{
 		"status": func(context.Context, json.RawMessage) (any, error) {
 			path := link.Path()

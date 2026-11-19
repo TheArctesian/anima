@@ -1,6 +1,7 @@
 //! A scripted hub: answers each route from a queue and records what it was sent.
 
 use std::collections::VecDeque;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use axum::Router;
@@ -11,7 +12,7 @@ use axum::response::{IntoResponse as _, Response};
 use axum::routing::post;
 use daemon_core::wire::RefusalCode;
 use reqwest::Url;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, UnixListener};
 
 /// One canned answer.
 #[derive(Clone)]
@@ -62,6 +63,14 @@ pub struct FakeHub {
 
 type Shared = Arc<Mutex<Script>>;
 
+fn routes(script: Shared) -> Router {
+    Router::new()
+        .route("/daemon/v1/push", post(|s, h, b| answer("push", s, h, b)))
+        .route("/daemon/v1/renew", post(|s, h, b| answer("renew", s, h, b)))
+        .route("/daemon/v1/enrol", post(|s, h, b| answer("enrol", s, h, b)))
+        .with_state(script)
+}
+
 impl FakeHub {
     pub async fn start() -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
@@ -70,14 +79,21 @@ impl FakeHub {
 
     pub fn serve(listener: TcpListener) -> Self {
         let script = Shared::default();
-        let app = Router::new()
-            .route("/daemon/v1/push", post(|s, h, b| answer("push", s, h, b)))
-            .route("/daemon/v1/renew", post(|s, h, b| answer("renew", s, h, b)))
-            .route("/daemon/v1/enrol", post(|s, h, b| answer("enrol", s, h, b)))
-            .with_state(script.clone());
+        let app = routes(script.clone());
         let url =
             Url::parse(&format!("http://{}", listener.local_addr().expect("addr"))).expect("a URL");
         tokio::spawn(async move { axum::serve(listener, app).await.ok() });
+        Self { url, script }
+    }
+
+    /// A hub behind the Unix socket at `socket`, as `anima-link device` gives one to the
+    /// daemon (K8 Section 1). Its `url` names no listener.
+    pub fn behind_socket(socket: &Path) -> Self {
+        let script = Shared::default();
+        let app = routes(script.clone());
+        let listener = UnixListener::bind(socket).expect("a socket");
+        tokio::spawn(async move { axum::serve(listener, app).await.ok() });
+        let url = Url::parse("http://127.0.0.1:9/").expect("a URL");
         Self { url, script }
     }
 

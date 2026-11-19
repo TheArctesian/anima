@@ -25,10 +25,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; the proposed requirement HMD-051 of hosted-mode.md; HM-D2, HM-D8, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
-| 4.4 | The engine (E0) | Agent: E0-7 T2 of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035 and HT-038. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
+| 4.4 | The engine (E0) | Agent: E0-7 T2 of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035 and HT-039. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
-| 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: task W0 in projects-and-builds-plan.md, the Unix socket between the daemon and the link (R-172); no code of W3 or W4 before the two acceptances |
-| 4.9 | Hosted applications | Operator: the check HT-032 on a machine that runs Docker. Agent: hosted-applications-plan.md, task H8 (Not started, no claim) |
+| 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: nothing; task W0 (the Unix socket between the daemon and the link, R-172) is built and waits for the check HT-037, and no code of W3 or W4 comes before the two acceptances |
+| 4.9 | Hosted applications | Operator: the checks HT-032 and HT-038 on a machine that runs Docker. Agent: hosted-applications-plan.md, task H13 (Not started, no claim), then task H9 |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
@@ -193,7 +193,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (68)
+## 4. Checks that only the operator can do (70)
 
 | Check | What |
 | --- | --- |
@@ -225,10 +225,12 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-032 | the containers of a real device, and the log of one (HOST-001, HOST-013; tasks H1 to H4) |
 | HT-026 | the use of AI agent programs from real session files |
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
-| HT-038 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
+| HT-039 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
 | HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192) |
+| HT-038 | the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8) |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
+| HT-037 | the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |

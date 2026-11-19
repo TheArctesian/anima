@@ -1,4 +1,4 @@
-//! `containers` and `containerLog` through a schema that holds them alone (HOST-001, API-003,
+//! The container queries through a schema that holds them alone (HOST-001, API-003,
 //! K7): the sign-in, the values the hub refuses before it reaches a device, and a device the
 //! hub cannot read. The reads against an SSH server are in the crate (`work/containers/tests`).
 
@@ -55,6 +55,22 @@ fn log_of(container: &str, lines: &str) -> String {
     )
 }
 
+fn detail_of(container: &str) -> String {
+    format!(
+        r#"{{ containerDetail(deviceId: "{DOCKER_HOST}", containerId: "{container}") {{ name environmentNames }} }}"#
+    )
+}
+
+fn storage_of(device: &str) -> String {
+    format!(
+        r#"{{ containerStorage(deviceId: "{device}") {{ images {{ id }} usage {{ type }} }} }}"#
+    )
+}
+
+fn networks_of(device: &str) -> String {
+    format!(r#"{{ containerNetworks(deviceId: "{device}") {{ name containers }} }}"#)
+}
+
 /// The one error's code and message.
 fn error_of(response: &Response) -> (String, String) {
     assert_eq!(response.data, Value::Null);
@@ -72,9 +88,15 @@ fn error_of(response: &Response) -> (String, String) {
     migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
-async fn api_003_both_queries_refuse_a_caller_who_is_not_signed_in(pool: PgPool) {
+async fn api_003_each_query_refuses_a_caller_who_is_not_signed_in(pool: PgPool) {
     let schema = schema(pool);
-    for document in [list_of(DOCKER_HOST), log_of(ID, "")] {
+    for document in [
+        list_of(DOCKER_HOST),
+        log_of(ID, ""),
+        detail_of(ID),
+        storage_of(DOCKER_HOST),
+        networks_of(DOCKER_HOST),
+    ] {
         let (code, _) = error_of(&schema.execute(document).await);
         assert_eq!(code, "UNAUTHENTICATED");
     }
@@ -93,7 +115,11 @@ async fn host_001_a_value_the_hub_does_not_accept_is_validation(pool: PgPool) {
         log_of(&ID.to_uppercase(), ""),
         log_of(ID, ", lines: 0"),
         log_of(ID, ", lines: 1001"),
+        detail_of("dawarich_app; reboot"),
+        detail_of(&ID[..11]),
         list_of("not-an-id"),
+        storage_of("not-an-id"),
+        networks_of("not-an-id"),
     ] {
         let (code, _) = error_of(&schema.execute(signed_in(&document)).await);
         assert_eq!(code, "VALIDATION", "{document}");
@@ -120,7 +146,13 @@ async fn host_001_an_unknown_device_is_not_found(pool: PgPool) {
 )]
 async fn host_001_a_device_the_hub_holds_no_host_key_for_is_conflict_with_what_to_do(pool: PgPool) {
     let schema = schema(pool);
-    for document in [list_of(DOCKER_HOST), log_of(ID, ", lines: 50")] {
+    for document in [
+        list_of(DOCKER_HOST),
+        log_of(ID, ", lines: 50"),
+        detail_of(ID),
+        storage_of(DOCKER_HOST),
+        networks_of(DOCKER_HOST),
+    ] {
         let (code, message) = error_of(&schema.execute(signed_in(&document)).await);
         assert_eq!(code, "CONFLICT", "{document}");
         assert_eq!(
@@ -135,7 +167,7 @@ async fn host_001_a_device_the_hub_holds_no_host_key_for_is_conflict_with_what_t
     migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
-async fn d_23_an_api_key_reads_the_list_and_never_a_log(pool: PgPool) {
+async fn d_23_an_api_key_reads_the_list_and_never_a_log_or_the_details(pool: PgPool) {
     let schema = schema(pool);
     let with_key = |document: &str| {
         let operator = Operator {
@@ -146,9 +178,17 @@ async fn d_23_an_api_key_reads_the_list_and_never_a_log(pool: PgPool) {
         Identity::api_key_for_tests(operator, now() + TimeDelta::days(1))
             .attach(Request::new(document))
     };
-    let (code, _) = error_of(&schema.execute(with_key(&log_of(ID, ""))).await);
-    assert_eq!(code, "FORBIDDEN");
+    for closed in [log_of(ID, ""), detail_of(ID)] {
+        let (code, _) = error_of(&schema.execute(with_key(&closed)).await);
+        assert_eq!(code, "FORBIDDEN", "{closed}");
+    }
     // The list is open to a key: it gets as far as the device, which has no accepted key here.
-    let (code, _) = error_of(&schema.execute(with_key(&list_of(DOCKER_HOST))).await);
-    assert_eq!(code, "CONFLICT");
+    for open in [
+        list_of(DOCKER_HOST),
+        storage_of(DOCKER_HOST),
+        networks_of(DOCKER_HOST),
+    ] {
+        let (code, _) = error_of(&schema.execute(with_key(&open)).await);
+        assert_eq!(code, "CONFLICT", "{open}");
+    }
 }
