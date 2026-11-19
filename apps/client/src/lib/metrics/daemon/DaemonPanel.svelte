@@ -2,6 +2,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import type { ThisComputerShell } from '$lib/desktop/daemon/shell';
   import Field from '$lib/devices/form/form/Field.svelte';
+  import { contextHubIsHosted } from '$lib/hosted/context';
   import FormButton from '$lib/forms/FormButton.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
@@ -11,6 +12,7 @@
   import { installCommand, refusalMessage } from './command';
   import { clockText } from './countdown';
   import { DaemonInstall, type DaemonCalls, type ClipboardSink } from './install.svelte';
+  import { revokeWarning } from './revoke';
   import { DAEMON_TARGETS, BUILT_RELEASE, targetOfPlatform, type DaemonRelease, type DaemonTarget } from './release';
   import { ThisComputerInstall } from './this-computer.svelte';
   import ThisComputerButton from './ThisComputerButton.svelte';
@@ -62,6 +64,8 @@
   // The release is fixed for the life of the panel.
   // svelte-ignore state_referenced_locally
   let target = $state<DaemonTarget | null>(release === null ? null : targetOfPlatform(navigator.platform, navigator.userAgent));
+  /** A hub that Anima.ing hosts has no VPN, so the revoke warning names none (R-211). */
+  const hosted = contextHubIsHosted();
   let confirming = $state(false);
   /** Each opening of the revoke dialog is a new dialog, so one that finished does not stay finished. */
   let opening = $state(0);
@@ -216,7 +220,7 @@
   <ConfirmModal
     open={confirming}
     title="Revoke the daemon on {deviceName}?"
-    body="The daemon stops sending metrics. The device keeps the Daemon source, shown as stale, until you change it. VPN access stays: for a device on the VPN only for the daemon, also delete its node in Headscale."
+    body={revokeWarning(hosted)}
     confirmLabel="Revoke daemon"
     onConfirm={async () => {
       const done = await install.revoke();
