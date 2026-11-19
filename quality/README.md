@@ -67,6 +67,17 @@ The rule is `choose` in `src/gates/tier.ts`; `tests/gates/tier.test.ts` tests it
 | `.github/` | The tests of `@anima/deploy`, which read the workflow files |
 | A path that no rule knows | The full list |
 
+Measured on 2026-11-19 on the Mac of the operator, at a load of 8 to 12 (the full list takes about 13
+minutes on the same Mac when it is quiet: Rust tests 7, bun tests 3.5, Go tests 2):
+
+| Change | Time of `bun run gates:fast` |
+| --- | --- |
+| One document | Less than 1 s |
+| One line in the daemon crate, in a new worktree | 33 s |
+| One more line in the same crate | 14 s |
+| One line in the bun package `@anima/dns` | 4 s |
+| One line in `link/` | 142 s (the Go tests with the race detector are 2 minutes of it) |
+
 What it does not do: it does not test a package that depends on a touched one, and it runs the doctests
 only with the whole Rust group. The full list does that. `--group rust,go,bun,quality` and
 `--gate name,name` run a part of the list by name; the jobs of the workflow use them.
