@@ -25,6 +25,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; the proposed requirement HMD-051 of hosted-mode.md; HM-D2, HM-D8, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
+| 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-049 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
 | 4.4 | The engine (E0) | Agent: the rest of E0-7 T3 (`Subscription.reminderFirings`) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035, HT-040 and HT-043. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: nothing; task W0 (the Unix socket between the daemon and the link, R-172) is built and waits for the check HT-037, and no code of W3 or W4 comes before the two acceptances |
@@ -33,10 +34,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
-| 4.22 | User documentation and the docs site docs.anima.ing | Operator: OD-UD1 to OD-UD13 in user-documentation.md Section 9, then the approval of UDOC-001 to UDOC-048. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (129)
+## 2. Open decisions (116)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -134,19 +134,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
-| OD-UD1 | Do you confirm that the docs live on a separate site, `docs.anima.ing`? (yes/no) | Open. Relayed by Anima Product Ideas (2026-11-19, 12:23 PT), not first-hand | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD2 | Do you confirm that the source is Markdown in this repository, `docs/user/`, and that the docs site publishes it? (yes/no) | Open. Relayed, not first-hand | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD3 | Do you confirm that the first version is the full set of Section 6.2.1 (effort L), published in the waves of Section 10? (yes/no) | Open. Relayed, not first-hand | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD4 | Do you confirm the new row 4.22 in the priorities, at tier 1, after row 4.3? (one choice: tier 1 after 4.3; tier 3 after 4.21; tier 2 beside 2a and 2b) | Open. The row is relayed; the tier is the Planner's recommendation | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD5 | Does this proposal own the user docs and docs.anima.ing (a new row in ownership.md, UDOC), and does design specification Section 3.12 stay the owner of the mark… | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD6 | Does SITE-007 (static files only, no account, sign-in, form, cookie or server code) apply to docs.anima.ing? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD7 | Does SITE-008 apply to docs.anima.ing without its exception, so the docs site has no analytics at all? (one choice: no analytics; the same exception for Vercel… | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD8 | Does SITE-012 (no text about a paid hosted option until you approve the words) apply to docs.anima.ing? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD9 | Does ASD-STE100 apply to the user pages in `docs/user/`? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD10 | Do you fold the idea Agent-Readable Surface (a skill file, `llms.txt`, an install prompt) into this proposal (UDOC-031, UDOC-032), and delete its idea folder? (… | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD11 | Where is the code of the docs site? (one choice: `apps/docs/` in this repository; a route group in `anima-site`; a new repository) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD12 | Is the docs MCP local only: two read tools in `anima mcp` that read the docs inside the program, with no remote docs MCP server in the first version? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
-| OD-UD13 | Do the install steps of SITE-005 move to the docs, so that `www.anima.ing` links to the install page of docs.anima.ing? (yes/no; it changes SITE-005) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
@@ -200,7 +187,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
-| [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Draft |
+| [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
 ## 4. Checks that only the operator can do (75)

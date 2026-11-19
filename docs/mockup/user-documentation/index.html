@@ -8,7 +8,7 @@
 /* Layout: a review board for the docs site docs.anima.ing (user-documentation.md, proposed, not approved).
    Frame 1 is the docs home, frame 2 a task page (Remote access), frame 3 the generated CLI reference,
    frame 4 the privacy page (UDOC-004 to UDOC-016, UDOC-021, UDOC-026, UDOC-027, UDOC-040 to UDOC-044).
-   No font, script or image comes from a third party (UDOC-005): IBM Plex is named, and the system font is the fallback. */
+   No font, script or image comes from a third party (UDOC-005; Vercel Web Analytics loads from the site origin, R-207): IBM Plex is named, and the system font is the fallback. */
 :root {
   color-scheme: dark;
   --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
@@ -84,7 +84,7 @@ pre { margin: var(--space-1) 0 0; padding: var(--space-3); background: var(--sur
 </head>
 <body>
 <h1 class="board">User documentation: docs.anima.ing</h1>
-<p class="about">Proposed, not approved. Owner: docs/proposals/user-documentation.md (UDOC-001 to UDOC-048). Four frames: the docs home, a task page, the generated CLI reference, and the privacy page. The text is an example; the real pages come from docs/user/. Nothing here is built.</p>
+<p class="about">Proposed, not approved (direction decided, R-207; requirements not approved, task UD20). Owner: docs/proposals/user-documentation.md (UDOC-001 to UDOC-049). Four frames: the docs home, a task page, the generated CLI reference, and the privacy page. The text is an example; the real pages come from docs/user/. Nothing here is built.</p>
 
 <div class="frames">
 
@@ -194,13 +194,13 @@ pre { margin: var(--space-1) 0 0; padding: var(--space-3); background: var(--sur
       <tbody>
         <tr><td>Update feed</td><td>Desktop app</td><td>At start, then on a schedule</td><td>Your IP address, the app version</td><td>Example</td></tr>
         <tr><td>Your hub</td><td>All programs</td><td>When you use them</td><td>Your data, to your own hub</td><td>—</td></tr>
-        <tr><td>docs.anima.ing</td><td>Your browser</td><td>When you read the docs</td><td>Your IP address, the browser name</td><td>No analytics</td></tr>
+        <tr><td>Vercel Web Analytics</td><td>docs.anima.ing, in your browser</td><td>Each page you read</td><td>The page address, the referrer, the country, the operating system, the browser and the device type. No cookie</td><td>Use a content blocker</td></tr>
       </tbody>
     </table>
-    <p class="note">Example rows only. The real rows come from the inventory of task UD0, each with the code that makes the connection (UDOC-041, UDOC-042).</p>
+    <p class="note">The first two rows are examples; the real rows come from the inventory of task UD0, each with the code that makes the connection (UDOC-041, UDOC-042). Vercel Web Analytics is the one connection of the docs site (R-207, OD-UD7; UDOC-044). If its script writes no cookie is checked in task UD4.</p>
   </main>
 </div>
-<figcaption>Frame 4, the privacy page (light), UDOC-040 to UDOC-044. The first sentence about telemetry is open until UD0: the website uses Vercel Web Analytics (OD-21), and AXT-044 adds opt-in counts.</figcaption>
+<figcaption>Frame 4, the privacy page (light), UDOC-040 to UDOC-044. The docs site lists Vercel Web Analytics as its one outbound connection (R-207, OD-UD7). The first sentence about telemetry is open until UD0: both websites use Vercel Web Analytics (OD-21, R-207), and AXT-044 adds opt-in counts.</figcaption>
 </figure>
 
 </div>
