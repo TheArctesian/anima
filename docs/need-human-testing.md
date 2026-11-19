@@ -565,6 +565,9 @@ metrics". Two differences. The row shows the mark of Linux with no distribution:
 over SSH only, and it has no SSH to itself (the image is Debian 13). The row shows the button "+ VNC", which
 adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
 
+On 2026-11-19 the operator's screenshot showed the `Hub` device Up and its single Push check,
+`Hub running`, also Up. This confirms step 2. The five-minute recheck in step 3 is open.
+
 ### HT-029: the computer is Up while it is connected to the link (HM-T11)
 
 Built: a hosted hub keeps the check `Connected` for each device whose host is the link address of a computer
