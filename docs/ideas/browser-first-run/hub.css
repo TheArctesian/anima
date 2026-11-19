@@ -1,0 +1,190 @@
+:root { --online: #a3be8c; --icon-sm: 1rem; --icon-md: 1.125rem; }
+
+.icon { display: inline-flex; flex: none; }
+.icon svg { width: var(--icon-md); height: var(--icon-md); fill: currentColor; }
+.icon-sm svg { width: var(--icon-sm); height: var(--icon-sm); }
+
+body.hub-view main.section { align-items: start; padding: clamp(32px, 7vh, 84px) var(--gutter) 52px; }
+.hub-view .layout {
+  width: 100%;
+  max-width: 1160px;
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(32px, 6.5vw, 100px);
+  align-items: start;
+}
+
+.hub-label { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+.hub-label strong, .hub-label small { display: block; line-height: 1.35; }
+.hub-label strong { font-size: 14px; font-weight: 500; }
+.hub-label small { color: var(--text-secondary); font-size: 12px; }
+.hub-mark, .machine-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+#hub .lead { max-width: 39ch; min-height: 3.1em; }
+#setup { margin-top: 24px; }
+.path-picker { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border-strong); }
+.path-picker button, .quiet {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: start;
+}
+.path-picker button { display: inline-flex; align-items: center; gap: 6px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.path-picker button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.path-picker button:hover, .quiet:hover { color: var(--text); background: var(--surface-raised); }
+#hub :is(button, .action):active { filter: brightness(.85); }
+
+.setup-panel { padding-top: 18px; }
+.setup-panel h2, .devices h2 { font-size: 17px; font-weight: 500; line-height: 1.25; }
+.setup-panel p, .cli-steps { margin-top: 8px; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.setup-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.target-label, .app-platform { font-size: 13px; color: var(--text-secondary); }
+#hub select {
+  max-width: 100%;
+  min-height: 44px;
+  padding-inline: 8px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+}
+.copy-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-height: 56px;
+  margin-top: 14px;
+  padding: 5px 6px 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-base);
+}
+.copy-line code, .share-code code { font: 12px/1.5 var(--font-mono); color: var(--accent); overflow-wrap: anywhere; }
+.copy, .demo-controls button {
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+.copy { min-height: 44px; font-size: 13px; }
+#cli-path:has(#approve-cli[hidden]) .copy,
+#first-use:not([hidden]) ~ #setup #mcp-path .copy { background: var(--accent); color: var(--surface-sunken); border-color: var(--accent); font-weight: 500; }
+#cli-path:has(#approve-cli[hidden]) .copy:hover,
+#first-use:not([hidden]) ~ #setup #mcp-path .copy:hover { background: var(--accent-hover); }
+.copy:hover, .demo-controls button:hover { border-color: var(--accent); }
+.preview-note { display: block; margin-top: 6px; color: var(--text-secondary); font-size: 12px; }
+.cli-steps { padding-left: 20px; margin-top: 14px; }
+.cli-steps li + li { margin-top: 4px; }
+.inset, .terminal-session {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-base);
+}
+#cli-handoff p:first-child { margin: 0; color: var(--text); }
+#cli-handoff .action, #vps-panel .action { margin-top: 10px; }
+.server-options { margin-top: 10px; }
+.server-options .quiet, #mcp-path .quiet { padding-left: 0; color: var(--accent); }
+#server-panel { margin: 0; }
+#server-panel .quiet { display: block; }
+#vps-panel h3 { margin-top: 8px; font-size: 15px; font-weight: 500; }
+#vps-panel dl { margin-top: 8px; color: var(--text-secondary); font-size: 13px; }
+#vps-panel dl div { display: flex; justify-content: space-between; gap: 8px; }
+#vps-panel .action:disabled { background: var(--surface-raised); border-color: var(--border-strong); color: var(--text-secondary); cursor: default; }
+#open-app { margin-top: 16px; }
+#share-app { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-inline: 0 8px; }
+#share-app[aria-expanded="true"] .icon { transform: rotate(180deg); }
+#share-panel { padding: 12px 0 0; border-top: 1px solid var(--border-subtle); }
+.app-platform { display: block; margin-bottom: 5px; }
+.share-code { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; margin-top: 14px; }
+.share-code img { padding: 9px; border-radius: 2px; background: white; image-rendering: pixelated; }
+#copy-feedback { color: var(--accent); font-size: 13px; }
+.share-code p { margin: 0; }
+.share-code code { display: block; margin-top: 6px; }
+.share-code .copy { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; }
+.first-use { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; margin-top: 12px; }
+.terminal-session { width: 100%; margin-top: 4px; font: 13px/1.5 var(--font-mono); }
+.terminal-session small { color: var(--text-secondary); }
+.terminal-session p { margin-top: 8px; }
+
+.hub-side { min-width: 0; }
+.hub-view .door-stage { position: relative; }
+.hub-view .doors { display: block; width: 100%; height: clamp(176px, 33vh, 306px); min-height: 0; }
+.hub-status {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-base);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.status-dot { width: 7px; height: 7px; flex: none; border: 1px solid currentColor; border-radius: 50%; }
+.hub-status .status-dot { color: var(--accent); }
+.hub-status.ready .status-dot, .online .status-dot { color: var(--online); background: currentColor; }
+.devices-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 0 0 10px; }
+.devices-heading > span { color: var(--text-secondary); font: 12px var(--font-mono); }
+#machine-list { list-style: none; }
+.machine {
+  display: grid;
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 64px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-base);
+}
+.machine + .machine { margin-top: 6px; }
+.machine:has(.machine-icon[hidden]) { grid-template-columns: minmax(0, 1fr) auto; }
+.machine.online { border-color: color-mix(in srgb, var(--online) 38%, var(--border-subtle)); }
+.machine-name strong, .machine-name small { display: block; }
+.machine-name strong { font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
+.machine-name small { color: var(--text-secondary); font-size: 12px; }
+.machine-status { display: flex; min-width: 66px; align-items: center; gap: 8px; color: var(--text-secondary); font: 12px var(--font-mono); }
+.online .machine-status { color: var(--online); }
+
+.demo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.demo-controls strong { margin-right: 4px; font-size: 12px; color: var(--text); font-weight: 500; }
+.demo-controls button { min-height: 36px; }
+:is(h1, #handoff-instructions)[tabindex="-1"]:focus { outline: none; }
+
+@media (max-width: 820px) {
+  body.hub-view main.section { padding-block: 24px 40px; }
+  .hub-view .layout { position: relative; max-width: 560px; }
+  .hub-label { padding-right: 124px; min-height: 36px; }
+  .hub-view .door-stage { position: absolute; top: -8px; right: 0; width: 120px; height: 64px; pointer-events: none; }
+  .hub-view .doors { height: 56px; transform: translateY(-7px); }
+  .hub-status { top: auto; bottom: 0; padding: 4px 7px; }
+  #setup { margin-top: 18px; }
+  #open-app { width: 100%; }
+  .devices { margin-top: 22px; }
+}
+@media (max-width: 360px) {
+  .path-picker button { padding-inline: 7px; }
+}
