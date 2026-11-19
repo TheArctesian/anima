@@ -7,7 +7,9 @@
 #   - it does not check that the tree is the commit's, and it builds what is in the folder;
 #   - it copies with cp and makes none of the builder's checks of the staged files and of the
 #     Mach-O files of the application;
-#   - it has no notary step, and on Linux it builds for this computer's architecture.
+#   - it has no notary step, and on Linux it builds for this computer's architecture;
+#   - its application does not update itself: the shell is compiled with no updater and the
+#     client never checks the feed (UPD-001, DEF-001). A released application does both.
 # So a trial that passes does not prove that a release job passes.
 #
 # NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007).
@@ -31,6 +33,11 @@ RUST_PROGRAMS="anima anima-local-hub anima-hub anima-database anima-gateway"
 EXTERNAL='"binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"'
 CARRIED="\"externalBin\":[$EXTERNAL],\"resources\":{\"database\":\"database\"}"
 export CI=true
+# A trial bundle keeps its version: the published version can be lower, and an application that
+# checks the feed would install it (DEF-001). The shell reads the first when it is compiled
+# (src/desktop.rs), the client the second when it is built (src/lib/updates/local-build.ts).
+export ANIMA_LOCAL_BUILD=1
+export VITE_ANIMA_LOCAL_BUILD=1
 
 cargo_build() {
     ( cd "$ROOT" && ANIMA_VERSION=$VERSION cargo build --release --locked \

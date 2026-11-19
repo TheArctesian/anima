@@ -121,7 +121,9 @@ on this computer" needs, and puts them into the application (plan item S12,
 `apps/desktop/src-tauri/trial-bundle.sh [version]` makes the same application on the computer
 that runs it, with an ad hoc signature on macOS and no notary step. Use it to try the hub from
 a built application. It uses no signing identity and uploads nothing. Gatekeeper refuses such
-an application on another Mac.
+an application on another Mac. A trial bundle does not update itself: it has no updater, and
+Settings > Updates says "This is a local build. It does not update itself." (UPD-001). To get a
+newer version, build it again or install a release.
 
 ## How an installed app updates
 

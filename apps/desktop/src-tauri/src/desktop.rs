@@ -20,14 +20,23 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init());
     // Release desktop builds only: `tauri dev` never checks for or loads an update (UPD-001).
     #[cfg(not(debug_assertions))]
-    let app = app
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init());
+    let app = with_updater(app).plugin(tauri_plugin_process::init());
     with_state(app)
         .invoke_handler(commands())
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")
         .run(|app, event| on_run_event(app, &event));
+}
+
+/// Adds the updater, unless `trial-bundle.sh` built this program (`ANIMA_LOCAL_BUILD`, read when
+/// the program is compiled). A trial bundle has no updater: the published version can be lower
+/// than its own, and the updater would put it in its place (UPD-001, DEF-001).
+#[cfg(not(debug_assertions))]
+fn with_updater(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
+    if option_env!("ANIMA_LOCAL_BUILD").is_some() {
+        return app;
+    }
+    app.plugin(tauri_plugin_updater::Builder::new().build())
 }
 
 /// The shell's commands; each refuses every web view but the main one (WEB-007).

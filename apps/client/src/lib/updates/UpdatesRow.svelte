@@ -1,11 +1,14 @@
 <script lang="ts">
   import { press } from '$lib/motion/roles/press';
   import SettingRow from '$lib/settings/SettingRow.svelte';
+  import { isLocalBuild, LOCAL_BUILD_LINE } from './local-build';
   import { describeUpdate, canCheck } from './status';
   import { useUpdates } from './updates.svelte';
 
   const updates = useUpdates();
   const snapshot = $derived(updates.snapshot);
+  // A trial bundle has no updater: the row says so and offers no check (DEF-001).
+  const local = isLocalBuild();
 
   $effect(() => {
     void updates.loadVersion();
@@ -22,9 +25,9 @@
     </p>
   {/snippet}
   {#snippet hint()}
-    <p class="hint state" aria-live="polite">{describeUpdate(snapshot, time)}</p>
+    <p class="hint state" aria-live="polite">{local ? LOCAL_BUILD_LINE : describeUpdate(snapshot, time)}</p>
   {/snippet}
-  <button type="button" tabindex="0" disabled={!canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
+  <button type="button" tabindex="0" disabled={local || !canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
     Check for updates
   </button>
 </SettingRow>

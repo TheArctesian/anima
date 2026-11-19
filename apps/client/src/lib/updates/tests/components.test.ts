@@ -26,6 +26,7 @@ afterEach(async () => {
   if (app) await unmount(app);
   app = undefined;
   document.body.innerHTML = '';
+  vi.unstubAllEnvs();
 });
 
 function show(component: typeof UpdateBanner, port: FakeUpdater = fakeUpdater()): { updates: Updates; port: FakeUpdater } {
@@ -135,4 +136,17 @@ it('UPD-006: once installed the row says restart and the button is disabled', as
   flushSync();
   expect(document.body.textContent).toContain('Anima.ing 1.2.0 is installed — restart to update');
   expect(button('Check for updates')?.disabled).toBe(true);
+});
+
+it('UPD-006, DEF-001: in a local build the row says that it does not update itself, and offers no check', async () => {
+  vi.stubEnv('VITE_ANIMA_LOCAL_BUILD', '1');
+  const { port } = show(UpdatesRow);
+  await settle();
+  expect(document.body.textContent).toContain('Anima.ing 1.0.0');
+  expect(document.body.textContent).toContain('This is a local build. It does not update itself.');
+  expect(document.body.textContent).not.toContain('Not checked yet');
+  expect(button('Check for updates')?.disabled).toBe(true);
+  button('Check for updates')?.click();
+  await settle();
+  expect(port.checks).toBe(0);
 });
