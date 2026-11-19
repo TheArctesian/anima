@@ -1,0 +1,29 @@
+query ContainerStorageRead($deviceId: ID!) {
+  containerStorage(deviceId: $deviceId) {
+    images {
+      id
+      repository
+      tag
+      size
+      sharedSize
+      uniqueSize
+      created
+      containerCount
+      containers
+    }
+    volumes {
+      name
+      driver
+      size
+      containerCount
+      containers
+    }
+    usage {
+      type
+      totalCount
+      activeCount
+      size
+      reclaimable
+    }
+  }
+}

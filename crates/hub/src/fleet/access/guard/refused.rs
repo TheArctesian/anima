@@ -1,4 +1,4 @@
-//! The root fields that an API key may not select (D-23, R-100).
+//! The root fields that no API key may select (D-23).
 
 /// The root fields an API key may never select, in any operation (D-23, WP-43 A-6): managing
 /// keys, signing a browser in or out, sessions, files and device credentials. `logout` would
@@ -22,9 +22,9 @@
 /// A link invite admits a device to the hub, and a revocation is a trust decision: login or
 /// browser token only (FRN-009, OR-S6-3). An operational key change takes a secret or is a
 /// trust decision (a grant): login or browser token only (R-147, K-E5 Section 2.2).
-/// The log of a container can hold a secret, as private code can: login or browser token only
-/// (HOST-001, MCP-004, R-149).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 55] = [
+/// The log of a container can hold a secret, as private code can, and so can the command or a
+/// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 56] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -79,5 +79,6 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 55] = [
     "grantOperationalKey",
     "ungrantOperationalKey",
     "containerLog",
+    "containerDetail",
     "createLocationIngestToken",
 ];

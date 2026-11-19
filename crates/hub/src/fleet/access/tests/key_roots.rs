@@ -3,12 +3,12 @@
 //! mutation. Each refusal is one FORBIDDEN in `parse_query`, before validation and before any
 //! resolver (D-23, WP-43 A-6, R-084, CR-8, R-100).
 
-mod listed;
+mod d_23;
 
 use async_graphql::{EmptySubscription, Request, Response, Schema, Value, value};
 use chrono::TimeDelta;
-use listed::D_23;
 
+use self::d_23::D_23;
 use super::{backstopped, clock, identity_of, now};
 use crate::fleet::access::{
     Scope, TokenKind,

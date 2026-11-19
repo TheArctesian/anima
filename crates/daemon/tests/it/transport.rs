@@ -1,9 +1,13 @@
 //! The transport rules of K8 Section 1 (MET-020): no redirect, no proxy, no cookie.
 
+use std::fs::Permissions;
+use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
+use anima_daemon::config::origin::Origin;
 use anima_daemon::hub::answer::{Answer, Cause};
-use anima_daemon::hub::{HubClient, TIMEOUT};
+use anima_daemon::hub::link_socket::LinkSocketError;
+use anima_daemon::hub::{HubClient, HubError, TIMEOUT};
 use daemon_core::wire::{Announcements, Batch, RefusalCode};
 use reqwest::Url;
 
@@ -30,17 +34,97 @@ async fn met_020_a_redirect_is_a_failed_request_and_is_not_followed() {
     );
 }
 
+/// A folder that only this user can reach, as the folder of the socket of the link must be.
+fn private_folder() -> tempfile::TempDir {
+    let folder = tempfile::tempdir().expect("a folder");
+    std::fs::set_permissions(folder.path(), Permissions::from_mode(0o700)).expect("mode");
+    folder
+}
+
 #[tokio::test]
-async fn met_020_a_push_reaches_the_hub_at_the_local_port_of_the_link() {
-    let hub = FakeHub::start().await;
-    let link = anima_daemon::config::origin::Origin::parse(hub.url.as_str().trim_end_matches('/'))
-        .expect("the local port of the link is a hub origin");
-    let client = HubClient::new(link.url().clone(), TIMEOUT).expect("a client");
+async fn k8_1_a_push_reaches_the_hub_through_the_socket_of_the_link() {
+    let folder = private_folder();
+    let socket = folder.path().join("link.sock");
+    let hub = FakeHub::behind_socket(&socket);
+    let origin = Origin::parse(&format!("unix:{}", socket.display())).expect("a link origin");
+    let client = HubClient::reaching(origin.reach(), &folder.path().join("unused"), TIMEOUT)
+        .expect("a client");
     assert_eq!(
         client.push(&token(), &batch()).await,
         Answer::Accepted(None)
     );
-    assert_eq!(hub.seen("push").len(), 1);
+    assert_eq!(
+        hub.seen("push")[0].bearer.as_deref(),
+        Some(token().expose())
+    );
+}
+
+/// R-172, SF-004: after its update, a daemon that was enrolled at a port of the link pushes
+/// through the socket in its own folder, and the port gets no request and no token.
+#[tokio::test]
+async fn k8_1_a_daemon_with_the_old_link_origin_pushes_by_its_socket_and_sends_nothing_to_the_port()
+{
+    let on_the_port = FakeHub::start().await;
+    let old = Origin::parse_kept(on_the_port.url.as_str().trim_end_matches('/'))
+        .expect("a stored old link origin");
+    let folder = private_folder();
+    let own_socket = folder.path().join("link.sock");
+    let behind_the_link = FakeHub::behind_socket(&own_socket);
+
+    let client = HubClient::reaching(old.reach(), &own_socket, TIMEOUT).expect("a client");
+    assert_eq!(
+        client.push(&token(), &batch()).await,
+        Answer::Accepted(None)
+    );
+    assert_eq!(behind_the_link.seen("push").len(), 1);
+    assert!(
+        on_the_port.seen("push").is_empty(),
+        "the token went to a TCP port"
+    );
+}
+
+#[tokio::test]
+async fn k8_1_while_the_link_is_stopped_a_push_fails_and_goes_nowhere() {
+    let folder = private_folder();
+    let client = HubClient::over_link(&folder.path().join("link.sock"), TIMEOUT)
+        .expect("only this user can make a socket here");
+    assert!(matches!(
+        client.push(&token(), &batch()).await,
+        Answer::Failed(_)
+    ));
+}
+
+#[test]
+fn k8_1_no_client_is_made_for_a_socket_that_a_different_user_could_put_there() {
+    let open = private_folder();
+    std::fs::set_permissions(open.path(), Permissions::from_mode(0o755)).expect("mode");
+    assert!(matches!(
+        HubClient::over_link(&open.path().join("link.sock"), TIMEOUT),
+        Err(HubError::LinkSocket(LinkSocketError::Exposed))
+    ));
+
+    let folder = private_folder();
+    let file = folder.path().join("link.sock");
+    std::fs::write(&file, b"").expect("a file");
+    assert!(matches!(
+        HubClient::over_link(&file, TIMEOUT),
+        Err(HubError::LinkSocket(LinkSocketError::Exposed))
+    ));
+
+    let elsewhere = private_folder();
+    let real = elsewhere.path().join("link.sock");
+    let _listener = std::os::unix::net::UnixListener::bind(&real).expect("a socket");
+    let link = folder.path().join("linked.sock");
+    std::os::unix::fs::symlink(&real, &link).expect("a link");
+    assert!(matches!(
+        HubClient::over_link(&link, TIMEOUT),
+        Err(HubError::LinkSocket(LinkSocketError::Exposed))
+    ));
+
+    assert!(matches!(
+        HubClient::over_link(&folder.path().join("none").join("link.sock"), TIMEOUT),
+        Err(HubError::LinkSocket(LinkSocketError::Io(_)))
+    ));
 }
 
 #[tokio::test]

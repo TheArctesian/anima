@@ -19,8 +19,8 @@ describe("the probe's copies of the hub's lists", () => {
     expect(quoted(list ?? "")).toEqual([...refusals.CLIENT_ORIGINS]);
   });
 
-  test("D-23 R-100: the refused roots are API_KEY_REFUSED_ROOTS of guard.rs", () => {
-    const guard = source("crates/hub/src/fleet/access/guard.rs");
+  test("D-23 R-100: the refused roots are API_KEY_REFUSED_ROOTS of guard/refused.rs", () => {
+    const guard = source("crates/hub/src/fleet/access/guard/refused.rs");
     const list = quoted(/const API_KEY_REFUSED_ROOTS: \[&str; \d+\] = \[([^\]]*)\]/.exec(guard)?.[1] ?? "");
     expect(list.length).toBeGreaterThan(20);
     expect(list).toEqual([...refusals.REFUSED_ROOTS]);

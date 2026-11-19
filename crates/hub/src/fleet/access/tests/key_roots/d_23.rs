@@ -1,12 +1,11 @@
-//! The roots that D-23 closes to an API key, written a second time: a change of the guard's
-//! list must be made here too.
+//! The D-23 list, written a second time so that a change of the hub's list is deliberate.
 
 /// The D-23 list as the spec and A-6 state it, with the CR-8 daemon fields, the R-100
 /// device identity and device fields, the R-107 builder and release fields, and the VP-7 VPN
 /// key, registration and renewal fields, the Connect GitHub fields (PRJ-039, PRJ-041), and the
 /// file of a repository's code (PRJ-033, K-E1 Section 13.5), and the run controls, a workflow
-/// started by hand and a commit status (PRJ-034, PRJ-035, PRO-010), and merging pull requests (PRJ-033, PRO-013), and the changes of an operational key (R-147), and the making of a location ingest token (K-E4 Section 11).
-pub(super) const D_23: [&str; 55] = [
+/// started by hand and a commit status (PRJ-034, PRJ-035, PRO-010), and merging pull requests (PRJ-033, PRO-013), and the changes of an operational key (R-147).
+pub(super) const D_23: [&str; 56] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -61,5 +60,6 @@ pub(super) const D_23: [&str; 55] = [
     "grantOperationalKey",
     "ungrantOperationalKey",
     "containerLog",
+    "containerDetail",
     "createLocationIngestToken",
 ];
