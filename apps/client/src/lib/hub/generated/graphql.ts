@@ -598,6 +598,8 @@ export type NotificationKind =
   | 'CERTIFICATE_EXPIRY'
   | 'DOMAIN_EXPIRY'
   | 'DOWN'
+  /** A reminder of the engine, through the same channels (REM-010; K-E6 Section 5). */
+  | 'REMINDER'
   | 'STILL_DOWN'
   | 'TEST'
   | 'UP';

@@ -42,7 +42,7 @@ fn test_values(at: &str) -> Values {
         previous: Some("up".to_owned()),
         message: Some("This is a test notification from Anima.".to_owned()),
         at: Some(at.to_owned()),
-        days: None,
+        ..Values::default()
     }
 }
 

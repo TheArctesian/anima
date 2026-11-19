@@ -60,8 +60,12 @@ impl Sender {
             (Some(title), Some(body)) => (title, body),
             _ => (&defaults.title_template, &defaults.body_template),
         };
-        let rendered = template::render(title, body, values)
-            .map_err(|_| Failure::of(DeliveryReason::SetupFailed))?;
+        let rendered = if kind == NotificationKind::Reminder {
+            template::given(values)
+        } else {
+            template::render(title, body, values)
+                .map_err(|_| Failure::of(DeliveryReason::SetupFailed))?
+        };
         let notice = Notice {
             kind,
             values,

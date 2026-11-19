@@ -22,6 +22,9 @@ pub(in crate::fleet::notifications) struct Values {
     pub(in crate::fleet::notifications) message: Option<String>,
     pub(in crate::fleet::notifications) at: Option<String>,
     pub(in crate::fleet::notifications) days: Option<u32>,
+    /// The title and the body of a reminder, which no template words (REM-010).
+    pub(in crate::fleet::notifications) title: Option<String>,
+    pub(in crate::fleet::notifications) body: Option<String>,
 }
 
 impl Values {
@@ -47,6 +50,8 @@ impl Values {
                 .get("days")
                 .and_then(Value::as_u64)
                 .and_then(|days| u32::try_from(days).ok()),
+            title: text("title", super::TITLE_MAX),
+            body: text("body", super::BODY_MAX),
         }
     }
 

@@ -91,7 +91,7 @@ const fn apprise_type(kind: NotificationKind) -> &'static str {
         NotificationKind::Down | NotificationKind::StillDown => "failure",
         NotificationKind::Up => "success",
         NotificationKind::CertificateExpiry | NotificationKind::DomainExpiry => "warning",
-        NotificationKind::Test => "info",
+        NotificationKind::Test | NotificationKind::Reminder => "info",
     }
 }
 

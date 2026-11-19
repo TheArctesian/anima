@@ -1574,6 +1574,8 @@ enum NotificationKind {
   CERTIFICATE_EXPIRY
   DOMAIN_EXPIRY
   TEST
+  "A reminder of the engine, through the same channels (REM-010; K-E6 Section 5)."
+  REMINDER
 }
 
 enum WebhookMethod {
