@@ -68,7 +68,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
-| HT-044 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Open |
+| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1579,7 +1579,7 @@ hosted hub: "got to here the first time, reopend to the same screen"): steps 3 a
 In the same message the operator asked for more than this check
 covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
 
-### HT-044: Linux opens the account sign-in screen before a hub is chosen (HMD-022)
+### HT-045: Linux opens the account sign-in screen before a hub is chosen (HMD-022)
 
 State: Open. The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
 before a token read when no hub address is saved. Tests cover a missing token, an old token
@@ -1596,3 +1596,7 @@ complete a real account sign-in.
    Expected: the app joins the hosted hub and opens its device list, as in HT-022.
 3. Quit the app and start it again.
    Expected: the chosen hub's device list opens without another sign-in.
+
+Result: Open. On 2026-11-19 the operator reported that the Linux preview worked and showed the
+signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
+The `pop-os` row shows the generic Linux logo and no metrics. No result was reported for step 3.
