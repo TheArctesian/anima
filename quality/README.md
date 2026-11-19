@@ -57,7 +57,7 @@ The rule is `choose` in `src/gates/tier.ts`; `tests/tier.test.ts` tests it.
 | Changed paths | Gates |
 | --- | --- |
 | Nothing | None |
-| Only `docs/` and `*.md` files of the root | `documents` |
+| Only `docs/`, `*.md` files of the root, `.gitattributes`, `LICENSE` | `documents` |
 | A crate | `fmt`; `clippy` and `rust-test` with `-p` for each touched crate; `pinning` when the desktop shell is touched; the five quality gates |
 | `link/` | The six Go gates; the five quality gates |
 | A bun package | `install`; `lint`, `check` and `test` with `--filter` for each touched package; `build` when the client is touched; the five quality gates |

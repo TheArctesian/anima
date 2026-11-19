@@ -24,7 +24,7 @@ const QUALITY = ["limits", "names", "imports", "documents", "baseline"];
 
 describe("the fast tier (gates:fast)", () => {
   test("a change of documents only runs the documents gate", () => {
-    expect(names(["docs/plans/x-plan.md", "docs/rulings.md", "AGENTS.md"])).toEqual(["documents"]);
+    expect(names(["docs/plans/x-plan.md", "docs/rulings.md", "AGENTS.md", ".gitattributes"])).toEqual(["documents"]);
   });
 
   test("no change runs nothing", () => {

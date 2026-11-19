@@ -33,8 +33,11 @@ const GO_MODULE = "link/";
 const WORKFLOWS = ".github/";
 const WORKFLOW_TESTS = "@anima/deploy";
 
+/** Files of the root that no build and no test reads. */
+const NEUTRAL = [".gitattributes", "LICENSE"];
+
 function isDocument(path: string): boolean {
-  return path.startsWith("docs/") || (!path.includes("/") && path.endsWith(".md"));
+  return path.startsWith("docs/") || (!path.includes("/") && path.endsWith(".md")) || NEUTRAL.includes(path);
 }
 
 function under(path: string, prefix: string): boolean {
