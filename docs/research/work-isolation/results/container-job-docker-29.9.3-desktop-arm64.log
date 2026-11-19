@@ -1,0 +1,32 @@
+== container-job.sh  2026-11-19T02:39:13Z  macOS 27.3 arm64
+uptime: 18:39  up 1 day,  3:47, 3 users, load averages: 19.25 32.09 25.36
+note: every timing below was taken under the load shown in that uptime line
+docker: server 29.9.3 Docker Desktop kernel 7.0.14-linuxkit 18 cpu 8317202432 B, security [name=seccomp,profile=builtin name=cgroupns]
+image: alpine:3 13502455 B arm64
+== flags of every job: --rm --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 --memory 2g --read-only --tmpfs /work --user 1000:1000 -v <new folder>:/job (no socket mount)
+== C1 start of a new container to the end of its first command (docker run ... /bin/true; image local, daemon up), wall clock, 10 runs
+median 349 ms  min 191  max 594  (n=10)
+== C2 what the job sees (one normal run to the end)
+  id: uid=1000 gid=1000 groups=1000
+  caps: CapPrm: 0000000000000000 CapEff: 0000000000000000 CapBnd: 0000000000000000   NoNewPrivs: 1
+  /var/run/docker.sock present: no   /run/docker.sock: no
+  write /: touch: /x: Read-only file system
+  write /work: ok   write /job: ok
+  exec from /work: ok
+  mounts that are not proc/sys/dev/tmpfs/overlay:
+    /run/host_mark/private /job fakeowner rw,nosuid,nodev,relatime,fakeowner 0 0
+    /dev/vda1 /etc/hostname ext4 ro,relatime,discard,noauto_da_alloc 0 0
+    /dev/vda1 /etc/hosts ext4 ro,relatime,discard,noauto_da_alloc 0 0
+    /dev/vda1 /etc/resolv.conf ext4 ro,relatime,discard,noauto_da_alloc 0 0
+  memory limit: 2147483648  pids limit: 512
+  file from the job on the host: -rw-r--r-- 501:20 /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.ZpQj7Ul9Gp/out.txt
+  container gone: yes  job folder gone: yes
+== C3 idle container: memory, mounts, then docker kill in the middle of a sleep
+  docker stats --no-stream: mem 2.512MiB / 2GiB pids 1 cpu 0.00%
+  mounts (docker inspect): [bind /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.6IxC6JH3T6 -> /job rw=true] 
+  tmpfs: map[/work:rw,exec,size=256m,uid=1000,gid=1000]  privileged=false readonly-rootfs=true capdrop=[ALL] secopt=[no-new-privileges]
+  docker kill -> container removed by --rm: 184 ms
+  container gone: yes  job folder gone: yes
+== clean-up: containers with label anima-w2c=38367 left: 0  docker ps -a same as before: yes
+note: the image alpine:3 stays (images are not removed)
+uptime at end: 18:39  up 1 day,  3:47, 3 users, load averages: 32.04 34.37 26.25

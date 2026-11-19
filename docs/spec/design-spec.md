@@ -372,7 +372,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
 - **UPD-005.** After one update is installed, the app must stop checking until it restarts.
 - **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
-- **UPD-007.** A release must start only from the Builds view (BLD-001). There is no GitHub release workflow (changed by R-107; `release.yml` removed by R-114).
+- **UPD-007.** A release must start only from the Builds view (BLD-001). No workflow of GitHub holds the updater key or publishes a release (changed by R-107; `release.yml` removed by R-114). A workflow of GitHub Actions on a runner of the operator can build a release and give its files to the hub (R-171; not built: task B8 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)).
 - **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-107).
 - **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
@@ -381,7 +381,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 
 ### 3.10 Builds
 
-Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. GitHub Actions does not build or publish a release (R-005, R-107).
+Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. No machine of GitHub builds a release, and GitHub Actions does not sign or publish one (R-005, R-107). A workflow of GitHub Actions can build a release on a machine of the operator, as a runner for one job; only the hub signs and publishes (R-171; not built: task B8 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)).
 
 ```text
 operator: Builds view ─► "Release 0.1.12" ─► hub: one job for each target, state queued
@@ -442,7 +442,7 @@ queued ──► claimed ──► building ──► uploading ──► publis
 - **BLD-026.** The builder runs inside the desktop app while the app runs. The client holds the builder loop (`$lib/builds/`). The Tauri shell holds only the OS work: child processes, the key store and file upload (REPO-003; changed by R-117).
 - **BLD-027.** The shell must expose fixed build steps, not a general command runner. The web view can ask for "check out commit C", "run the gates", "bundle target T at version V", "upload file F to URL U". It cannot name a program. The builder signs nothing; the hub signs the updater file (changed by R-117).
 - **BLD-028.** Before the builder claims a job, it must check its tools: git, bun, Rust, Go, PostgreSQL 17 (R-009) and the Tauri system packages (changed by R-117; Go added 2026-11-16, task R3 of the projects and builds proposal). The Settings row must name each missing tool. A builder with a missing tool must not claim.
-- **BLD-029.** A builder runs one job at a time. It connects out to the hub over the VPN. It needs no open port and no GitHub runner.
+- **BLD-029.** A builder runs one job at a time. It connects out to the hub over the VPN. It needs no open port and no GitHub runner. A runner for one job on a machine of the operator is a second kind of builder; it is work of `anima-daemon` and not of this builder (R-171, PRO-039).
 
 #### 3.10.3 The build
 
