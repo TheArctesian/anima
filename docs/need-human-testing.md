@@ -69,7 +69,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
-| HT-045 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-048 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-046 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 
 ### What a check on the hosted hub needs
@@ -905,7 +905,7 @@ sign-in to the hosted hub.
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
-### HT-045: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+### HT-048: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
 
 Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
 phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
@@ -966,7 +966,7 @@ the operator (MOB-006).
 3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
    shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
    about the icons or the export question).
-4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-045, step 5.
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-048, step 5.
 5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
    higher.
 
