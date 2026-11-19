@@ -2,10 +2,10 @@
 
 - From: the operator, 2026-11-18 (16:57 PT)
 - Source: the vault note "Agent Tools as Extensions"
-- Status: Framed
-- Serves: Work plan Section 4, row 4.8 (the other extensions: AI coding sessions, Section 4.12, and Bots, Section 4.16). Closest other rows: 4.4 (community extensions, EXT-009) and 4.9 (hosted applications). Not confirmed.
-- Owner if it becomes work: `extensions-plan.md` (AI coding sessions, Bots) and `bots.md`. Not decided: that is a question for the Planner.
-- Effort: S for tabs only (an estimate); L for a real extension host (an estimate). Recommendation: should for tabs only; could for the host.
+- Status: Ready for Planner
+- Serves: a new row of its own in priorities.md, which the Planner adds and places (operator, 2026-11-18). No existing row names it. Rows 4.4 (community extensions, EXT-009), 4.8 (AI coding sessions, Bots) and 4.9 (hosted applications) are the neighbours.
+- Owner if it becomes work: a new proposal, with changes to `extensions-plan.md` (Sections 3.4, 4.12.1, EXT-009) and `bots.md`. The Planner decides.
+- Effort: L, for a real extension host (an estimate; the operator chose this over tabs only). Recommendation: should (the operator's choice; the tabs-only version was the bot's recommendation)
 
 ## The idea
 
@@ -33,18 +33,24 @@ Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../pl
 
 ## Narrowest version, and when to stop
 
-- Narrowest version: no extension host. The operator installs the tool on a device (by hand, or by an install recipe of BOT-058 to BOT-077). The device gets a web interface entry (WEB-001) for T3 Code or the Hermes dashboard, and a terminal tab opens Herdr or the Hermes terminal screen on the device. One page lists the entries as "Agent tools". Check with one real device.
-- Stop if: the tool's page cannot reach the operator's client without opening a port on the device, or the Hermes sign-in cannot be used safely over the link.
+- Narrowest version: a host with one extension that opens one tool in a pane. The first tool is the Hermes dashboard (a web page on a local port); the second is a terminal tool (Herdr or the Hermes terminal screen) in a terminal pane. A package names the tool, how to start it, its port or command, and what the pane may reach. The host does not run the tool's code in the hub. The design of isolation and permissions is what EXT-009 requires before community extensions. The Planner decides whether this host is that design or a smaller one.
+- Stop if: the tool's page cannot reach the operator's client without opening a port on the device, the host cannot keep the tool's page out of the application's own data and commands (WEB-006, WEB-007), or the Hermes sign-in cannot be used safely over the link.
 
-## Open questions
+## Answered questions
 
-- In version 1, is a pane only a tab that opens the tool's own screen (a web view for T3 Code and the Hermes dashboard, a terminal tab for the Herdr and Hermes terminal screens), with no extension host? (one choice: tabs only / a real extension host / park it; recommended: tabs only)
-- Does this replace the native Herdr-style agent panes (4.12.1) and the native bot runtime of the Bots proposal, or sit beside them? (one choice: replace the build, and keep the usage counts, the status and the install / sit beside / decide after the tab test; recommended: replace the build, and keep the usage counts, the status and the install)
-- Is Hermes the first assistant that the "Add an agent" list suggests, never installed without the operator's click? (yes/no; recommended: yes)
+The operator answered on 2026-11-18 (17:03, Pacific time):
+
+- What is version 1? A real extension host (not tabs only).
+- What happens to the native Herdr-style agent panes (4.12.1) and the native bot runtime? Replace the native build. Keep the usage counts (AIS-018 to AIS-024), the status and the install (BOT-058 to BOT-077).
+- Is Hermes the first assistant that the "Add an agent" list suggests? Yes. It is suggested, never installed without the operator's click.
+- Which priorities row does it serve? A new row of its own, which the Planner adds.
+
+Open for the Planner, not for the operator: whether a real extension host starts before the 15 extensions are built (EXT-009 says community extensions wait), and which terms rules apply to T3 Code and to the Hermes credential sources (see the overlap check).
 
 ## Reviews
 
 - 2026-11-18: round 1. The operator's words were logged. Facts about the three tools were read on the vendors' pages. The Serves row is not confirmed. The operator has not answered the questions.
+- 2026-11-18: round 2. The operator answered the questions and ruled that the idea gets its own new priorities row. Ready for Planner.
 
 ## Source text
 
