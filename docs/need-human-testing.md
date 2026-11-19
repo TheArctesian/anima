@@ -60,7 +60,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
-| HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
+| HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 
 ### What a check on the hosted hub needs
 
@@ -901,9 +901,10 @@ GraphQL through the client's developer tools or `curl` with a login token.
 
 Result: Open.
 
-### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192)
+### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-197 to R-200)
 
-Built: on `main` since 3ae44093. `.github/workflows/release.yml` builds the macOS and the Linux
+Built: on `main` since 3ae44093; the trigger on a push to `main`, the decision and the switch (task B8g) on the
+branch `release/each-push`. `.github/workflows/release.yml` builds the macOS and the Linux
 application on machines of GitHub, signs the macOS one with the Developer ID and has it notarized, signs the two
 updater files with the updater key, and publishes with `anima-hub release publish`
 (`crates/hub/src/fleet/builds/publishing/built/`). The state of GitHub and the steps of the operator are in
@@ -923,13 +924,22 @@ Anima ran on a Linux computer (R-192); the repository has no record of a start o
    starts on a Linux computer; the first public release waits for this (R-192). In each of the two, Settings >
    Updates does not say "This is a local build", and it offers the published version (the build of the workflow
    has the updater; a build by hand with `trial-bundle.sh` has not, DEF-001).
-3. Do "The first public release". Expected: the tag is `v` with the version that
-   `sh deploy/bin/commit-version origin/main` prints (R-183); the three feeds give that version; `stapler validate`
-   and `spctl` accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1 that was installed from its
-   DMG offers the version and starts it after "Restart to update".
-4. Put a tag `v9.9.9` on a commit of `main`, and delete it after. Expected: the job `commit` fails, because the
-   tag does not give the version of its commit (R-183), and no other job starts. The same check with a correct
-   version on a commit that is not on `main` must fail with "is not on main".
+3. With the switch off (the variable `ANIMA_PUBLIC_RELEASES` does not exist), push a change of a document to
+   `main`. Expected: a run of `release` starts, only its job `commit` runs, and the summary says "nothing: this
+   push is a release of <version>, and public releases are off" (the Linux feed does not exist, so each push is
+   a release until the first one is published). Nothing is built, and no feed changed.
+4. Do "To switch public releases on" and "The first public release". Expected: the push builds and publishes
+   the version that `sh deploy/bin/commit-version origin/main` prints (R-183, R-200); the three feeds give that
+   version; `stapler validate` and `spctl` accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1
+   that was installed from its DMG offers the version and starts it after "Restart to update".
+5. After that release, push a change of a document only to `main`. Expected: only the job `commit` runs, and the
+   summary says "nothing: no change of desktop after the published <version>".
+6. Push two changes of the application to `main` within some minutes. Expected: the runs do not overlap; the
+   feeds give the version of the second push in the end, and never a lower version after a higher one.
+7. Start the first job of an old run again ("Re-run all jobs" on a run before the newest release). Expected:
+   the summary says "nothing: the version ... is not more than the published ...", and nothing is built.
+
+This entry names "Re-run" and pushes to `main`; each push to `main` is a release when the switch is on (R-197).
 
 Observation (2026-11-18, evening; 2026-11-19 UTC; read from GitHub by an agent, not a result of the operator):
 the operator started a trial, run 44468487102, from `main` at 9f056a5a with the version `0.0.1`. No approval
