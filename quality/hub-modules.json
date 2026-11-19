@@ -146,7 +146,8 @@
       "locations",
       "notifications",
       "credentials",
-      "events"
+      "events",
+      "extensions"
     ]
   },
   "graphql": {

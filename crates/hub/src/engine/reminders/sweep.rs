@@ -9,14 +9,20 @@ use sqlx::{PgConnection, PgPool};
 use super::{
     Error,
     model::{PlaceChange, Trigger},
+    occurrences::{self, Extensions},
     place_state::place_changes,
-    sending::{WasKnown, fire},
+    sending::{WasKnown, fire, notice},
     store,
 };
-use crate::engine::{locations, places};
+use crate::{
+    engine::{locations, places},
+    fleet::{credentials::operational, events},
+};
 
 /// The cursor of the location samples in `reminders.cursor`.
 const SAMPLES: &str = "locations";
+/// The cursor of the event log in `reminders.cursor`.
+const EVENTS: &str = "events";
 /// The most samples one sweep reads; the next sweep reads on.
 const BATCH: i64 = 5000;
 /// How far back the first sweep reads: older samples fire no place rule (R-145).
@@ -104,19 +110,53 @@ async fn arrivals(db: &PgPool, seal: &locations::Seal, now: DateTime<Utc>) -> Re
     })
 }
 
-/// One sweep at `now`: the time rules, then the place rules. The time rules are stored also
+/// What a sweep reads besides the database: the sealing keys of the positions, the vault-free
+/// reads of the engine, and the extensions that give occurrences.
+#[derive(Clone)]
+pub struct Reading {
+    pub seal: locations::Seal,
+    pub extensions: Extensions,
+}
+
+/// Reads what has no moment of storage and what the engine follows with a cursor: the new
+/// events of the event log, the operational keys that end or need a rotation, and the
+/// expiries and measures of each extension that is on. Then it evaluates the rules that wait
+/// for occurrences, in one transaction with the cursor.
+async fn given(db: &PgPool, extensions: &Extensions, now: DateTime<Utc>) -> Result<(), Error> {
+    let keys = operational::keys(db, now).await?;
+    let mut new = occurrences::of_keys(&keys);
+    let on = crate::engine::extensions::on_keys(db).await?;
+    for extension in extensions {
+        if !on.iter().any(|key| key.as_str() == extension.name()) {
+            continue;
+        }
+        new.extend(extension.expiries(db, now).await?);
+        new.extend(extension.measures(db, now).await?);
+    }
+    let mut tx = db.begin().await?;
+    store::lock_sweep(&mut tx).await?;
+    // The first sweep starts at now: an old event fires nothing.
+    let after = store::cursor(&mut tx, EVENTS).await?.unwrap_or(now);
+    let events = events::after(&mut tx, (after, now), BATCH).await?;
+    let newest = events.last().map_or(now, |event| event.at);
+    new.extend(events.iter().filter_map(occurrences::of_event));
+    notice(&mut tx, &new, now).await?;
+    store::set_cursor(&mut tx, EVENTS, newest.max(after)).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+/// One sweep at `now`: the time rules, then what the engine and the extensions give, then
+/// the place rules. The time rules are stored also
 /// when the samples cannot be read (no sealing keys, say); the error of the samples is then
 /// the result.
 ///
 /// # Errors
-/// `Database`, `Places`, `Locations`.
-pub async fn sweep(
-    db: &PgPool,
-    seal: &locations::Seal,
-    now: DateTime<Utc>,
-) -> Result<Swept, Error> {
+/// `Database`, `Places`, `Locations`, `Keys`, `Extension`, `Switches`, `Events`.
+pub async fn sweep(db: &PgPool, reading: &Reading, now: DateTime<Utc>) -> Result<Swept, Error> {
     let timed = times(db, now).await?;
-    let placed = arrivals(db, seal, now).await?;
+    given(db, &reading.extensions, now).await?;
+    let placed = arrivals(db, &reading.seal, now).await?;
     Ok(Swept {
         firings: timed + placed.firings,
         place_changes: placed.place_changes,

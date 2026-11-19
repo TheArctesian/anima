@@ -13,11 +13,10 @@ use super::{
     model::Class,
     sending::{Sendable, claim_send, waiting},
     store,
-    sweep::sweep,
+    sweep::{Reading, sweep},
 };
 use crate::{
     clock::Clock,
-    engine::locations,
     fleet::{
         credentials::Vault,
         events::{self, ActorKind, Bus, NewEvent, Severity, Source},
@@ -134,7 +133,7 @@ pub async fn send_waiting(sending: &Sending, now: DateTime<Utc>) -> Result<u64, 
 #[must_use]
 pub fn spawn_minute(
     sending: Sending,
-    seal: locations::Seal,
+    reading: Reading,
     clock: Arc<dyn Clock>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
@@ -143,7 +142,7 @@ pub fn spawn_minute(
         loop {
             ticker.tick().await;
             let now = clock.now();
-            if let Err(error) = sweep(&sending.db, &seal, now).await {
+            if let Err(error) = sweep(&sending.db, &reading, now).await {
                 tracing::warn!(%error, "the reminder sweep failed");
             }
             if let Err(error) = send_waiting(&sending, now).await {

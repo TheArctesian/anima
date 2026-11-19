@@ -261,6 +261,20 @@ pub async fn before(
     Ok(store::list_events(db, &filter, Some(position), limit).await?)
 }
 
+/// The stored events after `after` and not after `until`, oldest first, at most `limit`: for a
+/// reader that follows the log with a cursor (K-E6 Section 3).
+///
+/// # Errors
+///
+/// `Error::Database` if the read fails.
+pub async fn after(
+    conn: &mut PgConnection,
+    span: (DateTime<Utc>, DateTime<Utc>),
+    limit: i64,
+) -> Result<Vec<EventSummary>, Error> {
+    Ok(store::events_after(conn, span, limit).await?)
+}
+
 /// `text` with the secrets the event-log redaction finds masked, as `record` stores a message:
 /// `"[redacted]"` for a private key, an `otpauth://` URI or an `Authorization:` header, else
 /// each URL password, secret `key=value`, scheme credential and JWT masked (LOG-007). For text

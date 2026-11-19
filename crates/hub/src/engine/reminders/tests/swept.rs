@@ -15,10 +15,14 @@ use crate::{
 
 const HOME: u128 = 0x0190_a000_0000_7000_9200_0000_0000_0001;
 
-fn seal() -> (Seal, tempfile::TempDir) {
+fn seal() -> (Reading, tempfile::TempDir) {
     let folder = tempfile::tempdir().unwrap();
     let keys = SealingKeys::open(Some(folder.path()), b"credential").unwrap();
-    (Seal::new(keys), folder)
+    let reading = Reading {
+        seal: Seal::new(keys),
+        extensions: Vec::new(),
+    };
+    (reading, folder)
 }
 
 /// A top-level place of 100 m around 52.0, 4.0.
@@ -36,7 +40,7 @@ async fn add_home(pool: &PgPool) -> PlaceId {
 }
 
 /// Stores one fix that the phone made at `observed` and that the hub got at `received`.
-async fn fix(pool: &PgPool, seal: &Seal, at_home: bool, (observed, received): (&str, &str)) {
+async fn fix(pool: &PgPool, seal: &Reading, at_home: bool, (observed, received): (&str, &str)) {
     let sample = NewSample {
         key: format!("{observed}:{received}"),
         observed_at: Some(at(observed)),
@@ -52,7 +56,7 @@ async fn fix(pool: &PgPool, seal: &Seal, at_home: bool, (observed, received): (&
         account: "phone".to_owned(),
     };
     let mut conn = pool.acquire().await.unwrap();
-    locations::store_samples(&mut conn, seal, (&origin, &[sample]), at(received))
+    locations::store_samples(&mut conn, &seal.seal, (&origin, &[sample]), at(received))
         .await
         .unwrap();
 }

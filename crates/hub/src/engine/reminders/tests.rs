@@ -6,6 +6,7 @@ use chrono_tz::Tz;
 use uuid::Uuid;
 
 mod codec;
+mod given;
 mod places;
 mod rules;
 mod sent;

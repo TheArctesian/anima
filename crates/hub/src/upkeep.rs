@@ -139,7 +139,10 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
                 bus: bus.clone(),
                 vault: dependencies.vault.clone(),
             },
-            locations::Seal::new(dependencies.files.sealing_keys().clone()),
+            reminders::Reading {
+                seal: locations::Seal::new(dependencies.files.sealing_keys().clone()),
+                extensions: Vec::new(),
+            },
             clock.clone(),
         ),
         metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone()),

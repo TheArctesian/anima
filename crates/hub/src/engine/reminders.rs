@@ -10,6 +10,7 @@ mod delivery;
 mod evaluation;
 pub mod graphql;
 mod model;
+mod occurrences;
 mod place_state;
 mod rules;
 mod schedule;
@@ -29,6 +30,7 @@ pub use model::{
     Class, Comparison, Crossing, Due, Firing, FiringState, History, Known, Limits, Moment,
     Occurrence, PlaceChange, Rule, Stop, TimeTrigger, Trigger, Unless,
 };
+pub use occurrences::{Extensions, Triggers, Unavailable};
 pub use place_state::{PlaceState, place_changes};
 pub use rules::{
     Draft, FIRINGS_MAX, MINUTES_MAX, acknowledge, activity, create_rule, firings, remove_rule,
@@ -36,7 +38,7 @@ pub use rules::{
 };
 pub use sending::{RULE_CHANGED, Sendable, claim_send, notice, waiting};
 pub use store::StoredRule;
-pub use sweep::{Swept, sweep};
+pub use sweep::{Reading, Swept, sweep};
 
 /// Why a reminders operation failed. The message holds no text of a rule or of a record.
 #[derive(Debug, thiserror::Error)]
@@ -51,6 +53,12 @@ pub enum Error {
     Notifications(#[from] crate::fleet::notifications::Error),
     #[error("the event cannot be written")]
     Events(#[from] crate::fleet::events::Error),
+    #[error("the operational keys cannot be read")]
+    Keys(#[from] crate::fleet::credentials::operational::Error),
+    #[error(transparent)]
+    Extension(#[from] Unavailable),
+    #[error("the extension switches cannot be read")]
+    Switches(#[from] crate::engine::extensions::Error),
     /// Input to fix: each field and what to give.
     #[error("the reminder input is not valid")]
     Invalid(Vec<Fault>),
