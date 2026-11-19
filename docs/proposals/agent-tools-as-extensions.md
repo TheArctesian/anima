@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Draft
-evidence: Version 2 (2026-11-18). The goal follows the first-hand words of the operator of 2026-11-18 22:32 PT (not a ruling). The four answers of 17:03 PT are relayed by Anima Product Ideas and not first-hand (OD-AXT1). No ruling. No requirement is approved and no task is built. Checked against origin/main at `cdd720ef`. Serves row 4.21 of the priorities, a placeholder that waits for OD-AXT1 and OD-AXT11.
+evidence: Version 3 (2026-11-18). The operator chose the later entries first-hand (22:47 PT); they are not in version 1 and not approved for build. Version 2 (2026-11-18). The goal follows the first-hand words of the operator of 2026-11-18 22:32 PT (not a ruling). The four answers of 17:03 PT are relayed by Anima Product Ideas and not first-hand (OD-AXT1). No ruling. No requirement is approved and no task is built. Checked against origin/main at `cdd720ef`. Serves row 4.21 of the priorities, a placeholder that waits for OD-AXT1 and OD-AXT11.
 ---
 
 # Proposal: agent tools as extensions (an extension host for tools on the operator's machines)
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: agent tools as extensions. A host that opens a tool of another vendor, which runs on a machine of the operator, in a pane of the client |
-| Version | 2 |
+| Version | 3 |
 | Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. No ruling. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. Version 3 adds the list of later entries (Section 6.5.1), constraint C6 and OD-AXT16 and OD-AXT17. No ruling. |
 | Serves | Row 4.21 of [priorities.md](../plan/priorities.md) (a new row, by the relayed answer 4 of the operator; placeholder until OD-AXT1 and OD-AXT11) |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 2.8 (EXT-009), 2.8.1, 3.4 and 4.12 (AIS-009 to AIS-024); [bots.md](bots.md) (BOT-001 to BOT-078); the design specification Section 6.3.4 (WEB-001 to WEB-010); [hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049); [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (task H1, fixed commands through SSH) |
-| Identifiers | AXT-001 to AXT-043, OD-AXT1 to OD-AXT15, tasks AX0 to AX16 |
+| Identifiers | AXT-001 to AXT-043, OD-AXT1 to OD-AXT17, tasks AX0 to AX16 |
 
 ## 1. Goal
 
@@ -95,6 +95,7 @@ Not verified: whether the Hermes dashboard and Herdr work in a Tauri child web v
 - **C3. No code of other people in the hub.** EXT-009: "The hub must not run the code of other people until a design for isolation and permissions is approved." The host runs each tool on the operator's machine, as the operator's user, from the operator's install (AXT-003).
 - **C4. Login rules of the install.** BOT-066: each sign-in is on the machine, in the flow of the vendor, by the operator. BOT-078: a recipe must not take, show, store or relay a key.
 - **C5. Order and contracts.** CMD-030: hub API, `anima` command, MCP tool, client. K1 to K8 are frozen; a ruling changes them (CON-001). A plan, a contract and a ruling merge to `main` before the code (R-155).
+- **C6. OpenCode and the Claude login.** OpenCode is one of the six agents of bots.md (BOT-077). The vendor of Claude made OpenCode remove the Claude subscription login (OpenCode v1.3.0, 2026-03-22; reported by Anima Competitor Bot on 2026-11-18, not read again by the Planner). So OpenCode, and each catalogue tool that can use Claude, must use an API key or another provider for Claude, never the subscription login (as C1; BOT-021, BOT-032, BOT-078). OpenCode needs no second entry in this catalogue.
 
 ## 6. Requirements (proposed, not approved)
 
@@ -139,6 +140,24 @@ All requirements here are proposed. None is approved, and none is built until th
 - **AXT-023.** The Hermes install must be a recipe in the one catalogue of bots.md (BOT-060), with its vendor terms row (BOT-038) or "terms not checked" (BOT-041). It must run as the operator's user, with no root (BOT-063). [NEEDS CLARIFICATION: the install and update commands of Hermes, not verified.]
 - **AXT-024.** The Herdr install must be a recipe in the same catalogue. Herdr is a terminal program, not an agent. Its recipe gets no sign-in step. [NEEDS CLARIFICATION: the install and attach commands of Herdr, not verified.]
 - **AXT-025.** The desktop application of Herdr, the phone applications of Herdr and the desktop application of Hermes are not in the first version. The vendor says that the Herdr terminal program and the Herdr desktop application "don't share agents".
+
+The operator reaffirmed Hermes Agent and Herdr first-hand (2026-11-18, 22:47 PT: "Would Like Hermes as well, herdr if that makes sense"). They stay the catalogue of version 1 (AXT-020). This is direction, not a ruling (OD-AXT1).
+
+#### 6.5.1 Later entries (not in version 1)
+
+The operator chose these tools first-hand for a later list (2026-11-18, 22:47 PT, unchanged): "OpenHands, Goose, Open WebUI with Ollama, OpenClaw, after a security review, code-server and ComfyUI too. Would Like Hermes as well, herdr if that makes sense and Unsloth as well". They are not in version 1 and are not approved for build. No requirement here is new: each entry follows AXT-001 to AXT-043 when it is added. The licences and the technical notes come from a check by Anima Competitor Bot on 2026-11-18 (each LICENSE file and README), except Unsloth, which the Planner read on 2026-11-18. The Planner did not read the others again.
+
+| Tool | Kind | Licence | Notes | Gate (in addition to the general gates) |
+| --- | --- | --- | --- | --- |
+| OpenHands | Web pane | MIT | A web workspace for coding agents. It can drive other agents, so it overlaps the panes; it is heavy. | None more |
+| Goose | Terminal (also a desktop app and an ACP agent) | Apache-2.0. A Linux Foundation project (AAIF). | A custom build must not use the Goose name in a way that implies official endorsement (AXT-034). The mark policy of the Linux Foundation: not verified. Its use of a vendor subscription through ACP must follow C1 and BOT-037. | None more |
+| Open WebUI with Ollama | Web pane (Open WebUI); service with no pane (Ollama) | Open WebUI License: BSD-3-Clause terms with a branding clause (clause 4). Ollama: MIT; its name rules: not verified. | Run Open WebUI unmodified. Never remove, hide or replace its name or logo (clause 4; AXT-030). It needs `WEBUI_URL` and CORS set for the address of the pane. Ollama gives the models; it is a recipe and a health check (AXT-040), not a pane. | Read clause 4 again before the entry |
+| OpenClaw | Web pane | MIT | An always-on personal agent, a neighbour of Hermes Agent. Its security record: not verified. | A security review first |
+| code-server | Web pane | MIT | VS Code in a browser on the remote machine. It supports a sub-path. It uses the Open VSX marketplace; the name rules of the editor: not verified. | Ask Coder first, because Coder sells hosted access to it |
+| ComfyUI | Web pane, on its own path | GPL-3.0 | Run it as a separate program, never bundled with Anima.ing. It needs a GPU. It reportedly breaks under a sub-path, so give it its own path (port). | None more |
+| Unsloth | Web pane (Unsloth Studio); the core is a library | Core: Apache-2.0. Unsloth Studio (the web UI): AGPL-3.0 (README, "License"). | `unsloth studio` serves a local web UI to run and fine-tune models. "Run it remotely" means fine-tuning on a home GPU (NVIDIA, AMD, Intel, CPU and macOS are supported). It binds to loopback unless `-H` is given; a non-loopback bind, `--secure` or `--cloudflare` asks for an admin password, and `--secure` makes its own public Cloudflare link, which overlaps the hub. Its server-side tools are on by default (`--disable-tools` turns them off). A web UI behind a proxy answers only the host names in `UNSLOTH_STUDIO_PROXY_HOSTS` (a `Host` check for AX0). Install: the vendor script (`curl -fsSL https://unsloth.ai/install.sh \| sh`, which BOT-062 must change to a download and a check), `brew install --cask unsloth`, or Docker. Release v0.1.919-beta, 2026-11-17. Source: github.com/unslothai/unsloth, README and repository data, read 2026-11-18. Not verified: the default port of `unsloth studio` (the examples use 8888, and the desktop app uses 8888 by default), whether the tools must be off for a pane, and whether the project sells hosted access. | Decide the default of `--disable-tools` in the manifest |
+
+**General gates for each later entry.** A vendor terms row (BOT-038) or "terms not checked" with the operator's choice (BOT-041); a person reads the licence and the name and logo rules (AXT-030); the maintainer gives consent before the listing (Section 6.7, outreach rules); the measurement of AX0 for its kind passes; and the project does not sell its own hosted remote access, or the maintainer agrees (Section 6.7). The order of the waves is OD-AXT17.
 
 ### 6.6 What stays
 
@@ -358,6 +377,8 @@ Each row asks one question with yes, no or one choice, and gives the recommendat
 | OD-AXT13 | Do catalogue entries and the pane show the sponsor link of the project when it has one (AXT-028, AXT-033)? (yes/no) | Yes. Strength: it sends support back to the project and shows that Anima.ing is not a reseller. Weakness: a sponsor link that moves or ends needs a person to check it before each release. | Open |
 | OD-AXT14 | May Anima.ing share anonymised install counts with each project, opt-in only, later than version 1? (yes/no) | Yes, later than version 1. Strength: useful to the project and builds trust. Weakness: it needs the new telemetry of AXT-042 and a consent flow; a small count can point to one person. | Open |
 | OD-AXT15 | Do you confirm that T3 Code stays out of the catalogue (constraint C2), although an older vault spec, "One-Click Agent Setup", lists a different first version? (yes/no) | Yes, per C2 (BOT-021, BOT-032, BOT-033). Strength: it keeps the terms rules. Weakness: T3 Code users are a large group that this version does not reach. | Open |
+| OD-AXT16 | Aider is one of the six agents of version 1 (BOT-077), but its last release is of 2025-08-09 (stale, per Anima Competitor Bot, 2026-11-18). Does Aider stay in version 1? (yes/no) | Yes: keep it with a version check (AXT-035), and review it again at BI0 of bots.md. Strength: the operator chose six agents (R-153), and a version check catches a break. Weakness: a tool with no maintainer can break with no fix, and the user blames Anima.ing. | Open |
+| OD-AXT17 | Which order for the later entries (Section 6.5.1): (a) coding first (OpenHands, Goose, then code-server), then reach (Open WebUI with Ollama, ComfyUI, Unsloth); or (b) reach first? (one choice) | (a), coding first, then reach. Strength: it serves the first users (agentic coders) and the coding panes that the host is for. Weakness: Open WebUI with Ollama has the largest self-hosting audience, so growth comes later. OpenClaw waits for its security review in both choices. | Open |
 
 ## 10. Tasks
 
@@ -366,7 +387,7 @@ One pull request for each task. The size of each task is a few hours to three da
 | Task | Wave | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | AX0 | 0 | A measurement, a record only: the Hermes dashboard and Herdr in a Tauri child web view and a terminal pane, through a test relay to a loopback port; `Host`, `Origin`, WebSocket and frame refusals; the two designs of AXT-011; `direct-tcpip` on stock macOS and Linux `sshd`; the install and attach commands | Nothing (record only) | Not started | — |
-| AX1 | 1 | The operator answers OD-AXT1 to OD-AXT15 and approves AXT-001 to AXT-043 with a ruling | The operator | Not started | — |
+| AX1 | 1 | The operator answers OD-AXT1 to OD-AXT17 and approves AXT-001 to AXT-043 with a ruling | The operator | Not started | — |
 | AX2 | 1 | Docs only, merged first (R-155): the rulings; the changes of Section 7 to extensions-plan.md, ai-direction.md, bots.md and WEB-006; the contract text of K1, K2, K3 and K4; `hub-modules.json` | AX1 | Not started | — |
 | AX3 | 2 | `daemon-core`: the manifest types and their pure validation, with the attribution fields of AXT-028 and the supported versions of AXT-035; the manifests of Hermes and Herdr; two `ToolName` values and their probes | AX2 | Not started | — |
 | AX4 | 2 | The hub: the domain of the catalogue, the switch, the grants, the states and the audit events; the GraphQL | AX2; OD-AXT8 | Not started | — |
@@ -422,3 +443,4 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - 2026-11-18, version 1. The Planner made this proposal from the idea `agent-tools-as-extensions` and deleted the idea folder in the same commit (PLN-018). The four answers of the operator are relayed and wait for first-hand confirmation (OD-AXT1 to OD-AXT3). No ruling is recorded. The Planner added row 4.21 as a placeholder, a concern row in ownership.md, pointer notes in extensions-plan.md Section 4.12.1 and in bots.md, and the mockup.
 - The Planner found that WEB-004 cannot reach a loopback port of a remote device, and that the link reaches only ports 22, 5900 and 3389. So the pane needs a path through the hub (OD-AXT6).
 - 2026-11-18, version 2. The operator said first-hand (22:32 PT): "I mean its more about how do I support all of these great other open source apps and also gian their users", and chose to reframe the goal. The Planner rewrote Section 1 and added Section 6.7 (AXT-028 to AXT-043) with the input of Anima Marketing Bot: credit, the official release, no fork, upstream fixes, no lock-in, attribution, "works with" wording, version checks, catalogue pages on the site, the badge with `?ref=`, clips, tool health, security text, the signals and the outreach rules. It added OD-AXT12 to OD-AXT15 and tasks AX13 to AX16, and changed AX3 and AX11. The goal is direction, not a ruling; OD-AXT1 stays Open. The Planner recorded that an older vault spec, "One-Click Agent Setup", differs on the first-version list (OD-AXT15), and copied nothing from it.
+- 2026-11-18, version 3. The operator chose the later entries first-hand (22:47 PT): "OpenHands, Goose, Open WebUI with Ollama, OpenClaw, after a security review, code-server and ComfyUI too. Would Like Hermes as well, herdr if that makes sense and Unsloth as well". The Planner kept Hermes Agent and Herdr as version 1 (AXT-020), added Section 6.5.1 with the later entries and their gates, added constraint C6 (OpenCode and the Claude login), and added OD-AXT16 (Aider) and OD-AXT17 (the order of the waves). The facts of the later entries come from Anima Competitor Bot; the Planner read Unsloth on GitHub. No later entry is approved for build. No ruling.
