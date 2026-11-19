@@ -150,6 +150,9 @@
       "events",
       "extensions",
       "sources"
+    ],
+    "jobs": [
+      "events"
     ]
   },
   "graphql": {
