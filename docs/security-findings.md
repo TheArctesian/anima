@@ -119,7 +119,7 @@ State: Open.
 
 ## The security review of the work route (task W1, 2026-11-18)
 
-R-160 and [jobs.md](proposals/jobs.md), "Needs", ask for a security review of the work route before code. The review read the proposed contract K10, [work-route.md](../contracts/work-route.md), version 0.1. A separate reviewer agent did it; it got the text and the limits of [jobs.md](proposals/jobs.md), "Decision", and of R-160, and no opinion of the session that wrote the text. No code exists for the contract, so each entry is about the text. Version 0.2 of the contract has the changes that the entries name. Each entry stays Open: only the operator closes one (see "How to use this list"), and four need his decision: SF-003, SF-004, SF-006 and SF-013. "Severity" is the word of the reviewer.
+R-160 and [jobs.md](proposals/jobs.md), "Needs", ask for a security review of the work route before code. The review read the proposed contract K10, [work-route.md](../contracts/work-route.md), version 0.1. A separate reviewer agent did it; it got the text and the limits of [jobs.md](proposals/jobs.md), "Decision", and of R-160, and no opinion of the session that wrote the text. No code exists for the contract, so each entry is about the text. Version 0.2 of the contract has the changes that the entries name. Each entry stays Open: only the operator closes one (see "How to use this list"). Four needed his decision. He decided SF-004 on 2026-11-18 (R-172: correct it first). SF-003, SF-006 and SF-013 still wait for him. "Severity" is the word of the reviewer.
 
 What the reviewer found sound in version 0.1: the result of an item is fixed codes only; the daemon refuses a member that it does not know; the machine uses the lower of two limits; a secret is given one time for one attempt, with one refusal for each cause; only the daemon opens a connection; the stop path.
 
@@ -162,7 +162,7 @@ Effect, and who can cause it: The author of a job (for example a pull request fr
 
 Mitigation now: Version 0.2: a machine in the link mode takes no item until K8 has its Unix socket, with a ruling. Task W2 gets the requirement that the network of a job has no loopback address, no link interface and no private range.
 
-State: Open. It needs the operator. A machine that reaches a hosted hub uses the link, so with this rule the runner path does not work through a hosted hub until K8 is corrected. Recommendation: correct K8 first; do not accept the risk.
+State: Open. The operator decided on 2026-11-18 (R-172: "A: fix it first"): the daemon talks to the link over a Unix socket that only it can open, before any runner work. The risk is not accepted. Task W0 of [projects-and-builds-plan.md](plans/projects-and-builds-plan.md) builds the change; no code exists yet. The entry stays Open until the change is built and checked. Until then a machine that reaches its hub through the link takes no item, so the runner path does not work through a hosted hub.
 
 ### SF-005: A machine keeps a job after its lease ended
 
