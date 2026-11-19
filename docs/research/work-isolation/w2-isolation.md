@@ -132,7 +132,7 @@ The contract K10 thus has no purpose `signing_identity` in its version 0.2. If t
 
 | Not shown | Needs |
 | --- | --- |
-| Each measurement of Section 4.1 and 4.2 on Linux | One Linux computer that the operator names, on which an agent can install a container runtime without root and run the scripts |
+| Each measurement of Section 4.1 and 4.2 on Linux | One of the operator's own Linux machines (R-188, 2026-11-18: "B: my own Linux box"; not the server of the pool, not a new server), on which an agent can install a container runtime without root and run the scripts. He has not named the machine (OD-W39) |
 | The build user (Section 4.3) | An administrator on a Mac, one time: make the user and the starter program. Then an agent can measure |
 | A virtual machine for each job, on Linux and on a Mac | The same two computers |
 | A Developer ID signature and a notarization by the recipe of Section 4.4 | The operator: the identity and the notary profile are in his keychain. An agent does not read them |
