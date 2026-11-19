@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-045 (the account sign-in on a phone, task M3-4) and HT-025 (the join through the link) in need-human-testing.md, and OD-M9 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-045 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) and HT-046 (the iOS archive with a signature) in need-human-testing.md, and OD-M9 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
 ## 2. Open decisions (117)
 
@@ -190,7 +190,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (76)
+## 4. Checks that only the operator can do (77)
 
 | Check | What |
 | --- | --- |
@@ -224,6 +224,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |
 | HT-045 | the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4) |
+| HT-046 | the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4) |
 | HT-043 | a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010) |
 | HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |

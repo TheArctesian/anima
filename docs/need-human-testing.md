@@ -70,6 +70,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-046 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 
 ### What a check on the hosted hub needs
 
@@ -941,6 +942,33 @@ Steps 1 to 4 need no real phone. Use the Android emulator with a route to the in
    browser refuse the sign-in. Expected: "Sign-in cancelled" with "Try again".
 7. On a real phone, look at the steps: "Back" and the button are easy to tap, and no text is smaller than the text of
    the invite steps (HT-025, step 6).
+
+Result: Open.
+
+### HT-046: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
+
+Built: on the branch `mobile/account-sign-in`: `apps/desktop/src-tauri/ios-archive.sh` and
+`deploy/bin/phone-build-number` ([mobile-build.md](procedures/setup/mobile-build.md)). The tests cover the rule of the
+build number and what the script refuses before a build. On 2026-11-19 the script made an archive with no signature on
+this Mac, with the version and the build number that were asked for. Not covered: the mode with a signature (no agent
+uses a signing identity), the export of the IPA, the upload, and the application on a phone.
+
+Before step 3 the application must keep its tokens in the key store (task M5-1) if the build is for a person other than
+the operator (MOB-006).
+
+1. In Keychain Access, find the name of the Apple Distribution identity (it starts with "Apple Distribution:"). Have the
+   App Store profile of `ing.anima.mobile` as a file; it must be made after 2026-11-18 (the mobile plan, "M5-2 pending
+   prerequisite").
+2. In the repository run `IOS_SIGN_IDENTITY="<that name>" IOS_PROFILE=<that file> sh apps/desktop/src-tauri/ios-archive.sh`.
+   Expected: no question about a new certificate or a new profile; the last lines are `version=`, `build=`,
+   `signed=yes`, `archive=` and `ipa=`, and the IPA file exists. If the keychain asks to let `codesign` use the key,
+   allow it.
+3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
+   shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
+   about the icons or the export question).
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-045, step 5.
+5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
+   higher.
 
 Result: Open.
 
