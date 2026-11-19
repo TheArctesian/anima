@@ -189,6 +189,17 @@ describe("the order to a published release (UPD-008, BLD-042)", () => {
     expect(needsOf("sign").sort()).toEqual(["commit", "gates", "linux", "macos", "tool"]);
   });
 
+  test("the gates job has the tools and the history that the gates need on a machine of GitHub", () => {
+    const install = runText(job("gates"));
+    for (const tool of ["postgresql@17", "cargo-nextest", "shellcheck"]) {
+      expect(install).toMatch(new RegExp(`brew install [^\\n]*${tool}`));
+    }
+    const checkout = job("gates").steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+    expect(checkout?.with?.["fetch-depth"]).toBe(0);
+    expect(job("gates").steps.some((step) => step.uses?.startsWith("actions/setup-go@"))).toBe(true);
+    expect(job("gates").steps.some((step) => step.uses?.startsWith("oven-sh/setup-bun@"))).toBe(true);
+  });
+
   test("publish runs only for a tag and only after every other job passed", () => {
     expect(job("publish").if).toBe("github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')");
     expect(job("publish").if).not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);

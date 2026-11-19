@@ -725,6 +725,28 @@ The tasks B8b and B8c are on `main` (3ae44093). The operator then gave eight ans
 
 The proposed text of the table "The requirements that the workflow changes" can now go into the design specification, except the rows BLD-001 and UPD-007 (first sentence): their text depends on the next section. That is task B8e.
 
+#### The trial of 2026-11-18, and the time of the gates
+
+The first run of the workflow on GitHub (a trial, run 44468487102; HT-036 has the observation) passed in each build job and failed in the job `gates`: the macOS machine of GitHub has no `shellcheck`, which three tests need. The job now installs it. A second fault was behind it: the documents gate compares a screen with the commit of its mockup (PLN-019), and the job had a shallow clone; the job now gets the full history. No other tool is missing for gates 16 to 21: they run `bun` and `git` only, and each was run in a shallow clone on a computer to find this.
+
+The job `gates` took 75 minutes, the macOS build 53 and the Linux build 24. The jobs run at the same time, so a release waits for the slowest one.
+
+| Part of the job `gates` | Time |
+| --- | --- |
+| `clippy`: compile | 7 minutes |
+| Rust tests: compile, with no cache | 20 minutes |
+| Rust tests: the run of 6166 tests on 3 cores | 31 minutes |
+| The six Go gates | 7 minutes |
+| `bun run test` (`deploy/headscale` 6 minutes of it) | 6 minutes |
+| Each other gate that ran | 2 minutes |
+
+Recommendations, not built; none changes what the gates run:
+
+1. **A cache of compiled Rust for the job `gates` only** is a safe saving of about 25 minutes. The job holds no secret and nothing that it builds is shipped; a wrong cache could at worst make a gate pass that must fail. The workflow has no pull request trigger and one account writes, so no other person can write that cache. The action that caches must be pinned to a commit, as each other action. The jobs `macos`, `linux` and `tool` must keep no cache: what they build is shipped or holds a key.
+2. **With that cache the gates take about as long as the macOS build** (about 50 minutes). A saving beyond that gives nothing until the macOS build is also faster, and that build must not use a cache.
+3. **A Linux machine for the gates is not a safe saving today.** The gates were only ever run on macOS. On Linux, `clippy --all-targets` compiles the desktop shell, which needs the packages of the job `linux`, and no run has shown that each test passes there. It needs a trial of its own first. The standard machines of both kinds are free for a public repository (R-193), so the gain would be time only.
+4. The run of the Rust tests (31 minutes on 3 cores) is the largest part that a cache does not remove. Two jobs that each run one half of the tests would halve it; that is a change of how the gates run, and a decision for later.
+
 ### A release for each change of `main` (R-184; a design, not built)
 
 This section is for the operator to read before the trigger changes. With R-182 no person stands between the trigger and a public update, so a wrong trigger publishes. The workflow on `main` still starts only from a tag and from a run by hand.

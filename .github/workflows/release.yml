@@ -107,6 +107,9 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ needs.commit.outputs.sha }}
+          # The documents gate compares screens with the commit of their mockup (PLN-019),
+          # so it needs the history. A shallow clone fails it.
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
@@ -115,8 +118,13 @@ jobs:
         with:
           go-version-file: link/go.mod
           cache: false
-      - name: Install PostgreSQL 17 and cargo-nextest
-        run: brew install postgresql@17 cargo-nextest
+      # shellcheck: three tests of deploy/headscale fail when it is not on PATH. The image of
+      # GitHub for macOS does not have it; the trial of 2026-11-18 stopped there.
+      - name: Install PostgreSQL 17, cargo-nextest and shellcheck
+        run: |
+          set -eu
+          brew install postgresql@17 cargo-nextest shellcheck
+          shellcheck --version
       - name: Run the gates
         env:
           BASE_REF: ${{ needs.commit.outputs.sha }}

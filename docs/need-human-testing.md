@@ -933,9 +933,24 @@ Anima ran on a Linux computer (R-192); the repository has no record of a start o
 
 Observation (2026-11-18, evening; 2026-11-19 UTC; read from GitHub by an agent, not a result of the operator):
 the operator started a trial, run 44468487102, from `main` at 9f056a5a with the version `0.0.1`. No approval
-was asked. The jobs `commit`, `tool`, `linux` (24 minutes) and `macos` (53 minutes: the
-Developer ID signature, the check of each Mach-O file, the notary service and the staple) passed. The job
-`gates` still ran after 57 minutes when this was written, so `sign` and `trial` had not started.
+was asked. The run failed in the job `gates`.
+
+- Passed: `commit`; `tool` (6 minutes); `linux` (24 minutes); `macos` (53 minutes: the build with the Developer
+  ID signature 50 minutes, the check of each Mach-O file, the notary service and the staple 2 minutes, the
+  updater file). So the certificate, its password and the notary credentials of the environment `release` are
+  usable.
+- Failed: `gates`, after 75 minutes, at gate 15 of 21 (`bun run test`). Three tests of `deploy/headscale` need
+  `shellcheck`, and the macOS machine of GitHub does not have it: 750 of 753 tests passed there. Gates 1 to 14
+  passed, with 6166 Rust tests. Gates 16 to 21 did not run.
+- Skipped, because they wait for the gates: `sign`, `trial` and `publish`. So this run proves nothing about the
+  updater key and its password in `release-sign`, about the checks of `anima-hub release check`, or about the
+  bucket token.
+- Not looked at by a person: the artifacts `macos` and `linux` of the run (steps 2 and the Linux start).
+
+Corrected on the branch `release/operator-decisions`: the job `gates` installs `shellcheck`, and it gets the
+full history, because the documents gate (gate 20) fails in a shallow clone; that second fault was found by a
+run of gates 17 to 21 in a shallow clone on a computer, not by the trial. The operator starts the next trial
+after the merge.
 
 Result: Open.
 
