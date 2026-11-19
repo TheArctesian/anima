@@ -107,6 +107,27 @@ pub enum Health {
     None,
 }
 
+/// The one state of a Compose project, from the states of its containers (HOST-019; K1
+/// `ComposeProjectState`). `project.rs` has the rule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "ComposeProjectState")]
+pub enum ProjectState {
+    /// Every container runs. One that ended with exit status 0 does not count.
+    Running,
+    /// Every container runs and one fails its health check.
+    Unhealthy,
+    /// Some containers run and some do not.
+    PartlyRunning,
+    /// A container restarts or is dead.
+    Failing,
+    /// No container runs and one is paused.
+    Paused,
+    /// No container runs.
+    Stopped,
+    /// A container has a state this hub does not know.
+    Unknown,
+}
+
 /// One container, as one line of `docker ps` describes it. Every text comes from the device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Container {
@@ -122,6 +143,8 @@ pub struct Container {
     pub created_at: Option<DateTime<Utc>>,
     pub compose_project: Option<String>,
     pub compose_service: Option<String>,
+    /// The one state of the container's Compose project (HOST-019); `None` with no project.
+    pub project_state: Option<ProjectState>,
 }
 
 /// One line of a container's log: what the container wrote to either output stream.
@@ -151,4 +174,107 @@ impl fmt::Debug for ContainerLog {
             .field("cut", &self.cut)
             .finish()
     }
+}
+
+/// The details of one container (HOST-017), as `docker container inspect` and `docker top`
+/// describe it. Every text comes from the device. Never kept by the hub and never logged: a
+/// command or a label can hold a secret (LOG-007).
+#[derive(Clone, PartialEq, Eq)]
+pub struct ContainerDetail {
+    pub id: String,
+    pub name: String,
+    /// The image as the container names it.
+    pub image: String,
+    /// The identifier of the image (`sha256:` and 64 digits).
+    pub image_id: String,
+    /// The program and its arguments.
+    pub command: Vec<String>,
+    pub working_dir: String,
+    /// The user the program runs as; empty for the default of the image.
+    pub user: String,
+    /// `no`, `always`, `unless-stopped`, or `on-failure` with its limit (`on-failure:3`).
+    pub restart_policy: String,
+    pub state: ContainerState,
+    /// The exit status of the last run; 0 while the container runs.
+    pub exit_code: i32,
+    pub started_at: Option<DateTime<Utc>>,
+    pub finished_at: Option<DateTime<Utc>>,
+    /// How many times Docker restarted the container.
+    pub restart_count: u32,
+    pub health_check: Option<HealthCheck>,
+    pub health: Health,
+    /// The health checks that failed one after the other, to now.
+    pub failing_streak: u32,
+    pub last_health_run: Option<HealthRun>,
+    pub mounts: Vec<Mount>,
+    pub networks: Vec<NetworkAddress>,
+    pub labels: Vec<Label>,
+    /// The names of the environment variables. The hub never reads a value (HOST-017).
+    pub environment_names: Vec<String>,
+    /// The processes of a running container; empty when it does not run.
+    pub processes: Vec<Process>,
+}
+
+/// Shows the identifier and no text of the device, so a logged value holds none (LOG-007).
+impl fmt::Debug for ContainerDetail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ContainerDetail")
+            .field("id", &self.id)
+            .finish_non_exhaustive()
+    }
+}
+
+/// The health check Docker runs in a container.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HealthCheck {
+    /// The test as Docker keeps it: `CMD` or `CMD-SHELL`, then the command.
+    pub test: Vec<String>,
+    pub interval_seconds: Option<u32>,
+}
+
+/// The last run of a health check: its end and its exit status. The hub does not read what
+/// the check wrote.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HealthRun {
+    pub ended_at: Option<DateTime<Utc>>,
+    pub exit_code: i32,
+}
+
+/// One mount of a container.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Mount {
+    /// `volume`, `bind` or `tmpfs`, as Docker writes it.
+    pub kind: String,
+    /// The name of the volume; `None` for a mount that is not a volume.
+    pub name: Option<String>,
+    /// The path on the device.
+    pub source: String,
+    /// The path in the container.
+    pub destination: String,
+    pub read_only: bool,
+}
+
+/// The addresses of a container on one network.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NetworkAddress {
+    pub network: String,
+    pub ipv4: Option<String>,
+    pub ipv6: Option<String>,
+    pub gateway: Option<String>,
+    pub mac_address: Option<String>,
+}
+
+/// One label of a container.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Label {
+    pub name: String,
+    pub value: String,
+}
+
+/// One process of a running container.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Process {
+    pub pid: u32,
+    pub user: Option<String>,
+    pub command: String,
 }

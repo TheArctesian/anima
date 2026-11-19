@@ -920,6 +920,23 @@ enum ContainerHealth {
   NONE
 }
 
+"""
+The one state of a Compose project, which the hub makes from the states of its containers (HOST-019; R-150).
+The first rule that applies gives the state: FAILING, a container restarts or is dead; UNKNOWN, a container has a
+state this hub does not know; PAUSED, no container runs and one is paused; STOPPED, no container runs;
+PARTLY_RUNNING, some containers run and some do not; UNHEALTHY, every container runs and one fails its health check;
+RUNNING. A container that ended with exit status 0 is finished work and does not make a project PARTLY_RUNNING.
+"""
+enum ComposeProjectState {
+  RUNNING
+  UNHEALTHY
+  PARTLY_RUNNING
+  FAILING
+  PAUSED
+  STOPPED
+  UNKNOWN
+}
+
 "One container of a device (HOST-001). Every text is from the device."
 type Container {
   "The full identifier of Docker: 64 hexadecimal characters."
@@ -936,6 +953,152 @@ type Container {
   "The Compose project of the container; null when it has none."
   composeProject: String
   composeService: String
+  "The one state of the Compose project of the container (HOST-019); null when it has none. Each container of a project has the same value."
+  composeProjectState: ComposeProjectState
+}
+
+"The health check that Docker runs in a container."
+type ContainerHealthCheck {
+  "The test as Docker keeps it: CMD or CMD-SHELL, then the command."
+  test: [String!]!
+  intervalSeconds: Int
+}
+
+"The last run of a health check. The hub does not read what the check wrote."
+type ContainerHealthRun {
+  endedAt: DateTime
+  exitCode: Int!
+}
+
+"One mount of a container."
+type ContainerMount {
+  "volume, bind or tmpfs, as Docker writes it."
+  type: String!
+  "The name of the volume; null for a mount that is not a volume."
+  name: String
+  "The path on the device."
+  source: String!
+  "The path in the container."
+  destination: String!
+  readOnly: Boolean!
+}
+
+"The addresses of a container on one network."
+type ContainerNetworkAddress {
+  network: String!
+  ipv4: String
+  ipv6: String
+  gateway: String
+  macAddress: String
+}
+
+type ContainerLabel {
+  name: String!
+  value: String!
+}
+
+"One process of a running container."
+type ContainerProcess {
+  pid: Int!
+  user: String
+  command: String!
+}
+
+"The details of one container (HOST-017; R-150). Every text is from the device. The hub keeps none of them (LOG-007)."
+type ContainerDetail {
+  id: String!
+  name: String!
+  "The image as the container names it."
+  image: String!
+  "The identifier of the image: sha256: and 64 hexadecimal characters."
+  imageId: String!
+  "The program and its arguments."
+  command: [String!]!
+  workingDir: String!
+  "The user the program runs as; empty for the default of the image."
+  user: String!
+  "no, always, unless-stopped, or on-failure with its limit, for example: on-failure:3."
+  restartPolicy: String!
+  state: ContainerState!
+  "The exit status of the last run; 0 while the container runs."
+  exitCode: Int!
+  startedAt: DateTime
+  finishedAt: DateTime
+  "How many times Docker restarted the container."
+  restartCount: Int!
+  "Null when the container has no health check."
+  healthCheck: ContainerHealthCheck
+  health: ContainerHealth!
+  "The health checks that failed one after the other, to now."
+  failingStreak: Int!
+  lastHealthRun: ContainerHealthRun
+  mounts: [ContainerMount!]!
+  networks: [ContainerNetworkAddress!]!
+  labels: [ContainerLabel!]!
+  "The names of the environment variables. The hub never reads a value: a value can hold a secret (HOST-017)."
+  environmentNames: [String!]!
+  "The processes of a running container; empty when it does not run."
+  processes: [ContainerProcess!]!
+}
+
+"One image of a device (HOST-020). A size is the text that Docker writes, for example: 13.6MB."
+type ContainerImage {
+  "sha256: and 64 hexadecimal characters."
+  id: String!
+  "Null for an image with no name."
+  repository: String
+  tag: String
+  size: String!
+  "The part of the size that other images share."
+  sharedSize: String!
+  "The part that a removal of this image frees."
+  uniqueSize: String!
+  "The time as Docker writes it, for example: 2026-11-05 10:00:31 -0800 PST."
+  created: String!
+  "How many containers use the image, as Docker counts them."
+  containerCount: Int!
+  "The names of the containers that name this image by its repository and tag or by its identifier. A container that names the image in a different way is in containerCount only."
+  containers: [String!]!
+}
+
+"One volume of a device (HOST-020)."
+type ContainerVolume {
+  name: String!
+  driver: String!
+  size: String!
+  "How many containers use the volume, as Docker counts them."
+  containerCount: Int!
+  containers: [String!]!
+}
+
+"The space of one type of thing that Docker keeps on a device, and what a clean-up can free (HOST-020)."
+type ContainerDiskUsage {
+  "Images, Containers, Local Volumes or Build Cache, as Docker writes it."
+  type: String!
+  totalCount: Int!
+  activeCount: Int!
+  size: String!
+  "The space that a clean-up can free, for example: 49.63MB (10%). Anima removes nothing in stage 1."
+  reclaimable: String!
+}
+
+"The images and the volumes of a device, with the space of each type (HOST-020; R-150)."
+type ContainerStorage {
+  images: [ContainerImage!]!
+  volumes: [ContainerVolume!]!
+  usage: [ContainerDiskUsage!]!
+}
+
+"One network of Docker on a device (HOST-020)."
+type ContainerNetwork {
+  id: String!
+  name: String!
+  driver: String!
+  scope: String!
+  "True when the network has no route to outside the device."
+  internal: Boolean!
+  "The names of the containers on the network."
+  containers: [String!]!
 }
 
 "One line of the log of a container: what it wrote to either output stream."
@@ -2957,6 +3120,12 @@ type Query {
   containers(deviceId: ID!): [Container!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
   containerLog(deviceId: ID!, containerId: String!, lines: Int): ContainerLog!
+  "The details of one container (HOST-017): its command, restart policy, health check, mounts, networks, labels and processes, and the names of its environment variables with no value. containerId is 12 to 64 lower-case hexadecimal characters. The errors of containers apply; NOT_FOUND also when the device has no such container. A command or a label can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
+  containerDetail(deviceId: ID!, containerId: String!): ContainerDetail!
+  "The images and the volumes of a device, with the size of each, the containers that use it and the space that a clean-up can free (HOST-020). Read-only: it removes nothing. Docker measures each volume, so the read can take up to 30 seconds. The errors of containers apply. Open to a read key."
+  containerStorage(deviceId: ID!): ContainerStorage!
+  "The networks of Docker on a device, each with the containers on it (HOST-020). The errors of containers apply. Open to a read key."
+  containerNetworks(deviceId: ID!): [ContainerNetwork!]!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
