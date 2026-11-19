@@ -1,7 +1,7 @@
 ---
 kind: Plan
-state: Not checked
-evidence: Version 0.2.
+state: Withdrawn. The site language replaces it (R-209)
+evidence: R-209 of rulings.md.
 ---
 
 # Anima UI redesign: plan and prompt (v0.2)

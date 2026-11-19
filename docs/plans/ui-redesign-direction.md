@@ -1,7 +1,7 @@
 ---
 kind: Plan: direction of the redesign
-state: Not checked
-evidence: Its title says "draft for approval".
+state: Withdrawn. The site language replaces it (R-209)
+evidence: R-209 of rulings.md.
 ---
 
 # Anima UI redesign: direction and spec delta (draft for approval)
