@@ -12,8 +12,8 @@ Task W2 asks for a design with measured results for four subjects: the container
 ## 2. Method
 
 - The computer: a Mac with Apple Silicon, 18 processor cores, 48 GiB of memory, macOS 27.3, Docker Desktop 29.9.3 (a Linux virtual machine with the kernel 7.0.14-linuxkit).
-- The scripts are in this folder: `seatbelt.sh`, `job-keychain.sh`, `container-job.sh`, `docker-in-job.sh`. They are throwaway code of a prototype, not code of the product; nothing of the product calls them. Their logs are in [results/](results/). In the logs, the home folder of the user is written as `<home>`. The measurements stopped before their end on 2026-11-18, when a release build needed the computer: Section 3.4 says what that leaves open.
-- The computer did other work at the same time: the load average was between 18 and 45. Each time below was taken under that load. Read a time as an upper value, not as the time of a quiet machine.
+- The scripts are in this folder: `seatbelt.sh`, `job-keychain.sh`, `container-job.sh`, `docker-in-job.sh`. They are throwaway code of a prototype, not code of the product; nothing of the product calls them. Their logs are in [results/](results/). In the logs, the home folder of the user is written as `<home>`.
+- The computer did other work at the same time: the load average was between 18 and 45 for Sections 3.1 to 3.3, and 7 for Section 3.4. Each time below was taken under that load. Read a time as an upper value, not as the time of a quiet machine.
 - No administrator right was used. Thus no user was made, no system unit was installed and no system setting was changed. No certificate of Apple and no key of the operator was read: the signing test made its own throwaway certificate.
 
 ## 3. Results
@@ -71,20 +71,21 @@ Not shown: this is Docker Desktop, where each container is already inside a virt
 
 ### 3.4 A job that needs Docker (`docker-in-job.sh`)
 
-A second Docker service ran beside the job, on a network of its own. The job reached it over TLS and had no socket of the host.
+A second Docker service ran beside the job, on a network of its own. The job reached it over TLS and had no socket of the host. The run of the log is the last one, made when the load average of the computer was 7; two earlier runs under a high load and one run that was stopped are not kept.
 
-This measurement is not complete. The script ran two times to its end, and the session read the two results. A third run, with more sets of flags, wrote over the log and was stopped before its end, because a release build needed the computer. The log in [results/](results/) is that stopped run. The values below are those of the first two runs; no log on disk shows them. Run the script again on a quiet computer before these values are used.
-
-| Image of the service | Flags that were tried | Result |
+| Image of the service | Flags of the service | Result |
 | --- | --- | --- |
-| `docker:dind` | None; no seccomp and no AppArmor profile; plus `SYS_ADMIN` and `NET_ADMIN`; `/dev/net/tun` | Did not start: "mount: permission denied" |
-| `docker:dind` | `--privileged` | Started in 2.2 s (first run) and 0.9 s (second run). Idle: 28 MiB and 31 MiB, 15 or 16 processes. The job ran `hello-world` in 1.9 s and 5.6 s, with the pull. The inner containers were not in the list of the host. After the removal of the service, no inner process stayed |
-| `docker:dind-rootless` | First run: each of four sets, `--privileged` included | Did not start |
-| `docker:dind-rootless` | Second run: no seccomp profile, not privileged | The service started in 1.0 to 1.3 s; idle 60 MiB. The `hello-world` of the job failed: "failed to create task for container" |
+| `docker:dind` | Seven sets with no `--privileged`: none; no seccomp and no AppArmor profile; `/dev/net/tun`; `SYS_ADMIN` and `NET_ADMIN`; and their sums | The service did not start: "mount: permission denied" |
+| `docker:dind` | `--privileged` | The service answered after 1.3 s. Idle: 30 MiB, 15 processes. The job ran `hello-world` in 1.8 s, with the pull |
+| `docker:dind-rootless` | None; no seccomp and no AppArmor profile; `/dev/net/tun` alone | The service did not start |
+| `docker:dind-rootless` | No seccomp profile and `/dev/net/tun`; the same with no AppArmor profile | The service answered after 1.0 to 1.8 s. The job could not start a container in it: the inner runtime could not mount `proc` |
+| `docker:dind-rootless` | No seccomp profile, no AppArmor profile, `systempaths=unconfined`, `/dev/net/tun`. **Not privileged**; the service runs as a user that is not root | The service answered after 0.9 s. Idle: 60 MiB, 38 processes. The job ran `hello-world` in 1.7 s, with the pull, and a container that stays |
+
+In each case that worked: the job had no socket of the host; the inner containers were not in the list of the host; after the removal of the service no inner process and no volume stayed (about 150 ms); the lists of containers, networks and volumes of the host were the same before and after.
 
 The size of the two images: 106 MB and 122 MB to pull, 421 MB and 470 MB on disk.
 
-What this shows, as far as it goes: on this computer the only service in which the job could run a container needed `--privileged`. A privileged container can leave its container. Here it would reach only the virtual machine of Docker Desktop. On a Linux computer it would reach the computer.
+What this shows: a job can get a Docker service of its own with no privileged container. The rootless service needs three protections of its container set off (the seccomp profile, the AppArmor profile, the masked system paths) and the device `/dev/net/tun`. That is less than `--privileged`: the service has no added capability and does not run as root. It is still a weaker wall than the container of a job with no Docker (Section 3.3), and it was measured only inside the virtual machine of Docker Desktop.
 
 ## 4. The design that these results support (a proposal)
 
@@ -102,8 +103,9 @@ To measure on the Linux computer: the start time and the memory of a rootless co
 
 - The Docker socket of the computer never goes into a job (the open point of the plan). The contract has no member that could ask for it.
 - First version: a job has no Docker. A workflow with a `container:` job or a Docker action fails with a sentence that says so. The set-up says it before the press, and the text to copy tells the coding agent to stop (PRO-058).
-- Later: a job that needs Docker gets a virtual machine of its own, with its own Docker service inside. The result of Section 3.4 is the reason: the service in a container needed `--privileged`.
-- To measure on the Linux computer: rootless Docker inside a rootless container with user namespaces, and one small virtual machine for each job (start time, memory, disk). If the first works with no privileged flag on Linux, it is the cheaper way.
+- Later: a job that needs Docker gets a Docker service of its own beside it, the rootless service of Section 3.4, on a network that only that job can reach, removed with the job. It costs about 1 second and 60 MiB for each job. A privileged service is never used.
+- The security reviewer must judge the three protections that the rootless service needs set off. If they are not acceptable on a shared kernel, such a job gets a small virtual machine of its own in place of the service.
+- To measure on the Linux computer: the same script with a runtime that has no root right, where there is no virtual machine around the service; and one small virtual machine for each job (start time, memory, disk).
 
 ### 4.3 The Mac: the build user
 
@@ -120,6 +122,7 @@ To measure with an administrator on a Mac: that the build user cannot read the h
 
 Two different needs have two different answers.
 
+- Note of 2026-11-18, after this section was written: R-173 says that the job of the release workflow signs the updater file with the updater key as a secret of GitHub. The paragraph below was written for a hub that signs. If the same job also signs the Mac bundle with the Apple secrets of GitHub (R-116) is open (OD-W36 of the work plan). The reason below still applies and is now a reason for the measures of OD-W36.
 - The release of Anima. No job gets the Developer ID identity. A warm runner takes the next job that names its labels, and the hub does not select that job (contract K10, Section 6.2), so an identity inside a runner job could reach a job of a fork. The proposal: the job builds a bundle with no signature and gives it to the hub that checks it (OD-W31, choice A). The signature of the Mac is then a step of its own, outside each job: a fixed recipe of the daemon on the Mac that has the identity in its keychain (R-116, BLD-083 to BLD-085). It signs, notarizes and staples the bytes whose SHA-256 the hub gives, and it runs no code of the repository. R-116 does not change: the identity stays in the keychain of that Mac. A second way, for a later decision: the hub that signs also signs the Mac bundle. That moves the identity to a server and changes R-116.
 - The project of a different repository, whose workflow signs by itself. The owner of that repository gives the identity as a secret of GitHub, and the workflow imports it. The keychain of Section 3.2 is the form that the machine supports: a file in the job folder, never in the search list, deleted with the job. Anima gives such a job no identity (PRO-030).
 
@@ -133,7 +136,7 @@ The contract K10 thus has no purpose `signing_identity` in its version 0.2. If t
 | The build user (Section 4.3) | An administrator on a Mac, one time: make the user and the starter program. Then an agent can measure |
 | A virtual machine for each job, on Linux and on a Mac | The same two computers |
 | A Developer ID signature and a notarization by the recipe of Section 4.4 | The operator: the identity and the notary profile are in his keychain. An agent does not read them |
-| The times on a quiet machine, and a complete result of Section 3.4 | A run of the four scripts when the computer does no other work. The measurements stopped on 2026-11-18 for a release build |
+| The times of Sections 3.1 to 3.3 on a quiet machine | A second run of those three scripts. Section 3.4 was measured again at a load average of 7 |
 | A list of the build tools of this Mac with their versions | Not made: the measurements stopped before it |
 | The network limits of a job | Linux; on a Mac, a rule of the firewall needs an administrator |
 

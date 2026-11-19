@@ -27,7 +27,7 @@ This contract is the whole interface between `anima-daemon` and the hub. The dae
   accepts `http` for no other host, and not for `localhost` or `::1`. The daemon's computer must run
   `anima-link device` at that fixed port whenever the daemon runs: a program of any local user that listens on
   the port when the link does not would receive the daemon token. Nothing detects that; the planned correction
-  is a Unix socket between the daemon and the link, which needs a change to this section.
+  is a Unix socket between the daemon and the link, which needs a change to this section. R-172 (operator, 2026-11-18) rules that correction: the daemon talks to the link over a Unix socket that only it can open, in place of the local port. Task W0 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md) writes the new text of this section and builds it; until then this text is what is built.
 - The daemon sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
   (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), and listens on no port.
 - Every route below sits behind the NET-002 layer like any other route, and is logged by its template only.

@@ -1,0 +1,101 @@
+== docker-in-job.sh  2026-11-19T02:48:00Z  macOS 27.3 arm64
+uptime: 18:48  up 1 day,  3:56, 3 users, load averages: 6.93 13.62 19.35
+note: every timing below was taken under the load shown in that uptime line
+docker: server 29.9.3 Docker Desktop kernel 7.0.14-linuxkit id d79e3576-ba4e-47d4-ba30-63578a779890
+before: 0 containers, 12 networks, 59 volumes
+== docker:dind
+image: 420792837 B unpacked on disk, pull took 923 ms (short if the layers were local); compressed arm64 pull size, read once by hand from 'docker manifest inspect -v' on 2026-11-19: 106185872 B
+-- sidecar flags: (none)
+   inner daemon did NOT start: state=exited exit=1
+   log: mount: permission denied (are you root?)
+   log: mount: permission denied (are you root?)
+   sidecar + 2 volumes removed in 53 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+   inner daemon did NOT start: state=exited exit=1
+   log: mount: permission denied (are you root?)
+   log: mount: permission denied (are you root?)
+   sidecar + 2 volumes removed in 50 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --device /dev/net/tun
+   inner daemon did NOT start: state=exited exit=1
+   log: mount: permission denied (are you root?)
+   log: mount: permission denied (are you root?)
+   sidecar + 2 volumes removed in 59 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --device /dev/net/tun
+   inner daemon did NOT start: state=exited exit=1
+   log: mount: permission denied (are you root?)
+   log: mount: permission denied (are you root?)
+   sidecar + 2 volumes removed in 55 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined --device /dev/net/tun
+   inner daemon did NOT start: state=exited exit=1
+   log: mount: permission denied (are you root?)
+   log: mount: permission denied (are you root?)
+   sidecar + 2 volumes removed in 46 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined --device /dev/net/tun
+   inner daemon did NOT start: state=exited exit=1
+   log: mount: permission denied (are you root?)
+   log: mount: permission denied (are you root?)
+   sidecar + 2 volumes removed in 52 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined --cap-add SYS_ADMIN --cap-add NET_ADMIN
+   inner daemon did NOT start: state=exited exit=1
+   sidecar + 2 volumes removed in 47 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --privileged
+   inner daemon answers after 1270 ms (docker run -d to first 'docker version' by docker exec, poll about 0.4 s)
+   idle sidecar: mem 29.83MiB / 7.746GiB pids 15   privileged=true secopt=[label=disable] user=
+   inner daemon: id 835560b2-2ae4-463a-b9af-97b2b7a15c10 security=name=seccomp,profile=builtin name=cgroupns  driver overlayfs
+   job container (user 1000:1000, cap-drop ALL): host socket inside: no
+   job: docker run hello-world over TLS: rc=0 in 1806 ms (with the inner pull): Hello from Docker!
+   job: inner long-running container: rc=0 
+   inner docker ps -a: inner-sleep=running inner-hello=exited 
+   host docker ps -a shows inner containers: 0   'sleep 650340' processes in the VM: 1
+   sidecar + 2 volumes removed in 141 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+   weakest flag set with a working inner hello-world: --privileged
+== docker:dind-rootless
+image: 470233103 B unpacked on disk, pull took 859 ms (short if the layers were local); compressed arm64 pull size, read once by hand from 'docker manifest inspect -v' on 2026-11-19: 121552092 B
+-- sidecar flags: (none)
+   inner daemon did NOT start: state=exited exit=1
+   log: [rootlesskit:parent] error: failed to start the child: fork/exec /proc/self/exe: operation not permitted
+   sidecar + 2 volumes removed in 48 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+   inner daemon did NOT start: state=exited exit=1
+   log: [rootlesskit:parent] error: failed to setup network &{logWriter:0x776df47b0eb0 binary:slirp4netns mtu:1500 ipnet:<nil> disableHostLoopback:true apiSocketPath: enableSandbox:false enableSeccomp:false e
+   log: [rootlesskit:child ] error: EOF
+   sidecar + 2 volumes removed in 49 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --device /dev/net/tun
+   inner daemon did NOT start: state=exited exit=1
+   log: [rootlesskit:parent] error: failed to start the child: fork/exec /proc/self/exe: operation not permitted
+   sidecar + 2 volumes removed in 51 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --device /dev/net/tun
+   inner daemon answers after 1009 ms (docker run -d to first 'docker version' by docker exec, poll about 0.4 s)
+   idle sidecar: mem 62.36MiB / 7.746GiB pids 37   privileged=false secopt=[seccomp=unconfined] user=rootless
+   inner daemon: id 2ec74657-95af-4b40-ac7e-b79212216e77 security=name=seccomp,profile=builtin name=rootless name=cgroupns  driver overlayfs
+   job container (user 1000:1000, cap-drop ALL): host socket inside: no
+   job: docker run hello-world over TLS: rc=125 in 4917 ms (with the inner pull): docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "proc" to rootfs at "/proc": mount src=proc, dst=/proc, dstFd=/proc/thread-self/fd/16, flags=MS_NOSUID|MS_NODEV|MS_NOEXEC: operation not permitted
+   job: inner long-running container: rc=125 docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to st
+   inner docker ps -a: inner-sleep=created inner-hello=created 
+   host docker ps -a shows inner containers: 0   'sleep 650340' processes in the VM: 0
+   sidecar + 2 volumes removed in 127 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined --device /dev/net/tun
+   inner daemon answers after 1782 ms (docker run -d to first 'docker version' by docker exec, poll about 0.4 s)
+   idle sidecar: mem 63.12MiB / 7.746GiB pids 37   privileged=false secopt=[seccomp=unconfined apparmor=unconfined] user=rootless
+   inner daemon: id a352cb22-a9f1-4fa5-8791-4312ef9e0666 security=name=seccomp,profile=builtin name=rootless name=cgroupns  driver overlayfs
+   job container (user 1000:1000, cap-drop ALL): host socket inside: no
+   job: docker run hello-world over TLS: rc=125 in 4850 ms (with the inner pull): docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "proc" to rootfs at "/proc": mount src=proc, dst=/proc, dstFd=/proc/thread-self/fd/16, flags=MS_NOSUID|MS_NODEV|MS_NOEXEC: operation not permitted
+   job: inner long-running container: rc=125 docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to st
+   inner docker ps -a: inner-sleep=created inner-hello=created 
+   host docker ps -a shows inner containers: 0   'sleep 650340' processes in the VM: 0
+   sidecar + 2 volumes removed in 121 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+-- sidecar flags: --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined --device /dev/net/tun
+   inner daemon answers after 914 ms (docker run -d to first 'docker version' by docker exec, poll about 0.4 s)
+   idle sidecar: mem 59.7MiB / 7.746GiB pids 38   privileged=false secopt=[seccomp=unconfined apparmor=unconfined] user=rootless
+   inner daemon: id 59b400c2-e434-47c3-8608-6018035bb961 security=name=seccomp,profile=builtin name=rootless name=cgroupns  driver overlayfs
+   job container (user 1000:1000, cap-drop ALL): host socket inside: no
+   job: docker run hello-world over TLS: rc=0 in 1730 ms (with the inner pull): Hello from Docker!
+   job: inner long-running container: rc=0 
+   inner docker ps -a: inner-sleep=running inner-hello=exited 
+   host docker ps -a shows inner containers: 0   'sleep 650340' processes in the VM: 1
+   sidecar + 2 volumes removed in 153 ms; 'sleep 650340' processes left in the VM: 0; volumes left: 0
+   weakest flag set with a working inner hello-world: --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined --device /dev/net/tun
+== clean-up: after: 0 containers, 12 networks, 59 volumes
+docker ps -a + network ls + volume ls identical before/after: yes
+note: the pulled images stay (images are not removed): docker:dind-rootless docker:dind alpine:3 
+uptime at end: 18:49  up 1 day,  3:57, 3 users, load averages: 13.03 13.76 18.90
