@@ -10,9 +10,18 @@
 #   - it has no notary step, and on Linux it builds for this computer's architecture.
 # So a trial that passes does not prove that a release job passes.
 #
-# NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007).
+# By hand it is NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007)
+# or from the release workflow.
 #
 #   trial-bundle.sh [version]
+#
+# Environment:
+#   SIGN_IDENTITY   macOS only. Unset or empty: the ad hoc signature of a trial. The release
+#                   workflow (.github/workflows/release.yml, job `macos`, R-179) sets it to the
+#                   Developer ID identity that tauri.conf.json names: the tree and the
+#                   application are then signed with it, the hardened runtime and a secure
+#                   timestamp. The workflow makes the checks, the notary step and the updater
+#                   file after this script.
 #
 # macOS: a universal Anima.ing.app and a DMG. Linux: an AppImage for this computer's
 # architecture. The script prints where they are.
@@ -22,6 +31,9 @@
 set -eu
 
 VERSION=${1:-0.1.0}
+IDENTITY=${SIGN_IDENTITY:-}
+# The identity goes into a JSON text: no quote and no backslash.
+case "$IDENTITY" in *\"* | *\\*) echo "trial-bundle: SIGN_IDENTITY holds a quote or a backslash" >&2; exit 1 ;; esac
 echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || { echo "trial-bundle: the version is not like 0.1.0" >&2; exit 1; }
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
@@ -54,8 +66,8 @@ mkdir -p "$STAGE"
 
 case "$(uname -s)" in
 Darwin)
-    # No SIGN_IDENTITY: the recipe gives the tree an ad hoc signature.
-    SIGN_IDENTITY='' /bin/sh "$HERE/database-tree/build.sh" darwin-universal "$TARGET_FOLDER/database-tree" "$HERE/database"
+    # An empty SIGN_IDENTITY: the recipe gives the tree an ad hoc signature.
+    SIGN_IDENTITY="$IDENTITY" /bin/sh "$HERE/database-tree/build.sh" darwin-universal "$TARGET_FOLDER/database-tree" "$HERE/database"
     /bin/sh "$ROOT/link/build.sh"
     cargo_build --target aarch64-apple-darwin --target x86_64-apple-darwin
     for name in $RUST_PROGRAMS; do
@@ -69,10 +81,11 @@ Darwin)
         lipo -create -output "$STAGE/$name-universal-apple-darwin" \
             "$STAGE/$name-aarch64-apple-darwin" "$STAGE/$name-x86_64-apple-darwin"
     done
+    MAC="\"macOS\":{\"signingIdentity\":\"${IDENTITY:--}\"}"
     tauri build --no-bundle --target universal-apple-darwin \
         --config "{\"version\":\"$VERSION\",\"bundle\":{$CARRIED}}"
     tauri bundle --target universal-apple-darwin --bundles app,dmg \
-        --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":false,\"macOS\":{\"signingIdentity\":\"-\"},$CARRIED}}"
+        --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":false,$MAC,$CARRIED}}"
     echo "trial-bundle: $TARGET_FOLDER/universal-apple-darwin/release/bundle/macos and .../dmg"
     ;;
 Linux)

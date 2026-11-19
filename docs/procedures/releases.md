@@ -15,20 +15,24 @@ The releases 0.2.0 and 0.2.1 carry the program under its old name, `anima-agent`
 
 Spec: Sections 3.9 (UPD-001 to UPD-012) and 3.10 (Builds), DNS-007.
 
-A release starts only from the Builds view (BLD-001, UPD-007). The operator's builders build each
+Two paths make a release. The first is the Builds view of a hub that holds the updater key: the paragraphs below and the section "Once, by the operator" describe it, and the operator does not use that hub now (R-175). The second is the release workflow of GitHub Actions (R-179), which is built and not yet run: see "The release workflow".
+
+On the first path a release starts only from the Builds view (BLD-001, UPD-007). The operator's builders build each
 target and upload the unsigned files to the R2 bucket `anima-releases`. The hub checks them, signs
 the updater file with the updater key it holds, writes `<file>.sig` beside it and then
 `https://releases.anima.ing/<target>-<arch>/latest.json` (BLD-064 to BLD-067, R-117). Installed apps read
 that feed. The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../../deploy/README.md).
 
-There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. No
+The old GitHub release workflow was removed by R-114; the file `.github/workflows/release.yml` of
+today is a new one (R-171, R-179). On the first path no
 builder holds the updater signing key; it is a secret file of the hub (R-117). A
 compromised hub can therefore sign updates that installed apps trust; the operator accepted this
 in R-117.
 
 The operator also keeps a `release` environment on GitHub with the Apple secrets and a copy of
-the updater key, `TAURI_SIGNING_PRIVATE_KEY` (R-116). Nothing in the repository reads them.
+the updater key, `TAURI_SIGNING_PRIVATE_KEY` (R-116). The release workflow reads them, from three
+environments: "The release workflow" has the list.
 
 ## Once, by the operator
 
@@ -81,6 +85,103 @@ updater files; they come only from the hub in the Builds flow. If the hub cannot
 it is not the key of `ANIMA_UPDATER_PUBLIC_KEY`, the hub starts with publishing off and its log
 says why.
 
+## The release workflow (R-179, R-180)
+
+State: built on the branch `release/github-workflow`, not merged and not run. The check of the first run is HT-036 of [need-human-testing.md](../need-human-testing.md). The plan section "The release workflow on the runners of GitHub" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) owns the design, the names of the secrets and the open decisions; this section owns the steps of the operator.
+
+`.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub. A tag `v<version>` on a commit of `main` starts a release. A run by hand is a trial and publishes nothing. The jobs `sign` and `publish` run `anima-hub release`, which makes the checks that the hub makes for a job of the Builds view.
+
+### Before the first run, by the operator
+
+Agents never do these steps (R-180, UPD-012). Never put a key or a password in a chat, a commit or a log. R-116 says that the environment `release` and seven of its secrets exist; nobody confirmed that for this work, so look at each one.
+
+1. **Who can write.** Settings > Collaborators and teams: only your account has the Write or Admin role. Each account with write access can put a tag and can thus ask for a release.
+2. **Workflows from forks.** Settings > Actions > General > "Approval for running fork pull request workflows from contributors": select "Require approval for all external contributors". A workflow that a pull request from a fork starts gets no secret of the repository in a public repository, and the release workflow has no pull request trigger. On the same page, "Workflow permissions": "Read repository contents and packages permissions".
+3. **The tag rule.** Settings > Rules > Rulesets > New ruleset > New tag ruleset. Name: `release tags`. Enforcement: Active. Target tags: the pattern `v*`. Rules: "Restrict creations", "Restrict updates", "Restrict deletions". Bypass list: "Repository admin" only. Then only you can put a tag `v…`, and nobody can move one.
+4. **The branch rule for `main`.** It is necessary only if a second account can write. If so: a branch ruleset for `main` with "Restrict deletions", "Block force pushes" and "Require a pull request before merging". The workflow builds only a commit of `main`, so a person who can change `main` can change what is released.
+5. **The environment `release`** (the macOS build). Settings > Environments > `release` (or "New environment"). "Required reviewers": your account; leave "Prevent self-review" off, because you put the tag and you approve. "Allow administrators to bypass configured protection rules": off. "Deployment branches and tags": "Selected branches and tags", with the tag rule `v*` and the branch rule `main` (a trial runs from `main`). R-116 says that this environment allows `main` only: add the tag rule. Environment secrets:
+
+   | Secret | Value form |
+   | --- | --- |
+   | `APPLE_CERTIFICATE` | The Developer ID Application certificate with its private key, exported from Keychain Access as a `.p12` file, in base64 on one line |
+   | `APPLE_CERTIFICATE_PASSWORD` | The password that you gave the `.p12` file |
+   | `APPLE_ID` | The Apple account of the notary service |
+   | `APPLE_PASSWORD` | An app-specific password of that account (`xxxx-xxxx-xxxx-xxxx`), made at account.apple.com |
+   | `APPLE_TEAM_ID` | `7GDLG48PV6` (it is in `tauri.conf.json`; it is not a secret) |
+
+   Delete `TAURI_SIGNING_PRIVATE_KEY` from this environment after step 6: the macOS build must not have it.
+6. **The environment `release-sign`** (the updater key). New environment, with the same reviewer and the same two rules (`v*` and `main`). Environment secrets:
+
+   | Secret | Value form |
+   | --- | --- |
+   | `TAURI_SIGNING_PRIVATE_KEY` | The text of `~/.config/anima/updater.key`: one line of base64 |
+   | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The password of the key. Make no such secret if the key has no password |
+
+   A command that sends the file with no copy on the screen or in the clipboard (you run it; it needs `gh auth login` on your Mac):
+
+   ```sh
+   gh secret set TAURI_SIGNING_PRIVATE_KEY --env release-sign --repo TheArctesian/anima.ing < ~/.config/anima/updater.key
+   ```
+7. **The environment `release-publish`** (the bucket). New environment, with the same reviewer and the tag rule `v*` only: a trial never uses it. In the Cloudflare dashboard, R2 > Manage R2 API Tokens > Create API token: permission "Object Read & Write", "Apply to specific buckets only": `anima-releases`. It shows an Access Key ID and a Secret Access Key one time.
+
+   | Name | Kind | Value form |
+   | --- | --- | --- |
+   | `R2_ACCESS_KEY_ID` | Secret | The Access Key ID of that token |
+   | `R2_SECRET_ACCESS_KEY` | Secret | The Secret Access Key of that token |
+   | `RELEASES_ENDPOINT` | Variable | `https://<account ID>.r2.cloudflarestorage.com` |
+8. **The state of `main`.** The job `gates` runs `bun run gates` on the release commit. On 2026-11-18 `main` did not pass the limits gate (two files of `docs/ideas/browser-first-run/`), so a release from that commit stops at the gates.
+
+### A trial that publishes nothing
+
+1. Actions > release > "Run workflow". Branch: `main`. Version: `0.0.1`. Use a version that you will never release: the trial makes a real signed and notarized application and a real updater signature for the version that you give, and a person who is signed in to GitHub can download the files of a run of a public repository for 7 days.
+2. Approve the environment `release` when the run asks (the macOS build). When the builds and the gates have passed, approve `release-sign`.
+3. The run passes when the job `trial` passes. The job `publish` is skipped. Nothing is in the bucket and no feed changed.
+4. From the page of the run, download the artifacts `macos` and `linux`. On a Mac:
+
+   ```sh
+   xcrun stapler validate Anima_0.0.1_universal.dmg
+   spctl --assess --type open --context context:primary-signature --verbose Anima_0.0.1_universal.dmg
+   ```
+
+   Open the DMG, then `spctl --assess --type execute --verbose "/Volumes/Anima.ing/Anima.ing.app"` (expected: `accepted`, `source=Notarized Developer ID`). On a Linux computer with `x86_64`: `chmod +x Anima_0.0.1_amd64.AppImage` and start it (OD-W36: no AppImage of Anima was checked on a Linux computer before).
+
+### The first real release (0.2.2)
+
+1. Keep the three feeds of today, for a rollback:
+
+   ```sh
+   for feed in darwin-aarch64 darwin-x86_64 linux-x86_64; do curl -fsS -o "feed-$feed.json" "https://releases.anima.ing/$feed/latest.json" || echo "$feed has no feed"; done
+   ```
+2. Put the tag on the commit of `main` that you release, and push only the tag:
+
+   ```sh
+   git fetch origin
+   git tag -a v0.2.2 -m "Anima 0.2.2" origin/main
+   git push origin refs/tags/v0.2.2
+   ```
+3. Approve `release`, then `release-sign`, then `release-publish`, each when the run asks. The page of the approval shows the tag and the commit: approve only your own tag. The last approval is the point after which the release is public.
+4. Check, after the job `publish` passed:
+   - Each feed gives 0.2.2 (the job also reads them): `curl -fsS https://releases.anima.ing/darwin-aarch64/latest.json`, and the same for `darwin-x86_64` and `linux-x86_64`.
+   - Download `https://releases.anima.ing/Anima.dmg` and run the two commands of the trial on it and on the application in it.
+   - On a Mac with 0.2.1 installed: Settings > Updates offers 0.2.2, and "Restart to update" starts 0.2.2. DEF-001 (an application that a computer built replaced itself with 0.2.1) is corrected on a different branch; use an application that was installed from the DMG of 0.2.1 for this check.
+5. Set the row of 0.2.2 in the release record at the top of this document, and the result of HT-036.
+
+### To stop or undo a release
+
+- **Before the job `publish`:** reject the approval of `release-publish`, or cancel the run. Nothing public changed. The files of the run stay on GitHub for 7 days.
+- **While `publish` runs:** do not cancel it. If it fails between two feeds, select "Re-run failed jobs": the job keeps each file that the bucket already holds with the same bytes, and writes the same feed again.
+- **After a bad release:** the feed does not go back by itself (BLD-069), and the workflow refuses a lower version. The usual way is a new version: correct `main`, and put the tag of the next version. To take the bad version away at once, write the feed files of step 1 back to the bucket by hand, one for each feed (R2 > `anima-releases` > the folder of the feed > upload `latest.json`, or `wrangler r2 object put anima-releases/darwin-aarch64/latest.json --file feed-darwin-aarch64.json --content-type application/json --cache-control no-cache`). An installed application then goes back to that version, because the updater permits a lower version (`allowDowngrades`). An application that already installed the bad version keeps it until it reads the feed again.
+- **A version is used one time.** The workflow refuses to publish 0.2.2 again with other bytes. After a rollback the next release is 0.2.3. Do not move or delete a pushed tag.
+- **A key that another person may hold:** delete the secret, then make a new key. For the updater key no remote step exists: each installed application trusts the old key until it is installed again by hand (UPD-012).
+
+### What the operator accepts with this form
+
+- The updater key that each installed application trusts, the Developer ID certificate and the bucket token are in the secrets of GitHub. GitHub the company can read them.
+- An update can be signed by each person who can make the environment `release-sign` run a workflow: a person who can put a tag `v…` or change `main`, and get your approval or act as your account. The workflow file of the tagged commit is the one that runs, so a tag on a commit with a changed workflow can skip each check of this document.
+- The protections are the ones of "Before the first run": only your account writes, only you put a tag `v…`, you approve each use of each key and you look at the tag and the commit when you approve, and each key is in an environment of its own so that the builds do not hold the updater key or the bucket token.
+- The actions of GitHub that the workflow uses are pinned to a commit, but the machines, the images and the tools that they install (Homebrew, apt, `linuxdeploy`, the crates and packages of the lock files) are code of other people that runs in the jobs that build.
+- Until OD-W37 is decided, the hub on the VPS also holds a copy of the updater key.
+
 ## What a release carries
 
 The bundle step of a builder builds, from the job's commit, every program that "Create a hub
@@ -122,6 +223,17 @@ on this computer" needs, and puts them into the application (plan item S12,
 that runs it, with an ad hoc signature on macOS and no notary step. Use it to try the hub from
 a built application. It uses no signing identity and uploads nothing. Gatekeeper refuses such
 an application on another Mac.
+
+The job `macos` of the release workflow runs the same script with `SIGN_IDENTITY` set to the
+identity of `tauri.conf.json`, and then makes the checks, the notary step and the updater file
+itself. `apps/desktop/src-tauri/check-mach-o.sh <application> <Team ID>` is its check of each
+Mach-O file (UPD-011); you can run it on an installed application, for example
+`sh apps/desktop/src-tauri/check-mach-o.sh /Applications/Anima.ing.app 7GDLG48PV6`.
+
+To try the commands of the jobs `sign` and `publish` on a computer, with a throwaway key and a
+bucket that the test makes in its own process: `cargo nextest run -p anima-hub -E 'test(/publishing::built/)'`.
+The rules of the workflow file have a test too: `bun test deploy/test/release-workflow.test.ts`
+(from `deploy/`), and `actionlint .github/workflows/release.yml` reads the file.
 
 ## How an installed app updates
 
