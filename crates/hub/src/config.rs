@@ -274,6 +274,15 @@ pub fn collect_env(
     Ok(env)
 }
 
+/// The release settings alone, for the `anima-hub release` commands, which need no other
+/// setting of the hub (R-179); `None` when `ANIMA_RELEASES_ENDPOINT` is unset or empty.
+///
+/// # Errors
+/// Returns the first release variable that is malformed.
+pub fn releases_from_env(env: &BTreeMap<String, String>) -> Result<Option<Releases>, Error> {
+    releases::from_env(env)
+}
+
 /// Build the configuration from `env`, applying defaults for unset variables.
 ///
 /// # Errors

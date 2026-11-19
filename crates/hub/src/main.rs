@@ -2,13 +2,15 @@
 //! `anima-hub migrate` (R-016), `anima-hub operator set <username>`,
 //! `anima-hub operator create <username>`, `anima-hub operator show`,
 //! `anima-hub operator totp <username> [--disable | --new]` (D-9, FRN-003, FRN-004) or
-//! `anima-hub health` (the compose healthcheck).
+//! `anima-hub health` (the compose healthcheck), or
+//! `anima-hub release <sign | check | publish> <target> <version> <folder>`, the commands of
+//! the release workflow, which need no hub (R-179).
 
 mod core_dumps;
 mod operator;
 mod upkeep;
 
-use std::{process::ExitCode, sync::Arc};
+use std::{collections::BTreeMap, process::ExitCode, sync::Arc};
 
 use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
@@ -73,7 +75,8 @@ enum StartError {
     Health(#[from] listen::HealthError),
     #[error(
         "usage: anima-hub [migrate | operator set <username> | operator create <username> | \
-         operator show | operator totp <username> [--disable | --new] | health]"
+         operator show | operator totp <username> [--disable | --new] | health | \
+         release <sign | check | publish> <target> <version> <folder>]"
     )]
     Usage,
     /// The enrolment URI holds the secret, so it is shown only on a terminal (LOG-007).
@@ -99,6 +102,11 @@ enum StartError {
     Bucket(#[from] builds::BucketError),
     #[error("core dumps cannot be turned off: {0}")]
     CoreDumps(std::io::Error),
+    /// Names a setting, a file or a check, never a value (LOG-007).
+    #[error("{0}")]
+    Release(#[from] builds::ReleaseError),
+    #[error("the HTTP client cannot start")]
+    Http,
     /// Names a key, never its bytes (VLT-003, LOG-007).
     #[error("the data keys cannot be used: {0}")]
     SealingKeys(#[from] anima_hub::engine::sealing_keys::SealingKeyError),
@@ -120,14 +128,14 @@ async fn run() -> Result<(), StartError> {
     // Before any secret is read: the vault key, the R2 token and the updater key (D-45).
     core_dumps::forbid().map_err(StartError::CoreDumps)?;
     let env = config::collect_env(std::env::vars_os())?;
-    let config = Arc::new(config::from_env(&env)?);
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match args
-        .iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .as_slice()
-    {
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    // Before the hub's own settings are read: the release commands need none of them.
+    if let ["release", rest @ ..] = args.as_slice() {
+        return release(&env, rest).await;
+    }
+    let config = Arc::new(config::from_env(&env)?);
+    match args.as_slice() {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => operator::set(&config, username).await,
@@ -143,6 +151,13 @@ async fn run() -> Result<(), StartError> {
         ["operator", "totp", username, "--new"] => operator::new_totp(username),
         _ => Err(StartError::Usage),
     }
+}
+
+/// Runs a command of the release workflow and prints its result (R-179).
+async fn release(env: &BTreeMap<String, String>, args: &[&str]) -> Result<(), StartError> {
+    let http = upkeep::publishing_client().map_err(|_| StartError::Http)?;
+    println!("{}", builds::release_command(env, args, &http).await?);
+    Ok(())
 }
 
 /// The certificate files when both TLS variables are set (WP-04 names one `tls.pem` twice).

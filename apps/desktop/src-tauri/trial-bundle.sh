@@ -7,12 +7,32 @@
 #   - it does not check that the tree is the commit's, and it builds what is in the folder;
 #   - it copies with cp and makes none of the builder's checks of the staged files and of the
 #     Mach-O files of the application;
-#   - it has no notary step, and on Linux it builds for this computer's architecture.
+#   - it has no notary step, and on Linux it builds for this computer's architecture;
+#   - its application does not update itself: the shell is compiled with no updater and the
+#     client never checks the feed (UPD-001, DEF-001). A released application does both, and
+#     so does a build of the release workflow (ANIMA_RELEASE_BUILD, below).
 # So a trial that passes does not prove that a release job passes.
 #
-# NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007).
+# By hand it is NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007)
+# or from the release workflow.
 #
 #   trial-bundle.sh [version]
+#   trial-bundle.sh --marks      prints the marks that a build with this environment gets, and
+#                                builds nothing (for the test of the two modes)
+#
+# Environment:
+#   ANIMA_RELEASE_BUILD   Only the release workflow sets it, to 1, in its jobs `macos` and
+#                   `linux`, for a release and for its trial run alike. The application then
+#                   has the updater and reads the public feed, as an application of the Builds
+#                   path does: the two marks of a local build are not set, and a mark of the
+#                   caller's environment is removed. On macOS it needs SIGN_IDENTITY. Unset,
+#                   or any other value: a trial bundle, which does not update itself (DEF-001).
+#   SIGN_IDENTITY   macOS only. Unset or empty: the ad hoc signature of a trial. The release
+#                   workflow (.github/workflows/release.yml, job `macos`, R-179) sets it to the
+#                   Developer ID identity that tauri.conf.json names: the tree and the
+#                   application are then signed with it, the hardened runtime and a secure
+#                   timestamp. The workflow makes the checks, the notary step and the updater
+#                   file after this script.
 #
 # macOS: a universal Anima.ing.app and a DMG. Linux: an AppImage for this computer's
 # architecture. The script prints where they are.
@@ -21,7 +41,12 @@
 # targets (aarch64-apple-darwin, x86_64-apple-darwin).
 set -eu
 
+MARKS_ONLY=false
+if [ "${1:-}" = --marks ]; then MARKS_ONLY=true; shift; fi
 VERSION=${1:-0.1.0}
+IDENTITY=${SIGN_IDENTITY:-}
+# The identity goes into a JSON text: no quote and no backslash.
+case "$IDENTITY" in *\"* | *\\*) echo "trial-bundle: SIGN_IDENTITY holds a quote or a backslash" >&2; exit 1 ;; esac
 echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || { echo "trial-bundle: the version is not like 0.1.0" >&2; exit 1; }
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
@@ -31,6 +56,25 @@ RUST_PROGRAMS="anima anima-local-hub anima-hub anima-database anima-gateway"
 EXTERNAL='"binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"'
 CARRIED="\"externalBin\":[$EXTERNAL],\"resources\":{\"database\":\"database\"}"
 export CI=true
+# A trial bundle keeps its version: the published version can be lower, and an application that
+# checks the feed would install it (DEF-001). The shell reads the first when it is compiled
+# (src/desktop.rs), the client the second when it is built (src/lib/updates/local-build.ts).
+# Only a build of the release workflow has the updater. The shell asks only if its mark is
+# set, so an empty mark is still a mark: the two are removed, never emptied.
+if [ "${ANIMA_RELEASE_BUILD:-}" = 1 ]; then
+    if [ "$(uname -s)" = Darwin ] && [ -z "$IDENTITY" ]; then
+        echo "trial-bundle: ANIMA_RELEASE_BUILD needs SIGN_IDENTITY on macOS; a release has no ad hoc signature" >&2
+        exit 1
+    fi
+    unset ANIMA_LOCAL_BUILD VITE_ANIMA_LOCAL_BUILD
+else
+    export ANIMA_LOCAL_BUILD=1
+    export VITE_ANIMA_LOCAL_BUILD=1
+fi
+if [ "$MARKS_ONLY" = true ]; then
+    echo "ANIMA_LOCAL_BUILD=${ANIMA_LOCAL_BUILD-unset} VITE_ANIMA_LOCAL_BUILD=${VITE_ANIMA_LOCAL_BUILD-unset}"
+    exit 0
+fi
 
 cargo_build() {
     ( cd "$ROOT" && ANIMA_VERSION=$VERSION cargo build --release --locked \
@@ -54,8 +98,8 @@ mkdir -p "$STAGE"
 
 case "$(uname -s)" in
 Darwin)
-    # No SIGN_IDENTITY: the recipe gives the tree an ad hoc signature.
-    SIGN_IDENTITY='' /bin/sh "$HERE/database-tree/build.sh" darwin-universal "$TARGET_FOLDER/database-tree" "$HERE/database"
+    # An empty SIGN_IDENTITY: the recipe gives the tree an ad hoc signature.
+    SIGN_IDENTITY="$IDENTITY" /bin/sh "$HERE/database-tree/build.sh" darwin-universal "$TARGET_FOLDER/database-tree" "$HERE/database"
     /bin/sh "$ROOT/link/build.sh"
     cargo_build --target aarch64-apple-darwin --target x86_64-apple-darwin
     for name in $RUST_PROGRAMS; do
@@ -69,10 +113,11 @@ Darwin)
         lipo -create -output "$STAGE/$name-universal-apple-darwin" \
             "$STAGE/$name-aarch64-apple-darwin" "$STAGE/$name-x86_64-apple-darwin"
     done
+    MAC="\"macOS\":{\"signingIdentity\":\"${IDENTITY:--}\"}"
     tauri build --no-bundle --target universal-apple-darwin \
         --config "{\"version\":\"$VERSION\",\"bundle\":{$CARRIED}}"
     tauri bundle --target universal-apple-darwin --bundles app,dmg \
-        --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":false,\"macOS\":{\"signingIdentity\":\"-\"},$CARRIED}}"
+        --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":false,$MAC,$CARRIED}}"
     echo "trial-bundle: $TARGET_FOLDER/universal-apple-darwin/release/bundle/macos and .../dmg"
     ;;
 Linux)

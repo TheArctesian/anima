@@ -1,0 +1,534 @@
+# The release of Anima on the runners of GitHub (R-179, R-180; task B8c of
+# docs/plans/projects-and-builds-plan.md). The procedure for the operator is in
+# docs/procedures/releases.md, "The release workflow".
+#
+# A tag `v<version>` on a commit of `main` builds, signs and publishes (OD-W26 is open: the tag
+# is the recommendation of that decision). A run by hand is a trial: it builds, signs and
+# checks everything, and publishes nothing. No pull request starts this workflow.
+#
+# Each secret is in an environment of its own, so a job has only the secrets of its work:
+#   release           the Developer ID certificate and the notary credentials   job `macos`
+#   release-sign      the updater key                                           job `sign`
+#   release-publish   the token of the release bucket                           job `publish`
+# The jobs `commit`, `gates`, `tool`, `linux` and `trial` have no secret.
+#
+# No `run` script holds an expression: each value comes in through `env`.
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Trial only: the version to build, as 0.2.2. Nothing is published."
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+env:
+  BUN_VERSION: "1.3.14"
+  CI: "true"
+
+jobs:
+  # The version, and the proof that the commit is on `main` (BLD-041).
+  commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      sha: ${{ steps.read.outputs.sha }}
+      time: ${{ steps.read.outputs.time }}
+      updater_public_key: ${{ steps.read.outputs.updater_public_key }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: read
+        name: Read the version and refuse a commit that is not on main
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          TRIAL_VERSION: ${{ inputs.version }}
+        run: |
+          set -eu
+          case "$EVENT:$REF" in
+            push:refs/tags/v*) version=${REF#refs/tags/v} ;;
+            workflow_dispatch:*) version=$TRIAL_VERSION ;;
+            *) echo "::error::Only a tag v<version> or a run by hand starts a release."; exit 1 ;;
+          esac
+          if ! echo "$version" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$'; then
+            echo "::error::The version is not like 0.2.2."
+            exit 1
+          fi
+          sha=$(git rev-parse 'HEAD^{commit}')
+          git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+          if ! git merge-base --is-ancestor "$sha" refs/remotes/origin/main; then
+            echo "::error::The commit $sha is not on main (BLD-041)."
+            exit 1
+          fi
+          key=$(jq -er '.plugins.updater.pubkey' apps/desktop/src-tauri/tauri.conf.json)
+          {
+            echo "version=$version"
+            echo "sha=$sha"
+            echo "time=$(git show -s --format=%ct "$sha")"
+            echo "updater_public_key=$key"
+          } >> "$GITHUB_OUTPUT"
+
+  # The gates of the repository on the release commit (BLD-042). OD-W32 is open: R-005 and
+  # CQ-010 say that GitHub Actions runs no gate. If the answer is no, delete this job and its
+  # name in `needs` of `sign`.
+  gates:
+    needs: commit
+    runs-on: macos-15
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Install PostgreSQL 17 and cargo-nextest
+        run: brew install postgresql@17 cargo-nextest
+      - name: Run the gates
+        env:
+          BASE_REF: ${{ needs.commit.outputs.sha }}
+        run: |
+          set -eu
+          unset DATABASE_URL
+          bun run gates
+
+  # The program that signs and publishes: `anima-hub release` of the release commit. The jobs
+  # that hold a key run this file and compile nothing.
+  tool:
+    needs: commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      sha256: ${{ steps.digest.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - name: Build anima-hub
+        run: cargo build --release --locked --package anima-hub --bin anima-hub
+      - id: digest
+        run: |
+          set -eu
+          mkdir tool
+          cp target/release/anima-hub tool/anima-hub
+          echo "sha256=$(sha256sum tool/anima-hub | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tool
+          path: tool/anima-hub
+          if-no-files-found: error
+          retention-days: 7
+
+  # One universal application, with the recipe of the builder in its order (S12 packaging):
+  # the database tree, the link, the Rust programs for both architectures, Tauri. Signed with
+  # the Developer ID identity that tauri.conf.json names, checked, notarized and stapled.
+  macos:
+    needs: commit
+    runs-on: macos-15
+    timeout-minutes: 180
+    environment: release
+    permissions:
+      contents: read
+    outputs:
+      updater_sha256: ${{ steps.digest.outputs.updater_sha256 }}
+      dmg_sha256: ${{ steps.digest.outputs.dmg_sha256 }}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+      BUNDLE: target/universal-apple-darwin/release/bundle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Install the two Rust targets and the packages
+        run: |
+          set -eu
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          bun install --frozen-lockfile
+      - id: identity
+        name: Make the keychain of this job and import the certificate (BLD-083)
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -eu
+          umask 077
+          KEYCHAIN="$RUNNER_TEMP/release.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          identity=$(jq -er '.bundle.macOS.signingIdentity' apps/desktop/src-tauri/tauri.conf.json)
+          team=$(printf '%s' "$identity" | sed -n 's/.*(\([A-Z0-9]\{10\}\))$/\1/p')
+          if [ -z "$team" ]; then
+            echo "::error::tauri.conf.json names no Developer ID identity with a Team ID."
+            exit 1
+          fi
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+            echo "::error::APPLE_CERTIFICATE or APPLE_CERTIFICATE_PASSWORD is not set in the environment release."
+            exit 1
+          fi
+          password=$(openssl rand -hex 24)
+          security create-keychain -p "$password" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$password" "$KEYCHAIN"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -f pkcs12 -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -k "$KEYCHAIN" -T /usr/bin/codesign > /dev/null
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -Fq "\"$identity\""; then
+            echo "::error::The certificate is not the identity that tauri.conf.json names."
+            exit 1
+          fi
+          {
+            echo "identity=$identity"
+            echo "team=$team"
+          } >> "$GITHUB_OUTPUT"
+      - name: Build and sign the application
+        env:
+          SIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
+          # The application has the updater and reads the public feed, in a release and in a
+          # trial run alike: without this, trial-bundle.sh makes a local build (DEF-001).
+          ANIMA_RELEASE_BUILD: "1"
+          GOENV: "off"
+          GOTOOLCHAIN: local
+          GOWORK: "off"
+          GOFLAGS: -mod=readonly
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+        run: |
+          set -eu
+          go -C link mod verify
+          /bin/sh apps/desktop/src-tauri/trial-bundle.sh "$VERSION"
+      - name: Check each Mach-O file (UPD-011)
+        env:
+          TEAM: ${{ steps.identity.outputs.team }}
+        run: /bin/sh apps/desktop/src-tauri/check-mach-o.sh "$BUNDLE/macos/Anima.ing.app" "$TEAM"
+      - name: Notarize and staple (BLD-084, BLD-085)
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -eu
+          mkdir out
+          mv "$BUNDLE/dmg/Anima.ing_${VERSION}_universal.dmg" "out/Anima_${VERSION}_universal.dmg"
+          xcrun notarytool store-credentials anima-notary --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --keychain "$KEYCHAIN" > /dev/null
+          xcrun notarytool submit "out/Anima_${VERSION}_universal.dmg" \
+            --keychain-profile anima-notary --keychain "$KEYCHAIN" --wait | tee "$RUNNER_TEMP/notary.log"
+          # notarytool exits 0 for a rejected submission too: the final status line decides.
+          if ! grep -Eq '^[[:space:]]*status: Accepted[[:space:]]*$' "$RUNNER_TEMP/notary.log"; then
+            echo "::error::Apple did not accept the submission."
+            exit 1
+          fi
+          for bundle in "out/Anima_${VERSION}_universal.dmg" "$BUNDLE/macos/Anima.ing.app"; do
+            xcrun stapler staple "$bundle"
+            xcrun stapler validate "$bundle"
+          done
+      - id: digest
+        name: Make the updater file from the stapled application
+        run: |
+          set -eu
+          COPYFILE_DISABLE=1 tar -czf out/Anima.app.tar.gz -C "$BUNDLE/macos" Anima.ing.app
+          {
+            echo "updater_sha256=$(shasum -a 256 out/Anima.app.tar.gz | cut -d ' ' -f 1)"
+            echo "dmg_sha256=$(shasum -a 256 "out/Anima_${VERSION}_universal.dmg" | cut -d ' ' -f 1)"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Delete the keychain of this job
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/release.keychain-db" || true
+
+  # The AppImage for x86_64, with the same carried programs. No secret: the bundle step
+  # downloads linuxdeploy with no hash check.
+  linux:
+    needs: commit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    outputs:
+      updater_sha256: ${{ steps.digest.outputs.updater_sha256 }}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Install the packages that the Tauri shell and the database tree need
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl file pkg-config patchelf bison flex zlib1g-dev libssl-dev libxdo-dev \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libdbus-1-dev libayatana-appindicator3-dev
+          bun install --frozen-lockfile
+      - name: Build the AppImage
+        env:
+          ANIMA_RELEASE_BUILD: "1"
+          GOENV: "off"
+          GOTOOLCHAIN: local
+          GOWORK: "off"
+          GOFLAGS: -mod=readonly
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+        run: |
+          set -eu
+          go -C link mod verify
+          /bin/sh apps/desktop/src-tauri/trial-bundle.sh "$VERSION"
+      - id: digest
+        name: Check the carried programs and give the file its stable name
+        run: |
+          set -eu
+          for program in anima anima-local-hub anima-hub anima-database anima-gateway anima-link; do
+            staged="apps/desktop/src-tauri/binaries/$program-x86_64-unknown-linux-gnu"
+            if ! readelf -h "$staged" | grep -Eq 'Machine:[[:space:]]+Advanced Micro Devices X86-64'; then
+              echo "::error::$program is not an x86-64 program."
+              exit 1
+            fi
+          done
+          mkdir out
+          mv "target/release/bundle/appimage/Anima.ing_${VERSION}_amd64.AppImage" "out/Anima_${VERSION}_amd64.AppImage"
+          echo "updater_sha256=$(sha256sum "out/Anima_${VERSION}_amd64.AppImage" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+
+  # A new machine that holds only the updater key. It signs a file only when its SHA-256 is
+  # the one that its build job gave as a job output (BLD-045, BLD-046).
+  sign:
+    needs: [commit, gates, tool, macos, linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-sign
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tool
+          path: tool
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos
+          path: macos
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux
+          path: linux
+      - name: Compare each file with the digest of its job
+        env:
+          TOOL_SHA256: ${{ needs.tool.outputs.sha256 }}
+          MACOS_SHA256: ${{ needs.macos.outputs.updater_sha256 }}
+          LINUX_SHA256: ${{ needs.linux.outputs.updater_sha256 }}
+        run: |
+          set -eu
+          {
+            echo "$TOOL_SHA256  tool/anima-hub"
+            echo "$MACOS_SHA256  macos/Anima.app.tar.gz"
+            echo "$LINUX_SHA256  linux/Anima_${VERSION}_amd64.AppImage"
+          } | sha256sum --check --strict
+          chmod +x tool/anima-hub
+      - name: Sign the two updater files
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          ANIMA_UPDATER_PUBLIC_KEY: ${{ needs.commit.outputs.updater_public_key }}
+          SOURCE_DATE_EPOCH: ${{ needs.commit.outputs.time }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set in the environment release-sign."
+            exit 1
+          fi
+          keys=$(mktemp -d "$RUNNER_TEMP/keys.XXXXXX")
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | tr -d '[:space:]' > "$keys/key"
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" > "$keys/password"
+          export ANIMA_UPDATER_KEY_FILE="$keys/key" ANIMA_UPDATER_KEY_PASSWORD_FILE="$keys/password"
+          tool/anima-hub release sign linux-x86_64 "$VERSION" linux
+          tool/anima-hub release sign darwin-universal "$VERSION" macos
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signatures
+          path: |
+            linux/*.sig
+            macos/*.sig
+          if-no-files-found: error
+          retention-days: 7
+
+  # Only for a tag. The checks that the hub makes for a queued job (BLD-002, BLD-064 to
+  # BLD-069), by the same code: `anima-hub release publish`. It writes each feed last.
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [commit, tool, macos, linux, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: release-publish
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+      ANIMA_UPDATER_PUBLIC_KEY: ${{ needs.commit.outputs.updater_public_key }}
+      ANIMA_RELEASES_PUBLIC_BASE: https://releases.anima.ing
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tool
+          path: tool
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos
+          path: macos
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux
+          path: linux
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signatures
+          path: .
+      - name: Write SHA256SUMS from the digests of the build jobs and check every file
+        env:
+          TOOL_SHA256: ${{ needs.tool.outputs.sha256 }}
+          MACOS_SHA256: ${{ needs.macos.outputs.updater_sha256 }}
+          DMG_SHA256: ${{ needs.macos.outputs.dmg_sha256 }}
+          LINUX_SHA256: ${{ needs.linux.outputs.updater_sha256 }}
+        run: |
+          set -eu
+          echo "$TOOL_SHA256  tool/anima-hub" | sha256sum --check --strict
+          chmod +x tool/anima-hub
+          echo "$LINUX_SHA256  Anima_${VERSION}_amd64.AppImage" > linux/SHA256SUMS
+          {
+            echo "$MACOS_SHA256  Anima.app.tar.gz"
+            echo "$DMG_SHA256  Anima_${VERSION}_universal.dmg"
+          } > macos/SHA256SUMS
+          tool/anima-hub release check linux-x86_64 "$VERSION" linux
+          tool/anima-hub release check darwin-universal "$VERSION" macos
+      - name: Publish, each feed last
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ANIMA_RELEASES_ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+          ANIMA_RELEASES_BUCKET: anima-releases
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$ANIMA_RELEASES_ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          keys=$(mktemp -d "$RUNNER_TEMP/keys.XXXXXX")
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s' "$R2_ACCESS_KEY_ID" > "$keys/id"
+          printf '%s' "$R2_SECRET_ACCESS_KEY" > "$keys/secret"
+          export ANIMA_RELEASES_ACCESS_KEY_ID_FILE="$keys/id" ANIMA_RELEASES_SECRET_ACCESS_KEY_FILE="$keys/secret"
+          tool/anima-hub release publish linux-x86_64 "$VERSION" linux
+          tool/anima-hub release publish darwin-universal "$VERSION" macos
+      - name: Read the three feeds
+        run: |
+          set -eu
+          for feed in linux-x86_64 darwin-aarch64 darwin-x86_64; do
+            curl -fsS "$ANIMA_RELEASES_PUBLIC_BASE/$feed/latest.json" | jq -e --arg version "$VERSION" '.version == $version' > /dev/null
+            echo "$feed gives $VERSION"
+          done
+
+  # Only for a run by hand. Each check of `publish` that needs no bucket; no token, and
+  # nothing is published.
+  trial:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [commit, tool, macos, linux, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+      ANIMA_UPDATER_PUBLIC_KEY: ${{ needs.commit.outputs.updater_public_key }}
+      ANIMA_RELEASES_PUBLIC_BASE: https://releases.anima.ing
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tool
+          path: tool
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos
+          path: macos
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux
+          path: linux
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signatures
+          path: .
+      - name: Check every file as the publish job does, and publish nothing
+        env:
+          TOOL_SHA256: ${{ needs.tool.outputs.sha256 }}
+          MACOS_SHA256: ${{ needs.macos.outputs.updater_sha256 }}
+          DMG_SHA256: ${{ needs.macos.outputs.dmg_sha256 }}
+          LINUX_SHA256: ${{ needs.linux.outputs.updater_sha256 }}
+        run: |
+          set -eu
+          echo "$TOOL_SHA256  tool/anima-hub" | sha256sum --check --strict
+          chmod +x tool/anima-hub
+          echo "$LINUX_SHA256  Anima_${VERSION}_amd64.AppImage" > linux/SHA256SUMS
+          {
+            echo "$MACOS_SHA256  Anima.app.tar.gz"
+            echo "$DMG_SHA256  Anima_${VERSION}_universal.dmg"
+          } > macos/SHA256SUMS
+          tool/anima-hub release check linux-x86_64 "$VERSION" linux
+          tool/anima-hub release check darwin-universal "$VERSION" macos
