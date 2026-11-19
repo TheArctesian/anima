@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Tools as Extensions Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
+<style>
+/* Layout: a review board. Frame 1 is Settings, Extensions, Agent tools; frame 2 is the grant screen; frame 3 is a web pane of a tool;
+   frame 4 is the error page of a pane; frame 5 is "Add an agent" with Hermes suggested first (agent-tools-as-extensions.md, AXT-004,
+   AXT-005, AXT-010, AXT-013, AXT-015, AXT-017, AXT-021, AXT-022). Each frame is the page area of the app. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+:root[data-theme="light"] { color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3; }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, sizes, type). A frame is dark (.gd) or light (.gl) on purpose. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 24px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+
+/* One frame: the Agents section of the device page (routes/devices/[id]) and its dialogs. */
+.frame { max-inline-size: 1040px; border: 1px solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); padding: var(--space-8); display: grid; gap: var(--space-4); align-content: start; }
+.frame h1 { margin: 0; font-size: var(--text-display); font-weight: var(--weight-light); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+.frame p { margin: 0; line-height: var(--leading-normal); }
+.detail { color: var(--text-secondary); }
+
+/* The rows of the Agents section: one row for each agent, with a state and the one action that fits the state (BOT-058). */
+table { inline-size: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+th, td { padding: 0 var(--space-3); block-size: var(--control-md); border-block-end: var(--border-thin) solid var(--border-subtle); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+thead th { background: var(--surface-raised); color: var(--text-secondary); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+td.m { font-family: var(--font-mono); }
+.head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
+.head h2 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); color: var(--text); background: transparent; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface-base); font-weight: var(--weight-medium); }
+.btn.off { color: var(--text-secondary); border-color: var(--border-subtle); }
+.actions { display: inline-flex; gap: var(--space-2); }
+
+/* The review screen (BOT-059): one list of facts, the terms row, one confirmation. */
+dl.facts { display: grid; grid-template-columns: 12rem 1fr; gap: var(--space-2) var(--space-4); margin: 0; padding: var(--space-4); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); }
+dl.facts dt { color: var(--text-secondary); font-size: var(--text-sm); }
+dl.facts dd { margin: 0; line-height: var(--leading-normal); }
+.mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.check { display: flex; gap: var(--space-2); align-items: center; }
+.box { inline-size: 1rem; block-size: 1rem; border: var(--border-thin) solid var(--border-strong); border-radius: 2px; }
+.foot { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* The progress list (BOT-070, BOT-073): one line for each step. */
+ol.steps { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--space-3); align-items: center; padding-block: var(--space-1); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.tag { font-size: var(--text-sm); color: var(--text-secondary); }
+.tag.ok { color: var(--accent); }
+.secret { padding: var(--space-3) var(--space-4); border: var(--border-thin) dashed var(--border-strong); border-radius: var(--radius-md); display: grid; gap: var(--space-2); }
+.secret b { font-weight: var(--weight-medium); }
+.term { font-family: var(--font-mono); font-size: var(--text-sm); background: var(--surface-raised); padding: var(--space-3); border-radius: var(--radius-md); }
+.empty { display: grid; justify-items: center; gap: var(--space-2); padding: var(--space-6) var(--space-4); text-align: center; }
+.empty h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.empty p { max-inline-size: 44ch; color: var(--text-secondary); }
+/* The pane header (AXT-010, AXT-015): the tool, the device, the actions and the notice. */
+.pane { border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.pane-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.pane-body { block-size: 16rem; display: grid; place-items: center; color: var(--text-secondary); background: var(--surface-hover); }
+.switch { display: inline-block; inline-size: 2.25rem; block-size: 1.25rem; border-radius: var(--radius-pill); background: var(--accent); }
+.switch.off { background: var(--border-strong); }
+.label { font-size: var(--text-sm); color: var(--accent); border: var(--border-thin) solid var(--accent); border-radius: var(--radius-pill); padding: 0 var(--space-2); }
+</style>
+</head>
+<body>
+<h1 class="board">Agent tools as extensions</h1>
+<p class="about">Tools of other vendors that run on your own machines and open in a pane of the app (agent-tools-as-extensions.md). Proposed, not approved. The device names, the versions and the texts are examples.</p>
+
+<div class="frames">
+  <figure>
+    <div class="frame gd">
+      <div class="head"><h2>Agent tools</h2><span class="switch"></span></div>
+      <p class="detail">Open tools that run on your machines in a pane. The tools run as your user, on your machine. Anima.ing runs no tool code on your hub.</p>
+      <table>
+        <thead><tr><th>Tool</th><th>Kind</th><th>Devices</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>Hermes Agent</td><td>Web page and terminal</td><td>mac-mini: running</td><td><span class="actions"><span class="btn">Open</span><span class="btn">Revoke</span></span></td></tr>
+          <tr><td>Herdr</td><td>Terminal</td><td>mac-mini: installed, stopped</td><td><span class="actions"><span class="btn primary">Turn on for a device</span></span></td></tr>
+        </tbody>
+      </table>
+      <p class="detail">The list holds only tools that Anima.ing ships (AXT-002). T3 Code is not in the list.</p>
+    </div>
+    <figcaption>1. Settings, Extensions, Agent tools. The switch is off by default (AXT-004). Each tool is turned on for each device (AXT-005).</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame gl">
+      <div><h1>Turn on Hermes Agent for mac-mini</h1><p class="detail">Read what this permits. Nothing runs until you click Turn on.</p></div>
+      <dl class="facts">
+        <dt>What runs</dt><dd><span class="mono">hermes dashboard</span>, as your user, in a session that Anima.ing owns. Not at login.</dd>
+        <dt>Port</dt><dd><span class="mono">127.0.0.1:9119</span> only. No port opens on another address.</dd>
+        <dt>Who can open it</dt><dd>You. The dashboard trusts its own machine, so the pane is open to each person who can open it.</dd>
+        <dt>Logins</dt><dd>Hermes can read the Claude Code login file of this machine. Do not give Hermes that source. Set an API key, a local model or another provider in Hermes on this machine.</dd>
+        <dt>Path</dt><dd>The page goes through your hub as it is. Your hub does not keep it.</dd>
+        <dt>Vendor terms</dt><dd>Terms not checked.</dd>
+      </dl>
+      <p class="check"><span class="box"></span><span>I use my own keys on my own machine.</span></p>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn primary">Turn on</span></div>
+    </div>
+    <figcaption>2. The grant screen (AXT-005, AXT-013, AXT-022). Turn on stays off until the box is checked. The confirmation goes in the audit log (AXT-016).</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame gd">
+      <div class="pane">
+        <div class="pane-head">
+          <span><b>Hermes Agent</b> on mac-mini <span class="mono detail">127.0.0.1:9119</span></span>
+          <span class="actions"><span class="btn">Reload</span><span class="btn">Stop</span><span class="btn">Revoke</span></span>
+        </div>
+        <p class="detail" style="padding: var(--space-2) var(--space-3)">This page goes through your hub as it is. Your hub does not keep it.</p>
+        <div class="pane-body">The page of the tool, in its own web view. No access to the app.</div>
+      </div>
+    </div>
+    <figcaption>3. A web pane (AXT-010, AXT-015). The header is the app's. The page below it is the tool's, in a web view with its own store and no IPC.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame gl">
+      <div class="pane">
+        <div class="pane-head"><span><b>Hermes Agent</b> on mac-mini</span><span class="actions"><span class="btn">Reload</span></span></div>
+        <div class="empty">
+          <h3>Hermes Agent does not answer</h3>
+          <p>Nothing listens on 127.0.0.1:9119 on mac-mini. Start the tool, then reload.</p>
+          <span class="actions"><span class="btn primary">Start</span><span class="btn">Reload</span></span>
+        </div>
+      </div>
+    </div>
+    <figcaption>4. The error page of a pane (AXT-017). A failure of the tool leaves the app usable.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame gd">
+      <div class="head"><h2>Add an agent to mac-mini</h2></div>
+      <table>
+        <thead><tr><th>Agent</th><th>State</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>Hermes Agent <span class="label">Suggested</span></td><td>Not installed</td><td><span class="actions"><span class="btn primary">Install</span></span></td></tr>
+          <tr><td>Claude Code</td><td>Installed, signed in</td><td><span class="actions"><span class="btn">Open</span></span></td></tr>
+          <tr><td>Codex</td><td>Not installed</td><td><span class="actions"><span class="btn">Install</span></span></td></tr>
+        </tbody>
+      </table>
+      <p class="detail">Hermes is suggested. It is installed only when you click Install.</p>
+    </div>
+    <figcaption>5. "Add an agent" (BOT-058) with Hermes first (AXT-021). Nothing installs without the click of the operator.</figcaption>
+  </figure>
+</div>
+</body>
+</html>

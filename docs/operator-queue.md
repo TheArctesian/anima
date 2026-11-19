@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (13)
+## 1. In the order of the priorities (14)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -32,6 +32,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
+| 4.21 | Agent tools as extensions (Hermes, Herdr in a pane) | Operator: OD-AXT1 to OD-AXT11 in agent-tools-as-extensions.md Section 9. Agent: None. AX1 to AX12 wait for the rulings; AX0 is a record only |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
 ## 2. Open decisions (120)
@@ -94,6 +95,17 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| OD-AXT1 | Do you confirm, first-hand, the relayed answers A1, A3 and A4: version 1 is a real extension host (effort L); Hermes is suggested first in "Add an agent" and ne… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT2 | Do you withdraw the native agent panes of Section 4.12.1 (AIS-009 to AIS-017) and host Herdr as a terminal tool extension in their place, keeping the usage coun… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT3 | Do you withdraw the native bot runtime of bots.md (BOT-001 to BOT-018, BOT-025 to BOT-028), park the fallback to a local model (BOT-047 to BOT-057), and keep th… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT4 | May this host start before the 15 extensions are built (EXT-009), if it loads only manifests that Anima.ing writes, runs no code in the hub, and starts only aft… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT5 | Does "never installed without your click" also stop an AI agent from installing Hermes through MCP in the state `allow` (R-153, OD-BOT17)? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT6 | Which path reaches the loopback port of the tool: (a) an SSH `direct-tcpip` channel that the hub opens (port 22, which the link already allows), or (b) the port… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT7 | May the web traffic of a tool pass through the hub as plain text with a notice, as the terminal does (R-062, R-153), in the first version? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT8 | Is "Agent tools" one new switch in the registry of extensions (default off, Class C), and not one of the 15 extensions that EXT-009 counts? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT9 | Is a warning and your confirmation for each device enough for C1, given that Anima.ing cannot stop Hermes from reading the Claude Code login file on your machin… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT10 | Does version 1 leave the state of each agent to Herdr's own screen, with no Anima.ing page of all agents and no alerts (the place of AIS-010 to AIS-012)? (yes/n… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT11 | Is row 4.21 tier 3, after row 4.7 (the work route, which the install needs), with AX0 free to run before? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -159,7 +171,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (25)
+## 3. Documents that wait for an approval (26)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -171,6 +183,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
+| [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) | Proposal, with a task table | Draft |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |

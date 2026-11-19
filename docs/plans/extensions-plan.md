@@ -909,6 +909,8 @@ result gives them in named fields with a length limit (MCP-008).
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
+Proposed change, not ruled (2026-11-18): [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) proposes to withdraw AIS-009 to AIS-017 and to host Herdr as a tool extension in their place (OD-AXT2). The operator direction for it is relayed and not first-hand. Until a ruling, this section does not change. AIS-018 to AIS-024 (Section 4.12.0) stay in each case. The same proposal asks if its host may start before the 15 extensions of EXT-009 (OD-AXT4).
+
 **Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
 extension and free: background terminal panes that stay alive, one view of every agent on every
 device, and an alert when an agent needs the operator. The operator's words: "build hrdr into the
