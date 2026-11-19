@@ -44,6 +44,9 @@ const HOLDERS: Record<string, { environment: string; secrets: string[] }> = {
   sign: { environment: "release-sign", secrets: ["TAURI_SIGNING_PRIVATE_KEY", "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"] },
   bucket: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   publish: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
+  "cli-publish": { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
+  tap: { environment: "release-tap", secrets: ["HOMEBREW_TAP_DEPLOY_KEY"] },
+  crate: { environment: "release-crate", secrets: ["CARGO_REGISTRY_TOKEN"] },
 };
 
 function job(name: string): Job {
@@ -199,7 +202,7 @@ describe("which job holds which secret (R-180, BLD-045)", () => {
   });
 
   test("the jobs that hold the updater key or the bucket token read no repository and compile nothing", () => {
-    for (const name of ["sign", "publish", "trial"]) {
+    for (const name of ["sign", "bucket", "publish", "cli-publish", "trial"]) {
       const found = job(name);
       const actions = found.steps.flatMap((step) => (step.uses === undefined ? [] : [step.uses.split("@")[0]]));
       for (const action of actions) {

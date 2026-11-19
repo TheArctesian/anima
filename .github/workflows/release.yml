@@ -15,8 +15,13 @@
 # Each secret is in an environment of its own, so a job has only the secrets of its work:
 #   release           the Developer ID certificate and the notary credentials   job `macos`
 #   release-sign      the updater key                                           job `sign`
-#   release-publish   the token of the release bucket                           jobs `bucket`, `publish`
-# The jobs `commit`, `gates`, `tool`, `linux` and `trial` have no secret.
+#   release-publish   the token of the release bucket             jobs `bucket`, `publish`, `cli-publish`
+#   release-tap       the key of the tap of the formula                         job `tap`
+#   release-crate     the token of crates.io                                    job `crate`
+# The jobs `commit`, `gates`, `tool`, `linux`, `cli` and `trial` have no secret.
+#
+# `anima` alone (Homebrew, crates.io) has a switch of its own, ANIMA_PUBLIC_CLI: its three
+# jobs that publish run only while both variables are `on`.
 #
 # No `run` script holds an expression: each value comes in through `env`.
 name: release
@@ -56,6 +61,7 @@ jobs:
       contents: read
     outputs:
       release: ${{ steps.read.outputs.release }}
+      release_cli: ${{ steps.read.outputs.release_cli }}
       version: ${{ steps.read.outputs.version }}
       sha: ${{ steps.read.outputs.sha }}
       time: ${{ steps.read.outputs.time }}
@@ -73,6 +79,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           TRIAL_VERSION: ${{ inputs.version }}
           SWITCH: ${{ vars.ANIMA_PUBLIC_RELEASES }}
+          CLI_SWITCH: ${{ vars.ANIMA_PUBLIC_CLI }}
           FEEDS: https://releases.anima.ing
         run: |
           set -eu
@@ -114,12 +121,30 @@ jobs:
               fi
               echo "Decision: $decided" >> "$GITHUB_STEP_SUMMARY"
               echo "$decided"
+              # `anima` alone (Homebrew, the crate) goes out only with the desktop application
+              # of the same run, because its files are taken from it, and only while its own
+              # switch is on.
+              release_cli=false
+              if [ "$release" = true ]; then
+                cli=$(published anima)
+                decided_cli=$(sh deploy/bin/release-decision "$sha" cli "$cli")
+                if [ "$decided_cli" = "release $version" ] && [ "$CLI_SWITCH" = on ]; then
+                  release_cli=true
+                elif [ "$decided_cli" = "release $version" ]; then
+                  decided_cli="nothing: this push is a release of $version, and the releases of anima alone are off (the variable ANIMA_PUBLIC_CLI is not \`on\`)"
+                fi
+                {
+                  echo "### anima alone"
+                  echo "Published now: $cli. Decision: $decided_cli"
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
             workflow_dispatch:*)
               # A trial keeps the version of its input, so that it signs nothing with the
               # version of a release.
               version=$TRIAL_VERSION
               release=true
+              release_cli=true
               echo "A trial of the version $version. It publishes nothing." >> "$GITHUB_STEP_SUMMARY"
               ;;
             *) echo "::error::Only a push to main or a run by hand starts a release."; exit 1 ;;
@@ -131,6 +156,7 @@ jobs:
           key=$(jq -er '.plugins.updater.pubkey' apps/desktop/src-tauri/tauri.conf.json)
           {
             echo "release=$release"
+            echo "release_cli=$release_cli"
             echo "version=$version"
             echo "sha=$sha"
             echo "time=$(git show -s --format=%ct "$sha")"
@@ -594,6 +620,233 @@ jobs:
             curl -fsS "$ANIMA_RELEASES_PUBLIC_BASE/$feed/latest.json" | jq -e --arg version "$VERSION" '.version == $version' > /dev/null
             echo "$feed gives $VERSION"
           done
+
+  # `anima` alone (INS-010 to INS-012; R-207 to R-209; task B8h): the standalone files and the
+  # formula. It builds nothing: each `anima` is the program that the build job put in the
+  # application, the macOS one with its Developer ID signature. No secret. A trial runs it.
+  cli:
+    needs: [commit, macos, linux]
+    if: needs.commit.outputs.release_cli == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      macos_sha256: ${{ steps.files.outputs.macos_sha256 }}
+      linux_sha256: ${{ steps.files.outputs.linux_sha256 }}
+      formula_sha256: ${{ steps.files.outputs.formula_sha256 }}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos
+          path: macos
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux
+          path: linux
+      - id: files
+        name: Take anima out of the two applications and write the formula
+        env:
+          MACOS_SHA256: ${{ needs.macos.outputs.updater_sha256 }}
+          LINUX_SHA256: ${{ needs.linux.outputs.updater_sha256 }}
+          TIME: ${{ needs.commit.outputs.time }}
+        run: |
+          set -eu
+          {
+            echo "$MACOS_SHA256  macos/Anima.app.tar.gz"
+            echo "$LINUX_SHA256  linux/Anima_${VERSION}_amd64.AppImage"
+          } | sha256sum --check --strict
+          mkdir -p work/mac work/linux out
+          tar -xzf macos/Anima.app.tar.gz -C work/mac Anima.ing.app/Contents/MacOS/anima
+          mac=work/mac/Anima.ing.app/Contents/MacOS
+          file "$mac/anima" | grep -q 'Mach-O universal binary with 2 architectures'
+          chmod +x "linux/Anima_${VERSION}_amd64.AppImage"
+          (cd work/linux && "../../linux/Anima_${VERSION}_amd64.AppImage" --appimage-extract usr/bin/anima > /dev/null)
+          linux=work/linux/squashfs-root/usr/bin
+          # The Linux program must start with no file of the AppImage beside it.
+          ldd "$linux/anima"
+          [ "$("$linux/anima" --version)" = "anima $VERSION" ]
+          pack() {
+            tar --sort=name --mtime="@$TIME" --owner=0 --group=0 --numeric-owner --mode=0755 -cf - -C "$1" anima | gzip -n > "out/$2"
+          }
+          pack "$mac" anima-darwin-universal.tar.gz
+          pack "$linux" anima-linux-x86_64.tar.gz
+          macos_sha256=$(sha256sum out/anima-darwin-universal.tar.gz | cut -d ' ' -f 1)
+          linux_sha256=$(sha256sum out/anima-linux-x86_64.tar.gz | cut -d ' ' -f 1)
+          (cd out && sha256sum anima-darwin-universal.tar.gz anima-linux-x86_64.tar.gz > SHA256SUMS)
+          sh deploy/bin/cli-formula "$VERSION" "$macos_sha256" "$linux_sha256" > out/anima.rb
+          jq -n --arg version "$VERSION" '{version: $version}' > out/latest.json
+          {
+            echo "macos_sha256=$macos_sha256"
+            echo "linux_sha256=$linux_sha256"
+            echo "formula_sha256=$(sha256sum out/anima.rb | cut -d ' ' -f 1)"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cli
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+
+  # The files of `anima` alone go to the bucket, below `anima/<version>/`, after the desktop
+  # application is public. No code of the repository: the `aws` program of the machine. A file
+  # that the bucket already holds is kept when it has the same bytes and refused when it has
+  # not; `anima/latest.json` is written last.
+  cli-publish:
+    needs: [commit, cli, publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-publish
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cli
+          path: cli
+      - name: Put the two files, then the version file
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+          MACOS_SHA256: ${{ needs.cli.outputs.macos_sha256 }}
+          LINUX_SHA256: ${{ needs.cli.outputs.linux_sha256 }}
+          PUBLIC: https://releases.anima.ing
+        run: |
+          set -eu
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          cd cli
+          {
+            echo "$MACOS_SHA256  anima-darwin-universal.tar.gz"
+            echo "$LINUX_SHA256  anima-linux-x86_64.tar.gz"
+          } > expected
+          sha256sum --check --strict expected
+          cmp expected SHA256SUMS
+          bucket() { aws s3api "$@" --endpoint-url "$ENDPOINT" --bucket anima-releases; }
+          # put <file> <key> <content type> <cache control>
+          put() {
+            if bucket head-object --key "$2" > /dev/null 2>&1; then
+              bucket get-object --key "$2" held > /dev/null
+              if cmp -s held "$1"; then echo "$2 is there with the same bytes"; return 0; fi
+              echo "::error::The bucket holds $2 with other bytes."
+              return 1
+            fi
+            bucket put-object --key "$2" --body "$1" --content-type "$3" --cache-control "$4" > /dev/null
+            curl -fsS --retry 3 -o read-back "$PUBLIC/$2"
+            cmp read-back "$1"
+          }
+          put anima-linux-x86_64.tar.gz "anima/$VERSION/anima-linux-x86_64.tar.gz" application/gzip "public, max-age=31536000, immutable"
+          put anima-darwin-universal.tar.gz "anima/$VERSION/anima-darwin-universal.tar.gz" application/gzip "public, max-age=31536000, immutable"
+          put SHA256SUMS "anima/$VERSION/SHA256SUMS" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
+          bucket put-object --key anima/latest.json --body latest.json --content-type application/json --cache-control no-cache > /dev/null
+          curl -fsS --retry 3 "$PUBLIC/anima/latest.json" | jq -e --arg version "$VERSION" '.version == $version' > /dev/null
+          echo "anima $VERSION is in the bucket"
+
+  # The formula goes to the tap of the operator (R-208), with a key that can write only to
+  # that repository. No code of this repository: the formula is the file of the job `cli`.
+  tap:
+    needs: [commit, cli, cli-publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release-tap
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cli
+          path: cli
+      - name: Push the formula to TheArctesian/homebrew-anima
+        env:
+          TAP_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          FORMULA_SHA256: ${{ needs.cli.outputs.formula_sha256 }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$TAP_KEY" ]; then
+            echo "::error::HOMEBREW_TAP_DEPLOY_KEY is not set in the environment release-tap."
+            exit 1
+          fi
+          echo "$FORMULA_SHA256  cli/anima.rb" | sha256sum --check --strict
+          keys=$(mktemp -d "$RUNNER_TEMP/keys.XXXXXX")
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s\n' "$TAP_KEY" > "$keys/tap"
+          # The host key of github.com (docs.github.com, "GitHub's SSH key fingerprints").
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$keys/known"
+          export GIT_SSH_COMMAND="ssh -i $keys/tap -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$keys/known"
+          git clone --quiet --depth 1 git@github.com:TheArctesian/homebrew-anima.git tap
+          mkdir -p tap/Formula
+          cp cli/anima.rb tap/Formula/anima.rb
+          cd tap
+          git add Formula/anima.rb
+          if git diff --cached --quiet; then echo "The tap already has this formula."; exit 0; fi
+          git -c user.name="Anima release" -c user.email="release@anima.ing" commit --quiet -m "anima $VERSION"
+          git push --quiet origin HEAD:refs/heads/main
+          echo "The tap has the formula of $VERSION"
+
+  # The crate `anima-cli` on crates.io, with the version of the release (R-209). A version on
+  # crates.io is permanent: it runs last, after the files of the same version are public. The
+  # token is in one step only, and that step builds nothing (`--no-verify`): the package is
+  # built in the step before, with no token.
+  crate:
+    needs: [commit, cli, cli-publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: release-crate
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - name: Install the packages that the key store of anima needs to build
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libdbus-1-dev pkg-config
+      - id: package
+        name: Write the version and build the package, with no token
+        run: |
+          set -eu
+          if curl -fsS --retry 3 https://index.crates.io/an/im/anima-cli 2> /dev/null | jq -e --arg version "$VERSION" 'select(.vers == $version)' > /dev/null; then
+            echo "crates.io already has anima-cli $VERSION."
+            echo "there=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sh deploy/bin/crate-version "$VERSION"
+          cargo package -p anima-cli --locked --allow-dirty
+          echo "there=false" >> "$GITHUB_OUTPUT"
+      - name: Publish the crate
+        if: steps.package.outputs.there == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is not set in the environment release-crate."
+            exit 1
+          fi
+          cargo publish -p anima-cli --locked --allow-dirty --no-verify
 
   # Only for a run by hand. Each check of `publish` that needs no bucket; no token, and
   # nothing is published.

@@ -1,0 +1,31 @@
+#!/bin/sh
+# Writes the version of a release into the package `anima-cli`, so that the crate that is
+# published has the version of the release (INS-012, R-209; task B8h). A crate takes its
+# version only from Cargo.toml; the repository keeps `version.workspace = true` there, and no
+# commit holds the result of this command.
+#
+#   crate-version <version>     run it in the root of the repository
+#
+# It changes two places: the `version` line of crates/anima-cli/Cargo.toml, and the entry of
+# `anima-cli` in Cargo.lock, so that `cargo package --locked` still passes.
+set -eu
+
+refuse() { echo "crate-version: $1" >&2; exit 1; }
+[ $# -eq 1 ] || refuse "give one version"
+VERSION=$1
+echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || refuse "the version is not like 0.8.15"
+MANIFEST=crates/anima-cli/Cargo.toml
+[ -f "$MANIFEST" ] && [ -f Cargo.lock ] || refuse "run it in the root of the repository"
+[ "$(grep -c '^version\.workspace = true$' "$MANIFEST")" = 1 ] || refuse "$MANIFEST has no line version.workspace = true"
+[ "$(grep -c '^name = "anima-cli"$' Cargo.lock)" = 1 ] || refuse "Cargo.lock has no one entry of anima-cli"
+
+awk -v version="$VERSION" '
+    $0 == "version.workspace = true" && !done { print "version = \"" version "\""; done = 1; next }
+    { print }
+' "$MANIFEST" > "$MANIFEST.new" && mv "$MANIFEST.new" "$MANIFEST"
+# The line after the name of the package in the lock file is its version.
+awk -v version="$VERSION" '
+    after { print "version = \"" version "\""; after = 0; next }
+    $0 == "name = \"anima-cli\"" { after = 1 }
+    { print }
+' Cargo.lock > Cargo.lock.new && mv Cargo.lock.new Cargo.lock
