@@ -4,6 +4,7 @@
 
 mod detail;
 mod docker;
+mod egress;
 mod names;
 mod project;
 mod reads;

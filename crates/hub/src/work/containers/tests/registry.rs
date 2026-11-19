@@ -17,7 +17,10 @@ use tokio::{
 };
 use tokio_rustls::TlsAcceptor;
 
-use crate::work::containers::updates::egress::Egress;
+use crate::work::containers::updates::{
+    egress::Egress,
+    registry::{Named, Reference, named},
+};
 
 /// The token the stand-in gives.
 pub(super) const TOKEN: &str = "anonymous-reader-token";
@@ -140,4 +143,37 @@ async fn respond(
     let mut stream = lines.into_inner().into_inner();
     let _ = stream.write_all(&bytes).await;
     let _ = stream.shutdown().await;
+}
+
+pub(super) const OLD: &str =
+    "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf";
+pub(super) const NEW: &str =
+    "sha256:3136cbb572a3282f84719ef92f23b8528ea461e632965f72699e2301343339c0";
+
+pub(super) fn reference(image: &str) -> Reference {
+    match named(image) {
+        Named::Tag(reference) => reference,
+        other => panic!("{image}: {other:?}"),
+    }
+}
+
+/// A stand-in that knows two tags and refuses a third.
+pub(super) async fn known() -> Registry {
+    serve(|method, path| match (method, path) {
+        ("GET", path) if path.starts_with("/token?") => token(),
+        ("HEAD", "/v2/library/alpine/manifests/3") => manifest(OLD),
+        (
+            "HEAD",
+            "/v2/freikin/dawarich/manifests/latest" | "/v2/prometheus/prometheus/manifests/latest",
+        ) => manifest(NEW),
+        ("HEAD", "/v2/team/private/manifests/1") => answer("401 Unauthorized", ""),
+        ("HEAD", "/v2/library/moved/manifests/1") => answer(
+            "307 Temporary Redirect",
+            "Location: /v2/library/alpine/manifests/3
+",
+        ),
+        ("HEAD", "/v2/library/odd/manifests/1") => manifest("sha256:not-a-digest"),
+        _ => answer("404 Not Found", ""),
+    })
+    .await
 }

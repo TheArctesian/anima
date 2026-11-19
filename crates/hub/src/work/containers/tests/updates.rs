@@ -5,134 +5,12 @@ use sqlx::PgPool;
 
 use super::{
     SECRET, device, execs, exiting, policy, reach,
-    registry::{TOKEN, answer, manifest, serve, token},
+    registry::{NEW, OLD, answer, known, serve},
 };
 use crate::{
     fleet::ssh::CommandOutput,
-    work::containers::{
-        Error, ImageUpdate, NotKnown, UpdateState, image_updates_through,
-        updates::{
-            self,
-            egress::{Egress, FetchError},
-            registry::{Named, Reference, named},
-        },
-    },
+    work::containers::{Error, ImageUpdate, NotKnown, UpdateState, image_updates_through, updates},
 };
-
-const OLD: &str = "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf";
-const NEW: &str = "sha256:3136cbb572a3282f84719ef92f23b8528ea461e632965f72699e2301343339c0";
-
-fn reference(image: &str) -> Reference {
-    match named(image) {
-        Named::Tag(reference) => reference,
-        other => panic!("{image}: {other:?}"),
-    }
-}
-
-/// A stand-in that knows two tags and refuses a third.
-async fn registry() -> super::registry::Registry {
-    serve(|method, path| match (method, path) {
-        ("GET", path) if path.starts_with("/token?") => token(),
-        ("HEAD", "/v2/library/alpine/manifests/3") => manifest(OLD),
-        (
-            "HEAD",
-            "/v2/freikin/dawarich/manifests/latest" | "/v2/prometheus/prometheus/manifests/latest",
-        ) => manifest(NEW),
-        ("HEAD", "/v2/team/private/manifests/1") => answer("401 Unauthorized", ""),
-        ("HEAD", "/v2/library/moved/manifests/1") => answer(
-            "307 Temporary Redirect",
-            "Location: /v2/library/alpine/manifests/3
-",
-        ),
-        ("HEAD", "/v2/library/odd/manifests/1") => manifest("sha256:not-a-digest"),
-        _ => answer("404 Not Found", ""),
-    })
-    .await
-}
-
-#[tokio::test]
-async fn host_021_the_hub_asks_for_a_token_with_no_account_then_for_the_head_of_the_manifest() {
-    let registry = registry().await;
-    let egress = registry.egress();
-    assert_eq!(
-        egress.digest(&reference("alpine:3")).await,
-        Ok(OLD.to_owned())
-    );
-    let heads = registry.heads();
-    assert_eq!(heads.len(), 2, "{heads:?}");
-    let asked = "GET /token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull ";
-    assert!(heads[0].starts_with(asked), "{heads:?}");
-    // The request for a token sends no credential.
-    assert!(
-        !heads[0].to_lowercase().contains("authorization"),
-        "{heads:?}"
-    );
-    assert!(
-        heads[1].starts_with("HEAD /v2/library/alpine/manifests/3 "),
-        "{heads:?}"
-    );
-    let lower = heads[1].to_lowercase();
-    assert!(lower.contains(&format!("authorization: bearer {}", TOKEN.to_lowercase())));
-    assert!(
-        lower.contains("application/vnd.oci.image.index.v1+json"),
-        "{heads:?}"
-    );
-    assert!(!lower.contains("cookie"), "{heads:?}");
-}
-
-#[tokio::test]
-async fn host_021_a_registry_that_asks_for_no_token_gets_one_request() {
-    let registry = registry().await;
-    let read = registry
-        .egress()
-        .digest(&reference("quay.io/prometheus/prometheus"))
-        .await;
-    assert_eq!(read, Ok(NEW.to_owned()));
-    assert_eq!(
-        registry.lines(),
-        ["HEAD /v2/prometheus/prometheus/manifests/latest HTTP/1.1"]
-    );
-    assert!(!registry.heads()[0].to_lowercase().contains("authorization"));
-}
-
-#[tokio::test]
-async fn host_021_a_private_or_unknown_tag_is_not_there_and_no_redirect_is_followed() {
-    let registry = registry().await;
-    let egress = registry.egress();
-    for gone in ["ghcr.io/team/private:1", "alpine:nosuchtag"] {
-        assert_eq!(
-            egress.digest(&reference(gone)).await,
-            Err(FetchError::NotThere),
-            "{gone}"
-        );
-    }
-    let before = registry.heads().len();
-    assert_eq!(
-        egress.digest(&reference("moved:1")).await,
-        Err(FetchError::Failed)
-    );
-    // The token and the one manifest request; the redirect led to no third request.
-    assert_eq!(registry.heads().len(), before + 2);
-    assert_eq!(
-        egress.digest(&reference("odd:1")).await,
-        Err(FetchError::Failed)
-    );
-}
-
-#[tokio::test]
-async fn host_021_a_registry_at_an_address_the_policy_refuses_is_not_connected_to() {
-    let registry = registry().await;
-    // The same server and the same trusted certificate as the tests that reach it: only the
-    // policy differs. The default policy refuses loopback, where the stand-in listens.
-    let (origin, root) = registry.place();
-    let refused =
-        Egress::new(crate::fleet::targets::AddressPolicy::default()).standing_in(origin, root);
-    assert_eq!(
-        refused.digest(&reference("alpine:3")).await,
-        Err(FetchError::Failed)
-    );
-    assert_eq!(registry.heads(), [] as [String; 0]);
-}
 
 /// What the device writes: seven containers and the digests of four tags.
 fn listed() -> String {
@@ -181,7 +59,7 @@ fn verdicts(updates: &[ImageUpdate]) -> Vec<(&str, UpdateState, Option<NotKnown>
 
 #[tokio::test]
 async fn host_021_each_container_has_the_answer_for_the_tag_it_names() {
-    let registry = registry().await;
+    let registry = known().await;
     let found = updates::found(&output(&listed(), 0)).unwrap();
     let read = updates::compare(found, &registry.egress()).await;
     let expected = [
@@ -246,7 +124,7 @@ async fn host_021_a_registry_that_is_not_read_is_no_error_and_one_tag_is_asked_f
 
 #[tokio::test]
 async fn host_021_a_tag_with_two_digests_is_up_to_date_when_the_registry_gives_one_of_them() {
-    let registry = registry().await;
+    let registry = known().await;
     // Docker writes one line for each digest it keeps for a tag. The registry gives OLD for
     // `alpine:3` and NEW for `freikin/dawarich`; each is the second digest of its tag here.
     let more = concat!(
@@ -265,60 +143,6 @@ async fn host_021_a_tag_with_two_digests_is_up_to_date_when_the_registry_gives_o
     assert_eq!(
         (read[1].state, read[1].local_digest.as_deref()),
         (UpdateState::UpToDate, Some(NEW))
-    );
-}
-
-#[tokio::test]
-async fn host_021_a_token_endpoint_that_refuses_is_a_registry_that_was_not_read() {
-    let registry = serve(|_, _| answer("403 Forbidden", "")).await;
-    let read = registry.egress().digest(&reference("alpine:3")).await;
-    assert_eq!(read, Err(FetchError::Failed));
-}
-
-#[test]
-fn host_021_each_request_goes_to_the_fixed_host_of_the_registry_of_the_name() {
-    let egress = Egress::new(crate::fleet::targets::AddressPolicy::default());
-    let places = |image: &str| {
-        let reference = reference(image);
-        let token = egress.token_url(&reference).unwrap().map(String::from);
-        (
-            token,
-            String::from(egress.manifest_url(&reference).unwrap()),
-        )
-    };
-    let scope = "scope=repository%3Alibrary%2Falpine%3Apull";
-    assert_eq!(
-        places("alpine:3"),
-        (
-            Some(format!(
-                "https://auth.docker.io/token?service=registry.docker.io&{scope}"
-            )),
-            "https://registry-1.docker.io/v2/library/alpine/manifests/3".to_owned()
-        )
-    );
-    assert_eq!(
-        places("ghcr.io/a/b.c:v1_x"),
-        (
-            Some(
-                "https://ghcr.io/token?service=ghcr.io&scope=repository%3Aa%2Fb.c%3Apull"
-                    .to_owned()
-            ),
-            "https://ghcr.io/v2/a/b.c/manifests/v1_x".to_owned()
-        )
-    );
-    assert_eq!(
-        places("quay.io/prometheus/prometheus"),
-        (
-            None,
-            "https://quay.io/v2/prometheus/prometheus/manifests/latest".to_owned()
-        )
-    );
-    assert_eq!(
-        places("mcr.microsoft.com/dotnet/runtime:8.0"),
-        (
-            None,
-            "https://mcr.microsoft.com/v2/dotnet/runtime/manifests/8.0".to_owned()
-        )
     );
 }
 
@@ -348,7 +172,7 @@ fn host_021_an_answer_of_the_device_that_is_not_the_format_is_an_error() {
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
 )]
 async fn host_021_the_device_hears_one_fixed_read_only_command_and_nothing_is_pulled(pool: PgPool) {
-    let registry = registry().await;
+    let registry = known().await;
     let bench = device(&pool, exiting(&listed(), 0)).await;
     let policy = policy();
     let now = crate::fleet::ssh::tests::fixture::now();
