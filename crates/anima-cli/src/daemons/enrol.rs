@@ -7,7 +7,7 @@ use super::documents::{DaemonEnrol, daemon_enrol};
 use crate::devices::get::resolve;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::one_time_secret::{Secret, ToFile, show_once};
+use crate::one_time_secret::{Secret, ToFile, Works, show_once};
 
 #[derive(Debug, clap::Args)]
 pub struct EnrolArgs {
@@ -35,6 +35,7 @@ impl EnrolArgs {
             field: "code",
             value: &enrolment.code,
             to_file: &ToFile::default(),
+            works: Works::Once,
         };
         show_once(
             invocation,

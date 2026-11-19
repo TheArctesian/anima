@@ -64,6 +64,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
+| HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -871,6 +872,43 @@ viewer of the operating system, a real network, and a hub that runs as the insta
    `shasum -a 256`. Expected: the same hash. Then try a file larger than 256 MB. Expected: the upload is
    refused, and no new piece is in `files/`.
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
+
+Result: Open.
+
+### HT-040: a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145)
+
+Built: on the branch `engine/e0-5-locations`. The hub takes location samples on
+`POST /locations/v1/owntracks` with an ingest token, and from `anima location import`; it seals each
+position with the sealing key `locations` of `ANIMA_DATA_KEY_DIR`. Each transfer of the files tunnel
+gets a context, and `anima location context <event>` shows it with the evidence for where the
+operator was.
+
+The tests use posts that the test makes, a stopped clock and an SSH server of the test. Not covered:
+the OwnTracks app on a real phone, a real network between the phone and the hub, a real fix of a
+phone, and a transfer through the client between real devices.
+
+1. Run `anima location token add Phone`. Expected: one line with a token that starts with `anl_`, and
+   the note that it is shown one time.
+2. In the OwnTracks app select the HTTP mode. Give the address `<hub>/locations/v1/owntracks`, a user
+   name of your choice, and the token as the password. Send one fix by hand. Expected: the app shows
+   no error.
+3. Run `anima location list`. Expected: one row with the provider `OWNTRACKS`, the time of the fix
+   in OBSERVED, your latitude and longitude, and the accuracy that the phone gave.
+4. Run `anima place add` for the place where you are, with a radius of 100 m, and link the site of a
+   device to a different place with `anima place site`.
+5. Send one more fix from the app. In less than 2 minutes, download a file from that device in the
+   files window of the client. Run `anima event list` and find the event "An operator downloaded a
+   file from the device." Run `anima location context <event>`. Expected: `source place` is the place
+   of the site of the device; the three lines of `destination` say `unknown`; `operator evidence`
+   says "a sample at the time"; `operator place` is the place where you are, not the place of the
+   device.
+6. Wait 15 minutes and send no fix. Download a file again and run `anima location context` for the
+   new event. Expected: `operator evidence` says "unknown: no sample within 10 minutes", and
+   `operator place` says `unknown`. The context of the event of step 5 did not change.
+7. Run `anima location token revoke <id>`, then send a fix from the app. Expected: the app shows an
+   error (401), and `anima location list` shows no new row.
+8. Run `anima event list` and `anima audit list`. Expected: no line holds a latitude, a longitude or
+   the token.
 
 Result: Open.
 

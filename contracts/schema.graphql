@@ -3029,6 +3029,115 @@ input ProposeExtractionInput {
   fields: [ExtractedFieldInput!]!
 }
 
+# Location samples and the context of a transfer event (R-145, R-146; K-E4 Sections 11 to 13)
+
+"Where a location sample came from. Its identity stays with the sample (R-145)."
+enum LocationProvider {
+  DAWARICH
+  OWNTRACKS
+  ANIMA
+}
+
+"One observation of the position of the operator's phone (K-E4 Section 11). Each number is null when the provider gave none: unknown, not exact. The newest sample is not the position of a past event."
+type LocationSample {
+  id: ID!
+  provider: LocationProvider!
+  "The source account, the ingest token or the operator that gave the sample."
+  account: String!
+  "The identity that the provider gives the sample. The same sample again is not stored twice."
+  key: String!
+  "The time of the fix as the provider gave it; a late import keeps it. Null when the provider gave none."
+  observedAt: DateTime
+  "The time of the hub when the sample arrived."
+  receivedAt: DateTime!
+  latitude: Float
+  longitude: Float
+  accuracyM: Float
+  altitudeM: Float
+  speedMps: Float
+}
+
+"One sample of an Anima phone app."
+input LocationSampleInput {
+  "The identifier that the app made for the sample: one line of 1 to 200 characters."
+  key: String!
+  observedAt: DateTime
+  "Given together with longitude."
+  latitude: Float
+  longitude: Float
+  accuracyM: Float
+  altitudeM: Float
+  speedMps: Float
+}
+
+"An ingest token of the OwnTracks path (POST /locations/v1/owntracks); never its value."
+type LocationIngestToken {
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+  lastUsedAt: DateTime
+  revokedAt: DateTime
+}
+
+"A new ingest token with its value, which the hub shows this one time."
+type IssuedLocationIngestToken {
+  ingestToken: LocationIngestToken!
+  token: String!
+}
+
+"Which way the bytes of a transfer went, seen from the device."
+enum TransferDirection {
+  UPLOAD
+  DOWNLOAD
+}
+
+"Who started a transfer, from the token of the call: HUMAN a login of the operator, AGENT an AI agent, SYSTEM the code of Anima."
+enum TransferActorKind {
+  HUMAN
+  AGENT
+  SYSTEM
+}
+
+"How good the evidence for the position of the operator is (R-145): AT_THE_TIME a sample not more than 2 minutes from the event; NEAREST_INFERRED the nearest sample not more than 10 minutes from it; UNKNOWN no such sample."
+enum LocationEvidenceBasis {
+  AT_THE_TIME
+  NEAREST_INFERRED
+  UNKNOWN
+}
+
+"One side of a transfer as it was at the event: a device, its site and the place of that site (configured, not measured). Each is null when the hub did not know it: unknown, not the hub."
+type TransferEnd {
+  deviceId: ID
+  siteId: ID
+  placeId: ID
+}
+
+"Where the operator was at an event, as far as the samples say. It is computed at the read and never stored. It is separate from the places of the devices."
+type OperatorLocationEvidence {
+  basis: LocationEvidenceBasis!
+  sampleId: ID
+  "The time of the sample less the time of the event, in seconds."
+  offsetSeconds: Int
+  "The sample has no accuracy, or an accuracy worse than 200 m."
+  uncertain: Boolean!
+  "Given only for AT_THE_TIME with a sample that is not uncertain: an inferred or uncertain sample is never a confirmed place."
+  placeId: ID
+}
+
+"The context of one file transfer over SSH or SFTP (K-E4 Section 12). The transfer is one event of the event log; both devices show the same event."
+type TransferContext {
+  eventId: ID!
+  occurredAt: DateTime!
+  direction: TransferDirection!
+  source: TransferEnd!
+  destination: TransferEnd!
+  actorKind: TransferActorKind!
+  actor: String
+  "The device of the client that asked, when the hub knows it."
+  clientDeviceId: ID
+  operator: OperatorLocationEvidence!
+}
+
 "A place (K-E4 Section 8; PLC-001 to PLC-006). Its reference is place:<id>."
 type Place {
   id: ID!
@@ -3183,6 +3292,14 @@ type Query {
   attachments(owner: String!): [Attachment!]!
   "The proposals of owner (or of every record) in state (or any), newest first, at most 200."
   extractionProposals(owner: String, state: ProposalState): [ExtractionProposal!]!
+
+  # Location samples and the context of a transfer event (R-145; K-E4 Section 13)
+  "The samples observed from from to to, oldest first, at most first (1 to 1000; 1000 when not given). VALIDATION when to is not after from or the span is longer than 31 days. Each read writes one audit entry with the span and the count, not the positions. UNAVAILABLE when the hub has no sealing keys."
+  locationSamples(from: DateTime!, to: DateTime!, first: Int): [LocationSample!]!
+  "The ingest tokens of the OwnTracks path, newest first, without their values."
+  locationIngestTokens: [LocationIngestToken!]!
+  "The context of a transfer event: the stored roles, and the evidence for the position of the operator, computed at the read. Null when the event is not a transfer."
+  transferContext(event: ID!): TransferContext
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "The places that are not merged, by name."
@@ -3425,6 +3542,14 @@ type Mutation {
   confirmExtraction(id: ID!, fields: [ExtractedFieldInput!]!): ExtractionProposal!
   "Rejects a proposal. NOT_FOUND; CONFLICT when it is decided."
   rejectExtraction(id: ID!): ExtractionProposal!
+
+  # Location samples (R-145; K-E4 Sections 11 and 13)
+  "Stores samples of an Anima phone app, at most 500 in one call, and returns how many were new. Safe to repeat. VALIDATION with extensions.fields; UNAVAILABLE when the hub has no sealing keys."
+  recordLocationSamples(samples: [LocationSampleInput!]!): Int!
+  "Login or browser token only (D-23, R-100). Makes an ingest token for the OwnTracks path and shows its value this one time. VALIDATION for a name that is not one line of 1 to 64 characters."
+  createLocationIngestToken(name: String!): IssuedLocationIngestToken!
+  "Revokes an ingest token: the OwnTracks path refuses it from now on. NOT_FOUND."
+  revokeLocationIngestToken(id: ID!): LocationIngestToken!
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."

@@ -3,8 +3,8 @@
 
 use crate::ids::{
     ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-    OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId, ReleaseId,
-    RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
+    IngestTokenId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId,
+    ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
 };
 
 /// The thing an audited action changed.
@@ -59,6 +59,11 @@ pub enum AuditTarget {
     Place(PlaceId),
     /// An operational key, its versions and its consumers (R-147); never its value.
     OperationalKey(OperationalKeyId),
+    /// The location samples: a batch that was stored or a span that was read. It has no id
+    /// of its own; the change holds counts and times, never a position (K-E4 Section 13).
+    LocationSamples,
+    /// An ingest token of the OwnTracks path; never its value (K-E4 Section 11).
+    IngestToken(IngestTokenId),
 }
 
 impl AuditTarget {
@@ -92,6 +97,8 @@ impl AuditTarget {
             Self::ExtractionProposal(_) => "extraction_proposal",
             Self::Place(_) => "place",
             Self::OperationalKey(_) => "operational_key",
+            Self::LocationSamples => "location_samples",
+            Self::IngestToken(_) => "location_ingest_token",
         }
     }
 
@@ -124,6 +131,8 @@ impl AuditTarget {
             Self::ExtractionProposal(id) => id.to_string(),
             Self::Place(id) => id.to_string(),
             Self::OperationalKey(id) => id.to_string(),
+            Self::LocationSamples => "location_samples".to_owned(),
+            Self::IngestToken(id) => id.to_string(),
         }
     }
 }

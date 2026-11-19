@@ -62,7 +62,8 @@
       "credentials",
       "events",
       "ssh",
-      "trust"
+      "trust",
+      "locations"
     ],
     "ssh": [
       "devices",
@@ -134,6 +135,11 @@
       "devices",
       "ssh",
       "credentials"
+    ],
+    "locations": [
+      "places",
+      "events",
+      "access"
     ]
   },
   "graphql": {
@@ -209,6 +215,9 @@
       "access"
     ],
     "files": [
+      "access"
+    ],
+    "locations": [
       "access"
     ]
   }

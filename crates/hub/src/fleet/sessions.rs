@@ -32,6 +32,7 @@ use sqlx::PgPool;
 
 use crate::{
     api_errors::field_names,
+    engine::locations,
     fleet::{
         credentials,
         devices::{self, Device},
@@ -141,6 +142,9 @@ pub enum Error {
     Random(#[source] getrandom::Error),
     #[error("database error")]
     Database(#[from] sqlx::Error),
+    /// The context of a transfer event could not be stored (K-E4 Section 12).
+    #[error("transfer context store error")]
+    Context(#[from] locations::Error),
 }
 
 /// The device, or `NotFound` for it.

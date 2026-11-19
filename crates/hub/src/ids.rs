@@ -108,6 +108,10 @@ entity_id! {
     OperationalKeyId,
     /// One version of an operational key; its id is in the context of its sealed value.
     OperationalKeyVersionId,
+    /// One location sample of the operator's phone (K-E4 Section 11).
+    SampleId,
+    /// An ingest token of the OwnTracks path (K-E4 Section 11).
+    IngestTokenId,
 }
 
 #[cfg(test)]

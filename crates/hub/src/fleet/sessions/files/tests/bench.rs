@@ -165,4 +165,34 @@ impl Bench {
         .await
         .unwrap()
     }
+
+    /// Every transfer context, oldest first, each as its row with `eventStored`: whether the
+    /// event log holds its event (K-E4 Section 12).
+    pub(super) async fn contexts(&self) -> Vec<Value> {
+        sqlx::query_scalar(
+            "select to_jsonb(c) || jsonb_build_object('eventStored', exists( \
+             select 1 from events.event_log e where e.id = c.event_id)) \
+             from locations.transfer_context c order by occurred_at, event_id",
+        )
+        .fetch_all(&self.db)
+        .await
+        .unwrap()
+    }
+
+    /// Links the site of the device to a new place and returns `(device, site, place)`.
+    pub(super) async fn sited(&self) -> (String, String, String) {
+        sqlx::query_as(
+            "with made as (insert into places.place \
+             (id, name, latitude, longitude, radius_m, category, icon, created_at, updated_at) \
+             values (gen_random_uuid(), 'Office', 52.0, 4.0, 100, 'work', 'desk', now(), now()) \
+             returning id), linked as (insert into places.site_place (site_id, place_id) \
+             select d.site_id, made.id from devices.devices d, made where d.name = 'docker-host' \
+             returning site_id, place_id) \
+             select d.id::text, l.site_id::text, l.place_id::text \
+             from devices.devices d, linked l where d.name = 'docker-host'",
+        )
+        .fetch_one(&self.db)
+        .await
+        .unwrap()
+    }
 }

@@ -16,7 +16,7 @@ use super::{
 use crate::{
     api_errors::schema_dependency,
     clock::Clock,
-    ids::{DeviceId, OperatorId},
+    ids::{DeviceId, EventId, OperatorId},
 };
 
 /// One change's entry in both logs.
@@ -82,6 +82,16 @@ impl<'a> Trail<'a> {
 
     /// Writes the audit entry, then the event. The caller commits both with its own write.
     ///
+    /// # Errors
+    ///
+    /// `Error::Database` if either row cannot be written; the caller rolls back.
+    pub async fn write(self, conn: &mut PgConnection, entry: TrailEntry) -> Result<(), Error> {
+        self.write_event(conn, entry).await.map(drop)
+    }
+
+    /// As [`Trail::write`], and gives the ID of the event, for a domain that keeps a row about
+    /// the event (K-E4 Section 12).
+    ///
     /// The event goes last because `record` publishes it on the bus at once (D-5): if the
     /// audit write fails, no subscriber has seen an event for a change that is rolled back. A
     /// commit that fails after this still publishes an event that is not stored; the stored
@@ -90,7 +100,11 @@ impl<'a> Trail<'a> {
     /// # Errors
     ///
     /// `Error::Database` if either row cannot be written; the caller rolls back.
-    pub async fn write(self, conn: &mut PgConnection, entry: TrailEntry) -> Result<(), Error> {
+    pub async fn write_event(
+        self,
+        conn: &mut PgConnection,
+        entry: TrailEntry,
+    ) -> Result<EventId, Error> {
         let actor = self.operator.actor.kind();
         let row = NewAudit {
             operator: self.operator,
@@ -107,6 +121,6 @@ impl<'a> Trail<'a> {
             message: entry.message,
             actor,
         };
-        record(conn, self.bus, self.now, event).await.map(drop)
+        record(conn, self.bus, self.now, event).await
     }
 }

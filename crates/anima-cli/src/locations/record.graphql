@@ -1,0 +1,3 @@
+mutation LocationRecord($samples: [LocationSampleInput!]!) {
+  recordLocationSamples(samples: $samples)
+}

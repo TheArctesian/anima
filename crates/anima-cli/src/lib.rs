@@ -26,6 +26,7 @@ pub mod invocation;
 pub mod issues;
 pub mod keys;
 pub mod link;
+pub mod locations;
 pub mod maintenance;
 pub mod mcp;
 pub mod notifications;
