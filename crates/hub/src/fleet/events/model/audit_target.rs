@@ -4,7 +4,7 @@
 use crate::ids::{
     ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
     IngestTokenId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId,
-    ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
+    ReleaseId, ReminderRuleId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
 };
 
 /// The thing an audited action changed.
@@ -64,6 +64,8 @@ pub enum AuditTarget {
     LocationSamples,
     /// An ingest token of the OwnTracks path; never its value (K-E4 Section 11).
     IngestToken(IngestTokenId),
+    /// A reminder rule (K-E6 Section 2).
+    ReminderRule(ReminderRuleId),
 }
 
 impl AuditTarget {
@@ -99,6 +101,7 @@ impl AuditTarget {
             Self::OperationalKey(_) => "operational_key",
             Self::LocationSamples => "location_samples",
             Self::IngestToken(_) => "location_ingest_token",
+            Self::ReminderRule(_) => "reminder_rule",
         }
     }
 
@@ -133,6 +136,7 @@ impl AuditTarget {
             Self::OperationalKey(id) => id.to_string(),
             Self::LocationSamples => "location_samples".to_owned(),
             Self::IngestToken(id) => id.to_string(),
+            Self::ReminderRule(id) => id.to_string(),
         }
     }
 }

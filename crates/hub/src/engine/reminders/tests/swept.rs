@@ -21,17 +21,6 @@ fn seal() -> (Seal, tempfile::TempDir) {
     (Seal::new(keys), folder)
 }
 
-async fn add(pool: &PgPool, rule: Rule) {
-    let stored = StoredRule {
-        created_at: rule.updated_at,
-        rule,
-        channels: Vec::new(),
-        enabled: true,
-    };
-    let mut conn = pool.acquire().await.unwrap();
-    add_rule(&mut conn, &stored).await.unwrap();
-}
-
 /// A top-level place of 100 m around 52.0, 4.0.
 async fn add_home(pool: &PgPool) -> PlaceId {
     sqlx::query(

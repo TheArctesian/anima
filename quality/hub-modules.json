@@ -226,6 +226,9 @@
     ],
     "locations": [
       "access"
+    ],
+    "reminders": [
+      "access"
     ]
   }
 }

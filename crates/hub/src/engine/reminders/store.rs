@@ -7,8 +7,10 @@ use serde_json::Value;
 use sqlx::{PgConnection, types::Json};
 use uuid::Uuid;
 
+mod rules;
 mod sweeping;
 
+pub(super) use rules::{activity, answer, delete_rule, firing, firings, rule, rules, write_rule};
 pub(super) use sweeping::{cursor, lock_sweep, place_states, put_place_state, set_cursor};
 
 use super::{
@@ -128,7 +130,7 @@ pub(super) async fn history(
 ) -> Result<History, sqlx::Error> {
     let (last_fired, fired_today): (Option<DateTime<Utc>>, i64) = sqlx::query_as(
         "SELECT max(due_at), count(*) FILTER (WHERE due_at >= $2) FROM reminders.firing \
-         WHERE rule_id = $1 AND state <> 'suppressed'",
+         WHERE rule_id = $1 AND state <> 'suppressed' AND subject NOT LIKE 'test:%'",
     )
     .bind(rule)
     .bind(day_start)
@@ -216,6 +218,16 @@ pub(super) async fn remember(
     .execute(conn)
     .await
     .map(drop)
+}
+
+/// The class whose stored text is `text`.
+fn class(text: &str) -> Option<Class> {
+    match text {
+        "A" => Some(Class::A),
+        "B" => Some(Class::B),
+        "C" => Some(Class::C),
+        _ => None,
+    }
 }
 
 /// A firing with the state of its rule, locked for the send.

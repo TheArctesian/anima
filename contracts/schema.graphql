@@ -11,7 +11,7 @@
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
 scalar Cidr # "10.10.0.0/24"
-scalar JSON # only for audit change records
+scalar JSON # audit change records, and the trigger and unless of a reminder rule (K-E6 Section 2)
 
 directive @oneOf on INPUT_OBJECT
 
@@ -3140,6 +3140,71 @@ type TransferContext {
   operator: OperatorLocationEvidence!
 }
 
+# Reminders (R-148; K-E6 Sections 2, 3, 5 and 6; REM-001 to REM-010)
+
+"A reminder rule. trigger and unless are JSON in the stored form of K-E6 Section 2: one trigger with its type (time, place, source_event, source_state, threshold, expiry) and its fields."
+type ReminderRule {
+  id: ID!
+  name: String!
+  "The text of the reminder; {title} is the title of what it is about."
+  message: String!
+  trigger: JSON!
+  "The one condition that stops the reminder (REM-003): record_today or measure."
+  unless: JSON
+  cooldownMinutes: Int!
+  dailyLimit: Int!
+  "Empty: each notification channel that is on by default."
+  channelIds: [ID!]!
+  enabled: Boolean!
+  "Each change adds 1. A firing of an older revision is not sent (REM-005)."
+  revision: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  "The time of the newest firing; null when the rule did not fire."
+  lastFiringAt: DateTime
+  "The firings of the day of UTC that were not suppressed."
+  firedToday: Int!
+}
+
+input ReminderRuleInput {
+  "One line of 1 to 80 characters."
+  name: String!
+  "One line of 1 to 200 characters."
+  message: String!
+  trigger: JSON!
+  unless: JSON
+  "1 to 10080 (REM-004)."
+  cooldownMinutes: Int! = 60
+  "1 to 100 (REM-004)."
+  dailyLimit: Int! = 3
+  "At most 20. Empty or not given: each channel that is on by default."
+  channelIds: [ID!]
+  enabled: Boolean! = true
+}
+
+enum ReminderFiringState {
+  PENDING
+  SENT
+  SUPPRESSED
+  SNOOZED
+  ACKNOWLEDGED
+}
+
+"One firing of a rule. A rule fires at most one time for one subject."
+type ReminderFiring {
+  id: ID!
+  ruleId: ID!
+  subject: String!
+  text: String!
+  state: ReminderFiringState!
+  "Why a suppressed firing was not sent: cooldown, daily_limit, rule_changed, topic_not_random or no_channel."
+  reason: String
+  dueAt: DateTime!
+  sentAt: DateTime
+  snoozedUntil: DateTime
+  decidedAt: DateTime
+}
+
 "A place (K-E4 Section 8; PLC-001 to PLC-006). Its reference is place:<id>."
 type Place {
   id: ID!
@@ -3302,6 +3367,14 @@ type Query {
   locationIngestTokens: [LocationIngestToken!]!
   "The context of a transfer event: the stored roles, and the evidence for the position of the operator, computed at the read. Null when the event is not a transfer."
   transferContext(event: ID!): TransferContext
+
+  # Reminders (R-148; K-E6 Section 6)
+  "The reminder rules, by name."
+  reminderRules: [ReminderRule!]!
+  "One reminder rule; null when no rule has this ID."
+  reminderRule(id: ID!): ReminderRule
+  "The firings of a rule (or of every rule) in a state (or any), newest first, at most first (1 to 200; 200 when not given)."
+  reminderFirings(rule: ID, state: ReminderFiringState, first: Int): [ReminderFiring!]!
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "The places that are not merged, by name."
@@ -3552,6 +3625,22 @@ type Mutation {
   createLocationIngestToken(name: String!): IssuedLocationIngestToken!
   "Revokes an ingest token: the OwnTracks path refuses it from now on. NOT_FOUND."
   revokeLocationIngestToken(id: ID!): LocationIngestToken!
+
+  # Reminders (R-148; K-E6 Section 6)
+  "Makes a reminder rule. VALIDATION with extensions.fields for a bad name, message, trigger, unless, limit, place or channel."
+  createReminderRule(input: ReminderRuleInput!): ReminderRule!
+  "Replaces a reminder rule and adds 1 to its revision: a firing that was due before the change is not sent (REM-005). NOT_FOUND; VALIDATION."
+  updateReminderRule(id: ID!, input: ReminderRuleInput!): ReminderRule!
+  "Deletes a reminder rule with its firings and returns its ID. NOT_FOUND."
+  removeReminderRule(id: ID!): ID!
+  "Sets a reminder rule on or off. NOT_FOUND."
+  setReminderRuleEnabled(id: ID!, enabled: Boolean!): ReminderRule!
+  "Makes one firing of the rule, which the hub sends in the next minute. No cooldown and no limit apply, and none is used up. NOT_FOUND."
+  testReminderRule(id: ID!): ReminderFiring!
+  "Snoozes a firing that was sent: the hub sends it again after minutes (1 to 10080) (REM-007). NOT_FOUND; CONFLICT when the firing was not sent or is decided."
+  snoozeReminder(firing: ID!, minutes: Int!): ReminderFiring!
+  "Acknowledges a firing that was sent: the hub does not send it again (REM-007). NOT_FOUND; CONFLICT."
+  acknowledgeReminder(firing: ID!): ReminderFiring!
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."

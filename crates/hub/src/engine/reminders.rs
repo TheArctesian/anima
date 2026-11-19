@@ -8,14 +8,17 @@
 mod codec;
 mod delivery;
 mod evaluation;
+pub mod graphql;
 mod model;
 mod place_state;
+mod rules;
 mod schedule;
 mod sending;
 mod store;
 mod sweep;
 #[cfg(test)]
 mod tests;
+mod trail;
 
 pub use codec::{Fault, trigger, trigger_json, unless, unless_json};
 pub use delivery::{
@@ -23,10 +26,14 @@ pub use delivery::{
 };
 pub use evaluation::{day_start, evaluate};
 pub use model::{
-    Class, Comparison, Crossing, Due, History, Known, Limits, Moment, Occurrence, PlaceChange,
-    Rule, Stop, TimeTrigger, Trigger, Unless,
+    Class, Comparison, Crossing, Due, Firing, FiringState, History, Known, Limits, Moment,
+    Occurrence, PlaceChange, Rule, Stop, TimeTrigger, Trigger, Unless,
 };
 pub use place_state::{PlaceState, place_changes};
+pub use rules::{
+    Draft, FIRINGS_MAX, MINUTES_MAX, acknowledge, activity, create_rule, firings, remove_rule,
+    rule, rules, set_enabled, snooze, test_rule, update_rule,
+};
 pub use sending::{RULE_CHANGED, Sendable, claim_send, notice, waiting};
 pub use store::StoredRule;
 pub use sweep::{Swept, sweep};
@@ -44,13 +51,12 @@ pub enum Error {
     Notifications(#[from] crate::fleet::notifications::Error),
     #[error("the event cannot be written")]
     Events(#[from] crate::fleet::events::Error),
-}
-
-/// Stores a new rule in the caller's transaction. The K1 part checks the texts of the rule
-/// before it calls this.
-///
-/// # Errors
-/// `Database`.
-pub async fn add_rule(conn: &mut sqlx::PgConnection, rule: &StoredRule) -> Result<(), Error> {
-    Ok(store::insert_rule(conn, rule).await?)
+    /// Input to fix: each field and what to give.
+    #[error("the reminder input is not valid")]
+    Invalid(Vec<Fault>),
+    #[error("no such {0}")]
+    NotFound(&'static str),
+    /// A snooze or an acknowledge of a firing that was not sent, or that is decided.
+    #[error("the firing was not sent or is decided")]
+    NotSent,
 }

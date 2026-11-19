@@ -7,7 +7,7 @@ use chrono_tz::Tz;
 
 use crate::{
     engine::records::Reference,
-    ids::{PlaceId, ReminderRuleId, SampleId},
+    ids::{FiringId, PlaceId, ReminderRuleId, SampleId},
 };
 
 /// The class of the thing that an occurrence is about: A, B or C (K-E5; K-E6 names it
@@ -228,4 +228,60 @@ pub struct Due {
     pub text: String,
     pub class: Class,
     pub stopped: Option<Stop>,
+}
+
+/// The state of a firing (K-E6 Section 3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FiringState {
+    Pending,
+    Sent,
+    Suppressed,
+    Snoozed,
+    Acknowledged,
+}
+
+impl FiringState {
+    /// The text stored in `reminders.firing.state`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Sent => "sent",
+            Self::Suppressed => "suppressed",
+            Self::Snoozed => "snoozed",
+            Self::Acknowledged => "acknowledged",
+        }
+    }
+
+    /// The state whose stored text is `text`.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        [
+            Self::Pending,
+            Self::Sent,
+            Self::Suppressed,
+            Self::Snoozed,
+            Self::Acknowledged,
+        ]
+        .into_iter()
+        .find(|state| state.as_str() == text)
+    }
+}
+
+/// One stored firing, as the operator reads it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Firing {
+    pub id: FiringId,
+    pub rule: ReminderRuleId,
+    pub revision: i32,
+    pub subject: String,
+    pub text: String,
+    pub class: Class,
+    pub state: FiringState,
+    /// Why a suppressed firing was not sent.
+    pub reason: Option<String>,
+    pub due_at: DateTime<Utc>,
+    pub sent_at: Option<DateTime<Utc>>,
+    pub snoozed_until: Option<DateTime<Utc>>,
+    pub decided_at: Option<DateTime<Utc>>,
 }

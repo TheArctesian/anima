@@ -36,7 +36,7 @@ pub use model::{
     NotificationKind, Observation, Outbox, OutboxId,
 };
 pub use observe::{adopt_defaults, for_checks, observe};
-pub use reminder::{Queued, RANDOM_TOPIC_MIN, Reminder, queue_reminder};
+pub use reminder::{Queued, RANDOM_TOPIC_MIN, Reminder, channels_exist, queue_reminder};
 
 /// How many days of delivery partitions exist ahead of today (DB-004).
 const DAYS_AHEAD: i32 = 7;

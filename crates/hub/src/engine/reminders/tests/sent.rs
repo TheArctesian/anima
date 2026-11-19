@@ -35,17 +35,6 @@ async fn default_channel(pool: &PgPool) {
     .unwrap();
 }
 
-async fn add(pool: &PgPool, rule: Rule) {
-    let stored = StoredRule {
-        created_at: rule.updated_at,
-        rule,
-        channels: Vec::new(),
-        enabled: true,
-    };
-    let mut conn = pool.acquire().await.unwrap();
-    add_rule(&mut conn, &stored).await.unwrap();
-}
-
 async fn noticed(pool: &PgPool, new: &[Occurrence], now: &str) {
     let mut tx = pool.begin().await.unwrap();
     notice(&mut tx, new, at(now)).await.unwrap();

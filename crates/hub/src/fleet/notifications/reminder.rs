@@ -93,3 +93,17 @@ pub async fn queue_reminder(
     }
     Ok(queued)
 }
+
+/// Whether each of `ids` is a channel of the hub.
+///
+/// # Errors
+/// `Database`.
+pub async fn channels_exist(db: &sqlx::PgPool, ids: &[ChannelId]) -> Result<bool, Error> {
+    if ids.is_empty() {
+        return Ok(true);
+    }
+    let found = store::list_channels(db, Some(ids)).await?;
+    Ok(ids
+        .iter()
+        .all(|id| found.iter().any(|channel| channel.id == *id)))
+}

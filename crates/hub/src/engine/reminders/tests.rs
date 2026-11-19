@@ -86,3 +86,15 @@ fn workout() -> Trigger {
         contains: Some("RUN".to_owned()),
     }
 }
+
+/// Stores `rule` as it is, enabled, with no channels.
+async fn add(pool: &sqlx::PgPool, rule: Rule) {
+    let stored = StoredRule {
+        created_at: rule.updated_at,
+        rule,
+        channels: Vec::new(),
+        enabled: true,
+    };
+    let mut conn = pool.acquire().await.unwrap();
+    super::store::insert_rule(&mut conn, &stored).await.unwrap();
+}
