@@ -1623,6 +1623,17 @@ checks the screen, those check the values. Sign in to the application with a log
 
 Result: Open.
 
+### HT-037: install and update Anima from F-Droid (M5-7)
+
+The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
+
+1. Install the signed release APK from the Anima release server. Open Anima and sign in. Expected: the app starts and reads the device list.
+2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
+3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
+4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
+
+Result: Open.
+
 ### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
 
 Built: in 53af82a1 and 3b46dfef (R-157). The application keeps the last answer of the hub for the device list,
