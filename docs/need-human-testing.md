@@ -69,7 +69,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
-| HT-045 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
+| HT-048 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-046 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-047 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 
@@ -530,6 +531,11 @@ list showed one row for this Mac, Unknown, "No checks yet", with a host that sta
 the log showed "Device ... added" with no question. The app made the new hub and joined its link with no step,
 although it held the link and the token of the deleted hub. Not seen in the picture: steps 2 and 3.
 
+Linux check passed on 2026-11-19. The Devices list showed one `pop-os` row after sign-in,
+and the operator confirmed that it still showed one row after reopening the AppImage. The
+operator's screenshot showed `pop-os` with a link address while the `Link` site filter was
+selected, which confirms the site. The Mac device details and restart checks above are open.
+
 ### HT-028: the hosted hub is a device of its own device list (HM-T9)
 
 Built: a hosted hub adds itself to its devices at each start, when no device has the host `localhost`
@@ -562,6 +568,11 @@ server but otherwise it looks good"): the row `Hub` was Up, 100.00 %, with the h
 metrics". Two differences. The row shows the mark of Linux with no distribution: the hub reads a distribution
 over SSH only, and it has no SSH to itself (the image is Debian 13). The row shows the button "+ VNC", which
 adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
+
+On 2026-11-19 the operator's screenshot showed the `Hub` device Up and its single Push check,
+`Hub running`, also Up. The operator confirmed that `Hub running` was still Up on the recheck
+more than five minutes later. The health check passed. The connection buttons in step 1 remain
+open under HMD-046.
 
 ### HT-029: the computer is Up while it is connected to the link (HM-T11)
 
@@ -607,6 +618,10 @@ was built from a checkout that has this change (`link/build.sh` makes the link p
    check `Hub running` shows none for that time.
 
 Result: Open.
+
+On 2026-11-19 the operator saw `pop-os` go Down in Anima on the Mac after quitting the
+Linux AppImage. After reopening the AppImage, `pop-os` came back Up. The Linux disconnect
+and reconnect behaved as expected. The check history and the free-hub sleep and wake are open.
 
 ### HT-031: a hosted hub reaches SSH of a computer on its link (HM-T12)
 
@@ -906,7 +921,7 @@ sign-in to the hosted hub.
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
-### HT-045: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+### HT-048: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
 
 Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
 phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
@@ -967,7 +982,7 @@ the operator (MOB-006).
 3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
    shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
    about the icons or the export question).
-4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-045, step 5.
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-048, step 5.
 5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
    higher.
 
@@ -983,7 +998,7 @@ to. The shell uses the authorization code flow of WorkOS with PKCE and listens f
 The tests cover the code challenge (the example of RFC 7636), the address of the page, the listener with a real
 connection, the check of the state, a stopped sign-in, and the fields of the trade of the code. Not covered: the Swift
 part, the page on a screen, a real answer of WorkOS, the refresh after this flow, and the rest of the sign-in
-(HT-045). No build of this branch ran on a simulator or a phone.
+(HT-048). No build of this branch ran on a simulator or a phone.
 
 1. In the WorkOS dashboard, in the production environment: Applications, the application of Anima.ing, the tab
    Redirects. Add `http://127.0.0.1:47113/sign-in`. Do not make it the default. Expected: the dashboard takes it. If it
@@ -1701,3 +1716,26 @@ Second try on 2026-11-17 with the built app of step 1 (operator, with a picture 
 hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
 In the same message the operator asked for more than this check
 covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
+
+### HT-045: Linux opens the account sign-in screen before a hub is chosen (HMD-022)
+
+The preview was built from `665fb16a` on `fix/linux-start-sign-in`. Its startup guard in
+`apps/client/src/lib/access/guard.ts` opens `/welcome` when no hub address is saved. Tests cover a missing token, an old token
+for the default hub and a refused key store. They also check that a chosen hub still resumes
+with its token. An automatic Linux WebKit check reached the screen with an old default-hub
+token and with no token. The packaged preview also showed the screen in a virtual X11 display
+without `LD_PRELOAD` (2026-11-19). These checks do not verify the normal desktop session or
+complete a real account sign-in.
+
+1. Start the rebuilt Linux application on the installation that showed the wrong first screen.
+   Expected: "Welcome to Anima.ing", with "Sign in", "Sign up" and "Join a hub". No Devices
+   sidebar or hub password form appears.
+2. Choose "Sign in" and complete the account sign-in in the browser.
+   Expected: the app joins the hosted hub and opens its device list, as in HT-022.
+3. Quit the app and start it again.
+   Expected: the chosen hub's device list opens without another sign-in.
+
+Result: Passed. On 2026-11-19 the operator reported that the Linux preview worked and showed the
+signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
+The operator then quit and reopened the preview. It returned to the same hub without another
+sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
