@@ -60,6 +60,25 @@ pub(crate) enum Command {
     Start(Place),
     /// Stop the hub until `start` or the next login; it stays installed
     Stop(Place),
+    /// Make a copy of the whole folder of the stopped hub, with a dump of its database
+    Copy {
+        #[command(flatten)]
+        place: Place,
+        /// The PostgreSQL tree: a folder with bin/, lib/ and share/
+        #[arg(long)]
+        tree: PathBuf,
+        /// The folder of the copy; it must not exist
+        #[arg(long)]
+        to: PathBuf,
+    },
+    /// Check a copy that `copy` made: each file and the dump; it changes nothing
+    CheckCopy {
+        /// The folder of the copy
+        copy: PathBuf,
+        /// The PostgreSQL tree: a folder with bin/, lib/ and share/
+        #[arg(long)]
+        tree: PathBuf,
+    },
     /// The operator account, through the installed hub; secrets pass on standard input
     Account {
         #[command(flatten)]

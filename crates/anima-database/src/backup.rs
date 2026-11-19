@@ -163,6 +163,26 @@ pub fn restore(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupEr
     }
 }
 
+/// Whether `file` reads as a backup: `pg_restore --list` reads its table of contents. No
+/// server is needed and nothing is restored. For a copy of a hub that is kept for a way back.
+///
+/// # Errors
+/// When the file is not there or `pg_restore` cannot run.
+pub fn reads(tree: &Tree, file: &Path) -> Result<bool, BackupError> {
+    // A whole path, so a name that starts with `-` is never read as an option.
+    let file = fs::canonicalize(file).map_err(|_| BackupError::NoFile)?;
+    let listed = tree
+        .command(Program::PgRestore)
+        .arg("--list")
+        .arg(&file)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map_err(io_error("run pg_restore"))?;
+    Ok(listed.success())
+}
+
 /// What a check of every table and index found.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Checked {
