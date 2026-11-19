@@ -527,9 +527,10 @@ list showed one row for this Mac, Unknown, "No checks yet", with a host that sta
 the log showed "Device ... added" with no question. The app made the new hub and joined its link with no step,
 although it held the link and the token of the deleted hub. Not seen in the picture: steps 2 and 3.
 
-Linux check on 2026-11-19: the Devices list showed one `pop-os` row after sign-in, and the
-operator confirmed that it still showed one row after reopening the AppImage. The `Link` site
-in the device details still needs a check.
+Linux check passed on 2026-11-19. The Devices list showed one `pop-os` row after sign-in,
+and the operator confirmed that it still showed one row after reopening the AppImage. The
+operator's screenshot showed `pop-os` with a link address while the `Link` site filter was
+selected, which confirms the site. The Mac device details and restart checks above are open.
 
 ### HT-028: the hosted hub is a device of its own device list (HM-T9)
 
