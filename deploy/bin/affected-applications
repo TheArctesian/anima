@@ -1,0 +1,56 @@
+#!/bin/sh
+# Prints the applications that the changes between two commits affect, one name on a line
+# (R-184). The map is deploy/release/applications.txt: an application is affected by each
+# changed path that no `out` line of the map names, and by each path of an `in` line.
+#
+#   affected-applications <from> <to>    the applications that a path changed for, between
+#                                        the two commits
+#   affected-applications --all          each application of the map
+#
+# It prints nothing when no application is affected. A name of a file that git must quote
+# (a control character, a quote) matches no line of the map, so it affects each application.
+set -eu
+
+refuse() { echo "affected-applications: $1" >&2; exit 1; }
+
+MAP=$(cd "$(dirname "$0")/../release" && pwd)/applications.txt
+[ -r "$MAP" ] || refuse "the map $MAP cannot be read"
+if [ "${1:-}" = --all ] && [ $# -eq 1 ]; then
+    awk '!/^#/ && NF { print $1 }' "$MAP" | sort -u
+    exit 0
+fi
+[ $# -eq 2 ] || refuse "give two commits, or --all"
+FROM=$(git rev-parse --verify --quiet --end-of-options "$1^{commit}") || refuse "no such commit: the first"
+TO=$(git rev-parse --verify --quiet --end-of-options "$2^{commit}") || refuse "no such commit: the second"
+CHANGED=$(git -c core.quotePath=true diff --name-only --no-renames "$FROM" "$TO") || refuse "git cannot compare the two commits"
+
+echo "$CHANGED" | awk -v map="$MAP" '
+    function names(line, path) {
+        if (line ~ /\/$/) return index(path, line) == 1
+        return path == line
+    }
+    BEGIN {
+        while ((getline row < map) > 0) {
+            if (row ~ /^#/ || row !~ /[^ ]/) continue
+            split(row, part, " ")
+            if (part[2] != "out" && part[2] != "in") { bad = row; exit }
+            applications[part[1]] = 1
+            count++
+            of[count] = part[1]; kind[count] = part[2]; line[count] = part[3]
+        }
+    }
+    $0 != "" {
+        for (application in applications) {
+            out = 0; kept = 0
+            for (i = 1; i <= count; i++) {
+                if (of[i] != application || !names(line[i], $0)) continue
+                if (kind[i] == "out") out = 1; else kept = 1
+            }
+            if (!out || kept) affected[application] = 1
+        }
+    }
+    END {
+        if (bad != "") { print "affected-applications: a line of the map is not `out` or `in`: " bad > "/dev/stderr"; exit 1 }
+        for (application in affected) print application
+    }
+' | sort

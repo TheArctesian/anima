@@ -1,5 +1,5 @@
-// deploy/bin/commit-version: the version of a commit from the number of commits of its
-// history (R-183). Each repository here is made in a temporary folder.
+// deploy/bin/commit-version: the version of a commit from the number of commits on the first
+// line of its history (R-183, R-200). Each repository here is made in a temporary folder.
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -46,6 +46,7 @@ describe("the formula (R-183)", () => {
     ["99", "0.0.99"],
     ["100", "0.1.0"],
     ["101", "0.1.1"],
+    ["795", "0.7.95"],
     ["3801", "0.38.1"],
     ["9999", "0.99.99"],
     ["10000", "0.100.0"],
@@ -72,6 +73,19 @@ describe("the version of a commit of a repository", () => {
     expect(run(["git", "commit", "--quiet", "--allow-empty", "-m", "one more"], folder).exitCode).toBe(0);
     expect(version(folder, "HEAD~3").printed).toBe("0.0.1");
     expect(version(folder).printed).toBe("0.0.4");
+  });
+
+  test("R-200 only the first line counts: a merged branch adds one commit, however many it holds", () => {
+    const merged = repositoryWith(2);
+    expect(run(["git", "switch", "--quiet", "-c", "dev"], merged).exitCode).toBe(0);
+    for (const made of ["a", "b", "c"]) {
+      expect(run(["git", "commit", "--quiet", "--allow-empty", "-m", `dev ${made}`], merged).exitCode).toBe(0);
+    }
+    expect(version(merged).printed).toBe("0.0.5");
+    expect(run(["git", "switch", "--quiet", "main"], merged).exitCode).toBe(0);
+    expect(run(["git", "merge", "--quiet", "--no-ff", "-m", "dev into main", "dev"], merged).exitCode).toBe(0);
+    expect(version(merged).printed).toBe("0.0.3");
+    expect(version(merged, "HEAD~1").printed).toBe("0.0.2");
   });
 
   test("a name that is no commit is refused", () => {

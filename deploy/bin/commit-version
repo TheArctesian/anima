@@ -1,16 +1,19 @@
 #!/bin/sh
-# Prints the version of a commit (R-183): N is the number of commits that the commit has in
-# its history (`git rev-list --count`), and the version is 0.<N div 100>.<N mod 100>, with no
-# zero before a number. Commit 1 gives 0.0.1, commit 100 gives 0.1.0, commit 3801 gives 0.38.1.
-# The first number stays 0 until the operator decides on 1.0; the second can pass 99.
+# Prints the version of a commit (R-183, R-200): N is the number of commits on the first line
+# of its history (`git rev-list --count --first-parent`), and the version is
+# 0.<N div 100>.<N mod 100>, with no zero before a number. Commit 1 gives 0.0.1, commit 100
+# gives 0.1.0, commit 795 gives 0.7.95. The first number stays 0 until the operator decides on
+# 1.0; the second can pass 99.
 #
 #   commit-version [commit]     the version of the commit (default: HEAD) of the repository
 #                               of the current folder
 #   commit-version --count N    the version for the number N, with no repository
 #
-# The number names one release only for a commit of `main`: two commits that are not on one
-# line of history can have the same N. A shallow clone does not hold the full history and is
-# refused. The release workflow and trial-bundle.sh use this command.
+# The number names one release only for a commit of `main`, and only while `main` moves by a
+# commit whose first parent is its tip before: the first line of `main` then only gets
+# longer. A different branch has a first line of its own, so a build by hand on `dev` shows a
+# number of `dev` (R-201 permits that it is also a number of `main`). A shallow clone does not
+# hold the full history and is refused. The release workflow and trial-bundle.sh use this.
 set -eu
 
 refuse() { echo "commit-version: $1" >&2; exit 1; }
@@ -27,4 +30,4 @@ COMMIT=${1:-HEAD}
 git rev-parse --git-dir > /dev/null 2>&1 || refuse "this folder is not in a git repository"
 [ "$(git rev-parse --is-shallow-repository)" = false ] || refuse "this is a shallow clone; the version needs the full history (git fetch --unshallow)"
 SHA=$(git rev-parse --verify --quiet --end-of-options "$COMMIT^{commit}") || refuse "no such commit"
-version_of "$(git rev-list --count "$SHA")"
+version_of "$(git rev-list --count --first-parent "$SHA")"

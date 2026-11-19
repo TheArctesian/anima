@@ -1,0 +1,24 @@
+# The applications that the release workflow releases, and the paths that never go into each
+# one (R-184, R-199). deploy/bin/affected-applications reads this file.
+#
+#   <application> out <path>   a change of this path does not affect the application
+#   <application> in <path>    an exception to an `out` line: it does affect it
+#
+# A path that ends in "/" is a folder with all below it; any other path is one file. A path
+# that no `out` line names affects the application: so a new folder releases, and a wrong line
+# here can only keep a release back, never ship a change that nobody looked at as a release.
+# Each change inside the folders of an application releases it, tests and comments too (R-199).
+
+# The desktop application (macOS and Linux). It carries the client, the shell, `anima`, the
+# hub, the database, the gateway and `anima-link`.
+desktop out docs/
+desktop out quality/
+desktop out deploy/
+desktop out crates/rdp-test-device/
+desktop out AGENTS.md
+desktop out CLAUDE.md
+desktop out README.md
+desktop in deploy/bin/commit-version
+desktop in deploy/bin/affected-applications
+desktop in deploy/bin/release-decision
+desktop in deploy/release/
