@@ -2,9 +2,12 @@
 //! two reads against the link's test SSH server on loopback (`reads`), and each error with
 //! its code and sentence (`sentences`). The queries themselves are in the integration crate. In-crate, for the loopback policy.
 
+mod detail;
 mod docker;
+mod project;
 mod reads;
 mod sentences;
+mod storage;
 
 use sqlx::PgPool;
 

@@ -49,6 +49,18 @@ pub fn short_id(id: &str) -> &str {
     id.get(..SHORT_ID).unwrap_or(id)
 }
 
+/// The Compose project with its one state (HOST-019), or `-`.
+fn project(row: &container_list::ContainerListContainers) -> String {
+    match (&row.compose_project, &row.compose_project_state) {
+        (Some(project), Some(state)) => {
+            let state = enum_name(state).to_lowercase().replace('_', " ");
+            format!("{project} ({state})")
+        }
+        (Some(project), None) => project.clone(),
+        (None, _) => "-".to_owned(),
+    }
+}
+
 fn table(found: &Vec<container_list::ContainerListContainers>) -> Table {
     let mut table = Table::new(vec![
         "ID", "NAME", "STATE", "STATUS", "IMAGE", "PORTS", "PROJECT",
@@ -61,7 +73,7 @@ fn table(found: &Vec<container_list::ContainerListContainers>) -> Table {
             row.status.as_str().into(),
             row.image.as_str().into(),
             Cell::new(&row.ports.join(", ")),
-            row.compose_project.as_deref().unwrap_or("-").into(),
+            project(row).into(),
         ]);
     }
     table

@@ -1,0 +1,51 @@
+query ContainerInspect($deviceId: ID!, $containerId: String!) {
+  containerDetail(deviceId: $deviceId, containerId: $containerId) {
+    id
+    name
+    image
+    imageId
+    command
+    workingDir
+    user
+    restartPolicy
+    state
+    exitCode
+    startedAt
+    finishedAt
+    restartCount
+    healthCheck {
+      test
+      intervalSeconds
+    }
+    health
+    failingStreak
+    lastHealthRun {
+      endedAt
+      exitCode
+    }
+    mounts {
+      type
+      name
+      source
+      destination
+      readOnly
+    }
+    networks {
+      network
+      ipv4
+      ipv6
+      gateway
+      macAddress
+    }
+    labels {
+      name
+      value
+    }
+    environmentNames
+    processes {
+      pid
+      user
+      command
+    }
+  }
+}

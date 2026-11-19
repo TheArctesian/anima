@@ -1,5 +1,8 @@
 //! The daemon's one HTTP client and its calls to the hub (K8 Section 1; K-E5 Section 2.1).
 //!
+//! In the link mode the client sends plain HTTP on the Unix socket of `anima-link`, and to no
+//! TCP port (R-172).
+//!
 //! The client verifies certificates against the web PKI roots, follows no redirect, ignores
 //! proxy variables, keeps no cookie, and gives up after 10 seconds (MET-020). It logs nothing:
 //! its callers log at their own boundary, and never a code, a token or a body (LOG-007).
@@ -7,7 +10,9 @@
 pub mod answer;
 pub mod body;
 pub mod enrolment;
+pub mod link_socket;
 
+use std::path::Path;
 use std::time::Duration;
 
 use bytes::Bytes;
@@ -18,15 +23,25 @@ use daemon_core::wire::{
 use reqwest::{Client, Url, redirect};
 use zeroize::Zeroizing;
 
+use crate::config::origin::Reach;
 use answer::{Answer, Cause, answer};
 use body::Body;
+use link_socket::LinkSocketError;
 
 /// How long one request may take, connection and answer together (K8 Section 7).
 pub const TIMEOUT: Duration = Duration::from_secs(10);
 
+/// The base of each route on the socket of the link. No request goes to this address: the
+/// client connects to the socket, and the text only fills the `Host` header.
+const ON_LINK_SOCKET: &str = "http://127.0.0.1/";
+
 #[derive(Debug, thiserror::Error)]
-#[error("the HTTP client could not be built")]
-pub struct HubError;
+pub enum HubError {
+    #[error("the HTTP client could not be built")]
+    Build,
+    #[error(transparent)]
+    LinkSocket(#[from] LinkSocketError),
+}
 
 /// One request: its route, its bearer (none for enrolment), its JSON body and the statuses that
 /// mean success. A push takes `204`, and `200` with `Accepted` (K8 Section 8.2).
@@ -56,8 +71,42 @@ impl HubClient {
             .no_proxy()
             .timeout(limit)
             .build()
-            .map_err(|_| HubError)?;
+            .map_err(|_| HubError::Build)?;
         Ok(Self { http, base })
+    }
+
+    /// A client for the hub behind the socket of `anima-link` at `socket` (K8 Section 1). Each
+    /// request connects to the socket and to nothing else.
+    ///
+    /// # Errors
+    /// [`HubError::LinkSocket`] when a different user could listen at the path.
+    pub fn over_link(socket: &Path, limit: Duration) -> Result<Self, HubError> {
+        link_socket::trusted(socket)?;
+        let http = Client::builder()
+            .redirect(redirect::Policy::none())
+            .timeout(limit)
+            .unix_socket(socket)
+            .build()
+            .map_err(|_| HubError::Build)?;
+        let base = Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?;
+        Ok(Self { http, base })
+    }
+
+    /// A client for the hub that `reach` names; `own_socket` is the socket in the daemon's own
+    /// folder, for a daemon that was enrolled with an old link origin.
+    ///
+    /// # Errors
+    /// [`HubError`] as [`HubClient::new`] and [`HubClient::over_link`].
+    pub fn reaching(
+        reach: Reach<'_>,
+        own_socket: &Path,
+        limit: Duration,
+    ) -> Result<Self, HubError> {
+        match reach {
+            Reach::Https(url) => Self::new(url.clone(), limit),
+            Reach::LinkSocket(socket) => Self::over_link(socket, limit),
+            Reach::OwnLinkSocket => Self::over_link(own_socket, limit),
+        }
     }
 
     /// `POST /daemon/v1/enrol` (K8 Section 3). The code is spent by this call.

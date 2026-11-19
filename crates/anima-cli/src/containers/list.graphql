@@ -10,5 +10,6 @@ query ContainerList($deviceId: ID!) {
     createdAt
     composeProject
     composeService
+    composeProjectState
   }
 }

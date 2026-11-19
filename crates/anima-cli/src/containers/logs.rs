@@ -72,7 +72,11 @@ fn is_identifier(text: &str) -> bool {
 
 /// The identifier of `container`: itself when it is one, or that of the device's one container
 /// with this exact name. The name never goes to the hub's command.
-async fn identifier(hub: &Hub, device: &str, container: &str) -> Result<String, Failure> {
+pub(super) async fn identifier(
+    hub: &Hub,
+    device: &str,
+    container: &str,
+) -> Result<String, Failure> {
     if is_identifier(container) {
         return Ok(container.to_owned());
     }

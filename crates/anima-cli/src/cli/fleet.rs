@@ -44,7 +44,7 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: agents::AgentCommand,
     },
-    /// The Docker containers of a device (list, logs).
+    /// The Docker containers of a device (list, logs, inspect, images, volumes, networks).
     Containers {
         #[command(subcommand)]
         command: containers::ContainerCommand,

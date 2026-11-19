@@ -3,8 +3,8 @@
 - From: the Anima Product Ideas bot, from competitor research, 2026-11-17
 - Source: the vault note "Product Ideas from Research" (idea 2) and the private working note "Agent State Hooks"
 - Status: Framed
-- Serves: Row 4.8 The other extensions (inferred: AI coding sessions are an extension in the Remember category; AIS-010 is in `extensions-plan.md`). Not confirmed.
-- Owner if it becomes work: Open. AIS-010 sits in `extensions-plan.md` (ownership.md: Engine and extensions).
+- Serves: Row 4.8 The other extensions (inferred: AI coding sessions are an extension in the Remember category; AIS-010 was in `extensions-plan.md` (R-196, 2026-11-18, withdrew AIS-009 to AIS-017; the agent panes are now the Herdr tool extension of [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md))). Not confirmed.
+- Owner if it becomes work: Open. AIS-010 is withdrawn (R-196). R-196 (OD-AXT10) says that state hooks come after version 1 of [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md); [NEEDS CLARIFICATION: that proposal or a new one owns it].
 - Effort: S (estimate). Recommendation: should (the research verdict, not a decision)
 
 ## The idea
@@ -20,7 +20,7 @@ One tiny protocol that any agent or script can use to report working, blocked or
 Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../plan/register.md) and [deferred.md](../../deferred.md).
 
 - ownership.md: AI coding sessions belong to the extensions plan.
-- extensions-plan.md (not one of the three files): AIS-010 reads state from Claude Code and Codex session files and from terminal activity; no hook protocol there.
+- extensions-plan.md (not one of the three files): AIS-010 (withdrawn by R-196) read state from Claude Code and Codex session files and from terminal activity; no hook protocol there.
 - register.md and deferred.md: no hook protocol item found (the `hook` hits in deferred.md are a panic hook and a load-failure hook, unrelated).
 - Constraint: AIS-022 bars reading a login, account name or usage limit.
 - Checked on 2026-11-18 against the repository at commit `866f667f`. This is a keyword search, not a full read.
@@ -28,7 +28,7 @@ Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../pl
 ## Narrowest version, and when to stop
 
 - Narrowest version: One documented status message and one hook snippet for Claude Code, read by the daemon next to the existing session-file and terminal-activity detection.
-- Stop if: the session-file and terminal-activity reading of AIS-010 already shows blocked and done correctly for Claude Code and Codex in testing.
+- Stop if: the screen of Herdr (which replaces AIS-010, R-196) already shows blocked and done correctly for Claude Code and Codex in testing.
 
 ## Open questions
 

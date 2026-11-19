@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Not approved. CVM-001 to CVM-024.
+evidence: Not approved. CVM-001 to CVM-024. 2026-11-18: CVM-008 is marked for re-planning, because R-196 withdrew the overload warning AIS-017.
 ---
 
 # Proposal: cloud computers and GPU add-ons
@@ -49,7 +49,7 @@ The rented computer installs the daemon on first boot, joins Headscale, and beco
 ordinary device. The "this job cannot run here" offer belongs on the existing "Needs
 attention" list or on the failed job. It names what is missing, suggests the operator's own
 machines first, and is limited to one offer a week for the same cause. It must never pitch
-more machines to a person who is already over the overload warning (AIS-017).
+more machines to a person who is already over the overload warning (AIS-017, withdrawn by R-196; see CVM-008).
 
 ## Prices (checked 2026-11-16)
 
@@ -115,7 +115,7 @@ Anima.ing must not start a GPU add-on on a provider that forbids resale.
   computer is a later choice.
 - **CVM-007.** At most one offer a week for the same cause. The offer is not a banner, and it
   must not appear during a remote session.
-- **CVM-008.** The offer must not appear when the overload warning (AIS-017) is already on.
+- **CVM-008.** Re-planning (R-196): the overload warning AIS-017 is withdrawn, so this requirement has no source now. The text was: "The offer must not appear when the overload warning (AIS-017) is already on." [NEEDS CLARIFICATION: what replaces the condition: a count of agents that wait for the operator from the idea `agent-state-hooks` after version 1 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md) (OD-AXT10), a limit that the operator sets, or no condition.]
 - **CVM-009.** GPU time is prepaid. A machine that would spend more than the prepaid balance
   must not start.
 - **CVM-010.** The customer must set a spending cap before the first start of a billed

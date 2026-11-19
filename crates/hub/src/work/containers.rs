@@ -1,16 +1,20 @@
 //! The containers of a device, read-only (HOST-001, HOST-010; R-149, stage 1 of hosted
 //! applications).
 //!
-//! The hub runs two fixed `docker` commands through its SSH link (CHK-012): the list of the
-//! containers, and the last lines of the log of one. The only operator values that reach a
+//! The hub runs fixed read-only `docker` commands through its SSH link (CHK-012): the list of
+//! the containers, the last lines of the log of one, the details of one (HOST-017), and the
+//! images, the volumes and the networks (HOST-020). The only operator values that reach a
 //! command are a container identifier, rendered by the hub from its hex digits, and a number
 //! of lines. Nothing is kept: no table, no event, no log line of the hub holds a container
 //! name, an image or a line of a log (LOG-007). No error holds text from the device.
 //! No domain imports this one; `schema.rs` merges [`graphql`].
 
+mod detail;
 mod docker;
 pub mod graphql;
 mod model;
+mod project;
+mod storage;
 #[cfg(test)]
 mod tests;
 
@@ -20,8 +24,10 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 pub use self::model::{
-    Container, ContainerId, ContainerLog, ContainerState, Health, LineCount, LogLine, Tail,
+    Container, ContainerDetail, ContainerId, ContainerLog, ContainerState, Health, HealthCheck,
+    HealthRun, Label, LineCount, LogLine, Mount, NetworkAddress, Process, ProjectState, Tail,
 };
+pub use self::storage::{DiskUsage, Image, Network, Storage, Volume};
 use crate::{
     fleet::{
         credentials::Vault,
@@ -34,6 +40,10 @@ use crate::{
 
 /// The longest the list may take on the device.
 const LIST_LIMIT: Duration = Duration::from_secs(10);
+/// The longest the read of the details of one container may take on the device.
+const DETAIL_LIMIT: Duration = Duration::from_secs(15);
+/// The longest the read of the images and the volumes may take: Docker measures each volume.
+const STORAGE_LIMIT: Duration = Duration::from_secs(30);
 /// The longest the read of a log may take on the device.
 const LOG_LIMIT: Duration = Duration::from_secs(15);
 
@@ -102,6 +112,55 @@ pub async fn log(
     let device = known(reach.db, device).await?;
     let output = run(reach, &device, &docker::log_command(tail), (LOG_LIMIT, now)).await?;
     docker::log(&output)
+}
+
+/// The details of one container of `device`, with the names of its environment variables and
+/// no value of one (HOST-017).
+///
+/// # Errors
+/// `NotFound` for an unknown device, `NoContainer` when Docker knows no such container; the
+/// [`Error`] for the first step that fails.
+pub async fn detail(
+    reach: Reach<'_>,
+    device: DeviceId,
+    container: &ContainerId,
+    now: DateTime<Utc>,
+) -> Result<ContainerDetail, Error> {
+    let device = known(reach.db, device).await?;
+    let command = detail::command(container);
+    let output = run(reach, &device, &command, (DETAIL_LIMIT, now)).await?;
+    detail::detail(&output)
+}
+
+/// The images and the volumes of `device`, with the size of each, the containers that use it
+/// and the space that a clean-up can free (HOST-020).
+///
+/// # Errors
+/// `NotFound` for an unknown device; the [`Error`] for the first step that fails.
+pub async fn storage(
+    reach: Reach<'_>,
+    device: DeviceId,
+    now: DateTime<Utc>,
+) -> Result<Storage, Error> {
+    let device = known(reach.db, device).await?;
+    let command = storage::storage_command();
+    let output = run(reach, &device, &command, (STORAGE_LIMIT, now)).await?;
+    storage::storage(&output)
+}
+
+/// The networks of Docker on `device`, each with the containers on it (HOST-020).
+///
+/// # Errors
+/// `NotFound` for an unknown device; the [`Error`] for the first step that fails.
+pub async fn networks(
+    reach: Reach<'_>,
+    device: DeviceId,
+    now: DateTime<Utc>,
+) -> Result<Vec<Network>, Error> {
+    let device = known(reach.db, device).await?;
+    let command = storage::networks_command();
+    let output = run(reach, &device, &command, (LIST_LIMIT, now)).await?;
+    storage::networks(&output)
 }
 
 async fn known(db: &PgPool, device: DeviceId) -> Result<Device, Error> {

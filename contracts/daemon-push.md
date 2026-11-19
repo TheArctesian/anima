@@ -3,7 +3,8 @@
 Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ruling, CON-001). Written by
 WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `daemon_core::wire`.
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
-The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
+The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5). R-172
+(operator, 2026-11-18) changed it from a local port to a Unix socket (task W0).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
 The `agentUsage` member of Section 4 was added by R-135 (operator, 2026-11-17; AIS-018, AIS-019, AIS-022 to
 AIS-024).
@@ -21,13 +22,37 @@ This contract is the whole interface between `anima-daemon` and the hub. The dae
 - HTTPS to the hub's public origin (`ANIMA_PUBLIC_ORIGIN`, `https://hub.anima.ing`), tcp 443, at the hub's VPN
   address (MET-020). The daemon verifies the certificate against the web PKI roots and the host name; there is
   no pin in Phase 3.
-- In the link mode (`ANIMA_LINK_SOCKET` set on the hub) the daemon's hub origin is `http://127.0.0.1:<port>`,
-  the local port of `anima-link device` on the daemon's computer, from 1024. The link authenticates the hub by
-  its key and encrypts the request; the hub sees the request come from the device's link address. The daemon
-  accepts `http` for no other host, and not for `localhost` or `::1`. The daemon's computer must run
-  `anima-link device` at that fixed port whenever the daemon runs: a program of any local user that listens on
-  the port when the link does not would receive the daemon token. Nothing detects that; the planned correction
-  is a Unix socket between the daemon and the link, which needs a change to this section. R-172 (operator, 2026-11-18) rules that correction: the daemon talks to the link over a Unix socket that only it can open, in place of the local port. Task W0 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md) writes the new text of this section and builds it; until then this text is what is built.
+- In the link mode (`ANIMA_LINK_SOCKET` set on the hub) the daemon reaches the hub through `anima-link device`
+  on its own computer, over a Unix socket (R-172, operator, 2026-11-18; task W0 of
+  [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md)). The daemon's hub origin is
+  `unix:<path>`: the absolute path of the socket that the link makes when it starts with
+  `-daemon-socket <path>`. The daemon sends plain HTTP on the socket. The link authenticates the hub by its
+  key and encrypts the request; the hub sees the request come from the device's link address.
+  - The socket. The link makes it with mode 0600, in a folder that only its own user can reach: the folder
+    has no access for the group or for others, that user owns it, and no folder above it lets a different
+    user replace it. The link does not start with a different folder, and it does not replace a file that is
+    not a socket. The link and the daemon run as the same user. For a user installation the folder is the
+    daemon's own folder (Section 2) and the path is `<folder>/link.sock`. For a system installation on Linux
+    the link for the daemon runs as the account of the daemon (`anima-daemon`) and the path is
+    `/var/lib/anima-daemon/link.sock`, in the state folder of the unit, which the sandbox of the unit does
+    not hide. No installation starts that link today: who starts the link of a computer whose desktop
+    application does not run is HM-D16 of [hosted-mode.md](../docs/proposals/hosted-mode.md).
+  - How the daemon knows that the other end is the link. Before it makes its client, the daemon checks the
+    folder of the socket by the rule of its own folder (Section 2): a real folder, owned by the user that
+    runs the daemon, with no access for the group or for others, below no folder that others can write to
+    without the sticky bit. If a thing is at the path, it must be a socket that the same user owns. If one
+    check fails the daemon stops with an error and sends nothing. Thus a program of a different user can
+    neither open the socket nor put a socket of its own at the path. A program of the same user can do the
+    two things: the system cannot tell it from the link, and such a program can also read the token store.
+    A job must thus run as a different user (task W2).
+  - The daemon sends no request to a TCP port in the link mode. It accepts `http` for no host:
+    `enrol --hub http://127.0.0.1:<port>` is refused.
+  - A daemon that was enrolled with the old link origin, `http://127.0.0.1:<port>`. Its configuration file
+    and its token record keep that text; an update does not change them (ROL-018). The daemon reads the
+    text as "the link of this computer": it uses the socket `link.sock` in its own folder and sends nothing
+    to the port. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
+    it does, a push fails and the daemon keeps its samples (Section 7).
+  - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
 - The daemon sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
   (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), and listens on no port.
 - Every route below sits behind the NET-002 layer like any other route, and is logged by its template only.

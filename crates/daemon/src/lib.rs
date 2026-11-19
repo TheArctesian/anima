@@ -1,5 +1,5 @@
 //! The Anima push daemon: it reads this computer's metrics and pushes them to the hub over
-//! HTTPS, or over HTTP to the local port of `anima-link` (MET-011 to MET-020,
+//! HTTPS, or over HTTP on the Unix socket of `anima-link` (MET-011 to MET-020,
 //! `contracts/daemon-push.md`).
 //!
 //! Pure core: [`cli`], [`config`] (origin, file contents), [`hub::answer`], [`push::pacing`],
