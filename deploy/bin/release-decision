@@ -1,0 +1,78 @@
+#!/bin/sh
+# Decides if a commit of `main` is a release of one application (R-184, R-198, R-201), and
+# prints one line:
+#
+#   release <version>     the application changed after its published version, and the
+#                         version of the commit is more than each published version
+#   nothing: <reason>     no release; the reason is for the summary of the run
+#
+#   release-decision [--before <commit>] <commit> <application> <published>...
+#
+# Each <published> is the version that one feed of the application gives now, or `none` for
+# a feed that does not exist. The commit is compared with the commit of the lowest published
+# version, not with the commit before the push: so a change is never lost when a run was
+# cancelled, failed, or was replaced by a newer one. The commit of a published version is the
+# commit at that position on the first line of the history (deploy/bin/commit-version).
+#
+# --before is the tip of `main` before the push. If it is not on the first line of the
+# commit, `main` did not move by a commit whose first parent is its tip before (R-201): the
+# count of the first line is then not safe, and the command fails. It also fails for a commit
+# or a version that it cannot read. It reads no network and writes nothing.
+set -eu
+
+refuse() { echo "release-decision: $1" >&2; exit 1; }
+HERE=$(cd "$(dirname "$0")" && pwd)
+
+BEFORE=
+if [ "${1:-}" = --before ]; then
+    [ $# -ge 2 ] || refuse "--before takes a commit"
+    BEFORE=$2
+    shift 2
+fi
+[ $# -ge 3 ] || refuse "give a commit, an application and the published version of each feed"
+COMMIT=$(git rev-parse --verify --quiet --end-of-options "$1^{commit}") || refuse "no such commit"
+APPLICATION=$2
+shift 2
+sh "$HERE/affected-applications" --all | grep -Fxq -- "$APPLICATION" || refuse "the map has no application $APPLICATION"
+
+# A push that makes a new branch gives 40 zeros as the commit before.
+if [ -n "$BEFORE" ] && [ -n "$(echo "$BEFORE" | tr -d 0)" ]; then
+    BEFORE=$(git rev-parse --verify --quiet --end-of-options "$BEFORE^{commit}") \
+        || refuse "the tip of main before the push is not in the history; main was moved by force (R-201)"
+    git rev-list --first-parent "$COMMIT" | grep -Fxq -- "$BEFORE" \
+        || refuse "main did not move by a commit whose first parent is its tip before ($BEFORE is not on the first line of $COMMIT); the version is not safe (R-201)"
+fi
+
+VERSION=$(sh "$HERE/commit-version" "$COMMIT")
+# The number of a version 0.<a>.<b> is a * 100 + b; a version with a first number above 0 is
+# more than each version of this formula.
+number_of() {
+    echo "$1" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || refuse "a published version is not like 0.2.1: $1"
+    echo "$1" | awk -F. '{ if ($1 > 0) print "above"; else print $2 * 100 + $3 }'
+}
+OWN=$(number_of "$VERSION")
+LOWEST=
+MISSING=false
+for PUBLISHED in "$@"; do
+    if [ "$PUBLISHED" = none ]; then MISSING=true; continue; fi
+    NUMBER=$(number_of "$PUBLISHED")
+    if [ "$NUMBER" = above ] || [ "$OWN" -le "$NUMBER" ]; then
+        echo "nothing: the version $VERSION of this commit is not more than the published $PUBLISHED"
+        exit 0
+    fi
+    if [ -z "$LOWEST" ] || [ "$NUMBER" -lt "$LOWEST" ]; then LOWEST=$NUMBER; LOWEST_VERSION=$PUBLISHED; fi
+done
+if [ "$MISSING" = true ] || [ -z "$LOWEST" ]; then
+    echo "release $VERSION"
+    exit 0
+fi
+FROM=$(git rev-list --first-parent --reverse "$COMMIT" | sed -n "${LOWEST}p")
+if [ -z "$FROM" ]; then
+    echo "release $VERSION"
+    exit 0
+fi
+if sh "$HERE/affected-applications" "$FROM" "$COMMIT" | grep -Fxq -- "$APPLICATION"; then
+    echo "release $VERSION"
+else
+    echo "nothing: no change of $APPLICATION after the published $LOWEST_VERSION"
+fi

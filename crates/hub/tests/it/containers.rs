@@ -71,6 +71,10 @@ fn networks_of(device: &str) -> String {
     format!(r#"{{ containerNetworks(deviceId: "{device}") {{ name containers }} }}"#)
 }
 
+fn updates_of(device: &str) -> String {
+    format!(r#"{{ containerImageUpdates(deviceId: "{device}") {{ container state reason }} }}"#)
+}
+
 /// The one error's code and message.
 fn error_of(response: &Response) -> (String, String) {
     assert_eq!(response.data, Value::Null);
@@ -96,6 +100,7 @@ async fn api_003_each_query_refuses_a_caller_who_is_not_signed_in(pool: PgPool) 
         detail_of(ID),
         storage_of(DOCKER_HOST),
         networks_of(DOCKER_HOST),
+        updates_of(DOCKER_HOST),
     ] {
         let (code, _) = error_of(&schema.execute(document).await);
         assert_eq!(code, "UNAUTHENTICATED");
@@ -120,6 +125,7 @@ async fn host_001_a_value_the_hub_does_not_accept_is_validation(pool: PgPool) {
         list_of("not-an-id"),
         storage_of("not-an-id"),
         networks_of("not-an-id"),
+        updates_of("not-an-id"),
     ] {
         let (code, _) = error_of(&schema.execute(signed_in(&document)).await);
         assert_eq!(code, "VALIDATION", "{document}");
@@ -152,6 +158,7 @@ async fn host_001_a_device_the_hub_holds_no_host_key_for_is_conflict_with_what_t
         detail_of(ID),
         storage_of(DOCKER_HOST),
         networks_of(DOCKER_HOST),
+        updates_of(DOCKER_HOST),
     ] {
         let (code, message) = error_of(&schema.execute(signed_in(&document)).await);
         assert_eq!(code, "CONFLICT", "{document}");
@@ -187,6 +194,7 @@ async fn d_23_an_api_key_reads_the_list_and_never_a_log_or_the_details(pool: PgP
         list_of(DOCKER_HOST),
         storage_of(DOCKER_HOST),
         networks_of(DOCKER_HOST),
+        updates_of(DOCKER_HOST),
     ] {
         let (code, _) = error_of(&schema.execute(with_key(&open)).await);
         assert_eq!(code, "CONFLICT", "{open}");

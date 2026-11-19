@@ -14,8 +14,8 @@ use sqlx::PgPool;
 
 pub(super) use self::sentences::to_graphql;
 use super::{
-    Container, ContainerDetail, ContainerId, ContainerLog, LineCount, Network, Reach, Storage,
-    Tail, detail, list, log, networks, storage,
+    Container, ContainerDetail, ContainerId, ContainerLog, ImageUpdate, LineCount, Network, Reach,
+    Storage, Tail, detail, image_updates, list, log, networks, storage,
 };
 use crate::{
     api_errors::{FieldError, invalid, schema_dependency},
@@ -110,5 +110,16 @@ impl Query {
     async fn container_networks(&self, ctx: &Context<'_>, device_id: ID) -> Result<Vec<Network>> {
         let (reach, device, now) = asked(ctx, &device_id)?;
         networks(reach, device, now).await.map_err(to_graphql)
+    }
+
+    /// Whether a newer image exists for each container of a device (HOST-021).
+    #[graphql(guard = "Authenticated")]
+    async fn container_image_updates(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+    ) -> Result<Vec<ImageUpdate>> {
+        let (reach, device, now) = asked(ctx, &device_id)?;
+        image_updates(reach, device, now).await.map_err(to_graphql)
     }
 }

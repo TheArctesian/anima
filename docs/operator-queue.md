@@ -25,17 +25,17 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; the proposed requirement HMD-051 of hosted-mode.md; HM-D2, HM-D8, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
-| 4.4 | The engine (E0) | Agent: E0-7 T2 of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035 and HT-039. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
+| 4.4 | The engine (E0) | Agent: E0-7 T2 of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035 and HT-040. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: nothing; task W0 (the Unix socket between the daemon and the link, R-172) is built and waits for the check HT-037, and no code of W3 or W4 comes before the two acceptances |
-| 4.9 | Hosted applications | Operator: the checks HT-032 and HT-038 on a machine that runs Docker. Agent: hosted-applications-plan.md, task H13 (Not started, no claim), then task H9 |
+| 4.9 | Hosted applications | Operator: the checks HT-032, HT-038 and HT-039 on a machine that runs Docker. Agent: hosted-applications-plan.md, task H9 (Not started, no claim) |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (122)
+## 2. Open decisions (115)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -44,13 +44,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
-| OD-W40 | Who can publish, when each change of `main` is a release (R-184) and no person approves (R-182)? Each push to `main` that changes code is then a public, signed… | Open. Recommendation: (A) only together with a rule that blocks force pushes on `main`, and after the gates of the workflow have passed on GitHub in some runs.… | [plan/decisions.md](plan/decisions.md) |
-| OD-W41 | How often does `main` release? 18 changes of code reached `main` in the 24 hours before the note, and one run takes about one hour. The choices: (A) each change… | Open. Recommendation: (B), each night. A wrong commit then has some hours in which a person can see it before it is public, and an installed application gets on… | [plan/decisions.md](plan/decisions.md) |
-| OD-W42 | Which commits count for the version (R-183)? He selected "every commit". Merge commits then count, and a merged branch adds each of its commits at one time. The… | Open. Recommendation: (A), as he selected and as task B8f is built. The numbers of (B) are lower, so a change to (B) is not possible after the first release. | [plan/decisions.md](plan/decisions.md) |
-| OD-W43 | Can a build by hand on a branch show a version that a commit of `main` also has (R-183 item 4)? projects-and-builds-plan.md, "A release for each change of `main… | Open. Recommendation: yes. A local build does not update itself and Settings already says that it is a local build (DEF-001). | [plan/decisions.md](plan/decisions.md) |
-| OD-W44 | Is a change of only tests or only comments inside the folders of an application a release (R-184)? projects-and-builds-plan.md, "A release for each change of `m… | Open. Recommendation: yes. A rule of paths cannot tell such a change from a change of the program, and a wrong "not affected" ships nothing with no error. | [plan/decisions.md](plan/decisions.md) |
-| OD-W45 | Which application joins the release workflow after the desktop application: `anima` alone by Homebrew (tasks R8a to R8d), the iOS application to TestFlight, or… | Open. No recommendation; `anima` alone is the smallest job. | [plan/decisions.md](plan/decisions.md) |
-| OD-W46 | The secrets of GitHub that the workflow does not read: `APPLE_SIGNING_IDENTITY` in `release`; `ACCOUNT_ID`, `S3_API` and `TOKEN_VALUE` in `release-publish`; and… | Open. Recommendation: yes to both. The operator does it (R-180, R-195). | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -193,7 +186,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (70)
+## 4. Checks that only the operator can do (71)
 
 | Check | What |
 | --- | --- |
@@ -225,10 +218,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-032 | the containers of a real device, and the log of one (HOST-001, HOST-013; tasks H1 to H4) |
 | HT-026 | the use of AI agent programs from real session files |
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
-| HT-039 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
+| HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
-| HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192) |
+| HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-198 to R-201) |
 | HT-038 | the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8) |
+| HT-039 | a newer image for a container, with real public registries (HOST-021; task H13) |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
 | HT-037 | the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |

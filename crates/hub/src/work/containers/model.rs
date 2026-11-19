@@ -278,3 +278,35 @@ pub struct Process {
     pub user: Option<String>,
     pub command: String,
 }
+
+/// Whether a newer image exists for a container (K1 `ContainerImageUpdateState`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "ContainerImageUpdateState")]
+pub enum UpdateState {
+    /// The registry gives the digest that the device has for the tag.
+    UpToDate,
+    /// The registry gives a different digest for the tag: a pull would get a newer image.
+    NewerImage,
+    /// The hub cannot say; [`NotKnown`] gives the reason.
+    NotKnown,
+}
+
+/// Why the hub cannot say whether a newer image exists (K1 `ContainerImageUpdateReason`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "ContainerImageUpdateReason")]
+pub enum NotKnown {
+    /// The container names its image by a digest: it asked for that image and no newer one.
+    PinnedDigest,
+    /// The image is of a registry that Anima does not read.
+    OtherRegistry,
+    /// The image has no name of a registry: an identifier, or a name no registry accepts.
+    NoName,
+    /// Docker keeps no registry digest for the tag: the image was built on the device, or
+    /// the tag is not on the device now.
+    NoLocalDigest,
+    /// The registry has no such tag for a reader with no account: private, or gone.
+    NotAtRegistry,
+    /// The registry was not read: it did not answer in time, the hub may not reach it, or
+    /// the device has more tags than one read asks for.
+    RegistryNotRead,
+}

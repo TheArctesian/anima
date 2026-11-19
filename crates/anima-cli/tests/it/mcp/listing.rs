@@ -5,7 +5,7 @@ use serde_json::json;
 use super::session::{API_KEY, Desk, LOGIN_TOKEN, assert_protocol_only, hub};
 use crate::kit::fake_hub::{FakeHub, refusal};
 
-const DEVICE_TOOLS: [&str; 14] = [
+const DEVICE_TOOLS: [&str; 15] = [
     "anima_fleet_overview",
     "anima_devices_search",
     "anima_device_get",
@@ -15,6 +15,7 @@ const DEVICE_TOOLS: [&str; 14] = [
     "anima_container_list",
     "anima_container_storage",
     "anima_container_networks",
+    "anima_container_updates",
     "anima_device_create",
     "anima_site_create",
     "anima_device_wake",
@@ -103,7 +104,7 @@ async fn mcp_002_toolsets_limit_the_list_and_write_can_be_given_per_set() {
         .start(&hub, LOGIN_TOKEN, &["--toolsets", "devices"])
         .await;
     let names = session.tool_names().await;
-    assert_eq!(names, DEVICE_TOOLS[..9].to_vec());
+    assert_eq!(names, DEVICE_TOOLS[..10].to_vec());
     session.finish().await;
 
     let (mut session, _) = desk

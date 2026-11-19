@@ -1104,6 +1104,47 @@ type ContainerNetwork {
   containers: [String!]!
 }
 
+"Whether a newer image exists for a container (HOST-021; R-150). UP_TO_DATE: the registry gives the digest that the device has for the tag. NEWER_IMAGE: it gives a different digest, so a pull would get a newer image. NOT_KNOWN: the hub cannot say; reason says why."
+enum ContainerImageUpdateState {
+  UP_TO_DATE
+  NEWER_IMAGE
+  NOT_KNOWN
+}
+
+"""
+Why the hub cannot say whether a newer image exists (HOST-021). PINNED_DIGEST: the container names its image by a
+digest. OTHER_REGISTRY: the image is of a registry that Anima does not read (it reads Docker Hub, ghcr.io, quay.io and
+mcr.microsoft.com, with no account). NO_NAME: the container names an identifier, or a name no registry accepts.
+NO_LOCAL_DIGEST: Docker keeps no registry digest for the tag (the image was built on the device, or the tag is not on
+the device now). NOT_AT_REGISTRY: the registry has no such tag for a reader with no account (private, or gone).
+REGISTRY_NOT_READ: the registry did not answer as a registry does or in time, the hub may not reach it, or the device
+has more than 40 different tags.
+"""
+enum ContainerImageUpdateReason {
+  PINNED_DIGEST
+  OTHER_REGISTRY
+  NO_NAME
+  NO_LOCAL_DIGEST
+  NOT_AT_REGISTRY
+  REGISTRY_NOT_READ
+}
+
+"Whether a newer image exists for one container (HOST-021). Anima updates nothing by itself (ETH-004)."
+type ContainerImageUpdate {
+  containerId: String!
+  "The name of the container."
+  container: String!
+  "The image as the container names it."
+  image: String!
+  state: ContainerImageUpdateState!
+  "Not null when state is NOT_KNOWN."
+  reason: ContainerImageUpdateReason
+  "The digest that the device has for the tag. When Docker keeps more than one, the one that the registry gives, or the first."
+  localDigest: String
+  "The digest that the registry gives for the tag now."
+  registryDigest: String
+}
+
 "One line of the log of a container: what it wrote to either output stream."
 type ContainerLogLine {
   "When Docker took the line; null when the line has no time."
@@ -3240,6 +3281,8 @@ type Query {
   containerStorage(deviceId: ID!): ContainerStorage!
   "The networks of Docker on a device, each with the containers on it (HOST-020). The errors of containers apply. Open to a read key."
   containerNetworks(deviceId: ID!): [ContainerNetwork!]!
+  "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. Each read asks the registries again: the hub keeps no answer. The errors of containers apply. Open to a read key."
+  containerImageUpdates(deviceId: ID!): [ContainerImageUpdate!]!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."

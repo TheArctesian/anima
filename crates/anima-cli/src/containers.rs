@@ -1,5 +1,5 @@
 //! `anima containers`: the containers of a device, read through the hub's SSH link (HOST-001,
-//! HOST-013, HOST-017 to HOST-020, CMD-030). The lists are open to any token; a log and the
+//! HOST-013, HOST-017 to HOST-021, CMD-030). The lists are open to any token; a log and the
 //! details of a container need a login (D-23).
 
 pub mod documents;
@@ -8,6 +8,7 @@ pub mod list;
 pub mod logs;
 pub mod networks;
 pub mod storage;
+pub mod updates;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -29,6 +30,9 @@ pub enum ContainerCommand {
     Volumes(storage::StorageArgs),
     /// List the networks of Docker on a device, with the containers on each.
     Networks(networks::NetworksArgs),
+    /// Show for each container whether its public registry has a newer image for its tag.
+    /// Anima updates nothing.
+    Updates(updates::UpdatesArgs),
 }
 
 impl ContainerCommand {
@@ -45,6 +49,7 @@ impl ContainerCommand {
             Self::Images(args) => args.images(invocation).await,
             Self::Volumes(args) => args.volumes(invocation).await,
             Self::Networks(args) => args.run(invocation).await,
+            Self::Updates(args) => args.run(invocation).await,
         }
     }
 }

@@ -60,10 +60,11 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
-| HT-039 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
-| HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
+| HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
+| HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
+| HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -874,7 +875,7 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
-### HT-039: a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145)
+### HT-040: a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145)
 
 Built: on the branch `engine/e0-5-locations`. The hub takes location samples on
 `POST /locations/v1/owntracks` with an ingest token, and from `anima location import`; it seals each
@@ -941,9 +942,10 @@ GraphQL through the client's developer tools or `curl` with a login token.
 
 Result: Open.
 
-### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192)
+### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-198 to R-201)
 
-Built: on `main` since 3ae44093. `.github/workflows/release.yml` builds the macOS and the Linux
+Built: on `main` since 3ae44093; the trigger on a push to `main`, the decision and the switch (task B8g) on the
+branch `release/each-push`. `.github/workflows/release.yml` builds the macOS and the Linux
 application on machines of GitHub, signs the macOS one with the Developer ID and has it notarized, signs the two
 updater files with the updater key, and publishes with `anima-hub release publish`
 (`crates/hub/src/fleet/builds/publishing/built/`). The state of GitHub and the steps of the operator are in
@@ -963,13 +965,22 @@ Anima ran on a Linux computer (R-192); the repository has no record of a start o
    starts on a Linux computer; the first public release waits for this (R-192). In each of the two, Settings >
    Updates does not say "This is a local build", and it offers the published version (the build of the workflow
    has the updater; a build by hand with `trial-bundle.sh` has not, DEF-001).
-3. Do "The first public release". Expected: the tag is `v` with the version that
-   `sh deploy/bin/commit-version origin/main` prints (R-183); the three feeds give that version; `stapler validate`
-   and `spctl` accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1 that was installed from its
-   DMG offers the version and starts it after "Restart to update".
-4. Put a tag `v9.9.9` on a commit of `main`, and delete it after. Expected: the job `commit` fails, because the
-   tag does not give the version of its commit (R-183), and no other job starts. The same check with a correct
-   version on a commit that is not on `main` must fail with "is not on main".
+3. With the switch off (the variable `ANIMA_PUBLIC_RELEASES` does not exist), push a change of a document to
+   `main`. Expected: a run of `release` starts, only its job `commit` runs, and the summary says "nothing: this
+   push is a release of <version>, and public releases are off" (the Linux feed does not exist, so each push is
+   a release until the first one is published). Nothing is built, and no feed changed.
+4. Do "To switch public releases on" and "The first public release". Expected: the push builds and publishes
+   the version that `sh deploy/bin/commit-version origin/main` prints (R-183, R-201); the three feeds give that
+   version; `stapler validate` and `spctl` accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1
+   that was installed from its DMG offers the version and starts it after "Restart to update".
+5. After that release, push a change of a document only to `main`. Expected: only the job `commit` runs, and the
+   summary says "nothing: no change of desktop after the published <version>".
+6. Push two changes of the application to `main` within some minutes. Expected: the runs do not overlap; the
+   feeds give the version of the second push in the end, and never a lower version after a higher one.
+7. Start the first job of an old run again ("Re-run all jobs" on a run before the newest release). Expected:
+   the summary says "nothing: the version ... is not more than the published ...", and nothing is built.
+
+This entry names "Re-run" and pushes to `main`; each push to `main` is a release when the switch is on (R-198).
 
 Observation (2026-11-18, evening; 2026-11-19 UTC; read from GitHub by an agent, not a result of the operator):
 the operator started a trial, run 44468487102, from `main` at 9f056a5a with the version `0.0.1`. No approval
@@ -991,6 +1002,15 @@ Corrected on the branch `release/operator-decisions`: the job `gates` installs `
 full history, because the documents gate (gate 20) fails in a shallow clone; that second fault was found by a
 run of gates 17 to 21 in a shallow clone on a computer, not by the trial. The operator starts the next trial
 after the merge.
+
+Observation (2026-11-19, 08:51 UTC; read from GitHub by an agent, not a result of the operator): the operator
+started a second trial, run 44479803653, from `main` at 9da268f4 with the version `0.0.1`. Each job passed:
+`commit`, `tool`, `linux` (14 minutes), `macos` (62 minutes), `gates` (82 minutes, 21 gates), `sign` and
+`trial`. `publish` was skipped, as a trial must. So the updater key and its password in `release-sign` are
+usable, the two updater files were signed, and `anima-hub release check` accepted both targets. Not proven by
+this run: the bucket token (a trial does not use it), and each check of step 2 that a person makes: the
+commands on the DMG, the start of the AppImage on Linux, and Settings > Updates in the two applications. The
+run was of the tag trigger of that commit; the trigger on a push to `main` (task B8g) has not run.
 
 Result: Open.
 
@@ -1046,6 +1066,43 @@ step 4 were not possible (OD-25).
     image, of a volume or of a network, no label and no name of an environment variable (LOG-007).
 12. On the device, run `docker ps -a`, `docker image ls` and `docker volume ls` again. Expected:
     nothing changed because of the steps.
+
+Result: Open.
+
+### HT-039: a newer image for a container, with real public registries (HOST-021; task H13)
+
+Built: `Query.containerImageUpdates` in the hub domain `crates/hub/src/work/containers/updates/`,
+`anima containers updates`, and the MCP tool `anima_container_updates`. The client does not show the
+answer yet (task H9). The tests use a test SSH server and a local HTTPS server that stands in for each
+registry. The answers of the four real registries were read by hand on the build machine on
+2026-11-19: the digest that Docker 29.9.3 keeps for `alpine:3` was the digest that Docker Hub gave
+for the tag. No test reaches a real registry, and no test ran on a hub in the pool: it is not known
+if a hosted hub can reach the registries.
+
+The check only reads. It pulls nothing and updates nothing (ETH-004, VPS-005, R-050).
+
+1. On the device, find a container whose image tag has a newer image at Docker Hub (for example a
+   container made some weeks ago from a tag such as `latest`). If there is none, write that step 2
+   had no such container.
+2. Run `anima containers updates <device>`. Expected: one row for each container. The container of
+   step 1 has the state "newer image". A container whose image was pulled today has "up to date".
+3. For one row with "up to date", run on the device
+   `docker image inspect --format '{{json .RepoDigests}}' <image>`, and compare with
+   `anima containers updates <device> --json`. Expected: `localDigest` is the digest of that
+   output, and `registryDigest` is the same.
+4. Look at a container of an image that was built on the device, if there is one. Expected: "not
+   known", reason "no local digest". Look at a container of an image of a registry other than
+   Docker Hub, ghcr.io, quay.io and mcr.microsoft.com, if there is one. Expected: "not known", reason
+   "other registry".
+5. Write down how long the command took. Expected: less than 40 seconds.
+6. In an MCP client, call `anima_container_updates` for the device. Expected: the same answers, and
+   `newer` is the number of rows with "newer image".
+7. On a hosted hub, do step 2. Expected: the same answers. If each row says "registry not read",
+   the hub of the pool cannot reach the registries: write that down.
+8. On the device, run `docker image ls` and `docker ps -a`. Expected: no image and no container
+   changed because of the steps.
+9. Read the log of the hub for the time of the steps. Expected: no name of an image, no digest and
+   no token (LOG-007).
 
 Result: Open.
 

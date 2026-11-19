@@ -14,6 +14,7 @@ mod log_file;
 mod members;
 mod plain_file;
 pub mod programs;
+pub mod root_copy;
 pub mod run;
 pub mod state;
 mod stop_marker;

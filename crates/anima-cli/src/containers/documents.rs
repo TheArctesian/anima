@@ -48,3 +48,12 @@ pub struct ContainerStorageRead;
     variables_derives = "Debug"
 )]
 pub struct ContainerNetworkList;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/containers/updates.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct ContainerUpdateList;

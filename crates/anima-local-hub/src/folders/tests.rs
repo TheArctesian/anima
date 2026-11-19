@@ -87,3 +87,23 @@ fn a_macs_link_sockets_fit_the_socket_path_limit_for_a_usual_home() {
 fn a_root_that_the_database_refuses_is_refused() {
     assert!(Folders::new(PathBuf::from("relative"), PathBuf::from("/srv/s")).is_err());
 }
+
+/// ROL-053: a copy of the root is a copy of the hub. The socket folder is not state.
+#[test]
+fn rol_053_each_file_of_the_state_of_a_hub_is_below_its_root() {
+    let folders = Folders::new("/var/lib/anima/hub".into(), "/run/anima".into()).unwrap();
+    let kept = [
+        folders.database().root().to_path_buf(),
+        folders.database().cluster(),
+        folders.database().urls_folder(),
+        folders.vault_key(),
+        folders.data_keys(),
+        folders.files(),
+        folders.link(),
+        folders.logs(),
+        folders.state_file(),
+    ];
+    for path in kept {
+        assert!(path.starts_with(folders.root()), "{}", path.display());
+    }
+}
