@@ -185,7 +185,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (75)
+## 4. Checks that only the operator can do (76)
 
 | Check | What |
 | --- | --- |
@@ -228,6 +228,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
 | HT-037 | the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004) |
 | HT-041 | the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d) |
+| HT-042 | the iOS application from the release workflow to TestFlight (R-203; task B8i) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |

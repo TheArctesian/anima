@@ -336,6 +336,53 @@ If a job names an environment that does not exist, GitHub makes it with no rule;
 
 What is not known until the first run: if the Linux program starts on a computer with no `libdbus-1` (it uses the key store of the desktop through that library), if R2 takes the `put-object` of the `aws` program of the machine, and what `brew audit` says of the formula in the tap. HT-041 has the checks.
 
+### The iOS application: TestFlight (R-203; task B8i)
+
+Built as three jobs of the release workflow, and never run: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` calls `apps/desktop/src-tauri/ios-archive.sh`, which is task M5-4 of the [mobile plan](../plans/mobile-plan.md) and does not exist yet.
+
+**Two switches of its own.** `ANIMA_IOS_BUILD` lets the job `ios` run, in a trial and in a release; while it is not `on`, no iOS job runs and a trial is not red for it. `ANIMA_PUBLIC_TESTFLIGHT` lets a push to `main` upload. Neither exists today. They do not depend on `ANIMA_PUBLIC_RELEASES`: a TestFlight build for the operator alone can exist before a public release of the desktop application. The first build for testers outside the team still waits for the sign-in of the phone application (R-158); that is a setting of the TestFlight group, not of the workflow.
+
+**The build number** is the count of the first line of `main`: version 0.8.15 has the build number 815 (R-201). It only goes up on `main`, as App Store Connect asks.
+
+Before `ANIMA_IOS_BUILD` is set, the operator does these steps. No agent does them (R-180, R-195). The six iOS secrets are in the environment `release` today (R-204); GitHub cannot copy a secret, so each is set again from its file. Until then the job `ios` fails with the words "The three iOS signing secrets are not set in the environment release-ios"; it does not read them from `release`.
+
+1. **In App Store Connect:** an app record with the bundle ID `ing.anima.mobile` (My Apps > "+" > New App); in its TestFlight tab, one internal group with your own account; an API key (Users and Access > Integrations > App Store Connect API) with the role "App Manager" or "Developer". The Apple Distribution certificate and the App Store profile of `ing.anima.mobile` exist already (the secrets of 2026-11-19).
+2. **The environment `release-ios`** (the certificate and the profile; the job that builds), for `main` only:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-ios --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-ios/deployment-branch-policies -f name=main -f type=branch
+   base64 -i <the .p12 file> | tr -d '\n' | gh secret set IOS_DISTRIBUTION_P12_BASE64 --env release-ios --repo TheArctesian/anima.ing
+   gh secret set IOS_DISTRIBUTION_P12_PASSWORD --env release-ios --repo TheArctesian/anima.ing
+   base64 -i <the .mobileprovision file> | tr -d '\n' | gh secret set IOS_PROVISIONING_PROFILE_BASE64 --env release-ios --repo TheArctesian/anima.ing
+   ```
+
+   The second command asks for the password and does not show it.
+3. **The environment `release-testflight`** (the key of App Store Connect; the job that uploads), the same way:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-testflight --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-testflight/deployment-branch-policies -f name=main -f type=branch
+   gh secret set ASC_API_PRIVATE_KEY --env release-testflight --repo TheArctesian/anima.ing < <the AuthKey_….p8 file>
+   gh secret set ASC_API_KEY_ID --env release-testflight --repo TheArctesian/anima.ing
+   gh secret set ASC_API_ISSUER_ID --env release-testflight --repo TheArctesian/anima.ing
+   ```
+4. **After a run has used them:** delete the six iOS secrets from `release`, where the macOS build has them in its memory: `gh secret delete <name> --env release --repo TheArctesian/anima.ing` for each. R-204 left them there; this step is yours to take or not.
+5. **The switches**, the first when the archive script is on `main`, the second when a trial has built and signed:
+
+   ```sh
+   gh variable set ANIMA_IOS_BUILD --body on --repo TheArctesian/anima.ing
+   gh variable set ANIMA_PUBLIC_TESTFLIGHT --body on --repo TheArctesian/anima.ing
+   ```
+
+Two environments and not one: the job that builds runs the code of the commit, and the key that can upload to your App Store Connect account does not need to be there.
+
+Not proven, each until a real run: that the phone shell builds on a machine of GitHub; that the script signs from a keychain and an installed profile, with no window; that `xcrun altool --upload-app` of the machine takes the file with the API key; the time of the job; what App Store Connect answers for the first build of a new app (it can ask for export compliance and for a review of the beta). HT-042 has the checks.
+
 ### To stop or undo a release
 
 - **Before the job `publish`:** cancel the run on GitHub, or delete the variable `ANIMA_PUBLIC_RELEASES`. Nothing public changed. The files of the run stay on GitHub for 7 days. No approval stops a run (R-182): if you do neither, it publishes.

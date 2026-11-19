@@ -66,6 +66,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 | HT-041 | The first formula and the first crate version of `anima` alone, from the release workflow (tasks B8h, R8d) | A crates.io account of the operator, the key of the tap, a public release, a Mac and a Linux computer with no Anima | Open |
+| HT-042 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
@@ -1321,6 +1322,29 @@ starts on a computer with no `libdbus-1`, and if the build of the crate needs th
    the same version from both. Note each package of the system that the build or the program asked for.
 5. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
    version (INS-012). crates.io shows `anima-cli` with that version.
+
+Result: Open.
+
+### HT-042: the iOS application from the release workflow to TestFlight (R-203; task B8i)
+
+Built: on the branch `release/ios-job`. The release workflow has the jobs `ios` (build and sign), `ios-upload`
+(send to App Store Connect) and `ios-record`, behind the variables `ANIMA_IOS_BUILD` and `ANIMA_PUBLIC_TESTFLIGHT`.
+The steps of the operator are in [releases.md](procedures/releases.md), "The iOS application: TestFlight".
+
+The tests read the rules of the jobs: the switches, which job holds which key, the build number. No job ran. The
+archive script `apps/desktop/src-tauri/ios-archive.sh` (task M5-4 of the mobile plan) does not exist, so no test
+built or signed the application, and nothing was sent to App Store Connect.
+
+1. Do steps 1 to 3 of "The iOS application: TestFlight". Expected: two environments for `main`, each with its
+   three secrets.
+2. When the archive script is on `main`: set `ANIMA_IOS_BUILD` and start a trial. Expected: the job `ios` passes
+   and the artifact `ios` holds `Anima.ipa`; no upload job runs.
+3. Set `ANIMA_PUBLIC_TESTFLIGHT` and push a change of the application to `main`. Expected: `ios-upload` passes;
+   App Store Connect shows a build with the version of the commit and the build number of its count (0.8.15
+   gives 815); `ios-record` passes.
+4. Install the build from TestFlight on an iPhone. Expected: the application starts and shows the same version.
+5. Push a change of a document only. Expected: the summary of the run says "nothing: no change of ios after the
+   published <version>", and no iOS job runs.
 
 Result: Open.
 
