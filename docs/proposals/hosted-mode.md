@@ -266,7 +266,7 @@ in the commit that builds the requirement.
 | HMD-013 | Built | Measured on the first pool host on 2026-11-17: about 10 seconds from a make to a ready hub (HM-D8). The application shows the progress (HM-T1, HMD-037). The person makes the hub from the application, so the site shows no progress. |
 | HMD-014 | Built | Each hub is one isolated instance with its own data, its own keys and limits (private service plan, ACL-003, T5). Not built: a backup of each hub. Not reviewed by a person (HM-D7, R-159). |
 | HMD-015 | Not built | The site has no such text. R-159 (HM-D7) adds a limit to the text. |
-| HMD-016 | Not built | A self-hosted hub has a backup and a restore on a second server (FND-006, HT-024 Open). A hub of the pool has no export. |
+| HMD-016 | Not built | A self-hosted hub has a backup and a restore on a second server (FND-006; HT-024 is Deferred, R-169). A hub of the pool has no export. |
 | HMD-017 | Not built | No card "Your hub" and no limits. HM-D2 is open. |
 | HMD-018 | Not built | No usage line exists (HM-D2). R-159 (e) is a different case: a paid account that is past due. |
 | HMD-019 | Not built | Built in part, in the Stripe sandbox only: the site saves a card and opens the customer portal (private site, Stripe plan). Not built: the application does not show the plan and does not open the site for a change. Not checked: Apple Pay and Google Pay, and the live mode. R-159 (f) is the move to live; the private plans own it. |

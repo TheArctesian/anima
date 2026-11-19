@@ -23,7 +23,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
   a ruling or the operator sets it to Open again.
 - A Failed entry stays in the list until a correction is built. Then its state goes back to Open.
 - Move a Passed entry to "Passed" at the end of this document. Do not delete it.
-- A proposal of 2026-11-18 sorts the open checks for the hosted hub and gives one order for them: [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md). The operator approved it on 2026-11-18 (R-169). The entries below do not show it yet: a later commit sets the fifteen deferred entries and writes the new steps.
+- The operator approved a sorting of the open checks for the hosted hub on 2026-11-18 (R-169). [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md) gives the reason for each check, and one order of eight groups for the operator. Fifteen checks are Deferred (section "Deferred"). Twenty checks have steps for the hosted hub: each says "On the hosted hub (R-169)".
+- The table "Open" has one row for each entry `HT-nnn` that is Open or Failed. A Deferred entry is in the section "Deferred". A Passed entry is in the section "Passed".
 
 ## Open
 
@@ -37,19 +38,17 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
-| HT-009 | The hub image builds with Rust 1.100.0 | The next hub deployment (VPS-005) | Open |
-| HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change | Open |
-| HT-011 | Run a workflow again, cancel a run and start a workflow on GitHub | A GitHub repository with a workflow | Open |
-| HT-012 | Set a commit status on GitHub | A GitHub repository that is safe to change | Open |
-| HT-013 | An API key cannot merge, control a run or read a file | The hub and two API keys | Open |
-| HT-014 | The issue tools of the MCP server, and a workflow that a comment starts | An MCP client and the repository of HT-011 | Open |
-| HT-015 | The Work, Code and History tabs of a project in the client | A hub that has the tabs (VPS-005) | Open |
+| HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
+| HT-011 | Run a workflow again, cancel a run and start a workflow on GitHub | A GitHub repository with a workflow, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
+| HT-012 | Set a commit status on GitHub | The repository of HT-010, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
+| HT-013 | An API key cannot merge, control a run or read a file | The hosted hub with GitHub, and two API keys | Open |
+| HT-014 | The issue tools of the MCP server, and a workflow that a comment starts | An MCP client, the repository of HT-011, and the application on the hosted hub | Open |
+| HT-015 | The Work, Code and History tabs of a project in the client | The application on the hosted hub, with GitHub connected | Open |
 | HT-016 | A release build on the Linux builder puts the bundle in its own clone | The Linux builder | Open |
-| HT-017 | "This machine" with the Anima VPN and NetBird together | A Mac with Tailscale and NetBird, and a second tailnet account | Open |
-| HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
-| HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
-| HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
-| HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
+| HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that has the old program, and a daemon on the hosted hub (HM-D16) | Open |
+| HT-020 | The desktop application builds on Linux with no lint error (GH-52) | The Linux computer | Open |
+| HT-021 | The delay of the session picture in the Linux application (GH-54) | The Linux computer, the Mac, and a hub that has VNC sessions (a local hub) | Open |
+| HT-023 | The hash chain of the audit log on the real hub | The hosted hub, and a key for the command line or an MCP client | Open |
 | HT-025 | A phone joins a hub with an invite, through the link in the app; the Paste invite and Joining screens | An iPhone and an Android phone with a build of `mobile/m1-shell`, the simulator and the emulator, a hub with an invite | Open |
 | HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
 | HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
@@ -61,6 +60,17 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
+
+### What a check on the hosted hub needs
+
+Many entries were written for the hub on the VPS. The operator uses only the hosted hub (R-130) and starts fresh on it (R-140). An entry that R-169 changed has a paragraph "On the hosted hub (R-169)". Those paragraphs use these four terms.
+
+- The application on the hosted hub: the desktop application, signed in with the Anima.ing account as in HT-022. It replaces `https://hub.anima.ing/` and a browser on the VPN.
+- A key for the command line: `anima auth login` asks for a user name, a password and an authenticator code, and a hosted hub has no such account (OD-25 of the [design specification](spec/design-spec.md), open). Make an API key in Settings of the application, and give it to the command line with `anima auth login --with-token` or in `ANIMA_TOKEN`. How the command line finds the address of a hosted hub is not verified: write down what you used. An API key cannot make a change that D-23 refuses (a merge, a run control, a commit status, the content of a file). A step with such a change waits for OD-25.
+- GitHub on the hosted hub: connect GitHub on the hosted hub first. The connection of the hub on the VPS does not move (R-140). No check connected GitHub on a hosted hub: not verified.
+- A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
+
+The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -186,16 +196,6 @@ that a person adds to it.
 
 Result: Open.
 
-### HT-009: the hub image builds with Rust 1.100.0
-
-Built: `deploy/hub/Dockerfile` now starts from `rust:1.100.0-bookworm`. No person built the
-image after the change.
-
-1. At the next hub deployment, build the hub image. Expected: the build completes.
-2. Start the hub. Expected: the health check passes and migration 0715 is applied.
-
-Result: Open.
-
 ### HT-010: merge a pull request, and a set of pull requests, on GitHub
 
 Built: the hub change `merge_pull_request` and `anima pr merge` (PRJ-033, OD-E14). The tests use
@@ -203,8 +203,14 @@ a scripted GitHub. No pull request was merged on GitHub. The only change sent to
 one issue comment (2026-11-16).
 
 Use a repository that is safe to change. Make four pull requests in it that can merge, one pull
-request that has a conflict, and, if you can, one pull request from a fork. Sign in with
-`anima auth login`.
+request that has a conflict, and, if you can, one pull request from a fork. On a hub with a user
+name and a password, sign in with `anima auth login`.
+
+On the hosted hub (R-169): connect GitHub on the hosted hub first. Step 1 is a read: do it with a key
+for the command line. Each `anima pr merge` of steps 2 to 6 needs a sign-in of the command line,
+because the hub refuses a merge from an API key (D-23, HT-013). Thus steps 2 to 7 wait for OD-25.
+Until then, step 6 of HT-015 does one merge through the hosted hub with the button of the
+application.
 
 1. Run `anima pr list <owner/name> --checks`. Expected: each pull request, with CAN MERGE and
    CHECKS filled in.
@@ -234,8 +240,13 @@ Built: the hub changes for run controls and `anima workflow rerun`, `cancel` and
 workflow, so nothing was tried.
 
 Use a repository with one workflow that has `workflow_dispatch` with one input, and that can
-fail on request (for example, an input `fail` that makes one job fail). Sign in with
-`anima auth login`.
+fail on request (for example, an input `fail` that makes one job fail). On a hub with a user name
+and a password, sign in with `anima auth login`.
+
+On the hosted hub (R-169): connect GitHub on the hosted hub first. Steps 1 and 3 are reads: do them
+with a key for the command line. Steps 2 and 4 to 7 are run controls, which the hub refuses from an
+API key (D-23, HT-013). Thus they wait for OD-25, and step 8 with them. Until then, step 7 of HT-015
+runs a workflow again and cancels a run through the hosted hub with the buttons of the application.
 
 1. Run `anima workflow list <owner/name>`. Expected: the workflow, as active.
 2. Run `anima workflow start <owner/name> <workflow> --branch main --input fail=false`.
@@ -261,6 +272,10 @@ Result: Open.
 Built: the hub change `set_commit_status` and `anima repo status set` (PRJ-035). The tests use a
 scripted GitHub.
 
+On the hosted hub (R-169): connect GitHub on the hosted hub first, and use the repository of HT-010.
+Step 1 is a read: do it with a key for the command line. Steps 2 to 4 set a commit status, which the
+hub refuses from an API key (D-23, HT-013). Thus they wait for OD-25.
+
 1. Run `anima repo commits <owner/name> --limit 1` and copy the SHA.
 2. Run `anima repo status set <owner/name> <sha> --state success --context anima/test --description "A test"`.
    Expected: it asks one question. After "yes", the commit on GitHub shows the status
@@ -276,6 +291,13 @@ Result: Open.
 Built: the refusals of API keys for the changes and the file content of Projects (D-23,
 PRJ-032), and the limits of GitHub requests for one key. The tests use a hub in the test
 process. The hub on the VPS has no API key, so nothing was tried there.
+
+On the hosted hub (R-169): connect GitHub on the hosted hub first. `anima key create` (step 1) and
+`anima key revoke` (step 7) need a sign-in of the command line (OD-25). Until then, make and revoke
+the two keys in Settings of the application, with the same name, scope, kind (user or agent) and
+expiry. If Settings does not offer one of these values, write that down. Steps 2 to 6 use the keys
+themselves and run as they are written. Step 5 expects that a write key of an agent can make a
+comment.
 
 1. Run `anima key create --name ht-read --for user --expires 1d` and
    `anima key create --name ht-write --scope write --for agent --expires 1d`. Keep the two
@@ -306,6 +328,9 @@ says that a comment can start a workflow; that was not tried on GitHub.
 Use the repository of HT-011. Add to it one workflow that runs on `issue_comment` and prints the
 text of the comment.
 
+On the hosted hub (R-169): connect GitHub on the hosted hub first. Make the write API key of step 1
+in Settings of the application on the hosted hub, for an agent. Do step 2 in that application.
+
 1. Start an MCP client with `anima mcp` and a write API key made for an agent. Ask the client
    to make an issue. Expected: no issue is made, because the three issue tools are off until you
    turn them on.
@@ -330,11 +355,18 @@ PRJ-028 to PRJ-035. The hub reads were tried from the command line against
 `TheArctesian/anima.ing` on 2026-11-16. The tabs and their buttons were not tried against
 GitHub.
 
-The hub must be of a commit that has the tabs. A change to the hub on the VPS needs the
-confirmation of the operator (VPS-005).
+On the hosted hub (R-169): the hub of the account must come from a hub image that has the tabs.
+Which image has them is not verified: if the project page shows no tabs, write that down and stop.
+Connect GitHub on the hosted hub first. The `anima` commands of steps 2 and 4 are reads: do them with
+a key for the command line. Steps 6 and 7 are also the only way to do a merge and a run control on a
+hosted hub until OD-25 is decided (HT-010, HT-011).
 
-1. Open `https://hub.anima.ing/` on a computer on the VPN, or the desktop application of the
-   same build. Open the project of a repository with pull requests, issues and workflow runs.
+On the self-host path, the hub must be of a commit that has the tabs, and a change to the hub on the
+VPS needs the confirmation of the operator (VPS-005).
+
+1. Open the application on the hosted hub. (Self-host path: open `https://hub.anima.ing/` on a
+   computer on the VPN, or the desktop application of the same build.) Open the project of a
+   repository with pull requests, issues and workflow runs.
 2. Open Work. Expected: the same pull requests and issues as `anima pr list` and
    `anima issue list`, and the same runs as `anima workflow runs`.
 3. Open Code. Expected: the folders and files of the default branch. Open one file. Expected:
@@ -375,35 +407,6 @@ The desktop application on the Linux builder must be of commit eef4e7b1 or later
 
 HT-008 is the same release on the Mac builder.
 
-### HT-017: "This machine" with the Anima VPN and NetBird together
-
-Built: merged to `main` in bdb321f1 and 71bfcbdb (ADR-005, R-060). The desktop app takes its
-own VPN address from the Tailscale client that is logged in to the hub's login server
-(`vpnLoginServer`). It does not read the interfaces. Security finding:
-[SF-001](security-findings.md#sf-001-this-machine-can-show-and-probe-the-address-of-another-overlay-network).
-
-The tests use a script in place of the Tailscale client. No test ran NetBird, and no test ran a
-second overlay network on the same computer. One check on the operator's Mac with only the Anima
-VPN gave the Anima address (`100.64.0.2`) and SSH on.
-
-1. Install the desktop app of this build on a Mac. Connect the Anima VPN (Tailscale logged in
-   to the hub's login server). Connect NetBird on the same Mac. If you can, use a NetBird network
-   that gives this Mac an address in `100.64.0.0/10` that is lower than its Anima address.
-2. Run `tailscale ip -4` and `netbird status`. Write down the two addresses. Expected: two
-   different addresses.
-3. Open the app, sign in, and open Add device > This Mac. Expected: the host is the Tailscale
-   address of step 2, not the NetBird address.
-4. Run `sudo tcpdump -ni any 'tcp port 22 and tcp[tcpflags] & tcp-syn != 0'` in a terminal.
-   Open Add device > This Mac again. Expected: one connection to the Tailscale address, and none
-   to the NetBird address. The SSH part of the form is on only if SSH answers on the Tailscale
-   address.
-5. Disconnect the Anima VPN (`tailscale down`). Keep NetBird connected. Open Add device again.
-   Expected: This Mac has no VPN address, and the form opens empty.
-6. Sign the Tailscale client in to a different tailnet, for example a personal Tailscale
-   account. Open Add device again. Expected: This Mac has no VPN address.
-7. Sign the Tailscale client in to the Anima login server again. Expected: step 3 gives the
-   Anima address again.
-
 Result: Open.
 
 ### HT-018: each machine with the old program gets `anima-daemon` and enrols again
@@ -417,9 +420,16 @@ and each enrolment code, so no old token is valid under a new spelling.
 The tests use a fake hub and a planned list of commands. No test ran on a machine that has the old
 program, and no test ran the migration on the database of the real hub.
 
-1. Deploy the hub of this build (VPS-005). Expected: the hub starts, and migrations 0717 and 0718 are in its
+On the hosted hub (R-169): the hub on the VPS is not deployed again, and the hosted hub starts with no
+device (R-140). Steps 1 and 2 are for the self-host path only: do not do them, and write "not done
+(R-169)" for them in the result. Do steps 3 to 7. Step 5 needs a daemon on the hosted hub (HM-D16, not
+verified): make the code in the application on the hosted hub. Step 6 is a read: do it with a key for
+the command line. The migrations 0717 and 0718 on a database with old tokens are thus not checked by a
+person.
+
+1. Self-host path only. Deploy the hub of this build (VPS-005). Expected: the hub starts, and migrations 0717 and 0718 are in its
    log with no error.
-2. Open the client. Expected: each device that had the source "Agent" shows the source "Daemon"
+2. Self-host path only. Open the client. Expected: each device that had the source "Agent" shows the source "Daemon"
    and is stale. No device shows new metrics from the old program.
    The hub writes no event and sends no notification when the devices go stale after this
    migration, so look at the device list.
@@ -443,25 +453,6 @@ program, and no test ran the migration on the database of the real hub.
    `/usr/local/bin/anima-agent`, `~/.local/bin/anima-agent`, and the folders `anima-agent` in
    `~/.config`, `/var/lib` and `~/Library/Application Support`. They hold the old token, which
    is no longer valid.
-
-Result: Open.
-
-### HT-019: the VPN role `daemon` on the VPS
-
-Built: in the repository, the Headscale policy and its tests name the role `daemon` and the tag
-`tag:daemon` (`deploy/headscale/`, [DMN-1](work-items/device-manager/DMN-1.md), R-126). The live
-policy on the VPS still names `tag:agent`. Nothing on the VPS was changed (VPS-005).
-
-The tests check the policy file of the repository. No test reads the live Headscale.
-
-1. On the VPS, run `headscale nodes list`. Write down each node that has `tag:agent`.
-   Expected today: none, or the nodes that you tagged by hand.
-2. If no node has the tag, nothing more is necessary: the next policy that you apply from the
-   repository names `tag:daemon`. Stop here.
-3. If a node has the tag, give it the new tag first:
-   `headscale nodes tag -i <id> -t tag:daemon`. Then apply the policy of the repository as
-   `deploy/headscale/README.md` says. Expected: `headscale policy check` gives no error, and the
-   node reaches the hub on TCP 443 and nothing else.
 
 Result: Open.
 
@@ -501,58 +492,6 @@ No test can see a real screen.
    Expected: write in GH-54 which setting, if any, removes the delay.
 
 Result: Open.
-
-### HT-022: the first real sign-in with the Anima.ing account (HM-T1 to HM-T7)
-
-Built: the first-run "Sign in" ([hosted-mode.md](proposals/hosted-mode.md) Section 4.1, HMD-022, HMD-023,
-HMD-037 to HMD-041, HMD-043). The desktop shell does the WorkOS device sign-in and calls
-`cloud.anima.ing/v1/hub` and `/v1/hub/access`; the app joins the link with the invite and trades the
-claim with the hosted hub for its token (`claimDeviceToken`).
-
-The tests use a stand-in cloud, fake answers of WorkOS and the site, and a fake link. No test signs
-in with WorkOS, calls the live site, or trades a claim through a real link. Open decision HM-D13 (the
-form of the WorkOS requests) is decided by step 2.
-
-Checked without an account on 2026-11-18 (UTC), on the pool server, with a test hub that is deleted and the
-program `anima-link` of `main` on this computer: the join with the invite of a hub's access (0.7 s), the trade
-of the claim through the link for a token of the operator `owner`, the refusal of a second trade of that
-claim, a second access for the same device name (no invite, a new claim, which trades), the refusal of
-`login`, and the same link and token after a sleep and a wake of the hub (answers again in about 12 s).
-`WorkOS` Production gives a device code for a form with the client ID only, and answers a refresh with no
-secret by "Invalid refresh token". The site answers 401 with no token and with a wrong one. Not checked: the
-sign-in of a person, a call of the site with a real token (it makes the Stripe Customer and the hub), the
-join by the application, and the refresh of a real token.
-
-`WorkOS` Production offers email only (a password, or a code by email): Google, GitHub, Microsoft, Apple and
-passkeys are off, and no account exists, so step 2 makes the account. A debug build carries no `anima-link`
-(`apps/desktop/src-tauri/src/carried.rs`), so step 1 gives it one; without it the join after the sign-in is
-refused. A computer that is on the link of a different hub leaves that link when it joins (`link_join`
-replaces the device folder); this computer is on none.
-
-1. On this computer, in the checkout of `main`: run `link/build.sh`, copy `link/bin/anima-link-darwin-arm64`
-   to an empty folder with the name `anima-link`, run `bun run --cwd apps/desktop tauri build --debug --no-bundle`,
-   and start `ANIMA_DEV_PROGRAMS=<that folder, absolute> target/debug/anima-desktop`. Do not use
-   `bun run --cwd apps/desktop dev` for this check: its pages come from `http://localhost:5173`, and a hosted hub
-   refuses that origin (403), so the trade of the claim fails and the app says "No network" (seen on
-   2026-11-17). A built app has the origin `tauri://localhost`, which the hub accepts. On the first-run screen, click
-   "Sign in". Expected: the browser opens a WorkOS page, and the app shows the same short code.
-2. In the browser, type your email address and make the Anima.ing account (a password, or the code that
-   WorkOS sends by email). Expected: the app shows "Your hub is
-   starting", then "Connecting". If it shows "Sign-in refused" at once, WorkOS refused the request
-   form: write it in HM-D13.
-3. Wait. Expected: the device list of the hosted hub opens. No screen asked for an invite, an
-   address or a password.
-4. Quit the app and start it again. Expected: the device list opens with no sign-in.
-
-Result: Passed (operator, 2026-11-17: "Passed"), with the built app of step 1 from `main` (`cb0d9bac`), an account
-made with an email address, and the hub `h6opknk7w29jw56jqd0kc` of the pool. First try on 2026-11-17 (operator: "worked till up to here", with the screen "No network"), with
-`bun run --cwd apps/desktop dev`: the sign-in, the account, the hub and the join of the link worked (the log of the
-pool and of the shell); the trade of the claim failed for the origin of the debug pages (step 1). The wrong
-message is not corrected: a refusal of the hub by origin and no network give the same answer to the page.
-Second try on 2026-11-17 with the built app of step 1 (operator, with a picture of the empty device list of the
-hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
-In the same message the operator asked for more than this check
-covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
 
 ### HT-027: the computer that signs in is a device of the hosted hub (HM-T8)
 
@@ -720,7 +659,14 @@ that exists. `anima audit verify` and the MCP tool `anima_audit_verify` check th
 The tests use a throwaway database with a few entries. No test ran the migration and the first link
 on the real hub, with its year of entries, and no test ran the daily check there.
 
-1. Update the hub, start it, and look at its process log.
+On the hosted hub (R-169): step 1 links the entries that a hub had before the migration. The hosted
+hub is new (R-140), so step 1 is for the self-host path only: do not do it, and write "not done
+(R-169)" for it in the result. The first link of the year of entries of the hub on the VPS is thus not
+checked by a person. Do steps 2 to 4 on the hosted hub. For `anima audit verify`, use a key for the
+command line; if the hub refuses the key, use the MCP tool `anima_audit_verify` and write the refusal
+down. If an API key can read the audit log is not verified.
+
+1. Self-host path only. Update the hub, start it, and look at its process log.
    Expected: the hub starts. When the audit log had entries, one line says "audit entries linked in
    the hash chain", with the count.
 2. Run `anima audit verify`.
@@ -859,147 +805,6 @@ user must be able to run `docker ps`.
 
 Result: Open.
 
-## Not built yet
-### HT-024: a hub restored on a second server from its backup (FND-006, task F1)
-
-Built: the procedure [restore-and-move.md](procedures/restore-and-move.md). An agent did its database
-steps (3 and 6 to 10) on a new, empty setup in Docker on 2026-11-17; the section "Proof" of the
-procedure has the results.
-
-Not covered: a real server. No test joined the VPN, ordered the certificate, started the hub on the
-restored database or opened a session with a restored credential.
-
-1. On a second Linux server, do steps 1 to 5 of the procedure. Expected: each `bin/preflight` command
-   prints no refusal.
-2. Do steps 6 to 10 with the newest dump of the hub. Expected: "Restored ... into anima.", `migrate`
-   exits with code 0, and "Restore check passed".
-3. Do steps 11 and 12. Expected: `docker compose ps` shows `hub` as running, and the client connects
-   at the address of the hub.
-4. In the client, open the device list and the audit log, then open a session to a device that has a
-   stored credential. Expected: the devices and the log are those of the old hub, and the session
-   opens with no question for the credential.
-
-Result: Open.
-
-
-The Tools section of the Device page and the Tools filter of the device list
-([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
-builder adds the entry.
-
-## Checks that other documents hold
-
-These checks were open before this document. The document in the column "Steps", or the line above each table, holds the steps. This section holds the result of each check (PLN-014), so that one list shows all of them. The results in this version come from the text of those documents and of [handoff.md](plans/phase-3/handoff.md) (2026-11-12). No person or agent ran a check for this version.
-
-- A task that waits for a check is not Done until the row of the check says Passed (PLN-009).
-- The words for a result are the states of this document: Open, Passed, Failed. Add "Blocked" with the reason when a check cannot start.
-- The operator types each real secret personally. An agent never types, reads or asks for a real secret.
-
-| Group | Checks | Passed | Blocks |
-| --- | --- | --- | --- |
-| Phase 2 (O-1 to O-9) | 9 | 1 | The Phase 2 live criteria, and the Phase 3 acceptance run (work plan Section 4, tier 0) |
-| Phase 3 (P-1 to P-17) | 17 | 0 | The Phase 3 acceptance run, WP-53 (tier 0) |
-| One-click (S1 to S8) | 26 | 0 | The task of each row |
-| Command line and MCP | 6 | 0 | The register row of [cli-mcp-plan.md](plans/cli-mcp-plan.md) |
-| A real release | 1 | 0 | OD-16 to OD-18 of the design specification |
-
-### Phase 2
-
-Steps: [phase-2-acceptance.md](archive/phase-2/phase-2-acceptance.md), "Operator steps". Blocks: the criterion in the column "Criterion" of that document.
-
-| Check | What it proves | Needs | Criterion | Result |
-| --- | --- | --- | --- | --- |
-| O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete | A machine with RDP. R-076: no Windows; the operator tests on a second Mac. A Headscale grant on tcp:3389 | 1 | Open. It waits for the second Mac (handoff, 2026-11-12) |
-| O-2 | RDP: a changed certificate stops the session; the Warning badge | The machine of O-1 | 2 | Open. It waits for the second Mac (handoff, 2026-11-12) |
-| O-3 | VNC to a Mac and to a Linux desktop | A Mac with Screen Sharing on. A Linux desktop with a VNC server | 3 | Passed on the Mac and on `pop-os` (handoff, 2026-11-12; the Linux run was 2026-11-07, with input off in wayvnc) |
-| O-4 | SFTP: list, upload, download, the refusals, the audit entries | A real OpenSSH server with an accepted host key | 6 | Open |
-| O-5 | Wake-on-LAN through the site relay | A device that sleeps on a LAN. A relay device at that site with `wakeonlan` | 8 | Open |
-| O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page | A device web interface with an untrusted certificate | 9 | Open |
-| O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page | A Linux desktop | 9 | Open |
-| O-8 | SSH metrics: a new point each 30 s, the bars on the card | One Linux device and one macOS device with SSH | 11 | Open |
-| O-9 | Docker, SNMP, Tailscale ping and systemd checks | An SSH device with Docker and systemd. An SNMP v3 agent. The LocalAPI proxy on the VPS | 15 | Open |
-
-### Phase 3
-
-Steps: [phase-3-acceptance.md](plans/phase-3/phase-3-acceptance.md), "Operator steps". Run order: P-1 to P-15, P-17, then P-16. Blocks: the acceptance run of Phase 3 (WP-53). The handoff of 2026-11-12 names what must come first: O-4 to O-9, the wording of the design specification Section 5.7.3, the Headscale daemon policy (R-105), the R2 set-up and the daemon binaries.
-
-| Check | What it proves | Needs | Result |
-| --- | --- | --- | --- |
-| P-1 | The deployed image and the compose file are the accepted ones | A shell on the VPS | Open |
-| P-2 | The T4 probe, with no key | A VPN machine with `bun` | Open |
-| P-3 | Browsers and sign-in on macOS; the cookie attributes | A Mac on the VPN with Safari and Chrome | Open |
-| P-4 | A browser on Linux, and the desktop application | A Linux machine with Firefox or Chromium | Open |
-| P-5 | The web client: the device list and the detail view | A signed-in browser (P-3) | Open |
-| P-6 | SSH and VNC sessions in the web client | A device with SSH. A device with VNC | Open |
-| P-7 | The notification channels are entered | A signed-in client. The operator types each secret | Open |
-| P-8 | Channels are selected on a check | A signed-in client | Open |
-| P-9 | "Send test" on each channel | The receiving application of each channel | Open |
-| P-10 | A Down and Up cycle sends the messages | The check of P-8, and a way to stop its service | Open |
-| P-11 | Maintenance sends no message | The check of P-8 | Open |
-| P-12 | A live RDAP check | A signed-in client | Open |
-| P-13 | GPU metrics on the Apple silicon Mac | The Mac with the push daemon in operation | Open |
-| P-14 | Optional: a real Prometheus scrape | A Prometheus server on the VPN. A Headscale grant (ask first) | Open |
-| P-15 | Optional: the API key checks in Settings | A signed-in client | Open |
-| P-17 | The desktop application: the update banner | A build with an older version installed, and a newer release | Open |
-| P-16 | Last: the T3 log scan of the live hub log | A shell on the VPS, after all other steps | Open |
-
-### One-click
-
-Each row gives the document that has the steps and the task that the check blocks.
-
-| Check | What it proves | Needs | Steps and task | Result |
-| --- | --- | --- | --- | --- |
-| S1-T14 | The link between two machines: the direct rate, the first-connection time, relayed Screen Sharing, the firewall prompt. It sets the keepalive numbers (LNK-009) | A second Mac | [s1-link-tasks.md](plans/one-click/s1-link-tasks.md), T14 | Open |
-| S2-T9 | The native VNC gateway against macOS Screen Sharing and TigerVNC, with the figures | This Mac; the operator types the password | [s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md), T9 | Open |
-| S2-RDP | The native RDP gateway against a GNOME Remote Desktop host | The operator's GNOME Remote Desktop host | [s2-rdp-tasks.md](plans/one-click/s2-rdp-tasks.md), Section 6 | Open |
-| S3-T10 | The database tree recipe on the Linux builder | The `x86_64` Linux build computer | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S3-T12 | Signature and notary check of the database tree | The Developer ID of the operator. A second Mac or a new user account | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S3-T13 | No data loss after a power cut | A Mac that can lose power | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S3-T14 | The database on a real Linux desktop | A Linux desktop with PostgreSQL 17 | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S4-T10 | The systemd user unit on Linux. The Local Network prompt on a Mac | A Linux desktop. A Mac with a LAN device | [s4-local-hub-tasks.md](plans/one-click/s4-local-hub-tasks.md), Section 7.2 | Open |
-| S6-1 | The first run in the desktop window: create a hub, TOTP, the key copy, an invite | This Mac and a phone | [s6-first-run-tasks.md](plans/one-click/s6-first-run-tasks.md), Section 6.3, check 1 | Open |
-| S6-2 | Join from a second Mac, then revoke | A second Mac | Section 6.3, check 2 | Open |
-| S6-3 | The first run on Linux with the systemd user unit; finding F-10 | A Linux desktop | Section 6.3, check 3 | Open |
-| S6-4 | No port mapping on a real router; no TCP port answers from outside | The router of the hub computer, and a machine outside the network | Section 6.3, check 4 | Open |
-| S6-5 | A relayed path shows `RELAYED` | A network where UDP is blocked | Section 6.3, check 5 | Open |
-| S8-1 to S8-8 | Stay awake on macOS: the tray, keep awake, the set-up, the lid, quit and failure, the battery floor, remove, eight hours (8 checks) | A Mac laptop. A second computer for the `ping` of check 4 | [s8-stay-awake-tasks.md](plans/one-click/s8-stay-awake-tasks.md), Section 6, checks 1 to 8 | Open |
-| S8-9 to S8-13 | Stay awake on Linux: the tray, keep awake, the lid on GNOME, quit, the battery (5 checks) | A Linux laptop | Section 6, checks 9 to 13 | Open |
-
-### Command line and MCP
-
-Steps and comments: [GH-60](work-items/device-manager/GH-60.md). A suite on loopback covers the other items of that list (its comment of 2026-11-13). Blocks: the register row of [cli-mcp-plan.md](plans/cli-mcp-plan.md).
-
-| Check | What it proves | Needs | Result |
-| --- | --- | --- | --- |
-| CLI-1 | `anima mcp` with a real MCP client: the tool list, one read, one change, and the approval request for a tool in state "ask" (MCP-013) | Claude Code and a hub | Open. A first change through the deployed hub was sent on 2026-11-16 (`anima issue comment`); the approval request is not checked |
-| CLI-2 | The MCP section in Settings in the real desktop application | The desktop application | Open |
-| CLI-3 | Linux: the crate compiles; the Secret Service token store and its file fallback | A Linux desktop | Open |
-| CLI-4 | macOS: the Keychain item and its access control | This Mac | Open |
-| CLI-5 | TLS against a hub with a bad certificate | A hub with a bad certificate | Open |
-| CLI-6 | The list of GH-60 against the production hub: sign-in, `anima ssh`, `anima files`, a confirmation prompt | The production hub | Open. The read commands for GitHub were checked on 2026-11-16 |
-
-### Machines that the checks need
-
-One visit to a machine can close many rows.
-
-| Machine or access | Checks |
-| --- | --- |
-| A second Mac | O-1, O-2, S1-T14, S3-T12, S6-2 |
-| A Linux desktop or laptop | O-7, P-4, S3-T14, S4-T10, S6-3, S8-9 to S8-13, CLI-3 |
-| The `x86_64` Linux build computer | S3-T10 |
-| This Mac only | S2-T9, S6-1, S8-1 to S8-8, P-3, P-13, CLI-2, CLI-4 |
-| A shell on the VPS | P-1, P-16, O-9 |
-| Special set-up | O-5 (a relay and a device that sleeps), O-9 (SNMP v3 agent), S3-T13 (a Mac that can lose power), S6-4 (the router), S6-5 (no UDP), P-14 (Prometheus) |
-
-### A real release
-
-| Check | What it proves | Steps | Result |
-| --- | --- | --- | --- |
-| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open. For macOS 0.2.0 and 0.2.1, the signature and the notarization are checked ([releases.md](procedures/releases.md), "Release record"). Not recorded here: the update of an installed application, and the AppImage launcher on Linux |
-
-## Passed
-
-None.
-
 ### HT-026: the use of AI agent programs from real session files
 
 Built: `crates/daemon-core/src/agent_usage/`, `crates/daemon/src/readers/agent_sessions/`, the hub
@@ -1121,3 +926,291 @@ looked at with the network off.
    no device of step 1 is shown anywhere before the sign-in.
 
 Result: Open.
+
+## Not built yet
+
+The Tools section of the Device page and the Tools filter of the device list
+([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
+builder adds the entry.
+
+## Checks that other documents hold
+
+These checks were open before this document. The document in the column "Steps", or the line above each table, holds the steps. This section holds the result of each check (PLN-014), so that one list shows all of them. The results in this version come from the text of those documents and of [handoff.md](plans/phase-3/handoff.md) (2026-11-12). No person or agent ran a check for this version.
+
+- A task that waits for a check is not Done until the row of the check says Passed (PLN-009).
+- The words for a result are the states of this document: Open, Passed, Failed, Deferred. Add "Blocked" with the reason when a check cannot start.
+- R-169 (operator, 2026-11-18) defers eleven rows of this section and changes twelve rows for the hosted hub. A deferred row says "Deferred (R-169)" with the reason. A changed row stays Open; its steps for the hosted hub are in "The changed checks on the hosted hub" below.
+- The operator types each real secret personally. An agent never types, reads or asks for a real secret.
+
+| Group | Checks | Passed | Deferred | Blocks |
+| --- | --- | --- | --- | --- |
+| Phase 2 (O-1 to O-9) | 9 | 1 | 3 | The Phase 2 live criteria, and the Phase 3 acceptance run (work plan Section 4, tier 0) |
+| Phase 3 (P-1 to P-17) | 17 | 0 | 8 | The Phase 3 acceptance run, WP-53 (tier 0). What that run is on a hosted hub is open (OD-W25) |
+| One-click (S1 to S8) | 26 | 0 | 0 | The task of each row |
+| Command line and MCP | 6 | 0 | 0 | The register row of [cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| A real release | 1 | 0 | 0 | OD-16 to OD-18 of the design specification |
+
+### Phase 2
+
+Steps: [phase-2-acceptance.md](archive/phase-2/phase-2-acceptance.md), "Operator steps". Blocks: the criterion in the column "Criterion" of that document.
+
+| Check | What it proves | Needs | Criterion | Result |
+| --- | --- | --- | --- | --- |
+| O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete | A machine with RDP. R-076: no Windows; the operator tests on a second Mac. A Headscale grant on tcp:3389 | 1 | Deferred (R-169, 2026-11-18). A hosted hub has no RDP session yet (HM-T14); S2-RDP is the RDP check of the path that stays. Before: Open, it waited for the second Mac (handoff, 2026-11-12) |
+| O-2 | RDP: a changed certificate stops the session; the Warning badge | The machine of O-1 | 2 | Deferred (R-169, 2026-11-18). As O-1. Before: Open, it waited for the second Mac (handoff, 2026-11-12) |
+| O-3 | VNC to a Mac and to a Linux desktop | A Mac with Screen Sharing on. A Linux desktop with a VNC server | 3 | Passed on the Mac and on `pop-os` (handoff, 2026-11-12; the Linux run was 2026-11-07, with input off in wayvnc) |
+| O-4 | SFTP: list, upload, download, the refusals, the audit entries | A real OpenSSH server with an accepted host key | 6 | Open. Steps for the hosted hub: below (R-169) |
+| O-5 | Wake-on-LAN through the site relay | A device that sleeps on a LAN. A relay device at that site with `wakeonlan` | 8 | Deferred (R-169, 2026-11-18). Wake-on-LAN is not possible for a computer of the link (HT-031). A relay that the hub reaches through the link is not verified. Before: Open |
+| O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page | A device web interface with an untrusted certificate | 9 | Open |
+| O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page | A Linux desktop | 9 | Open |
+| O-8 | SSH metrics: a new point each 30 s, the bars on the card | One Linux device and one macOS device with SSH | 11 | Open. Steps for the hosted hub: below (R-169) |
+| O-9 | Docker, SNMP, Tailscale ping and systemd checks | An SSH device with Docker and systemd. An SNMP v3 agent. The LocalAPI proxy on the VPS | 15 | Open. Steps for the hosted hub: below (R-169). SNMP and the Tailscale ping stay for the self-host path |
+
+### Phase 3
+
+Steps: [phase-3-acceptance.md](plans/phase-3/phase-3-acceptance.md), "Operator steps". Run order: P-1 to P-15, P-17, then P-16. Blocks: the acceptance run of Phase 3 (WP-53). The handoff of 2026-11-12 names what must come first: O-4 to O-9, the wording of the design specification Section 5.7.3, the Headscale daemon policy (R-105), the R2 set-up and the daemon binaries. R-169 defers eight of these checks (P-1 to P-6, P-14, P-16). What the acceptance run is on a hosted hub is an open decision of the operator: OD-W25 in [decisions.md](plan/decisions.md).
+
+| Check | What it proves | Needs | Result |
+| --- | --- | --- | --- |
+| P-1 | The deployed image and the compose file are the accepted ones | A shell on the VPS | Deferred (R-169, 2026-11-18). The hub on the VPS runs `408bbbab` and is not deployed again. Before: Open |
+| P-2 | The T4 probe, with no key | A VPN machine with `bun` | Deferred (R-169, 2026-11-18). The probe runs against the hub on the VPS, from the VPN. Before: Open |
+| P-3 | Browsers and sign-in on macOS; the cookie attributes | A Mac on the VPN with Safari and Chrome | Deferred (R-169, 2026-11-18). A browser on the VPN. If a hosted hub serves the web client to a browser is not verified. Before: Open |
+| P-4 | A browser on Linux, and the desktop application | A Linux machine with Firefox or Chromium | Deferred (R-169, 2026-11-18). As P-3. The Linux application has its own checks (HT-020, HT-021, S6-3). Before: Open |
+| P-5 | The web client: the device list and the detail view | A signed-in browser (P-3) | Deferred (R-169, 2026-11-18). As P-3. Before: Open |
+| P-6 | SSH and VNC sessions in the web client | A device with SSH. A device with VNC | Deferred (R-169, 2026-11-18). As P-3. Before: Open |
+| P-7 | The notification channels are entered | A signed-in client. The operator types each secret | Open. Steps for the hosted hub: below (R-169) |
+| P-8 | Channels are selected on a check | A signed-in client | Open. Steps for the hosted hub: below (R-169) |
+| P-9 | "Send test" on each channel | The receiving application of each channel | Open. Steps for the hosted hub: below (R-169) |
+| P-10 | A Down and Up cycle sends the messages | The check of P-8, and a way to stop its service | Open. Steps for the hosted hub: below (R-169) |
+| P-11 | Maintenance sends no message | The check of P-8 | Open. Steps for the hosted hub: below (R-169) |
+| P-12 | A live RDAP check | A signed-in client | Open. Steps for the hosted hub: below (R-169) |
+| P-13 | GPU metrics on the Apple silicon Mac | The Mac with the push daemon in operation | Open. Steps for the hosted hub: below (R-169) |
+| P-14 | Optional: a real Prometheus scrape | A Prometheus server on the VPN. A Headscale grant (ask first) | Deferred (R-169, 2026-11-18). A Prometheus server on the VPN and a Headscale grant. Before: Open |
+| P-15 | Optional: the API key checks in Settings | A signed-in client | Open. Steps for the hosted hub: below (R-169) |
+| P-17 | The desktop application: the update banner | A build with an older version installed, and a newer release | Open. The same act as REL-1 (R-169): 0.2.1 is installed and 0.2.2 is published. One run gives the result of the two rows |
+| P-16 | Last: the T3 log scan of the live hub log | A shell on the VPS, after all other steps | Deferred (R-169, 2026-11-18). The log of the hub on the VPS. Before: Open |
+
+### One-click
+
+Each row gives the document that has the steps and the task that the check blocks.
+
+| Check | What it proves | Needs | Steps and task | Result |
+| --- | --- | --- | --- | --- |
+| S1-T14 | The link between two machines: the direct rate, the first-connection time, relayed Screen Sharing, the firewall prompt. It sets the keepalive numbers (LNK-009) | A second Mac | [s1-link-tasks.md](plans/one-click/s1-link-tasks.md), T14 | Open |
+| S2-T9 | The native VNC gateway against macOS Screen Sharing and TigerVNC, with the figures | This Mac; the operator types the password | [s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md), T9 | Open |
+| S2-RDP | The native RDP gateway against a GNOME Remote Desktop host | The operator's GNOME Remote Desktop host | [s2-rdp-tasks.md](plans/one-click/s2-rdp-tasks.md), Section 6 | Open |
+| S3-T10 | The database tree recipe on the Linux builder | The `x86_64` Linux build computer | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S3-T12 | Signature and notary check of the database tree | The Developer ID of the operator. A second Mac or a new user account | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S3-T13 | No data loss after a power cut | A Mac that can lose power | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S3-T14 | The database on a real Linux desktop | A Linux desktop with PostgreSQL 17 | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S4-T10 | The systemd user unit on Linux. The Local Network prompt on a Mac | A Linux desktop. A Mac with a LAN device | [s4-local-hub-tasks.md](plans/one-click/s4-local-hub-tasks.md), Section 7.2 | Open |
+| S6-1 | The first run in the desktop window: create a hub, TOTP, the key copy, an invite | This Mac and a phone | [s6-first-run-tasks.md](plans/one-click/s6-first-run-tasks.md), Section 6.3, check 1 | Open |
+| S6-2 | Join from a second Mac, then revoke | A second Mac | Section 6.3, check 2 | Open |
+| S6-3 | The first run on Linux with the systemd user unit; finding F-10 | A Linux desktop | Section 6.3, check 3 | Open |
+| S6-4 | No port mapping on a real router; no TCP port answers from outside | The router of the hub computer, and a machine outside the network | Section 6.3, check 4 | Open |
+| S6-5 | A relayed path shows `RELAYED` | A network where UDP is blocked | Section 6.3, check 5 | Open |
+| S8-1 to S8-8 | Stay awake on macOS: the tray, keep awake, the set-up, the lid, quit and failure, the battery floor, remove, eight hours (8 checks) | A Mac laptop. A second computer for the `ping` of check 4 | [s8-stay-awake-tasks.md](plans/one-click/s8-stay-awake-tasks.md), Section 6, checks 1 to 8 | Open |
+| S8-9 to S8-13 | Stay awake on Linux: the tray, keep awake, the lid on GNOME, quit, the battery (5 checks) | A Linux laptop | Section 6, checks 9 to 13 | Open |
+
+### Command line and MCP
+
+Steps and comments: [GH-60](work-items/device-manager/GH-60.md). A suite on loopback covers the other items of that list (its comment of 2026-11-13). Blocks: the register row of [cli-mcp-plan.md](plans/cli-mcp-plan.md).
+
+| Check | What it proves | Needs | Result |
+| --- | --- | --- | --- |
+| CLI-1 | `anima mcp` with a real MCP client: the tool list, one read, one change, and the approval request for a tool in state "ask" (MCP-013) | Claude Code and a hub | Open. A first change through the deployed hub was sent on 2026-11-16 (`anima issue comment`); the approval request is not checked |
+| CLI-2 | The MCP section in Settings in the real desktop application | The desktop application | Open |
+| CLI-3 | Linux: the crate compiles; the Secret Service token store and its file fallback | A Linux desktop | Open |
+| CLI-4 | macOS: the Keychain item and its access control | This Mac | Open |
+| CLI-5 | TLS against a hub with a bad certificate | A hub with a bad certificate | Open |
+| CLI-6 | The list of GH-60 against the production hub: sign-in, `anima ssh`, `anima files`, a confirmation prompt | The production hub | Open. Steps for the hosted hub: below (R-169). The read commands for GitHub were checked on 2026-11-16, against the hub on the VPS |
+
+### The changed checks on the hosted hub
+
+R-169 changed these twelve checks, because the document that holds their steps names the hub on the VPS, the VPN or a browser. Do each check as its document says, with the differences in this table. The terms are those of "What a check on the hosted hub needs" in the section "Open". Each row stays Open.
+
+| Check | Do it on | What is different from the steps of its document |
+| --- | --- | --- |
+| O-4 | A computer on the link of the hosted hub, after HT-031 (port 22 on, SSH added, the host key accepted) | Do steps 1 to 5 in the application on the hosted hub. Step 5 of HT-031 opens the files; this check adds the upload, the download, the two refusals and the audit entries. Turn port 22 off again after the check. |
+| O-8 | This Mac on the link, after HT-031. Then a Linux computer on the link | Set the metrics source of the device to SSH. Watch the Overview for 2 minutes: a new point each 30 s, and the bars on the card. The Linux part needs the Linux application, which joins the computer to the link: it waits for the Linux release. Write the two results apart. |
+| O-9 | A computer on the link with Docker, and a Linux computer on the link with systemd, after HT-031 | Add one Docker check and one systemd check. Each must reach Up, or Down with the fixed message. Do not add an SNMP check or a Tailscale ping check: the link carries TCP only (HT-031), and the LocalAPI proxy is on the VPS. Those two types stay for the self-host path and are not checked on the hosted hub. |
+| P-7 | The application on the hosted hub | "Any signed-in client" is the application; there is no browser. Steps 1 to 3 as written. The operator types each secret. |
+| P-8 | The application on the hosted hub | As written. The service that the check watches must be one that the hosted hub reaches: a public address, or a port of a computer on the link that is on (HT-031). |
+| P-9 | The application on the hosted hub | As written. |
+| P-10 | The application on the hosted hub, with the check of P-8 | As written. A free hub that sleeps sends nothing while it sleeps (HMD-028): write down if the hub slept in the time of the check. |
+| P-11 | The application on the hosted hub, with the check of P-8 | As written. The same note as P-10. |
+| P-12 | The application on the hosted hub | As written. |
+| P-13 | This Mac, with a daemon on the hosted hub (HM-D16, not verified) and SSH through the link (HT-031) | "The push agent" is `anima-daemon` (R-126). Steps 1 to 3 as written, in the application on the hosted hub. |
+| P-15 | The application on the hosted hub | As written. For "use it once more" give the revoked key to the command line in `ANIMA_TOKEN`; the address of the hub for the command line is not verified. |
+| CLI-6 | The hosted hub, which is now the production hub | The first line of GH-60 (`anima auth login` with a password and an authenticator code) cannot run on a hosted hub: it waits for OD-25. For `anima ssh` and `anima files`, use a computer on the link after HT-031. For these two and for the confirmation prompt (`device delete`), try a key for the command line; if the hub refuses the key, they wait for OD-25. If a key can do them is not verified. |
+
+### Machines that the checks need
+
+One visit to a machine can close many rows.
+
+| Machine or access | Checks |
+| --- | --- |
+| A second Mac | S1-T14, S3-T12, S6-2 |
+| A Linux desktop or laptop | O-7, O-8 (the Linux part), O-9 (systemd), S3-T14, S4-T10, S6-3, S8-9 to S8-13, CLI-3 |
+| The `x86_64` Linux build computer | S3-T10 |
+| This Mac only | S2-T9, S6-1, S8-1 to S8-8, CLI-2, CLI-4 |
+| This Mac with the application on the hosted hub | O-4, O-8, O-9 (Docker), P-7 to P-13, P-15, CLI-6 |
+| Special set-up | S3-T13 (a Mac that can lose power), S6-4 (the router), S6-5 (no UDP) |
+| Not now: Deferred (R-169) | O-1, O-2, O-5, P-1 to P-6, P-14, P-16; the SNMP and Tailscale ping parts of O-9 stay for the self-host path |
+
+### A real release
+
+| Check | What it proves | Steps | Result |
+| --- | --- | --- | --- |
+| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open. For macOS 0.2.0 and 0.2.1, the signature and the notarization are checked ([releases.md](procedures/releases.md), "Release record"). Not recorded here: the update of an installed application, and the AppImage launcher on Linux |
+
+## Deferred
+
+The operator deferred these fifteen checks on 2026-11-18 (R-169: "Approve the sorting"). Each can run only against the hub on the VPS or its VPN, which the operator leaves (R-130, R-140), or on a server path that he does not use now. No check is deleted, and none is Passed. A ruling or the operator sets a check to Open again (PLN-014). [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md) has the reason for each.
+
+| Check | Subject | Reason | Where |
+| --- | --- | --- | --- |
+| HT-009 | The hub image builds with Rust 1.100.0 | The hub on the VPS is not deployed again. If a hub of the pool uses `deploy/hub/Dockerfile` is not verified | Entry below |
+| HT-017 | "This machine" with the Anima VPN and NetBird together | A computer of a hosted hub has a link address and no VPN address | Entry below |
+| HT-019 | The VPN role `daemon` on the VPS | The policy of the VPN that the operator leaves | Entry below |
+| HT-024 | A hub restored on a second server from its backup | The operator starts fresh on the hosted hub (R-140). Row 4.2 of the priorities waits for nothing because of this ruling | Entry below |
+| O-1, O-2 | RDP | A hosted hub has no RDP session yet (HM-T14) | "Phase 2" above |
+| O-5 | Wake-on-LAN through the site relay | Not possible for a computer of the link (HT-031) | "Phase 2" above |
+| P-1 to P-6 | The deployed image, the T4 probe, and the web client in a browser | The hub on the VPS and its VPN | "Phase 3" above |
+| P-14 | A real Prometheus scrape | A Prometheus server on the VPN | "Phase 3" above |
+| P-16 | The log scan of the live hub log | The log of the hub on the VPS | "Phase 3" above |
+
+### HT-009: the hub image builds with Rust 1.100.0
+
+Built: `deploy/hub/Dockerfile` now starts from `rust:1.100.0-bookworm`. No person built the
+image after the change.
+
+1. At the next hub deployment, build the hub image. Expected: the build completes.
+2. Start the hub. Expected: the health check passes and migration 0715 is applied.
+
+Result: Deferred (R-169, operator, 2026-11-18: "Approve the sorting"). Reason: the hub on the VPS is not deployed again, so there is no "next hub deployment" on that path now. A hub of the pool runs `anima-local-hub run` (HM-T7); if its image uses `deploy/hub/Dockerfile` is not verified. Before this ruling the entry was Open, and no step was done.
+
+### HT-017: "This machine" with the Anima VPN and NetBird together
+
+Built: merged to `main` in bdb321f1 and 71bfcbdb (ADR-005, R-060). The desktop app takes its
+own VPN address from the Tailscale client that is logged in to the hub's login server
+(`vpnLoginServer`). It does not read the interfaces. Security finding:
+[SF-001](security-findings.md#sf-001-this-machine-can-show-and-probe-the-address-of-another-overlay-network).
+
+The tests use a script in place of the Tailscale client. No test ran NetBird, and no test ran a
+second overlay network on the same computer. One check on the operator's Mac with only the Anima
+VPN gave the Anima address (`100.64.0.2`) and SSH on.
+
+1. Install the desktop app of this build on a Mac. Connect the Anima VPN (Tailscale logged in
+   to the hub's login server). Connect NetBird on the same Mac. If you can, use a NetBird network
+   that gives this Mac an address in `100.64.0.0/10` that is lower than its Anima address.
+2. Run `tailscale ip -4` and `netbird status`. Write down the two addresses. Expected: two
+   different addresses.
+3. Open the app, sign in, and open Add device > This Mac. Expected: the host is the Tailscale
+   address of step 2, not the NetBird address.
+4. Run `sudo tcpdump -ni any 'tcp port 22 and tcp[tcpflags] & tcp-syn != 0'` in a terminal.
+   Open Add device > This Mac again. Expected: one connection to the Tailscale address, and none
+   to the NetBird address. The SSH part of the form is on only if SSH answers on the Tailscale
+   address.
+5. Disconnect the Anima VPN (`tailscale down`). Keep NetBird connected. Open Add device again.
+   Expected: This Mac has no VPN address, and the form opens empty.
+6. Sign the Tailscale client in to a different tailnet, for example a personal Tailscale
+   account. Open Add device again. Expected: This Mac has no VPN address.
+7. Sign the Tailscale client in to the Anima login server again. Expected: step 3 gives the
+   Anima address again.
+
+Result: Deferred (R-169, operator, 2026-11-18: "Approve the sorting"). Reason: the check needs the Anima VPN of the hub on the VPS. A computer of a hosted hub has a link address and no VPN address. Before this ruling the entry was Open, and no step was done.
+
+### HT-019: the VPN role `daemon` on the VPS
+
+Built: in the repository, the Headscale policy and its tests name the role `daemon` and the tag
+`tag:daemon` (`deploy/headscale/`, [DMN-1](work-items/device-manager/DMN-1.md), R-126). The live
+policy on the VPS still names `tag:agent`. Nothing on the VPS was changed (VPS-005).
+
+The tests check the policy file of the repository. No test reads the live Headscale.
+
+1. On the VPS, run `headscale nodes list`. Write down each node that has `tag:agent`.
+   Expected today: none, or the nodes that you tagged by hand.
+2. If no node has the tag, nothing more is necessary: the next policy that you apply from the
+   repository names `tag:daemon`. Stop here.
+3. If a node has the tag, give it the new tag first:
+   `headscale nodes tag -i <id> -t tag:daemon`. Then apply the policy of the repository as
+   `deploy/headscale/README.md` says. Expected: `headscale policy check` gives no error, and the
+   node reaches the hub on TCP 443 and nothing else.
+
+Result: Deferred (R-169, operator, 2026-11-18: "Approve the sorting"). Reason: the check is about the live Headscale policy of the VPN that the operator leaves. Before this ruling the entry was Open, and no step was done.
+
+### HT-024: a hub restored on a second server from its backup (FND-006, task F1)
+
+Built: the procedure [restore-and-move.md](procedures/restore-and-move.md). An agent did its database
+steps (3 and 6 to 10) on a new, empty setup in Docker on 2026-11-17; the section "Proof" of the
+procedure has the results.
+
+Not covered: a real server. No test joined the VPN, ordered the certificate, started the hub on the
+restored database or opened a session with a restored credential.
+
+1. On a second Linux server, do steps 1 to 5 of the procedure. Expected: each `bin/preflight` command
+   prints no refusal.
+2. Do steps 6 to 10 with the newest dump of the hub. Expected: "Restored ... into anima.", `migrate`
+   exits with code 0, and "Restore check passed".
+3. Do steps 11 and 12. Expected: `docker compose ps` shows `hub` as running, and the client connects
+   at the address of the hub.
+4. In the client, open the device list and the audit log, then open a session to a device that has a
+   stored credential. Expected: the devices and the log are those of the old hub, and the session
+   opens with no question for the credential.
+
+Result: Deferred (R-169, operator, 2026-11-18: "Approve the sorting"). Reason: the operator starts fresh on the hosted hub (R-140), so no hub is restored on a server now. The function is built (task F1); the check stays for the self-host path. Before this ruling the entry was Open, and no step was done on a real server.
+
+## Passed
+
+### HT-022: the first real sign-in with the Anima.ing account (HM-T1 to HM-T7)
+
+Built: the first-run "Sign in" ([hosted-mode.md](proposals/hosted-mode.md) Section 4.1, HMD-022, HMD-023,
+HMD-037 to HMD-041, HMD-043). The desktop shell does the WorkOS device sign-in and calls
+`cloud.anima.ing/v1/hub` and `/v1/hub/access`; the app joins the link with the invite and trades the
+claim with the hosted hub for its token (`claimDeviceToken`).
+
+The tests use a stand-in cloud, fake answers of WorkOS and the site, and a fake link. No test signs
+in with WorkOS, calls the live site, or trades a claim through a real link. Open decision HM-D13 (the
+form of the WorkOS requests) is decided by step 2.
+
+Checked without an account on 2026-11-18 (UTC), on the pool server, with a test hub that is deleted and the
+program `anima-link` of `main` on this computer: the join with the invite of a hub's access (0.7 s), the trade
+of the claim through the link for a token of the operator `owner`, the refusal of a second trade of that
+claim, a second access for the same device name (no invite, a new claim, which trades), the refusal of
+`login`, and the same link and token after a sleep and a wake of the hub (answers again in about 12 s).
+`WorkOS` Production gives a device code for a form with the client ID only, and answers a refresh with no
+secret by "Invalid refresh token". The site answers 401 with no token and with a wrong one. Not checked: the
+sign-in of a person, a call of the site with a real token (it makes the Stripe Customer and the hub), the
+join by the application, and the refresh of a real token.
+
+`WorkOS` Production offers email only (a password, or a code by email): Google, GitHub, Microsoft, Apple and
+passkeys are off, and no account exists, so step 2 makes the account. A debug build carries no `anima-link`
+(`apps/desktop/src-tauri/src/carried.rs`), so step 1 gives it one; without it the join after the sign-in is
+refused. A computer that is on the link of a different hub leaves that link when it joins (`link_join`
+replaces the device folder); this computer is on none.
+
+1. On this computer, in the checkout of `main`: run `link/build.sh`, copy `link/bin/anima-link-darwin-arm64`
+   to an empty folder with the name `anima-link`, run `bun run --cwd apps/desktop tauri build --debug --no-bundle`,
+   and start `ANIMA_DEV_PROGRAMS=<that folder, absolute> target/debug/anima-desktop`. Do not use
+   `bun run --cwd apps/desktop dev` for this check: its pages come from `http://localhost:5173`, and a hosted hub
+   refuses that origin (403), so the trade of the claim fails and the app says "No network" (seen on
+   2026-11-17). A built app has the origin `tauri://localhost`, which the hub accepts. On the first-run screen, click
+   "Sign in". Expected: the browser opens a WorkOS page, and the app shows the same short code.
+2. In the browser, type your email address and make the Anima.ing account (a password, or the code that
+   WorkOS sends by email). Expected: the app shows "Your hub is
+   starting", then "Connecting". If it shows "Sign-in refused" at once, WorkOS refused the request
+   form: write it in HM-D13.
+3. Wait. Expected: the device list of the hosted hub opens. No screen asked for an invite, an
+   address or a password.
+4. Quit the app and start it again. Expected: the device list opens with no sign-in.
+
+Result: Passed (operator, 2026-11-17: "Passed"), with the built app of step 1 from `main` (`cb0d9bac`), an account
+made with an email address, and the hub `h6opknk7w29jw56jqd0kc` of the pool. First try on 2026-11-17 (operator: "worked till up to here", with the screen "No network"), with
+`bun run --cwd apps/desktop dev`: the sign-in, the account, the hub and the join of the link worked (the log of the
+pool and of the shell); the trade of the claim failed for the origin of the debug pages (step 1). The wrong
+message is not corrected: a refusal of the hub by origin and no network give the same answer to the page.
+Second try on 2026-11-17 with the built app of step 1 (operator, with a picture of the empty device list of the
+hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
+In the same message the operator asked for more than this check
+covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".

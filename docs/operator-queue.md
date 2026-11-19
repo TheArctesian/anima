@@ -177,7 +177,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (77)
+## 4. Checks that only the operator can do (66)
 
 | Check | What |
 | --- | --- |
@@ -189,7 +189,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-006 | the probes of `claude` and `codex` leave the account alone |
 | HT-007 | the pinned Rust version on the Linux computer |
 | HT-008 | a macOS release build with the pinned Rust version |
-| HT-009 | the hub image builds with Rust 1.100.0 |
 | HT-010 | merge a pull request, and a set of pull requests, on GitHub |
 | HT-011 | run a workflow again, cancel a run and start a workflow on GitHub |
 | HT-012 | set a commit status on GitHub |
@@ -197,12 +196,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-014 | the issue tools of the MCP server, and a workflow that a comment starts |
 | HT-015 | the Work, Code and History tabs of a project in the client |
 | HT-016 | a release build on the Linux builder puts the bundle in its own clone |
-| HT-017 | "This machine" with the Anima VPN and NetBird together |
 | HT-018 | each machine with the old program gets `anima-daemon` and enrols again |
-| HT-019 | the VPN role `daemon` on the VPS |
 | HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
-| HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
 | HT-027 | the computer that signs in is a device of the hosted hub (HM-T8) |
 | HT-028 | the hosted hub is a device of its own device list (HM-T9) |
 | HT-029 | the computer is Up while it is connected to the link (HM-T11) |
@@ -211,20 +207,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-033 | an SSH session on a phone, with the key row |
 | HT-025 | a phone joins a hub with an invite, through the link in the app |
 | HT-032 | the containers of a real device, and the log of one (HOST-001, HOST-013; tasks H1 to H4) |
-| O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
-| O-2 | RDP: a changed certificate stops the session; the Warning badge |
+| HT-026 | the use of AI agent programs from real session files |
+| HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
+| HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
+| HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
-| O-5 | Wake-on-LAN through the site relay |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |
 | O-8 | SSH metrics: a new point each 30 s, the bars on the card |
 | O-9 | Docker, SNMP, Tailscale ping and systemd checks |
-| P-1 | The deployed image and the compose file are the accepted ones |
-| P-2 | The T4 probe, with no key |
-| P-3 | Browsers and sign-in on macOS; the cookie attributes |
-| P-4 | A browser on Linux, and the desktop application |
-| P-5 | The web client: the device list and the detail view |
-| P-6 | SSH and VNC sessions in the web client |
 | P-7 | The notification channels are entered |
 | P-8 | Channels are selected on a check |
 | P-9 | "Send test" on each channel |
@@ -232,10 +223,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | P-11 | Maintenance sends no message |
 | P-12 | A live RDAP check |
 | P-13 | GPU metrics on the Apple silicon Mac |
-| P-14 | Optional: a real Prometheus scrape |
 | P-15 | Optional: the API key checks in Settings |
 | P-17 | The desktop application: the update banner |
-| P-16 | Last: the T3 log scan of the live hub log |
 | S1-T14 | The link between two machines: the direct rate, the first-connection time, relayed Screen Sharing, the firewall prompt. It sets the keepalive numbers (LNK-009) |
 | S2-T9 | The native VNC gateway against macOS Screen Sharing and TigerVNC, with the figures |
 | S2-RDP | The native RDP gateway against a GNOME Remote Desktop host |
