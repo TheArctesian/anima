@@ -5,7 +5,7 @@ import { changedPaths, readLayout } from "../src/gates/layout.ts";
 import { choose, describeChoice, fastGates } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
-const USAGE = "usage: bun quality/bin/gates.ts [--fast] [--group rust,go,bun,quality]";
+const USAGE = "usage: bun quality/bin/gates.ts [--fast] [--group rust,go,bun,quality] [--gate name,name]";
 
 /** The value of `--name value` in the arguments, when it is there. */
 function option(name: string): string | undefined {
@@ -37,7 +37,7 @@ function fastList(full: Gate[]): Gate[] {
   return fastGates(choice, full);
 }
 
-const unknown = process.argv.slice(2).filter((each, at, all) => each.startsWith("--") ? !["--fast", "--group"].includes(each) : all[at - 1] !== "--group");
+const unknown = process.argv.slice(2).filter((each, at, all) => each.startsWith("--") ? !["--fast", "--group", "--gate"].includes(each) : !["--group", "--gate"].includes(all[at - 1] ?? ""));
 if (unknown.length > 0) {
   console.error(`gates: unknown argument: ${unknown.join(" ")}\n${USAGE}`);
   process.exit(2);
@@ -50,7 +50,15 @@ console.log(cache.note);
 const full = gateList(baseRef);
 const groups = groupsAsked();
 const tier = process.argv.includes("--fast") ? fastList(full) : full;
-const gates = groups === undefined ? tier : ofGroups(tier, groups);
+const grouped = groups === undefined ? tier : ofGroups(tier, groups);
+// `--gate`: a job on GitHub that runs a part of one group, for example only the Rust tests.
+const named = option("--gate")?.split(",");
+const missingName = named?.find((name) => !full.some((gate) => gate.name === name));
+if (missingName !== undefined) {
+  console.error(`gates: no such gate: ${missingName}\n${USAGE}`);
+  process.exit(2);
+}
+const gates = named === undefined ? grouped : grouped.filter((gate) => named.includes(gate.name));
 
 const outcome = runGates(
   gates,

@@ -1,0 +1,174 @@
+# The gates of the repository on GitHub: the same list as `bun run gates` (quality/src/gates/gates.ts),
+# split into jobs that run at the same time. It holds no secret and can write nothing.
+#
+# It runs for each pushed branch but `main`, and for a pull request to `dev` from a fork. A
+# workflow that needs the gates of a commit calls it (`workflow_call`), so there is one
+# definition of "the gates on GitHub".
+#
+# Safety (PRO-044, OD-W18): each job runs on a machine of GitHub, never on a self-hosted
+# runner. A pull request from a fork gets a read-only token and no secret, by the event
+# `pull_request`; this file never uses `pull_request_target`. No `run` script holds an
+# expression: each value comes in through `env`. Each action is pinned to a commit.
+#
+# What a Linux machine does not prove: the code that is only compiled on macOS (the Keychain
+# store of the daemon, the LaunchAgent, the macOS parts of the desktop shell). The gates on a
+# Mac prove those (`bun run gates`, or `bun run gates:fast`).
+name: gates
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - dev
+  workflow_call:
+    inputs:
+      ref:
+        description: "The commit to check. The default is the commit of the event."
+        required: false
+        type: string
+        default: ""
+
+# A new push to a branch stops the run of the older commit of that branch.
+concurrency:
+  group: gates-${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  BUN_VERSION: "1.3.14"
+  CI: "true"
+  # The baseline gate compares with this ref (CQ-011); the checkout has the whole history.
+  BASE_REF: origin/phase-2
+
+jobs:
+  # A branch of this repository is checked by its push. Its pull request would check the same
+  # commit a second time, so only a pull request from a fork runs here.
+  rust-lint:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - name: Install the packages that the Tauri shell needs
+        run: /bin/sh .github/workflows/gates-packages.sh shell
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: gates-lint
+          save-if: ${{ github.event_name == 'push' }}
+      - name: Run the gates fmt and clippy
+        run: bun quality/bin/gates.ts --group rust --gate fmt,clippy
+
+  rust-test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - name: Install the packages that the Tauri shell needs, PostgreSQL 17 and a display
+        run: /bin/sh .github/workflows/gates-packages.sh shell postgres display
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: cargo-nextest@0.9.151
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: gates-test
+          save-if: ${{ github.event_name == 'push' }}
+      # The pinning test of the desktop shell starts the event loop of Tauri, which needs a display.
+      - name: Run the gates rust-test, doctest and pinning
+        run: |
+          set -eu
+          unset DATABASE_URL
+          xvfb-run --auto-servernum bun quality/bin/gates.ts --group rust --gate rust-test,doctest,pinning
+
+  go:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: true
+          cache-dependency-path: link/go.sum
+      - name: Run the six Go gates
+        env:
+          GOFLAGS: -mod=readonly
+        run: bun quality/bin/gates.ts --group go
+
+  bun:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+          # The documents gate compares screens with the commit of their mockup (PLN-019), and
+          # the baseline gate reads `BASE_REF`: they need the history.
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      # A test of the quality package runs Clippy on its fixtures, and three tests of
+      # deploy/headscale need shellcheck.
+      - name: Install shellcheck
+        run: /bin/sh .github/workflows/gates-packages.sh shellcheck
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: gates-bun
+          save-if: ${{ github.event_name == 'push' }}
+      - name: Run the bun gates and the quality gates
+        run: bun quality/bin/gates.ts --group bun,quality
+
+  # One name for a rule of the repository: it passes when each job above passed.
+  all:
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
+    needs: [rust-lint, rust-test, go, bun]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Each job of the gates passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          set -eu
+          echo "results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = "success" ] || { echo "::error::a job of the gates did not pass"; exit 1; }
+          done
