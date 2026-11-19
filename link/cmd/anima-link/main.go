@@ -15,7 +15,7 @@ import (
 )
 
 const usage = `usage: anima-link hub -state DIR -target SOCKET-PATH|127.0.0.1:PORT [-relay HOST[:PORT] [-replace-relay]] [-stop-with-stdin]
-       anima-link device -state DIR [-listen 127.0.0.1:PORT] [-stop-with-stdin]
+       anima-link device -state DIR [-listen 127.0.0.1:PORT] [-daemon-socket SOCKET-PATH] [-stop-with-stdin]
        anima-link join -state DIR [-hub-name NAME]   (the invite is read from standard input)
        anima-link ports -state DIR [on|off PORT]   (the local ports that the hub may reach: 22, 5900)
        anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`

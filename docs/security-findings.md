@@ -161,7 +161,7 @@ Effect, and who can cause it: The author of a job (for example a pull request fr
 
 Mitigation now: Version 0.2: a machine in the link mode takes no item until K8 has its Unix socket, with a ruling. Task W2 gets the requirement that the network of a job has no loopback address, no link interface and no private range.
 
-State: Open. The operator decided on 2026-11-18 (R-172: "A: fix it first"): the daemon talks to the link over a Unix socket that only it can open, before any runner work. The risk is not accepted. Task W0 of [projects-and-builds-plan.md](plans/projects-and-builds-plan.md) builds the change; no code exists yet. The entry stays Open until the change is built and checked. Until then a machine that reaches its hub through the link takes no item, so the runner path does not work through a hosted hub.
+State: Open. The operator decided on 2026-11-18 (R-172: "A: fix it first"): the daemon talks to the link over a Unix socket that only it can open, before any runner work. The risk is not accepted. Task W0 of [projects-and-builds-plan.md](plans/projects-and-builds-plan.md) is built on the branch `daemon/w0-link-socket` (2026-11-18): the link makes a Unix socket for the daemon that only its user can open, and the daemon sends its token to no TCP port. It is not checked on a real machine: [HT-037](need-human-testing.md). The entry stays Open until the operator closes it. What the change does not close: a program of the same user as the daemon can open the socket, so a job must run as a different user (task W2). Until then a machine that reaches its hub through the link takes no item, so the runner path does not work through a hosted hub.
 
 ### SF-005: A machine keeps a job after its lease ended
 

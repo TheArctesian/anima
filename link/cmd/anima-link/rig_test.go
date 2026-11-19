@@ -197,7 +197,9 @@ func (h runningHub) permit(t *testing.T, key tunnel.PrivateKey, name string) (st
 
 // startDevice starts a device link, as a program, for a device that already
 // has its key permitted on the hub and the hub's address saved.
-func startDevice(t *testing.T, hub runningHub) (state, local string) {
+// startDevice starts a device link that the hub permits; more is more
+// arguments of the command "device".
+func startDevice(t *testing.T, hub runningHub, more ...string) (state, local string) {
 	t.Helper()
 	state = stateDir(t)
 	dir, err := statedir.Open(state)
@@ -221,7 +223,7 @@ func startDevice(t *testing.T, hub runningHub) (state, local string) {
 
 	stdinReader, stdinWriter := io.Pipe()
 	log := &output{}
-	go run(context.Background(), []string{"device", "-state", state, "-stop-with-stdin"}, stdio{stdinReader, io.Discard, log})
+	go run(context.Background(), append([]string{"device", "-state", state, "-stop-with-stdin"}, more...), stdio{stdinReader, io.Discard, log})
 	t.Cleanup(func() { stdinWriter.Close() })
 	deadline := time.Now().Add(20 * time.Second)
 	for !strings.Contains(log.String(), "ready") {

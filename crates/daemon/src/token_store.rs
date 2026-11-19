@@ -98,7 +98,7 @@ impl Credential {
             serde_json::from_slice(bytes).map_err(|_| TokenStoreError::Corrupt)?;
         let field: HubField =
             serde_json::from_slice(bytes).map_err(|_| TokenStoreError::Corrupt)?;
-        let hub = Origin::parse(&field.hub).map_err(|_| TokenStoreError::Corrupt)?;
+        let hub = Origin::parse_kept(&field.hub).map_err(|_| TokenStoreError::Corrupt)?;
         Ok(Self {
             token: record.token,
             expires_at: record.expires_at,

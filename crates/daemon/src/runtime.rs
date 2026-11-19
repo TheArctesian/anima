@@ -102,7 +102,7 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
     if credential.hub != config.hub {
         return Err(RunError::OriginMismatch);
     }
-    let hub = HubClient::new(config.hub.url().clone(), TIMEOUT)?;
+    let hub = HubClient::reaching(config.hub.reach(), &home.link_socket(), TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store)
             .with_keys(Keeper::open(KeyStore::open(home))),
@@ -221,9 +221,14 @@ mod tests {
     use crate::token_store::Credential;
 
     fn setup(issued_by: &str) -> (tempfile::TempDir, Home) {
+        enrolled("https://hub.example", issued_by)
+    }
+
+    /// A daemon's folder as an enrolment at `hub` left it, with a token that `issued_by` gave.
+    fn enrolled(hub: &str, issued_by: &str) -> (tempfile::TempDir, Home) {
         let dir = tempfile::tempdir().expect("a folder");
         let home = Home::at(dir.path().join("daemon"));
-        let hub = Origin::parse("https://hub.example").expect("origin");
+        let hub = Origin::parse_kept(hub).expect("origin");
         let config = Config {
             hub,
             device: Uuid::from_u128(1),
@@ -233,7 +238,7 @@ mod tests {
         let credential = Credential {
             token: DaemonToken::from_random([1; 32]),
             expires_at: DateTime::UNIX_EPOCH,
-            hub: Origin::parse(issued_by).expect("origin"),
+            hub: Origin::parse_kept(issued_by).expect("origin"),
         };
         TokenStore::open(&home)
             .save_new(&credential)
@@ -260,6 +265,14 @@ mod tests {
         watch.replace(Discovery::new(Vec::new()), now);
         assert!(!watch.due(now + SAMPLE_EVERY));
         assert!(watch.due(now + Duration::from_hours(25)));
+    }
+
+    #[test]
+    fn rol_018_a_daemon_enrolled_at_a_port_of_the_link_starts_after_its_update() {
+        let (_dir, home) = enrolled("http://127.0.0.1:8443", "http://127.0.0.1:8443");
+        assert!(prepare(&home).is_ok(), "the old files still read");
+        let (_dir, home) = enrolled("http://127.0.0.1:8443", "http://127.0.0.1:9000");
+        assert!(matches!(prepare(&home), Err(RunError::OriginMismatch)));
     }
 
     #[test]
