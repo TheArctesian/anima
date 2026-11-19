@@ -65,7 +65,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
-| HT-041 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
+| HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
+| HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
+| HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 
 ### What a check on the hosted hub needs
 
@@ -876,7 +878,7 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
-### HT-041: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
+### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
 Built: on the branch `engine/e0-7-reminders`. The hub evaluates reminder rules each minute and sends
 each firing through the notification channels. `anima reminder` makes and changes rules, and shows,
@@ -1049,6 +1051,14 @@ this run: the bucket token (a trial does not use it), and each check of step 2 t
 commands on the DMG, the start of the AppImage on Linux, and Settings > Updates in the two applications. The
 run was of the tag trigger of that commit; the trigger on a push to `main` (task B8g) has not run.
 
+Observation (2026-11-19, 09:43 UTC; read from GitHub by an agent, not a result of the operator): the first run
+of the trigger on a push to `main`, run 44498918610, for the merge commit eb226c8d. Only the job `commit` ran,
+and it passed; each other job was skipped. Its log has the decision "nothing: this push is a release of 0.8.12,
+and public releases are off (the variable ANIMA_PUBLIC_RELEASES is not `on`)". The feeds still gave 0.2.1 for
+macOS and none for Linux. This is the expected result of step 3, seen for a merge commit and not for a change
+of a document; the check that the tip of `main` before the push is on the first line passed for a merge with
+`--no-ff`.
+
 Result: Open.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
@@ -1143,6 +1153,48 @@ The check only reads. It pulls nothing and updates nothing (ETH-004, VPS-005, R-
 
 Result: Open.
 
+### HT-042: the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, HOST-021; task H9)
+
+Built: `apps/client/src/lib/containers/` (the table, `detail/`, `log/`, `storage/`), in the tab
+"Containers" of the device page. The tests use a fake of the hub calls and, in a browser, a hub of
+example values. No test used a real hub or a real device, and no person saw the screen or compared it
+with its mockup (`docs/mockup/containers/index.html`, frames 1, 4 and 5). The download of a log ran
+in a browser of the tests, not in the desktop application.
+
+The check only reads (VPS-005, R-050). Do HT-038 and HT-039 first, or in the same sitting: this entry
+checks the screen, those check the values. Sign in to the application with a login, not an API key.
+
+1. Open the device and select the tab "Containers". Expected: a row "Containers, Images, Volumes,
+   Networks" above the table, and in each group header the state of the Compose project (for
+   example "Running" or "Partly running") before the running count.
+2. Select "Details" in the row of a running container. Expected: below the table, the sections
+   Container, Health check, Mounts, Networks, Environment, Labels and Processes. The section
+   Environment has names only. The values agree with `anima containers inspect` of HT-038.
+3. Select "Log" in the same row. Expected: the log is in the place of the details.
+4. In the log, type a word of one line in the search field. Expected: only the lines with that word,
+   and the count "n of m lines". Clear the field.
+5. Select "Error", then "Warning", "Info" and "Debug". Expected: each shows only the lines with such
+   a level word. Write down if the container writes levels in a form that the filter does not find.
+6. Turn "Wrap" off. Expected: a long line stays on one row and the region scrolls sideways. Turn
+   "Timestamps" off. Expected: no time before the lines.
+7. With a search text that shows some lines, select "Download". Expected: the application saves a
+   file named for the container, `.log`, that holds only the shown lines. In the desktop
+   application, write down where the file went, or that nothing was saved.
+8. Select "Look for newer images". Expected: after some seconds, each row has a mark beside its
+   image ("Newer image", "Up to date", or a reason), and the count says how many have a newer image.
+   The marks agree with `anima containers updates` of HT-039.
+9. Select "Images", then "Volumes", then "Networks". Expected: each list agrees with
+   `anima containers images`, `volumes` and `networks` of HT-038, and the line above the images and
+   the volumes says how much a clean-up can free. Write down how long "Images" took to show.
+10. Compare frames 1, 4 and 5 of the mockup with the screen at 1040 px, in the light and the dark
+    appearance. Write down each difference.
+11. Make the window 400 px wide. Expected: write down what cannot be read or reached; the phone
+    layout has no special form yet.
+12. Sign in with a browser session of an API key, if the hub permits one, and select "Details".
+    Expected: the sentence of the hub that it refuses, and the table stays.
+
+Result: Open.
+
 ### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
 
 Built: in 53af82a1 and 3b46dfef (R-157). The application keeps the last answer of the hub for the device list,
@@ -1214,6 +1266,29 @@ of link.md) and the two programs of this build. `<FOLDER>` is `~/.config/anima-d
    through the socket).
 
 State: Open.
+
+### HT-041: the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d)
+
+Built: on the branch `release/cli-homebrew`, the first part only (task R8a): the package `anima-cli` holds a copy
+of the schema of K1, lists no test file, and builds from its own files. `cargo publish --dry-run -p anima-cli
+--locked` ended with no error on 2026-11-19; it uploads nothing.
+
+Not built, so this check cannot start: the standalone `anima` file of a release (task R8b, OD-24), the formula
+and the tap (task R8c, OD-26), and the version of the crate (OD-W47 of [decisions.md](plan/decisions.md)): the
+crate says 0.1.0 today. The tests did not build the package on a clean Linux computer, so it is not known if
+that build needs the packages of the system for the key store (libdbus, pkg-config). No agent publishes a crate
+or pushes a tap.
+
+1. After the tasks R8b and R8c and the ruling of OD-W47: publish the crate, `cargo publish -p anima-cli --locked`.
+   Expected: crates.io shows `anima-cli` with the version of the release.
+2. On a computer with no Anima: `cargo install anima-cli --locked`, then `anima --version`. Expected: the version
+   of the release. On Linux, note each package of the system that the build asked for.
+3. `brew install thearctesian/anima/anima`, then `anima --version`. Expected: the same version, and no desktop
+   application and no daemon is installed.
+4. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
+   version (INS-012).
+
+Result: Open.
 
 ## Not built yet
 

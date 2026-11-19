@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/list.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Clone",
@@ -16,7 +16,7 @@ pub struct ReleaseList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/next_version.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -24,7 +24,7 @@ pub struct ReleaseNextVersion;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/publishing.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -32,7 +32,7 @@ pub struct ReleasePublishing;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/create.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -41,7 +41,7 @@ pub struct ReleaseCreate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/cancel.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -50,7 +50,7 @@ pub struct ReleaseCancel;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/log.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Clone",
@@ -60,7 +60,7 @@ pub struct BuildJobLog;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/releases/follow.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

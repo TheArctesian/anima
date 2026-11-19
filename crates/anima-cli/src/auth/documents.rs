@@ -7,7 +7,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/auth/login.graphql",
     skip_serializing_none
 )]
@@ -15,7 +15,7 @@ pub struct Login;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/auth/logout.graphql",
     response_derives = "Debug"
 )]
@@ -23,7 +23,7 @@ pub struct Logout;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/auth/me.graphql",
     response_derives = "Debug, Serialize"
 )]

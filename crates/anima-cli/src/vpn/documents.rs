@@ -7,22 +7,19 @@ use crate::hub::scalars::{Cidr, DateTime, IpAddr};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/vpn/status.graphql",
     response_derives = "Debug, Serialize"
 )]
 pub struct VpnStatus;
 
 #[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "../../contracts/schema.graphql",
-    query_path = "src/vpn/invite.graphql"
-)]
+#[graphql(schema_path = "schema.graphql", query_path = "src/vpn/invite.graphql")]
 pub struct VpnInvite;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/vpn/router_key.graphql",
     variables_derives = "Debug"
 )]
@@ -30,7 +27,7 @@ pub struct VpnRouterKey;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/vpn/register.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -39,7 +36,7 @@ pub struct VpnRegister;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/vpn/renew.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -48,7 +45,7 @@ pub struct VpnRenew;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/vpn/approve_route.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

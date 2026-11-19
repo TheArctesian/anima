@@ -7,7 +7,7 @@ use crate::hub::scalars::{DateTime, IpAddr};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/builders/list.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -15,7 +15,7 @@ pub struct BuilderList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/builders/enrol.graphql",
     variables_derives = "Debug"
 )]
@@ -23,7 +23,7 @@ pub struct BuilderEnrol;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/builders/revoke.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

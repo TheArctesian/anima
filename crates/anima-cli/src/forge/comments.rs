@@ -13,7 +13,7 @@ use crate::paging::{fetch, page_size};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/forge/comments.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
