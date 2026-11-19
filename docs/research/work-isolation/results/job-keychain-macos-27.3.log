@@ -1,0 +1,43 @@
+== job-keychain.sh  2026-11-19T02:37:18Z  macOS 27.3 arm64
+uptime: 18:37  up 1 day,  3:45, 3 users, load averages: 18.43 37.43 26.03
+note: every timing below was taken under the load shown in that uptime line
+search list before:  "<home>/Library/Keychains/login.keychain-db" 
+cc hello.c (the Mach-O to sign)                  43 ms  rc=0  
+openssl: key + self-signed cert                  27 ms  rc=0  Generating a 2048 bit RSA private key
+security create-keychain                         12 ms  rc=0  
+  search list after create-keychain: same
+security set-keychain-settings (no lock)         11 ms  rc=0  
+security unlock-keychain                         13 ms  rc=0  
+security import key -T codesign                  31 ms  rc=0  
+security import cert                             15 ms  rc=0  
+security set-key-partition-list                  14 ms  rc=0  
+security find-identity <job keychain>            22 ms  rc=0  
+  identities in the job keychain: 1 (lines with the throwaway name; 'valid': 1)
+  1) 6A38FD02D03C4A6B2677688730F31025AB90CE70 "anima-w2-throwaway-20254" (CSSMERR_TP_NOT_TRUSTED)
+  1 identities found
+  0 valid identities found
+== sign WITHOUT adding the keychain to the search list
+codesign --keychain -s <name>                    38 ms  rc=0  /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.nLzmUKsCTp/hello: replacing existing si
+  search list now: same
+signing worked by: name
+codesign --verify --verbose=2                    15 ms  rc=0  /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.nLzmUKsCTp/hello: valid on disk
+  <tmp>/hello: valid on disk
+  <tmp>/hello: satisfies its Designated Requirement
+codesign -dvv (who signed)                       13 ms  rc=0  Executable=/private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.nLzmUKsCTp/hello
+  Signature size=1658
+  Authority=anima-w2-throwaway-20254
+  TeamIdentifier=not set
+signed binary runs                              100 ms  rc=0  
+== delete
+security delete-keychain                         10 ms  rc=0  
+find-identity after delete                       14 ms  rc=0  
+  its answer:  0 identities found 0 valid identities found ; throwaway identity listed: 0
+codesign after delete (must fail)                18 ms  rc=1  anima-w2-throwaway-20254: no identity found
+  keychain file gone: yes
+  temp folder gone: yes
+search list after:   "<home>/Library/Keychains/login.keychain-db" 
+search list identical before/after: same
+default keychain identical before/after: same
+hangs or prompts: see HANG marks above (none = no command waited on a prompt)
+note: -p <password> is on the command line of security(1), so another process of the same user can see it in ps
+uptime at end: 18:37  up 1 day,  3:45, 3 users, load averages: 18.43 37.43 26.03

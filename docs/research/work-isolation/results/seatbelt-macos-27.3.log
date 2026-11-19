@@ -1,0 +1,61 @@
+== seatbelt.sh  2026-11-19T02:36:17Z  macOS 27.3 arm64
+uptime: 18:36  up 1 day,  3:44, 3 users, load averages: 39.71 44.47 27.51
+note: every timing below was taken under the load shown in that uptime line
+man sandbox-exec says: sandbox-exec - execute within a sandbox (DEPRECATED)
+== profile (job folder <home>/Scripts/Work/Anima.ing/wt-runner-path/docs/research/work-isolation/.job.EgvMzp, token /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.icj7JgmkI9/anima-daemon.token)
+(version 1)
+(allow default)
+(deny file-read* (subpath "<home>"))
+(allow file-read-metadata  (literal "<home>/Scripts/Work/Anima.ing/wt-runner-path/docs/research/work-isolation") (literal "<home>/Scripts/Work/Anima.ing/wt-runner-path/docs/research") (literal "<home>/Scripts/Work/Anima.ing/wt-runner-path/docs") (literal "<home>/Scripts/Work/Anima.ing/wt-runner-path") (literal "<home>/Scripts/Work/Anima.ing") (literal "<home>/Scripts/Work") (literal "<home>/Scripts") (literal "<home>") (literal "/Users"))
+(allow file-read* (subpath "<home>/Scripts/Work/Anima.ing/wt-runner-path/docs/research/work-isolation/.job.EgvMzp"))
+(deny file-read* (subpath "/private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.icj7JgmkI9"))
+(deny file-write*)
+(allow file-write* (subpath "<home>/Scripts/Work/Anima.ing/wt-runner-path/docs/research/work-isolation/.job.EgvMzp") (literal "/dev/null") (literal "/dev/tty") (literal "/dev/dtracehelper"))
+== probes (rc 0 = the command worked)
+list ~/.ssh                        outside rc=0   inside rc=1   DENIED-or-failed  ls: <home>/.ssh: Operation not permitted
+read login.keychain-db (16 B)      outside rc=0   inside rc=1   DENIED-or-failed  head: <home>/Library/Keychains/login.keychain-db: Operation not permitted
+read fake daemon token             outside rc=0   inside rc=1   DENIED-or-failed  cat: /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.icj7JgmkI9/anima-daemon.token: Operation not
+read file in job folder            outside rc=0   inside rc=0   ALLOWED  
+security find-identity -v          outside rc=0   inside rc=0   ALLOWED  
+security find-identity -v -p codesigning outside rc=0   inside rc=0   ALLOWED  
+  (identity names are not logged; 'not found' below means the search reached the keychain)
+security find-generic-password     outside rc=0   inside rc=0   ALLOWED  
+write to $HOME                     outside rc=-   inside rc=1   DENIED-or-failed  touch: <home>/.anima-w2-write-probe.18660: Operation not permitted
+write to /tmp                      outside rc=-   inside rc=1   DENIED-or-failed  touch: /tmp/anima-w2-probe.18660: Operation not permitted
+write to stand-in daemon folder    outside rc=-   inside rc=1   DENIED-or-failed  touch: /private/var/folders/pv/p2kd10rn273718pvbvzd1vjc0000gn/T/tmp.icj7JgmkI9/x: Operation not permitted
+write to job tmp                   outside rc=-   inside rc=0   ALLOWED  
+list /Users                        outside rc=0   inside rc=0   ALLOWED  
+list $HOME                         outside rc=0   inside rc=1   DENIED-or-failed  ls: <home>: Operation not permitted
+git --version                      outside rc=0   inside rc=128 DENIED-or-failed  fatal: unable to access '<home>/.gitconfig': Operation not permitted
+git --version, HOME=job folder     outside rc=0   inside rc=0   ALLOWED  
+cc hello.c && ./hello              outside rc=0   inside rc=0   ALLOWED  
+swiftc hello.swift (default)       outside rc=0   inside rc=0   ALLOWED  
+swiftc with HOME+module cache in job outside rc=0   inside rc=0   ALLOWED  
+curl -sI https://example.com       outside rc=-   inside rc=0   ALLOWED  
+ps of other processes              outside rc=0   inside rc=1   DENIED-or-failed  bash: /bin/ps: Operation not permitted
+docker socket of the host          outside rc=0   inside rc=0   ALLOWED  WARNING: Error loading config file: open <home>/.docker/config.json: operation not permitted
+  (/var/run/docker.sock -> <home>/.docker/run/docker.sock; /bin/ps is setuid root)
+identities counted (names not logged): outside: 6 valid identities found inside job.sb: 0 valid identities found
+== profile 2: job.sb plus this line
+(deny mach-lookup (global-name "com.apple.SecurityServer") (global-name "com.apple.securityd.xpc") (global-name "com.apple.secd") (global-name "com.apple.security.agent"))
+2: security find-identity -v       outside rc=0   inside rc=0   ALLOWED  
+  identities counted inside: 0 valid identities found
+2: security find-generic-password  outside rc=0   inside rc=0   ALLOWED  
+2: cc hello.c && ./hello           outside rc=0   inside rc=0   ALLOWED  
+2: codesign -s - (ad hoc)          outside rc=0   inside rc=0   ALLOWED  hello2: replacing existing signature
+2: git --version, HOME=job folder  outside rc=0   inside rc=0   ALLOWED  
+== profile 3: job.sb plus this line
+(deny mach-lookup)
+3: security find-identity -v       outside rc=0   inside rc=0   ALLOWED  
+  identities counted inside: 0 valid identities found
+3: security find-generic-password  outside rc=0   inside rc=0   ALLOWED  
+3: cc hello.c && ./hello           outside rc=0   inside rc=0   ALLOWED  2026-11-18 18:36:20.288 xcodebuild[19074:9451896]  DVTFilePathFSEvents: Failed to start fs event stream.
+3: codesign -s - (ad hoc)          outside rc=0   inside rc=0   ALLOWED  hello3: replacing existing signature
+3: git --version, HOME=job folder  outside rc=0   inside rc=0   ALLOWED  
+  (network under profiles 2 and 3: not measured, only one curl call was allowed)
+write probe in $HOME absent after the run: yes
+== start overhead, /usr/bin/true
+without sandbox-exec: median 2.51 ms  min 2.09  max 6.19  (n=20)
+with sandbox-exec:    median 8.56 ms  min 8.27  max 11.91  (n=20)
+uptime at end: 18:36  up 1 day,  3:44, 3 users, load averages: 39.71 44.47 27.51
+== clean-up: job folder gone=yes daemon stand-in gone=yes
