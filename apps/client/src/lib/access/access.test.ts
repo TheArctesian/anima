@@ -82,12 +82,10 @@ describe('startGuard on desktop', () => {
 });
 
 describe('the first run (FRN-001, NAV-009)', () => {
-  it('FRN-001: only the desktop app with no saved hub address and no token for the default hub is at its first run', () => {
-    expect(isFirstRun(true, false, null)).toBe(true);
-    expect(isFirstRun(true, false, '')).toBe(true);
-    expect(isFirstRun(true, true, null)).toBe(false);
-    expect(isFirstRun(true, false, 'tok')).toBe(false);
-    expect(isFirstRun(false, false, null)).toBe(false);
+  it('HMD-022: the desktop app shows account sign-in until a hub is chosen', () => {
+    expect(isFirstRun(true, false)).toBe(true);
+    expect(isFirstRun(true, true)).toBe(false);
+    expect(isFirstRun(false, false)).toBe(false);
   });
 
   function firstStart(addressSaved: boolean, token: string | null | Error) {
@@ -96,14 +94,15 @@ describe('the first run (FRN-001, NAV-009)', () => {
     const read = vi.fn(() => (token instanceof Error ? Promise.reject(token) : Promise.resolve(token)));
     const me = vi.fn();
     const run = () => startGuard({ route: '/devices', address: ADDRESS, token: read, desktop: true, me, goToSignIn, firstRun: { addressSaved, goToWelcome } });
-    return { goToSignIn, goToWelcome, run };
+    return { goToSignIn, goToWelcome, read, run };
   }
 
-  it('FRN-001: with no saved address and no token the guard shows the first-run choices, not sign-in', async () => {
-    const c = firstStart(false, null);
+  it.each([null, '', 'legacy-default-hub-token', new AccessTokenError('denied')])('HMD-022: no chosen hub opens account sign-in without reading the default hub token (%j)', async (stored) => {
+    const c = firstStart(false, stored);
     await c.run();
     expect(c.goToWelcome).toHaveBeenCalledOnce();
     expect(c.goToSignIn).not.toHaveBeenCalled();
+    expect(c.read).not.toHaveBeenCalled();
   });
 
   it('NAV-009: an install with a saved address goes to sign-in as before', async () => {
@@ -113,15 +112,15 @@ describe('the first run (FRN-001, NAV-009)', () => {
     expect(c.goToWelcome).not.toHaveBeenCalled();
   });
 
-  it('FRN-001: a token read that rejects is not a first run: with no saved address it still goes to sign-in', async () => {
-    const c = firstStart(false, new AccessTokenError('denied'));
+  it('NAV-009: an unreadable key store for a chosen hub goes to its sign-in', async () => {
+    const c = firstStart(true, new AccessTokenError('denied'));
     await c.run();
     expect(c.goToSignIn).toHaveBeenCalledOnce();
     expect(c.goToWelcome).not.toHaveBeenCalled();
   });
 
-  it('NAV-009: an install with a token for the default hub stays where it is', async () => {
-    const c = firstStart(false, 'tok');
+  it('NAV-009: a chosen hub with a stored token stays where it is', async () => {
+    const c = firstStart(true, 'tok');
     await c.run();
     expect([c.goToSignIn.mock.calls.length, c.goToWelcome.mock.calls.length]).toEqual([0, 0]);
   });

@@ -29,11 +29,11 @@ interface StartCheck {
 }
 
 /**
- * Whether this start is the desktop app's first run (FRN-001, NAV-009): no hub address is saved and no access token is
- * stored for the default hub. An install that saved an address or holds a token is never a first run.
+ * Whether this start needs the account sign-in screen (HMD-022): the desktop app has no chosen hub.
+ * An older installation's token for the default hub does not choose a hub for this installation.
  */
-export function isFirstRun(desktop: boolean, addressSaved: boolean, token: string | null): boolean {
-  return desktop && !addressSaved && (token === null || token === '');
+export function isFirstRun(desktop: boolean, addressSaved: boolean): boolean {
+  return desktop && !addressSaved;
 }
 
 /**
@@ -44,19 +44,22 @@ export function isFirstRun(desktop: boolean, addressSaved: boolean, token: strin
  */
 export async function startGuard(check: StartCheck): Promise<void> {
   if (isSignedOut(check.route)) return;
+  if (check.firstRun !== undefined && isFirstRun(check.desktop, check.firstRun.addressSaved)) {
+    check.firstRun.goToWelcome();
+    return;
+  }
   if (!check.desktop) {
     const result = await check.me();
     if (!result.ok) signInNeeded(result.error, check.goToSignIn);
     return;
   }
-  // A read that rejects (a refused key store, a refused listener check) is not a first run: it goes to sign-in.
+  // Once a hub is chosen, a refused key store or listener check goes to that hub's sign-in.
   const read = await check.token(check.address).then(
     (token) => ({ ok: true as const, token }),
     () => ({ ok: false as const }),
   );
   if (read.ok && read.token !== null && read.token !== '') return;
-  if (read.ok && check.firstRun !== undefined && isFirstRun(true, check.firstRun.addressSaved, read.token)) check.firstRun.goToWelcome();
-  else check.goToSignIn();
+  check.goToSignIn();
 }
 
 /** Pages call this on a failed hub result: goes to sign-in for `UNAUTHENTICATED` and says whether it did (API-003). */

@@ -68,6 +68,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
+| HT-044 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1577,3 +1578,21 @@ Second try on 2026-11-17 with the built app of step 1 (operator, with a picture 
 hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
 In the same message the operator asked for more than this check
 covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
+
+### HT-044: Linux opens the account sign-in screen before a hub is chosen (HMD-022)
+
+State: Open. The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
+before a token read when no hub address is saved. Tests cover a missing token, an old token
+for the default hub and a refused key store. They also check that a chosen hub still resumes
+with its token. An automatic Linux WebKit check reached the screen with an old default-hub
+token and with no token. The packaged preview also showed the screen in a virtual X11 display
+without `LD_PRELOAD` (2026-11-19). These checks do not verify the normal desktop session or
+complete a real account sign-in.
+
+1. Start the rebuilt Linux application on the installation that showed the wrong first screen.
+   Expected: "Welcome to Anima.ing", with "Sign in", "Sign up" and "Join a hub". No Devices
+   sidebar or hub password form appears.
+2. Choose "Sign in" and complete the account sign-in in the browser.
+   Expected: the app joins the hosted hub and opens its device list, as in HT-022.
+3. Quit the app and start it again.
+   Expected: the chosen hub's device list opens without another sign-in.

@@ -70,7 +70,7 @@ export function startAt(url: URL): ClientStart {
 /**
  * The start guard with the real router, key store and hub; the root layout calls this once, on a shell start. On this
  * computer's hub address the token is read only after the listener check (F-10), so a refusal leads to sign-in, which
- * says why; with no address and no token the desktop app shows the first-run choices (FRN-001).
+ * says why; with no chosen hub the desktop app shows the account sign-in screen (HMD-022).
  */
 export function guardStart(url: URL, hub: Hub): void {
   const { me } = accessApi(hub);
