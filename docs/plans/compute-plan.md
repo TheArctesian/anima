@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: R-196 (2026-11-18) adds a direction note to Section 8: the Chat page becomes a full chat page; no requirement changes. R-165 (operator, 2026-11-18, through the orchestrating session: "go with A") approves Level 1 of version 0.3: Sections 1 to 9, 11 and 12, the tasks L1-1 to L1-21 and the optional member of K8 of task L1-1, and decides OD-C6 to OD-C11 as each row recommended. Its condition: no task of Level 1 starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 have a result ([need-human-testing.md](../need-human-testing.md)). Version 0.4 (2026-11-18) writes these answers into version 0.3 and changes nothing else. No task of Level 1 is started. Built before: the tool inventory (CAP-020 to CAP-031): the daemon, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5); its live checks HT-002 to HT-006 are open; its client section is not started (Section 11.1, CUI-010 to CUI-019). Open: OD-C1 (the values of the hardware table that are missing) and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md). OD-C5 is decided (R-131). Level 2 (Section 10, C4 to C6) is parked and not approved. The record of the comparison of version 0.2 with its sources is [plan-reconcile-2026-11-18.md](../research/compute/plan-reconcile-2026-11-18.md).
+evidence: R-196 (2026-11-18) gives the direction of a full chat page. Section 8.1 proposes CHAT-008 to CHAT-037, tasks CH0 to CH12 and OD-C12 to OD-C20; they are not approved, and no approved requirement changes. R-165 (operator, 2026-11-18, through the orchestrating session: "go with A") approves Level 1 of version 0.3: Sections 1 to 9, 11 and 12, the tasks L1-1 to L1-21 and the optional member of K8 of task L1-1, and decides OD-C6 to OD-C11 as each row recommended. Its condition: no task of Level 1 starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 have a result ([need-human-testing.md](../need-human-testing.md)). Version 0.4 (2026-11-18) writes these answers into version 0.3 and changes nothing else. No task of Level 1 is started. Built before: the tool inventory (CAP-020 to CAP-031): the daemon, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5); its live checks HT-002 to HT-006 are open; its client section is not started (Section 11.1, CUI-010 to CUI-019). Open: OD-C1 (the values of the hardware table that are missing) and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md). OD-C5 is decided (R-131). Level 2 (Section 10, C4 to C6) is parked and not approved. The record of the comparison of version 0.2 with its sources is [plan-reconcile-2026-11-18.md](../research/compute/plan-reconcile-2026-11-18.md).
 ---
 
 # Anima Compute Plan
@@ -22,6 +22,7 @@ This document obeys the writing rules in Section 0 of the design specification.
 How to read a requirement of this version:
 
 - The requirements of Level 1 (Sections 1 to 9, 11 and 12) are approved (R-165). A session builds from a task of Section 12.4, and only after the condition of PH-C-002 is met.
+- Section 8.1 (CHAT-008 to CHAT-037, tasks CH0 to CH12, OD-C12 to OD-C20) is proposed (2026-11-18, the direction of R-196) and is not approved.
 - Level 2 (Section 10 and the rows C4 to C6) is parked and is not approved. Section 5.2 (C3) and the row C7 are not part of R-165.
 - The tool inventory (CAP-020 to CAP-031) and Section 11.1 (CUI-010 to CUI-019) have the earlier words of approval of the operator. Their text did not change.
 - Where version 0.3 changed a requirement, the line "Version 0.2:" gives the old text in short form and the source of the change.
@@ -375,15 +376,93 @@ The operator or the caller selects the model for each job. The hub gives the fac
 
 The Chat page is later delivery (task L1-21). It is not a condition for the acceptance of C1 or C2.
 
-**Direction (R-196, operator, 2026-11-18, first-hand; OD-AXT18 of [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md)): "no, build a full chat page; Open WebUI is a rival."** The Chat page becomes a full chat page, and Open WebUI is a rival, not a tool extension. CHAT-001 to CHAT-007 stay as R-165 approved them. This note adds no requirement. A later pass of the Planner writes the requirements of the full chat page, with their open decisions, for the approval of the operator. [NEEDS CLARIFICATION: the scope of a full chat page, for example accounts and members, document retrieval, tools, history and search, and an admin page.] [NEEDS CLARIFICATION: whether the full chat page stays later delivery in task L1-21, or gets tasks of its own.] [NEEDS CLARIFICATION: whether the conversations still stay on the client device until the vault exists (CHAT-006, OD-C6).]
+**Direction (R-196, operator, 2026-11-18, first-hand; OD-AXT18 of [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md)): "no, build a full chat page; Open WebUI is a rival."** The Chat page becomes a full chat page, and Open WebUI is a rival, not a tool extension. CHAT-001 to CHAT-007 stay as R-165 approved them. Section 8.1 proposes the requirements of the full chat page. The three [NEEDS CLARIFICATION] markers of the first version of this note (the scope; L1-21 or tasks of its own; the storage before the vault) are now Section 8.1, OD-C13 and OD-C12.
 
-- **CHAT-001.** The client must have a Chat page that sends requests to the model address of its computer, with the model key. Version 0.2: to `ai.anima.ing` with a key that the hub gives to the client.
-- **CHAT-002.** The Chat page must have a model selector that shows the models and aliases of `/v1/models` with their state.
-- **CHAT-003.** The operator can change the model in a conversation. Each response must show the model, the node and the tokens per second.
-- **CHAT-004.** Responses must stream. The operator can stop a response.
-- **CHAT-005.** The operator can set a system prompt and the sampling values (temperature, top-p, maximum tokens) for each conversation.
-- **CHAT-006.** The client must keep conversations on the client device only until the vault exists. Then they are kept sealed on the hub, so that all clients see them (OD-C6, R-165).
-- **CHAT-007.** Text must render as Markdown with code blocks. Motion must use the helpers in `$lib/motion/`.
+### 8.1 Full chat page (proposed, not approved)
+
+State: proposed (2026-11-18), not approved. R-165 does not cover this section, and no task of it starts before the operator approves CHAT-008 to CHAT-037 with a ruling (task CH0, PLN-007). It extends CHAT-001 to CHAT-007 and changes none of them.
+
+**Benchmark.** The benchmark is the public feature page of Open WebUI (docs.openwebui.com/features, read 2026-11-18): conversations with any model and a switch of the model in a conversation, two models side by side, attached documents and images, document retrieval with knowledge bases, web search, code execution, memory across conversations, folders, voice and video, image generation, scheduled prompts, saved prompts with variables, model presets ("a configuration wrapper" with a system prompt, tools, knowledge and parameters), notes, channels for a team, tools through Python, MCP and OpenAPI, multi-user accounts with roles, groups and access for each model, single sign-on, usage dashboards and a model arena. Open WebUI is multi-user and serves many providers. Anima.ing takes only the part that fits the model service: a private chat for the operator (and later the members of a hub) with the models of the operator's own nodes, through the model address of each computer (RTR-001).
+
+**Scope.**
+
+| Function of the benchmark | Here | Reason |
+| --- | --- | --- |
+| Many conversations, history, search, rename, pin, delete, export | In (CHAT-008 to CHAT-012) | The base of a full chat page |
+| Models of the model address; change of model in a conversation | In (CHAT-013, CHAT-003) | RTR-001, RTR-011 |
+| Edit a prompt, regenerate an answer; the context length | In (CHAT-014, CHAT-015) | — |
+| Attached files and images | In (CHAT-016 to CHAT-018) | Image input is in RTR-010 |
+| Document retrieval (knowledge sets) | In, in stage 2 (CHAT-019, CHAT-020) | Needs `/v1/embeddings` (OD-C15) |
+| Saved prompts with variables; presets | In (CHAT-021, CHAT-022) | — |
+| Members with their own conversations; sharing to a member | In, after the vault and members (CHAT-023 to CHAT-025) | MBR-001 to MBR-005 of the one-click plan; OD-C16, OD-C17 |
+| Two models side by side | Cut from the first version (OD-C19) | Two loads on a node with little memory |
+| Cloud providers (OpenAI, Anthropic and others) | Cut (OD-C14) | The model gateway (extensions plan Section 4.15) owns them; the Chat page uses the model address only |
+| Web search, code execution, tools, MCP and OpenAPI servers in the chat | Cut (OD-C20) | Hermes Agent is the assistant (R-196); a model must not act on the machines from the Chat page |
+| Memory across conversations, notes, channels, scheduled prompts | Cut | Not a part of a private chat; a later proposal |
+| Voice and video, image and video generation | Cut | No runtime serves them (CMP-007); ComfyUI is a later tool entry |
+| Single sign-on, groups, access for each model, usage dashboards, model arena | Cut | One operator, or the roles of MBR only; the use counts of the model address are the dashboard (RTR-004) |
+| Public links to a conversation | Cut | No access from outside the private network (SEC-008) |
+
+**Stages.** Stage 1 needs no vault: the conversations stay on the client device (CHAT-006). Stage 2 needs the vault (extensions plan Section 2.4): the conversations are sealed on the hub, so that each client of the operator sees them. Members and sharing need stage 2 and the members of the one-click plan (OD-C13).
+
+#### 8.1.1 Conversations
+
+- **CHAT-008.** The Chat page must keep many conversations. A list beside the conversation must show them, newest first, with the title, the model of the last answer and the time of the last message. Pinned conversations come first.
+- **CHAT-009.** A new conversation gets a title from its first prompt: the first line, cut to 60 characters. The client must not send a request to a model only to make a title. The operator can rename, pin, delete and archive a conversation. A delete asks for a confirmation and removes the conversation, its files and its index (CHAT-019) from each place that keeps them.
+- **CHAT-010.** The operator can search the titles and the text of all conversations. The search must run on the client, or on a sealed index (VLT-006). It must not send text to the hub as plain text.
+- **CHAT-011.** The operator can put conversations in folders. A folder has a name only. [NEEDS CLARIFICATION: folders or tags; the benchmark has folders.]
+- **CHAT-012.** The operator can export one conversation, or all, as Markdown and as JSON, to a file on the client device. The JSON holds the messages, the model of each answer, the node, the time, the system prompt and the sampling values. It holds no model key. The operator can import a JSON file of this format.
+
+#### 8.1.2 Models and messages
+
+- **CHAT-013.** The model selector (CHAT-002) must list only the models and aliases of `/v1/models` of the model address of the client computer (RTR-001, RTR-011). A model with no validated copy shows its state and cannot be selected. The Chat page must not offer a different provider.
+- **CHAT-014.** The operator can edit a prompt and send it again, and can ask for a new answer to a prompt. The earlier answer stays as a second version of the message, and the operator can step between the versions. The conversation continues from the version that the operator sees.
+- **CHAT-015.** Before a request, the client must count the tokens of the conversation against the context length of the model (RTR-012). When the conversation does not fit, the page must say so before it sends, and must offer: start a new conversation with a summary that the operator reads first, or leave out the oldest messages that the operator selects. It must never cut a conversation silently. [NEEDS CLARIFICATION: how the client counts tokens for a model with no tokenizer on the client; an estimate with a margin is the first proposal.]
+
+#### 8.1.3 Files
+
+- **CHAT-016.** The operator can attach files to a prompt: text and code files as text in the prompt; images only when the model has the vision tag (RTR-010, CMP-007). The client must refuse a file that is larger than the limit, and say the limit. [NEEDS CLARIFICATION: the size limit for each kind; the first proposal is 10 MB for each file and 20 files for each prompt.]
+- **CHAT-017.** The client must read PDF and other document files to text on the client device, in a worker with a time limit and a memory limit, with no network access. A file that the reader cannot open shows the reason and is not sent. [NEEDS CLARIFICATION: the list of formats; the first proposal is PDF, Markdown, plain text, CSV and the code files.]
+- **CHAT-018.** Attached files belong to the conversation. They have the data class of the conversation (CHAT-025) and go only to the model address (CHAT-027).
+
+#### 8.1.4 Document retrieval (stage 2)
+
+- **CHAT-019.** The operator can make a knowledge set: a name and a list of documents. A conversation can use one knowledge set or more. When the text of a document fits the context (CHAT-015), the client puts the whole text in the request. When it does not fit, the client uses retrieval: it splits the documents, gets the embeddings from the model address, and puts the parts that match the prompt in the request, with the name of each document. Each answer shows the documents that it used.
+- **CHAT-020.** The embeddings must come only from an embedding model of the model address (`/v1/embeddings`, which RTR-010 lists as planning context; OD-C15). The index of a knowledge set has the data class of its documents and is kept where the conversations are kept (CHAT-025). [NEEDS CLARIFICATION: the embedding model, and the size of the parts.]
+
+#### 8.1.5 Prompts and presets
+
+- **CHAT-021.** The operator can save a prompt with a name, and use it in the prompt field with `/` and its name. A saved prompt can hold variables in the form `{{name}}`. The client asks for each value before it sends.
+- **CHAT-022.** The operator can save a preset: a name, a model or an alias, a system prompt, the sampling values (CHAT-005) and knowledge sets (CHAT-019). A new conversation can start from a preset. A preset holds no tool and no key.
+
+#### 8.1.6 Members and sharing (stage 2)
+
+- **CHAT-023.** When a hub has members (MBR-001 to MBR-005 of the [one-click plan](one-click/one-click-plan.md)), each member must have conversations, files, knowledge sets, prompts and presets of their own. An owner or an admin must not be able to read the conversations of another member (OD-C16). [NEEDS CLARIFICATION: the sealed key of each member; the vault of Section 2.4 of the extensions plan has one data key for each extension.]
+- **CHAT-024.** A member can share one conversation with another member of the same hub as a copy that the other member can only read. The copy holds the messages at the time of the share. The member can stop the share; the copy is then removed. A share must not make a link that works outside the hub (SEC-008; OD-C17).
+- **CHAT-025.** Storage. Conversations, files, knowledge sets and their indexes, prompts and presets are Class B (extensions plan Section 2.4: "AI session text"). In stage 1 they stay on the client device only (CHAT-006, OD-C6). In stage 2 they are sealed on the hub with the data key of the chat, so that each client of the same person sees them (OD-C12). The hub must not keep them as plain text, and a backup holds them sealed.
+
+#### 8.1.7 Privacy and the trust boundary
+
+- **CHAT-026.** No log, metric, event, crash report or audit event must contain a prompt, an answer, a file, a title, a document name or a part of an index (SEC-C-010, LOG-007). An audit event may say that a share was made or stopped, with the two members and the time.
+- **CHAT-027.** The client must send a prompt, a file and a request for embeddings only to the model address of its own computer (RTR-001, RTR-005). The hub carries no model request (RTR-002). The client must not fetch an address that is in a prompt or in an answer.
+- **CHAT-028.** An answer is untrusted text. The client must render it as Markdown (CHAT-007) with no raw HTML, no script, no frame and no form. An image in an answer must not load from the network; it shows as a link. A link opens in the system browser after the operator clicks it, never by itself. Code in an answer is shown, never run.
+- **CHAT-029.** A file is untrusted. The reader of CHAT-017 runs with no access to the network, to the main web view of the client, or to Tauri commands (as WEB-007).
+- **CHAT-030.** The trust boundaries are: (1) the main web view of the client, which keeps the conversations; (2) the file reader, which has no access; (3) the model address on loopback, with the model key (RTR-004); (4) the model server on the node, which sees the prompt and the files as plain text; (5) in stage 2, the hub, which keeps the sealed copy and cannot read it. The Chat page must say this in its settings and on its empty page, in one short text. Stage 1: "Your chats go from this computer to your own model servers. They stay on this computer." Stage 2: "Your chats go from this computer to your own model servers. Your hub keeps only a sealed copy."
+
+#### 8.1.8 Failure modes
+
+- **CHAT-031.** A refusal of the model address (RTR-016) must show as an error with its fixed reason in the place of the answer, never as an answer of the model, and must offer Retry.
+- **CHAT-032.** When a stream stops before its end (the node goes away, the operator stops it, a timeout), the client must keep the received text and mark it "Stopped" or "Not complete", with the reason. A load of a model shows the status of the load (RTR-039), not text in the answer.
+- **CHAT-033.** When the storage of the client is full, or a write fails, the client must say so and must not lose the conversation that is open. In stage 2, a conversation that is not synced shows "Only on this device" until the hub has it.
+- **CHAT-034.** When the model of a conversation is not available any more (no validated copy, the node is off), the conversation stays readable, and the selector asks for a different model.
+
+#### 8.1.9 Interfaces (CMD-030 order)
+
+- **CHAT-035.** Stage 1 needs no hub API: the client talks to the model address and keeps the data on the device. The commands come with stage 2, in this order: the hub API for the sealed conversations, the knowledge sets, the prompts, the presets and the shares; then `anima chat list`, `show`, `export`, `import` and `delete`; then the client. Each new root field needs its command (CMD-031). [NEEDS CLARIFICATION: the names are a suggestion for the interface review.]
+- **CHAT-036.** No MCP tool must read or change a conversation, a file, a knowledge set or a prompt (OD-C18). An AI agent uses the model address directly, not the Chat page.
+- **CHAT-037.** The first version of the full chat page is for the desktop client and the web client on the computer of the operator. The phone clients follow the mobile plan. [NEEDS CLARIFICATION: whether the web client has a model address on its computer (RTR-001 names the desktop application or `anima`).]
+
+**Mockup.** [mockup/chat-full/index.html](../mockup/chat-full/index.html) (state Proposed, PLN-019).
 
 ## 9. Security
 
@@ -589,7 +668,29 @@ L1-1, L1-2 and L1-4 need no open decision: when the condition is met they can st
 | L1-18 | The Ollama form at the model address. | RTR-040 to RTR-042 | L1-11; L1-7 for `/api/pull` | A human check: an Ollama client lists and uses the models. | Not started | — |
 | L1-19 | The Compute page and the compute badge. Later delivery. | CUI-003 to CUI-006 | L1-5, L1-8, L1-9 | The interface review and a human check on a real hub. | Not started | — |
 | L1-20 | The Models page. Later delivery. | CUI-001, SEL-001 to SEL-003, PULL-007 | L1-7, L1-16 | The interface review and a human check on a real hub. | Not started | — |
-| L1-21 | The Chat page. Later delivery. | CUI-002, CHAT-001 to CHAT-007 | L1-11, OD-C6 | The interface review and a human check on a real hub. | Not started | — |
+| L1-21 | The Chat page. Later delivery. The full chat page of Section 8.1 (proposed) follows in Section 12.5. | CUI-002, CHAT-001 to CHAT-007 | L1-11, OD-C6 | The interface review and a human check on a real hub. | Not started | — |
+
+### 12.5 Tasks of the full chat page (proposed, not approved)
+
+These tasks serve Section 8.1. They are not approved, and none starts before CH0 (PLN-007). They also wait for the condition of PH-C-002 and for task L1-21 (the Chat page of CHAT-001 to CHAT-007). One pull request for each task. The size of each task is a few hours to three days (an estimate).
+
+| Task | Stage | Content | Requirements | Needs | Check | State | Commits |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| CH0 | — | The operator approves CHAT-008 to CHAT-037 with a ruling and answers OD-C12 to OD-C20 | — | The operator | — | Not started | — |
+| CH1 | 1 | The local store of the client: the conversations, the list, rename, pin, archive, delete, folders; the format of the JSON export (a contract in `contracts/chat-export.md`) | CHAT-008, CHAT-009, CHAT-011, CHAT-012, CHAT-025 (stage 1), CHAT-033 | CH0; L1-21 | Unit tests of the store and the export; a delete removes each part | Not started | — |
+| CH2 | 1 | The search on the client | CHAT-010 | CH1 | Unit tests; no text leaves the client | Not started | — |
+| CH3 | 1 | Edit and regenerate with versions of a message; the context check | CHAT-014, CHAT-015 | CH1 | Unit tests of the versions and the token estimate | Not started | — |
+| CH4 | 1 | The safe render of an answer, and the failure states | CHAT-028, CHAT-031, CHAT-032, CHAT-034 | CH1 | Tests: HTML, script, a remote image and a link in an answer do nothing; each refusal of RTR-016 shows as an error | Not started | — |
+| CH5 | 1 | Attached files and images; the file reader in a worker with no network | CHAT-016 to CHAT-018, CHAT-029 | CH1 | Tests: limits, a file that cannot be read, no network from the reader | Not started | — |
+| CH6 | 1 | Saved prompts with variables, and presets | CHAT-021, CHAT-022 | CH1 | Unit tests | Not started | — |
+| CH7 | 1 | The privacy text and the trust boundary, the logs check | CHAT-026, CHAT-027, CHAT-030 | CH4, CH5 | A test that the client sends to the model address only; a log test (LOG-007) | Not started | — |
+| CH8 | 2 | `/v1/embeddings` at the model address for a validated embedding model (an addition to RTR-010 and its contract) | CHAT-020 | CH0; OD-C15; L1-11 | Tests at the model address | Not started | — |
+| CH9 | 2 | Knowledge sets and retrieval on the client | CHAT-019, CHAT-020 | CH8, CH5 | Tests: whole text when it fits, retrieval when not, the names of the documents in the answer | Not started | — |
+| CH10 | 2 | The sealed store on the hub: the hub API, then `anima chat` commands, then the sync of the client | CHAT-025 (stage 2), CHAT-033, CHAT-035, CHAT-036 | The vault (extensions plan Section 2.4); OD-C12 | Hub tests: the hub keeps no plain text; the command coverage test (CMD-031); no MCP tool | Not started | — |
+| CH11 | 2 | Members and shares | CHAT-023, CHAT-024 | CH10; MBR-001 to MBR-005; OD-C16, OD-C17 | Hub tests: an admin cannot read a member's conversation; a share is read only and ends | Not started | — |
+| CH12 | — | The interface review against the mockup, the security review of the five boundaries (CHAT-030), and the entry in [need-human-testing.md](../need-human-testing.md) | All | CH1 to CH7 (stage 1); CH8 to CH11 (stage 2) | The review records; a human check on a real hub | Not started | — |
+
+Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task CHn of docs/plans/compute-plan.md Section 12.5. Read Section 8 and 8.1 first. Build only what the row says, in the order of CMD-030. Run the check of the row, then bun run quality:documents and bun run gates."
 
 ## 13. Repository changes
 
@@ -665,6 +766,15 @@ Each open row is one question that the operator can answer in one line. The last
 | OD-C9 | Can `anima-daemon` do model work on its machine (install a runtime, pull a model, start and stop a model server) as a fixed list of work types that it asks the hub for? | (a) Yes, now, as narrow work types of their own, which the work route of task W1 takes over later (the pattern of `agent_install`, R-153). (b) Yes, but only after the work route of W1 is built. (c) No: the operator installs each runtime by hand, and the daemon only reports. | L1-3, L1-6, L1-7 and each task after them: most of Level 1 | Decided (R-165, operator, 2026-11-18, through the orchestrating session: "go with A"): yes, (a). The model work types of CAG-003 join the fixed list of work types of the work route (R-160). This is one more exception to MET-002. The daemon still listens on no port (MET-020) and takes only work of the list (CAG-004). The contract (task L1-3) and its security review come before code. |
 | OD-C10 | When a request names no machine, or a pull names no variant, can Anima select one by a fixed rule that it shows? | (a) Yes. Variant: the highest quality that fits (PULL-002). Machine: a node with a loaded copy first, else the node with the most free memory; no scores (RTR-034 waits). (b) No: the request is refused with the list of the choices, and the caller names the machine and the variant. | L1-10; the automatic part of L1-7 | Decided (R-165, operator, 2026-11-18, through the orchestrating session: "go with A"): yes, (a). Variant: the highest quality that fits (PULL-002). Machine: a node with a loaded copy first, else the node with the most free memory; no scores (RTR-030). Anima never selects the model (SEL-004) and never replaces a machine that the caller named (RTR-014). |
 | OD-C11 | Does Level 1 build the path between devices for the link only (the hosted hub), and not for a hub on the VPN? | (a) The link only. (b) The link and the VPN (ACL rules with `tag:compute`, each change with VPS-005). | L1-13 | Decided (R-165, operator, 2026-11-18, through the orchestrating session: "go with A"): yes, (a). Level 1 builds the path between devices for the link only. A hub on the VPN gets no task in Level 1; SEC-C-004 keeps its rule. |
+| OD-C12 | In stage 2, are the conversations of the full chat page sealed on the hub (Class B, with the data key of the chat), so that each client sees them, while CHAT-006 holds until the vault exists? | Yes. Or: they stay on each client device for ever, with an export only. | CH10 | Yes. Strength: one history on each computer of the operator, and the hub cannot read it. Weakness: it waits for the vault. |
+| OD-C13 | Is the full chat page built in two stages (stage 1 on the client with no vault; stage 2 with the vault, retrieval, members and shares), after task L1-21, with tasks of its own (CH0 to CH12)? | Yes. Or: one stage after the vault. Or: in task L1-21. | CH1 to CH12 | Yes. Strength: the operator gets history, files, prompts and presets early. Weakness: a later migration of the local store to the sealed store (CH10). |
+| OD-C14 | Does the Chat page use only the models of the model address, with no cloud provider? | Yes. Or: also the providers of the model gateway (extensions plan Section 4.15). | CHAT-013 | Yes. Strength: the private path of R-131 stays the only path, and no key of a provider is in the client. Weakness: a person with no node gets no chat. |
+| OD-C15 | Does the model address add `/v1/embeddings` for a validated embedding model, so that document retrieval can work? | Yes. Or: no retrieval; the whole text of a document only. | CH8, CH9 | Yes. Strength: retrieval for large documents, with no new service. Weakness: one more model to validate and to keep in memory. |
+| OD-C16 | When a hub has members, does each member have conversations that an owner or an admin cannot read? | Yes. Or: an owner can read each conversation. | CH11 | Yes. Strength: the trust of each member. Weakness: a key for each member, which the vault does not have yet. |
+| OD-C17 | Is sharing a read-only copy to a member of the same hub only, with no public link? | Yes. Or: also a link for a person outside the hub. | CH11 | Yes. Strength: SEC-008 holds. Weakness: a person outside the hub gets only an export file. |
+| OD-C18 | Does no MCP tool read or change the conversations (CHAT-036)? | Yes, no MCP tool. Or: a read tool for the list of titles only. | CH10 | Yes. Strength: Class B text does not go to an AI agent. Weakness: an agent cannot use the history of the operator. |
+| OD-C19 | Are two models side by side out of the first version? | Yes, later. Or: in stage 1. | Nothing | Yes, later. Strength: one load at a time on a node with little memory. Weakness: the benchmark has it, and comparing models is a reason to use a model service. |
+| OD-C20 | Are web search, code execution and tools (MCP, OpenAPI) out of the Chat page? | Yes. Or: tools with a grant for each tool. | Nothing | Yes. Strength: Hermes Agent is the assistant (R-196), and a chat cannot act on the machines. Weakness: the benchmark has them, so the Chat page is smaller than Open WebUI. |
 
 ### 15.1 The hardware table of OD-C1
 

@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (119)
+## 2. Open decisions (128)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -56,6 +56,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C12 | In stage 2, are the conversations of the full chat page sealed on the hub (Class B, with the data key of the chat), so that each client sees them, while CHAT-00… | Yes. Strength: one history on each computer of the operator, and the hub cannot read it. Weakness: it waits for the vault. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C13 | Is the full chat page built in two stages (stage 1 on the client with no vault; stage 2 with the vault, retrieval, members and shares), after task L1-21, with t… | Yes. Strength: the operator gets history, files, prompts and presets early. Weakness: a later migration of the local store to the sealed store (CH10). | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C14 | Does the Chat page use only the models of the model address, with no cloud provider? | Yes. Strength: the private path of R-131 stays the only path, and no key of a provider is in the client. Weakness: a person with no node gets no chat. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C15 | Does the model address add `/v1/embeddings` for a validated embedding model, so that document retrieval can work? | Yes. Strength: retrieval for large documents, with no new service. Weakness: one more model to validate and to keep in memory. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C16 | When a hub has members, does each member have conversations that an owner or an admin cannot read? | Yes. Strength: the trust of each member. Weakness: a key for each member, which the vault does not have yet. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C17 | Is sharing a read-only copy to a member of the same hub only, with no public link? | Yes. Strength: SEC-008 holds. Weakness: a person outside the hub gets only an export file. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C18 | Does no MCP tool read or change the conversations (CHAT-036)? | Yes. Strength: Class B text does not go to an AI agent. Weakness: an agent cannot use the history of the operator. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C19 | Are two models side by side out of the first version? | Yes, later. Strength: one load at a time on a node with little memory. Weakness: the benchmark has it, and comparing models is a reason to use a model service. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C20 | Are web search, code execution and tools (MCP, OpenAPI) out of the Chat page? | Yes. Strength: Hermes Agent is the assistant (R-196), and a chat cannot act on the machines. Weakness: the benchmark has them, so the Chat page is smaller than… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. | [plans/extensions-plan.md](plans/extensions-plan.md) |
