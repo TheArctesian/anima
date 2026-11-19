@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (114)
+## 2. Open decisions (117)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -44,6 +44,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W29 | The runner conditions for `TheArctesian/anima.ing`, which is public (OD-W18, PRO-044): no runner before tasks W2 and S are accepted, and the fork rule "all exte… | Open. Recommendation: (A), no change. GitHub says that a public repository must almost never use a self-hosted runner (fact F22 of the plan). | [plan/decisions.md](plan/decisions.md) |
 | OD-W31 | How does a runner job give a release to the hub that signs, with no updater key in the job (R-117, R-158, R-171)? projects-and-builds-plan.md, "How a runner job… | Open. Recommendation: (A). No stored secret is then in the repository, in the job or on the machine, and R-117 stays as it is. (C) is not recommended: it revers… | [plan/decisions.md](plan/decisions.md) |
 | OD-W32 | Does the release workflow run `bun run gates` on the machine of the operator before the bundle (BLD-042)? R-005 says "GitHub Actions runs only deployment, never… | Open. Recommendation: (A). BLD-042 exists because a release must not ship a commit that fails the gates, and the machine is the same kind of machine that runs t… | [plan/decisions.md](plan/decisions.md) |
+| OD-W35 | Does the release workflow use three environments of GitHub (`release` for the Apple secrets, `release-sign` for the updater key, `release-publish` for the bucke… | Open. Recommendation: three. The cost is two more environments to set and two more approvals for each release. The workflow is written for three; for one, chang… | [plan/decisions.md](plan/decisions.md) |
+| OD-W36 | Does the first release of the workflow publish the Linux feed? No Linux release was published before and no AppImage was checked on a Linux computer (task R7, R… | Open. Recommendation: run the trial first, take the AppImage of the trial from the run and start it on a Linux computer, then publish all three feeds. | [plan/decisions.md](plan/decisions.md) |
+| OD-W37 | When does the copy of the updater key leave the hub on the VPS? R-117 put it there, and R-158 item 1 says that this hub signs until the release server has publi… | Open. Recommendation: after the first release of the workflow is checked on an installed application, delete `secrets/updater/` on the VPS (the operator; VPS-00… | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
