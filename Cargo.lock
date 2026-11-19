@@ -5877,6 +5877,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "provider-dawarich"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "source-exchange",
+]
+
+[[package]]
 name = "provider-github"
 version = "0.1.0"
 dependencies = [
