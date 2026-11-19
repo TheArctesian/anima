@@ -60,10 +60,18 @@ export const REFUSED_ROOTS: readonly string[] = [
   "mergePullRequests",
   "createLinkInvite",
   "revokeLinkDevice",
+  "createOperationalKey",
+  "updateOperationalKey",
+  "removeOperationalKey",
+  "rotateOperationalKey",
+  "revokeOperationalKey",
+  "grantOperationalKey",
+  "ungrantOperationalKey",
+  "containerLog",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */
-export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile"];
+export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile", "containerLog"];
 
 /**
  * An argument no field has: a document that selects it fails validation, so it can never reach a resolver, even if

@@ -10,6 +10,7 @@ mod batch;
 mod bodies;
 mod check;
 mod inventory;
+mod keys;
 mod refusal;
 mod secrets;
 #[cfg(test)]
@@ -25,5 +26,9 @@ pub use bodies::{
 };
 pub use check::Accepted;
 pub use inventory::{BatchInventory, BatchTool};
+pub use keys::{
+    BatchKeys, FetchedKey, KeyFetch, KeyValue, KeyVersion, KeysCurrent, MAX_KEYS, MAX_VALUE_BYTES,
+    PushAccepted, is_key_name, versions_fit,
+};
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{CODE_BYTES, CodeHash, DaemonToken, EnrolmentCode, TOKEN_BYTES, TokenHash};

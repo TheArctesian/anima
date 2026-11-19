@@ -120,3 +120,59 @@ pub(super) async fn delete(
     .await?;
     row.map(Link::try_from).transpose()
 }
+
+/// How many links start or end at `record`.
+pub(super) async fn count(conn: &mut PgConnection, record: &Reference) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar("SELECT count(*) FROM links.record_link WHERE source = $1 OR target = $1")
+        .bind(record.as_str())
+        .fetch_one(conn)
+        .await
+}
+
+/// Moves the links of `from` to `to` (all of them, or only those in `only`). Links that would
+/// become a link to itself, or a second copy of one that `to` has, are deleted first. Returns
+/// how many links moved.
+pub(super) async fn retarget(
+    conn: &mut PgConnection,
+    (from, to): (&Reference, &Reference),
+    only: Option<&[Uuid]>,
+) -> Result<u64, sqlx::Error> {
+    const FILTER: &str = "($3::uuid[] IS NULL OR r.id = ANY($3))";
+    let deletions = [
+        format!(
+            "DELETE FROM links.record_link r WHERE {FILTER} AND \
+             ((r.source = $1 AND r.target = $2) OR (r.source = $2 AND r.target = $1))"
+        ),
+        format!(
+            "DELETE FROM links.record_link r WHERE {FILTER} AND r.source = $1 AND EXISTS \
+             (SELECT 1 FROM links.record_link o \
+              WHERE o.source = $2 AND o.target = r.target AND o.kind = r.kind)"
+        ),
+        format!(
+            "DELETE FROM links.record_link r WHERE {FILTER} AND r.target = $1 AND EXISTS \
+             (SELECT 1 FROM links.record_link o \
+              WHERE o.target = $2 AND o.source = r.source AND o.kind = r.kind)"
+        ),
+    ];
+    for statement in deletions {
+        sqlx::query(&statement)
+            .bind(from.as_str())
+            .bind(to.as_str())
+            .bind(only)
+            .execute(&mut *conn)
+            .await?;
+    }
+    let mut moved = 0;
+    for side in ["source", "target"] {
+        let result = sqlx::query(&format!(
+            "UPDATE links.record_link r SET {side} = $2 WHERE {FILTER} AND r.{side} = $1"
+        ))
+        .bind(from.as_str())
+        .bind(to.as_str())
+        .bind(only)
+        .execute(&mut *conn)
+        .await?;
+        moved += result.rows_affected();
+    }
+    Ok(moved)
+}

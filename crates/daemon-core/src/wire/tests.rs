@@ -9,6 +9,7 @@ mod agent_usage;
 mod bodies;
 mod drives;
 mod inventory;
+mod keys;
 mod range;
 mod secrets;
 mod series;

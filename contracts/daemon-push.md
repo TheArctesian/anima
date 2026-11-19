@@ -10,6 +10,9 @@ AIS-024).
 Section 8 (the update), the `update` member of Section 4 and the two update routes were added by R-139
 (operator, 2026-11-17; ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045). They are ruled and
 not built: no hub and no daemon has them yet.
+Section 9 (operational keys), the `keys` member of Section 4 and of `Accepted`, the fetch route and the refusal
+`NO_KEY` were added by R-147 and R-148 (operator, 2026-11-18; K-E5 Section 2.1). They are optional members, so
+they need no new version of this contract (Section 1).
 
 This contract is the whole interface between `anima-daemon` and the hub. The daemon makes no other request.
 
@@ -40,6 +43,7 @@ This contract is the whole interface between `anima-daemon` and the hub. The dae
 | `POST /daemon/v1/renew` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `Renewed` |
 | `POST /daemon/v1/update/record` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `ReleaseRecord` (Section 8) |
 | `POST /daemon/v1/update/file` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, the bytes of the file (Section 8) |
+| `POST /daemon/v1/keys/fetch` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `FetchedKey` (Section 9) |
 
 The hub reads at most the limit and answers 413 without reading further. A body that has not arrived within
 5 seconds is answered 503 `UNAVAILABLE` and written to the event log like a refusal (Section 6).
@@ -278,6 +282,10 @@ Request:
     change. After a restart it sends every session day again, so the hub's upsert must be idempotent.
 - `update`: optional (R-139). What the daemon says about its own update, in each batch (Section 8). Absent
   means a daemon that cannot update itself (ROL-044), and a hub older than R-139 ignores it.
+- `keys`: optional (R-147). `{ "held": [ { "name", "version" } ] }`: the versions in the daemon's key cache, in
+  each batch (Section 9). At most 256 entries, no name twice, each `name` a key name of K-E5 Section 2 and each
+  `version` at least 1; any other value makes the batch `MALFORMED`. Absent means a daemon with no key cache: it
+  is told no keys. A hub older than R-147 ignores it.
 
 The hub:
 
@@ -345,6 +353,7 @@ The body of every refusal is `{ "error": "<CODE>" }` and nothing else. It never 
 | 401 | `ENROLMENT_REFUSED` | Section 3 | `anima-daemon enrol` exits 1 with a fixed sentence |
 | 403 | `WRONG_DEVICE` | `device` is not the token's device | As `TOKEN_REFUSED` |
 | 413 | `TOO_LARGE` | The body exceeds its limit | Drops that batch; sends smaller batches |
+| 404 | `NO_KEY` | A fetch (Section 9) names a key that does not exist, has no active version, or is not granted to the token's device: one answer for the three | Drops that fetch; asks again at the next answer that names the key |
 | 422 | `OUT_OF_RANGE` | A point's `at` is more than 1 hour before or more than 60 seconds after the hub's clock | Drops that batch |
 | 503 | `UNAVAILABLE` | The hub cannot store now, or is busy (below) | Keeps the points; tries again |
 
@@ -525,3 +534,39 @@ those of the client. This table is the order of the tests: the first row that is
 The check of ROL-029 is complete for the hub when it accepted one batch with the new `daemonVersion` and a
 `last` with the result `installed` for that version. The machine writes `installed` only after its own check:
 the new daemon started, `anima-daemon doctor` passed, and the hub accepted one push.
+
+## 9. Operational keys (R-147, R-148; K-E5 Section 2.1)
+
+The hub gives a daemon the operational keys that the operator granted to its device. The daemon proves its device
+with its token on each call; to be on the network is not enough. K-E5 Section 2 owns the keys, their versions and
+their grants; this section is the wire.
+
+- **What the daemon says.** The `keys` member of each `Batch` (Section 4) lists the versions in its cache. The hub
+  writes them to the consumer rows of the device (`held_version`, `held_seen_at`); a key that the list does not
+  name holds no version.
+- **What the hub says.** When the batch had a `keys` member and was stored, the hub answers `200` with `Accepted`:
+  `{ "keys": { "current": [ { "name", "version" } ] } }`, each key granted to the device that is not removed, not
+  past its expiry and has an active version, with that version. A key that is not in the list is not for this
+  device now. A daemon that sent no `keys` member gets no `keys` member. When the hub cannot read the keys, it
+  answers `204`: the batch is stored, and the daemon changes nothing in its cache. A daemon ignores an `Accepted`
+  that it cannot read, or whose list breaks the rules of `held`.
+- **The fetch.** `POST /daemon/v1/keys/fetch` with the body `{ "device": "<id>", "name": "<key name>" }`. The
+  checks run in the order of a renewal: the bearer before the body, the size, the JSON (`MALFORMED`), the device
+  (`WRONG_DEVICE`). The answer is `200` with `FetchedKey`, `{ "name", "version", "value" }` (`value` is the
+  standard base64 of 1 to 16 384 bytes), and `Cache-Control: no-store`. A key that does not exist, has no active
+  version, or is not granted to the device is `404 NO_KEY`, from one lookup. Each fetch that gives a value writes
+  one audit entry (`target_type` `operational_key`, action `fetch`, the name, the version and the device; never
+  the value) and `fetched_version` and `fetched_at` on the consumer rows. A refusal is written to the event log as
+  any refusal of a daemon route (Section 6), without the key's name.
+- **What the daemon does.** After each `Accepted` with `keys`, the daemon deletes from its cache each key that is
+  not in `current` and each key whose version is not the current one, then fetches each current version that it
+  does not hold, and stores the cache. A failed fetch is tried at the next such answer.
+- **The cache.** The daemon keeps its cache where it keeps its token (Section 2): one Keychain item on macOS, or on
+  Linux the file `keys` in its folder, mode `0600`, written to a temporary file and renamed. It keeps the time of the
+  last `Accepted` with `keys`. When that time is more than 7 days old, when the hub refuses its token
+  (`TOKEN_REFUSED`), on a new enrolment, and on `anima-daemon key forget`, it deletes the whole cache.
+- **The local reader.** `anima-daemon key read <name>` writes the cached value to its standard output, only when that
+  is not a terminal, and never to a log.
+- No log line, event, error text or `Debug` output of either side holds a value (LOG-007). The Rust type of a value
+  is `daemon_core::wire::KeyValue`: no `Debug`, `Display` or `Clone`, wiped on drop.
+

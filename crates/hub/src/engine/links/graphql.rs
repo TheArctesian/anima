@@ -7,12 +7,17 @@ use async_graphql::{
     Context, Error as GraphQlError, ID, InputObject, Object, Result, SimpleObject,
 };
 use chrono::{DateTime, Utc};
+use sqlx::PgPool;
+use std::collections::HashMap;
 
 use super::{
-    Error, Link, NewLink, Relation, connect, disconnect, label, own_title, touching, trail,
+    Error, Link, NewLink, Relation, TitleSources, Unavailable, connect, disconnect, label,
+    own_title, touching, trail,
 };
 use crate::{
-    api_errors::{ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool},
+    api_errors::{
+        ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool, schema_dependency,
+    },
     engine::records::Reference,
     fleet::{access::Authenticated, events::Trail},
     ids::RecordLinkId,
@@ -33,19 +38,48 @@ struct LinkView {
     kind: String,
     /// The text to show for the target while it has no record (RLK-002).
     label: Option<String>,
-    /// The name of the source record. Null: no domain gives one yet.
+    /// The name of the source record. Null when its domain gives none.
     source_title: Option<String>,
-    /// The name of the target record. Null: no domain gives one yet; show `label`.
+    /// The name of the target record. Null when its domain gives none; show `label`.
     target_title: Option<String>,
     created_at: DateTime<Utc>,
 }
 
-impl From<Link> for LinkView {
-    fn from(link: Link) -> Self {
+/// The name of `record`: its own, or the one its domain gave.
+fn title_of(record: &Reference, found: &HashMap<Reference, String>) -> Option<String> {
+    own_title(record).or_else(|| found.get(record).cloned())
+}
+
+/// The links as the API shows them, with the titles that the domains of their records give.
+async fn views(ctx: &Context<'_>, db: &PgPool, links: Vec<Link>) -> Result<Vec<LinkView>> {
+    let ends: Vec<&Reference> = links
+        .iter()
+        .flat_map(|link| [&link.source, &link.target])
+        .collect();
+    let found = schema_dependency::<TitleSources>(ctx)?
+        .of(db, &ends)
+        .await
+        .map_err(|error| unavailable(&error))?;
+    Ok(links
+        .into_iter()
+        .map(|link| LinkView::new(link, &found))
+        .collect())
+}
+
+fn unavailable(error: &Unavailable) -> GraphQlError {
+    tracing::warn!(%error, "titles of linked records are not available");
+    coded(
+        "The names of some linked records are not available. Try again.",
+        ErrorCode::Unavailable,
+    )
+}
+
+impl LinkView {
+    fn new(link: Link, found: &HashMap<Reference, String>) -> Self {
         Self {
             id: ID(link.id.to_string()),
-            source_title: own_title(&link.source),
-            target_title: own_title(&link.target),
+            source_title: title_of(&link.source, found),
+            target_title: title_of(&link.target, found),
             source: link.source.to_string(),
             target: link.target.to_string(),
             kind: link.relation.as_str().to_owned(),
@@ -126,7 +160,7 @@ impl Query {
         let record = Reference::parse(&record)
             .map_err(|_| invalid(&[FieldError::new("record", BAD_REFERENCE)]))?;
         let links = touching(pool(ctx)?, &record).await.map_err(refused)?;
-        Ok(links.into_iter().map(Into::into).collect())
+        views(ctx, pool(ctx)?, links).await
     }
 }
 
@@ -151,7 +185,10 @@ impl Mutation {
                 .map_err(internal)?;
         }
         commit(tx).await?;
-        Ok(link.into())
+        let mut shown = views(ctx, pool(ctx)?, vec![link]).await?;
+        shown
+            .pop()
+            .ok_or_else(|| internal(Error::Database(sqlx::Error::RowNotFound)))
     }
 
     /// Removes one link and returns its ID. The two records are not changed. `NOT_FOUND` when

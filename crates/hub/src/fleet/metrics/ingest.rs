@@ -9,6 +9,7 @@
 mod admission;
 mod credential;
 mod enrolment;
+mod keys;
 mod push;
 mod refusals;
 mod renewal;
@@ -57,6 +58,8 @@ pub(super) enum Error {
     Metrics(#[from] super::Error),
     #[error("the agent usage cannot be stored")]
     AgentUsage(#[from] agent_usage::Error),
+    #[error("the operational key cannot be given")]
+    Keys(#[source] crate::fleet::credentials::operational::Error),
 }
 
 impl From<devices::Error> for Error {

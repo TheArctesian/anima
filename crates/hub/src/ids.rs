@@ -98,6 +98,16 @@ entity_id! {
     PlaceId,
     /// A person, as every extension names them (RLK-004).
     PersonId,
+    /// A file of one record (FIL-001).
+    AttachmentId,
+    /// An archive: the unit of deletion of one import (FIL-004).
+    ArchiveId,
+    /// One extraction proposal (VIS-001).
+    ProposalId,
+    /// An operational key: a credential a server of the operator needs (R-147).
+    OperationalKeyId,
+    /// One version of an operational key; its id is in the context of its sealed value.
+    OperationalKeyVersionId,
 }
 
 #[cfg(test)]

@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use crate::config::home::{Home, HomeError};
 use crate::hub::{HubClient, HubError, TIMEOUT};
+use crate::keys::{keeper::Keeper, store::KeyStore};
 use crate::push::pacing::RHYTHM;
 use crate::push::{Event, Pusher};
 use crate::readers::{self, Platform, gpu};
@@ -103,7 +104,8 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
     }
     let hub = HubClient::new(config.hub.url().clone(), TIMEOUT)?;
     Ok((
-        Pusher::new(hub, config.device, credential, store),
+        Pusher::new(hub, config.device, credential, store)
+            .with_keys(Keeper::open(KeyStore::open(home))),
         config.device,
     ))
 }

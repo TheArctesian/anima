@@ -106,6 +106,13 @@ impl Vault {
         Ok(Secret::new(std::mem::take(&mut *buffer)))
     }
 
+    /// The identifier of the key (not the key): the data keys compare theirs with it at start,
+    /// so that no data key is the credential key (VLT-003).
+    #[must_use]
+    pub fn key_id(&self) -> &str {
+        &self.key_id
+    }
+
     fn cipher(&self) -> XChaCha20Poly1305 {
         XChaCha20Poly1305::new((&*self.key).into())
     }

@@ -19,6 +19,16 @@ export function rangeWindow(range: MetricRange, now: Date): TimeWindow {
   return { start: now.getTime() - SPAN_MS[range], end: now.getTime() };
 }
 
+/**
+ * The window for series read at `now`. When the newest point is older than the window, the series is a copy of an
+ * earlier answer (FND-007), and the window ends at that point, so that the chart shows the copy and its time axis.
+ */
+export function seriesWindow(range: MetricRange, now: Date, pointTimes: readonly number[]): TimeWindow {
+  const newest = Math.max(...pointTimes);
+  const old = Number.isFinite(newest) && newest < now.getTime() - SPAN_MS[range];
+  return rangeWindow(range, old ? new Date(newest) : now);
+}
+
 /** A wider gap than this between two points breaks the line (MET-003): two and a half buckets, so a late point does not break it and two missing buckets do. */
 export function rangeGap(range: MetricRange): number {
   return BUCKET_MS[range] * 2.5;

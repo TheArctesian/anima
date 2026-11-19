@@ -8,6 +8,7 @@ use anima_daemon::config::home::Home;
 use anima_daemon::config::private_file;
 use anima_daemon::hub::enrolment::Enrolment;
 use anima_daemon::hub::{HubClient, TIMEOUT};
+use anima_daemon::keys::{self, store::KeyStore};
 use anima_daemon::readers::Platform;
 use anima_daemon::runtime;
 use anima_daemon::token_store::TokenStore;
@@ -43,6 +44,22 @@ async fn main() -> ExitCode {
         },
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
+        Command::KeyRead { name } => key_read(&name, &home),
+        Command::KeyForget => match KeyStore::open(&home).forget() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => failure(&error),
+        },
+    }
+}
+
+/// `anima-daemon key read <name>`: the value to standard output, never to a terminal.
+fn key_read(name: &str, home: &Home) -> ExitCode {
+    let mut out = std::io::stdout().lock();
+    let to_terminal = out.is_terminal();
+    let asked = (name, chrono::Utc::now());
+    match keys::read(&KeyStore::open(home), asked, (&mut out, to_terminal)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
     }
 }
 
@@ -75,6 +92,10 @@ async fn enrol(
     };
     match enrolment.spend(code).await {
         Ok(name) => {
+            // A new enrolment is a new identity: no key of an earlier one stays (R-147).
+            if let Err(error) = KeyStore::open(home).forget() {
+                return failure(&error);
+            }
             eprintln!("Enrolled {name}. Start the daemon with `anima-daemon run`.");
             ExitCode::SUCCESS
         }

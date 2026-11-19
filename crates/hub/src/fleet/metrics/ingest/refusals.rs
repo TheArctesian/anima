@@ -31,6 +31,7 @@ pub(super) enum Route {
     Enrol,
     Push,
     Renew,
+    KeysFetch,
 }
 
 impl Route {
@@ -39,6 +40,7 @@ impl Route {
             Self::Enrol => "a daemon enrolment",
             Self::Push => "a daemon push",
             Self::Renew => "a daemon token renewal",
+            Self::KeysFetch => "a daemon key fetch",
         }
     }
 }

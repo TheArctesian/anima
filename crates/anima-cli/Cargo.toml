@@ -28,6 +28,10 @@ crossterm.workspace = true
 # The stream and sink halves of the subscription and tunnel WebSockets (CMD-003).
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 graphql_client.workspace = true
+# The body of a file upload, read from the disk part by part (`hub/attachments.rs`, FIL-005).
+http-body = "1.1"
+http-body-util.workspace = true
+tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 # The OS key store holds the token (CMD-012): the macOS Keychain, the Linux Secret Service.
 keyring.workspace = true
 # Plain `rustls-tls` with the web PKI roots; no redirect, no proxy, no cookie (CMD-003).

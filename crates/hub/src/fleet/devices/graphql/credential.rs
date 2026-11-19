@@ -20,7 +20,7 @@ use super::{
 use crate::{
     api_errors::{begin, commit, internal, invalid, schema_dependency},
     fleet::{
-        credentials::{Vault, clear_ssh, store_ssh},
+        credentials::{Vault, clear_ssh, operational, store_ssh},
         devices::{Device, Error, FieldError, Missing, store},
         events::Trail,
     },
@@ -97,4 +97,24 @@ pub(super) async fn clear(ctx: &Context<'_>, device: &ID) -> Result<DeviceSsh> {
     }
     commit(tx).await?;
     Ok(settings(device, false))
+}
+
+/// Ends the grants of operational keys of a device that is to be deleted, in `tx`, and writes
+/// one audit entry and one event for each key that its server had: the hub cannot take a
+/// fetched value back, so it says which keys to revoke at their provider (K-E5 Section 2.1).
+pub(super) async fn end_key_grants(
+    ctx: &Context<'_>,
+    tx: &mut sqlx::PgConnection,
+    device: DeviceId,
+) -> Result<()> {
+    let had = operational::forget_device(tx, device)
+        .await
+        .map_err(internal)?;
+    for entry in had {
+        Trail::from_context(ctx)?
+            .write(tx, entry)
+            .await
+            .map_err(internal)?;
+    }
+    Ok(())
 }

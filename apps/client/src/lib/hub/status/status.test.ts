@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INITIAL_STATUS, nextStatus, type Connection, type HubStatus, type StatusSignal } from './status';
+import { INITIAL_STATUS, nextStatus, withCopyShown, type Connection, type HubStatus, type StatusSignal } from './status';
 
 const EARLIER = new Date('2026-11-04T09:00:00Z');
 const NOW = new Date('2026-11-04T10:00:00Z');
@@ -34,5 +34,14 @@ describe('nextStatus', () => {
 
   it('NET-004: a failure before any answer keeps no contact time', () => {
     expect(nextStatus(INITIAL_STATUS, 'failed', NOW)).toEqual({ connection: 'unreachable', lastContactAt: null });
+  });
+
+  it('FND-007: the oldest copy shown is kept, a failure keeps it, and an answer ends it and counts that', () => {
+    const shown = withCopyShown(withCopyShown(at('unreachable'), NOW), EARLIER);
+    expect(withCopyShown(shown, NOW).copyFrom).toEqual(EARLIER);
+    expect(nextStatus(shown, 'failed', NOW).copyFrom).toEqual(EARLIER);
+    const back = nextStatus(shown, 'acknowledged', NOW);
+    expect(back).toEqual({ connection: 'connected', lastContactAt: NOW, copyEnds: 1 });
+    expect(nextStatus(nextStatus(back, 'failed', NOW), 'answered', NOW)).toEqual(back);
   });
 });

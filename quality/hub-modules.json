@@ -17,7 +17,8 @@
     "fingerprint",
     "core_dumps",
     "records",
-    "instants"
+    "instants",
+    "sealing_keys"
   ],
   "wiring": [
     "main",
@@ -29,7 +30,9 @@
   ],
   "domains": {
     "events": [],
-    "credentials": [],
+    "credentials": [
+      "events"
+    ],
     "access": [
       "events",
       "credentials"
@@ -117,6 +120,20 @@
     "link": [],
     "agent_usage": [
       "devices"
+    ],
+    "files": [
+      "events",
+      "extensions",
+      "access"
+    ],
+    "places": [
+      "links",
+      "events"
+    ],
+    "containers": [
+      "devices",
+      "ssh",
+      "credentials"
     ]
   },
   "graphql": {
@@ -174,11 +191,24 @@
     "links": [
       "access"
     ],
+    "places": [
+      "access",
+      "devices"
+    ],
     "link": [
       "access",
       "events"
     ],
     "agent_usage": [
+      "access"
+    ],
+    "credentials": [
+      "access"
+    ],
+    "containers": [
+      "access"
+    ],
+    "files": [
       "access"
     ]
   }

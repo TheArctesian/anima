@@ -1,0 +1,18 @@
+mutation PlaceSplit($id: ID!, $input: PlaceSplitInput!) {
+  splitPlace(id: $id, input: $input) {
+    id
+    parentId
+    name
+    title
+    latitude
+    longitude
+    radiusM
+    category
+    icon
+    aliases
+    geocoderName
+    siteIds
+    createdAt
+    updatedAt
+  }
+}

@@ -36,7 +36,10 @@ async fn met_020_a_push_reaches_the_hub_at_the_local_port_of_the_link() {
     let link = anima_daemon::config::origin::Origin::parse(hub.url.as_str().trim_end_matches('/'))
         .expect("the local port of the link is a hub origin");
     let client = HubClient::new(link.url().clone(), TIMEOUT).expect("a client");
-    assert_eq!(client.push(&token(), &batch()).await, Answer::Accepted(()));
+    assert_eq!(
+        client.push(&token(), &batch()).await,
+        Answer::Accepted(None)
+    );
     assert_eq!(hub.seen("push").len(), 1);
 }
 
@@ -69,7 +72,7 @@ async fn proxy_child() {
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(
         answer,
-        Answer::Accepted(()),
+        Answer::Accepted(None),
         "the push must not go through a proxy"
     );
 }
@@ -165,10 +168,11 @@ async fn met_020_an_endless_answer_is_cut_at_the_limit_and_does_not_read() {
 #[tokio::test]
 async fn k8_1_a_2xx_that_is_not_the_routes_success_status_is_a_failure() {
     let hub = FakeHub::start().await;
-    hub.queue_push([Reply::json(200, "{}")]);
+    // A push succeeds with 204, or with 200 when the hub names the keys (K-E5 Section 2.1).
+    hub.queue_push([Reply::json(202, "{}")]);
     let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let answer = client.push(&token(), &batch()).await;
-    assert_eq!(answer, Answer::Failed(Cause::Status(200)));
+    assert_eq!(answer, Answer::Failed(Cause::Status(202)));
 }
 
 /// A hub that sends the headers of a 200 and then `body` after `pause`, with the length it

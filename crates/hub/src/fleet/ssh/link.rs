@@ -23,7 +23,7 @@ use sqlx::PgPool;
 use super::{Observer, SshError};
 use crate::fleet::{credentials, devices::Device, targets::AddressPolicy, trust};
 
-pub use command::FixedCommand;
+pub use command::{FixedCommand, HexDigits};
 
 /// The most standard output a [`SshLink::run`] keeps: 4 MiB. Past it the hub stops reading,
 /// closes the command's channel and returns what it has, marked [`CommandOutput::cut`].

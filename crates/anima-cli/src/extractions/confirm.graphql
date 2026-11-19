@@ -1,0 +1,18 @@
+mutation ExtractionConfirm($id: ID!, $fields: [ExtractedFieldInput!]!) {
+  confirmExtraction(id: $id, fields: $fields) {
+    id
+    attachmentId
+    owner
+    form
+    origin
+    state
+    createdAt
+    decidedAt
+    fields {
+      name
+      type
+      value
+      confidence
+    }
+  }
+}

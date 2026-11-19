@@ -898,6 +898,60 @@ enum NotUsableReason {
   FAILED
 }
 
+# The containers of a device (R-149; HOST-001, HOST-010; stage 1 of hosted applications). Read now from the device
+# through the hub's SSH link with fixed docker commands; the hub keeps nothing of them (LOG-007).
+"What Docker says a container is doing. UNKNOWN is a state this hub does not know."
+enum ContainerState {
+  RUNNING
+  EXITED
+  RESTARTING
+  PAUSED
+  CREATED
+  REMOVING
+  DEAD
+  UNKNOWN
+}
+
+"What the status text of a container says of its health check. NONE: no health check, or not running."
+enum ContainerHealth {
+  HEALTHY
+  UNHEALTHY
+  STARTING
+  NONE
+}
+
+"One container of a device (HOST-001). Every text is from the device."
+type Container {
+  "The full identifier of Docker: 64 hexadecimal characters."
+  id: String!
+  name: String!
+  image: String!
+  state: ContainerState!
+  "The status text of Docker, for example: Up 3 hours (healthy)."
+  status: String!
+  health: ContainerHealth!
+  "Each published or exposed port, as Docker writes it, for example: 0.0.0.0:8080->80/tcp."
+  ports: [String!]!
+  createdAt: DateTime
+  "The Compose project of the container; null when it has none."
+  composeProject: String
+  composeService: String
+}
+
+"One line of the log of a container: what it wrote to either output stream."
+type ContainerLogLine {
+  "When Docker took the line; null when the line has no time."
+  at: DateTime
+  text: String!
+}
+
+"The last lines of the log of one container, oldest first. The hub keeps none of them (LOG-007)."
+type ContainerLog {
+  lines: [ContainerLogLine!]!
+  "True when the lines passed 4 MiB: the newest lines are missing."
+  cut: Boolean!
+}
+
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
 "The AI agent program a session comes from (AIS-018)."
 enum AgentSource {
@@ -2673,6 +2727,165 @@ input RecordLinkInput {
   label: String
 }
 
+# Files and extraction proposals (R-148; K-E4 Sections 9, 10 and 13; FIL-001 to FIL-005, VIS-001 to VIS-004)
+
+"A file of one record (FIL-001). Its bytes go through POST and GET /files/v1/attachments, not through GraphQL."
+type Attachment {
+  id: ID!
+  "The record the file belongs to, as kind:id."
+  owner: String!
+  name: String!
+  mediaType: String!
+  "The SHA-256 of the plain bytes, in lower-case hexadecimal."
+  hash: String!
+  "The data key that seals the piece: engine or the key of an extension (VLT-003)."
+  key: String!
+  "The size of the plain bytes; at most 268435456."
+  size: Int!
+  archiveId: ID
+  "The position read from the photo at upload with keep_location=true (FIL-003); null otherwise. Metadata of the file: not evidence of where the operator was."
+  latitude: Float
+  longitude: Float
+  createdAt: DateTime!
+}
+
+"The unit of deletion of one import (FIL-004)."
+type Archive {
+  id: ID!
+  owner: String!
+  name: String!
+  createdAt: DateTime!
+}
+
+enum ExtractedFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  REFERENCE
+}
+
+"Where the extraction ran (VIS-002)."
+enum ExtractionOrigin {
+  CLIENT
+  HUB
+}
+
+enum ProposalState {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+}
+
+"One typed field of an extraction (VIS-004). value is text in the form of its type: a number, a date YYYY-MM-DD, true or false, or a record kind:id."
+type ExtractedField {
+  name: String!
+  type: ExtractedFieldType!
+  value: String!
+  "0 to 1; null when the extractor gave none: unknown, not certain."
+  confidence: Float
+}
+
+input ExtractedFieldInput {
+  "Lower snake case, 1 to 40 characters; once in a list."
+  name: String!
+  type: ExtractedFieldType!
+  "At most 2000 characters, in the form of its type."
+  value: String!
+  confidence: Float
+}
+
+"The result of one extraction. Nothing of it is a record until the operator confirms it (VIS-001); a decided proposal does not change."
+type ExtractionProposal {
+  id: ID!
+  attachmentId: ID
+  owner: String!
+  "What the extension asked for, in lower snake case, for example book."
+  form: String!
+  origin: ExtractionOrigin!
+  "As the extraction gave them while PROPOSED; as the operator left them once CONFIRMED."
+  fields: [ExtractedField!]!
+  state: ProposalState!
+  createdAt: DateTime!
+  decidedAt: DateTime
+}
+
+input ProposeExtractionInput {
+  owner: String!
+  form: String!
+  "The key of the extension that asked for the form. Its data class decides where the extraction may run: for Class A the hub refuses HUB (VLT-001, VIS-002)."
+  extension: String!
+  origin: ExtractionOrigin!
+  "An attachment of the same owner."
+  attachmentId: ID
+  "At most 100."
+  fields: [ExtractedFieldInput!]!
+}
+
+"A place (K-E4 Section 8; PLC-001 to PLC-006). Its reference is place:<id>."
+type Place {
+  id: ID!
+  "The place this one is inside. Null for a top-level place."
+  parentId: ID
+  "The name the operator gave."
+  name: String!
+  "What to call the place: the operator's name, never the geocoder's (PLC-003)."
+  title: String!
+  "Top-level places only (PLC-002)."
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  category: String!
+  icon: String!
+  aliases: [String!]!
+  geocoderName: String
+  "The sites placed here (PLC-006)."
+  siteIds: [ID!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input PlaceInput {
+  "One line of 1 to 120 characters."
+  name: String!
+  parentId: ID
+  "Latitude, longitude and radius go together, and only on a top-level place."
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  "home, work, site, shop, leisure, travel, storage or other."
+  category: String!
+  icon: String!
+  aliases: [String!]
+  geocoderName: String
+}
+
+"A field that is left out keeps its value."
+input PlaceChangeInput {
+  name: String
+  "Null makes the place a top-level place."
+  parentId: ID
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  category: String
+  icon: String
+  aliases: [String!]
+  "Null removes the geocoder name."
+  geocoderName: String
+}
+
+input PlaceSplitInput {
+  "The new top-level place."
+  new: PlaceInput!
+  "Child places of the place that move into the new place."
+  children: [ID!]
+  "Sites that move to the new place."
+  sites: [ID!]
+  "Record links that move to the new place."
+  links: [ID!]
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -2740,12 +2953,27 @@ type Query {
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+  "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
+  containers(deviceId: ID!): [Container!]!
+  "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
+  containerLog(deviceId: ID!, containerId: String!, lines: Int): ContainerLog!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
   timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
   "The links that start or end at record (kind:id), newest first, at most 200. VALIDATION when record is not kind:id."
   recordLinks(record: String!): [RecordLink!]!
+  # Files and extraction proposals (R-148; K-E4 Section 13)
+  "The files of owner (kind:id), newest first, at most 200. VALIDATION when owner is not kind:id."
+  attachments(owner: String!): [Attachment!]!
+  "The proposals of owner (or of every record) in state (or any), newest first, at most 200."
+  extractionProposals(owner: String, state: ProposalState): [ExtractionProposal!]!
+
+  # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
+  "The places that are not merged, by name."
+  places: [Place!]!
+  "One place. A place that was merged gives the place it was merged into (PLC-004)."
+  place(id: ID!): Place
 
   # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
   # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
@@ -2785,6 +3013,12 @@ type Query {
   # S6: the device link (FRN-009, OR-S6-3)
   "The devices the link permits, in the link's order (LNK-004)."
   linkDevices: [LinkDevice!]!
+
+  # Operational keys (R-147; K-E5 Section 2.2). No field holds a value.
+  "Each operational key that is not removed, by name. Open to a read key: no field holds a value."
+  operationalKeys: [OperationalKey!]!
+  "Null when no operational key that is not removed has this name."
+  operationalKey(name: String!): OperationalKey
 }
 
 type Mutation {
@@ -2962,6 +3196,50 @@ type Mutation {
   linkRecords(input: RecordLinkInput!): RecordLink!
   "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
   unlinkRecords(id: ID!): ID!
+
+  # Files and extraction proposals (R-148; K-E4 Section 13). Each change writes one audit entry and one event.
+  "Removes one file and returns its ID; its piece goes when no other file has the same bytes and key. NOT_FOUND when no file has this ID; UNAVAILABLE with no file store."
+  deleteAttachment(id: ID!): ID!
+  "Makes an archive, the unit of deletion of one import (FIL-004). VALIDATION for an owner that is not kind:id or a name that is not one line of 1 to 200 characters."
+  createArchive(owner: String!, name: String!): Archive!
+  "Deletes an archive with each of its files and each record that came from it, then the pieces that no file uses (FIL-004); returns its ID. NOT_FOUND when there is none."
+  deleteArchive(id: ID!): ID!
+  "Stores the result of one extraction as a proposal (VIS-001). VALIDATION with extensions.fields for a bad form, field, attachment or extension, and for origin HUB on a Class A form (VIS-002)."
+  proposeExtraction(input: ProposeExtractionInput!): ExtractionProposal!
+  "Confirms a proposal with the fields as the operator left them. NOT_FOUND; CONFLICT when it is decided."
+  confirmExtraction(id: ID!, fields: [ExtractedFieldInput!]!): ExtractionProposal!
+  "Rejects a proposal. NOT_FOUND; CONFLICT when it is decided."
+  rejectExtraction(id: ID!): ExtractionProposal!
+
+  # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
+  "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."
+  createPlace(input: PlaceInput!): Place!
+  "Changes a place. A name from a geocoder never replaces name (PLC-003). CONFLICT for a merged place."
+  updatePlace(id: ID!, input: PlaceChangeInput!): Place!
+  "Moves every reference of from to into and returns the remaining place (PLC-004)."
+  mergePlaces(from: ID!, into: ID!): Place!
+  "Makes a new top-level place from input.new and moves the named children, sites and links of the place to it. Returns the new place (PLC-004)."
+  splitPlace(id: ID!, input: PlaceSplitInput!): Place!
+  "Deletes a place that has no reference. A place with references is merged into replacement; with none given the answer is CONFLICT with extensions.references, the count of each sort of reference (PLC-005). Returns the ID of the place."
+  deletePlace(id: ID!, replacement: ID): ID!
+  "Links a site to a place, or with a null place removes the link. Returns the place, or null when the link was removed (PLC-006). NOT_FOUND when the site or the place does not exist."
+  setSitePlace(site: ID!, place: ID): Place
+
+  # Operational keys (R-147; K-E5 Section 2.2). A value goes in and never comes out: only a daemon gets one (K8). Each change writes one audit entry and one event, neither with a value.
+  "Makes the key with its first value as version 1. VALIDATION for a field or a value of a length a key cannot have; CONFLICT when a key, removed or not, has the name. Login or browser token only (D-23, R-147)."
+  createOperationalKey(input: CreateOperationalKeyInput!): OperationalKey!
+  "Replaces the metadata. NOT_FOUND for an unknown name. Login or browser token only (D-23, R-147)."
+  updateOperationalKey(name: String!, input: UpdateOperationalKeyInput!): OperationalKey!
+  "Ends the active version and the retrieval of the key; the name stays taken. The answer holds the key as it was and the consumers that held the ended version. Login or browser token only (D-23, R-147)."
+  removeOperationalKey(name: String!): OperationalKeyEnding!
+  "Makes value the active version and supersedes the old one at once (R-147). rotatedAtProvider records what the operator says: the hub changes nothing at the provider, so a client says recorded, not rotated, when it is false. Login or browser token only (D-23, R-147)."
+  rotateOperationalKey(name: String!, value: String!, rotatedAtProvider: Boolean!): OperationalKeyEnding!
+  "Ends the active version with no new one. Login or browser token only (D-23, R-147)."
+  revokeOperationalKey(name: String!): OperationalKeyEnding!
+  "Lets the daemon of device fetch the key for workload: a trust decision. No change when the grant exists. NOT_FOUND for an unknown name or device. Login or browser token only (D-23, R-147)."
+  grantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
+  "Ends a grant; the daemon drops the key at its next report. NOT_FOUND when there is no such grant. Login or browser token only (D-23, R-147)."
+  ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
 }
 
 type Subscription {
@@ -2991,4 +3269,103 @@ type HeartbeatAdded {
   checkId: ID!
   deviceId: ID!
   heartbeat: Heartbeat!
+}
+
+# Operational keys (R-147; K-E5 Section 2). No type holds a value.
+
+"An operational key: a credential or a runtime secret that a server of the operator needs. No field holds its value."
+type OperationalKey {
+  id: ID!
+  "1 to 80 of a-z, 0-9, _, . and -; starts with a letter."
+  name: String!
+  provider: String!
+  purpose: String!
+  "How to rotate the key at its provider; at most 4000 characters."
+  instructions: String!
+  "An https address at the provider."
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+  due: OperationalKeyDue!
+  "The number of the active version; null when no version is active."
+  activeVersion: Int
+  "When the newest version was recorded, and the operator who recorded it."
+  lastRotatedAt: DateTime!
+  lastRotatedBy: String!
+  createdAt: DateTime!
+  createdBy: String!
+  "Newest first."
+  versions: [OperationalKeyVersion!]!
+  consumers: [OperationalKeyConsumer!]!
+}
+
+"DUE: the last rotation is older than rotationDays. EXPIRING: in the 14 days before expiresAt. EXPIRED: after it; the key is given no more."
+enum OperationalKeyDue {
+  CURRENT
+  DUE
+  EXPIRING
+  EXPIRED
+}
+
+"A key has at most one ACTIVE version. A version that ended is never active again; its sealed value is deleted 30 days after it ended."
+enum OperationalKeyVersionState {
+  ACTIVE
+  SUPERSEDED
+  REVOKED
+  EXPIRED
+}
+
+type OperationalKeyVersion {
+  number: Int!
+  state: OperationalKeyVersionState!
+  createdAt: DateTime!
+  createdBy: String!
+  endedAt: DateTime
+  "What the operator said: the key was also changed at its provider."
+  rotatedAtProvider: Boolean!
+}
+
+"A server that may fetch the key: the device of its daemon and the workload that uses the key there."
+type OperationalKeyConsumer {
+  deviceId: ID!
+  "1 to 40 of a-z, 0-9, _, . and -; starts with a letter."
+  workload: String!
+  grantedAt: DateTime!
+  grantedBy: String!
+  "The version in the daemon's cache at its last report (heldSeenAt); null when it held none."
+  heldVersion: Int
+  heldSeenAt: DateTime
+  fetchedVersion: Int
+  fetchedAt: DateTime
+}
+
+"The answer of a change that ends a version."
+type OperationalKeyEnding {
+  key: OperationalKey!
+  "The version that ended; null when no version was active."
+  endedVersion: Int
+  "The consumers whose daemon held the ended version at its last report. A connected daemon drops it at its next report; a server with no contact keeps its copy, so revoke the key at the provider when a server is lost."
+  stillHeldBy: [OperationalKeyConsumer!]!
+}
+
+input CreateOperationalKeyInput {
+  name: String!
+  provider: String!
+  purpose: String!
+  instructions: String! = ""
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+  "The first value: 1 to 16384 bytes."
+  value: String!
+}
+
+"The whole metadata; it replaces the stored one."
+input UpdateOperationalKeyInput {
+  provider: String!
+  purpose: String!
+  instructions: String!
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
 }

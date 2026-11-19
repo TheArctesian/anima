@@ -12,10 +12,10 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, links, sources, timeline},
+    engine::{extensions, files, links, places, sources, timeline},
     fleet::{
         access, agent_usage, builds, checks,
-        credentials::Vault,
+        credentials::{self, Vault},
         devices,
         events::{
             self, Bus,
@@ -26,7 +26,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::projects,
+    work::{containers, projects},
 };
 
 // One line per domain in each root (K3).
@@ -36,6 +36,8 @@ pub struct Query(
     agent_usage::graphql::Query,
     builds::graphql::Query,
     checks::graphql::Query,
+    containers::graphql::Query,
+    credentials::graphql::Query,
     devices::graphql::Query,
     events::graphql::Query,
     extensions::graphql::Query,
@@ -44,6 +46,7 @@ pub struct Query(
     maintenance::graphql::Query,
     metrics::graphql::Query,
     notifications::graphql::Query,
+    places::graphql::Query,
     projects::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
@@ -51,6 +54,8 @@ pub struct Query(
     sources::graphql::GithubConnectQuery,
     timeline::graphql::Query,
     vpn::graphql::Query,
+    files::graphql::Query,
+    files::graphql::ProposalQuery,
 );
 
 #[derive(MergedObject, Default)]
@@ -59,6 +64,7 @@ pub struct Mutation(
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
     checks::graphql::Mutation,
+    credentials::graphql::Mutation,
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
     link::graphql::Mutation,
@@ -67,6 +73,7 @@ pub struct Mutation(
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
+    places::graphql::Mutation,
     projects::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
@@ -78,6 +85,8 @@ pub struct Mutation(
     vpn::graphql::Mutation,
     vpn::graphql::RouteMutation,
     web_interfaces::graphql::Mutation,
+    files::graphql::Mutation,
+    files::graphql::ProposalMutation,
 );
 
 #[derive(MergedSubscription, Default)]
@@ -126,6 +135,9 @@ pub struct Dependencies {
     /// The sources' one registry, transport, token store and feed: the scheduler gets a clone
     /// of this same value, so `sourceAccountChanged` sees its runs (K-E1).
     pub sources: sources::Reach,
+    /// The file store and its data keys (K-E4 Section 9): the `/files/v1` routes get a clone of
+    /// this same value. [`files::Store::off`] when `ANIMA_FILES_DIR` is not set.
+    pub files: files::Store,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -151,6 +163,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         vpn_feed,
         vpn_broker,
         sources,
+        files,
     } = dependencies;
     let builder = harden(
         Schema::build(
@@ -203,6 +216,12 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(projects::KeyChanges::default())
         // timeline: one adapter for each domain that has records to show (K-E3)
         .data(timeline::Adapters::new(vec![timeline::event_log()]))
+        // files: the pieces, the data keys and the domains that derive records (K-E4 Section 9)
+        .data(files)
+        // links: the title of each kind of record that a domain owns (K-E4 Section 4)
+        .data(links::TitleSources::new(vec![places::record_titles()]))
+        // places: the later domains that hold a PlaceId (none yet)
+        .data(places::Holders::default())
         .finish()
 }
 

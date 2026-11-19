@@ -5,12 +5,16 @@
 pub mod graphql;
 mod model;
 mod store;
+mod titles;
 mod trail;
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
 pub use model::{Link, NewLink, Outcome, Relation, label};
+pub use titles::{TitleSources, Titles, Unavailable};
+
+use uuid::Uuid;
 
 use crate::{
     engine::records::{Reference, Subject},
@@ -98,6 +102,52 @@ pub async fn disconnect(conn: &mut PgConnection, id: RecordLinkId) -> Result<Opt
 pub async fn touching(db: &PgPool, record: &Reference) -> Result<Vec<Link>, Error> {
     let limit = i64::try_from(MAX_LINKS).unwrap_or(i64::MAX);
     Ok(store::touching(db, record, limit).await?)
+}
+
+/// Moves every link of `from` to `to`: a link that would then join a record to itself, or
+/// repeat a link that `to` has, is removed instead. Returns how many links moved. A merge of
+/// two records calls this in its own transaction (PLC-004).
+///
+/// # Errors
+/// `SelfLink` when `from` and `to` are the same; `BadSubject` when `to` is not a valid subject
+/// key; `Database` when a statement fails. The caller rolls back.
+pub async fn retarget(
+    conn: &mut PgConnection,
+    from: &Reference,
+    to: &Reference,
+) -> Result<u64, Error> {
+    if from == to {
+        return Err(Error::SelfLink);
+    }
+    checked(to, "target")?;
+    Ok(store::retarget(conn, (from, to), None).await?)
+}
+
+/// Moves the named links, and only those, from `from` to `to`. A name that is not a link of
+/// `from` moves nothing, so the caller compares the count with the names it gave (PLC-004).
+///
+/// # Errors
+/// As [`retarget`].
+pub async fn retarget_named(
+    conn: &mut PgConnection,
+    ids: &[RecordLinkId],
+    (from, to): (&Reference, &Reference),
+) -> Result<u64, Error> {
+    if from == to {
+        return Err(Error::SelfLink);
+    }
+    checked(to, "target")?;
+    let named: Vec<Uuid> = ids.iter().map(|id| Uuid::from(*id)).collect();
+    Ok(store::retarget(conn, (from, to), Some(&named)).await?)
+}
+
+/// How many links start or end at `record`: all of them, not only the newest [`MAX_LINKS`].
+///
+/// # Errors
+/// `Database` when the read fails.
+pub async fn count(conn: &mut PgConnection, record: &Reference) -> Result<u64, Error> {
+    let total = store::count(conn, record).await?;
+    Ok(u64::try_from(total).unwrap_or_default())
 }
 
 /// What to call `record` when it names itself: a date or a repository is its own title. Any

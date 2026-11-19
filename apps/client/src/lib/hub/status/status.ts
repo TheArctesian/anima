@@ -5,6 +5,16 @@ export interface HubStatus {
   readonly connection: Connection;
   /** Last time the hub answered; the age of the data on the screen (NET-004). `null` until the first answer. */
   readonly lastContactAt: Date | null;
+  /**
+   * When the oldest copy on the screen was made: set while the hub does not answer and the client shows its
+   * copy of an earlier answer (FND-007). Absent when no copy was shown since the last answer.
+   */
+  readonly copyFrom?: Date;
+  /**
+   * How many times the hub answered again after a copy was shown. A screen that showed a copy has old data with no
+   * age then, so the pages load again when this number changes (FND-007).
+   */
+  readonly copyEnds?: number;
 }
 
 /**
@@ -17,13 +27,24 @@ export type StatusSignal = 'acknowledged' | 'refused' | 'closed' | 'answered' | 
 
 export const INITIAL_STATUS: HubStatus = { connection: 'connecting', lastContactAt: null };
 
+/** The status after the client showed its copy made at `at` in place of an answer: the oldest such copy is kept (FND-007). */
+export function withCopyShown(state: HubStatus, at: Date): HubStatus {
+  return state.copyFrom !== undefined && state.copyFrom <= at ? state : { ...state, copyFrom: at };
+}
+
+/** The status when the hub answered at `now`: no copy is on the screen after the pages load again. */
+function answered(state: HubStatus, now: Date): HubStatus {
+  const ends = (state.copyEnds ?? 0) + (state.copyFrom === undefined ? 0 : 1);
+  return { connection: 'connected', lastContactAt: now, ...(ends > 0 && { copyEnds: ends }) };
+}
+
 /** The status after `signal` arrives at `now` (NAV-003, NET-004). */
 export function nextStatus(state: HubStatus, signal: StatusSignal, now: Date): HubStatus {
   switch (signal) {
     case 'acknowledged':
     case 'refused':
     case 'answered':
-      return { connection: 'connected', lastContactAt: now };
+      return answered(state, now);
     case 'closed':
       // A drop from a live connection is retried first; a close before any answer means no answer.
       return { ...state, connection: state.connection === 'connected' ? 'connecting' : 'unreachable' };

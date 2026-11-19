@@ -20,6 +20,7 @@ The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. 
 | --- | --- |
 | `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/engine/instants.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3, TML-008) | `micros` and `from_micros`: an event instant as microseconds since the Unix epoch in UTC. It imports no module of the hub |
+| `crates/hub/src/engine/sealing_keys.rs` (engine, new; R-148; K-E5 Section 1) | `SealingKeys` and `SealingKey`: the data keys of `ANIMA_DATA_KEY_DIR` (VLT-003). It imports no module of the hub |
 | `crates/hub/src/engine/records.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E4) | `Reference` (`kind:id`) and `Subject` (the shared subject keys, RLK-004). It imports only `ids`, which gains `RecordLinkId`, `PlaceId` and `PersonId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
@@ -225,7 +226,11 @@ are private to `events`.
 | `timeline` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3) | `events` (`before`, `EventSummary`, `Source` only) |
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
 | `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
+| `containers` (work, new; R-149, operator, 2026-11-18; HOST-001, HOST-010) | `devices` (`Device`, `get`, `Error` only), `ssh` (`link`, `FixedCommand`, `HexDigits`, `CommandOutput`, `LinkError` only), `credentials` (`Vault` only) |
 | `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
+| `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `sealing_keys` and `records` |
+| `places` (engine, new; R-148; K-E4 Section 8) | `links` (`retarget`, `retarget_named`, `count`, `Titles`, `Unavailable` only), `events` (the trail types), `records` (leaf) |
+| `credentials` (operational keys, adds; R-147, R-148; K-E5 Section 2) | `events` (the trail types, `audit`, `NewAudit`, `ClientAddr`, `Operator`); `access` (`Authenticated`, `operator_only`) only in `credentials/graphql.rs`, a graphql edge. A device is a `DeviceId` value only: the consumer rows reference `devices.devices` with a cascading foreign key, so `credentials` imports no `devices` code. `metrics` (its daemon ingest) calls `credentials::operational::{fetch, current_for, record_held}` |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -244,8 +249,11 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
 | `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`); and, from the second Projects slice (operator, 2026-11-14; ruling number to be assigned), on `codeFile`, `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow`, `setCommitStatus` (they join `API_KEY_REFUSED_ROOTS`) |
+| `places` (R-148; K-E4 Section 8) | `access`, `devices` | the `Authenticated` guard on `places`, `place` and the six place mutations; `devices::sites` to check that a site exists in `setSitePlace` |
 | `timeline`, `links` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4) | `access` | the `Authenticated` guard on `timeline`, `recordLinks`, `linkRecords`, `unlinkRecords` |
 | `agent_usage` (R-135) | `access` | the `Authenticated` guard on `agentUsage` |
+| `files` (R-148; K-E4) | `access` | the `Authenticated` guard on `attachments`, `deleteAttachment`, `createArchive`, `deleteArchive`, `extractionProposals`, `proposeExtraction`, `confirmExtraction`, `rejectExtraction` |
+| `containers` (R-149) | `access` | the `Authenticated` guard on `containers` and `containerLog`; `containerLog` joins `API_KEY_REFUSED_ROOTS` (a log can hold a secret) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -345,6 +353,7 @@ Context values (R-010). Each caller uses exactly this byte string, so a value se
 | TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
 | (Phase 3) Notification channel secrets (WP-45) | `notifications.channels:<channel_id>` |
 | (operator, 2026-11-13; ruling number to be assigned; K-E1) Source secret, such as a GitHub App key | `credentials.source_secrets:<account_id>` |
+| (R-147; K-E5 Section 2) One version of an operational key | `credentials.operational_key_versions:<version_id>` |
 
 The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `devices` (they return `SshSettings`). They call `store_ssh` / `clear_ssh` in the same transaction as the audit entry (`events::audit`), and the audit `change` never contains the secret.
 
@@ -370,6 +379,27 @@ pub enum Error { /* as before */ UnknownSourceSecret }   // load_source_secret: 
 ```
 
 A secret opens only with its own account ID (context in the table above). `load_source_secret` has one caller: the token minter in `engine/sources`. For a GitHub App key the plaintext is built by `sources` (K-E1 Section 6); `credentials` treats it as opaque bytes.
+
+(R-147, R-148; K-E5 Section 2.) Operational keys, in `credentials/operational/` (rows in `credentials.operational_keys`, `operational_key_versions` and `operational_key_consumers`, K2 range 2070). The K1 part is `credentials/graphql.rs` (`credentials::graphql::{Query, Mutation}`). Each change runs in the caller's transaction and writes its rows, one audit entry and one event through the `Trail` it takes:
+
+```rust
+pub async fn keys(db: &Db, now: DateTime<Utc>) -> Result<Vec<OperationalKey>, operational::Error>;
+pub async fn key(db: &Db, name: &str, now: DateTime<Utc>) -> Result<Option<OperationalKey>, operational::Error>;
+pub async fn create(conn: &mut PgConnection, vault: &Vault, new: NewKey, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn update(conn: &mut PgConnection, name: &str, metadata: Metadata, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn rotate(conn: &mut PgConnection, vault: &Vault, (name, value, rotated_at_provider): (&str, Secret, bool), trail: Trail<'_>) -> Result<Ending, operational::Error>;
+pub async fn revoke(conn: &mut PgConnection, name: &str, trail: Trail<'_>) -> Result<Ending, operational::Error>;
+pub async fn remove(conn: &mut PgConnection, name: &str, trail: Trail<'_>) -> Result<Ending, operational::Error>;
+pub async fn grant(conn: &mut PgConnection, grant: Grant, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn ungrant(conn: &mut PgConnection, grant: Grant, trail: Trail<'_>) -> Result<OperationalKey, operational::Error>;
+pub async fn fetch(db: &Db, vault: &Vault, (device, name): (DeviceId, &str), (now, client): (DateTime<Utc>, ClientAddr)) -> Result<Option<FetchedKey>, operational::Error>;   // None: the one NO_KEY answer
+pub async fn current_for(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Vec<KeyVersion>, operational::Error>;
+pub async fn record_held(db: &Db, device: DeviceId, held: &[KeyVersion], now: DateTime<Utc>) -> Result<(), operational::Error>;
+pub async fn forget_ended(db: &Db, now: DateTime<Utc>) -> Result<u64, operational::Error>;   // the daily retention run of upkeep.rs
+pub enum Error { Database, Trail, Sealing, Invalid(Vec<Problem>), NameTaken, UnknownKey, UnknownDevice, NoGrant }
+```
+
+`FetchedKey`, `KeyVersion` and `KeyValue` are the K8 types of `daemon_core::wire`. `metrics::daemon_router` takes `((db, bus, clock), feed, vault)`: the vault opens a fetched key.
 
 ## checks (WP-09)
 
@@ -690,12 +720,43 @@ pub async fn read(adapters: &Adapters, db: &Db, ask: &Ask) -> Result<Page, Error
 pub async fn connect(conn: &mut PgConnection, new: NewLink, (at, by): (DateTime<Utc>, &str)) -> Result<(Link, Outcome), Error>;
 pub async fn disconnect(conn: &mut PgConnection, id: RecordLinkId) -> Result<Option<Link>, Error>;
 pub async fn touching(db: &Db, record: &Reference) -> Result<Vec<Link>, Error>;
+pub async fn retarget(conn: &mut PgConnection, from: &Reference, to: &Reference) -> Result<u64, Error>;          // PLC-004
+pub async fn retarget_named(conn: &mut PgConnection, ids: &[RecordLinkId], (from, to): (&Reference, &Reference)) -> Result<u64, Error>;   // split
+pub async fn count(conn: &mut PgConnection, record: &Reference) -> Result<u64, Error>;   // all links of a record, not the newest 200
+pub trait Titles { /* K-E4 Section 4: built; places is its first user */ }
 
 // fleet::events, added for the timeline (TML-007)
 pub async fn before(db: &Db, (from, before): (DateTime<Utc>, (DateTime<Utc>, Uuid)), sources: Option<Vec<Source>>, limit: i64) -> Result<Vec<EventSummary>, Error>;
 ```
 
 `schema.rs` builds `timeline::Adapters` with `timeline::event_log()`. `fleet/events/model.rs` gains `AuditTarget::RecordLink`. `ids.rs` gains `RecordLinkId`, `PlaceId` and `PersonId`. No domain imports `timeline` or `links`.
+
+## engine: files and the leaf `sealing_keys` (R-148; K-E4 Sections 9, 10; K-E5 Section 1)
+
+Folder `crates/hub/src/engine/files/` and the leaf file `crates/hub/src/engine/sealing_keys.rs`. `sealing_keys` is a leaf inside the group `engine/`: it imports no domain, and every domain that seals a record or a file may import it (VLT-003). `files` has migration 2050.
+
+```rust
+// engine::sealing_keys (leaf; K-E5 Section 1)
+pub struct SealingKeys { /* the folder */ }
+pub struct SealingKey { /* 32 bytes, zeroed on drop */ }
+impl SealingKeys { pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, SealingKeyError>; pub const fn none() -> Self; pub fn key(&self, name: &str) -> Result<SealingKey, SealingKeyError>; }
+impl SealingKey { pub fn name(&self) -> &str; pub fn id(&self) -> &str; pub fn cipher(&self) -> XChaCha20Poly1305; pub fn seal(&self, context: &str, plain: &[u8]) -> Vec<u8>; pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, SealingKeyError>; }
+
+// engine::files
+pub trait Pieces { /* K-E4 Section 9 */ }
+pub trait Derived { /* K-E4 Section 9 */ }
+pub struct Store { /* the pieces, the data keys, the Derived domains; built once in main.rs */ }
+pub fn router(db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>, store: &Store) -> Router;   // /files/v1
+pub async fn attachments(db: &Db, owner: &Reference) -> Result<Vec<Attachment>, Error>;
+pub async fn remove_attachment(conn: &mut PgConnection, store: &Store, id: AttachmentId) -> Result<Option<Removed>, Error>;
+pub async fn delete_archive(conn: &mut PgConnection, store: &Store, id: ArchiveId) -> Result<Option<(Archive, Removed)>, Error>;
+pub async fn propose(conn: &mut PgConnection, new: NewProposal, at: DateTime<Utc>) -> Result<Proposal, Error>;
+pub async fn confirm(conn: &mut PgConnection, id: ProposalId, fields: Vec<Field>, (at, by): (DateTime<Utc>, &str)) -> Result<Proposal, Error>;
+pub async fn reject(conn: &mut PgConnection, id: ProposalId, (at, by): (DateTime<Utc>, &str)) -> Result<Proposal, Error>;
+pub async fn confirmed(db: &Db, owner: &Reference) -> Result<Vec<Proposal>, Error>;
+```
+
+`main.rs` opens the data keys (`ANIMA_DATA_KEY_DIR`) with the identifier of the credential key (`Vault::key_id`, new) and builds the `Store` of `ANIMA_FILES_DIR`; `schema::Dependencies` gains `files`, and `lib.rs` merges `files::router` beside `/graphql` in a logged span. `fleet/events/model.rs` gains `AuditTarget::Attachment`, `Archive` and `ExtractionProposal`. `ids.rs` gains `AttachmentId`, `ArchiveId` and `ProposalId`. No domain imports `files` now.
 
 ## projects (work, XP-02 first slice; operator, 2026-11-13; ruling number to be assigned)
 
@@ -716,6 +777,24 @@ pub async fn standing(conn: &mut PgConnection, accounts: &[SourceAccountId]) -> 
 ```
 
 Sub-folders of `projects/`, each with its face file: `forge/` (repository row to account and `RepositoryAccess`, `LiveFailure` and `Settled` to K7 codes and fixed words, cursors, the change entries of the audit), `pull_requests/`, `issues/`, `workflows/`, `history/` (commits, branches, releases, checks, commit status), `code/`. `projects/graphql.rs` merges the old and new roots and keeps the names `projects::graphql::Query` and `Mutation`, so `schema.rs` does not change. The fork rule reads the agent declaration from `events::Operator` (as `openGithubConnect` does). `fleet/events/model.rs` gains `AuditTarget::Repository` and `AuditAction::Merge`. The engine still imports no extension.
+
+## containers (work; R-149, operator, 2026-11-18; HOST-001, HOST-010)
+
+Folder `crates/hub/src/work/containers/` (group `work/`). Stage 1 of hosted applications: the containers of a device, read-only. The domain has no table and no store: each read opens an SSH link to the device and runs one fixed `docker` command (CHK-012). It writes no event and no log line (LOG-007). No domain imports `containers`; `schema.rs` merges `containers::graphql::Query`.
+
+```rust
+/// What a link needs besides the device.
+pub struct Reach<'a> { pub db: &'a Db, pub vault: &'a credentials::Vault, pub policy: &'a AddressPolicy }
+/// The containers of a device, running or not, newest first. Nothing is kept.
+pub async fn list(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc>) -> Result<Vec<Container>, Error>;
+/// The last lines of the log of one container, both output streams, oldest first. Nothing is kept.
+pub async fn log(reach: Reach<'_>, device: DeviceId, tail: &Tail, now: DateTime<Utc>) -> Result<ContainerLog, Error>;
+/// The only operator values that reach a command: 12 to 64 lower-case hex digits, and 1 to 1000 lines (default 200).
+pub struct ContainerId(/* ssh::HexDigits */);  pub struct LineCount(/* u16 */);
+pub struct Tail { pub container: ContainerId, pub lines: LineCount }
+```
+
+`ssh` gains for this domain (same ruling): `HexDigits` (1 to 64 hex digits kept as values), `FixedCommand::hex(self, &HexDigits)` and `FixedCommand::number(self, u32)`. Both render from values, so operator text still cannot enter a command.
 
 ## guac-protocol crate (WP-08)
 

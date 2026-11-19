@@ -14,6 +14,7 @@ use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::SystemClock,
     config::{self, Config},
+    engine::{files, sealing_keys::SealingKeys},
     fleet::{
         access::{self, listen},
         builds,
@@ -98,6 +99,9 @@ enum StartError {
     Bucket(#[from] builds::BucketError),
     #[error("core dumps cannot be turned off: {0}")]
     CoreDumps(std::io::Error),
+    /// Names a key, never its bytes (VLT-003, LOG-007).
+    #[error("the data keys cannot be used: {0}")]
+    SealingKeys(#[from] anima_hub::engine::sealing_keys::SealingKeyError),
 }
 
 /// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
@@ -177,6 +181,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let link = link.map(listen::link_socket).transpose()?;
     warn_without_probe_deny(&config);
     let vault = vault(&config)?;
+    let files = file_store(&config, &vault)?;
     let bucket = release_bucket(&config)?;
     let pool = database(&config).await?;
     // One deny list for every outbound connection; `tunnels` says which path takes it how.
@@ -209,6 +214,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         bucket,
         vpn_feed: vpn::Feed::new(),
         sources,
+        files,
     };
     let background = upkeep::spawn(&dependencies, hosted);
     // Every route is behind the same permitted-networks check (K3, NET-002).
@@ -305,6 +311,16 @@ fn vault(config: &Config) -> Result<Vault, StartError> {
         path: config.key_file.display().to_string(),
         source,
     })
+}
+
+/// The file store of `ANIMA_FILES_DIR`, sealed with the data keys of `ANIMA_DATA_KEY_DIR`. A
+/// data key that is the credential key or another data key stops the start (VLT-003); without
+/// either folder the hub starts and an upload answers UNAVAILABLE.
+fn file_store(config: &Config, vault: &Vault) -> Result<files::Store, StartError> {
+    let keys = SealingKeys::open(config.data_key_dir.as_deref(), vault.key_id().as_bytes())?;
+    let store = files::Store::in_folder(config.files_dir.as_deref(), keys);
+    tracing::info!(files = store.available(), "file store");
+    Ok(store)
 }
 
 /// The release bucket when `ANIMA_RELEASES_ENDPOINT` is set, its token and the updater key read

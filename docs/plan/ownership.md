@@ -29,7 +29,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | AI agent runs | [agent-runs.md](../proposals/agent-runs.md) | AGN-001 to AGN-014 |
 | Hosted applications | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) | HOST-001 to HOST-025 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | PRO-001 to PRO-053 |
-| The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
+| The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP, TUI |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](../spec/design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
 | The hash chain of the audit log, so that a change to an old entry shows | [design-spec.md](../spec/design-spec.md) Section 3.8.2 | LOG-021 to LOG-028 |
 | Installation: the disk image and the AppImage, with the `anima` program inside; the command line alone also by Homebrew and Cargo | [design-spec.md](../spec/design-spec.md) Section 3.11 | INS-001 to INS-013 |

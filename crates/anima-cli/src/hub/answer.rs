@@ -73,6 +73,28 @@ fn refused(error: GraphqlError) -> HubError {
     }
 }
 
+/// The refusal of a `/files/v1` route: its JSON `{ code, message, fields }`, or the status
+/// alone when the body is not that (an empty 401 or 403 of the bearer check).
+#[must_use]
+pub fn refusal(status: u16, body: &[u8]) -> HubError {
+    #[derive(Deserialize)]
+    struct Refusal {
+        code: Option<String>,
+        #[serde(default)]
+        message: String,
+        #[serde(default)]
+        fields: Vec<FieldError>,
+    }
+    match serde_json::from_slice::<Refusal>(body) {
+        Ok(refusal) if refusal.code.is_some() => HubError::Refused {
+            code: Code::parse(refusal.code.as_deref()),
+            message: refusal.message,
+            fields: refusal.fields,
+        },
+        _ => not_graphql(status),
+    }
+}
+
 /// A body that is not GraphQL: a refusal in front of the GraphQL layer (NET-002), a proxy's
 /// page, or a broken answer. Its status is the only thing to go by.
 fn not_graphql(status: u16) -> HubError {

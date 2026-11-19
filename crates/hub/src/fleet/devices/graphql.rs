@@ -282,6 +282,8 @@ impl Mutation {
         clear_ssh(&mut tx, id)
             .await
             .map_err(|error| credential::credential_error(error, id))?;
+        // The grants of operational keys end with the device (K-E5 Section 2.1).
+        credential::end_key_grants(ctx, &mut tx, id).await?;
         let device = store::delete_device(&mut tx, id)
             .await
             .map_err(to_graphql)?;
