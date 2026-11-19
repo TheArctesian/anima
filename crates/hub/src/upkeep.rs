@@ -209,7 +209,8 @@ impl Builds {
 }
 
 /// Reads the periods once, then runs each domain's retention job with its own, and empties the
-/// sealed values of the operational key versions that ended 30 days ago. A failed read
+/// sealed values of the operational key versions that ended 30 days ago, and writes the audit
+/// entries of the hours of the ingest tokens that ended. A failed read
 /// skips the run, so a period is never guessed. A failed job does not stop the others; the
 /// first fault is returned and the whole run is retried.
 async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
@@ -231,11 +232,18 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
         .await
         .map(drop)
         .map_err(|_| "credentials");
+    // Each hour of an ingest token that ended gets its audit entry, also when the phone sent
+    // nothing after it (R-208).
+    let fix_hours = locations::audit_ended_hours(db, now)
+        .await
+        .map(drop)
+        .map_err(|_| "locations");
     checks
         .and(event_logs)
         .and(samples)
         .and(deliveries)
         .and(ended_keys)
+        .and(fix_hours)
 }
 
 /// Every 30 seconds, ends the build leases that ran out, so the Builds view is true without a

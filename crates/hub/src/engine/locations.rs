@@ -15,7 +15,7 @@ mod tests;
 mod tokens;
 mod trail;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -32,6 +32,7 @@ use crate::{
         places,
         sealing_keys::{SealingKey, SealingKeyError, SealingKeys},
     },
+    fleet::events,
     ids::{DeviceId, EventId, SampleId, SiteId},
 };
 
@@ -204,6 +205,61 @@ pub async fn received(
     }
     let key = seal.key()?;
     rows.into_iter().map(|row| opened(&key, row)).collect()
+}
+
+/// The start of the hour of `at`.
+fn hour_of(at: DateTime<Utc>) -> DateTime<Utc> {
+    at.duration_trunc(TimeDelta::hours(1)).unwrap_or(at)
+}
+
+/// Writes one audit entry for each ingest token and each hour that ended before `now`, with
+/// the count of the fixes that the hub stored for the token in that hour, in the caller's
+/// transaction (R-208). An hour is written one time: its count leaves the table with the entry.
+/// Gives how many entries it wrote.
+///
+/// # Errors
+/// `Database`, `Trail`.
+pub async fn audit_closed_hours(conn: &mut PgConnection, now: DateTime<Utc>) -> Result<u64, Error> {
+    let closed = store::take_closed_hours(conn, hour_of(now)).await?;
+    let mut written = 0;
+    for hour in closed {
+        let entry = events::NewAudit {
+            operator: events::Operator::hub(),
+            action: events::AuditAction::Create,
+            target: events::AuditTarget::IngestToken(hour.token_id),
+            client: events::ClientAddr(hour.client),
+            change: trail::hour_change(&hour.name, hour.hour, hour.fixes),
+        };
+        events::audit(conn, now, entry).await?;
+        written += 1;
+    }
+    Ok(written)
+}
+
+/// [`audit_closed_hours`] in a transaction of its own, for the upkeep of the hub.
+///
+/// # Errors
+/// `Database`, `Trail`.
+pub async fn audit_ended_hours(db: &PgPool, now: DateTime<Utc>) -> Result<u64, Error> {
+    let mut tx = db.begin().await?;
+    let written = audit_closed_hours(&mut tx, now).await?;
+    tx.commit().await?;
+    Ok(written)
+}
+
+/// Counts `stored` for the hour of `now` of the ingest token `token`, whose post came from
+/// `client`. A batch that stored nothing counts nothing.
+pub(crate) async fn count_stored(
+    conn: &mut PgConnection,
+    token: crate::ids::IngestTokenId,
+    stored: Stored,
+    (now, client): (DateTime<Utc>, events::ClientAddr),
+) -> Result<(), Error> {
+    let fixes = i32::try_from(stored.added).unwrap_or(i32::MAX);
+    if fixes > 0 {
+        store::count_fixes(conn, (token, hour_of(now)), (fixes, client.0)).await?;
+    }
+    Ok(())
 }
 
 /// One transfer at the SSH and SFTP boundary, as `sessions` saw it: the event that the event
