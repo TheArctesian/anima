@@ -1,0 +1,10 @@
+mutation LocationTokenAdd($name: String!) {
+  createLocationIngestToken(name: $name) {
+    token
+    ingestToken {
+      id
+      name
+      createdAt
+    }
+  }
+}

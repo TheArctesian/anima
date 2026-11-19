@@ -1,0 +1,27 @@
+query LocationContext($event: ID!) {
+  transferContext(event: $event) {
+    eventId
+    occurredAt
+    direction
+    actorKind
+    actor
+    clientDeviceId
+    source {
+      deviceId
+      siteId
+      placeId
+    }
+    destination {
+      deviceId
+      siteId
+      placeId
+    }
+    operator {
+      basis
+      sampleId
+      offsetSeconds
+      uncertain
+      placeId
+    }
+  }
+}

@@ -9,7 +9,7 @@ use zeroize::Zeroizing;
 use super::documents::{LinkInvite, link_invite};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::one_time_secret::{Secret, ToFile, show_once};
+use crate::one_time_secret::{Secret, ToFile, Works, show_once};
 
 #[derive(Debug, clap::Args)]
 pub struct InviteArgs {
@@ -46,6 +46,7 @@ impl InviteArgs {
             field: "invite",
             value: &invite,
             to_file: &self.to_file,
+            works: Works::Once,
         };
         show_once(invocation, &secret, public)
     }

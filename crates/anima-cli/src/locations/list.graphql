@@ -1,0 +1,15 @@
+query LocationList($from: DateTime!, $to: DateTime!, $first: Int) {
+  locationSamples(from: $from, to: $to, first: $first) {
+    id
+    provider
+    account
+    key
+    observedAt
+    receivedAt
+    latitude
+    longitude
+    accuracyM
+    altitudeM
+    speedMps
+  }
+}

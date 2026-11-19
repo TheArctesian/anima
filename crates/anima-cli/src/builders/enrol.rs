@@ -9,7 +9,7 @@ use zeroize::Zeroizing;
 use super::documents::{BuilderEnrol, builder_enrol};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::one_time_secret::{Secret, ToFile, show_once};
+use crate::one_time_secret::{Secret, ToFile, Works, show_once};
 use crate::output::text::enum_name;
 
 #[derive(Debug, clap::Args)]
@@ -85,6 +85,7 @@ impl EnrolArgs {
             field: "token",
             value: &token,
             to_file: &self.to_file,
+            works: Works::Once,
         };
         show_once(invocation, &secret, public)
     }

@@ -3,7 +3,7 @@
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{attachments, extractions, places, record_links, timeline};
+use crate::{attachments, extractions, locations, places, record_links, timeline};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum SharedRecordCommand {
@@ -33,6 +33,12 @@ pub enum SharedRecordCommand {
         #[command(subcommand)]
         command: places::PlaceCommand,
     },
+    /// Location samples of your phone and the context of a file transfer (list, import,
+    /// token, context).
+    Location {
+        #[command(subcommand)]
+        command: locations::LocationCommand,
+    },
 }
 
 impl SharedRecordCommand {
@@ -43,6 +49,7 @@ impl SharedRecordCommand {
             Self::File { command } => command.run(invocation).await,
             Self::Extraction { command } => command.run(invocation).await,
             Self::Place { command } => command.run(invocation).await,
+            Self::Location { command } => command.run(invocation).await,
         }
     }
 }

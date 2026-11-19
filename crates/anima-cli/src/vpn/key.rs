@@ -12,7 +12,7 @@ use super::documents::{VpnInvite, VpnRouterKey, vpn_invite, vpn_router_key};
 use crate::devices::list::site_id;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::one_time_secret::{Secret, ToFile, show_once};
+use crate::one_time_secret::{Secret, ToFile, Works, show_once};
 
 #[derive(Debug, clap::Args)]
 pub struct InviteArgs {
@@ -49,6 +49,7 @@ impl InviteArgs {
             field: "key",
             value: &key,
             to_file: &self.to_file,
+            works: Works::Once,
         };
         show_once(invocation, &secret, public)
     }
@@ -75,6 +76,7 @@ impl RouterKeyArgs {
             field: "key",
             value: &key,
             to_file: &self.to_file,
+            works: Works::Once,
         };
         show_once(invocation, &secret, public)
     }
