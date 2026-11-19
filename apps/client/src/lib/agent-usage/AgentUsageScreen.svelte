@@ -12,14 +12,21 @@
   import UsageNotes from './UsageNotes.svelte';
   import { summaryLine } from './report/words';
 
+  const REPORTS = 'The daemon of each device reports the use of the AI agent programs.';
+  /** The daemon is installed for one device, in its settings; the Devices page is where a device is opened. */
+  const WHERE_TO_INSTALL = 'To install it, open a device, then Settings, then Daemon.';
+  const NOT_ON_HOSTED = 'A daemon cannot connect to a hub that Anima.ing hosts yet, so this page stays empty on this hub.';
+
   interface Props {
     store: UsageStore;
     query: UsageQuery;
     onQueryChange: (query: UsageQuery) => void;
     onRetry: () => void;
+    /** The hub is one that Anima.ing hosts: the daemon of a computer cannot reach it yet (HM-D16), so no action is offered. */
+    hosted?: boolean;
   }
 
-  const { store, query, onQueryChange, onRetry }: Props = $props();
+  const { store, query, onQueryChange, onRetry, hosted = false }: Props = $props();
   const view = $derived(store.view);
   const columns = $derived(usageColumns(query.group));
   /** No daemon sent counts, whatever the filter: the whole page is the empty state. */
@@ -31,11 +38,15 @@
 <section class="usage">
   <PageHeader title="Agent usage" detail="The use of Claude Code and Codex on your devices, from counts only. No text of a session leaves a device." />
   {#if noDaemon}
-    <EmptyState title="No use counts yet" line="The daemon of each device reports the use of the AI agent programs. Install the daemon on a device to start.">
-      {#snippet action()}
-        <a class="action" href={resolve('/devices')}>Install daemon</a>
-      {/snippet}
-    </EmptyState>
+    {#if hosted}
+      <EmptyState title="No use counts yet" line={`${REPORTS} ${NOT_ON_HOSTED}`} />
+    {:else}
+      <EmptyState title="No use counts yet" line={`${REPORTS} ${WHERE_TO_INSTALL}`}>
+        {#snippet action()}
+          <a class="action" href={resolve('/devices')}>Open Devices</a>
+        {/snippet}
+      </EmptyState>
+    {/if}
   {:else}
     <UsageFilters {query} devices={view?.everyDevice ?? []} onChange={onQueryChange} />
     <!-- The result keeps the height of a typical page while it loads, so nothing below it moves (MOT-007). -->

@@ -1,7 +1,10 @@
 import type { DaemonRelease, DaemonTarget } from './release';
 
-/** Why no command was made: the code or the hub origin is not what the hub issues (MET-019). */
-export type CommandRefusal = 'code' | 'origin';
+/**
+ * Why no command was made: the code or the hub origin is not what the hub issues (MET-019), or the client reaches the hub
+ * through the local port of its link, which a daemon cannot use (K8 Section 1, R-172; HM-D16).
+ */
+export type CommandRefusal = 'code' | 'origin' | 'link';
 
 export type InstallCommand =
   /** Download, verify, install, enrol, start. */
@@ -27,6 +30,9 @@ const CODE = /^anima_enrol_[A-Za-z0-9_-]{22}$/;
  */
 const ORIGIN = /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::443)?$/;
 
+/** The origin of a hub that the client reaches through its link: a port of this computer. */
+const LINK_ORIGIN = /^http:\/\/127\.0\.0\.1:\d{1,5}$/;
+
 const DOWNLOAD_ROOT = 'https://releases.anima.ing/daemon';
 const DAEMON = '~/.local/bin/anima-daemon';
 
@@ -42,6 +48,7 @@ const NO_BINARY_NOTE = `No download is published for this computer. ${PASTE}`;
 
 /** The command that installs and enrols the daemon on the device the code was made for (MET-019, D-10 b). Pure: nothing is read from the page. */
 export function installCommand({ release, target, code, origin }: CommandInput): CommandResult {
+  if (LINK_ORIGIN.test(origin)) return { ok: false, refusal: 'link' };
   if (!ORIGIN.test(origin)) return { ok: false, refusal: 'origin' };
   const sha256 = release !== null && target !== null ? release.sha256[target] : undefined;
   if (release === null || target === null || sha256 === undefined) {
@@ -67,6 +74,7 @@ export function installCommand({ release, target, code, origin }: CommandInput):
 
 /** The sentence that says why there is no command. */
 export function refusalMessage(refusal: CommandRefusal): string {
+  if (refusal === 'link') return 'No install command: this application reaches the hub through its link, and a daemon cannot use that path yet.';
   return refusal === 'origin'
     ? 'No install command: the hub address is not a plain https origin.'
     : 'No install command: the daemon does not accept the form of the hub\'s code.';
