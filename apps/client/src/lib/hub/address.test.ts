@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
+import { NO_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
 
 describe('parseHubAddress', () => {
-  it('NET-005: the default address is hub.anima.ing over https and wss', () => {
-    expect(parseHubAddress('https://hub.anima.ing')).toEqual({ ok: true, value: DEFAULT_HUB_ADDRESS });
+  it('NET-005, R-214: the client has no default hub; the address of no hub is a host that never resolves', () => {
+    expect(new URL(NO_HUB_ADDRESS.origin).hostname.endsWith('.invalid')).toBe(true);
+    expect(parseHubAddress(NO_HUB_ADDRESS.origin)).toEqual({ ok: true, value: NO_HUB_ADDRESS });
   });
 
   it.each([
@@ -52,9 +53,9 @@ describe('parseHubAddress', () => {
 describe('a hub address is frozen', () => {
   it('CLI-002: the default and a parsed address cannot be changed to point a token elsewhere', () => {
     const parsed = parseHubAddress('evil.example');
-    expect(Object.isFrozen(DEFAULT_HUB_ADDRESS)).toBe(true);
+    expect(Object.isFrozen(NO_HUB_ADDRESS)).toBe(true);
     expect(parsed.ok && Object.isFrozen(parsed.value)).toBe(true);
-    expect(() => Object.assign(DEFAULT_HUB_ADDRESS, { http: 'https://evil.example/graphql' })).toThrow(TypeError);
+    expect(() => Object.assign(NO_HUB_ADDRESS, { http: 'https://evil.example/graphql' })).toThrow(TypeError);
   });
 });
 

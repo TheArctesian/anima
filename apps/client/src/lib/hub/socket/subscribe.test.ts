@@ -27,7 +27,7 @@ describe('Hub.subscribe', () => {
     const hub = newHub();
     const { events, sink } = recordingSink();
     const { socket } = await liveSubscription(hub, sink);
-    expect(socket.url).toBe('wss://hub.anima.ing/graphql');
+    expect(socket.url).toBe('wss://no-hub.invalid/graphql');
     expect(socket.protocol).toBe('graphql-transport-ws');
     expect(socket.sent[0]).toEqual({ type: 'connection_init', payload: { authorization: 'Bearer s3cret-token' } });
     expect(socket.sent[1]).toMatchObject({ type: 'subscribe', payload: { variables: { deviceId: 'd1' } } });

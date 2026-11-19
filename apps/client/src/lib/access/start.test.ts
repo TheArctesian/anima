@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readAccessToken } from '$lib/desktop/token';
-import { createHub, DEFAULT_HUB_ADDRESS, type HubAddress } from '$lib/hub/hub';
+import { createHub, NO_HUB_ADDRESS, type HubAddress } from '$lib/hub/hub';
 import { FAKE_WEBSOCKET, FakeSocket, recordingSink, settle, STATUS_CHANGED } from '$lib/hub/socket/fake';
 import { accessApi } from './api';
 import { clientStart, ORIGIN_REFUSED, type ClientStart } from './start';
@@ -54,7 +54,7 @@ describe('the hub address a client starts with', () => {
     const stored = clientStart({ desktop: true, storage: storage('https://my-hub.example.org'), origin: 'tauri://localhost' });
     expect(addressOf(stored).origin).toBe('https://my-hub.example.org');
     const unset = clientStart({ desktop: true, storage: storage(), origin: 'http://tauri.localhost' });
-    expect(addressOf(unset)).toEqual(DEFAULT_HUB_ADDRESS);
+    expect(addressOf(unset)).toEqual(NO_HUB_ADDRESS);
   });
 });
 

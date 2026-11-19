@@ -1,7 +1,9 @@
 <script lang="ts">
   import { forgetRecentCopy } from '$lib/hub/hub';
   import { accessApi } from '$lib/access/api';
-  import { goToSignIn } from '$lib/access/navigation';
+  import { loadClientAt } from '$lib/access/navigation';
+  import { WELCOME_PATH } from '$lib/access/routes';
+  import { forgetHubAddress } from '$lib/desktop/address';
   import { signOut } from '$lib/access/sign-out';
   import { clearAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
@@ -23,15 +25,20 @@
     busy = false;
   }
 
-  /** Changing the hub signs out, then the sign-in form, which has the address field, takes over (CLI-002). */
+  /**
+   * Changing the hub signs out and forgets its address, then the client starts again at the first-run choices: Sign in,
+   * Sign up and Join a hub. It does not go to the password page of the hub that was left (R-214).
+   */
   async function change(): Promise<void> {
     if (busy) return;
     busy = true;
     status = '';
     // `signOut` returns fixed sentences and does not throw; its own messages are shown whole, as SignOutRow shows them.
     const kept = await signOut({ api, address: hub.address, desktop: true, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
-    if (kept === null) goToSignIn();
-    else status = kept;
+    if (kept === null) {
+      forgetHubAddress(localStorage, hub.address.origin);
+      loadClientAt(WELCOME_PATH);
+    } else status = kept;
     busy = false;
   }
 </script>

@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, parseHubAddress, TOKEN_UNREADABLE, UNREACHABLE, type Hub, type HubAddress } from '../hub';
+import { createHub, NO_HUB_ADDRESS, parseHubAddress, TOKEN_UNREADABLE, UNREACHABLE, type Hub, type HubAddress } from '../hub';
 import { FAKE_WEBSOCKET } from '../socket/fake';
 import type { CopyLimits, CopyStore } from './copy';
 import { memoryCopyStore } from './memory.fixture';
@@ -31,7 +31,7 @@ afterEach(async () => {
 /** The era of the copy in a test; a test that removes the copy adds one. */
 const era = { current: 0 };
 
-function hubWith(store: CopyStore | undefined, net = network(), address: HubAddress = DEFAULT_HUB_ADDRESS, token = () => Promise.resolve('token')) {
+function hubWith(store: CopyStore | undefined, net = network(), address: HubAddress = NO_HUB_ADDRESS, token = () => Promise.resolve('token')) {
   const hub = createHub({
     address,
     token,
@@ -168,7 +168,7 @@ describe('when the copy is removed or not kept (FND-007)', () => {
     const { hub, state } = hubWith(store);
     state.answer = named('mini');
     await hub.request(DEVICE, { id: 'd1' });
-    const unreadable = hubWith(store, network(), DEFAULT_HUB_ADDRESS, () => Promise.reject(new Error('key store')));
+    const unreadable = hubWith(store, network(), NO_HUB_ADDRESS, () => Promise.reject(new Error('key store')));
     expect(await unreadable.hub.request(API_KEYS, {})).toEqual({ ok: false, error: TOKEN_UNREADABLE });
     expect(store.copies.size).toBe(1);
     state.answer = { errors: [{ message: 'Sign in again.', extensions: { code: 'UNAUTHENTICATED' } }] };

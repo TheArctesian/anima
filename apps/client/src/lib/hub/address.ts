@@ -18,11 +18,14 @@ interface AddressError {
 
 type AddressResult = { readonly ok: true; readonly value: HubAddress } | { readonly ok: false; readonly error: AddressError };
 
-/** The default hub (NET-005, DNS-001). */
-export const DEFAULT_HUB_ADDRESS: HubAddress = Object.freeze({
-  origin: 'https://hub.anima.ing',
-  http: 'https://hub.anima.ing/graphql',
-  socket: 'wss://hub.anima.ing/graphql',
+/**
+ * The address of a client that has no hub yet. The client has no default hub (NET-005, DNS-001, R-214): with no saved
+ * address the desktop app shows the first-run choices. `.invalid` never resolves (RFC 2606), so nothing is sent anywhere.
+ */
+export const NO_HUB_ADDRESS: HubAddress = Object.freeze({
+  origin: 'https://no-hub.invalid',
+  http: 'https://no-hub.invalid/graphql',
+  socket: 'wss://no-hub.invalid/graphql',
 });
 
 /** Hosts that may use plain `http` and `ws`: they never leave this computer (CLI-002, F-1). */
@@ -31,7 +34,7 @@ export const DEFAULT_HUB_ADDRESS: HubAddress = Object.freeze({
 const LOOPBACK_HOSTS: readonly string[] = ['127.0.0.1'];
 
 const MESSAGES: Record<AddressProblem, string> = {
-  'not-a-url': 'Type a host name, for example hub.anima.ing.',
+  'not-a-url': 'Type a host name, for example hub.example.net.',
   'not-https': 'The hub address must use https. Only this computer may use http.',
   'has-credentials': 'Remove the user name and password from the hub address.',
   'has-path': 'Type only the host name and port, no path.',

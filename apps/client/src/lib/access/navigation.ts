@@ -20,6 +20,8 @@ function failed(): void {
 
 /** The sign-in of this client's hub: the password page, or the account for a hosted hub (R-129). */
 export function goToSignIn(): void {
+  // The desktop app with no saved address has no hub to sign in to: it shows the first-run choices (R-214).
+  if (capabilities().keyStore && !hasStoredHubAddress(localStorage)) return goToWelcome();
   const hosted = hubIsHosted(storedHubAddress(localStorage).origin);
   goto(resolve(signInPathFor(hosted))).catch(failed);
 }

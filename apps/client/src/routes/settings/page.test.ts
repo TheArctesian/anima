@@ -12,13 +12,14 @@ const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
   clearAccessToken: vi.fn(),
   goToSignIn: vi.fn(),
+  loadClientAt: vi.fn(),
   platform: undefined as Capabilities | undefined,
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => mocks.platform }));
-vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn, loadClientAt: vi.fn() }));
+vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn, loadClientAt: mocks.loadClientAt }));
 // The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
@@ -76,6 +77,7 @@ beforeEach(() => {
   mocks.platform = BROWSER;
   mocks.clearAccessToken.mockReset().mockResolvedValue(undefined);
   mocks.goToSignIn.mockReset();
+  mocks.loadClientAt.mockReset();
   for (const spy of consoleSpies) spy.mockClear();
 });
 
@@ -316,14 +318,16 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
   expect(button.getAttribute('aria-disabled')).toBe('false');
 });
 
-it('CLI-002, D-5: Change hub signs out, clears the token and goes to sign-in', async () => {
+it('CLI-002, D-5, R-214: Change hub signs out, clears the token, forgets the address and starts again at the first-run choices', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
   hubButton(target, 'Change hub').click();
   await settled();
   expect(hub.sent.map((request) => request.operation)).toEqual(['Me', 'Logout']);
   expect(mocks.clearAccessToken).toHaveBeenCalledWith(hub.hub.address);
-  expect(mocks.goToSignIn).toHaveBeenCalledOnce();
+  expect(mocks.loadClientAt).toHaveBeenCalledExactlyOnceWith('/welcome');
+  // Never the password page of the hub that was left.
+  expect(mocks.goToSignIn).not.toHaveBeenCalled();
 });
 
 it('CLI-002: Change hub stays put and shows the sign-out sentence when the token cannot be removed', async () => {

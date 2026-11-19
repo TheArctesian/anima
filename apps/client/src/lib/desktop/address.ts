@@ -1,4 +1,4 @@
-import { DEFAULT_HUB_ADDRESS, parseHubAddress, type HubAddress } from '$lib/hub/hub';
+import { NO_HUB_ADDRESS, parseHubAddress, type HubAddress } from '$lib/hub/hub';
 
 const STORAGE_KEY = 'anima.hubAddress';
 
@@ -11,12 +11,12 @@ function readText(storage: Storage): string | null {
   }
 }
 
-/** The hub the operator chose, or the default when nothing is stored or the stored text no longer parses (CLI-002). */
+/** The hub the operator chose, or the address of no hub when nothing is stored or the stored text no longer parses (CLI-002, R-214). */
 export function storedHubAddress(storage: Storage): HubAddress {
   const text = readText(storage);
-  if (text === null) return DEFAULT_HUB_ADDRESS;
+  if (text === null) return NO_HUB_ADDRESS;
   const parsed = parseHubAddress(text);
-  return parsed.ok ? parsed.value : DEFAULT_HUB_ADDRESS;
+  return parsed.ok ? parsed.value : NO_HUB_ADDRESS;
 }
 
 /** Whether the operator has saved a hub address, even one that no longer parses: a first-run sign (FRN-001, NAV-009). */
