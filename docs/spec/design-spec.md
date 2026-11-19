@@ -1507,7 +1507,7 @@ Anima uses the CUPID properties for code quality: Composable, Unix philosophy, P
 | Clock, random, environment or global reads in core modules | P | 0 |
 | Suppressed lints without a reason | I | 0 |
 
-- **CQ-010.** The gate script (`bun run gates`) must measure each signal in this table. It must fail when a new file or a changed file is more than a limit. The gates run on the machine that makes the change, before each review and each merge. Do not run gates or tests in GitHub Actions. GitHub Actions is only for deployment.
+- **CQ-010.** The gate script (`bun run gates`) must measure each signal in this table. It must fail when a new file or a changed file is more than a limit. The gates run on the machine that makes the change, before each review and each merge. Do not run gates or tests in GitHub Actions, with two exceptions: the gates job of the release workflow (R-190), and the workflow `gates`, which runs the same list for each pushed branch on machines of GitHub with no secret (R-NEW-fastgates). GitHub Actions is otherwise only for deployment. The fast tier (`bun run gates:fast`) runs a part of the list that the changed paths select; it is not the gates of this requirement.
 - **CQ-011.** The repository starts with an empty baseline file (`quality/baseline.json`). An entry records a file and its current value. An entry can only decrease. Do not add an entry by hand. Do not increase a value to make a change pass. Split the code.
 - **CQ-012.** Generated files (tokens, GraphQL types, migrations) are not measured. List them in `quality/generated.txt`.
 - **CQ-013.** Suppress a lint only with a reason. Rust: `#[expect(clippy::rule, reason = "...")]`. TypeScript: `// eslint-disable-next-line rule -- reason`.

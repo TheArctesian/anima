@@ -204,6 +204,21 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
   one job, and points to the owner of a fact; it does not copy the fact. One document defines each
   requirement identifier. `bun run quality:documents` checks this (PLN-017).
 
+## Numbers and generated files at a merge
+
+- Do not take the next number of a ruling, a human check, a finding, a defect or a work plan decision.
+  Write a placeholder: `R-NEW-`, `HT-NEW-`, `SF-NEW-`, `DEF-NEW-` or `OD-W-NEW-`, and directly after it
+  a name of your own in lower-case letters and digits (for a ruling about a socket: `R-NEW-` and
+  `socket`, with no space). Use the same placeholder in each file that names the thing, also in a
+  file name. Do not write a whole placeholder as an example in a document: the merge would number it. The merge into `dev` gives each
+  placeholder the next free number (PLN-021). The documents gate refuses a placeholder on `dev` and on `main`.
+- `docs/plan/register.md` and `docs/operator-queue.md` are generated. Never solve a conflict in them by
+  hand: run `bun run quality:register`, which writes them again from the documents (PLN-020).
+- The session that merges runs `bun quality/bin/merge.ts <branch>` in a clean worktree on `dev`. It merges
+  the branch, writes the generated files again, assigns the numbers, runs the document gates and makes the
+  merge commit. It pushes only with `--push`, and only to `dev`. A conflict in a different file stops it:
+  merge `origin/dev` into the branch and solve it there.
+
 ## Tests
 
 Follow the `test-audit` rules: test behaviour, not structure. If moving code breaks a test,
@@ -228,13 +243,24 @@ one list of such checks (PLN-014): a task that waits for a check is not done unt
 ## Gates
 
 Run `bun run gates` before you ask for review and before every merge. A commit that changes only
-`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`. There is no CI; gates run on the machine that makes the change.
+`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`. The gates run on the machine that makes the change; the workflow `gates` runs the same list on GitHub for each pushed branch (R-NEW-fastgates), and until the operator rules on OD-W-NEW-gaterule the run on your machine is the one that counts.
 `rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh
 bun run gates
 BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (default: phase-2)
+bun run gates:fast                 # while you work: only what your changed paths need
 ```
+
+`bun run gates:fast` compares your tree with `origin/dev` (`FAST_BASE` names a different ref). Documents
+only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
+touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
+runs the full list. It does not test the packages that depend on yours and it runs no doctest: it is for
+the work, not for a merge. Its first line says what it chose and why.
+
+The workflow `.github/workflows/gates.yml` runs the full list on Linux machines of GitHub for each pushed
+branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no
+secret. It does not prove code that is compiled only on macOS: run `bun run gates` on a Mac for such a change.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),

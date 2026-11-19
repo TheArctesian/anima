@@ -1,0 +1,73 @@
+# Merges a branch into `dev` when its gates passed on GitHub, with no person and no session.
+#
+# SWITCHED OFF. It does nothing while `quality/merge-rule.json` on `dev` says
+# `"mergeWithoutCheck": false`. Only a ruling of the operator changes that file (OD-W-NEW-automerge).
+# This file was never run on GitHub: run it one time with a trial branch before the rule is on.
+#
+# It starts when a run of the workflow `gates` ends. GitHub takes this file from the default
+# branch, so a branch cannot change what runs here. It checks out `dev`, not the branch, and runs
+# the merge script of `dev`. It never touches `main`.
+name: merge-to-dev
+
+on:
+  workflow_run:
+    workflows: [gates]
+    types: [completed]
+
+concurrency:
+  group: merge-to-dev
+  cancel-in-progress: false
+
+permissions: {}
+
+env:
+  BUN_VERSION: "1.3.14"
+
+jobs:
+  merge:
+    # Only a push of a branch of this repository whose gates passed; never `dev` or `main`, never a fork.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch != 'dev' &&
+      github.event.workflow_run.head_branch != 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - id: rule
+        name: Read the rule of dev
+        run: |
+          set -eu
+          if grep -Eq '"mergeWithoutCheck"[[:space:]]*:[[:space:]]*true' quality/merge-rule.json &&
+            grep -Eq '"fullGates"[[:space:]]*:[[:space:]]*"github"' quality/merge-rule.json; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The rule is off: nothing is merged."
+            echo "on=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Merge the branch into dev
+        if: steps.rule.outputs.on == 'true'
+        env:
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          # The branch must still be at the commit that the gates checked.
+          now="$(git rev-parse "origin/$BRANCH")"
+          [ "$now" = "$HEAD_SHA" ] || { echo "The branch moved after its gates; a new run will come."; exit 0; }
+          git config user.name "anima merge"
+          git config user.email "merge@anima.invalid"
+          bun quality/bin/merge.ts "$BRANCH" --push

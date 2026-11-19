@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assign, placeholders } from "../src/numbers.ts";
+import { assign, isShared, placeholders } from "../src/numbers.ts";
 
 const RULINGS = "- **R-205 (operator).** A ruling.\n- **R-206 (operator).** A ruling.\n";
 const CHECKS = "### HT-043: a check\n\n### HT-044: a check\n";
@@ -51,5 +51,10 @@ describe("numbers that a merge assigns (PLN-021)", () => {
   test("with no placeholder nothing changes", () => {
     const done = assign([{ path: "docs/rulings.md", text: RULINGS }]);
     expect([done.numbers.size, done.changed.length, done.renamed.length]).toEqual([0, 0, 0]);
+  });
+
+  test("only dev and main refuse a placeholder", () => {
+    expect(["dev", "main"].map(isShared)).toEqual([true, true]);
+    expect(["quality/faster-gates", "HEAD", "", "develop"].map(isShared)).toEqual([false, false, false, false]);
   });
 });

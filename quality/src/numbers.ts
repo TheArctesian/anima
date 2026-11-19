@@ -105,3 +105,8 @@ export function assign(files: TextFile[]): Assignment {
   }
   return { numbers, changed, renamed };
 }
+
+/** Whether `branch` is one that each session shares: a placeholder must not be there. */
+export function isShared(branch: string): boolean {
+  return branch === "dev" || branch === "main";
+}

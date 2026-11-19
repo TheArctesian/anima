@@ -12,7 +12,7 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 
 ## Local gates
 
-`bun run gates` (from the repository root) is the only gate entry point. There is no CI; gates run on the machine that makes the change.
+`bun run gates` (from the repository root) is the gate entry point. The gates run on the machine that makes the change; the workflow `gates` runs the same list on GitHub (see "The gates on GitHub").
 It runs twenty-one gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
 
 1. `cargo fmt --check`
@@ -47,6 +47,49 @@ and names gates also measure `.go` files.
 
 `BASE_REF` is read from the environment and defaults to `phase-2` (a local branch; no remote needed).
 A missing executable is a failure, never a skip (CQ-024). The gate list and runner live in `src/gates/gates.ts`.
+
+### The fast tier: `bun run gates:fast`
+
+`bun quality/bin/gates.ts --fast` runs a part of the list, chosen by the paths that are different from the
+merge base with `origin/dev` (`FAST_BASE` names a different ref): committed, staged, not staged and new files.
+The rule is `choose` in `src/gates/tier.ts`; `tests/tier.test.ts` tests it.
+
+| Changed paths | Gates |
+| --- | --- |
+| Nothing | None |
+| Only `docs/` and `*.md` files of the root | `documents` |
+| A crate | `fmt`; `clippy` and `rust-test` with `-p` for each touched crate; `pinning` when the desktop shell is touched; the five quality gates |
+| `link/` | The six Go gates; the five quality gates |
+| A bun package | `install`; `lint`, `check` and `test` with `--filter` for each touched package; `build` when the client is touched; the five quality gates |
+| `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.config/`, `.cargo/` | The whole Rust group |
+| `package.json`, `bun.lock`, the lint and TypeScript settings of the root, `design/` | The whole bun group |
+| `contracts/` | The whole Rust group and the whole bun group |
+| `.github/` | The tests of `@anima/deploy`, which read the workflow files |
+| A path that no rule knows | The full list |
+
+What it does not do: it does not test a package that depends on a touched one, and it runs the doctests
+only with the whole Rust group. The full list does that. `--group rust,go,bun,quality` and
+`--gate name,name` run a part of the list by name; the jobs of the workflow use them.
+
+### The gates on GitHub
+
+`.github/workflows/gates.yml` runs the full list on `ubuntu-24.04` machines of GitHub for each pushed branch
+but `main`, and for a pull request to `dev` from a fork. Four jobs run at the same time: `rust-lint` (`fmt`,
+`clippy`), `rust-test` (`rust-test`, `doctest`, `pinning`), `go`, and `bun` (the bun gates and the quality
+gates). The job `all` passes when each passed. `deploy/test/gates-workflow.test.ts` checks that the jobs
+together run each gate one time, that the file holds no secret and no token that can write, that each
+action is pinned to a commit, and that a pull request of a fork gets nothing. A different workflow that
+needs the gates of a commit calls this one (`workflow_call`, input `ref`).
+
+A Linux machine does not compile the code that is only for macOS (the Keychain store of the daemon, the
+LaunchAgent, the macOS parts of the desktop shell), and `pinning` proves the macOS trust hook only on a Mac.
+
+### Numbers at a merge
+
+`bin/numbers.ts --check` fails when a placeholder of a number (`R-NEW-` and a name; `src/numbers.ts` has the series) is in the repository;
+`--assign` gives each its number. `bin/merge.ts <branch>` merges a branch into `dev` with them
+(`AGENTS.md`, "Numbers and generated files at a merge"). `merge-rule.json` holds the two rules that
+wait for the operator (OD-W-NEW-gaterule, OD-W-NEW-automerge); the two are off.
 
 ### Rust tests: gates 3 to 5 (R-112)
 
