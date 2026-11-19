@@ -39,6 +39,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Other persons: self-hosting and a hosted option | [other-operators.md](../proposals/other-operators.md) | None yet |
 | Hosted Solo hubs on a shared pool of hosts | [shared-pool-hosting.md](../proposals/shared-pool-hosting.md) | None yet |
 | The hosted mode as the default first run: sign-in, the account directory, a hub made for each account, a free hub that sleeps | [hosted-mode.md](../proposals/hosted-mode.md) | HM-R1 to HM-R9, HMD-001 to HMD-036 |
+| A hosted hub in a browser at `hub.anima.ing`: the options, with no requirement yet | [hosted-web-hub.md](../proposals/hosted-web-hub.md) | None (a proposal; its requirements go to hosted-mode.md) |
 | The Anima.ing shell prompt and related shell commands | [shell-prompt.md](../proposals/shell-prompt.md) | CMD-032 to CMD-038 |
 | Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](../proposals/cloud-machines.md) | CVM-001 to CVM-024 |
 | Machine profiles: copy a setup to a new computer | [machine-profiles.md](../proposals/machine-profiles.md) | REP-001 to REP-025 |

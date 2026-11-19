@@ -68,6 +68,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
+| HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -877,6 +878,30 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.
+
+### HT-044: the application does not start Tailscale on a hosted hub (DEF-005)
+
+Built: on the branch `fix/install-daemon-link` ([DEF-005](work-items/defects/DEF-005.md)). For a hub at a
+port of this computer the client no longer asks which computer this is over the VPN
+(`apps/client/src/lib/desktop/this-machine.ts`, `apps/client/src/lib/hub/address.ts`), so the shell
+does not run the Tailscale client.
+
+The tests cover: for such a hub the client sends no question to the hub and none to the shell; for
+an `https` hub it asks as before. Not covered: the real application, the real Tailscale application
+of macOS, and that no other path starts it.
+
+It needs: this Mac with the Tailscale application installed, the application of this build, and the
+sign-in to the hosted hub.
+
+1. Quit Tailscale (its menu, "Quit"). In Activity Monitor, look for "Tailscale". Expected: no such
+   process.
+2. Open Anima.ing on the hosted hub. Open Devices. Expected: Tailscale does not start.
+3. Open the device of this Mac and press "+ VNC". Expected: Tailscale does not start. The button
+   shows a result of the test; it does not open System Settings (that part waits for HM-T13 and
+   HM-T14).
+4. Open the settings of the device (the panel "Daemon"), and press "Add device" on the Devices page
+   and close the form. Expected: Tailscale does not start.
+5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 

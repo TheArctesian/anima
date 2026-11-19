@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HUB_ADDRESS, parseHubAddress } from './address';
+import { DEFAULT_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
 
 describe('parseHubAddress', () => {
   it('NET-005: the default address is hub.anima.ing over https and wss', () => {
@@ -56,4 +56,14 @@ describe('a hub address is frozen', () => {
     expect(parsed.ok && Object.isFrozen(parsed.value)).toBe(true);
     expect(() => Object.assign(DEFAULT_HUB_ADDRESS, { http: 'https://evil.example/graphql' })).toThrow(TypeError);
   });
+});
+
+it.each([
+  ['http://127.0.0.1:41001', true],
+  ['https://127.0.0.1:8443', true],
+  ['https://hub.anima.ing', false],
+  ['https://127.0.0.1.example', false],
+  ['', false],
+])('DEF-005: %j is a hub at a port of this computer: %s', (origin, expected) => {
+  expect(isOnThisComputer({ origin })).toBe(expected);
 });
