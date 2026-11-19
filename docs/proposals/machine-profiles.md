@@ -17,7 +17,7 @@ Status: the header of this document holds the state (PLN-020). History: Draft. T
 Map: [work-plan.md](../work-plan.md), category Foundation, next to "Add this machine"
 ([add-this-machine.md](add-this-machine.md)) and first-run setup. A rented cloud computer
 ([cloud-machines.md](cloud-machines.md)) can take a profile in one confirmation. A profile
-can also install the tools that agent panes and bots need.
+can also install the agent tools (Herdr, Hermes Agent, T3 Code: [agent-tools-as-extensions.md](agent-tools-as-extensions.md), R-196) and the agents of [bots.md](bots.md).
 Identifiers: REP-001 to REP-025.
 
 This is a new proposal. The "whatdog" plan is Watchdog, a service restarter planned with the
@@ -94,7 +94,7 @@ A step that fails does not stop the rest.
 - **REP-016.** Machine profiles is a free extension on every plan, including self-host.
 - **REP-017.** A rented cloud computer (CVM-001) can take a profile in one confirmation after
   it boots.
-- **REP-018.** A profile can include the tools that agent panes and bots need, so a new
+- **REP-018.** A profile can include the agent tools of agent-tools-as-extensions.md and the agents of bots.md (R-196 withdrew the native panes and bot runtime), so a new
   machine can run them after the profile is applied.
 - **REP-019.** The first version is Mac to Mac.
 - **REP-020.** Linux to Linux follows, when both machines have Homebrew or a documented
@@ -123,7 +123,7 @@ A step that fails does not stop the rest.
 | Opt-in copy of one existing private key, machine to machine | — |
 | Chosen folders over the network; iCloud folders skipped | — |
 | One-confirm apply on a rented cloud computer | — |
-| Tools that agent panes and bots need | — |
+| Agent tools and agents (agent-tools-as-extensions.md, bots.md) | — |
 
 ## Conflicts: ruled (operator, 2026-11-16)
 

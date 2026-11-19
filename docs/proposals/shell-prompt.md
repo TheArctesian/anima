@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Not approved. CMD-032 to CMD-038. INS-009 ruled 2026-11-16.
+evidence: Not approved. CMD-032 to CMD-038. INS-009 ruled 2026-11-16. 2026-11-18: CMD-034 points to the Herdr tool extension (R-196).
 ---
 
 # Proposal: Anima.ing shell prompt
@@ -53,8 +53,10 @@ session on another machine, all in about 15 seconds.
   interactive, it must print nothing, so `scp`, `rsync` and scripts do not break.
 - **CMD-034.** `anima layout claude` and `anima layout codex` must open a Zellij layout with
   yazi next to Claude or Codex, on the model of the operator's `zcc` and `zco` functions.
-  They must not replace Zellij. Agent panes (AIS-009 to AIS-017) must work alongside Zellij
-  in the first version, not replace it.
+  They must not replace Zellij. The agent panes of Herdr (the Herdr tool extension of
+  [agent-tools-as-extensions.md](agent-tools-as-extensions.md), R-196, which withdrew AIS-009 to AIS-017) must work
+  alongside Zellij in the first version, not replace it. [NEEDS CLARIFICATION: whether a layout
+  of `anima layout` may open Herdr in place of Zellij when Herdr is installed.]
 - **CMD-035.** `anima files pack <dir>` must bundle a folder and leave out `node_modules` and
   `.git`, on the model of the operator's `copydir` function.
 - **CMD-036.** `anima greeting` is optional. It may replace a tool such as pfetch with a
