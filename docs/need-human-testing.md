@@ -65,6 +65,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
+| HT-041 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 
 ### What a check on the hosted hub needs
 
@@ -872,6 +873,42 @@ viewer of the operating system, a real network, and a hub that runs as the insta
    `shasum -a 256`. Expected: the same hash. Then try a file larger than 256 MB. Expected: the upload is
    refused, and no new piece is in `files/`.
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
+
+Result: Open.
+
+### HT-041: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
+
+Built: on the branch `engine/e0-7-reminders`. The hub evaluates reminder rules each minute and sends
+each firing through the notification channels. `anima reminder` makes and changes rules, and shows,
+snoozes and acknowledges firings.
+
+The tests use a stopped clock, a database of the test and an HTTPS server of the test in the place of
+ntfy. Not covered: the task of each minute in a hub that runs for hours, a real ntfy server and the
+ntfy app on a phone, the text on a real lock screen, and a change of the clocks in a real time zone.
+
+1. Run `anima notification` to make an ntfy channel with a topic of 16 characters or more that is
+   on by default, and subscribe to the topic in the ntfy app on your phone.
+2. Run `anima reminder add --name Stretch --message "Stand up" --trigger
+   '{"type":"time","at":"<the time in 3 minutes, as HH:MM>","zone":"<your time zone>"}'`. Expected: the
+   rule is shown with the revision 1.
+3. Wait for the time. Expected: in not more than 2 minutes the phone shows a notification with the
+   title `Stretch` and the body `Stand up`. `anima reminder firings` shows one firing in the state
+   `SENT`.
+4. Run `anima reminder test <rule>` two times. Expected: two more notifications in the next minutes:
+   the cooldown does not stop a test.
+5. Run `anima reminder snooze <firing> 2` for a sent firing. Expected: the same notification comes
+   again after 2 to 3 minutes. Then run `anima reminder ack <firing>`. Expected: the state
+   `ACKNOWLEDGED`, and no more notification of it.
+6. Make a rule with the trigger `{"type":"place","place":"<a place of yours>","on":"arrive"}` and
+   send a fix of the OwnTracks app from inside the place, after one from outside (HT-040). Expected:
+   one notification with the title `Anima` and the body `You have a reminder.`: no name of the rule
+   and no name of the place is on the lock screen.
+7. Make an ntfy channel with the topic `home`, and a rule that names only this channel. Run
+   `anima reminder test <rule>`. Expected: no notification; `anima reminder firings` shows the firing
+   as `SUPPRESSED` with the reason `topic_not_random`.
+8. Run `anima reminder set <rule> --message "Changed"` for the rule of step 2 in the minute before it
+   is due again on the next day, or run `anima reminder disable <rule>`. Expected: a firing that
+   waited is `SUPPRESSED` with the reason `rule_changed`, and the phone shows nothing.
 
 Result: Open.
 

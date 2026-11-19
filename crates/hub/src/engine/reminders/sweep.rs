@@ -8,14 +8,14 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{
     Error,
-    model::{PlaceChange, Trigger},
+    model::{Occurrence, PlaceChange, Trigger},
     occurrences::{self, Extensions},
     place_state::place_changes,
     sending::{WasKnown, fire, notice},
     store,
 };
 use crate::{
-    engine::{locations, places},
+    engine::{locations, places, sources},
     fleet::{credentials::operational, events},
 };
 
@@ -116,23 +116,36 @@ async fn arrivals(db: &PgPool, seal: &locations::Seal, now: DateTime<Utc>) -> Re
 pub struct Reading {
     pub seal: locations::Seal,
     pub extensions: Extensions,
+    /// The sources of the hub, for the health of their accounts.
+    pub sources: sources::Registry,
 }
 
-/// Reads what has no moment of storage and what the engine follows with a cursor: the new
-/// events of the event log, the operational keys that end or need a rotation, and the
-/// expiries and measures of each extension that is on. Then it evaluates the rules that wait
-/// for occurrences, in one transaction with the cursor.
-async fn given(db: &PgPool, extensions: &Extensions, now: DateTime<Utc>) -> Result<(), Error> {
+/// What has no moment of storage: the operational keys that end or need a rotation, and the
+/// expiries and measures of each extension that is on.
+async fn pulled(
+    db: &PgPool,
+    extensions: &Extensions,
+    now: DateTime<Utc>,
+) -> Result<Vec<Occurrence>, Error> {
     let keys = operational::keys(db, now).await?;
     let mut new = occurrences::of_keys(&keys);
     let on = crate::engine::extensions::on_keys(db).await?;
-    for extension in extensions {
-        if !on.iter().any(|key| key.as_str() == extension.name()) {
-            continue;
-        }
+    let read = extensions
+        .iter()
+        .filter(|extension| on.iter().any(|key| key.as_str() == extension.name()));
+    for extension in read {
         new.extend(extension.expiries(db, now).await?);
         new.extend(extension.measures(db, now).await?);
     }
+    Ok(new)
+}
+
+/// Reads what the engine follows: the new events of the event log since the cursor and the
+/// changes of health of the source accounts, with what [`pulled`] gives. Then it evaluates the
+/// rules that wait for occurrences, in one transaction with the cursor.
+async fn given(db: &PgPool, reading: &Reading, now: DateTime<Utc>) -> Result<(), Error> {
+    let seen = occurrences::seen(sources::healths(db, &reading.sources, now).await?);
+    let mut new = pulled(db, &reading.extensions, now).await?;
     let mut tx = db.begin().await?;
     store::lock_sweep(&mut tx).await?;
     // The first sweep starts at now: an old event fires nothing.
@@ -140,6 +153,11 @@ async fn given(db: &PgPool, extensions: &Extensions, now: DateTime<Utc>) -> Resu
     let events = events::after(&mut tx, (after, now), BATCH).await?;
     let newest = events.last().map_or(now, |event| event.at);
     new.extend(events.iter().filter_map(occurrences::of_event));
+    let before = store::states(&mut tx).await?;
+    new.extend(occurrences::of_health(&before, &seen, now));
+    for account in &seen {
+        store::remember_state(&mut tx, (&account.account, account.state), now).await?;
+    }
     notice(&mut tx, &new, now).await?;
     store::set_cursor(&mut tx, EVENTS, newest.max(after)).await?;
     tx.commit().await?;
@@ -155,7 +173,7 @@ async fn given(db: &PgPool, extensions: &Extensions, now: DateTime<Utc>) -> Resu
 /// `Database`, `Places`, `Locations`, `Keys`, `Extension`, `Switches`, `Events`.
 pub async fn sweep(db: &PgPool, reading: &Reading, now: DateTime<Utc>) -> Result<Swept, Error> {
     let timed = times(db, now).await?;
-    given(db, &reading.extensions, now).await?;
+    given(db, reading, now).await?;
     let placed = arrivals(db, &reading.seal, now).await?;
     Ok(Swept {
         firings: timed + placed.firings,

@@ -12,6 +12,7 @@ fn reading() -> Reading {
     Reading {
         seal: Seal::new(SealingKeys::none()),
         extensions: Vec::new(),
+        sources: crate::engine::sources::Registry::new(Vec::new(), Vec::new()),
     }
 }
 
@@ -129,4 +130,33 @@ async fn rem_002_the_event_of_a_firing_fires_no_rule(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(texts(&pool).await.len(), 1);
+}
+
+#[test]
+fn rem_001_a_change_of_health_of_an_account_is_one_record_and_the_first_sight_is_none() {
+    use crate::engine::sources::Health;
+    let account = crate::ids::SourceAccountId::from(uuid::Uuid::from_u128(5));
+    let seen =
+        super::occurrences::seen(vec![(account, "GitHub".to_owned(), Health::NeedsReconnect)]);
+    let first = super::occurrences::of_health(&[], &seen, at("2026-11-19T12:00:00Z"));
+    assert_eq!(first, [], "the sweep sees the account for the first time");
+    let same = [(account.to_string(), "needs_reconnect".to_owned())];
+    assert_eq!(
+        super::occurrences::of_health(&same, &seen, at("2026-11-19T12:00:00Z")),
+        []
+    );
+    let before = [(account.to_string(), "connected".to_owned())];
+    let changed = super::occurrences::of_health(&before, &seen, at("2026-11-19T12:00:00Z"));
+    let rule = rule(Trigger::SourceState {
+        account: None,
+        state: "needs_reconnect".to_owned(),
+    });
+    let known = Known::default();
+    let due = evaluate(
+        &rule,
+        &History::default(),
+        &moment("2026-11-19T12:00:00Z", &changed, &known),
+    );
+    assert_eq!(due.len(), 1, "{changed:?}");
+    assert_eq!(due[0].class, Class::C);
 }

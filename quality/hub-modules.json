@@ -147,7 +147,8 @@
       "notifications",
       "credentials",
       "events",
-      "extensions"
+      "extensions",
+      "sources"
     ]
   },
   "graphql": {

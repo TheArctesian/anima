@@ -182,6 +182,36 @@ impl Error {
     }
 }
 
+/// The health of each account at `now`, with its ID and its label, oldest account first: for
+/// a reader that follows the changes of health (K-E6 Section 2, `source_state`).
+///
+/// # Errors
+/// `Database`, `Extensions`.
+pub async fn healths(
+    db: &PgPool,
+    registry: &Registry,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<Vec<(SourceAccountId, String, Health)>, Error> {
+    let on = extensions::on_keys(db).await?;
+    let accounts = store::accounts(db, None).await?;
+    Ok(accounts
+        .into_iter()
+        .map(|account| {
+            let declared = registry.declaration(&account.source);
+            let facts = HealthFacts {
+                paused: account.paused_at.is_some(),
+                consumer_on: registry.consumer_on(&account.source, &on),
+                last_error_kind: account.error_kind(),
+                last_started_at: account.last_started_at,
+                last_sync_at: account.last_sync_at,
+                failure_count: account.failures(),
+                interval: schedule::interval(declared.map_or(0, |d| d.poll_interval_seconds)),
+            };
+            (account.id, account.label, health(&facts, now))
+        })
+        .collect())
+}
+
 /// Makes the account due now, in the caller's transaction (used by an extension that needs
 /// fresh records, such as `projects` after the operator restores a repository).
 ///

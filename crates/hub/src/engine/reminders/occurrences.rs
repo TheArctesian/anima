@@ -10,11 +10,12 @@ use sqlx::PgPool;
 
 use super::model::{Class, Occurrence};
 use crate::{
-    engine::records::Reference,
+    engine::{records::Reference, sources::Health},
     fleet::{
         credentials::operational::{OperationalKey, VersionState},
         events::EventSummary,
     },
+    ids::SourceAccountId,
 };
 
 /// The first words of the event of a firing. An event that starts with them gives no
@@ -113,4 +114,62 @@ pub(super) fn of_keys(keys: &[OperationalKey]) -> Vec<Occurrence> {
         }
     }
     found
+}
+
+/// The word of a health that a rule can wait for (K-E6 Section 2); every other health is
+/// `other`, which no rule waits for.
+const fn state_word(health: Health) -> &'static str {
+    match health {
+        Health::Ok => "connected",
+        Health::Stalled => "stalled",
+        Health::NeedsReconnect => "needs_reconnect",
+        _ => "other",
+    }
+}
+
+/// The health of one source account at a sweep.
+pub(super) struct Seen {
+    pub account: String,
+    pub label: String,
+    pub state: &'static str,
+}
+
+/// What the sweep sees of each account: its ID as text, its label and the word of its health.
+pub(super) fn seen(healths: Vec<(SourceAccountId, String, Health)>) -> Vec<Seen> {
+    healths
+        .into_iter()
+        .map(|(id, label, health)| Seen {
+            account: id.to_string(),
+            label,
+            state: state_word(health),
+        })
+        .collect()
+}
+
+/// One `Record` for each account whose health changed since the last sweep: the source is
+/// `sources`, the kind is the new state and the record is the account. An account that the
+/// sweep sees for the first time gives none.
+pub(super) fn of_health(
+    before: &[(String, String)],
+    now_seen: &[Seen],
+    at: DateTime<Utc>,
+) -> Vec<Occurrence> {
+    now_seen
+        .iter()
+        .filter(|seen| {
+            before
+                .iter()
+                .any(|(account, state)| *account == seen.account && state != seen.state)
+        })
+        .filter_map(|seen| {
+            Some(Occurrence::Record {
+                source: "sources".to_owned(),
+                kind: seen.state.to_owned(),
+                record: Reference::parse(&format!("source_account:{}", seen.account)).ok()?,
+                title: one_line(&seen.label),
+                class: Class::C,
+                at,
+            })
+        })
+        .collect()
 }

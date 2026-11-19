@@ -142,6 +142,7 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
             reminders::Reading {
                 seal: locations::Seal::new(dependencies.files.sealing_keys().clone()),
                 extensions: Vec::new(),
+                sources: dependencies.sources.registry.clone(),
             },
             clock.clone(),
         ),

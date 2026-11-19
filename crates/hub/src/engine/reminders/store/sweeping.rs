@@ -78,3 +78,31 @@ pub(in crate::engine::reminders) async fn put_place_state(
     .await
     .map(drop)
 }
+
+/// The last health that the sweep saw of each source account, as `(account, state)`.
+pub(in crate::engine::reminders) async fn states(
+    conn: &mut PgConnection,
+) -> Result<Vec<(String, String)>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT name, state FROM reminders.known WHERE sort = 'state' AND state IS NOT NULL",
+    )
+    .fetch_all(conn)
+    .await
+}
+
+pub(in crate::engine::reminders) async fn remember_state(
+    conn: &mut PgConnection,
+    (account, state): (&str, &str),
+    at: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO reminders.known (sort, name, state, at) VALUES ('state', $1, $2, $3) \
+         ON CONFLICT (sort, name) DO UPDATE SET state = excluded.state, at = excluded.at",
+    )
+    .bind(account)
+    .bind(state)
+    .bind(at)
+    .execute(conn)
+    .await
+    .map(drop)
+}

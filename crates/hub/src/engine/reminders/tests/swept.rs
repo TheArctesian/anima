@@ -21,6 +21,7 @@ fn seal() -> (Reading, tempfile::TempDir) {
     let reading = Reading {
         seal: Seal::new(keys),
         extensions: Vec::new(),
+        sources: crate::engine::sources::Registry::new(Vec::new(), Vec::new()),
     };
     (reading, folder)
 }

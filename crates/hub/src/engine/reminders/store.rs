@@ -11,7 +11,9 @@ mod rules;
 mod sweeping;
 
 pub(super) use rules::{activity, answer, delete_rule, firing, firings, rule, rules, write_rule};
-pub(super) use sweeping::{cursor, lock_sweep, place_states, put_place_state, set_cursor};
+pub(super) use sweeping::{
+    cursor, lock_sweep, place_states, put_place_state, remember_state, set_cursor, states,
+};
 
 use super::{
     codec,

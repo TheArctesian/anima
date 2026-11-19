@@ -57,6 +57,8 @@ pub enum Error {
     Keys(#[from] crate::fleet::credentials::operational::Error),
     #[error(transparent)]
     Extension(#[from] Unavailable),
+    #[error("the source accounts cannot be read")]
+    Sources(#[from] crate::engine::sources::Error),
     #[error("the extension switches cannot be read")]
     Switches(#[from] crate::engine::extensions::Error),
     /// Input to fix: each field and what to give.

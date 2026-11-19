@@ -4,7 +4,8 @@
 -- `channels` holds IDs of `notifications.channels` as values: no foreign key leaves this
 -- schema. A firing is unique for its rule and its subject, so one rule fires at most one time
 -- for one subject. `known` holds what the hub knew: the newest time of each sort of record and
--- the newest measure of each key, for `unless` and for the edge of a threshold.
+-- the newest measure of each key, for `unless` and for the edge of a threshold, and the last
+-- health of each source account, for a change of it.
 -- Privileges: migration 0001's default privileges give `anima_runtime` what it needs on the
 -- new schema (K2 "Roles").
 create schema reminders;
@@ -57,9 +58,10 @@ create table reminders.cursor (
 );
 
 create table reminders.known (
-    sort  text             not null check (sort in ('record', 'measure')),
+    sort  text             not null check (sort in ('record', 'measure', 'state')),
     name  text             not null,
     value double precision,
+    state text,
     at    timestamptz      not null,
     primary key (sort, name)
 );
