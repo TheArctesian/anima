@@ -5,6 +5,7 @@
 //! is not "the position": no code replaces an older sample.
 
 mod context;
+mod dawarich;
 pub mod graphql;
 mod model;
 mod owntracks;
@@ -23,6 +24,7 @@ pub use context::{
     Actor, ActorKind, Basis, Direction, End, MatchRule, OperatorEvidence, RULE,
     Stored as StoredContext, inside, operator_evidence,
 };
+pub use dawarich::dawarich_intake;
 pub use model::{Bad, IngestToken, NewSample, Origin, Position, Provider, Sample, Stored};
 pub use routes::router;
 pub use tokens::{Issued, admit, create_token, revoke_token, tokens};

@@ -2226,6 +2226,15 @@ type SourceAccount {
   createdAt: DateTime!
 }
 
+"A Dawarich server to connect (R-210). apiKey is a secret: it is never returned, logged or put in the audit log."
+input DawarichInput {
+  "1 to 64 characters."
+  label: String!
+  "https://host or https://host:port, with no path."
+  baseUrl: String!
+  apiKey: String!
+}
+
 input GithubAppInput {
   label: String!
   "Digits only."
@@ -3544,6 +3553,8 @@ type Mutation {
   setExtension(key: String!, on: Boolean!): [Extension!]!
   "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Login or browser token only (D-23, R-100)."
   connectGithubApp(input: GithubAppInput!): SourceAccount!
+  "Login or browser token only (D-23, R-100). Connects a Dawarich server with an API key of its account (R-210; K-E1 Section 7b): the hub reads one point with the key before it stores it. VALIDATION on baseUrl for an address that is not https://host[:port] or that the hub does not connect to, on apiKey when the server refuses the key, on label; UNAVAILABLE when the server does not answer. The same address again replaces the stored key and keeps the account and its samples."
+  connectDawarich(input: DawarichInput!): SourceAccount!
   "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
   syncSourceAccount(id: ID!): SourceAccount!
   setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount!

@@ -50,6 +50,19 @@ pub(super) async fn insert_sample(
     Ok(done.rows_affected() == 1)
 }
 
+/// Deletes each sample of `origin` and gives their count.
+pub(super) async fn delete_samples(
+    conn: &mut PgConnection,
+    origin: &Origin,
+) -> Result<u64, sqlx::Error> {
+    sqlx::query("DELETE FROM locations.sample WHERE provider = $1 AND account = $2")
+        .bind(origin.provider.as_str())
+        .bind(&origin.account)
+        .execute(conn)
+        .await
+        .map(|done| done.rows_affected())
+}
+
 /// The samples observed from `from` to `to`, oldest first, at most `limit`.
 pub(super) async fn samples_between(
     db: impl PgExecutor<'_>,

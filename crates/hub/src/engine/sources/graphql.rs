@@ -23,6 +23,7 @@ use super::{
     Error, Reach, Scheduling,
     connect::{Connection, establish},
     controls,
+    key_connection::{KeyConnection, connect_with_key},
     model::{Account, Trigger},
     run, store, trail,
 };
@@ -31,7 +32,7 @@ use crate::{
     clock::Clock,
     engine::extensions,
     fleet::{
-        access::Authenticated,
+        access::{Authenticated, operator_only},
         credentials::Vault,
         events::{Bus, Trail},
     },
@@ -113,6 +114,18 @@ pub struct GithubAppInput {
     private_key: String,
 }
 
+/// A Dawarich server to connect. The key is a secret.
+#[derive(InputObject)]
+#[graphql(name = "DawarichInput")]
+pub struct DawarichInput {
+    label: String,
+    /// `https://host[:port]`, with no path.
+    base_url: String,
+    /// SECRET. An API key of the Dawarich account. Never returned, logged or put in the audit
+    /// log.
+    api_key: String,
+}
+
 #[derive(Default)]
 pub struct Query;
 
@@ -186,6 +199,27 @@ impl Mutation {
         };
         let trail = Trail::from_context(ctx)?;
         let established = establish(&s, trail, input).await.map_err(failed)?;
+        view(&s, established.id).await
+    }
+
+    /// Reads one point of the Dawarich server with the key before it stores it (R-210, K-E1
+    /// Section 7b). Login or browser token only.
+    #[graphql(guard = "Authenticated")]
+    async fn connect_dawarich(
+        &self,
+        ctx: &Context<'_>,
+        input: DawarichInput,
+    ) -> Result<AccountView> {
+        operator_only(ctx, "connectDawarich")?;
+        let s = scheduling(ctx)?;
+        let input = KeyConnection {
+            source: provider_dawarich::DECLARATION.key,
+            label: input.label,
+            base: input.base_url,
+            api_key: Zeroizing::new(input.api_key),
+        };
+        let trail = Trail::from_context(ctx)?;
+        let established = connect_with_key(&s, trail, input).await.map_err(failed)?;
         view(&s, established.id).await
     }
 
