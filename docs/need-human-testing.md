@@ -60,7 +60,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
-| HT-038 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
+| HT-039 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 
 ### What a check on the hosted hub needs
@@ -872,7 +872,7 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
-### HT-038: a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145)
+### HT-039: a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145)
 
 Built: on the branch `engine/e0-5-locations`. The hub takes location samples on
 `POST /locations/v1/owntracks` with an ingest token, and from `anima location import`; it seals each
