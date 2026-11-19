@@ -920,6 +920,8 @@ not reached, and no AppImage was started on a Linux computer.
 2. Do "A trial that publishes nothing" with the version `0.0.1`. Expected: each job passes, `publish` is
    skipped, and no feed of `https://releases.anima.ing` changed. `stapler validate` and `spctl` accept the DMG
    and the application of the artifact `macos`. The AppImage of the artifact `linux` starts on a Linux computer.
+   In each of the two, Settings > Updates does not say "This is a local build", and it offers the published
+   version (the build of the workflow has the updater; a build by hand with `trial-bundle.sh` has not, DEF-001).
 3. Do "The first real release". Expected: the three feeds give the new version; `stapler validate` and `spctl`
    accept `https://releases.anima.ing/Anima.dmg`; an application 0.2.1 that was installed from its DMG offers
    the new version and starts it after "Restart to update".

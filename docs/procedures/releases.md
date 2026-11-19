@@ -135,7 +135,7 @@ Agents never do these steps (R-180, UPD-012). Never put a key or a password in a
 
 1. Actions > release > "Run workflow". Branch: `main`. Version: `0.0.1`. Use a version that you will never release: the trial makes a real signed and notarized application and a real updater signature for the version that you give, and a person who is signed in to GitHub can download the files of a run of a public repository for 7 days.
 2. Approve the environment `release` when the run asks (the macOS build). When the builds and the gates have passed, approve `release-sign`.
-3. The run passes when the job `trial` passes. The job `publish` is skipped. Nothing is in the bucket and no feed changed.
+3. The run passes when the job `trial` passes. The job `publish` is skipped. Nothing is in the bucket and no feed changed. The application of a trial run is the application that a release makes: it has the updater. So when you start it, it reads the public feed and offers the published version, which is higher than `0.0.1`; that is correct, and it shows that the updater is on. Settings > Updates must not say "This is a local build".
 4. From the page of the run, download the artifacts `macos` and `linux`. On a Mac:
 
    ```sh
@@ -226,9 +226,13 @@ an application on another Mac. A trial bundle does not update itself: it has no 
 Settings > Updates says "This is a local build. It does not update itself." (UPD-001). To get a
 newer version, build it again or install a release.
 
-The job `macos` of the release workflow runs the same script with `SIGN_IDENTITY` set to the
-identity of `tauri.conf.json`, and then makes the checks, the notary step and the updater file
-itself. `apps/desktop/src-tauri/check-mach-o.sh <application> <Team ID>` is its check of each
+The jobs `macos` and `linux` of the release workflow run the same script with
+`ANIMA_RELEASE_BUILD=1`, and on macOS with `SIGN_IDENTITY` set to the identity of
+`tauri.conf.json`. Only then the application has the updater and reads the public feed, as an
+application of the Builds path does; by hand, with or without an identity, the script makes a
+local build that does not update itself (DEF-001). A test holds the two modes
+(`deploy/test/release-workflow.test.ts`). The job `macos` then makes the checks, the notary step
+and the updater file itself. `apps/desktop/src-tauri/check-mach-o.sh <application> <Team ID>` is its check of each
 Mach-O file (UPD-011); you can run it on an installed application, for example
 `sh apps/desktop/src-tauri/check-mach-o.sh /Applications/Anima.ing.app 7GDLG48PV6`.
 

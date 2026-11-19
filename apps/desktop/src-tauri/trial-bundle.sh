@@ -9,15 +9,24 @@
 #     Mach-O files of the application;
 #   - it has no notary step, and on Linux it builds for this computer's architecture;
 #   - its application does not update itself: the shell is compiled with no updater and the
-#     client never checks the feed (UPD-001, DEF-001). A released application does both.
+#     client never checks the feed (UPD-001, DEF-001). A released application does both, and
+#     so does a build of the release workflow (ANIMA_RELEASE_BUILD, below).
 # So a trial that passes does not prove that a release job passes.
 #
 # By hand it is NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007)
 # or from the release workflow.
 #
 #   trial-bundle.sh [version]
+#   trial-bundle.sh --marks      prints the marks that a build with this environment gets, and
+#                                builds nothing (for the test of the two modes)
 #
 # Environment:
+#   ANIMA_RELEASE_BUILD   Only the release workflow sets it, to 1, in its jobs `macos` and
+#                   `linux`, for a release and for its trial run alike. The application then
+#                   has the updater and reads the public feed, as an application of the Builds
+#                   path does: the two marks of a local build are not set, and a mark of the
+#                   caller's environment is removed. On macOS it needs SIGN_IDENTITY. Unset,
+#                   or any other value: a trial bundle, which does not update itself (DEF-001).
 #   SIGN_IDENTITY   macOS only. Unset or empty: the ad hoc signature of a trial. The release
 #                   workflow (.github/workflows/release.yml, job `macos`, R-179) sets it to the
 #                   Developer ID identity that tauri.conf.json names: the tree and the
@@ -32,6 +41,8 @@
 # targets (aarch64-apple-darwin, x86_64-apple-darwin).
 set -eu
 
+MARKS_ONLY=false
+if [ "${1:-}" = --marks ]; then MARKS_ONLY=true; shift; fi
 VERSION=${1:-0.1.0}
 IDENTITY=${SIGN_IDENTITY:-}
 # The identity goes into a JSON text: no quote and no backslash.
@@ -48,8 +59,22 @@ export CI=true
 # A trial bundle keeps its version: the published version can be lower, and an application that
 # checks the feed would install it (DEF-001). The shell reads the first when it is compiled
 # (src/desktop.rs), the client the second when it is built (src/lib/updates/local-build.ts).
-export ANIMA_LOCAL_BUILD=1
-export VITE_ANIMA_LOCAL_BUILD=1
+# Only a build of the release workflow has the updater. The shell asks only if its mark is
+# set, so an empty mark is still a mark: the two are removed, never emptied.
+if [ "${ANIMA_RELEASE_BUILD:-}" = 1 ]; then
+    if [ "$(uname -s)" = Darwin ] && [ -z "$IDENTITY" ]; then
+        echo "trial-bundle: ANIMA_RELEASE_BUILD needs SIGN_IDENTITY on macOS; a release has no ad hoc signature" >&2
+        exit 1
+    fi
+    unset ANIMA_LOCAL_BUILD VITE_ANIMA_LOCAL_BUILD
+else
+    export ANIMA_LOCAL_BUILD=1
+    export VITE_ANIMA_LOCAL_BUILD=1
+fi
+if [ "$MARKS_ONLY" = true ]; then
+    echo "ANIMA_LOCAL_BUILD=${ANIMA_LOCAL_BUILD-unset} VITE_ANIMA_LOCAL_BUILD=${VITE_ANIMA_LOCAL_BUILD-unset}"
+    exit 0
+fi
 
 cargo_build() {
     ( cd "$ROOT" && ANIMA_VERSION=$VERSION cargo build --release --locked \

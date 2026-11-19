@@ -214,6 +214,48 @@ describe("the order to a published release (UPD-008, BLD-042)", () => {
   });
 });
 
+const BUNDLE_SCRIPT = join(ROOT, "apps", "desktop", "src-tauri", "trial-bundle.sh");
+const UPDATER_OFF = "ANIMA_LOCAL_BUILD=1 VITE_ANIMA_LOCAL_BUILD=1";
+const UPDATER_ON = "ANIMA_LOCAL_BUILD=unset VITE_ANIMA_LOCAL_BUILD=unset";
+
+/** The marks of a local build that `trial-bundle.sh` gives a build with the variables `set`; it builds nothing. */
+function marks(set: Record<string, string>): { exitCode: number; printed: string } {
+  const env = { PATH: process.env["PATH"] ?? "/usr/bin:/bin", ...set };
+  const result = Bun.spawnSync(["/bin/sh", BUNDLE_SCRIPT, "--marks", "0.2.2"], { env, stdout: "pipe", stderr: "pipe" });
+  return { exitCode: result.exitCode, printed: result.stdout.toString().trim() };
+}
+
+describe("the updater of a built application (UPD-001, DEF-001)", () => {
+  const identity = { SIGN_IDENTITY: "Developer ID Application: A Test (ABCDE12345)" };
+
+  test("a build of the workflow has the updater on, also when the caller's environment has a mark", () => {
+    expect(marks({ ANIMA_RELEASE_BUILD: "1", ...identity })).toEqual({ exitCode: 0, printed: UPDATER_ON });
+    const marked = { ANIMA_RELEASE_BUILD: "1", ANIMA_LOCAL_BUILD: "", VITE_ANIMA_LOCAL_BUILD: "1", ...identity };
+    expect(marks(marked)).toEqual({ exitCode: 0, printed: UPDATER_ON });
+  });
+
+  test("a build by hand has the updater off, with or without a signing identity", () => {
+    expect(marks({})).toEqual({ exitCode: 0, printed: UPDATER_OFF });
+    expect(marks(identity)).toEqual({ exitCode: 0, printed: UPDATER_OFF });
+    expect(marks({ ANIMA_RELEASE_BUILD: "0", ...identity })).toEqual({ exitCode: 0, printed: UPDATER_OFF });
+  });
+
+  test.skipIf(process.platform !== "darwin")("a release build on macOS with no signing identity is refused", () => {
+    expect(marks({ ANIMA_RELEASE_BUILD: "1" }).exitCode).toBe(1);
+  });
+
+  test("both build jobs of the workflow ask for a release build, for a tag and for a trial run alike", () => {
+    for (const name of ["macos", "linux"]) {
+      const build = job(name).steps.filter((step) => (step.run ?? "").includes("trial-bundle.sh"));
+      expect(build).toHaveLength(1);
+      expect(build[0]?.env?.["ANIMA_RELEASE_BUILD"]).toBe("1");
+      expect(build[0]?.if).toBeUndefined();
+      expect(job(name).if).toBeUndefined();
+    }
+    expect(RAW).not.toMatch(/ANIMA_LOCAL_BUILD/);
+  });
+});
+
 /** A folder shaped as an application whose programs are copies of one universal file with an ad hoc signature. */
 function adHocApp(programs: string[]): { folder: string; app: string } {
   const folder = mkdtempSync(join(tmpdir(), "anima-mach-o-"));

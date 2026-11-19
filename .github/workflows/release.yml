@@ -221,6 +221,9 @@ jobs:
       - name: Build and sign the application
         env:
           SIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
+          # The application has the updater and reads the public feed, in a release and in a
+          # trial run alike: without this, trial-bundle.sh makes a local build (DEF-001).
+          ANIMA_RELEASE_BUILD: "1"
           GOENV: "off"
           GOTOOLCHAIN: local
           GOWORK: "off"
@@ -311,6 +314,7 @@ jobs:
           bun install --frozen-lockfile
       - name: Build the AppImage
         env:
+          ANIMA_RELEASE_BUILD: "1"
           GOENV: "off"
           GOTOOLCHAIN: local
           GOWORK: "off"
