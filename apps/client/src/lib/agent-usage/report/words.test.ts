@@ -27,7 +27,7 @@ describe('the summary line (AIS-020, AIS-021)', () => {
   });
 
   it('says one session in the singular, and no price when no model has one', () => {
-    expect(summaryLine(row({ sessions: 1, inputTokens: 10, estimatedCostUsd: null }))).toBe('1 session, 10 tokens, estimated cost no price');
+    expect(summaryLine(row({ sessions: 1, inputTokens: 10, estimatedCostUsd: null }))).toBe('1 session, 10 tokens, no estimated cost');
   });
 });
 
