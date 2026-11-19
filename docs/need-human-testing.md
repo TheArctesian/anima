@@ -613,6 +613,10 @@ was built from a checkout that has this change (`link/build.sh` makes the link p
 
 Result: Open.
 
+On 2026-11-19 the operator saw `pop-os` go Down in Anima on the Mac after quitting the
+Linux AppImage. After reopening the AppImage, `pop-os` came back Up. The Linux disconnect
+and reconnect behaved as expected. The check history and the free-hub sleep and wake are open.
+
 ### HT-031: a hosted hub reaches SSH of a computer on its link (HM-T12)
 
 Built: the path from a hub to a local TCP port of a computer on its link
