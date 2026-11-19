@@ -188,7 +188,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (67)
+## 4. Checks that only the operator can do (68)
 
 | Check | What |
 | --- | --- |
@@ -222,6 +222,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
 | HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180) |
+| HT-037 | install and update Anima from F-Droid (M5-7) |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
