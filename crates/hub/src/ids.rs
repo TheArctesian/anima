@@ -112,6 +112,8 @@ entity_id! {
     SampleId,
     /// An ingest token of the OwnTracks path (K-E4 Section 11).
     IngestTokenId,
+    /// A reminder rule (K-E6 Section 2).
+    ReminderRuleId,
 }
 
 #[cfg(test)]

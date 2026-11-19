@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 pub use context::{
     Actor, ActorKind, Basis, Direction, End, MatchRule, OperatorEvidence, RULE,
-    Stored as StoredContext, operator_evidence,
+    Stored as StoredContext, inside, operator_evidence,
 };
 pub use model::{Bad, IngestToken, NewSample, Origin, Position, Provider, Sample, Stored};
 pub use routes::router;
