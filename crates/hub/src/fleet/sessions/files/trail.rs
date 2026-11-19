@@ -16,6 +16,7 @@ use super::{
 };
 use crate::{
     clock::Clock,
+    engine::locations,
     fleet::{
         devices::Device,
         events::{
@@ -23,6 +24,7 @@ use crate::{
         },
         sessions::{self, Error, Protocol},
     },
+    ids::SiteId,
 };
 
 /// Where a files tunnel writes: the stores, the clock, who opened it and the device's name.
@@ -32,6 +34,8 @@ pub(super) struct Trail {
     pub(super) clock: Arc<dyn Clock>,
     pub(super) ticket: FilesTicket,
     pub(super) device_name: String,
+    /// The site of the device when the tunnel opened, for the context of each transfer.
+    pub(super) site: SiteId,
 }
 
 /// The event's sentence and severity: fixed text with no path, value or device text.
@@ -67,10 +71,11 @@ pub(super) const fn sentence(direction: Direction, outcome: Outcome) -> (Severit
 
 impl Trail {
     /// Writes the audit entry and the event of `transfer`, ended with `outcome` (and
-    /// `reason` when refused), in one transaction.
+    /// `reason` when refused), and the context of that one event (K-E4 Section 12), in one
+    /// transaction.
     ///
     /// # Errors
-    /// `Database` or `Events` when either cannot be written; then neither is.
+    /// `Database`, `Events` or `Context` when one cannot be written; then none is.
     pub(super) async fn record(
         &self,
         transfer: &Transfer,
@@ -100,9 +105,25 @@ impl Trail {
             }),
         };
         let actor = (ticket.operator.clone(), ticket.client);
-        let trail = events::Trail::new(&self.bus, actor, self.clock.now());
+        let now = self.clock.now();
+        let trail = events::Trail::new(&self.bus, actor, now);
         let mut tx = self.db.begin().await?;
-        trail.write(&mut tx, entry).await?;
+        let event = trail.write_event(&mut tx, entry).await?;
+        let context = locations::Transfer {
+            event,
+            occurred_at: now,
+            direction: match transfer.direction {
+                Direction::Upload => locations::Direction::Upload,
+                Direction::Download => locations::Direction::Download,
+            },
+            device: (ticket.device, self.site),
+            actor: locations::Actor {
+                kind: ticket.operator.actor.kind().into(),
+                name: Some(ticket.operator.name.clone()),
+                client_device: None,
+            },
+        };
+        locations::record_transfer(&mut tx, context).await?;
         tx.commit().await?;
         Ok(())
     }

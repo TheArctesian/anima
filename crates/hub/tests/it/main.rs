@@ -19,6 +19,7 @@ mod hub;
 mod link;
 mod links;
 mod listening;
+mod locations;
 mod login;
 mod logs;
 mod maintenance;

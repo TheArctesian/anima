@@ -7,12 +7,13 @@
 use std::{sync::Arc, time::Duration};
 
 use async_graphql::{MergedObject, MergedSubscription, Schema, SchemaBuilder};
+use axum::Router;
 use sqlx::PgPool;
 
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, files, links, places, sources, timeline},
+    engine::{extensions, files, links, locations, places, sources, timeline},
     fleet::{
         access, agent_usage, builds, checks,
         credentials::{self, Vault},
@@ -56,6 +57,7 @@ pub struct Query(
     vpn::graphql::Query,
     files::graphql::Query,
     files::graphql::ProposalQuery,
+    locations::graphql::Query,
 );
 
 #[derive(MergedObject, Default)]
@@ -87,6 +89,7 @@ pub struct Mutation(
     web_interfaces::graphql::Mutation,
     files::graphql::Mutation,
     files::graphql::ProposalMutation,
+    locations::graphql::Mutation,
 );
 
 #[derive(MergedSubscription, Default)]
@@ -216,6 +219,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(projects::KeyChanges::default())
         // timeline: one adapter for each domain that has records to show (K-E3)
         .data(timeline::Adapters::new(vec![timeline::event_log()]))
+        // locations: the sealing keys of the positions (K-E4 Section 11)
+        .data(locations::Seal::new(files.sealing_keys().clone()))
         // files: the pieces, the data keys and the domains that derive records (K-E4 Section 9)
         .data(files)
         // links: the title of each kind of record that a domain owns (K-E4 Section 4)
@@ -223,6 +228,22 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         // places: the later domains that hold a PlaceId (none yet)
         .data(places::Holders::default())
         .finish()
+}
+
+/// The engine's routes beside `/graphql`, logged by their templates only, so that an owner,
+/// a name or an ingest token never reaches the log (LOG-007): the bytes of the files
+/// (`/files/v1`, K-E4 Section 9), which have no 1 MiB limit because an upload stops at 256 MB
+/// while it streams (FIL-005), and the way in of the OwnTracks app (`/locations/v1/owntracks`,
+/// K-E4 Section 11).
+pub fn engine_routes(parts: &Dependencies) -> Router {
+    let (pool, bus, clock) = (&parts.pool, &parts.bus, &parts.clock);
+    let files = files::router(pool, bus, clock, &parts.files);
+    crate::logged(files.merge(locations::router(
+        pool,
+        bus,
+        clock,
+        parts.files.sealing_keys(),
+    )))
 }
 
 type Builder = SchemaBuilder<Query, Mutation, Subscription>;

@@ -216,6 +216,8 @@ pub enum AuditAction {
     Merge,
     /// An operational key a daemon fetched (R-147, K-E5 Section 2.1).
     Fetch,
+    /// A span of location samples that was read (K-E4 Section 13).
+    Read,
 }
 
 impl AuditAction {
@@ -242,6 +244,7 @@ impl AuditAction {
             Self::Send => "send",
             Self::Merge => "merge",
             Self::Fetch => "fetch",
+            Self::Read => "read",
         }
     }
 }

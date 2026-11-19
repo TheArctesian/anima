@@ -47,6 +47,7 @@ use crate::{
         ssh::{LinkError, SshLink, link},
         targets::AddressPolicy,
     },
+    ids::SiteId,
 };
 
 /// The WebSocket subprotocol the client asks for (K4 Section 9).
@@ -137,6 +138,7 @@ struct Opened {
     link: SshLink,
     remote: device::Remote,
     device_name: String,
+    site: SiteId,
 }
 
 /// Why the device side did not open. Holds no host, address or device text (LOG-007).
@@ -244,6 +246,7 @@ async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened
         link,
         remote,
         device_name: device.name,
+        site: device.site,
     })
 }
 
@@ -270,6 +273,7 @@ async fn relay(
         link,
         remote,
         device_name,
+        site,
     } = opened;
     let timing = files.timing;
     let trail = Trail {
@@ -278,6 +282,7 @@ async fn relay(
         clock: Arc::clone(&files.clock),
         ticket,
         device_name,
+        site,
     };
     Relay {
         client,

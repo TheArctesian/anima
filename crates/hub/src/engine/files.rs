@@ -174,6 +174,13 @@ impl Store {
         self.pieces.is_some() && self.keys.available()
     }
 
+    /// The sealing keys of the hub, for wiring: each engine part that seals takes its own key
+    /// from them (VLT-003).
+    #[must_use]
+    pub const fn sealing_keys(&self) -> &SealingKeys {
+        &self.keys
+    }
+
     fn pieces(&self) -> Result<&Arc<dyn Pieces>, Error> {
         self.pieces.as_ref().ok_or(Error::Unavailable)
     }
