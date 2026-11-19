@@ -1,6 +1,6 @@
-//! `anima_container_list`, `anima_container_storage` and `anima_container_networks`: what
-//! Docker has on a device, read through the hub's SSH link (HOST-001, HOST-013, HOST-019,
-//! HOST-020). The names, images and status texts come from the device; the server cleans and
+//! `anima_container_list`, `anima_container_storage`, `anima_container_networks` and
+//! `anima_container_updates`: what Docker has on a device, read through the hub's SSH link
+//! (HOST-001, HOST-013, HOST-019 to HOST-021). The names, images and status texts come from the device; the server cleans and
 //! caps each string before the agent sees it (MCP-008). No tool returns the log of a container
 //! or its details: a log, a command or a label can hold a secret (MCP-004, HOST-017).
 
@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::containers::list::fetch;
-use crate::containers::{networks, storage};
+use crate::containers::{networks, storage, updates};
 use crate::hub::Hub;
 use crate::mcp::arguments::{json, object, parse};
 use crate::mcp::catalogue::Access;
@@ -30,6 +30,7 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
     match tool {
         DeviceTool::ContainerStorage => storage_definition(),
         DeviceTool::ContainerNetworks => networks_definition(),
+        DeviceTool::ContainerUpdates => updates_definition(),
         _ => definition(),
     }
 }
@@ -46,6 +47,7 @@ pub async fn call(
     match tool {
         DeviceTool::ContainerStorage => storage(hub, arguments).await,
         DeviceTool::ContainerNetworks => networks(hub, arguments).await,
+        DeviceTool::ContainerUpdates => updates(hub, arguments).await,
         _ => list(hub, arguments).await,
     }
 }
@@ -134,7 +136,7 @@ fn networks_definition() -> Definition {
         Effect::Reads,
         "The Docker networks of one device, read now by the hub over SSH, each with the \
          containers on it. It changes nothing on the device. A device with no SSH credential \
-         in Anima, or with no Docker, is refused with the reason. Next: anima_device_get.",
+         in Anima, or with no Docker, is refused with the reason. Next: anima_container_updates.",
     )
     .returns(&[
         (
@@ -152,5 +154,53 @@ async fn networks(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     Ok(Value::Object(object([
         ("networks", json(&found)),
         ("count", json!(found.len())),
+    ])))
+}
+
+fn updates_definition() -> Definition {
+    Definition::new::<ContainerListInput>(
+        "anima_container_updates",
+        Access::Read,
+        Effect::Reads,
+        "Whether a newer image exists for each Docker container of one device: the hub reads \
+         over SSH the digest that the device has for the tag of each image, and asks the \
+         public registry of the image (Docker Hub, ghcr.io, quay.io, mcr.microsoft.com) for \
+         the digest of that tag now, with no account. It changes nothing on the device and \
+         pulls or updates nothing. The read can take up to 40 seconds. A device with no SSH \
+         credential in Anima, or with no Docker, is refused with the reason. Next: \
+         anima_device_get.",
+    )
+    .returns(&[
+        (
+            "updates",
+            "array",
+            "One entry per container: containerId, container, image, state (UP_TO_DATE, \
+             NEWER_IMAGE or NOT_KNOWN), reason (null, or PINNED_DIGEST, OTHER_REGISTRY, \
+             NO_NAME, NO_LOCAL_DIGEST, NOT_AT_REGISTRY, REGISTRY_NOT_READ), localDigest, \
+             registryDigest.",
+        ),
+        (
+            "newer",
+            "integer",
+            "How many containers have the state NEWER_IMAGE.",
+        ),
+    ])
+}
+
+async fn updates(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: ContainerListInput = parse(arguments)?;
+    let found = updates::fetch(hub, &input.device).await?;
+    let newer = found
+        .iter()
+        .filter(|update| {
+            matches!(
+                update.state,
+                crate::containers::documents::container_update_list::ContainerImageUpdateState::NEWER_IMAGE
+            )
+        })
+        .count();
+    Ok(Value::Object(object([
+        ("updates", json(&found)),
+        ("newer", json!(newer)),
     ])))
 }

@@ -17,6 +17,7 @@ mod project;
 mod storage;
 #[cfg(test)]
 mod tests;
+mod updates;
 
 use std::time::Duration;
 
@@ -25,9 +26,11 @@ use sqlx::PgPool;
 
 pub use self::model::{
     Container, ContainerDetail, ContainerId, ContainerLog, ContainerState, Health, HealthCheck,
-    HealthRun, Label, LineCount, LogLine, Mount, NetworkAddress, Process, ProjectState, Tail,
+    HealthRun, Label, LineCount, LogLine, Mount, NetworkAddress, NotKnown, Process, ProjectState,
+    Tail, UpdateState,
 };
 pub use self::storage::{DiskUsage, Image, Network, Storage, Volume};
+pub use self::updates::ImageUpdate;
 use crate::{
     fleet::{
         credentials::Vault,
@@ -161,6 +164,35 @@ pub async fn networks(
     let command = storage::networks_command();
     let output = run(reach, &device, &command, (LIST_LIMIT, now)).await?;
     storage::networks(&output)
+}
+
+/// Whether a newer image exists for each container of `device` (HOST-021): the digest on the
+/// device against the digest of the same tag at its public registry. It updates nothing.
+///
+/// # Errors
+/// `NotFound` for an unknown device; the [`Error`] for the first step on the device that
+/// fails. A registry that is not read is not an error: its containers have the answer
+/// "not known".
+pub async fn image_updates(
+    reach: Reach<'_>,
+    device: DeviceId,
+    now: DateTime<Utc>,
+) -> Result<Vec<ImageUpdate>, Error> {
+    let egress = updates::egress::Egress::new(reach.policy.clone());
+    image_updates_through(reach, device, &egress, now).await
+}
+
+/// [`image_updates`] with the rules of the connections to the registries given.
+async fn image_updates_through(
+    reach: Reach<'_>,
+    device: DeviceId,
+    egress: &updates::egress::Egress,
+    now: DateTime<Utc>,
+) -> Result<Vec<ImageUpdate>, Error> {
+    let device = known(reach.db, device).await?;
+    let command = updates::command();
+    let output = run(reach, &device, &command, (LIST_LIMIT, now)).await?;
+    Ok(updates::compare(updates::found(&output)?, egress).await)
 }
 
 async fn known(db: &PgPool, device: DeviceId) -> Result<Device, Error> {

@@ -1,8 +1,11 @@
-//! The K1 object types of the images, the volumes and the networks of a device (HOST-020).
+//! The K1 object types of the images, the volumes and the networks of a device (HOST-020),
+//! and of a newer image for a container (HOST-021).
 
 use async_graphql::Object;
 
-use crate::work::containers::{DiskUsage, Image, Network, Storage, Volume};
+use crate::work::containers::{
+    DiskUsage, Image, ImageUpdate, Network, NotKnown, Storage, UpdateState, Volume,
+};
 
 #[Object(name = "ContainerStorage")]
 impl Storage {
@@ -129,5 +132,36 @@ impl Network {
 
     async fn containers(&self) -> &[String] {
         &self.containers
+    }
+}
+
+#[Object(name = "ContainerImageUpdate")]
+impl ImageUpdate {
+    async fn container_id(&self) -> &str {
+        &self.container_id
+    }
+
+    async fn container(&self) -> &str {
+        &self.container
+    }
+
+    async fn image(&self) -> &str {
+        &self.image
+    }
+
+    async fn state(&self) -> UpdateState {
+        self.state
+    }
+
+    async fn reason(&self) -> Option<NotKnown> {
+        self.reason
+    }
+
+    async fn local_digest(&self) -> Option<&str> {
+        self.local_digest.as_deref()
+    }
+
+    async fn registry_digest(&self) -> Option<&str> {
+        self.registry_digest.as_deref()
     }
 }

@@ -4,10 +4,13 @@
 
 mod detail;
 mod docker;
+mod names;
 mod project;
 mod reads;
+mod registry;
 mod sentences;
 mod storage;
+mod updates;
 
 use sqlx::PgPool;
 

@@ -26,6 +26,7 @@ pub enum DeviceTool {
     ContainerList,
     ContainerStorage,
     ContainerNetworks,
+    ContainerUpdates,
     Create,
     SiteCreate,
     Wake,
@@ -34,7 +35,7 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
@@ -44,6 +45,7 @@ impl DeviceTool {
         Self::ContainerList,
         Self::ContainerStorage,
         Self::ContainerNetworks,
+        Self::ContainerUpdates,
         Self::Create,
         Self::SiteCreate,
         Self::Wake,
@@ -57,9 +59,10 @@ impl DeviceTool {
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
             Self::AgentUsage => agent_usage::definition(),
-            Self::ContainerList | Self::ContainerStorage | Self::ContainerNetworks => {
-                containers::definition_of(self)
-            }
+            Self::ContainerList
+            | Self::ContainerStorage
+            | Self::ContainerNetworks
+            | Self::ContainerUpdates => containers::definition_of(self),
             Self::FleetOverview | Self::Search | Self::Get => read::definition(self),
             other => change::definition(other),
         }
@@ -77,9 +80,10 @@ impl DeviceTool {
             Self::Metrics => metrics::metrics(hub, arguments).await,
             Self::CapabilityList => capabilities::list(hub, arguments).await,
             Self::AgentUsage => agent_usage::usage(hub, arguments).await,
-            Self::ContainerList | Self::ContainerStorage | Self::ContainerNetworks => {
-                containers::call(self, hub, arguments).await
-            }
+            Self::ContainerList
+            | Self::ContainerStorage
+            | Self::ContainerNetworks
+            | Self::ContainerUpdates => containers::call(self, hub, arguments).await,
             Self::Create => change::create(hub, arguments).await,
             Self::SiteCreate => change::site_create(hub, arguments).await,
             Self::Wake => change::wake(hub, arguments).await,

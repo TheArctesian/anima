@@ -231,3 +231,58 @@ async fn host_020_the_storage_and_network_tools_give_device_text_cleaned() {
     let (printed, stderr) = session.finish().await;
     assert_protocol_only(&printed, &stderr, API_KEY);
 }
+
+fn updates() -> Value {
+    json!({ "containerImageUpdates": [
+        { "containerId": APP, "container": "dawarich_app", "image": "freikin/dawarich:latest",
+          "state": "NEWER_IMAGE", "reason": null, "localDigest": IMAGE,
+          "registryDigest": format!("sha256:{}", "c".repeat(64)) },
+        { "containerId": "a".repeat(64), "container": "old-db", "image": "postgres:17",
+          "state": "UP_TO_DATE", "reason": null, "localDigest": IMAGE, "registryDigest": IMAGE },
+        { "containerId": "b".repeat(64), "container": "built", "image": "my-app:dev",
+          "state": "NOT_KNOWN", "reason": "NO_LOCAL_DIGEST", "localDigest": null,
+          "registryDigest": null }
+    ] })
+}
+
+#[tokio::test]
+async fn host_021_containers_updates_says_for_each_container_if_a_newer_image_exists() {
+    let hub = FakeHub::start().await;
+    hub.answer("ContainerUpdateList", data(updates()));
+    let run = anima(&hub, &["containers", "updates", DEVICE]).await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let lines: Vec<&str> = run.stdout.lines().collect();
+    assert!(lines[0].starts_with("CONTAINER"), "{}", run.stdout);
+    assert!(
+        lines[1].starts_with("dawarich_app") && lines[1].contains("newer image"),
+        "{}",
+        run.stdout
+    );
+    assert!(lines[2].contains("up to date"), "{}", run.stdout);
+    assert!(
+        lines[3].contains("not known") && lines[3].ends_with("no local digest"),
+        "{}",
+        run.stdout
+    );
+    hub.answer("ContainerUpdateList", data(updates()));
+    let run = anima(&hub, &["containers", "updates", DEVICE, "--json"]).await;
+    assert_eq!(run.json(), updates()["containerImageUpdates"]);
+}
+
+#[tokio::test]
+async fn host_021_the_updates_tool_gives_each_answer_and_counts_the_newer_images() {
+    let hub = hub().await;
+    hub.answer("ContainerUpdateList", data(updates()));
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
+    let called = session
+        .call("anima_container_updates", json!({ "device": DEVICE }))
+        .await;
+    assert_eq!(called["isError"], false, "{called}");
+    let found = &called["structuredContent"];
+    assert_eq!(found["newer"], 1);
+    assert_eq!(found["updates"][0]["state"], "NEWER_IMAGE");
+    assert_eq!(found["updates"][2]["reason"], "NO_LOCAL_DIGEST");
+    let (printed, stderr) = session.finish().await;
+    assert_protocol_only(&printed, &stderr, API_KEY);
+}

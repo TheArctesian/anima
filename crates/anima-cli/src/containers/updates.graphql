@@ -1,0 +1,11 @@
+query ContainerUpdateList($deviceId: ID!) {
+  containerImageUpdates(deviceId: $deviceId) {
+    containerId
+    container
+    image
+    state
+    reason
+    localDigest
+    registryDigest
+  }
+}

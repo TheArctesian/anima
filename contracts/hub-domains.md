@@ -253,7 +253,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `timeline`, `links` (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4) | `access` | the `Authenticated` guard on `timeline`, `recordLinks`, `linkRecords`, `unlinkRecords` |
 | `agent_usage` (R-135) | `access` | the `Authenticated` guard on `agentUsage` |
 | `files` (R-148; K-E4) | `access` | the `Authenticated` guard on `attachments`, `deleteAttachment`, `createArchive`, `deleteArchive`, `extractionProposals`, `proposeExtraction`, `confirmExtraction`, `rejectExtraction` |
-| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage` and `containerNetworks`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
+| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks` and `containerImageUpdates`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -807,6 +807,16 @@ pub async fn networks(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc>) ->
 /// The one state of a Compose project (K1 `ComposeProjectState`); `list` writes it on each container of a project.
 pub enum ProjectState { Running, Unhealthy, PartlyRunning, Failing, Paused, Stopped, Unknown }
 ```
+
+Addition of R-150 for HOST-021 (task H13), with no new import edge (`targets` is a shared unit):
+
+```rust
+/// Whether a newer image exists for each container: the digest on the device against the digest of the same tag at
+/// its public registry. A registry that is not read is no error. It updates nothing (ETH-004).
+pub async fn image_updates(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc>) -> Result<Vec<ImageUpdate>, Error>;
+```
+
+This is the one outbound path of the domain that does not go to a device: HTTPS to the fixed hosts of four public registries (`updates/registry.rs`), each resolved once with `targets::resolve_checked` and reached only at those addresses, with no redirect, no credential and no body read but the token (`updates/egress.rs`, as `checks/probe/rdap/egress.rs`).
 
 Each read is one fixed command line of `docker` words that only read (`container inspect`, `top`, `system df`, `network ls`, `ps`), joined with `&&`. The only operator value in one is the container identifier.
 
