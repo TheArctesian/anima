@@ -1,31 +1,42 @@
 # The gates of the repository on GitHub: the same list as `bun run gates` (quality/src/gates/gates.ts),
 # split into jobs that run at the same time. It holds no secret and can write nothing.
 #
-# It runs for each pushed branch but `main`, and for a pull request to `dev` from a fork. A
-# workflow that needs the gates of a commit calls it (`workflow_call`), so there is one
-# definition of "the gates on GitHub".
+# It runs for each pushed branch but `main`. A workflow that needs the gates of a commit calls
+# it (`workflow_call`), so there is one definition of "the gates on GitHub". The workflow
+# `merge-to-dev` starts it for `dev` (`workflow_dispatch`) after a merge.
+#
+# What a run tests (R-NEW-automerge). A push of a branch tests the branch as merged with the
+# `dev` of that moment: the job `base` reads the commit of `dev`, each job merges that commit
+# into its checkout, and the artifact `tested-base` keeps it. A run for `dev`, and a run that a
+# workflow calls with `ref`, tests that commit as it is.
 #
 # Safety (PRO-044, OD-W18): each job runs on a machine of GitHub, never on a self-hosted
-# runner. A pull request from a fork gets a read-only token and no secret, by the event
-# `pull_request`; this file never uses `pull_request_target`. No `run` script holds an
+# runner. No pull request starts it, so a fork gets nothing; a person with the right to push
+# puts the branch of a fork in this repository to check it. No `run` script holds an
 # expression: each value comes in through `env`. Each action is pinned to a commit.
 #
-# What a Linux machine does not prove: the code that is only compiled on macOS (the Keychain
-# store of the daemon, the LaunchAgent, the macOS parts of the desktop shell). The gates on a
-# Mac prove those (`bun run gates`, or `bun run gates:fast`).
+# What a Linux machine does not run or prove, so a Mac must (`bun run gates:fast` or
+# `bun run gates` there): the tests of `check-mach-o.sh` and one test of
+# `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the daemon and its
+# LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
+# shell, with the trust hook that `pinning` proves.
+#
 name: gates
 
 on:
   push:
     branches-ignore:
       - main
-  pull_request:
-    branches:
-      - dev
+  workflow_dispatch:
   workflow_call:
     inputs:
       ref:
         description: "The commit to check. The default is the commit of the event."
+        required: false
+        type: string
+        default: ""
+      base_ref:
+        description: "The ref that the baseline gate compares with. The default is origin/phase-2."
         required: false
         type: string
         default: ""
@@ -41,13 +52,46 @@ env:
   BUN_VERSION: "1.3.14"
   CI: "true"
   # The baseline gate compares with this ref (CQ-011); the checkout has the whole history.
-  BASE_REF: origin/phase-2
+  BASE_REF: ${{ inputs.base_ref || 'origin/phase-2' }}
 
 jobs:
-  # A branch of this repository is checked by its push. Its pull request would check the same
-  # commit a second time, so only a pull request from a fork runs here.
+  # The commit of `dev` that a push of a branch is tested with; empty for `dev` and for a call.
+  base:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      dev_sha: ${{ steps.dev.outputs.dev_sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - id: dev
+        name: Read the commit of dev
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          CALLED_REF: ${{ inputs.ref }}
+        run: |
+          set -eu
+          dev_sha=""
+          if [ "$EVENT" = "push" ] && [ "$REF_NAME" != "dev" ] && [ -z "$CALLED_REF" ]; then
+            dev_sha="$(git ls-remote origin refs/heads/dev | cut -f1)"
+          fi
+          echo "dev_sha=$dev_sha" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$dev_sha" > tested-base
+          echo "tested with dev at: ${dev_sha:-nothing, the commit as it is}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tested-base
+          path: tested-base
+          if-no-files-found: error
+          retention-days: 7
+
   rust-lint:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: base
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -57,21 +101,26 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
       - name: Install the packages that the Tauri shell needs
         run: /bin/sh .github/workflows/gates-packages.sh shell
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: gates-lint
-          save-if: ${{ github.event_name == 'push' }}
+          save-if: ${{ inputs.ref == '' }}
       - name: Run the gates fmt and clippy
         run: bun quality/bin/gates.ts --group rust --gate fmt,clippy
 
   rust-test:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: base
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -81,10 +130,15 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
       - name: Install the packages that the Tauri shell needs, PostgreSQL 17 and a display
         run: /bin/sh .github/workflows/gates-packages.sh shell postgres display
       - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
@@ -93,7 +147,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: gates-test
-          save-if: ${{ github.event_name == 'push' }}
+          save-if: ${{ inputs.ref == '' }}
       # The pinning test of the desktop shell starts the event loop of Tauri, which needs a display.
       - name: Run the gates rust-test, doctest and pinning
         run: |
@@ -102,7 +156,7 @@ jobs:
           xvfb-run --auto-servernum bun quality/bin/gates.ts --group rust --gate rust-test,doctest,pinning
 
   go:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: base
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -112,10 +166,15 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: link/go.mod
@@ -127,7 +186,7 @@ jobs:
         run: bun quality/bin/gates.ts --group go
 
   bun:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: base
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -144,6 +203,10 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
       # A test of the quality package runs Clippy on its fixtures, and three tests of
       # deploy/headscale need shellcheck.
       - name: Install shellcheck
@@ -151,14 +214,14 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: gates-bun
-          save-if: ${{ github.event_name == 'push' }}
+          save-if: ${{ inputs.ref == '' }}
       - name: Run the bun gates and the quality gates
         run: bun quality/bin/gates.ts --group bun,quality
 
   # One name for a rule of the repository: it passes when each job above passed.
-  all:
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
-    needs: [rust-lint, rust-test, go, bun]
+  passed:
+    if: always()
+    needs: [base, rust-lint, rust-test, go, bun]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}

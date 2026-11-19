@@ -74,22 +74,60 @@ only with the whole Rust group. The full list does that. `--group rust,go,bun,qu
 ### The gates on GitHub
 
 `.github/workflows/gates.yml` runs the full list on `ubuntu-24.04` machines of GitHub for each pushed branch
-but `main`, and for a pull request to `dev` from a fork. Four jobs run at the same time: `rust-lint` (`fmt`,
-`clippy`), `rust-test` (`rust-test`, `doctest`, `pinning`), `go`, and `bun` (the bun gates and the quality
-gates). The job `all` passes when each passed. `deploy/test/gates-workflow.test.ts` checks that the jobs
+but `main` (R-NEW-gaterule). No pull request starts it. The job `base` reads the commit of `dev`; then four
+jobs run at the same time, each on the branch as merged with that commit (`gates-merge.sh`): `rust-lint`
+(`fmt`, `clippy`), `rust-test` (`rust-test`, `doctest`, `pinning`), `go`, and `bun` (the bun gates and the
+quality gates). The job `passed` passes when each passed. A run for `dev`, and a run that a workflow calls
+with `ref`, tests the commit as it is. `deploy/test/gates-workflow.test.ts` checks that the jobs
 together run each gate one time, that the file holds no secret and no token that can write, that each
-action is pinned to a commit, and that a pull request of a fork gets nothing. A different workflow that
-needs the gates of a commit calls this one (`workflow_call`, input `ref`).
+action is pinned to a commit, and that no pull request starts it. A different workflow that needs the
+gates of a commit calls this one (`workflow_call`, inputs `ref` and `base_ref`).
 
-A Linux machine does not compile the code that is only for macOS (the Keychain store of the daemon, the
-LaunchAgent, the macOS parts of the desktop shell), and `pinning` proves the macOS trust hook only on a Mac.
+A Linux machine does not run these, so a Mac must (`bun run gates:fast` there): the tests of
+`check-mach-o.sh` and one test of `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the
+daemon and its LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
+shell, with the trust hook that `pinning` proves. No job on GitHub runs macOS: the trial of the release
+workflow measured 82 minutes for the gates on `macos-15`.
+
+### The merge into `dev` (R-NEW-automerge)
+
+`.github/workflows/merge-to-dev.yml` starts when a run of `gates` ends. For a push of a branch of this
+repository that passed, `merge-to-dev.sh` reads the rule of `dev`, makes sure that the branch and `dev` are
+still the commits that the gates tested (if `dev` moved, it starts the gates again), runs
+`bun quality/bin/merge.ts <branch> --push`, and starts the gates for the new `dev`. GitHub has a merge queue
+for this work only for a repository of an organization; this repository belongs to a personal account.
+GitHub takes this file from the default branch, so it works only when it is on `main`.
+
+### Settings of GitHub
+
+No session of the coding agents makes these; the orchestrating session or the operator does. `OWNER/REPO`
+is this repository.
+
+```sh
+# 1. Actions can run, and a workflow can ask for a token that writes (merge-to-dev asks for
+#    contents: write in its own file; the default stays read).
+gh api -X PUT repos/OWNER/REPO/actions/permissions -F enabled=true -f allowed_actions=all
+gh api -X PUT repos/OWNER/REPO/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
+# 2. A pull request of a fork needs an approval before a workflow runs (it is so today; make sure).
+gh api -X PUT repos/OWNER/REPO/actions/permissions/fork-pr-contributor-approval -f approval_policy=all_external_contributors
+# 3. Read the rules of dev and main. If a rule of `dev` refuses a push of GitHub Actions, the
+#    workflow merge-to-dev cannot push: permit it for `dev` only. Never for `main`.
+gh api repos/OWNER/REPO/rulesets
+gh api repos/OWNER/REPO/branches/dev/protection
+gh api repos/OWNER/REPO/branches/main/protection
+# 4. Optional, when dev has a rule: name the check of the gates as required for `dev`.
+#    The name of the check is `passed`.
+```
+
+The file `merge-to-dev.yml` must be on `main` before it runs: that is a merge of `dev` into `main`, a step
+of the operator (R-198).
 
 ### Numbers at a merge
 
 `bin/numbers.ts --check` fails when a placeholder of a number (`R-NEW-` and a name; `src/numbers.ts` has the series) is in the repository;
 `--assign` gives each its number. `bin/merge.ts <branch>` merges a branch into `dev` with them
-(`AGENTS.md`, "Numbers and generated files at a merge"). `merge-rule.json` holds the two rules that
-wait for the operator (OD-W-NEW-gaterule, OD-W-NEW-automerge); the two are off.
+(`AGENTS.md`, "Numbers and generated files at a merge"). `merge-rule.json` holds the two rules
+of R-NEW-gaterule and R-NEW-automerge; the two are on.
 
 ### Rust tests: gates 3 to 5 (R-112)
 

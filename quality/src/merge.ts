@@ -6,8 +6,9 @@ export const GENERATED = ["docs/plan/register.md", "docs/operator-queue.md"] as 
 /**
  * The two rules that the operator can switch (`quality/merge-rule.json`):
  * `fullGates` says where the full list of the gates must pass before a merge: on the Mac of the
- * session (`mac`), or in the workflow `gates` on GitHub (`github`). `mergeWithoutCheck` says if
- * the workflow `merge-to-dev` merges a branch whose gates passed, with no person and no session.
+ * session (`mac`), or in the workflow `gates` on GitHub (`github`, R-NEW-gaterule).
+ * `mergeWithoutCheck` says if the workflow `merge-to-dev` merges a branch whose gates passed as
+ * merged with `dev`, with no person and no session (R-NEW-automerge).
  */
 export interface MergeRule {
   fullGates: "mac" | "github";
@@ -50,10 +51,13 @@ export interface CheckRun {
   conclusion: string | null;
 }
 
-/** Why the gates on GitHub do not permit a merge of the commit; undefined when the job `all` of the workflow `gates` passed. */
+/** The last job of the workflow `gates`: it passes when each job of the gates passed. */
+const LAST_JOB = "passed";
+
+/** Why the gates on GitHub do not permit a merge of the commit; undefined when the job `passed` of the workflow `gates` passed. */
 export function gatesRefusal(runs: CheckRun[]): string | undefined {
-  const all = runs.filter((run) => run.name === "all" || run.name.endsWith("/ all"));
-  if (all.length === 0) return "the commit has no run of the workflow `gates` (job `all`)";
-  const bad = all.find((run) => run.status !== "completed" || run.conclusion !== "success");
-  return bad === undefined ? undefined : `the job \`all\` of the gates is ${bad.status}, ${bad.conclusion ?? "no conclusion"}`;
+  const last = runs.filter((run) => run.name === LAST_JOB || run.name.endsWith(`/ ${LAST_JOB}`));
+  if (last.length === 0) return "the commit has no run of the workflow `gates` (job `passed`)";
+  const bad = last.find((run) => run.status !== "completed" || run.conclusion !== "success");
+  return bad === undefined ? undefined : `the job \`passed\` of the gates is ${bad.status}, ${bad.conclusion ?? "no conclusion"}`;
 }

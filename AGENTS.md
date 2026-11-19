@@ -214,7 +214,9 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
   placeholder the next free number (PLN-021). The documents gate refuses a placeholder on `dev` and on `main`.
 - `docs/plan/register.md` and `docs/operator-queue.md` are generated. Never solve a conflict in them by
   hand: run `bun run quality:register`, which writes them again from the documents (PLN-020).
-- The session that merges runs `bun quality/bin/merge.ts <branch>` in a clean worktree on `dev`. It merges
+- The workflow `merge-to-dev` runs `bun quality/bin/merge.ts <branch> --push`; a session that merges by
+  hand runs `bun quality/bin/merge.ts <branch>` in a clean worktree on `dev`. It refuses a branch whose
+  gates did not pass on GitHub (`quality/merge-rule.json`). It merges
   the branch, writes the generated files again, assigns the numbers, runs the document gates and makes the
   merge commit. It pushes only with `--push`, and only to `dev`. A conflict in a different file stops it:
   merge `origin/dev` into the branch and solve it there.
@@ -242,8 +244,8 @@ one list of such checks (PLN-014): a task that waits for a check is not done unt
 
 ## Gates
 
-Run `bun run gates` before you ask for review and before every merge. A commit that changes only
-`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`. The gates run on the machine that makes the change; the workflow `gates` runs the same list on GitHub for each pushed branch (R-NEW-fastgates), and until the operator rules on OD-W-NEW-gaterule the run on your machine is the one that counts.
+Run `bun run gates:fast` while you work and before you push. The full list of 21 gates must pass on GitHub before a merge: push your branch, and the workflow `gates` runs it for the branch as merged with `dev` (R-NEW-gaterule). When that run passed, the workflow `merge-to-dev` merges the branch into `dev` by itself (R-NEW-automerge); nothing merges into `main` by itself. If your change touches code that is compiled or tested only on macOS (the Keychain store and the LaunchAgent of the daemon, `link/statedir`, the macOS parts of the desktop shell, `check-mach-o.sh`, `trial-bundle.sh`), run `bun run gates:fast` on a Mac first: GitHub runs Linux. A commit that changes only
+`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`. `bun run gates` runs the full list on your machine; one run at a time on one computer.
 `rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh
@@ -255,12 +257,14 @@ bun run gates:fast                 # while you work: only what your changed path
 `bun run gates:fast` compares your tree with `origin/dev` (`FAST_BASE` names a different ref). Documents
 only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
 touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
-runs the full list. It does not test the packages that depend on yours and it runs no doctest: it is for
-the work, not for a merge. Its first line says what it chose and why.
+runs the full list. It does not test the packages that depend on yours and it runs no doctest: the run
+on GitHub does. Its first line says what it chose and why.
 
 The workflow `.github/workflows/gates.yml` runs the full list on Linux machines of GitHub for each pushed
 branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no
-secret. It does not prove code that is compiled only on macOS: run `bun run gates` on a Mac for such a change.
+secret. A push of a branch is tested as merged with the `dev` of that moment; if the two do not merge,
+the run fails: merge `origin/dev` into your branch and solve the conflict there. If `dev` moves after
+your run, the gates run again by themselves before the merge.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),

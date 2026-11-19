@@ -1,4 +1,4 @@
 {
-  "fullGates": "mac",
-  "mergeWithoutCheck": false
+  "fullGates": "github",
+  "mergeWithoutCheck": true
 }

@@ -1,12 +1,20 @@
-# Merges a branch into `dev` when its gates passed on GitHub, with no person and no session.
+# Merges a branch into `dev` when its gates passed on GitHub, with no person and no session
+# (R-NEW-automerge). `quality/merge-rule.json` on `dev` is the switch: `"mergeWithoutCheck": true`.
+# Nothing here touches `main`: `main` stays a deliberate step (R-198).
 #
-# SWITCHED OFF. It does nothing while `quality/merge-rule.json` on `dev` says
-# `"mergeWithoutCheck": false`. Only a ruling of the operator changes that file (OD-W-NEW-automerge).
-# This file was never run on GitHub: run it one time with a trial branch before the rule is on.
+# GitHub has a merge queue that does this work, but only for a repository that an
+# organization owns. This repository belongs to a personal account, so this file does it.
 #
 # It starts when a run of the workflow `gates` ends. GitHub takes this file from the default
-# branch, so a branch cannot change what runs here. It checks out `dev`, not the branch, and runs
-# the merge script of `dev`. It never touches `main`.
+# branch, so a branch cannot change what runs here; thus it works only when it is on `main`.
+# The run of the gates tested the branch as merged with one commit of `dev` (artifact
+# `tested-base`). If `dev` is still at that commit, the merge script of `dev` merges the branch
+# and pushes. If `dev` moved, the gates run again, with the new `dev`, and this file starts
+# again when they end. After a merge it starts the gates for `dev`, because a push by a
+# workflow starts no workflow.
+#
+# This file was never run on GitHub when it was written: see the entry of
+# docs/need-human-testing.md for the first trial.
 name: merge-to-dev
 
 on:
@@ -36,6 +44,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      actions: write
       checks: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,28 +55,10 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
-      - id: rule
-        name: Read the rule of dev
-        run: |
-          set -eu
-          if grep -Eq '"mergeWithoutCheck"[[:space:]]*:[[:space:]]*true' quality/merge-rule.json &&
-            grep -Eq '"fullGates"[[:space:]]*:[[:space:]]*"github"' quality/merge-rule.json; then
-            echo "on=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "The rule is off: nothing is merged."
-            echo "on=false" >> "$GITHUB_OUTPUT"
-          fi
       - name: Merge the branch into dev
-        if: steps.rule.outputs.on == 'true'
         env:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -eu
-          # The branch must still be at the commit that the gates checked.
-          now="$(git rev-parse "origin/$BRANCH")"
-          [ "$now" = "$HEAD_SHA" ] || { echo "The branch moved after its gates; a new run will come."; exit 0; }
-          git config user.name "anima merge"
-          git config user.email "merge@anima.invalid"
-          bun quality/bin/merge.ts "$BRANCH" --push
+        run: /bin/sh .github/workflows/merge-to-dev.sh

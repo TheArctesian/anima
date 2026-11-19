@@ -69,6 +69,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
+| HT-NEW-gatesci | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1314,6 +1315,32 @@ or pushes a tap.
    version (INS-012).
 
 Result: Open.
+
+### HT-NEW-gatesci: the workflows `gates` and `merge-to-dev` on GitHub (R-NEW-fastgates, R-NEW-gaterule, R-NEW-automerge)
+
+Built: on the branch `quality/faster-gates`. `.github/workflows/gates.yml` runs the 21 gates on Linux
+machines of GitHub for each pushed branch, as merged with `dev`. `.github/workflows/merge-to-dev.yml`
+merges a branch whose run passed into `dev`.
+
+The tests cover the rules of the two files (no secret, pinned actions, no pull request, the order of the
+steps), the choice of the gates and the merge script, which was run in a clone with an origin of its own.
+Not covered: no run on GitHub. Nobody saw the packages install on `ubuntu-24.04`, the Rust tests pass on
+Linux with 4 processors, the time of a run, the cache, or a push by the workflow to `dev`. Expect that the
+first runs fail for a reason of the machine; each such fault is a correction of the workflow, not of the code.
+
+1. Push a branch that changes one document. Open the run `gates` of that branch on GitHub. Expected: the
+   job `base` prints "tested with dev at:" and a commit; the five other jobs pass; write the time of each job here.
+2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is
+   faster than the first (the cache).
+3. When `merge-to-dev.yml` is on `main` and the settings are made: push a branch with one changed document and
+   one placeholder of a number. Expected: after the gates, the run `merge-to-dev` merges it; `dev` has a merge
+   commit that names the number; the placeholder is gone; a run `gates` for `dev` starts.
+4. Push two such branches at the same time. Expected: the first merges; the gates of the second run again
+   with the new `dev`, and then it merges. `main` did not move.
+5. Push a branch that has a conflict with `dev` in a document. Expected: its gates fail in the step "Merge
+   the dev of this run into the checkout", and nothing is merged.
+
+State: Open.
 
 ## Not built yet
 

@@ -33,7 +33,7 @@ interface Workflow {
 const workflow = Bun.YAML.parse(RAW) as Workflow;
 const jobs = Object.entries(workflow.jobs);
 const steps = jobs.flatMap(([, job]) => job.steps);
-const gateJobs = jobs.filter(([name]) => name !== "all");
+const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base");
 
 /** The gates that the `run` scripts of the workflow select, in the way `quality/bin/gates.ts` selects them. */
 function gatesThatRun(): string[] {
@@ -70,8 +70,9 @@ describe("the gates workflow (gates.yml)", () => {
     }
   });
 
-  test("PRO-044 a pull request of a fork gets a read-only run: never pull_request_target, never a self-hosted runner", () => {
-    expect(Object.keys(workflow.on).sort()).toEqual(["pull_request", "push", "workflow_call"]);
+  test("PRO-044 no pull request starts it, and no job runs on a self-hosted runner", () => {
+    expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_call", "workflow_dispatch"]);
+    expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main"] });
     for (const [name, job] of jobs) {
       expect(job["runs-on"], name).toBe("ubuntu-24.04");
     }
@@ -84,37 +85,38 @@ describe("the gates workflow (gates.yml)", () => {
     }
   });
 
-  test("a branch of this repository is checked by its push only, and `main` by the release workflow", () => {
-    expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main"] });
-    expect(workflow.on["pull_request"]).toEqual({ branches: ["dev"] });
+  test("R-NEW-automerge each job of the gates tests the branch as merged with the dev that the job `base` read", () => {
+    expect(workflow.jobs["base"]?.steps.some((step) => step.with?.["name"] === "tested-base")).toBe(true);
     for (const [name, job] of gateJobs) {
-      expect(job.if, name).toContain("github.event.pull_request.head.repo.full_name != github.repository");
+      expect(job.needs, name).toEqual("base" as unknown as string[]);
+      const merge = job.steps.find((step) => step.run?.includes("gates-merge.sh"));
+      expect(merge?.env?.["DEV_SHA"], name).toBe("${{ needs.base.outputs.dev_sha }}");
+      const checkout = job.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+      expect(checkout?.with?.["fetch-depth"], name).toBe(0);
+      const order = job.steps.map((step) => step.run ?? "");
+      expect(order.findIndex((run) => run.includes("gates-merge.sh")), name).toBeLessThan(
+        order.findIndex((run) => run.includes("quality/bin/gates.ts")),
+      );
     }
   });
 
-  test("the job `all` waits for each job of the gates and fails when one did not pass", () => {
-    const all = workflow.jobs["all"];
-    expect(all?.needs?.sort()).toEqual(gateJobs.map(([name]) => name).sort());
-    expect(all?.if).toStartWith("always() && ");
+  test("the job `passed` waits for each job and fails when one did not pass", () => {
+    const passed = workflow.jobs["passed"];
+    expect(passed?.needs?.sort()).toEqual(["base", ...gateJobs.map(([name]) => name)].sort());
+    expect(passed?.if).toBe("always()");
   });
 
-  test("a cache is written by a push only, so a pull request cannot fill the cache of a branch", () => {
+  test("a workflow that calls the gates reads the cache and does not write it", () => {
     for (const step of steps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) {
-      expect(step.with?.["save-if"]).toBe("${{ github.event_name == 'push' }}");
+      expect(step.with?.["save-if"]).toBe("${{ inputs.ref == '' }}");
     }
   });
 });
 
-describe("the workflow that merges into dev (merge-to-dev.yml), which is switched off", () => {
+describe("the workflow that merges into dev (merge-to-dev.yml; R-NEW-automerge)", () => {
   const raw = readFileSync(join(ROOT, ".github", "workflows", "merge-to-dev.yml"), "utf8");
   const merge = (Bun.YAML.parse(raw) as Workflow).jobs["merge"];
-
-  test("it merges nothing while the rule file says so, and the rule file says so", () => {
-    const rule = readFileSync(join(ROOT, "quality", "merge-rule.json"), "utf8");
-    expect(JSON.parse(rule)).toEqual({ fullGates: "mac", mergeWithoutCheck: false });
-    const step = merge?.steps.find((each) => each.run?.includes("quality/bin/merge.ts"));
-    expect((step as { if?: string } | undefined)?.if).toBe("steps.rule.outputs.on == 'true'");
-  });
+  const script = readFileSync(join(ROOT, ".github", "workflows", "merge-to-dev.sh"), "utf8");
 
   test("it takes only a push of a branch of this repository whose gates passed, and never dev or main", () => {
     for (const part of [
@@ -128,6 +130,18 @@ describe("the workflow that merges into dev (merge-to-dev.yml), which is switche
     }
     expect(merge?.["runs-on"]).toBe("ubuntu-24.04");
     expect(merge?.steps.find((each) => each.uses?.startsWith("actions/checkout@"))?.with?.["ref"]).toBe("dev");
+    expect(raw).not.toContain("refs/heads/main");
+    expect(script).not.toContain("main");
+  });
+
+  test("it reads the rule of dev first, and merges only when dev is the commit that the gates tested", () => {
+    const rule = script.indexOf("quality/merge-rule.json");
+    const tested = script.indexOf('if [ "$tested" != "$dev_now" ]');
+    const merged = script.indexOf("bun quality/bin/merge.ts");
+    expect(rule).toBeGreaterThan(-1);
+    expect(tested).toBeGreaterThan(rule);
+    expect(merged).toBeGreaterThan(tested);
+    expect(script).toContain('gh run rerun "$RUN_ID"');
   });
 
   test("each action is pinned to a commit, and no run script holds an expression", () => {
@@ -137,4 +151,3 @@ describe("the workflow that merges into dev (merge-to-dev.yml), which is switche
     }
   });
 });
-

@@ -20,10 +20,10 @@ describe("the merge of a branch into dev", () => {
   });
 });
 
-describe("the two rules that wait for the operator (quality/merge-rule.json)", () => {
-  test("the rule file of the repository has the two rules off", () => {
+describe("the two rules of a merge (quality/merge-rule.json; R-NEW-gaterule, R-NEW-automerge)", () => {
+  test("the rule file of the repository has the two rules on", () => {
     const text = readFileSync(join(import.meta.dir, "..", "merge-rule.json"), "utf8");
-    expect(parseMergeRule(text)).toEqual({ fullGates: "mac", mergeWithoutCheck: false });
+    expect(parseMergeRule(text)).toEqual({ fullGates: "github", mergeWithoutCheck: true });
   });
 
   test("a rule file that is not exact is refused, and never read as on", () => {
@@ -37,10 +37,10 @@ describe("the two rules that wait for the operator (quality/merge-rule.json)", (
     expect(parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true}')).toEqual({ fullGates: "github", mergeWithoutCheck: true });
   });
 
-  test("the gates on GitHub permit a merge only when the job `all` passed", () => {
-    const run = (status: string, conclusion: string | null, name = "all") => ({ name, status, conclusion });
+  test("the gates on GitHub permit a merge only when the job `passed` passed", () => {
+    const run = (status: string, conclusion: string | null, name = "passed") => ({ name, status, conclusion });
     expect(gatesRefusal([run("completed", "success"), run("completed", "success", "go")])).toBeUndefined();
-    expect(gatesRefusal([run("completed", "success", "gates / all")])).toBeUndefined();
+    expect(gatesRefusal([run("completed", "success", "gates / passed")])).toBeUndefined();
     expect(gatesRefusal([])).toContain("no run");
     expect(gatesRefusal([run("completed", "success", "go")])).toContain("no run");
     expect(gatesRefusal([run("in_progress", null)])).toContain("in_progress");
