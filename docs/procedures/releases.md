@@ -113,11 +113,7 @@ On 2026-11-18 the first line of `main` had 800 commits, which gives 0.8.0; it is
 
 The daily work goes to the branch `dev`. Agents start from `origin/dev`, merge into `dev` and push their claims to `dev`; they do not push to `main` (AGENTS.md). `main` holds what is released.
 
-To make `dev` exist, one time (the operator, or a session that he tells to do it):
-
-```sh
-git fetch origin && git push origin origin/main:refs/heads/dev
-```
+`dev` exists since 2026-11-19: the orchestrating session made it at `eb226c8d`, the tip of `main` then, on the instruction of the operator.
 
 To release what `dev` holds: a merge commit on `main`, never a fast-forward.
 
@@ -130,13 +126,13 @@ git push origin HEAD:refs/heads/main
 
 The push is the release, when the switch is on. `dev` needs no merge back: the next merge of `dev` into `main` still works.
 
-Rules of GitHub that the operator should set for `main` (Settings > Rules > Rulesets > New branch ruleset, target `main`): "Restrict deletions" and "Block force pushes". They keep the first line of `main`. Do not select "Require linear history": it forbids the merge commit that the version needs. The rule set `release tags` is no longer used by the workflow; it can stay.
+The branch rule set `main line` keeps the first line of `main`: it restricts deletions and blocks force pushes ("The state of GitHub"). It must not get "Require linear history": that forbids the merge commit that the version needs. The rule set `release tags` is no longer used by the workflow; it can stay.
 
 What each other stream that pushes to `main` today must be told (Codex, and each coding agent with rules of its own): (1) start from `origin/dev` and merge into `dev`; (2) never push to `main`: a push to `main` is a public release; (3) never fast-forward `main`; (4) the base of a gates run does not change (`BASE_REF`, default `phase-2`).
 
 ### The state of GitHub
 
-Read from GitHub on 2026-11-18 (evening; 2026-11-19 UTC) with `gh`. The operator, or the orchestrating session on his instruction (R-195), set each item. Never put a key or a password in a chat, a commit or a log.
+Read from GitHub on 2026-11-19 with `gh`. The operator, or the orchestrating session on his instruction (R-195), set each item. Never put a key or a password in a chat, a commit or a log.
 
 | Item | State |
 | --- | --- |
@@ -144,6 +140,9 @@ Read from GitHub on 2026-11-18 (evening; 2026-11-19 UTC) with `gh`. The operator
 | Workflows of outside contributors | Approval required for all external contributors |
 | Workflow permissions | Read only |
 | Tag rule set `release tags` | Active. Pattern `v*`. Creations, updates and deletions are restricted; force pushes are blocked. Only a repository administrator can bypass it |
+| Branch rule set `main line` | Active since 2026-11-19 (id 27625577). Target `main`. Deletions are restricted and force pushes are blocked. No bypass. The orchestrating session made it on the instruction of the operator |
+| Branch `dev` | Exists since 2026-11-19, made at `eb226c8d` |
+| Variable `ANIMA_PUBLIC_RELEASES` | Does not exist: public releases are off |
 | Environment `release` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-sign` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-publish` | Permits tags `v*` only; a run of `main` cannot publish until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |

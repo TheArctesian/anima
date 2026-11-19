@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/projects/list.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Clone",
@@ -16,7 +16,7 @@ pub struct ProjectList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/projects/get.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -26,7 +26,7 @@ pub struct ProjectGet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/projects/leave_out.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -36,7 +36,7 @@ pub struct RepositoryLeaveOut;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/projects/restore.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -46,7 +46,7 @@ pub struct RepositoryRestore;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/projects/confirm.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

@@ -4,7 +4,7 @@ use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/defaults/get.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -13,7 +13,7 @@ pub struct CheckDefaultsGet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/defaults/set.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

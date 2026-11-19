@@ -10,7 +10,7 @@ use crate::output::text::shell_word;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/resolve.graphql",
     response_derives = "Debug",
     variables_derives = "Debug"

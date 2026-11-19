@@ -12,7 +12,7 @@ use crate::output::stream::{self, Reader};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/watch/metrics.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

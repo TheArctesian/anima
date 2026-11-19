@@ -14,7 +14,7 @@ type JSON = serde_json::Value;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/events/list.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Clone",
@@ -24,7 +24,7 @@ pub struct EventList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/events/audit.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -34,7 +34,7 @@ pub struct AuditList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/events/watch.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -44,7 +44,7 @@ pub struct EventAdded;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/events/verify.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

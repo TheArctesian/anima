@@ -7,7 +7,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/maintenance/list.graphql",
     response_derives = "Debug, Serialize, Clone",
     variables_derives = "Debug"
@@ -16,7 +16,7 @@ pub struct MaintenanceList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/maintenance/create.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Deserialize",
@@ -26,7 +26,7 @@ pub struct MaintenanceCreate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/maintenance/update.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Deserialize",
@@ -36,7 +36,7 @@ pub struct MaintenanceUpdate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/maintenance/delete.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -45,7 +45,7 @@ pub struct MaintenanceDelete;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/maintenance/active.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

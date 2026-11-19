@@ -7,7 +7,7 @@ use crate::hub::scalars::{DateTime, IpAddr};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/list.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Clone",
@@ -17,7 +17,7 @@ pub struct DeviceList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/get.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -26,7 +26,7 @@ pub struct DeviceGet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/current.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -35,7 +35,7 @@ pub struct DeviceCurrent;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/sites.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -45,7 +45,7 @@ pub struct SiteNames;
 // their input types derive `Deserialize` too.
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/create.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Deserialize",
@@ -55,7 +55,7 @@ pub struct DeviceCreate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/update.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug, Deserialize",
@@ -65,7 +65,7 @@ pub struct DeviceUpdate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/delete.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -74,7 +74,7 @@ pub struct DeviceDelete;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/wake.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -83,7 +83,7 @@ pub struct DeviceWake;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/test.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -93,7 +93,7 @@ pub struct DeviceTest;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/metrics.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -102,7 +102,7 @@ pub struct DeviceMetrics;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/uptime.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/pull_requests/list.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -16,7 +16,7 @@ pub struct PullRequestList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/pull_requests/get.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -26,7 +26,7 @@ pub struct PullRequestGet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/pull_requests/checked.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -36,7 +36,7 @@ pub struct PullRequestListChecked;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/pull_requests/merge_one.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -46,7 +46,7 @@ pub struct PullRequestMergeOne;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/pull_requests/merge_many.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/repositories/commits.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -16,7 +16,7 @@ pub struct CommitList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/repositories/commits_checked.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -26,7 +26,7 @@ pub struct CommitListChecked;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/repositories/branches.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -36,7 +36,7 @@ pub struct BranchList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/repositories/releases.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -46,7 +46,7 @@ pub struct RepositoryReleaseList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/repositories/status.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

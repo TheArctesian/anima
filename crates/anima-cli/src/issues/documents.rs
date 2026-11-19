@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/issues/list.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -16,7 +16,7 @@ pub struct IssueList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/issues/get.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -26,7 +26,7 @@ pub struct IssueGet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/issues/create.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -36,7 +36,7 @@ pub struct IssueCreate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/issues/comment.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -46,7 +46,7 @@ pub struct IssueCommentAdd;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/issues/set_open.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

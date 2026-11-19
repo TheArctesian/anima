@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/code/directory.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -16,7 +16,7 @@ pub struct CodeDirectoryRead;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/code/file.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

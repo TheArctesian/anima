@@ -3,7 +3,18 @@ name = "anima-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-publish.workspace = true
+description = "The command line of Anima: devices, checks, sessions and the MCP server of a hub"
+repository = "https://github.com/TheArctesian/anima.ing"
+readme = "README.md"
+rust-version = "1.100"
+keywords = ["anima", "devices", "self-hosted", "mcp"]
+categories = ["command-line-utilities"]
+# The only crate of this repository that is published (INS-011, R-151). The operator publishes
+# it (task R8d); an agent runs `cargo publish` only with `--dry-run`.
+publish = true
+# The package builds from its own files: `schema.graphql` is the copy of K1
+# (contracts/schema.graphql) that `schema-copy.sh` makes and a test compares. No test file.
+include = ["/src/**", "/build.rs", "/release_version.rs", "/schema.graphql", "/README.md"]
 
 [lints]
 workspace = true
@@ -48,7 +59,7 @@ serde_json.workspace = true
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
 tempfile.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["signal"] }
+tokio = { workspace = true, features = ["fs", "signal"] }
 # The sockets' TLS handshake (`hub/wire.rs`).
 tokio-rustls.workspace = true
 # `graphql-transport-ws` for subscriptions, over the same `hub/wire.rs` stream as the tunnels (CMD-003).

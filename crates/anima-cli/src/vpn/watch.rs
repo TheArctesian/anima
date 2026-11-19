@@ -11,7 +11,7 @@ use crate::output::text::enum_name;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/vpn/watch.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
