@@ -24,8 +24,9 @@
 #
 # `anima` alone (Homebrew, crates.io) has a switch of its own, ANIMA_PUBLIC_CLI: its three
 # jobs that publish run only while both variables are `on`.
-# The iOS application has two: ANIMA_IOS_BUILD lets the job `ios` build and sign (also in a
-# trial), and ANIMA_PUBLIC_TESTFLIGHT lets a push to `main` upload to TestFlight. They do not
+# The iOS application has two: ANIMA_IOS_BUILD lets the job `ios` build and sign, in a trial
+# and for a push to `main`, and uploads nothing; ANIMA_PUBLIC_TESTFLIGHT, which only the
+# operator sets, lets a push to `main` also upload that build to TestFlight. They do not
 # depend on ANIMA_PUBLIC_RELEASES, so a TestFlight build can exist before a public release.
 #
 # No `run` script holds an expression: each value comes in through `env`.
@@ -152,10 +153,13 @@ jobs:
               if [ "$IOS_BUILD" = on ]; then
                 ios=$(published ios)
                 decided_ios=$(sh deploy/bin/release-decision "$sha" ios "$ios")
-                if [ "$decided_ios" = "release $version" ] && [ "$IOS_SWITCH" = on ]; then
+                # With the build switch on, a push builds and signs. It goes to TestFlight only
+                # while the TestFlight switch is also on; the upload jobs read that switch.
+                if [ "$decided_ios" = "release $version" ]; then
                   release_ios=true
-                elif [ "$decided_ios" = "release $version" ]; then
-                  decided_ios="nothing: this push is a build $version for TestFlight, and TestFlight is off (the variable ANIMA_PUBLIC_TESTFLIGHT is not \`on\`)"
+                  if [ "$IOS_SWITCH" != on ]; then
+                    decided_ios="build $version and sign it, and upload nothing: TestFlight is off (the variable ANIMA_PUBLIC_TESTFLIGHT is not \`on\`)"
+                  fi
                 fi
                 {
                   echo "### The iOS application"
@@ -195,7 +199,7 @@ jobs:
   # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
   gates:
     needs: commit
-    if: needs.commit.outputs.release == 'true' || needs.commit.outputs.release_ios == 'true'
+    if: needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')
     runs-on: macos-15
     timeout-minutes: 150
     permissions:

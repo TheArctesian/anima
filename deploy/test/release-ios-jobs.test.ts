@@ -37,8 +37,13 @@ describe("the switches of the iOS application", () => {
     expect(job("ios").if).toBe("needs.commit.outputs.release_ios == 'true'");
   });
 
+  test("with the TestFlight switch off, a push builds and signs and no job that uploads can run", () => {
+    expect(text("commit")).toMatch(/if \[ "\$decided_ios" = "release \$version" \]; then\n\s*release_ios=true/);
+    expect(job("ios").if).not.toContain("ANIMA_PUBLIC_TESTFLIGHT");
+    for (const name of ["ios-upload", "ios-record"]) expect(job(name).if).toContain("vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'");
+  });
+
   test("a build goes to TestFlight only from a push to main with the TestFlight switch on, and after the gates", () => {
-    expect(text("commit")).toContain('if [ "$decided_ios" = "release $version" ] && [ "$IOS_SWITCH" = on ]; then');
     expect(job("ios-upload").if).toBe(UPLOAD);
     expect(needs("ios-upload").sort()).toEqual(["commit", "gates", "ios"]);
     expect(job("ios-record").if).toBe(UPLOAD);

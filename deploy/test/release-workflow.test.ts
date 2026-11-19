@@ -118,7 +118,7 @@ describe("which push is a release (R-184, R-198)", () => {
     for (const name of ["tool", "macos", "linux"]) {
       expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
     }
-    expect(job("gates").if).toBe("needs.commit.outputs.release == 'true' || needs.commit.outputs.release_ios == 'true'");
+    expect(job("gates").if).toBe("needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')");
     for (const name of ["sign", "publish", "trial"]) {
       expect(waitsFor(name).has("macos")).toBe(true);
       expect(job(name).if ?? "").not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
