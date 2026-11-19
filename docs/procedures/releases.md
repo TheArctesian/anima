@@ -89,7 +89,7 @@ says why.
 
 State: built on the branch `release/github-workflow`, not merged and not run. The check of the first run is HT-036 of [need-human-testing.md](../need-human-testing.md). The plan section "The release workflow on the runners of GitHub" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) owns the design, the names of the secrets and the open decisions; this section owns the steps of the operator.
 
-`.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub. A tag `v<version>` on a commit of `main` starts a release. A run by hand is a trial and publishes nothing. The jobs `sign` and `publish` run `anima-hub release`, which makes the checks that the hub makes for a job of the Builds view.
+`.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub (R-173: the job signs; that the workflow also publishes is OD-W33, open). A tag `v<version>` on a commit of `main` starts a release. A run by hand is a trial and publishes nothing. The jobs `sign` and `publish` run `anima-hub release`, which makes the checks that the hub makes for a job of the Builds view.
 
 ### Before the first run, by the operator
 
@@ -143,7 +143,7 @@ Agents never do these steps (R-180, UPD-012). Never put a key or a password in a
    spctl --assess --type open --context context:primary-signature --verbose Anima_0.0.1_universal.dmg
    ```
 
-   Open the DMG, then `spctl --assess --type execute --verbose "/Volumes/Anima.ing/Anima.ing.app"` (expected: `accepted`, `source=Notarized Developer ID`). On a Linux computer with `x86_64`: `chmod +x Anima_0.0.1_amd64.AppImage` and start it (OD-W36: no AppImage of Anima was checked on a Linux computer before).
+   Open the DMG, then `spctl --assess --type execute --verbose "/Volumes/Anima.ing/Anima.ing.app"` (expected: `accepted`, `source=Notarized Developer ID`). On a Linux computer with `x86_64`: `chmod +x Anima_0.0.1_amd64.AppImage` and start it (OD-W38: no AppImage of Anima was checked on a Linux computer before).
 
 ### The first real release (0.2.2)
 
@@ -180,7 +180,7 @@ Agents never do these steps (R-180, UPD-012). Never put a key or a password in a
 - An update can be signed by each person who can make the environment `release-sign` run a workflow: a person who can put a tag `v…` or change `main`, and get your approval or act as your account. The workflow file of the tagged commit is the one that runs, so a tag on a commit with a changed workflow can skip each check of this document.
 - The protections are the ones of "Before the first run": only your account writes, only you put a tag `v…`, you approve each use of each key and you look at the tag and the commit when you approve, and each key is in an environment of its own so that the builds do not hold the updater key or the bucket token.
 - The actions of GitHub that the workflow uses are pinned to a commit, but the machines, the images and the tools that they install (Homebrew, apt, `linuxdeploy`, the crates and packages of the lock files) are code of other people that runs in the jobs that build.
-- Until OD-W37 is decided, the hub on the VPS also holds a copy of the updater key.
+- Until OD-W34 and OD-W37 are decided, the hub on the VPS also holds a copy of the updater key.
 
 ## What a release carries
 

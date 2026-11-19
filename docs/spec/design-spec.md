@@ -362,7 +362,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 | Feed URL | `https://releases.anima.ing/{{target}}-{{arch}}/latest.json`, one feed for each target (BLD-067) |
 | Version | Chosen by the operator in the release form (BLD-001, BLD-002). Do not commit version changes. |
 | Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
-| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is a secret file of the hub, which signs each release (BLD-045, R-117). |
+| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is a secret file of the hub, which signs each release (BLD-045, R-117). For a release that a workflow builds, the job signs with a copy of the key that is a secret of GitHub (R-173; not built). |
 | macOS signature | Developer ID Application certificate of team `7GDLG48PV6`, named in `bundle.macOS.signingIdentity` of `tauri.conf.json`, and notarization with the `notarytool` keychain profile `anima-notary` (BLD-083 to BLD-085, R-116). |
 | Rollback | `allowDowngrades: true`. To roll back, the operator writes an older `latest.json` to the target by hand (BLD-069). |
 
@@ -372,7 +372,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
 - **UPD-005.** After one update is installed, the app must stop checking until it restarts.
 - **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
-- **UPD-007.** A release must start only from the Builds view (BLD-001). No workflow of GitHub holds the updater key or publishes a release (changed by R-107; `release.yml` removed by R-114). A workflow of GitHub Actions on a runner of the operator can build a release and give its files to the hub (R-171; not built: task B8 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)).
+- **UPD-007.** A release must start only from the Builds view (BLD-001). R-107 moved the release off GitHub Actions, and R-114 removed `release.yml`. A workflow of GitHub Actions on a runner of the operator can build a release (R-171), and its job signs the updater file with the updater key, which is a secret of GitHub (R-173, which amends R-117 and R-171). Who uploads and writes the feed is open (OD-W33 of the work plan). Not built: task B8 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md).
 - **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-107).
 - **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
@@ -381,7 +381,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 
 ### 3.10 Builds
 
-Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. No machine of GitHub builds a release, and GitHub Actions does not sign or publish one (R-005, R-107). A workflow of GitHub Actions can build a release on a machine of the operator, as a runner for one job; only the hub signs and publishes (R-171; not built: task B8 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)).
+Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. No machine of GitHub builds a release (R-005, R-107). A workflow of GitHub Actions can build a release on a machine of the operator, as a runner for one job (R-171). The job of that workflow signs the updater file with the updater key, which is a secret of GitHub (R-173, which amends R-117 and R-171); who publishes is open (OD-W33 of the work plan). Not built: task B8 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md). The requirements of this section are the Builds path, where the hub signs (R-117).
 
 ```text
 operator: Builds view ─► "Release 0.1.12" ─► hub: one job for each target, state queued
