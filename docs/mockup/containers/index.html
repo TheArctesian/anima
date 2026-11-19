@@ -6,8 +6,10 @@
 <title>Device Containers Mockups</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
 <style>
-/* Layout: a review board. Frame 1 is the tab "Containers" of a device with the log of one container open; frame 2 is a device
-   that the hub cannot read; frame 3 is a device with no container (hosted-applications-plan.md, HOST-001, HOST-013, task H3).
+/* Layout: a review board. Frame 1 is the tab "Containers" of a device with the log of one container open and its tools;
+   frame 2 is a device that the hub cannot read; frame 3 is a device with no container; frame 4 is the details of one
+   container, after the operator looked for newer images; frame 5 is the list of the images
+   (hosted-applications-plan.md, HOST-001, HOST-013, HOST-015, HOST-017 to HOST-021, tasks H3 and H9).
    Each frame is the panel below the tab strip of the device page. Stage 1 has no control that changes a container. */
 :root {
   color-scheme: dark;
@@ -68,9 +70,13 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
 table { inline-size: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 th, td { padding: 0 var(--space-3); block-size: var(--control-lg); border-block-end: var(--border-thin) solid var(--border-subtle); text-align: start; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 thead th { color: var(--text-secondary); font-weight: var(--weight-medium); }
-col.name { inline-size: 24%; } col.state { inline-size: 16%; } col.status { inline-size: 20%; } col.act { inline-size: 4rem; }
+col.name { inline-size: 21%; } col.state { inline-size: 13%; } col.status { inline-size: 16%; } col.ports { inline-size: 12%; } col.act { inline-size: 9rem; } col.first { inline-size: 34%; }
 tr.group th { block-size: var(--control-sm); background: var(--surface-sunken); color: var(--text-secondary); font-weight: var(--weight-medium); }
 tr.group small { margin-inline-start: var(--space-3); font-size: inherit; font-weight: 400; }
+tr.group .state { margin-inline-start: var(--space-3); font-weight: 400; }
+/* The mark of a newer image: a word in a border, beside the image (HOST-021). */
+.mark { margin-inline-start: var(--space-2); padding: 0 var(--space-2); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-pill); color: var(--text-secondary); font-family: var(--font-ui); }
+.mark.newer { border-color: var(--status-warning); color: var(--text); }
 tr.selected { background: var(--surface-hover); }
 .mono, .id { font-family: var(--font-mono); }
 .id { margin-inline-start: var(--space-2); color: var(--text-secondary); }
@@ -84,6 +90,19 @@ td.act { text-align: end; }
 .lines li { display: flex; gap: var(--space-3); line-height: var(--leading-normal); }
 .lines time { color: var(--text-secondary); }
 
+/* The tools of the log (HOST-015): a search, the level, two switches and the download; then how many lines are shown. */
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.field { flex: 1; min-inline-size: 12rem; block-size: var(--control-md); display: flex; align-items: center; padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); color: var(--text-secondary); }
+.switch { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); }
+.switch i { inline-size: 2rem; block-size: 1.125rem; border-radius: var(--radius-pill); background: var(--accent); }
+.secondary { color: var(--text-secondary); }
+
+/* The details of one container (HOST-017): sections in a grid, each a list of a label and a text. */
+.detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: var(--space-4); padding: var(--space-3); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.detail h4 { margin: 0 0 var(--space-2); color: var(--text-secondary); font-size: inherit; font-weight: var(--weight-medium); }
+.detail dl { display: grid; grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr); gap: var(--space-1) var(--space-3); margin: 0; }
+.detail dt { color: var(--text-secondary); } .detail dd { margin: 0; overflow-wrap: anywhere; }
+
 /* The error state and the empty state replace the table and nothing else (UI-030). */
 .state-box { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-6) var(--space-4); text-align: center; }
 .state-box h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
@@ -92,35 +111,38 @@ td.act { text-align: end; }
 </head>
 <body>
 <h1 class="board">Device containers</h1>
-<p class="about">The tab "Containers" of the device page: the Docker containers of the device, read by the hub through SSH when the tab opens. Stage 1 only reads: it has no start, stop or remove control (HOST-001, HOST-013, R-149).</p>
+<p class="about">The tab "Containers" of the device page: the Docker containers of the device, read by the hub through SSH when the tab opens. Stage 1 only reads: it has no start, stop or remove control (HOST-001, HOST-013, HOST-015, HOST-017 to HOST-021, R-149, R-150).</p>
 
 <div class="frames">
 <figure>
   <div class="frame gd">
     <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
-    <div class="bar"><span class="grow">4 containers</span><span class="btn">Refresh</span></div>
+    <div><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span></div>
+    <div class="bar"><span class="grow">4 containers</span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
     <table>
-      <colgroup><col class="name"><col class="state"><col class="status"><col><col><col class="act"></colgroup>
+      <colgroup><col class="name"><col class="state"><col class="status"><col><col class="ports"><col class="act"></colgroup>
       <thead><tr><th>Name</th><th>State</th><th>Status</th><th>Image</th><th>Ports</th><th></th></tr></thead>
       <tbody>
-        <tr class="group"><th colspan="6">tracks<small>2 of 3 running</small></th></tr>
-        <tr class="selected"><th>tracks-app-1<span class="id">4f5c1d2e3a4b</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td class="mono">example/tracks:0.36</td><td class="mono">0.0.0.0:3000-&gt;3000/tcp</td><td class="act"><span class="btn ghost on">Log</span></td></tr>
-        <tr><th>tracks-db-1<span class="id">9a1b2c3d4e5f</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td class="mono">postgres:17</td><td class="mono">5432/tcp</td><td class="act"><span class="btn ghost">Log</span></td></tr>
-        <tr><th>tracks-worker-1<span class="id">0c7d8e9fa1b2</span></th><td><span class="state"><span class="dot"></span>Exited</span></td><td>Exited (1) 2 hours ago</td><td class="mono">example/tracks:0.36</td><td class="mono"></td><td class="act"><span class="btn ghost">Log</span></td></tr>
+        <tr class="group"><th colspan="6">tracks<span class="state warning"><span class="dot"></span>Partly running</span><small>2 of 3 running</small></th></tr>
+        <tr class="selected"><th>tracks-app-1<span class="id">4f5c1d2e3a4b</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td class="mono">example/tracks:0.36</td><td class="mono">0.0.0.0:3000-&gt;3000/tcp</td><td class="act"><span class="btn ghost">Details</span><span class="btn ghost on">Log</span></td></tr>
+        <tr><th>tracks-db-1<span class="id">9a1b2c3d4e5f</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td class="mono">postgres:17</td><td class="mono">5432/tcp</td><td class="act"><span class="btn ghost">Details</span><span class="btn ghost">Log</span></td></tr>
+        <tr><th>tracks-worker-1<span class="id">0c7d8e9fa1b2</span></th><td><span class="state"><span class="dot"></span>Exited</span></td><td>Exited (1) 2 hours ago</td><td class="mono">example/tracks:0.36</td><td class="mono"></td><td class="act"><span class="btn ghost">Details</span><span class="btn ghost">Log</span></td></tr>
       </tbody>
       <tbody>
         <tr class="group"><th colspan="6">No Compose project<small>1 of 1 running</small></th></tr>
-        <tr><th>ollama<span class="id">77aa01bc23de</span></th><td><span class="state down"><span class="dot"></span>Running, unhealthy</span></td><td>Up 2 minutes (unhealthy)</td><td class="mono">example/ollama:0.9</td><td class="mono">127.0.0.1:11434-&gt;11434/tcp</td><td class="act"><span class="btn ghost">Log</span></td></tr>
+        <tr><th>ollama<span class="id">77aa01bc23de</span></th><td><span class="state down"><span class="dot"></span>Running, unhealthy</span></td><td>Up 2 minutes (unhealthy)</td><td class="mono">example/ollama:0.9</td><td class="mono">127.0.0.1:11434-&gt;11434/tcp</td><td class="act"><span class="btn ghost">Details</span><span class="btn ghost">Log</span></td></tr>
       </tbody>
     </table>
     <div class="bar"><span class="title">Log of tracks-app-1</span><span class="seg"><span>100</span><span class="on">200</span><span>500</span><span>1000</span></span><span class="btn">Refresh</span><span class="btn ghost">✕</span></div>
+    <div class="tools"><span class="field">Search</span><span class="seg"><span class="on">All</span><span>Error</span><span>Warning</span><span>Info</span><span>Debug</span></span><span class="switch"><i></i>Wrap</span><span class="switch"><i></i>Timestamps</span><span class="btn ghost">Download</span></div>
+    <p class="secondary">3 of 3 lines</p>
     <ol class="lines">
-      <li><time>18:00:00</time><span>listening on :3000</span></li>
-      <li><time>18:00:04</time><span>GET /health 200 2ms</span></li>
-      <li><time>18:00:09</time><span>GET /api/points 200 41ms</span></li>
+      <li><time>18:00:00</time><span>INFO listening on :3000</span></li>
+      <li><time>18:00:04</time><span>INFO GET /health 200 2ms</span></li>
+      <li><time>18:00:09</time><span>WARN GET /api/points 200 1241ms</span></li>
     </ol>
   </div>
-  <figcaption>Frame 1, dark. The containers are in groups by Compose project, by name; the group header gives the running count. The state is a word with a dot. The button "Log" of a row reads the last lines of that container; the operator selects 100, 200, 500 or 1000 lines. The hub and the client keep no line.</figcaption>
+  <figcaption>Frame 1, dark. The first row selects the list: containers, images, volumes or networks. The containers are in groups by Compose project, by name; the group header gives the one state of the project, which the hub makes (HOST-019), and the running count. The state is a word with a dot. The button "Log" of a row reads the last lines of that container; the operator selects 100, 200, 500 or 1000 lines. The tools of the log work on the lines that were read: a search, a filter by the level word of a line, a switch for line wrap, a switch for timestamps, and a download of the lines that are shown (HOST-015). The hub and the client keep no line.</figcaption>
 </figure>
 
 <figure>
@@ -137,6 +159,52 @@ td.act { text-align: end; }
     <div class="state-box"><h3>No containers</h3><p class="secondary">Docker on this device has no container, running or stopped.</p></div>
   </div>
   <figcaption>Frame 3, dark. Docker answers and has no container.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
+    <div><span class="seg"><span class="on">Containers</span><span>Images</span><span>Volumes</span><span>Networks</span></span></div>
+    <div class="bar"><span class="grow">4 containers, 1 with a newer image</span><span class="btn ghost">Look for newer images</span><span class="btn">Refresh</span></div>
+    <table>
+      <colgroup><col class="name"><col class="state"><col class="status"><col><col class="ports"><col class="act"></colgroup>
+      <thead><tr><th>Name</th><th>State</th><th>Status</th><th>Image</th><th>Ports</th><th></th></tr></thead>
+      <tbody>
+        <tr class="group"><th colspan="6">tracks<span class="state warning"><span class="dot"></span>Partly running</span><small>2 of 3 running</small></th></tr>
+        <tr class="selected"><th>tracks-app-1<span class="id">4f5c1d2e3a4b</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td><span class="mono">example/tracks:0.36</span><span class="mark newer">Newer image</span></td><td class="mono">0.0.0.0:3000-&gt;3000/tcp</td><td class="act"><span class="btn ghost on">Details</span><span class="btn ghost">Log</span></td></tr>
+        <tr><th>tracks-db-1<span class="id">9a1b2c3d4e5f</span></th><td><span class="state up"><span class="dot"></span>Running</span></td><td>Up 3 hours (healthy)</td><td><span class="mono">postgres:17</span><span class="mark">Up to date</span></td><td class="mono">5432/tcp</td><td class="act"><span class="btn ghost">Details</span><span class="btn ghost">Log</span></td></tr>
+      </tbody>
+    </table>
+    <div class="bar"><span class="title">Details of tracks-app-1</span><span class="btn">Refresh</span><span class="btn ghost">✕</span></div>
+    <div class="detail">
+      <section><h4>Container</h4><dl><dt>Image</dt><dd class="mono">example/tracks:0.36</dd><dt>Command</dt><dd class="mono">/entrypoint.sh serve</dd><dt>Working directory</dt><dd class="mono">/app</dd><dt>User</dt><dd>The default of the image</dd><dt>Restart policy</dt><dd>unless-stopped</dd><dt>Restarts</dt><dd>0</dd><dt>Started</dt><dd>18/11/2026, 08:00:00</dd><dt>Finished</dt><dd>Never</dd><dt>Exit status</dt><dd>0</dd></dl></section>
+      <section><h4>Health check</h4><dl><dt>Test</dt><dd class="mono">CMD-SHELL curl -f localhost:3000/health</dd><dt>Interval</dt><dd>30 s</dd><dt>Health</dt><dd>Healthy</dd><dt>Failed in a row</dt><dd>0</dd><dt>Last run</dt><dd>Exit status 0, 18/11/2026, 10:59:30</dd></dl></section>
+      <section><h4>Mounts</h4><p class="mono">volume tracks-data → /data (read-write)</p></section>
+      <section><h4>Networks</h4><p class="mono">tracks_default  172.18.0.3</p></section>
+      <section><h4>Environment</h4><p class="secondary">Names only. Anima never reads a value: a value can hold a secret.</p><p class="mono">DATABASE_URL  SECRET_KEY_BASE  PATH</p></section>
+      <section><h4>Labels</h4><dl><dt class="mono">com.docker.compose.project</dt><dd class="mono">tracks</dd></dl></section>
+      <section><h4>Processes</h4><p class="mono">1  root  /entrypoint.sh serve</p></section>
+    </div>
+  </div>
+  <figcaption>Frame 4, dark. "Look for newer images" asks the hub to compare the image of each container with its public registry; each row then has a mark beside its image: "Newer image", "Up to date", or why the hub cannot say (HOST-021). Anima updates nothing. The button "Details" of a row shows the details of that container in the place of the log (HOST-017): the names of the environment variables and never a value.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gl">
+    <div class="tabs"><span>Overview</span><span>Checks</span><span class="on">Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div>
+    <div><span class="seg"><span>Containers</span><span class="on">Images</span><span>Volumes</span><span>Networks</span></span></div>
+    <div class="bar"><span class="grow">3 images. 921.6MB in use, 13.6MB (1%) can be freed by a clean-up</span><span class="btn">Refresh</span></div>
+    <table>
+      <colgroup><col class="first"><col><col><col></colgroup>
+      <thead><tr><th>Image</th><th>Size</th><th>Only this image</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr><th class="mono">example/tracks:0.36</th><td>470MB</td><td>350MB</td><td>tracks-app-1, tracks-worker-1</td></tr>
+        <tr><th class="mono">postgres:17</th><td>438MB</td><td>438MB</td><td>tracks-db-1</td></tr>
+        <tr><th class="mono">77aa01bc23de</th><td>13.6MB</td><td>13.6MB</td><td>Not used</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figcaption>Frame 5, light. The images of the device, read when the operator first opens the list (HOST-020). The line above the table gives the space that Docker says a clean-up can free; stage 1 removes nothing. "Volumes" has the columns Volume, Size, Driver and Used by; "Networks" has Network, Driver, Scope, Reach and Containers.</figcaption>
 </figure>
 </div>
 </body>
