@@ -25,7 +25,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; the proposed requirement HMD-051 of hosted-mode.md; HM-D2, HM-D8, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
-| 4.4 | The engine (E0) | Agent: E0-5 T3 of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), HT-034 and HT-035. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
+| 4.4 | The engine (E0) | Agent: E0-7 T2 of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035 and HT-038. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: task W0 in projects-and-builds-plan.md, the Unix socket between the daemon and the link (R-172); no code of W3 or W4 before the two acceptances |
 | 4.9 | Hosted applications | Operator: the check HT-032 on a machine that runs Docker. Agent: hosted-applications-plan.md, task H8 (Not started, no claim) |
@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (119)
+## 2. Open decisions (121)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -68,6 +68,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of… | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E20 | A reveal of a Class A record asks for the TOTP code again (VLT-005). On a hosted hub the operator signs in with the Anima.ing account and has no TOTP on the hub… | Not decided. `recordReveal` is unavailable on a hosted hub (K-E5 Section 3). Recommendation: the check of the operating system on the client (Touch ID, or the p… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E23 | The commands of the operational keys (E0-6 T3). K-E5 Section 2.2 names them `anima key list\ | Not decided. Recommendation: `anima secret` for the operational keys, with the MCP tools `anima_secrets_list` and `anima_secret_show`, and K-E5 Section 2.2 chan… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E24 | The Dawarich pull of E0-5 T3 (K-E4 Section 11). K-E4 says that it goes through the source framework with a base address and an API key for each account. The sou… | Not decided. Recommendation: yes to (1) and (2) as written; for (3) a switch `locations` of the engine that is on by default. Until then the operator can use th… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E25 | K-E4 Section 13 says that each change writes one audit entry and one event. For the OwnTracks path this is one audit entry and one event for each fix that the p… | Not decided. Recommendation: (b). The options: (a) keep one entry and one event for each stored fix; (b) no event for a stored fix, and one audit entry for each… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
@@ -190,7 +192,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (67)
+## 4. Checks that only the operator can do (68)
 
 | Check | What |
 | --- | --- |
@@ -222,6 +224,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-032 | the containers of a real device, and the log of one (HOST-001, HOST-013; tasks H1 to H4) |
 | HT-026 | the use of AI agent programs from real session files |
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
+| HT-038 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
 | HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192) |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
