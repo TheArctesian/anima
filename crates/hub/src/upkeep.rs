@@ -233,7 +233,7 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
         .map(drop)
         .map_err(|_| "credentials");
     // Each hour of an ingest token that ended gets its audit entry, also when the phone sent
-    // nothing after it (R-208).
+    // nothing after it (R-209).
     let fix_hours = locations::audit_ended_hours(db, now)
         .await
         .map(drop)

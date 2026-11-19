@@ -214,7 +214,7 @@ fn hour_of(at: DateTime<Utc>) -> DateTime<Utc> {
 
 /// Writes one audit entry for each ingest token and each hour that ended before `now`, with
 /// the count of the fixes that the hub stored for the token in that hour, in the caller's
-/// transaction (R-208). An hour is written one time: its count leaves the table with the entry.
+/// transaction (R-209). An hour is written one time: its count leaves the table with the entry.
 /// Gives how many entries it wrote.
 ///
 /// # Errors
