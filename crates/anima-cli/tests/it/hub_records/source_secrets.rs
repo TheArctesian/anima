@@ -5,7 +5,7 @@
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::Path;
 
-use serde_json::json;
+use serde_json::{Value, json};
 
 use super::sources::{ID, account, listed, signed_in};
 use crate::kit::fake_hub::{FakeHub, data, refusal};
@@ -258,4 +258,66 @@ async fn cmd_024_remove_names_the_account_and_a_no_sends_nothing() {
             .iter()
             .all(|seen| seen.operation != "SourceRemove")
     );
+}
+
+const DAWARICH_KEY: &str = "dw-synthetic-api-key-of-the-test";
+
+fn dawarich_account() -> Value {
+    let mut connected = account("STARTING");
+    connected["sourceKey"] = json!("dawarich");
+    connected["instanceKey"] = json!("https://dawarich.example");
+    connected
+}
+
+#[tokio::test]
+async fn r_210_connect_dawarich_reads_the_key_from_standard_input_and_never_prints_it() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "SourceConnectDawarich",
+        data(json!({ "connectDawarich": dawarich_account() })),
+    );
+    let args = [
+        "source",
+        "connect",
+        "dawarich",
+        "--label",
+        "Home",
+        "--url",
+        "https://dawarich.example",
+        "--from-file",
+        "-",
+        "--hub",
+        &hub.origin,
+    ];
+    let run = signed_in()
+        .run_with_input(&args, &format!("{DAWARICH_KEY}\n"))
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    run.assert_never_shows(DAWARICH_KEY);
+    assert_eq!(
+        hub.seen()[0].variables["input"],
+        json!({ "label": "Home", "baseUrl": "https://dawarich.example", "apiKey": DAWARICH_KEY })
+    );
+}
+
+#[tokio::test]
+async fn r_210_connect_dawarich_takes_no_flag_that_carries_the_key() {
+    let hub = FakeHub::start().await;
+    let run = signed_in()
+        .run(&[
+            "source",
+            "connect",
+            "dawarich",
+            "--label",
+            "Home",
+            "--url",
+            "https://dawarich.example",
+            "--api-key",
+            DAWARICH_KEY,
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 2, "{run:?}");
+    assert!(hub.seen().is_empty(), "the hub was not asked");
 }
