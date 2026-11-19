@@ -5,8 +5,10 @@ use chrono::{DateTime, NaiveTime, Utc, Weekday};
 use chrono_tz::Tz;
 use uuid::Uuid;
 
+mod codec;
 mod places;
 mod rules;
+mod stored;
 mod times;
 
 use super::*;

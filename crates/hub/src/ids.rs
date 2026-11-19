@@ -114,6 +114,8 @@ entity_id! {
     IngestTokenId,
     /// A reminder rule (K-E6 Section 2).
     ReminderRuleId,
+    /// One firing of a reminder rule (K-E6 Section 3).
+    FiringId,
 }
 
 #[cfg(test)]
