@@ -77,18 +77,18 @@ describe("which change affects the desktop application (R-184, R-200)", () => {
   });
 
   test.each([
-    ["the client", ["apps/client/src/lib/devices/list.ts"], "desktop"],
-    ["only a test inside the client (R-200)", ["apps/client/src/lib/devices/list.test.ts"], "desktop"],
-    ["the shell", ["apps/desktop/src-tauri/src/desktop.rs"], "desktop"],
-    ["the link", ["link/tunnel/tunnel.go"], "desktop"],
+    ["the client", ["apps/client/src/lib/devices/list.ts"], "desktop\nios"],
+    ["only a test inside the client (R-200)", ["apps/client/src/lib/devices/list.test.ts"], "desktop\nios"],
+    ["the shell", ["apps/desktop/src-tauri/src/desktop.rs"], "desktop\nios"],
+    ["the link", ["link/tunnel/tunnel.go"], "desktop\nios"],
     ["the hub, which `anima` alone does not carry", ["crates/hub/src/main.rs"], "desktop"],
-    ["a document inside the client, which the client can show", ["apps/client/static/help.md"], "desktop"],
-    ["the command line, which is also a program of its own", ["crates/anima-cli/src/main.rs"], "cli\ndesktop"],
-    ["the lock file", ["Cargo.lock"], "cli\ndesktop"],
-    ["the release workflow", [".github/workflows/release.yml"], "cli\ndesktop"],
-    ["the version command, which is below a folder that is out", ["deploy/bin/commit-version"], "cli\ndesktop"],
-    ["the map itself", ["deploy/release/applications.txt"], "cli\ndesktop"],
-    ["a folder that the map does not know", ["newthing/file.txt"], "cli\ndesktop"],
+    ["a document inside the client, which the client can show", ["apps/client/static/help.md"], "desktop\nios"],
+    ["the command line, which is also a program of its own", ["crates/anima-cli/src/main.rs"], "cli\ndesktop\nios"],
+    ["the lock file", ["Cargo.lock"], "cli\ndesktop\nios"],
+    ["the release workflow", [".github/workflows/release.yml"], "cli\ndesktop\nios"],
+    ["the version command, which is below a folder that is out", ["deploy/bin/commit-version"], "cli\ndesktop\nios"],
+    ["the map itself", ["deploy/release/applications.txt"], "cli\ndesktop\nios"],
+    ["a folder that the map does not know", ["newthing/file.txt"], "cli\ndesktop\nios"],
   ])("%s releases what carries it", (_name, paths, expected) => {
     const from = git(folder, "rev-parse", "HEAD");
     const to = change(folder, ...paths);
@@ -98,7 +98,7 @@ describe("which change affects the desktop application (R-184, R-200)", () => {
   test("one path of the application among documents is enough", () => {
     const from = git(folder, "rev-parse", "HEAD");
     const to = change(folder, "docs/a.md", "docs/b.md", "apps/client/src/second.ts");
-    expect(affected(folder, from, to).printed).toBe("desktop");
+    expect(affected(folder, from, to).printed).toBe("desktop\nios");
   });
 
   test("a file that moves from the documents into the application releases it", () => {
@@ -106,7 +106,7 @@ describe("which change affects the desktop application (R-184, R-200)", () => {
     const from = git(folder, "rev-parse", "HEAD");
     git(folder, "mv", "docs/moved.md", "apps/client/src/moved.md");
     git(folder, "commit", "--quiet", "-m", "move");
-    expect(affected(folder, from, "HEAD").printed).toBe("desktop");
+    expect(affected(folder, from, "HEAD").printed).toBe("desktop\nios");
   });
 
   test("a name that is no commit is refused, with no answer", () => {

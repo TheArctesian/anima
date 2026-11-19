@@ -57,3 +57,29 @@ cli in deploy/bin/release-decision
 cli in deploy/release/
 cli in deploy/bin/cli-formula
 cli in deploy/bin/crate-version
+
+# The iOS application (TestFlight; task B8i). It is the client in the phone shell, with the
+# link for phones; a test compares the crates below with the answer of `cargo metadata` for
+# the shell.
+ios out docs/
+ios out quality/
+ios out deploy/
+ios out crates/anima-database/
+ios out crates/anima-gateway/
+ios out crates/anima-local-hub/
+ios out crates/daemon/
+ios out crates/daemon-core/
+ios out crates/guac-protocol/
+ios out crates/hub/
+ios out crates/providers/
+ios out crates/rdp-test-device/
+ios out crates/redaction/
+ios out crates/theme/
+ios out crates/updater-signature/
+ios out AGENTS.md
+ios out CLAUDE.md
+ios out README.md
+ios in deploy/bin/commit-version
+ios in deploy/bin/affected-applications
+ios in deploy/bin/release-decision
+ios in deploy/release/

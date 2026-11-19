@@ -47,6 +47,9 @@ const HOLDERS: Record<string, { environment: string; secrets: string[] }> = {
   "cli-publish": { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   tap: { environment: "release-tap", secrets: ["HOMEBREW_TAP_DEPLOY_KEY"] },
   crate: { environment: "release-crate", secrets: ["CARGO_REGISTRY_TOKEN"] },
+  ios: { environment: "release-ios", secrets: ["IOS_DISTRIBUTION_P12_BASE64", "IOS_DISTRIBUTION_P12_PASSWORD", "IOS_PROVISIONING_PROFILE_BASE64"] },
+  "ios-upload": { environment: "release-testflight", secrets: ["ASC_API_ISSUER_ID", "ASC_API_KEY_ID", "ASC_API_PRIVATE_KEY"] },
+  "ios-record": { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
 };
 
 function job(name: string): Job {
@@ -112,9 +115,10 @@ describe("which push is a release (R-184, R-198)", () => {
   });
 
   test("when the decision is nothing, no job builds, signs or publishes", () => {
-    for (const name of ["gates", "tool", "macos", "linux"]) {
+    for (const name of ["tool", "macos", "linux"]) {
       expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
     }
+    expect(job("gates").if).toBe("needs.commit.outputs.release == 'true' || needs.commit.outputs.release_ios == 'true'");
     for (const name of ["sign", "publish", "trial"]) {
       expect(waitsFor(name).has("macos")).toBe(true);
       expect(job(name).if ?? "").not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
@@ -202,7 +206,7 @@ describe("which job holds which secret (R-180, BLD-045)", () => {
   });
 
   test("the jobs that hold the updater key or the bucket token read no repository and compile nothing", () => {
-    for (const name of ["sign", "bucket", "publish", "cli-publish", "trial"]) {
+    for (const name of ["sign", "bucket", "publish", "cli-publish", "ios-upload", "ios-record", "trial"]) {
       const found = job(name);
       const actions = found.steps.flatMap((step) => (step.uses === undefined ? [] : [step.uses.split("@")[0]]));
       for (const action of actions) {

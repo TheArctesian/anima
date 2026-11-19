@@ -15,13 +15,18 @@
 # Each secret is in an environment of its own, so a job has only the secrets of its work:
 #   release           the Developer ID certificate and the notary credentials   job `macos`
 #   release-sign      the updater key                                           job `sign`
-#   release-publish   the token of the release bucket             jobs `bucket`, `publish`, `cli-publish`
+#   release-publish   the token of the release bucket             jobs `bucket`, `publish`, `cli-publish`, `ios-record`
 #   release-tap       the key of the tap of the formula                         job `tap`
 #   release-crate     the token of crates.io                                    job `crate`
+#   release-ios       the iOS distribution certificate and the profile          job `ios`
+#   release-testflight  the key of App Store Connect                            job `ios-upload`
 # The jobs `commit`, `gates`, `tool`, `linux`, `cli` and `trial` have no secret.
 #
 # `anima` alone (Homebrew, crates.io) has a switch of its own, ANIMA_PUBLIC_CLI: its three
 # jobs that publish run only while both variables are `on`.
+# The iOS application has two: ANIMA_IOS_BUILD lets the job `ios` build and sign (also in a
+# trial), and ANIMA_PUBLIC_TESTFLIGHT lets a push to `main` upload to TestFlight. They do not
+# depend on ANIMA_PUBLIC_RELEASES, so a TestFlight build can exist before a public release.
 #
 # No `run` script holds an expression: each value comes in through `env`.
 name: release
@@ -62,6 +67,7 @@ jobs:
     outputs:
       release: ${{ steps.read.outputs.release }}
       release_cli: ${{ steps.read.outputs.release_cli }}
+      release_ios: ${{ steps.read.outputs.release_ios }}
       version: ${{ steps.read.outputs.version }}
       sha: ${{ steps.read.outputs.sha }}
       time: ${{ steps.read.outputs.time }}
@@ -80,6 +86,8 @@ jobs:
           TRIAL_VERSION: ${{ inputs.version }}
           SWITCH: ${{ vars.ANIMA_PUBLIC_RELEASES }}
           CLI_SWITCH: ${{ vars.ANIMA_PUBLIC_CLI }}
+          IOS_BUILD: ${{ vars.ANIMA_IOS_BUILD }}
+          IOS_SWITCH: ${{ vars.ANIMA_PUBLIC_TESTFLIGHT }}
           FEEDS: https://releases.anima.ing
         run: |
           set -eu
@@ -138,6 +146,22 @@ jobs:
                   echo "Published now: $cli. Decision: $decided_cli"
                 } >> "$GITHUB_STEP_SUMMARY"
               fi
+              # The iOS application (TestFlight) does not wait for the desktop application:
+              # it has its own two switches, and its own record of the last build that went up.
+              release_ios=false
+              if [ "$IOS_BUILD" = on ]; then
+                ios=$(published ios)
+                decided_ios=$(sh deploy/bin/release-decision "$sha" ios "$ios")
+                if [ "$decided_ios" = "release $version" ] && [ "$IOS_SWITCH" = on ]; then
+                  release_ios=true
+                elif [ "$decided_ios" = "release $version" ]; then
+                  decided_ios="nothing: this push is a build $version for TestFlight, and TestFlight is off (the variable ANIMA_PUBLIC_TESTFLIGHT is not \`on\`)"
+                fi
+                {
+                  echo "### The iOS application"
+                  echo "In TestFlight now: $ios. Decision: $decided_ios"
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
             workflow_dispatch:*)
               # A trial keeps the version of its input, so that it signs nothing with the
@@ -145,6 +169,9 @@ jobs:
               version=$TRIAL_VERSION
               release=true
               release_cli=true
+              # A trial builds and signs the iOS application only while its build switch is on.
+              release_ios=false
+              if [ "$IOS_BUILD" = on ]; then release_ios=true; fi
               echo "A trial of the version $version. It publishes nothing." >> "$GITHUB_STEP_SUMMARY"
               ;;
             *) echo "::error::Only a push to main or a run by hand starts a release."; exit 1 ;;
@@ -157,6 +184,7 @@ jobs:
           {
             echo "release=$release"
             echo "release_cli=$release_cli"
+            echo "release_ios=$release_ios"
             echo "version=$version"
             echo "sha=$sha"
             echo "time=$(git show -s --format=%ct "$sha")"
@@ -167,7 +195,7 @@ jobs:
   # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
   gates:
     needs: commit
-    if: needs.commit.outputs.release == 'true'
+    if: needs.commit.outputs.release == 'true' || needs.commit.outputs.release_ios == 'true'
     runs-on: macos-15
     timeout-minutes: 150
     permissions:
@@ -847,6 +875,181 @@ jobs:
             exit 1
           fi
           cargo publish -p anima-cli --locked --allow-dirty --no-verify
+
+  # The iOS application for TestFlight (R-203; task B8i). Not run on GitHub, and the archive
+  # script that it calls is task M5-4 of the mobile plan: the job is off until the variable
+  # ANIMA_IOS_BUILD is `on`. It builds and signs; it uploads nothing. Its secrets are the
+  # distribution certificate and the profile, in the environment `release-ios`; it does not
+  # read the iOS secrets that are in `release`.
+  ios:
+    needs: commit
+    if: needs.commit.outputs.release_ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 120
+    environment: release-ios
+    permissions:
+      contents: read
+    outputs:
+      ipa_sha256: ${{ steps.digest.outputs.ipa_sha256 }}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Install the Rust target of the phone and the packages
+        run: |
+          set -eu
+          rustup target add aarch64-apple-ios
+          bun install --frozen-lockfile
+      - id: identity
+        name: Make the keychain of this job, import the certificate and install the profile
+        env:
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$IOS_DISTRIBUTION_P12_BASE64" ] || [ -z "$IOS_DISTRIBUTION_P12_PASSWORD" ] || [ -z "$IOS_PROVISIONING_PROFILE_BASE64" ]; then
+            echo "::error::The three iOS signing secrets are not set in the environment release-ios. They are not read from the environment release: see docs/procedures/releases.md, 'The iOS application'."
+            exit 1
+          fi
+          KEYCHAIN="$RUNNER_TEMP/ios.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          password=$(openssl rand -hex 24)
+          security create-keychain -p "$password" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$password" "$KEYCHAIN"
+          printf '%s' "$IOS_DISTRIBUTION_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/distribution.p12"
+          security import "$RUNNER_TEMP/distribution.p12" -f pkcs12 -P "$IOS_DISTRIBUTION_P12_PASSWORD" \
+            -k "$KEYCHAIN" -T /usr/bin/codesign > /dev/null
+          rm -f "$RUNNER_TEMP/distribution.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Distribution: '; then
+            echo "::error::The certificate of IOS_DISTRIBUTION_P12_BASE64 is not an Apple Distribution identity."
+            exit 1
+          fi
+          profiles="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$profiles"
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
+          name=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
+          team=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          mv "$RUNNER_TEMP/profile.mobileprovision" "$profiles/$uuid.mobileprovision"
+          rm -f "$RUNNER_TEMP/profile.plist"
+          {
+            echo "profile=$name"
+            echo "team=$team"
+          } >> "$GITHUB_OUTPUT"
+      - name: Build and sign the archive
+        env:
+          IOS_TEAM_ID: ${{ steps.identity.outputs.team }}
+          IOS_PROFILE_NAME: ${{ steps.identity.outputs.profile }}
+          ANIMA_RELEASE_BUILD: "1"
+        run: |
+          set -eu
+          if [ ! -f apps/desktop/src-tauri/ios-archive.sh ]; then
+            echo "::error::apps/desktop/src-tauri/ios-archive.sh is not in this commit (task M5-4 of the mobile plan)."
+            exit 1
+          fi
+          # The build number is the count of the first line of main: 0.8.15 gives 815 (R-201).
+          number=$(echo "$VERSION" | awk -F. '{ print $2 * 100 + $3 }')
+          mkdir -p out
+          sh apps/desktop/src-tauri/ios-archive.sh "$VERSION" "$number" out
+      - id: digest
+        name: Check the file
+        run: |
+          set -eu
+          test -s out/Anima.ipa
+          unzip -tq out/Anima.ipa > /dev/null
+          echo "ipa_sha256=$(shasum -a 256 out/Anima.ipa | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios
+          path: out/Anima.ipa
+          if-no-files-found: error
+          retention-days: 7
+      - name: Delete the keychain of this job
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN:-}" ]; then security delete-keychain "$KEYCHAIN" || true; fi
+
+  # The upload to TestFlight: only for a push to `main`, after the gates, and only while the
+  # switch ANIMA_PUBLIC_TESTFLIGHT is on. A trial never runs it. It holds the key of App
+  # Store Connect, in an environment of its own, and reads no repository.
+  ios-upload:
+    needs: [commit, gates, ios]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'
+    runs-on: macos-15
+    timeout-minutes: 45
+    environment: release-testflight
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ios
+          path: ios
+      - name: Send the file to App Store Connect
+        env:
+          ASC_API_PRIVATE_KEY: ${{ secrets.ASC_API_PRIVATE_KEY }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          IPA_SHA256: ${{ needs.ios.outputs.ipa_sha256 }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$ASC_API_PRIVATE_KEY" ] || [ -z "$ASC_API_KEY_ID" ] || [ -z "$ASC_API_ISSUER_ID" ]; then
+            echo "::error::The three App Store Connect secrets are not set in the environment release-testflight."
+            exit 1
+          fi
+          echo "$IPA_SHA256  ios/Anima.ipa" | shasum -a 256 --check --strict
+          keys="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$keys"
+          trap 'rm -f "$keys/AuthKey_$ASC_API_KEY_ID.p8"' EXIT
+          printf '%s\n' "$ASC_API_PRIVATE_KEY" > "$keys/AuthKey_$ASC_API_KEY_ID.p8"
+          xcrun altool --upload-app --type ios --file ios/Anima.ipa --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER_ID"
+
+  # The record of the build that went up, so that the next push can compare with it:
+  # `ios/latest.json` in the bucket. TestFlight has no feed that a job with no key can read.
+  ios-record:
+    needs: [commit, ios-upload]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release-publish
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - name: Write the version that is in TestFlight
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+        run: |
+          set -eu
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          jq -n --arg version "$VERSION" '{version: $version}' > latest.json
+          aws s3api put-object --endpoint-url "$ENDPOINT" --bucket anima-releases --key ios/latest.json --body latest.json --content-type application/json --cache-control no-cache > /dev/null
+          echo "ios/latest.json gives $VERSION"
 
   # Only for a run by hand. Each check of `publish` that needs no bucket; no token, and
   # nothing is published.

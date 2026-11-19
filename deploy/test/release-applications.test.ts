@@ -67,3 +67,9 @@ describe("the map of `anima` alone (task B8h)", () => {
     expect(cratesIn("cli")).toEqual(cratesOf("anima-cli"));
   });
 });
+
+describe("the map of the iOS application (task B8i)", () => {
+  test.skipIf(Bun.which("cargo") === null)("the crates that affect it are the crates below `crates/` that the shell is built from", () => {
+    expect(cratesIn("ios")).toEqual(cratesOf("anima-app").filter((folder) => folder.startsWith("crates/")));
+  });
+});
