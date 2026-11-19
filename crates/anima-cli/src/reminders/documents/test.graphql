@@ -1,0 +1,14 @@
+mutation ReminderTest($id: ID!) {
+  testReminderRule(id: $id) {
+    id
+    ruleId
+    subject
+    text
+    state
+    reason
+    dueAt
+    sentAt
+    snoozedUntil
+    decidedAt
+  }
+}

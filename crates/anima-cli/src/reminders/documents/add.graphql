@@ -1,0 +1,18 @@
+mutation ReminderAdd($input: ReminderRuleInput!) {
+  createReminderRule(input: $input) {
+    id
+    name
+    message
+    trigger
+    unless
+    cooldownMinutes
+    dailyLimit
+    channelIds
+    enabled
+    revision
+    createdAt
+    updatedAt
+    lastFiringAt
+    firedToday
+  }
+}

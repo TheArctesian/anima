@@ -1,0 +1,3 @@
+mutation ReminderRemove($id: ID!) {
+  removeReminderRule(id: $id)
+}

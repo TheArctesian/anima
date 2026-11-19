@@ -1,0 +1,14 @@
+mutation ReminderAck($firing: ID!) {
+  acknowledgeReminder(firing: $firing) {
+    id
+    ruleId
+    subject
+    text
+    state
+    reason
+    dueAt
+    sentAt
+    snoozedUntil
+    decidedAt
+  }
+}

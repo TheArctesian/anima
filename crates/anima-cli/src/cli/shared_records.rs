@@ -3,7 +3,7 @@
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{attachments, extractions, locations, places, record_links, timeline};
+use crate::{attachments, extractions, locations, places, record_links, reminders, timeline};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum SharedRecordCommand {
@@ -39,6 +39,12 @@ pub enum SharedRecordCommand {
         #[command(subcommand)]
         command: locations::LocationCommand,
     },
+    /// Reminder rules and their firings (list, show, add, set, remove, enable, disable, test,
+    /// firings, snooze, ack).
+    Reminder {
+        #[command(subcommand)]
+        command: reminders::ReminderCommand,
+    },
 }
 
 impl SharedRecordCommand {
@@ -50,6 +56,7 @@ impl SharedRecordCommand {
             Self::Extraction { command } => command.run(invocation).await,
             Self::Place { command } => command.run(invocation).await,
             Self::Location { command } => command.run(invocation).await,
+            Self::Reminder { command } => command.run(invocation).await,
         }
     }
 }

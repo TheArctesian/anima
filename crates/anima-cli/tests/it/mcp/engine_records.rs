@@ -3,6 +3,7 @@
 //! FIL-004, VIS-001, VIS-004). No tool carries the bytes of a file (CMD-030). The place tools (PLC-001, PLC-004 to PLC-006).
 
 mod locations;
+mod reminders;
 
 use serde_json::{Value, json};
 

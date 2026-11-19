@@ -3,4 +3,5 @@
 mod locations;
 mod places;
 mod record_links;
+mod reminders;
 mod timeline;

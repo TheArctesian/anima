@@ -50,6 +50,7 @@ pub enum Tool {
     Extractions(shared_records::extractions::ExtractionTool),
     Places(shared_records::places::PlaceTool),
     Locations(shared_records::locations::LocationTool),
+    Reminders(shared_records::reminders::ReminderTool),
 }
 
 impl Tool {
@@ -78,6 +79,7 @@ impl Tool {
         tools.extend(shared_records::extractions::ExtractionTool::ALL.map(Self::Extractions));
         tools.extend(shared_records::places::PlaceTool::ALL.map(Self::Places));
         tools.extend(shared_records::locations::LocationTool::ALL.map(Self::Locations));
+        tools.extend(shared_records::reminders::ReminderTool::ALL.map(Self::Reminders));
         tools
     }
 
@@ -104,7 +106,8 @@ impl Tool {
             | Self::Files(_)
             | Self::Extractions(_)
             | Self::Places(_)
-            | Self::Locations(_) => ToolSet::Records,
+            | Self::Locations(_)
+            | Self::Reminders(_) => ToolSet::Records,
         }
     }
 
@@ -132,6 +135,7 @@ impl Tool {
             Self::Extractions(tool) => tool.definition(),
             Self::Places(tool) => tool.definition(),
             Self::Locations(tool) => tool.definition(),
+            Self::Reminders(tool) => tool.definition(),
         }
     }
 
@@ -166,6 +170,7 @@ impl Tool {
             Self::Extractions(tool) => tool.call(hub, arguments).await,
             Self::Places(tool) => tool.call(hub, arguments).await,
             Self::Locations(tool) => tool.call(hub, arguments).await,
+            Self::Reminders(tool) => tool.call(hub, arguments).await,
         }
     }
 }
