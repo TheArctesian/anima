@@ -964,6 +964,15 @@ full history, because the documents gate (gate 20) fails in a shallow clone; tha
 run of gates 17 to 21 in a shallow clone on a computer, not by the trial. The operator starts the next trial
 after the merge.
 
+Observation (2026-11-19, 08:51 UTC; read from GitHub by an agent, not a result of the operator): the operator
+started a second trial, run 44479803653, from `main` at 9da268f4 with the version `0.0.1`. Each job passed:
+`commit`, `tool`, `linux` (14 minutes), `macos` (62 minutes), `gates` (82 minutes, 21 gates), `sign` and
+`trial`. `publish` was skipped, as a trial must. So the updater key and its password in `release-sign` are
+usable, the two updater files were signed, and `anima-hub release check` accepted both targets. Not proven by
+this run: the bucket token (a trial does not use it), and each check of step 2 that a person makes: the
+commands on the DMG, the start of the AppImage on Linux, and Settings > Updates in the two applications. The
+run was of the tag trigger of that commit; the trigger on a push to `main` (task B8g) has not run.
+
 Result: Open.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
