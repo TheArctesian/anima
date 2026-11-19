@@ -18,6 +18,8 @@ use std::time::{Duration, Instant};
 
 use tempfile::TempDir;
 
+mod root_copy;
+
 const LIMIT: Duration = Duration::from_secs(120);
 const LOCAL_HUB: &str = env!("CARGO_BIN_EXE_anima-local-hub");
 

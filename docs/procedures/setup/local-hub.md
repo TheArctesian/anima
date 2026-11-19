@@ -62,6 +62,8 @@ The application runs these for you. Each command accepts `--root <folder>` toget
 | `anima-local-hub stop` | Stops the hub now and waits until it stopped. The hub stays installed: it starts again at the next login or with `start`. macOS: `launchctl bootout`; Linux: `systemctl --user stop`. |
 | `anima-local-hub start` | Starts the installed hub. On macOS a hub that launchd has loaded already is left as it is. |
 | `anima-local-hub account …` | The operator account. See Section 7. |
+| `anima-local-hub copy --tree <folder> --to <new folder>` | Makes a copy of the whole folder of a stopped hub. See Section 8. |
+| `anima-local-hub check-copy <copy> --tree <folder>` | Checks a copy. It starts nothing and changes nothing. See Section 8. |
 | `anima-local-hub run` | What the unit runs. It prints `ready` when the hub serves and stops on SIGTERM. On a hub of the pool only, `--hosted-cloud-key-file <absolute path>` gives the hub `ANIMA_HOSTED_CLOUD_KEY_FILE`: the hub runs in the hosted mode, makes device invites and claims for the Anima.ing cloud and refuses every password sign-in (R-129). At each start in the hosted mode the hub also makes sure that it is a device of its own device list: the device `Hub` with the host `localhost` and the check `Hub running`, which the hub reports as Up while it runs (HMD-045). The pool writes the file (the cloud's key, readable by the hub's user only) before the first start. `install`, `update` and the desktop app never give it. |
 
 `status` prints, for example:
@@ -193,3 +195,37 @@ with an empty environment except `ANIMA_DATABASE_URL_FILE=<hub root>/database/ur
   prints a fixed message with the hub's exit code.
 - Exit codes: 0 done; 20 the hub is not `ready`; 2 wrong use (for example a wrong name); another
   code is the hub's own refusal.
+
+## 8. A copy of the folder of the hub (ROL-054)
+
+A copy is what a hub goes back to when an update fails. It holds each thing that must stay: the
+database, the vault key, the sealing keys, the sealed files, the state of the link with its key,
+the logs. It holds every secret of the hub. Keep it where only your user can read it.
+
+```sh
+anima-local-hub stop
+anima-local-hub copy --tree <POSTGRESQL_TREE> --to <NEW_FOLDER>
+anima-local-hub check-copy <NEW_FOLDER> --tree <POSTGRESQL_TREE>
+```
+
+- `copy` refuses a hub that runs (exit code 10). It holds the lock of the hub for its whole time,
+  starts only the database, writes a dump of it with `pg_dump`, stops the database, and then
+  copies the files. The programs `anima-database` and the others must be beside `anima-local-hub`.
+- `<NEW_FOLDER>` must not exist, and other users must not be able to write the folder above it.
+  A copy that is not whole is removed.
+- The copy has three parts: `root/` (the files), `database.dump` and `copy.json` (the list: each
+  entry with its size, its mode and its SHA-256). It leaves out `programs/`, the two lock files
+  and each socket.
+- Each of the two commands prints one line of JSON: the count of the entries, the bytes and the
+  time. It prints no path and nothing of a file.
+- `check-copy` reads each file again and compares it with the list, makes sure that the cluster
+  and the vault key are in the list, and reads the dump with `pg_restore --list`. A fault ends it
+  with code 1 and names the path, never a content.
+- To go back: stop the hub, put the folder that failed aside, move `<NEW_FOLDER>/root` to the
+  place of the hub root, and start the hub. **Use the same hub root and the same socket folder
+  as before.** The files of the database name the socket folder; a hub with a different one does
+  not reach its database. The copy has no programs: start the hub with `run --programs … --tree …`,
+  or run `install` first.
+- A copy is of one PostgreSQL major version. A hub with a different one refuses the cluster;
+  then restore `database.dump` into a new, empty database (`anima-database restore`).
+

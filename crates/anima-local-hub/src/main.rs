@@ -33,6 +33,7 @@ use anima_database::Platform;
 use anima_local_hub::account::{self, AccountError, Action, Name};
 use anima_local_hub::group::{LIMITS, Plan};
 use anima_local_hub::programs;
+use anima_local_hub::root_copy::{self, RootCopyError};
 use anima_local_hub::run::{self, Ended, RunError};
 use anima_local_hub::state::{self, Status};
 use anima_local_hub::units::install::{self, Request};
@@ -72,16 +73,23 @@ fn main() -> ExitCode {
         Command::Status(place) => status(&place),
         Command::Start(place) => start_or_stop(&place, true),
         Command::Stop(place) => start_or_stop(&place, false),
+        Command::Copy { place, tree, to } => copy(&place, tree, &to),
+        Command::CheckCopy { copy, tree } => check_copy(&copy, &tree),
         Command::Account { place, verb, name } => account(&place, verb, name),
     };
     match outcome {
         Ok(code) => code,
         Err(error) => {
             eprintln!("anima-local-hub: {error}");
-            let code = if matches!(
-                error.downcast_ref::<RunError>(),
-                Some(RunError::AnotherCopy)
-            ) {
+            let runs = matches!(
+                error.downcast_ref::<RootCopyError>(),
+                Some(RootCopyError::HubRuns)
+            );
+            let code = if runs
+                || matches!(
+                    error.downcast_ref::<RunError>(),
+                    Some(RunError::AnotherCopy)
+                ) {
                 EXIT_ANOTHER_COPY
             } else if matches!(
                 error.downcast_ref::<AccountError>(),
@@ -225,6 +233,19 @@ fn status(place: &Place) -> Result<ExitCode, Failure> {
         last: state::read(&folders.state_file()),
     };
     println!("{}", serde_json::to_string(&status)?);
+    Ok(ExitCode::SUCCESS)
+}
+
+/// One JSON line: how many entries and bytes the copy holds. No path and no content.
+fn copy(place: &Place, tree: PathBuf, to: &Path) -> Result<ExitCode, Failure> {
+    let made = root_copy::make(&carried_by_application(tree)?, &place.folders()?, to)?;
+    println!("{}", serde_json::to_string(&made)?);
+    Ok(ExitCode::SUCCESS)
+}
+
+fn check_copy(copy: &Path, tree: &Path) -> Result<ExitCode, Failure> {
+    let sound = root_copy::check(tree, copy)?;
+    println!("{}", serde_json::to_string(&sound)?);
     Ok(ExitCode::SUCCESS)
 }
 
