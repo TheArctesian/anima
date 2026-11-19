@@ -82,7 +82,8 @@
       "ssh",
       "credentials",
       "events",
-      "agent_usage"
+      "agent_usage",
+      "jobs"
     ],
     "notifications": [
       "events",

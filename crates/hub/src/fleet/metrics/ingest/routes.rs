@@ -32,6 +32,7 @@ use super::{
     refusals::{self, Recorder, Refused, Route},
     renewal,
     turns::{DAEMON_REQUESTS, Turn, Turns},
+    work,
 };
 use crate::{
     clock::Clock,
@@ -132,6 +133,9 @@ fn routes(state: DaemonState) -> Router {
         .route("/daemon/v1/push", post(push))
         .route("/daemon/v1/renew", post(renew))
         .route("/daemon/v1/keys/fetch", post(fetch_key))
+        .route("/work/v1/claim", post(work_claim))
+        .route("/work/v1/report", post(work_report))
+        .route("/work/v1/secret", post(work_secret))
         .with_state(state)
 }
 
@@ -153,6 +157,21 @@ async fn renew(State(state): State<DaemonState>, request: Request) -> Response {
 async fn fetch_key(State(state): State<DaemonState>, request: Request) -> Response {
     let limit = state.deadlines.answer;
     within(limit, keys::serve_fetch(state, request)).await
+}
+
+async fn work_claim(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, work::serve_claim(state, request)).await
+}
+
+async fn work_report(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, work::serve_report(state, request)).await
+}
+
+async fn work_secret(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, work::serve_secret(state, request)).await
 }
 
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back
