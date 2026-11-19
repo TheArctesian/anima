@@ -1084,6 +1084,11 @@ macOS and none for Linux. This is the expected result of step 3, seen for a merg
 of a document; the check that the tip of `main` before the push is on the first line passed for a merge with
 `--no-ff`.
 
+Changed on 2026-11-19, on the branch `release/first-public`, and not run on GitHub: the job `gates` keeps
+compiler outputs between runs, and a release starts with the job `bucket`, which reads one object of the bucket
+with the token. Expected in step 4: `bucket` passes in the first minute. Expected in the second trial after the
+merge: the job `gates` is shorter than 82 minutes, and its last step shows cache hits.
+
 Result: Open.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)

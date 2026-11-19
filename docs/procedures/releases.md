@@ -145,7 +145,7 @@ Read from GitHub on 2026-11-19 with `gh`. The operator, or the orchestrating ses
 | Variable `ANIMA_PUBLIC_RELEASES` | Does not exist: public releases are off |
 | Environment `release` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-sign` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
-| Environment `release-publish` | Permits tags `v*` only; a run of `main` cannot publish until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
+| Environment `release-publish` | Permits tags `v*` only (rule id 67371066); the jobs `bucket` and `publish` of a run of `main` are refused until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
 
 The secrets and variables. GitHub lists names and times, never values. A run must prove that each value is usable.
 
@@ -155,7 +155,7 @@ The secrets and variables. GitHub lists names and times, never values. A run mus
 | `release` | Not read by the workflow | `APPLE_SIGNING_IDENTITY` |
 | `release` | iOS app signing and App Store Connect upload; the iOS job is not built | `IOS_DISTRIBUTION_P12_BASE64`, `IOS_DISTRIBUTION_P12_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `ASC_API_PRIVATE_KEY`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID` |
 | `release-sign` | The updater key (job `sign`) | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` |
-| `release-publish` | The token of the bucket `anima-releases` (job `publish`) | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and the variable `RELEASES_ENDPOINT` |
+| `release-publish` | The token of the bucket `anima-releases` (jobs `bucket` and `publish`) | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and the variable `RELEASES_ENDPOINT` |
 | `release-publish` | Not read by the workflow | `ACCOUNT_ID`, `S3_API`, `TOKEN_VALUE` |
 
 The operator deleted `TAURI_SIGNING_PRIVATE_KEY` from `release`, so the macOS build does not have the updater key. The orchestrating session set the two `R2_…` secrets from a file of the operator, on his instruction, and printed no value (R-195). The three names that the workflow does not read in `release-publish`, and `APPLE_SIGNING_IDENTITY`, can be deleted; a job gets each secret of its environment in memory, also one that no step names. The iOS secrets are in the environment of the macOS build for the same reason: when the iOS job is built, give them an environment of their own.
@@ -199,14 +199,16 @@ If a second account gets write access: add "Require a pull request before mergin
 
 ### To switch public releases on
 
-Do this only when the trial has passed and the AppImage of the trial has started on a Linux computer (R-192). Two steps, both by the operator; an agent does neither (R-180, R-195).
+Do this only when the trial has passed and the AppImage of the trial has started on a Linux computer (R-192). The trial passed on 2026-11-19 (run 44479803653, HT-036). Two steps. The operator does them, or the orchestrating session on his instruction (R-195); each was checked against `.github/workflows/release.yml` on 2026-11-19.
 
-1. Let the environment `release-publish` take a run of `main` (it permits only tags `v*` today): Settings > Environments > `release-publish` > "Deployment branches and tags" > "Add deployment branch or tag rule" > branch `main`. Or:
+1. Let the environment `release-publish` take a run of `main`. Today it permits only tags `v*` (one rule, id 67371066), and the jobs `bucket` and `publish` of a run of `main` name that environment: GitHub refuses them until `main` is added. The rule `v*` can stay; no tag starts the workflow.
 
    ```sh
    gh api --method POST repos/TheArctesian/anima.ing/environments/release-publish/deployment-branch-policies -f name=main -f type=branch
    ```
-2. Set the switch:
+
+   To check: `gh api repos/TheArctesian/anima.ing/environments/release-publish/deployment-branch-policies --jq '[.branch_policies[]|{name,type}]'` gives `main` (branch) and `v*` (tag). The environments `release` and `release-sign` already permit `main`.
+2. Set the switch. The first job of a run and the jobs `bucket` and `publish` read it:
 
    ```sh
    gh variable set ANIMA_PUBLIC_RELEASES --body on --repo TheArctesian/anima.ing
@@ -216,7 +218,37 @@ To switch them off again: `gh variable delete ANIMA_PUBLIC_RELEASES --repo TheAr
 
 ### The first public release
 
-It waits for the two conditions above, and nothing makes it urgent before the LLC exists. It carries macOS and Linux. Its version is the version of its commit (R-183, R-201).
+It carries macOS and Linux. Its version is the version of its commit (R-183, R-201): on 2026-11-19 `main` was at 0.8.14, so the first release is 0.8.15 or more.
+
+#### What the first push with the switch on does
+
+This was read on 2026-11-19 from the three feeds and from `deploy/bin/release-decision` for the tip of `main`; nothing was published for it.
+
+| Step | What happens |
+| --- | --- |
+| The decision | The feeds give 0.2.1 for `darwin-aarch64` and `darwin-x86_64`, and `linux-x86_64` answers 404. A feed that does not exist releases, so the first push to `main` after the switch is a release, also when it changes only a document. The decision for the tip of that day was `release 0.8.14` |
+| The first minute | The job `bucket` reads `darwin-aarch64/latest.json` from the bucket with the token. A wrong token, endpoint or environment rule stops the run here, before the builds end |
+| About 60 to 80 minutes | `gates`, `tool`, `macos` and `linux` at the same time, then `sign` |
+| `publish`, Linux first | `linux-x86_64/<version>/Anima_<version>_amd64.AppImage`, `…/SHA256SUMS` and `…/Anima_<version>_amd64.AppImage.sig`; the copy `Anima-x86_64.AppImage` at the root; then the new feed `linux-x86_64/latest.json` |
+| `publish`, macOS second | `darwin-universal/<version>/Anima.app.tar.gz`, `…/Anima_<version>_universal.dmg`, `…/SHA256SUMS` and `…/Anima.app.tar.gz.sig`; the copy `Anima.dmg` at the root, which replaces the DMG of 0.2.1; then `darwin-aarch64/latest.json` and `darwin-x86_64/latest.json`, which replace the feeds of 0.2.1 |
+| The end | The job reads the three feeds at `https://releases.anima.ing`; each must give the version |
+
+Each file is read back from the bucket and compared, and each feed is written last. The files of 0.2.1 under `darwin-universal/0.2.1/` stay.
+
+A Mac with 0.2.1 from the DMG: the application reads its feed at start and each 4 hours (UPD-001). It then shows the update to the new version in Settings > Updates and in the banner, and "Restart to update" installs it. It trusts the update: the public key in `tauri.conf.json` is the same text as at the commit of 0.2.1 (`b361eb5f`), and the trial proved that the key of `release-sign` signs for that public key. 0.2.1 carries the command line under its old name `anima-agent`; the new version carries `anima`. An application that a computer built does not update itself (DEF-001).
+
+#### What can fail at the first real release that a trial does not show
+
+| What | Why a trial does not show it | What is done, and what to do |
+| --- | --- | --- |
+| The environment `release-publish` refuses a run of `main` | A trial never uses that environment | Step 1 of "To switch public releases on". If it is not done, the job `bucket` fails in the first minute |
+| The bucket token is wrong, has no right for `anima-releases`, or is of a different account than `RELEASES_ENDPOINT` | A trial has no token. The orchestrating session set the two secrets from a file of the operator (R-195); no run used them | The job `bucket` reads one object with them in the first minute. The variable has the right form (`https://<32 hex characters>.r2.cloudflarestorage.com`, read on 2026-11-19) |
+| The token can read but cannot write | The job `bucket` only reads | The first write is a file of Linux under a new version folder; the feeds are not changed when it fails. Make a token with "Object Read & Write" for that bucket, set the two secrets, and select "Re-run failed jobs" |
+| The public address does not give a new file | No trial puts a file | `publish` reads each file at `https://releases.anima.ing` before it writes a feed. The address did not keep an answer in its cache on 2026-11-19 (`cf-cache-status: DYNAMIC` for a feed, for the DMG and for the 404 of Linux) |
+| `publish` stops between Linux and macOS | — | The Linux feed is new and the macOS feeds still give 0.2.1. "Re-run failed jobs" writes the same files again and goes on. If you do not, the next push that is a release publishes both |
+| The AppImage does not start on a Linux computer | No machine of GitHub starts it | The check of the operator (R-192, HT-036 step 2). It is the reason that the switch is off |
+
+#### The steps
 
 1. Keep the three feeds of today, for a rollback:
 
@@ -224,12 +256,29 @@ It waits for the two conditions above, and nothing makes it urgent before the LL
    for feed in darwin-aarch64 darwin-x86_64 linux-x86_64; do curl -fsS -o "feed-$feed.json" "https://releases.anima.ing/$feed/latest.json" || echo "$feed has no feed"; done
    ```
 2. Switch public releases on. The switch alone releases nothing: a run starts only from a push.
-3. Push to `main` (the merge of `dev`, above). The Linux feed does not exist, so the first push after the switch is a release, also when it changes only documents.
+3. Push to `main` (the merge of `dev`, above).
 4. Check, after the job `publish` passed:
    - Each feed gives the version (the job also reads them): `curl -fsS https://releases.anima.ing/darwin-aarch64/latest.json`, and the same for `darwin-x86_64` and `linux-x86_64`.
    - Download `https://releases.anima.ing/Anima.dmg` and run the two commands of the trial on it and on the application in it.
-   - On a Mac with 0.2.1 installed from its DMG: Settings > Updates offers the version, and "Restart to update" starts it. An application that a computer built does not update itself (DEF-001).
-5. Set the row of the version in the release record at the top of this document, and the result of HT-036.
+   - On a Mac with 0.2.1 installed from its DMG: Settings > Updates offers the version, and "Restart to update" starts it.
+5. Set the release record at the top of this document, and the result of HT-036. The text for the two rows, with the version, the day and the commit of the run:
+
+   - macOS, "Newest version": `<version> (<day>, commit <commit>), the first release of the release workflow. 0.2.1 was the last release of the Builds path (2026-11-17, commit b361eb5f)`. "Evidence": `Run <number> of the workflow release; the three feeds answered 200 with <version> on <day> (curl)`.
+   - Linux, "Newest version": `<version> (<day>, commit <commit>), the first Linux release`. "State": `Published`. "Evidence": the same run.
+
+#### The notes of the first release
+
+For the page of the download and for a message to the persons who have 0.2.1. They describe `main` at 0.8.14 (`7c8ece8d`); read them again against the commit that is released.
+
+- **Linux.** The first release for Linux: an AppImage for `x86_64`.
+- **Sign in with an Anima.ing account.** The first run is "Sign in": the application signs in to the Anima.ing account and joins a hosted hub with no other step. The computer that signs in is a device of its hub.
+- **Containers.** The page of a device has a tab Containers: the containers of the device, their details and logs, the state of a Compose project, images, volumes and networks, and a mark when a newer image exists.
+- **Agent usage.** A page with the use of coding agents (Claude Code, Codex) for each device, model and day, with an estimate of the cost.
+- **Logs.** The event log has a search by text.
+- **When the hub does not answer.** The application shows a read-only copy of the last answers of the hub, with its age.
+- **The command line.** The program is `anima` (it was `anima-agent` in 0.2.1). New commands: `anima containers`, `anima agents usage`, `anima audit verify`, `anima location`, `anima reminder`, each with its MCP tool.
+- **Versions.** The version is now the number of the release commit, for example 0.8.15. The numbers are higher than 0.2.1 and have gaps; each is one commit of `main`.
+- **Updates.** From this version, the application gets each change of `main` that changes it, with no step of a person. Settings > Updates shows the version and the check.
 
 ### To stop or undo a release
 
