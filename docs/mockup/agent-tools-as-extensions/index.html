@@ -7,8 +7,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
 <style>
 /* Layout: a review board. Frame 1 is Settings, Extensions, Agent tools; frame 2 is the grant screen; frame 3 is a web pane of a tool;
-   frame 4 is the error page of a pane; frame 5 is "Add an agent" with Hermes suggested first (agent-tools-as-extensions.md, AXT-004,
-   AXT-005, AXT-010, AXT-013, AXT-015, AXT-017, AXT-021, AXT-022). Each frame is the page area of the app. */
+   frame 4 is the error page of a pane; frame 5 is "Add an agent" with Hermes suggested first; frame 6 is a release that the recipe does not support (agent-tools-as-extensions.md, AXT-004,
+   AXT-005, AXT-010, AXT-013, AXT-015, AXT-017, AXT-021, AXT-022, AXT-028, AXT-033, AXT-034, AXT-035). Each frame is the page area of the app. */
 :root {
   color-scheme: dark;
   --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
@@ -83,6 +83,9 @@ ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--sp
 .empty { display: grid; justify-items: center; gap: var(--space-2); padding: var(--space-6) var(--space-4); text-align: center; }
 .empty h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
 .empty p { max-inline-size: 44ch; color: var(--text-secondary); }
+/* The attribution (AXT-028, AXT-033, AXT-034): name, licence, links; "works with" only, no logo. */
+.attr { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; font-size: var(--text-sm); color: var(--text-secondary); }
+.attr a { color: var(--accent); text-decoration: none; }
 /* The pane header (AXT-010, AXT-015): the tool, the device, the actions and the notice. */
 .pane { border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
 .pane-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-block-end: var(--border-thin) solid var(--border-subtle); }
@@ -105,12 +108,14 @@ ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--sp
         <thead><tr><th>Tool</th><th>Kind</th><th>Devices</th><th>Action</th></tr></thead>
         <tbody>
           <tr><td>Hermes Agent</td><td>Web page and terminal</td><td>mac-mini: running</td><td><span class="actions"><span class="btn">Open</span><span class="btn">Revoke</span></span></td></tr>
+          <tr><td colspan="4"><span class="attr">MIT licence. Works with Anima.ing. <a href="#">Repository</a><a href="#">Docs</a><a href="#">Licence</a><a href="#">Sponsor</a></span></td></tr>
           <tr><td>Herdr</td><td>Terminal</td><td>mac-mini: installed, stopped</td><td><span class="actions"><span class="btn primary">Turn on for a device</span></span></td></tr>
+          <tr><td colspan="4"><span class="attr">Apache-2.0 licence. Works with Anima.ing. <a href="#">Repository</a><a href="#">Docs</a><a href="#">Licence</a></span></td></tr>
         </tbody>
       </table>
       <p class="detail">The list holds only tools that Anima.ing ships (AXT-002). T3 Code is not in the list.</p>
     </div>
-    <figcaption>1. Settings, Extensions, Agent tools. The switch is off by default (AXT-004). Each tool is turned on for each device (AXT-005).</figcaption>
+    <figcaption>1. Settings, Extensions, Agent tools. The switch is off by default (AXT-004). Each tool is turned on for each device (AXT-005). Each entry credits its project and links its repository, docs, licence and, when one exists, its sponsor page (AXT-028, OD-AXT13). No logo, no ranking, "works with" only (AXT-030, AXT-034).</figcaption>
   </figure>
 
   <figure>
@@ -138,10 +143,11 @@ ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--sp
           <span class="actions"><span class="btn">Reload</span><span class="btn">Stop</span><span class="btn">Revoke</span></span>
         </div>
         <p class="detail" style="padding: var(--space-2) var(--space-3)">This page goes through your hub as it is. Your hub does not keep it.</p>
+        <p class="attr" style="padding: 0 var(--space-3) var(--space-2)">Hermes Agent 0.23.2, MIT licence, by its open-source project. Works with Anima.ing. <a href="#">Repository</a><a href="#">Docs</a><a href="#">Sponsor</a></p>
         <div class="pane-body">The page of the tool, in its own web view. No access to the app.</div>
       </div>
     </div>
-    <figcaption>3. A web pane (AXT-010, AXT-015). The header is the app's. The page below it is the tool's, in a web view with its own store and no IPC.</figcaption>
+    <figcaption>3. A web pane (AXT-010, AXT-015). The header is the app's. The page below it is the tool's, in a web view with its own store and no IPC. The attribution line names the project, its version and licence, and links open in the system browser (AXT-033).</figcaption>
   </figure>
 
   <figure>
@@ -172,6 +178,18 @@ ol.steps li { display: grid; grid-template-columns: 5rem 1fr auto; gap: var(--sp
       <p class="detail">Hermes is suggested. It is installed only when you click Install.</p>
     </div>
     <figcaption>5. "Add an agent" (BOT-058) with Hermes first (AXT-021). Nothing installs without the click of the operator.</figcaption>
+  </figure>
+  <figure>
+    <div class="frame gl">
+      <div class="head"><h2>Hermes Agent on mac-mini</h2><span class="btn off">Update</span></div>
+      <div class="secret">
+        <b>Hermes Agent 0.24.0 is not supported by this recipe yet</b>
+        <span class="detail">The recipe supports 0.23.x. The update is stopped. Your installed version keeps working.</span>
+        <span class="attr">Reported to the project. <a href="#">See the report</a></span>
+      </div>
+      <p class="detail">Anima.ing installs only the project's official release and does not patch it (AXT-029, AXT-031).</p>
+    </div>
+    <figcaption>6. A release that the recipe does not support (AXT-035). The recipe stops, the page says so, and it links the report to the project.</figcaption>
   </figure>
 </div>
 </body>

@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Draft
-evidence: Version 1 (2026-11-18). Operator direction of 2026-11-18, relayed by Anima Product Ideas and not first-hand (OD-AXT1). No ruling. No requirement is approved and no task is built. Checked against origin/main at `cdd720ef`. Serves row 4.21 of the priorities, a placeholder that waits for OD-AXT1 and OD-AXT11.
+evidence: Version 2 (2026-11-18). The goal follows the first-hand words of the operator of 2026-11-18 22:32 PT (not a ruling). The four answers of 17:03 PT are relayed by Anima Product Ideas and not first-hand (OD-AXT1). No ruling. No requirement is approved and no task is built. Checked against origin/main at `cdd720ef`. Serves row 4.21 of the priorities, a placeholder that waits for OD-AXT1 and OD-AXT11.
 ---
 
 # Proposal: agent tools as extensions (an extension host for tools on the operator's machines)
@@ -11,21 +11,28 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: agent tools as extensions. A host that opens a tool of another vendor, which runs on a machine of the operator, in a pane of the client |
-| Version | 1 |
+| Version | 2 |
 | Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. The direction of the operator is relayed, not first-hand. No ruling. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. No ruling. |
 | Serves | Row 4.21 of [priorities.md](../plan/priorities.md) (a new row, by the relayed answer 4 of the operator; placeholder until OD-AXT1 and OD-AXT11) |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 2.8 (EXT-009), 2.8.1, 3.4 and 4.12 (AIS-009 to AIS-024); [bots.md](bots.md) (BOT-001 to BOT-078); the design specification Section 6.3.4 (WEB-001 to WEB-010); [hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049); [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (task H1, fixed commands through SSH) |
-| Identifiers | AXT-001 to AXT-027, OD-AXT1 to OD-AXT11, tasks AX0 to AX12 |
+| Identifiers | AXT-001 to AXT-043, OD-AXT1 to OD-AXT15, tasks AX0 to AX16 |
 
 ## 1. Goal
 
-Do not build a second Herdr, a second T3 Code or a second assistant bot in Anima.ing. Let the operator run open-source tools that exist on his own machines, and open each tool in a pane of the client as an extension. Anima.ing gives the pane, the grant, the state and the install. It does not give the tool.
+Make Anima.ing the best place to run open-source agent tools remotely. Anima.ing supports the projects of these tools, and gains their users.
 
-The first tools are Hermes Agent (a web page on a local port, and a terminal screen) and Herdr (a terminal program). T3 Code is not in the catalogue (Section 5, constraint C2).
+- **Support for the projects.** Anima.ing gives credit to each project and links its repository, its documents, its licence and its sponsor page. It installs only the official release of the project. It does not fork or rebrand a tool. A fix that Anima.ing needs goes to the project as a pull request. The tool keeps working without Anima.ing, so there is no lock-in (Section 6.7).
+- **Gain of their users.** These tools run on the machine of the user, and the difficult part is to reach them from a different place. Anima.ing already does that, so remote access is the hook: "open your Hermes dashboard from your phone or your laptop". One click in "Add an agent" installs the tool and opens it. A project can choose to list Anima.ing in its own documents (OD-AXT12).
 
-The operator's words (2026-11-18, 16:57 PT, relayed by an agent, unchanged):
+Do not build a second Herdr, a second T3 Code or a second assistant bot in Anima.ing. Anima.ing gives the pane, the grant, the state, the health and the install. It does not give the tool. The first tools are Hermes Agent (a web page on a local port, and a terminal screen) and Herdr (a terminal program). T3 Code is not in the catalogue (Section 5, constraint C2; OD-AXT15).
+
+The goal comes from the operator's first-hand words (2026-11-18, 22:32 PT, Grok Bot chat, unchanged), and his choice "Yes, reframe the goal around supporting the projects and gaining their users." This is the direction of the goal. It is not a ruling, and OD-AXT1 stays Open:
+
+> I mean its more about how do I support all of these great other open source apps and also gian their users
+
+The first words of the operator (2026-11-18, 16:57 PT, relayed by an agent, unchanged):
 
 > also i’m thinking instead of rebuilding herdr or t3 code or grok bot (we should just use hermes instead) we integrate them all as extensions such that they can be opened in a pane in the app or something like that
 
@@ -138,6 +145,49 @@ All requirements here are proposed. None is approved, and none is built until th
 - **AXT-026.** The usage counts (AIS-018 to AIS-024), the agent states (BOT-022 to BOT-024) and the install (BOT-058 to BOT-078) stay as they are. When Herdr is installed on a device, BOT-069 must start an agent in a Herdr pane; otherwise in the `tmux` session of BOT-069.
 - **AXT-027.** Agent tools must be free on every plan, including self-host (as AIS-016 and BOT-009).
 
+### 6.7 Support for the projects and growth
+
+Anima Marketing Bot gave the input for this section (2026-11-18). It holds no price and no funding fact. The pages of the public site are in the private site repository `anima-site`; this document records the requirement and its owner only.
+
+**Support for the projects.**
+
+- **AXT-028.** Each catalogue entry must link the repository, the documents and the licence of the project, and its sponsor page when the project has one (OD-AXT13). The manifest holds these addresses (AXT-001).
+- **AXT-029.** A recipe must install only the official release of the project, from the release channel that the project names (BOT-062).
+- **AXT-030.** Anima.ing must not fork or rebrand a tool. It must keep the name and the version of the tool as the project writes them. Before Anima.ing uses the name or the logo of a tool, a person must read the licence and the name and logo rules of the project. Where the rules are not clear, Anima.ing shows no logo.
+- **AXT-031.** A fix that Anima.ing needs in a tool (for example a header so that the page opens in a pane) must go to the project as a pull request. Anima.ing must not keep a private patch. If the project does not take the fix, the entry waits; Anima.ing does not fork.
+- **AXT-032.** The tool must keep working without Anima.ing. A revoke, a removal of Anima.ing or a stop of the hub must leave the tool, its settings and its data on the machine as they are (BOT-072).
+- **AXT-033.** The pane header must show the attribution: the name of the project, its licence, and the links of AXT-028. The links open in the system browser.
+- **AXT-034.** Each text about a tool must say "works with". It must not say "official partner", must not use exclusive words, and must not rank one tool against a different tool. It must not say that a project endorses Anima.ing unless the project says so.
+- **AXT-035.** Each recipe must give the versions that it supports, or run a compatibility check before the install. When a new release of a project breaks the recipe, the page must say so, the recipe must stop, and a person must report it to the project. The page then says "Reported to the project" with the link of the report.
+
+**Growth.**
+
+- **AXT-036.** The public site must have one catalogue page for each tool (for example `/agents/hermes`): what the tool is, the credit and the links of AXT-028, and a guide "Run it remotely". `llms.txt` must list these pages. Owner: the site repository `anima-site` and the design specification Section 3.12 (SITE). This document does not build the pages.
+- **AXT-037.** Each catalogue page must have an "Edit this page" link or a contact for the maintainer. When a maintainer asks, Anima.ing must remove the listing within one day.
+- **AXT-038.** Anima.ing can give maintainers an optional badge or snippet, "Run it remotely with Anima.ing". Its link must carry a source tag `?ref=<tool>`. A project is never asked to add it as a condition (OD-AXT12).
+- **AXT-039.** Each tool must have a short demo clip: open the tool from a phone or a laptop in a different place. A project can use the clip.
+- **AXT-040.** The uptime and metrics view must show the health of each granted tool, with the states of AXT-006 and BOT-024, for example "Hermes Agent is down on office-mac". A tool that goes down can send an alert through the notification system (the NOT requirements of the design specification), and the operator can mute it.
+- **AXT-041.** Each text about security must say how access works: the private network or the relay of the hub, and the sign-in of the operator. It must say who can reach the dashboard of a tool (AXT-012, AXT-013). It must never say that the traffic is encrypted from end to end, because the hub carries the traffic of a pane as plain text (OD-AXT7).
+- **AXT-042.** Anima.ing can measure growth only with counts. A signal must hold no text, no address path, no account name and no content of a tool (LOG-007). The signals are in the table below.
+- **AXT-043.** The offer of a docs line "Run it remotely with Anima.ing" to a project must come only after the public release and after a contribution that the project merged (OD-AXT12). It is an offer. It is never a condition of a listing.
+
+**Signals (AXT-042).** Counts only. "New telemetry" means a count that the product does not send today.
+
+| Signal | Source | New telemetry? |
+| --- | --- | --- |
+| Completed installs for each tool for each week (not clicks) | The install events of BOT-073 on each hub | Yes. A hub keeps the events, but no count goes from a hub to Anima.ing today. [NEEDS CLARIFICATION: how a count leaves a hosted hub and a self-hosted hub; opt-in for a self-hosted hub.] |
+| Sign-ups and downloads with a `?ref=<tool>` tag | The site and the sign-up of the hosted mode | Yes. The site must keep the tag to the sign-up or the download. [NEEDS CLARIFICATION: where the tag is kept, with no other data of the person.] |
+| The share of new users who add a catalogue tool in their first week | The sign-up day and the first completed install | Yes. It joins two counts. [NEEDS CLARIFICATION: on the hosted hub only, or also opt-in self-host.] |
+| The maintainer funnel: contacted, listed with consent, docs line added, upstream pull requests merged | A list that a person keeps | No. It is not product telemetry. |
+
+**Outreach to maintainers.** The outreach is not a code task. These rules apply to each person and agent that does it.
+
+| Always | Ask the operator first | Never |
+| --- | --- | --- |
+| Give before you ask: a merged upstream fix or docs pull request comes first. Lead with the AGPL licence of Anima.ing. In the first message, ask for permission and feedback ("Can we list the tool? Does this install path look right?"). Make it easy to correct or opt out (AXT-037). | Each first message to a project. The offer of a docs line or a badge (OD-AXT12). Sharing install counts with a project (OD-AXT14). | Contact a maintainer, or announce the catalogue, before the public release, which the operator calls. Ask for a docs listing in the first message. Ask for co-marketing in the first message. Use "official partner" or exclusive words. |
+
+**A difference with an older note.** An older spec in the business vault, "One-Click Agent Setup", has a different first-version list of agents. This proposal keeps T3 Code out (constraint C2), and bots.md version 5 has six agents (BOT-077). [NEEDS CLARIFICATION: OD-AXT15.]
+
 ASCII wireframe of the pane and the grant screen:
 
 ```text
@@ -145,6 +195,7 @@ Anima.ing                                            [ mac-mini | Hermes Agent ]
 +----------------------------------------------------------------------------------+
 | Hermes Agent on mac-mini   127.0.0.1:9119   This page goes through your hub as   |
 | [Reload] [Stop] [Revoke]                    it is. Your hub does not keep it.    |
+| Hermes Agent, MIT licence. Works with Anima.ing.  [Repo] [Docs] [Sponsor]        |
 |----------------------------------------------------------------------------------|
 |                                                                                  |
 |              (the page of the tool, in its own web view, no IPC)                 |
@@ -181,6 +232,7 @@ These changes are not made. Each one waits for the ruling of its decision. The c
 | design specification WEB-006 | Add: "and a separate data store for each tool of each device (AXT-010)". | Approval of AXT |
 | `contracts/tunnel.md` (K4) | A new section: the tool tunnel (a `direct-tcpip` channel that the hub opens to the loopback port of the device). Section 8: the manifest command in place of the login shell for the terminal kind (AXT-014). | OD-AXT6, approval of AXT |
 | `contracts/schema.graphql` (K1), `contracts/database.md` (K2), `contracts/hub-domains.md` (K3), `quality/hub-modules.json` | The types, tables and domain of the grants and states. | Approval of AXT |
+| The site repository `anima-site` | The catalogue pages, `llms.txt`, the badge and the `?ref=` tag (AXT-036, AXT-038). The site owns them; this document does not change them. | Approval of AXT; the public release |
 | [priorities.md](../plan/priorities.md) row 4.21 | From the placeholder to its tier and state. | OD-AXT11 |
 
 ## 8. Reviews
@@ -302,6 +354,10 @@ Each row asks one question with yes, no or one choice, and gives the recommendat
 | OD-AXT9 | Is a warning and your confirmation for each device enough for C1, given that Anima.ing cannot stop Hermes from reading the Claude Code login file on your machine? (yes/no) | Yes, with the terms row before the release (BOT-038). Strength: honest, and the same kind of control as BOT-038 and BOT-041. Weakness: it is not a block; a wrong Hermes setting can still use the login. | Open |
 | OD-AXT10 | Does version 1 leave the state of each agent to Herdr's own screen, with no Anima.ing page of all agents and no alerts (the place of AIS-010 to AIS-012)? (yes/no) | Yes. Revisit with the idea `agent-state-hooks` (the open status protocol of Herdr). Strength: smaller version 1. Weakness: no alert on the phone when an agent waits. | Open |
 | OD-AXT11 | Is row 4.21 tier 3, after row 4.7 (the work route, which the install needs), with AX0 free to run before? (yes/no) | Yes. Strength: the panes do not wait, but the install does, so the order is honest. Weakness: Hermes cannot be installed from the app until W1 and BI0 to BI4 are done. | Open |
+| OD-AXT12 | May Anima.ing offer each project an upstream docs line "Run it remotely with Anima.ing", only after the public release and only after the project merged a contribution of Anima.ing (AXT-043)? (yes/no) | Yes: offer it, never require it. Strength: the users of the project find Anima.ing from the side of the tool, and the give-first rule protects goodwill. Weakness: it is slow, and a project can say no after work was given. | Open |
+| OD-AXT13 | Do catalogue entries and the pane show the sponsor link of the project when it has one (AXT-028, AXT-033)? (yes/no) | Yes. Strength: it sends support back to the project and shows that Anima.ing is not a reseller. Weakness: a sponsor link that moves or ends needs a person to check it before each release. | Open |
+| OD-AXT14 | May Anima.ing share anonymised install counts with each project, opt-in only, later than version 1? (yes/no) | Yes, later than version 1. Strength: useful to the project and builds trust. Weakness: it needs the new telemetry of AXT-042 and a consent flow; a small count can point to one person. | Open |
+| OD-AXT15 | Do you confirm that T3 Code stays out of the catalogue (constraint C2), although an older vault spec, "One-Click Agent Setup", lists a different first version? (yes/no) | Yes, per C2 (BOT-021, BOT-032, BOT-033). Strength: it keeps the terms rules. Weakness: T3 Code users are a large group that this version does not reach. | Open |
 
 ## 10. Tasks
 
@@ -310,9 +366,9 @@ One pull request for each task. The size of each task is a few hours to three da
 | Task | Wave | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | AX0 | 0 | A measurement, a record only: the Hermes dashboard and Herdr in a Tauri child web view and a terminal pane, through a test relay to a loopback port; `Host`, `Origin`, WebSocket and frame refusals; the two designs of AXT-011; `direct-tcpip` on stock macOS and Linux `sshd`; the install and attach commands | Nothing (record only) | Not started | — |
-| AX1 | 1 | The operator answers OD-AXT1 to OD-AXT11 and approves AXT-001 to AXT-027 with a ruling | The operator | Not started | — |
+| AX1 | 1 | The operator answers OD-AXT1 to OD-AXT15 and approves AXT-001 to AXT-043 with a ruling | The operator | Not started | — |
 | AX2 | 1 | Docs only, merged first (R-155): the rulings; the changes of Section 7 to extensions-plan.md, ai-direction.md, bots.md and WEB-006; the contract text of K1, K2, K3 and K4; `hub-modules.json` | AX1 | Not started | — |
-| AX3 | 2 | `daemon-core`: the manifest types and their pure validation; the manifests of Hermes and Herdr; two `ToolName` values and their probes | AX2 | Not started | — |
+| AX3 | 2 | `daemon-core`: the manifest types and their pure validation, with the attribution fields of AXT-028 and the supported versions of AXT-035; the manifests of Hermes and Herdr; two `ToolName` values and their probes | AX2 | Not started | — |
 | AX4 | 2 | The hub: the domain of the catalogue, the switch, the grants, the states and the audit events; the GraphQL | AX2; OD-AXT8 | Not started | — |
 | AX5 | 3 | The hub: start and stop through SSH with fixed commands; the tool tunnel (`direct-tcpip` to the loopback port), the pane ticket, the relay with no record | AX4; AX0; OD-AXT6, OD-AXT7 | Not started | — |
 | AX6 | 3 | `anima tools list`, `status`, `grant`, `revoke`, `start`, `stop`, `open` (terminal kind) | AX4 | Not started | — |
@@ -320,8 +376,12 @@ One pull request for each task. The size of each task is a few hours to three da
 | AX8 | 4 | The desktop: the tool web view (own store, no IPC, origin lock, no popup, no download) and the client listener with the pane token | AX5; AX0 | Not started | — |
 | AX9 | 4 | The client: the switch, the grant screen, the tools on the device page, the pane header and its error page; the mockup is compared (PLN-019) | AX4, AX8 | Not started | — |
 | AX10 | 4 | The terminal kind: the manifest command in the SSH terminal (Herdr, `hermes --tui`) | AX4; OD-AXT2 | Not started | — |
-| AX11 | 5 | The recipes of Hermes (suggested first, never without a click) and Herdr in the catalogue of bots.md, with their terms rows and the confirmation of AXT-022 | BI0 to BI4 of bots.md; OD-AXT1, OD-AXT5, OD-AXT9 | Not started | — |
+| AX11 | 5 | The recipes of Hermes (suggested first, never without a click) and Herdr in the catalogue of bots.md, with their terms rows, the confirmation of AXT-022, the attribution fields (AXT-028), the official release only (AXT-029), the version check and the "Reported to the project" state (AXT-035) | BI0 to BI4 of bots.md; OD-AXT1, OD-AXT5, OD-AXT9 | Not started | — |
 | AX12 | 6 | The security review of B1 to B4 and the entry in `need-human-testing.md`; the hand check on a Mac and a Linux machine on the hosted hub | AX8, AX9, AX10, AX11 | Not started | — |
+| AX13 | 4 | The client: the attribution in the pane header and the catalogue rows (AXT-033, AXT-034), the links in the system browser; the mockup frames 1, 3 and 6 are compared | AX9; OD-AXT13 | Not started | — |
+| AX14 | 4 | Tool health in the uptime and metrics view, with the alert and its mute (AXT-040) | AX4, AX5 | Not started | — |
+| AX15 | 5 | The new counts of AXT-042 (installs for each tool for each week, the first-week share), counts only | Approval of AXT-042; the [NEEDS CLARIFICATION] markers of the signals table | Not started | — |
+| AX16 | 7 | Not a task of this repository: the catalogue pages, `llms.txt`, the badge, the `?ref=` tag and the clips in `anima-site` (AXT-036 to AXT-039). Recorded here so that the order is clear | The public release, which the operator calls; AX11 | Not started | — |
 
 ### 10.1 Task briefs
 
@@ -341,6 +401,10 @@ One pull request for each task. The size of each task is a few hours to three da
 | AX10 | Pass when the terminal opens with the manifest command and the login shell is used for each other session; fail otherwise | `cargo nextest run -p anima-hub` | The web kind |
 | AX11 | Pass when the Hermes recipe is first in "Add an agent", is never started by a schedule, an event, a bot or (if OD-AXT5 is yes) MCP, and shows the warning of AXT-022; fail otherwise | `cargo nextest run -p daemon-core`, `cargo nextest run -p anima-hub` | T3 Code (C2) |
 | AX12 | Pass when the review lists B1 to B4 with a result and the human check has an entry with steps; fail otherwise | `bun run quality:documents` | Fixes, which are their own tasks |
+| AX13 | Pass when the pane header and each catalogue row show the name, the licence and the links of AXT-028, the links open in the system browser, no text says "partner" or ranks tools, and the mockup row names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run quality:documents` | Logos (AXT-030 needs a person first) |
+| AX14 | Pass when a tool that stops shows "down" in the uptime and metrics view within one check interval, sends one alert, and a mute stops the alert; fail otherwise | `cargo nextest run -p anima-hub`, `bun run --cwd apps/client test` | New metrics of the tool itself |
+| AX15 | Pass when each count holds no text, no path and no account name (a test of LOG-007), and a self-hosted hub sends nothing without opt-in; fail otherwise | `cargo nextest run -p anima-hub` | Site analytics |
+| AX16 | Not checked in this repository | — | Everything in this repository |
 
 Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task AXn of docs/proposals/agent-tools-as-extensions.md. Read Sections 5, 6 and 8 first. Build only what the row of AXn says, in the order of CMD-030. Run the check commands of the row, then bun run quality:documents and bun run gates."
 
@@ -349,9 +413,12 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - The Hermes and Herdr behaviour in a pane, the install and attach commands, and `direct-tcpip` on stock `sshd` (task AX0).
 - The facts about the three tools in Section 1 come from the idea stage (GitHub API and vendor pages, read 2026-11-18 by Anima Product Ideas). The Planner did not read them again.
 - Whether the daemon can see the address of a listening port without root.
+- The licence and the name and logo rules of Hermes Agent and Herdr (AXT-030). A person reads them before AX13.
+- Whether each project has a sponsor page (AXT-028).
 - The size of the work: an estimate.
 
 ## 12. Review notes
 
 - 2026-11-18, version 1. The Planner made this proposal from the idea `agent-tools-as-extensions` and deleted the idea folder in the same commit (PLN-018). The four answers of the operator are relayed and wait for first-hand confirmation (OD-AXT1 to OD-AXT3). No ruling is recorded. The Planner added row 4.21 as a placeholder, a concern row in ownership.md, pointer notes in extensions-plan.md Section 4.12.1 and in bots.md, and the mockup.
 - The Planner found that WEB-004 cannot reach a loopback port of a remote device, and that the link reaches only ports 22, 5900 and 3389. So the pane needs a path through the hub (OD-AXT6).
+- 2026-11-18, version 2. The operator said first-hand (22:32 PT): "I mean its more about how do I support all of these great other open source apps and also gian their users", and chose to reframe the goal. The Planner rewrote Section 1 and added Section 6.7 (AXT-028 to AXT-043) with the input of Anima Marketing Bot: credit, the official release, no fork, upstream fixes, no lock-in, attribution, "works with" wording, version checks, catalogue pages on the site, the badge with `?ref=`, clips, tool health, security text, the signals and the outreach rules. It added OD-AXT12 to OD-AXT15 and tasks AX13 to AX16, and changed AX3 and AX11. The goal is direction, not a ruling; OD-AXT1 stays Open. The Planner recorded that an older vault spec, "One-Click Agent Setup", differs on the first-version list (OD-AXT15), and copied nothing from it.

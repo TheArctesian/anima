@@ -32,10 +32,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
-| 4.21 | Agent tools as extensions (Hermes, Herdr in a pane) | Operator: OD-AXT1 to OD-AXT11 in agent-tools-as-extensions.md Section 9. Agent: None. AX1 to AX12 wait for the rulings; AX0 is a record only |
+| 4.21 | Agent tools as extensions (Hermes, Herdr in a pane) | Operator: OD-AXT1 to OD-AXT15 in agent-tools-as-extensions.md Section 9. Agent: None. AX1 to AX16 wait for the rulings; AX0 is a record only |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (120)
+## 2. Open decisions (135)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -106,6 +106,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AXT9 | Is a warning and your confirmation for each device enough for C1, given that Anima.ing cannot stop Hermes from reading the Claude Code login file on your machin… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT10 | Does version 1 leave the state of each agent to Herdr's own screen, with no Anima.ing page of all agents and no alerts (the place of AIS-010 to AIS-012)? (yes/n… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT11 | Is row 4.21 tier 3, after row 4.7 (the work route, which the install needs), with AX0 free to run before? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT12 | May Anima.ing offer each project an upstream docs line "Run it remotely with Anima.ing", only after the public release and only after the project merged a contr… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT13 | Do catalogue entries and the pane show the sponsor link of the project when it has one (AXT-028, AXT-033)? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT14 | May Anima.ing share anonymised install counts with each project, opt-in only, later than version 1? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT15 | Do you confirm that T3 Code stays out of the catalogue (constraint C2), although an older vault spec, "One-Click Agent Setup", lists a different first version?… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
