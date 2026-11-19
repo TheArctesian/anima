@@ -1,14 +1,14 @@
 ---
 kind: Proposal, with a task table
-state: Draft
-evidence: Written on 2026-11-19 from the competitor research of that day, at the request of the operator ("fleshed out more via the competitor research"). No ruling approves a requirement, a contract text or a task of this document. Nothing is built from it (PLN-007). The eight open decisions OD-HOST-5 to OD-HOST-12 are in the operator queue.
+state: Direction decided
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types for a security review (R-209): it is not part of contract K10, and no code of a container work type on a machine is built before it is version 0.4. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 2 (2026-11-19).
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this document (PLN-005).
 
-Version: 1. Date: 2026-11-19.
+Version: 2. Date: 2026-11-19. Version 1 was the proposal with eight open decisions. Version 2 records the answers of the operator (R-209 to R-216) and adds Section 9, the state of each requirement.
 From: the operator, 2026-11-19, relayed by the orchestrating session and not first-hand in the session that wrote this: the container side should be "fleshed out more via the competitor research", and "the coolify/dockploy and the portainer things are still competitors and things I want to emulate ish".
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md). The plan that this proposal changes when it is approved is [hosted-applications-plan.md](../plans/hosted-applications-plan.md). The contract that it changes is K10, [work-route.md](../../contracts/work-route.md).
@@ -462,21 +462,21 @@ Not proposed, with the reason: preview deployments (they need H21, H23 and H26, 
 competitors warn about them for public repositories); build packs (small after H26, of no use
 before it); a scheduled command in a container (Section 4.3).
 
-## 7. Open decisions
+## 7. Decisions
 
-Each row is a question for the operator. The first two unblock building. The text below the table
-gives the options with their advantages and their disadvantages.
+The operator answered each question on 2026-11-19 (R-209 to R-216), with the recommended option in
+each case. The text below the table is the question as it was put to him, with its options.
 
-| Decision | Question | Recommendation |
+| Decision | Question | Result |
 | --- | --- | --- |
-| OD-HOST-5 | Do you accept the work route contract, and how do the container work types join it? | B: accept version 0.3 now, and approve Section 4 as the text for a security review; it joins the contract when the review has no finding that you have not decided. |
-| OD-HOST-6 | What may a Compose file from the hub do on a machine? | B: a switch at the machine that is off after the install, and the profile `contained` unless the owner sets `full` at the machine. |
-| OD-HOST-7 | May Anima manage a stack that it did not install? | B: yes, after the owner adopts it at the machine; start, stop, restart and update in place; no change of its file in the first version. |
-| OD-HOST-8 | Do you approve HOST-008: each installed application gets a check and a web interface entry? | Yes. |
-| OD-HOST-9 | The reverse proxy: does Anima run one, manage one that exists, or stay out? This reverses HOST-009. | A, in stage 3: Anima installs its own, only where you ask, and refuses when ports 80 or 443 are in use. |
-| OD-HOST-10 | Deploys from git: a Compose file from a repository first, or a build from source first? | A: the Compose file first. |
-| OD-HOST-11 | Does a catalogue ship with the product? | A: a small list that is tested, and the lists that you add by address. |
-| OD-HOST-12 | Are databases a kind of their own? | A: yes, as catalogue entries with more knowledge, PostgreSQL first. |
+| OD-HOST-5 | Do you accept the work route contract, and how do the container work types join it? | B (R-209): contract K10 version 0.3 is accepted; Section 4 is the text for a security review and becomes version 0.4 when the review has no finding that he has not decided. |
+| OD-HOST-6 | What may a Compose file from the hub do on a machine? | B (R-210): a switch at the machine that is off after the install; the profile `contained`; `full` only when the owner sets it at the machine. |
+| OD-HOST-7 | May Anima manage a stack that it did not install? | B (R-211): yes, after the owner adopts it at the machine; start, stop, restart and update in place; Anima never changes its file in the first version. |
+| OD-HOST-8 | Do you approve HOST-008: each installed application gets a check and a web interface entry? | Yes (R-212). |
+| OD-HOST-9 | The reverse proxy: does Anima run one, manage one that exists, or stay out? | A (R-213), in stage 3: Anima installs its own, only where he asks, and refuses when ports 80 or 443 are in use. HOST-009 is replaced. |
+| OD-HOST-10 | Deploys from git: a Compose file from a repository first, or a build from source first? | A (R-214): the Compose file first; a build from source later. |
+| OD-HOST-11 | Does a catalogue ship with the product? | A (R-215): a small list that is tested, and the lists by address. |
+| OD-HOST-12 | Are databases a kind of their own? | A (R-216): yes, in stage 3, PostgreSQL first. |
 
 ### OD-HOST-5: the work route contract and the container work types
 
@@ -592,3 +592,30 @@ only read, through the SSH link of stage 1.
 
 Not possible on that day: a container that starts from Anima on a real machine. That needs the
 review of Section 4, your decisions on its findings, task W3, and the daemon part of task W4.
+
+## 9. The state of each requirement after the rulings
+
+| Requirement | State | What it waits for |
+| --- | --- | --- |
+| HOST-026: each change goes through a container work type | Not approved | The review of Section 4 and version 0.4 of the contract (R-209, task H14) |
+| HOST-027: the switch "Manage applications" at the machine | Approved (R-210) | Its code waits for version 0.4 and for task W4 |
+| HOST-028: the profile of a machine for a Compose file | Approved (R-210) | The exact rules are text of Section 4, under review. The rules as a pure function can be built and can change with the review |
+| HOST-029: the files of an application are plain files in one folder | Not approved | The review of Section 4 (its Section 6.4.4) |
+| HOST-030: Anima shows where the file of a project is | Not approved as a function of its own | R-211 names task H15, the read that task H16 needs. The approval of HOST-030 as a thing that the operator sees is one question for him |
+| HOST-031: manage an adopted project in place | Approved (R-211), with no change of its file | Version 0.4 of the contract, task H5 |
+| HOST-032: the way back to the earlier images | Not approved | A question for the operator |
+| HOST-033: the wait for health after an install or an update | Not approved | A question for the operator |
+| HOST-034: the containers of all machines in one list | Not approved | A question for the operator. No answer of 2026-11-19 covers it |
+| HOST-035: the limits of memory and processor as fields | Not approved | A question for the operator |
+| HOST-036: the result of each item on the page of the application | Not approved | A question for the operator |
+| HOST-037: the reverse proxy | Approved for stage 3 (R-213) | Stage 2 in use; the trial of two programs |
+| HOST-038: domain names and certificates | Not approved | A question for the operator, with task H21 |
+| HOST-039: the Compose file from a repository | Approved for stage 3 (R-214) | Task H6 |
+| HOST-040: a build from a Dockerfile | Not approved (R-214: later) | The work type `build` proven on the releases of Anima |
+| HOST-041: databases as a kind | Approved for stage 3 (R-216) | Task H7 |
+| HOST-042: copies with a way back | Not approved | OD-HOST-1 of the plan |
+| HOST-043: the credential of a private registry | Not approved | A question for the operator |
+
+One question remains for the operator from this table: "Do you approve HOST-030 and HOST-032 to
+HOST-036 for stage 2?" It is decision OD-HOST-13 of
+[hosted-applications-plan.md](../plans/hosted-applications-plan.md).
