@@ -914,6 +914,7 @@ jobs:
         run: |
           set -eu
           rustup target add aarch64-apple-ios
+          brew install xcodegen
           bun install --frozen-lockfile
       - id: identity
         name: Make the keychain of this job, import the certificate and install the profile
@@ -940,45 +941,44 @@ jobs:
           rm -f "$RUNNER_TEMP/distribution.p12"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$KEYCHAIN" > /dev/null
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
-          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Distribution: '; then
+          identity=$(security find-identity -v -p codesigning "$KEYCHAIN" | sed -n 's/.*"\(Apple Distribution: [^"]*\)".*/\1/p' | head -n 1)
+          if [ -z "$identity" ]; then
             echo "::error::The certificate of IOS_DISTRIBUTION_P12_BASE64 is not an Apple Distribution identity."
             exit 1
           fi
-          profiles="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$profiles"
+          # The script checks the profile and puts it where Xcode reads it.
           printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
-          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
-          uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
-          name=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
-          team=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
-          mv "$RUNNER_TEMP/profile.mobileprovision" "$profiles/$uuid.mobileprovision"
-          rm -f "$RUNNER_TEMP/profile.plist"
           {
-            echo "profile=$name"
-            echo "team=$team"
+            echo "identity=$identity"
+            echo "profile=$RUNNER_TEMP/profile.mobileprovision"
           } >> "$GITHUB_OUTPUT"
-      - name: Build and sign the archive
+      - id: digest
+        name: Build and sign the archive
         env:
-          IOS_TEAM_ID: ${{ steps.identity.outputs.team }}
-          IOS_PROFILE_NAME: ${{ steps.identity.outputs.profile }}
-          ANIMA_RELEASE_BUILD: "1"
+          IOS_SIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
+          IOS_PROFILE: ${{ steps.identity.outputs.profile }}
         run: |
           set -eu
           if [ ! -f apps/desktop/src-tauri/ios-archive.sh ]; then
             echo "::error::apps/desktop/src-tauri/ios-archive.sh is not in this commit (task M5-4 of the mobile plan)."
             exit 1
           fi
-          # The build number is the count of the first line of main: 0.8.15 gives 815 (R-201).
-          number=$(echo "$VERSION" | awk -F. '{ print $2 * 100 + $3 }')
+          # The script sets the build number from the version (deploy/bin/phone-build-number):
+          # the count of the first line of main, so 0.8.15 gives 815 (R-201). Its last lines
+          # say what it made.
+          sh apps/desktop/src-tauri/ios-archive.sh "$VERSION" | tee "$RUNNER_TEMP/archive.log"
+          said() { sed -n "s/^$1=//p" "$RUNNER_TEMP/archive.log" | tail -n 1; }
+          if [ "$(said version)" != "$VERSION" ] || [ "$(said signed)" != yes ]; then
+            echo "::error::The archive script did not make a signed archive of $VERSION."
+            exit 1
+          fi
+          ipa=$(said ipa)
+          test -s "$ipa"
+          unzip -tq "$ipa" > /dev/null
           mkdir -p out
-          sh apps/desktop/src-tauri/ios-archive.sh "$VERSION" "$number" out
-      - id: digest
-        name: Check the file
-        run: |
-          set -eu
-          test -s out/Anima.ipa
-          unzip -tq out/Anima.ipa > /dev/null
+          cp "$ipa" out/Anima.ipa
           echo "ipa_sha256=$(shasum -a 256 out/Anima.ipa | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          echo "Build number $(said build)"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ios

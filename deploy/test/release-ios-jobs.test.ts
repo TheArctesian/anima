@@ -78,8 +78,10 @@ describe("the keys of the iOS application", () => {
     expect(send).toContain("trap 'rm -f \"$keys/AuthKey_$ASC_API_KEY_ID.p8\"' EXIT");
   });
 
-  test("the build number is the count of the first line of main (R-201)", () => {
-    expect(text("ios")).toContain("number=$(echo \"$VERSION\" | awk -F. '{ print $2 * 100 + $3 }')");
-    expect(text("ios")).toContain('sh apps/desktop/src-tauri/ios-archive.sh "$VERSION" "$number" out');
+  test("the job takes the file only when the script says that it is signed and of the version of the release", () => {
+    const build = text("ios");
+    expect(build).toContain('sh apps/desktop/src-tauri/ios-archive.sh "$VERSION" | tee "$RUNNER_TEMP/archive.log"');
+    expect(build).toContain('if [ "$(said version)" != "$VERSION" ] || [ "$(said signed)" != yes ]; then');
+    expect(build.indexOf('"$(said signed)" != yes')).toBeLessThan(build.indexOf('cp "$ipa" out/Anima.ipa'));
   });
 });
