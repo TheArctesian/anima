@@ -377,6 +377,8 @@ Tasks that a ruling names:
 | Design specification | A delta for the account login of a hosted hub, NET-001 and the first run. Not written. |
 | S6 task breakdown | "Sign in" as the primary choice. The client does it (HM-T1); the S6 task breakdown does not yet name it. |
 
+The update of a hosted hub (2026-11-18): the operator said that the method of today, delete and make again, "needs a better method". The pool service in the private repository owns the method. What the hub program must permit is decision OD-ROL-16 of [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md), which is open.
+
 ## Council follow-up: first use and the service promise (2026-11-18)
 
 R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.

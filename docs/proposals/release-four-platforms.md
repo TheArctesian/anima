@@ -240,11 +240,11 @@ The order by what they blocked, before R-158: OD-ROL-15; then OD-REL-1 (each req
 
 ## 9. What "automatic" means for each target
 
-The operator asked on 2026-11-18 for releases that are automatic and run through Anima. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "The automatic release of Anima", owns the path, the comparison of the build models, the tasks and the open decisions (OD-W26 to OD-W30). This section only says what the word can mean for each target of this proposal. It approves nothing.
+The operator asked on 2026-11-18 for releases that are automatic and run through Anima. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "The automatic release of Anima", owns the path, the comparison of the build models, the tasks and the open decisions (OD-W26 and OD-W29 to OD-W32; R-170 and R-171 decided OD-W27 and OD-W28: the runner path). This section only says what the word can mean for each target of this proposal. It approves nothing.
 
 | Target | What can run with no act of the operator | What stays his act |
 | --- | --- | --- |
-| macOS | The start (after OD-W26 and task R12), the gates, the bundle, the signature with the Developer ID, the notarization, the check and the signature of the hub, the feed, and the installation in each installed application | The certificate and the notary profile in the keychain of the Mac. A Mac builder in operation. "Restart to update" in each application |
+| macOS | The start (after OD-W26; by R-170 the release is task B8, a workflow on a runner of the operator, and not task R12), the gates, the bundle, the signature with the Developer ID, the notarization, the check and the signature of the hub, the feed, and the installation in each installed application | The certificate and the notary profile in the keychain of the Mac. A Mac builder in operation. "Restart to update" in each application |
 | Linux | The same, with no notarization, after task R7 has published the first Linux release | A Linux builder in operation. "Restart to update" |
 | Android | The build and the signature of the APK by the script of M5-5 as one more builder step, the checks of the hub and the feed (R10), and the notice in the application (M5-6). No ruling names that builder step | The release key, made one time. The person installs the new APK: the application installs nothing by itself (MOB-007). A store is not decided |
 | iOS | The archive, by the script of M5-4, when the operator starts the script | R-158: the script runs on his Mac, and the upload to TestFlight is his act. Each step in App Store Connect. Thus iOS is not in the automatic release. A release keeps one version on the four targets (RLS-001), and iOS keeps its older version until he uploads (RLS-002) |
