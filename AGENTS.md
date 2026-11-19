@@ -273,12 +273,16 @@ The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
 `bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`, `bun run quality:documents`,
 `bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
-The gates share compiled Rust between worktrees through sccache (`brew install sccache`, or
-`cargo install sccache --locked`). When `sccache` is on `PATH`, the runner sets `RUSTC_WRAPPER` to it
-and `CARGO_INCREMENTAL=0`, and prints `rust cache: sccache` first; without it, it prints
-`rust cache: off` and builds from scratch. Each worktree still keeps its own `target/`: only compiler
-outputs are shared, so a new worktree's first run reuses what any other worktree already built. Never
-share one `CARGO_TARGET_DIR` between worktrees: cargo locks it, so parallel runs wait on each other.
+Each cargo command of each worktree shares compiled Rust through sccache (`brew install sccache`, or
+`cargo install sccache --locked`): `.cargo/config.toml` names the wrapper `quality/bin/rustc-cache.sh`, which
+uses sccache when it is on `PATH` and the compiler alone when it is not. A new worktree takes its
+dependencies from the cache; the crates of the workspace are compiled in each worktree. The gates set
+`CARGO_INCREMENTAL=0` and print `rust cache: sccache` first; without sccache they print `rust cache: off`.
+Each worktree keeps its own `target/`. Never share one `CARGO_TARGET_DIR` between worktrees: cargo locks
+it, so two builds at the same time wait on each other, and it takes the build of a different worktree for a
+source file that is older than that build, so a worktree with a fault can pass (measured:
+[quality/README.md](quality/README.md), "The build cache"). Two sessions that build at the same time with
+sccache do not wait on each other: each compiles in its own `target/` and both read and write the cache.
 Set `RUSTC_WRAPPER=` (empty) to run without the cache. `sccache --show-stats` shows the hit rate.
 cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
 Go must be on `PATH` (`brew install go`); `link/go.mod` sets the lowest Go version and pins the two lint tools, so

@@ -1,0 +1,12 @@
+# Each cargo command of each worktree gets its compiled dependencies from one cache, when
+# sccache is installed (`brew install sccache`): a new worktree does not compile them again.
+# The crates of the workspace keep their incremental builds in the `target/` of their own
+# worktree. One `CARGO_TARGET_DIR` for all worktrees is not used: cargo then takes a build of a
+# different worktree for a source file that is older than that build (measured, quality/README.md).
+# `RUSTC_WRAPPER=` (empty) in the environment runs a command without the cache.
+[build]
+rustc-wrapper = "quality/bin/rustc-cache.sh"
+
+[env]
+# The default of 10 GiB was full with eight worktrees; a full cache drops entries.
+SCCACHE_CACHE_SIZE = "40G"
