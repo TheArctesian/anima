@@ -42,6 +42,7 @@ const HOLDERS: Record<string, { environment: string; secrets: string[] }> = {
     secrets: ["APPLE_CERTIFICATE", "APPLE_CERTIFICATE_PASSWORD", "APPLE_ID", "APPLE_PASSWORD", "APPLE_TEAM_ID"],
   },
   sign: { environment: "release-sign", secrets: ["TAURI_SIGNING_PRIVATE_KEY", "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"] },
+  bucket: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   publish: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
 };
 
@@ -179,7 +180,7 @@ describe("permissions and pinning", () => {
 });
 
 describe("which job holds which secret (R-180, BLD-045)", () => {
-  test("only the three jobs with a key have an environment, each its own", () => {
+  test("only the jobs with a key have an environment, and each key has an environment of its own", () => {
     for (const [name, found] of Object.entries(jobs)) {
       expect(found.environment).toBe(HOLDERS[name]?.environment);
     }
@@ -241,9 +242,37 @@ describe("the order to a published release (UPD-008, BLD-042)", () => {
   test("publish runs only for a push to main with the switch on, and only after every other job passed", () => {
     expect(job("publish").if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
     expect(job("publish").if).not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
-    expect([...waitsFor("publish")].sort()).toEqual(["commit", "gates", "linux", "macos", "sign", "tool"]);
+    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "gates", "linux", "macos", "sign", "tool"]);
   });
 
+});
+
+describe("the bucket check and the cache of the gates", () => {
+  test("a release reads the bucket with the token in its first minute, writes nothing there, and a trial never does", () => {
+    const found = job("bucket");
+    expect(needsOf("bucket")).toEqual(["commit"]);
+    expect(found.if).toBe("needs.commit.outputs.release == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
+    expect(found.steps.some((step) => step.uses !== undefined)).toBe(false);
+    const text = runText(found);
+    expect(text).toContain("aws s3api head-object");
+    expect(text).not.toMatch(/put-object|delete-object|copy-object|s3 cp|s3 rm|s3 sync/);
+    expect(waitsFor("trial").has("bucket")).toBe(false);
+  });
+
+  test("only the gates job has a cache: nothing that is shipped or that holds a key is built from one", () => {
+    for (const [name, found] of Object.entries(jobs)) {
+      const cached = found.steps.some((step) => step.uses?.startsWith("actions/cache@"));
+      expect(cached).toBe(name === "gates");
+      for (const step of found.steps.filter((one) => one.uses?.startsWith("oven-sh/setup-bun@"))) expect(step.with?.["no-cache"]).toBe(true);
+      for (const step of found.steps.filter((one) => one.uses?.startsWith("actions/setup-go@"))) expect(step.with?.["cache"]).toBe(false);
+    }
+    expect(Object.keys(HOLDERS)).not.toContain("gates");
+    expect(runText(job("gates"))).toMatch(/brew install [^\n]*sccache/);
+  });
+
+});
+
+describe("the end of a run (UPD-008)", () => {
   test("a run by hand ends in the trial job, which has no token and publishes nothing", () => {
     expect(job("trial").if).toBe("github.event_name == 'workflow_dispatch'");
     expect(runText(job("trial"))).not.toContain("release publish");

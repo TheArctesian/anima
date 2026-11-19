@@ -15,7 +15,7 @@
 # Each secret is in an environment of its own, so a job has only the secrets of its work:
 #   release           the Developer ID certificate and the notary credentials   job `macos`
 #   release-sign      the updater key                                           job `sign`
-#   release-publish   the token of the release bucket                           job `publish`
+#   release-publish   the token of the release bucket                           jobs `bucket`, `publish`
 # The jobs `commit`, `gates`, `tool`, `linux` and `trial` have no secret.
 #
 # No `run` script holds an expression: each value comes in through `env`.
@@ -164,18 +164,35 @@ jobs:
           cache: false
       # shellcheck: three tests of deploy/headscale fail when it is not on PATH. The image of
       # GitHub for macOS does not have it; the trial of 2026-11-18 stopped there.
-      - name: Install PostgreSQL 17, cargo-nextest and shellcheck
+      # sccache: the gates runner uses it when it is on PATH (quality/src/gates/cache.ts), as on
+      # the computer of the operator. It keeps compiler outputs by their inputs, so it changes
+      # no result of a gate.
+      - name: Install PostgreSQL 17, cargo-nextest, shellcheck and sccache
         run: |
           set -eu
-          brew install postgresql@17 cargo-nextest shellcheck
+          brew install postgresql@17 cargo-nextest shellcheck sccache
           shellcheck --version
+      # The compiler outputs of the last run of this job. Only this job has a cache: it holds
+      # no secret and nothing that it builds is shipped. The jobs that build the application
+      # or the tool compile from nothing. A run of `main` writes the cache that the next run
+      # of `main` reads; no other branch can write it.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/Mozilla.sccache
+          key: gates-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ needs.commit.outputs.sha }}
+          restore-keys: |
+            gates-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
       - name: Run the gates
         env:
           BASE_REF: ${{ needs.commit.outputs.sha }}
+          SCCACHE_CACHE_SIZE: 4G
         run: |
           set -eu
           unset DATABASE_URL
           bun run gates
+      - name: Say how much of the compile came from the cache
+        if: always()
+        run: sccache --show-stats || true
 
   # The program that signs and publishes: `anima-hub release` of the release commit. The jobs
   # that hold a key run this file and compile nothing.
@@ -475,12 +492,39 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # The first minute of a release: does the token of the bucket open the bucket? It reads one
+  # object and writes nothing, with the `aws` program of the machine and no code of the
+  # repository. Without it, a wrong token, endpoint or environment rule shows only in the job
+  # `publish`, after each build. A trial never runs it: a trial has no token.
+  bucket:
+    needs: commit
+    if: needs.commit.outputs.release == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release-publish
+    permissions: {}
+    steps:
+      - name: Read the macOS feed from the bucket with the token
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+        run: |
+          set -eu
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          aws s3api head-object --endpoint-url "$ENDPOINT" --bucket anima-releases --key darwin-aarch64/latest.json > /dev/null
+          echo "The token reads the bucket anima-releases."
+
   # Only for a push to `main` that is a release, and only while the switch of the operator is
   # on. The checks that the hub makes for a queued job (BLD-002, BLD-064 to
   # BLD-069), by the same code: `anima-hub release publish`. It writes each feed last.
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'
-    needs: [commit, tool, macos, linux, sign]
+    needs: [commit, bucket, tool, macos, linux, sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: release-publish
