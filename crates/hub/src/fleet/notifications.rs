@@ -17,6 +17,7 @@ mod encode;
 pub mod graphql;
 mod model;
 mod observe;
+mod reminder;
 mod sealing;
 mod store;
 mod template;
@@ -35,6 +36,7 @@ pub use model::{
     NotificationKind, Observation, Outbox, OutboxId,
 };
 pub use observe::{adopt_defaults, for_checks, observe};
+pub use reminder::{Queued, RANDOM_TOPIC_MIN, Reminder, channels_exist, queue_reminder};
 
 /// How many days of delivery partitions exist ahead of today (DB-004).
 const DAYS_AHEAD: i32 = 7;

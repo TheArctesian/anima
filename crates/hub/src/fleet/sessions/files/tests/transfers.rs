@@ -88,6 +88,7 @@ async fn ra_032_a_listing_stops_at_its_cap(pool: PgPool) {
 )]
 async fn ra_032_a_download_sends_its_size_its_bytes_and_done(pool: PgPool) {
     let bench = bench(&pool).await;
+    let (served, site, place) = bench.sited().await;
     let bytes = content(100_000);
     bench.server.put("big.bin", &bytes);
     let mut client = bench.open().await;
@@ -106,6 +107,33 @@ async fn ra_032_a_download_sends_its_size_its_bytes_and_done(pool: PgPool) {
     assert_eq!((severity.as_str(), source.as_str()), ("info", "session"));
     assert_eq!(device.as_deref(), Some("docker-host"));
     assert_eq!(message, "An operator downloaded a file from the device.");
+    // One context for the one event: the device is the source with its site and the place of
+    // that site; the computer of the client is no device of the hub, so that side is unknown.
+    let contexts = bench.contexts().await;
+    assert_eq!(contexts.len(), 1, "{contexts:?}");
+    let context = &contexts[0];
+    assert_eq!(context["eventStored"], true);
+    assert_eq!(context["direction"], "download");
+    assert_eq!(
+        [
+            &context["source_device"],
+            &context["source_site"],
+            &context["source_place"]
+        ],
+        [&json!(served), &json!(site), &json!(place)]
+    );
+    for side in [
+        "destination_device",
+        "destination_site",
+        "destination_place",
+        "client_device",
+    ] {
+        assert!(context[side].is_null(), "{side}: {context}");
+    }
+    assert_eq!(
+        (context["actor_kind"].clone(), context["actor"].clone()),
+        (json!("human"), json!("operator"))
+    );
     no_content_stored(&bench).await;
     // The tunnel takes the next request.
     bench.server.put("empty", b"");
@@ -130,6 +158,16 @@ async fn ra_032_an_upload_of_exactly_its_size_lands_on_the_device(pool: PgPool) 
     let (action, change) = only_audit(&bench).await;
     assert_eq!(action, "upload");
     assert_eq!(change["path"], "/new.bin");
+    // The device is the destination of an upload; its site has no place, so the place is
+    // unknown, and the source is unknown.
+    let contexts = bench.contexts().await;
+    assert_eq!(contexts[0]["direction"], "upload");
+    assert!(
+        contexts[0]["destination_device"].is_string(),
+        "{contexts:?}"
+    );
+    assert!(contexts[0]["destination_place"].is_null());
+    assert!(contexts[0]["source_device"].is_null());
     assert_eq!(
         (change["size"].clone(), change["outcome"].clone()),
         (json!(70_000), json!("done"))

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { CONTAINERS, container } from './containers.fixture';
+import { CONTAINERS, UPDATES, container } from './containers.fixture';
 import { NO_PROJECT, lineTime, logText, projectGroups } from './rows';
 
 it('HOST-013: the containers are in groups by Compose project, by name, and those with no project are last', () => {
@@ -35,4 +35,27 @@ it('HOST-001: the time of a line is the time of the clock of the operator, and a
   expect(lineTime('2026-11-18T18:00:04+00:00')).toBe(new Date('2026-11-18T18:00:04Z').toLocaleTimeString([], { hour12: false }));
   expect(lineTime(null)).toBe('');
   expect(lineTime('not a time')).toBe('');
+});
+
+it('HOST-019: a group has the one state of its project as the hub made it, and the containers with no project have none', () => {
+  const groups = projectGroups(CONTAINERS);
+  expect(groups.map((group) => [group.project, group.state, group.tone])).toEqual([
+    ['ai', 'Unhealthy', 'down'],
+    ['tracks', 'Partly running', 'warning'],
+    [NO_PROJECT, '', 'unknown'],
+  ]);
+  const stopped = projectGroups([container({ state: 'EXITED', composeProjectState: 'STOPPED' })]);
+  expect([stopped[0]?.state, stopped[0]?.tone]).toEqual(['Stopped', 'unknown']);
+});
+
+it('HOST-021: a row has no mark before the operator asked, and then the answer of the hub as words', () => {
+  expect(projectGroups(CONTAINERS).flatMap((group) => group.rows.map((row) => row.update))).toEqual([null, null, null, null]);
+  const marks = Object.fromEntries(projectGroups(CONTAINERS, UPDATES).flatMap((group) => group.rows.map((row) => [row.name, row.update])));
+  expect(marks).toEqual({
+    'tracks-app-1': { newer: true, words: 'Newer image' },
+    'tracks-worker-1': { newer: false, words: 'Up to date' },
+    recorder: { newer: false, words: 'Built here, or the tag moved' },
+    // The hub gave no answer for this container.
+    ollama: null,
+  });
 });

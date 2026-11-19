@@ -24,7 +24,7 @@
 /// trust decision (a grant): login or browser token only (R-147, K-E5 Section 2.2).
 /// The log of a container can hold a secret, as private code can, and so can the command or a
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 55] = [
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 56] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -80,4 +80,5 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 55] = [
     "ungrantOperationalKey",
     "containerLog",
     "containerDetail",
+    "createLocationIngestToken",
 ];

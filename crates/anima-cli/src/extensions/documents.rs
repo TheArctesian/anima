@@ -6,7 +6,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/extensions/list.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -14,7 +14,7 @@ pub struct ExtensionList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/extensions/set.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

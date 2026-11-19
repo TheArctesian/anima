@@ -1,0 +1,18 @@
+mutation ReminderEnable($id: ID!, $enabled: Boolean!) {
+  setReminderRuleEnabled(id: $id, enabled: $enabled) {
+    id
+    name
+    message
+    trigger
+    unless
+    cooldownMinutes
+    dailyLimit
+    channelIds
+    enabled
+    revision
+    createdAt
+    updatedAt
+    lastFiringAt
+    firedToday
+  }
+}

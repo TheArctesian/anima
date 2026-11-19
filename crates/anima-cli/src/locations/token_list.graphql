@@ -1,0 +1,9 @@
+query LocationTokenList {
+  locationIngestTokens {
+    id
+    name
+    createdAt
+    lastUsedAt
+    revokedAt
+  }
+}

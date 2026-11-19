@@ -43,9 +43,9 @@ async function settle(): Promise<void> {
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((each) => (each.getAttribute('aria-label') ?? each.textContent.trim()) === label);
 const groupHeaders = () => [...document.querySelectorAll('tr.group th')].map((header) => header.textContent);
 
-it('HOST-013: the table has a group for each Compose project with its running count, and a row for each container', async () => {
+it('HOST-013 HOST-019: the table has a group for each Compose project with its state and its running count, and a row for each container', async () => {
   await open();
-  expect(groupHeaders()).toEqual(['ai1 of 1 running', 'tracks1 of 2 running', 'No Compose project1 of 1 running']);
+  expect(groupHeaders()).toEqual(['aiUnhealthy1 of 1 running', 'tracksPartly running1 of 2 running', 'No Compose project1 of 1 running']);
   const rows = [...document.querySelectorAll('tbody tr:not(.group)')];
   expect(rows).toHaveLength(4);
   expect(rows[0]?.textContent).toContain('ollama');
@@ -62,7 +62,7 @@ it('HOST-013: the log of a container is read only when the operator asks, with 2
   expect(calls.logsAsked).toEqual([[APP_ID, 200]]);
   expect(store.selected).toBe(APP_ID);
   expect(document.querySelector('.log h3')?.textContent).toBe('Log of tracks-app-1');
-  expect([...document.querySelectorAll('.lines li span')].map((line) => line.textContent)).toEqual(['listening on :3000', '<b>ready</b>']);
+  expect([...document.querySelectorAll('.lines li > span')].map((line) => line.textContent)).toEqual(['listening on :3000', '<b>ready</b>']);
   // A line of a container is text: it never becomes an element of the page.
   expect(document.querySelector('.lines b')).toBeNull();
   expect(button('Log of tracks-app-1')?.getAttribute('aria-pressed')).toBe('true');

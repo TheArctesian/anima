@@ -1,0 +1,14 @@
+query ReminderFirings($rule: ID, $state: ReminderFiringState, $first: Int) {
+  reminderFirings(rule: $rule, state: $state, first: $first) {
+    id
+    ruleId
+    subject
+    text
+    state
+    reason
+    dueAt
+    sentAt
+    snoozedUntil
+    decidedAt
+  }
+}

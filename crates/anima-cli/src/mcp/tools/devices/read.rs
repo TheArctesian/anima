@@ -19,7 +19,7 @@ use crate::web_interfaces::documents::{WebList, web_list};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/mcp/tools/devices/overview.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

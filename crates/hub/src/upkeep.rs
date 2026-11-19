@@ -9,7 +9,7 @@ use std::{sync::Arc, time::Duration};
 use anima_hub::{
     clock::Clock,
     config::Config,
-    engine::sources,
+    engine::{locations, reminders, sources},
     fleet::{
         access, builds, checks,
         credentials::{Vault, operational},
@@ -133,6 +133,19 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
             collecting,
         ),
         notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending),
+        reminders::spawn_minute(
+            reminders::Sending {
+                db: pool.clone(),
+                bus: bus.clone(),
+                vault: dependencies.vault.clone(),
+            },
+            reminders::Reading {
+                seal: locations::Seal::new(dependencies.files.sealing_keys().clone()),
+                extensions: Vec::new(),
+                sources: dependencies.sources.registry.clone(),
+            },
+            clock.clone(),
+        ),
         metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone()),
         sources::spawn_scheduler(sources::Scheduling::new(
             (pool.clone(), bus.clone(), clock.clone()),

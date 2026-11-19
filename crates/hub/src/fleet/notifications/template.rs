@@ -171,6 +171,16 @@ pub(super) fn render(title: &str, body: &str, values: &Values) -> Result<Rendere
     })
 }
 
+/// The title and the body of a reminder as its row gives them: the engine words a reminder, so
+/// no template of a channel is read, and no text of a rule is parsed as a template (REM-009,
+/// REM-010).
+pub(super) fn given(values: &Values) -> Rendered {
+    Rendered {
+        title: values.title.clone().unwrap_or_default(),
+        body: values.body.clone().unwrap_or_default(),
+    }
+}
+
 /// The field errors of a template, named `template.title` and `template.body` as in K1's
 /// `NotificationTemplateInput`: length first, then placeholders.
 pub(super) fn field_errors(title: &str, body: &str) -> Vec<FieldError> {

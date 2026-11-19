@@ -49,6 +49,8 @@ pub enum Tool {
     Files(shared_records::files::FileTool),
     Extractions(shared_records::extractions::ExtractionTool),
     Places(shared_records::places::PlaceTool),
+    Locations(shared_records::locations::LocationTool),
+    Reminders(shared_records::reminders::ReminderTool),
 }
 
 impl Tool {
@@ -76,6 +78,8 @@ impl Tool {
         tools.extend(shared_records::files::FileTool::ALL.map(Self::Files));
         tools.extend(shared_records::extractions::ExtractionTool::ALL.map(Self::Extractions));
         tools.extend(shared_records::places::PlaceTool::ALL.map(Self::Places));
+        tools.extend(shared_records::locations::LocationTool::ALL.map(Self::Locations));
+        tools.extend(shared_records::reminders::ReminderTool::ALL.map(Self::Reminders));
         tools
     }
 
@@ -98,9 +102,12 @@ impl Tool {
             Self::Projects(_) => ToolSet::Projects,
             Self::Repositories(_) => ToolSet::Repositories,
             Self::Timeline(_) => ToolSet::Timeline,
-            Self::Records(_) | Self::Files(_) | Self::Extractions(_) | Self::Places(_) => {
-                ToolSet::Records
-            }
+            Self::Records(_)
+            | Self::Files(_)
+            | Self::Extractions(_)
+            | Self::Places(_)
+            | Self::Locations(_)
+            | Self::Reminders(_) => ToolSet::Records,
         }
     }
 
@@ -127,6 +134,8 @@ impl Tool {
             Self::Files(tool) => tool.definition(),
             Self::Extractions(tool) => tool.definition(),
             Self::Places(tool) => tool.definition(),
+            Self::Locations(tool) => tool.definition(),
+            Self::Reminders(tool) => tool.definition(),
         }
     }
 
@@ -160,6 +169,8 @@ impl Tool {
             Self::Files(tool) => tool.call(hub, arguments).await,
             Self::Extractions(tool) => tool.call(hub, arguments).await,
             Self::Places(tool) => tool.call(hub, arguments).await,
+            Self::Locations(tool) => tool.call(hub, arguments).await,
+            Self::Reminders(tool) => tool.call(hub, arguments).await,
         }
     }
 }

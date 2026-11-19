@@ -26,7 +26,7 @@ fn values() -> Values {
         previous: Some("up".to_owned()),
         message: Some("timed out".to_owned()),
         at: Some("2026-11-08T10:00:00Z".to_owned()),
-        days: None,
+        ..Values::default()
     }
 }
 

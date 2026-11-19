@@ -230,6 +230,18 @@ pub async fn current(db: &PgPool, id: PlaceId) -> Result<Option<Place>, Error> {
     Ok(place)
 }
 
+/// The place of `site`, when the site is linked to one (PLC-006). The row is locked until
+/// the caller's transaction ends.
+///
+/// # Errors
+/// `Database`.
+pub async fn place_of_site(
+    conn: &mut PgConnection,
+    site: SiteId,
+) -> Result<Option<PlaceId>, Error> {
+    Ok(store::site_place(conn, site).await?)
+}
+
 /// The sites that point at each of `places` (PLC-006).
 ///
 /// # Errors

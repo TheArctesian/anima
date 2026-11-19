@@ -1,0 +1,14 @@
+mutation ReminderSnooze($firing: ID!, $minutes: Int!) {
+  snoozeReminder(firing: $firing, minutes: $minutes) {
+    id
+    ruleId
+    subject
+    text
+    state
+    reason
+    dueAt
+    sentAt
+    snoozedUntil
+    decidedAt
+  }
+}

@@ -23,6 +23,24 @@ pub struct ToFile {
     force: bool,
 }
 
+/// How long a secret that is shown one time can be used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Works {
+    /// One use: an invite, a pre-auth key, an enrolment code.
+    Once,
+    /// Until the operator revokes it: an ingest token.
+    UntilRevoked,
+}
+
+impl Works {
+    const fn words(self) -> &'static str {
+        match self {
+            Self::Once => "works once",
+            Self::UntilRevoked => "works until you revoke it",
+        }
+    }
+}
+
 /// A secret a command shows once, and where it goes.
 pub struct Secret<'a> {
     /// What the person calls it: "pre-auth key".
@@ -31,6 +49,7 @@ pub struct Secret<'a> {
     pub field: &'a str,
     pub value: &'a str,
     pub to_file: &'a ToFile,
+    pub works: Works,
 }
 
 /// Shows `secret` once: as a line on standard output, or in its file with nothing secret
@@ -48,9 +67,10 @@ pub fn show_once(
     if let Some(path) = secret.to_file.path.as_deref() {
         write_file(path, secret)?;
         invocation.output.note(&format!(
-            "The {} is in {} (mode 0600). It is shown one time and works once.",
+            "The {} is in {} (mode 0600). It is shown one time and {}.",
             secret.label,
-            path.display()
+            path.display(),
+            secret.works.words()
         ));
         if invocation.output.json() {
             public["writtenTo"] = json!(path.display().to_string());
@@ -59,8 +79,9 @@ pub fn show_once(
         return Ok(());
     }
     invocation.output.note(&format!(
-        "The {} below is shown one time and works once. Keep it out of command lines and logs.",
-        secret.label
+        "The {} below is shown one time and {}. Keep it out of command lines and logs.",
+        secret.label,
+        secret.works.words()
     ));
     if invocation.output.json() {
         public[secret.field] = json!(secret.value);

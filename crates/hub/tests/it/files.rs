@@ -73,7 +73,7 @@ impl FileHub {
             files: store,
             ..dependencies(pool, clock.clone(), bus.clone())
         };
-        let routes = anima_hub::files(&parts);
+        let routes = anima_hub::schema::engine_routes(&parts);
         let app = router(build_schema(parts), pool.clone(), clock).merge(routes);
         let token = Hub::new(pool, start()).token().await;
         Self {

@@ -1,0 +1,18 @@
+query ReminderShow($id: ID!) {
+  reminderRule(id: $id) {
+    id
+    name
+    message
+    trigger
+    unless
+    cooldownMinutes
+    dailyLimit
+    channelIds
+    enabled
+    revision
+    createdAt
+    updatedAt
+    lastFiringAt
+    firedToday
+  }
+}

@@ -8,7 +8,7 @@ use super::documents::{KeyCreate, key_create};
 use super::expiry;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::one_time_secret::{Secret, ToFile, show_once};
+use crate::one_time_secret::{Secret, ToFile, Works, show_once};
 use crate::output::text::enum_name;
 
 #[derive(Debug, clap::Args)]
@@ -88,6 +88,7 @@ impl CreateArgs {
             field: "secret",
             value: &created.secret,
             to_file: &ToFile::default(),
+            works: Works::Once,
         };
         show_once(invocation, &secret, public)
     }

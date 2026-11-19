@@ -8,5 +8,6 @@ pub type DateTime = String;
 pub type IpAddr = String;
 /// A network such as `10.10.0.0/24`.
 pub type Cidr = String;
-// `JSON` (audit change records) joins when a document first reads one; graphql_client looks
-// the alias up by the scalar's own name.
+/// `JSON` as the hub wrote it: the trigger and `unless` of a reminder rule (K-E6 Section 2).
+/// `graphql_client` looks the alias up by the scalar's own name.
+pub type JSON = serde_json::Value;

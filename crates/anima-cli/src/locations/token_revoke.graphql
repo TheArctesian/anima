@@ -1,0 +1,9 @@
+mutation LocationTokenRevoke($id: ID!) {
+  revokeLocationIngestToken(id: $id) {
+    id
+    name
+    createdAt
+    lastUsedAt
+    revokedAt
+  }
+}

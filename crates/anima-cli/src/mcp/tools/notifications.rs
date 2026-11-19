@@ -21,7 +21,7 @@ use crate::notifications::documents::{ChannelTest, channel_test};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/mcp/tools/notifications_overview.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

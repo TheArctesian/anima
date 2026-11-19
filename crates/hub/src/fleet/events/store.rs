@@ -14,7 +14,9 @@ use super::{
 use crate::ids::{DeviceId, EventId};
 
 pub(super) mod chain;
+mod following;
 mod start_check;
+pub(super) use following::events_after;
 pub(super) use start_check::start_refusal;
 
 const ENSURE_DAY_PARTITION: &str = "select events.ensure_day_partition($1, $2)";

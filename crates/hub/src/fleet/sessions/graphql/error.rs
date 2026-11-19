@@ -21,6 +21,7 @@ pub(in crate::fleet::sessions) fn to_graphql(error: Error) -> GraphQlError {
         | Error::Credentials(_)
         | Error::Trust(_)
         | Error::Random(_)
-        | Error::Database(_) => internal(error),
+        | Error::Database(_)
+        | Error::Context(_) => internal(error),
     }
 }
