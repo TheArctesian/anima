@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 1 (2026-11-17). R-131 to R-134 decide four points of the direction. R-135 approves step 1 (AIS-018 to AIS-024, in the extensions plan) for build. No other step is approved. It defines no requirement; its open decisions are OD-AI1 to OD-AI7.
+evidence: R-196 (2026-11-18) supersedes OD-AI5 (Herdr is hosted as it is). Version 1 (2026-11-17). R-131 to R-134 decide four points of the direction. R-135 approves step 1 (AIS-018 to AIS-024, in the extensions plan) for build. No other step is approved. It defines no requirement; its open decisions are OD-AI1 to OD-AI7.
 ---
 
 # Proposal: the direction of the AI functions
@@ -39,7 +39,7 @@ The AI functions are three jobs.
 | Job | What the operator gets | Parts | Owner |
 | --- | --- | --- | --- |
 | 1. Agents and usage | See and control each AI agent on each machine, and see the use of each account | The record of sessions and the counts | [extensions-plan.md](../plans/extensions-plan.md) Section 4.12 (AIS-001 to AIS-008) |
-| | | Panes that stay alive, with a state and an alert | The same, Section 4.12.1 (AIS-009 to AIS-017) |
+| | | Panes that stay alive, with a state and an alert | The same, Section 4.12.1 (AIS-009 to AIS-017); withdrawn by R-196: Anima.ing hosts Herdr instead |
 | | | Bots on the subscriptions of the operator | [bots.md](bots.md) |
 | | | A run as a job on a selected machine | [agent-runs.md](agent-runs.md), [jobs.md](jobs.md) |
 | 2. One model address | One address on each computer for each model that the operator can use | Models on the machines of the operator | [compute-plan.md](../plans/compute-plan.md) |
@@ -103,7 +103,7 @@ Each step gives a function that the operator can use. No step is approved.
 | OD-AI2 | Does the first usage function send counts only, read by `anima-daemon`, before the vault exists? | Decided (R-133, operator, 2026-11-17: "Yes, counts only"). The requirements are AIS-018 to AIS-024 in Section 4.12.0 of the extensions plan. The text of sessions (AIS-004, AIS-005) waits for the vault and the collector. |
 | OD-AI3 | Does the usage page show the quota that is left on an account? | Decided: no (R-135 approves AIS-022). It shows tokens and an estimate of the cost at the public price of the model. |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in [agent-runs.md](agent-runs.md) and comes later. The daemon gets one new function, the session server, with its own ruling. |
-| OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. |
+| OD-AI5 | Does Anima write its own session server, or embed Herdr? | Superseded (R-196, OD-AXT2 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md)): host Herdr as it is. AIS-009 to AIS-017 are withdrawn. |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. |
 | OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. |
 

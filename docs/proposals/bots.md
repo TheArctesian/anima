@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Draft
-evidence: Version 5 (2026-11-18): the operator decided OD-BOT15 to OD-BOT20 (R-153); the section "Install an agent on a machine" now names six agents for the first version, BOT-065 follows the MCP setting, and OD-BOT21 to OD-BOT23 are open; no requirement is approved. Version 4 (2026-11-18) added the section "Install an agent on a machine" (BOT-058 to BOT-078, OD-BOT15 to OD-BOT20, tasks BI0 to BI11, all Not started), checked against origin/main at 7342500c. Version 3 (2026-11-18). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-078 (BOT-058 to BOT-078, install an agent, are proposed; OD-BOT15 to OD-BOT20 are decided by R-153, OD-BOT21 to OD-BOT23 are open; BOT-039 to BOT-046, agent coverage against Orca, and BOT-047 to BOT-057, the fallback to a local model, are proposed with OD-BOT1 to OD-BOT14). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
+evidence: Version 6 (2026-11-18): R-196 withdraws BOT-001 to BOT-018 and BOT-025 to BOT-028 (Hermes Agent is the assistant), parks BOT-047 to BOT-057, replaces Aider with Pi in BOT-077 (OD-AXT16), adds the recipes of Hermes Agent, Herdr and T3 Code to the catalogue with a named exception for T3 Code (OD-AXT15), and adds an exception to BOT-065 for Hermes (OD-AXT5); no requirement is approved. Version 5 (2026-11-18): the operator decided OD-BOT15 to OD-BOT20 (R-153); the section "Install an agent on a machine" now names six agents for the first version, BOT-065 follows the MCP setting, and OD-BOT21 to OD-BOT23 are open; no requirement is approved. Version 4 (2026-11-18) added the section "Install an agent on a machine" (BOT-058 to BOT-078, OD-BOT15 to OD-BOT20, tasks BI0 to BI11, all Not started), checked against origin/main at 7342500c. Version 3 (2026-11-18). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-078 (BOT-058 to BOT-078, install an agent, are proposed; OD-BOT15 to OD-BOT20 are decided by R-153, OD-BOT21 to OD-BOT23 are open; BOT-039 to BOT-046, agent coverage against Orca, and BOT-047 to BOT-057, the fallback to a local model, are proposed with OD-BOT1 to OD-BOT14). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
 ---
 
 # Proposal: Bots
@@ -11,15 +11,17 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the Bots extension (XP-16, proposed) |
-| Version | 5 |
+| Version | 6 |
 | Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, version 3 adds BOT-047 to BOT-057, version 4 adds BOT-058 to BOT-078 and version 5 adds BOT-078 and decides OD-BOT15 to OD-BOT20 (R-153). Requirements are proposed; no requirement is approved. No requirement is approved. |
-| Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway); [agent-tools-as-extensions.md](agent-tools-as-extensions.md), which proposes to withdraw the native bot runtime (OD-AXT3) and to add Hermes and Herdr to the catalogue (2026-11-18, not ruled) |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, version 3 adds BOT-047 to BOT-057, version 4 adds BOT-058 to BOT-078 and version 5 adds BOT-078 and decides OD-BOT15 to OD-BOT20 (R-153). Requirements are proposed; no requirement is approved. Version 6 records R-196 (agent tools as extensions); no requirement is approved. |
+| Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway); [agent-tools-as-extensions.md](agent-tools-as-extensions.md): R-196 withdraws the native bot runtime (OD-AXT3) and adds Hermes Agent, Herdr and T3 Code to the catalogue |
 
 Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 3 (2026-11-18) adds the section "Fallback to a local model" (BOT-047 to BOT-057, OD-BOT8 to OD-BOT14). Version 4 (2026-11-18) adds the section "Install an agent on a machine" (BOT-058 to BOT-078, OD-BOT15 to OD-BOT20, tasks BI0 to BI11). It changes no earlier requirement. Version 5 (2026-11-18) records the decisions of the operator on OD-BOT15 to OD-BOT20 (R-153), amends BOT-065, BOT-067, BOT-068, BOT-071, BOT-073, BOT-075 and BOT-077, and adds BOT-078 and OD-BOT21 to OD-BOT23. A later edit of 2026-11-17 adds to BOT-034 and BOT-040 that detection accepts both program names of Cursor. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
 
 ## Bots
+
+**R-196 (operator, 2026-11-18, first-hand; OD-AXT3 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md)): "yes, withdraw the native bot runtime, park BOT-047 to 057, keep status, terms, catalogue and install."** The native bot runtime is withdrawn: BOT-001 to BOT-018 and BOT-025 to BOT-028. Hermes Agent is the assistant, as a tool extension of that proposal. The fallback to a local model, BOT-047 to BOT-057, is parked. BOT-019 to BOT-024, BOT-029 to BOT-046 and BOT-058 to BOT-078 stay: the states, the terms rules, the catalogue and the install. The text of the withdrawn and parked requirements below is kept as a record.
 
 **Purpose.** Always-on bots that work like employees, run on the operator's own computers, and use
 the operator's own models. The operator defines a bot by chatting with it: its job, its schedule,
@@ -31,63 +33,63 @@ Status: direction only. The proposed work package is XP-16. It is not in the tab
 **Data.** `bot` (name, job, instructions, device, model rule, schedule, permissions, state),
 `bot_message` (bot, role, sealed text, model used, time), `bot_task` (bot, title, state, pane, result).
 
-- **BOT-001.** The operator must be able to make a bot in a chat. The chat writes the bot definition:
+- **BOT-001.** Withdrawn (R-196): Hermes Agent is the assistant. The operator must be able to make a bot in a chat. The chat writes the bot definition:
   name, job, instructions, schedule, allowed devices and allowed tools. The operator must see the
   definition and confirm it before the bot starts.
-- **BOT-002.** A bot must run on a device that the operator chooses, under the Anima daemon on that
+- **BOT-002.** Withdrawn (R-196): Hermes Agent is the assistant. A bot must run on a device that the operator chooses, under the Anima daemon on that
   device. The hub keeps the definition and the history. The bot keeps running when no client is open.
-- **BOT-003.** For each reply, the bot must choose a model by a rule: a fixed model, the cheapest
+- **BOT-003.** Withdrawn (R-196): Hermes Agent is the assistant. For each reply, the bot must choose a model by a rule: a fixed model, the cheapest
   model that can do the task, or local first. It must send the request through the model gateway
   (MGW-001, MGW-007). With no gateway upstream, it must use the operator's subscription through the
   vendor's own program on that device, for example `claude -p` or `codex exec`. It must never take
   or store the login of a subscription.
-- **BOT-004.** A bot can start a coding task in an agent pane (AIS-013) in an allowed repository. Its
+- **BOT-004.** Withdrawn (R-196): Hermes Agent is the assistant. A bot can start a coding task in an agent pane (AIS-013) in an allowed repository. Its
   state shows on the agent panes page with the other panes, and a task that waits for the operator
   sends the same alert (AIS-012).
-- **BOT-005.** A bot can act on a schedule or an event: a time, a check that changes state, a new
+- **BOT-005.** Withdrawn (R-196): Hermes Agent is the assistant. A bot can act on a schedule or an event: a time, a check that changes state, a new
   issue or pull request (Integrations, Section 4.5). It uses the rule engine (ENG-001).
-- **BOT-006.** A bot must ask the operator before it sends a message to another person, spends money,
+- **BOT-006.** Withdrawn (R-196): Hermes Agent is the assistant. A bot must ask the operator before it sends a message to another person, spends money,
   deletes data or pushes to a shared branch. The operator can give a standing permission for one kind
   of action and can take it back.
-- **BOT-007.** Each bot must have a budget (MGW-011) and a log of its actions. The operator must be
+- **BOT-007.** Withdrawn (R-196): Hermes Agent is the assistant. Each bot must have a budget (MGW-011) and a log of its actions. The operator must be
   able to pause or stop a bot in one action, from the client, the CLI (`anima bots`) and the phone.
-- **BOT-008.** Bots count toward the overload warning (AIS-017), and their finished work goes into the
+- **BOT-008.** Withdrawn (R-196): Hermes Agent is the assistant. Bots count toward the overload warning (AIS-017), and their finished work goes into the
   daily digest (AIS-015).
-- **BOT-009.** The Bots extension must be free on every plan, as agent panes are (AIS-016). Its
+- **BOT-009.** Withdrawn (R-196): Hermes Agent is the assistant. The Bots extension must be free on every plan, as agent panes are (AIS-016). Its
   conversation text is sealed like session text (AIS-004, AIS-005).
-- **BOT-010.** Each bot can have its own computer: a virtual machine on one of the operator's devices,
+- **BOT-010.** Withdrawn (R-196): Hermes Agent is the assistant. Each bot can have its own computer: a virtual machine on one of the operator's devices,
   or a rented machine (CVM-001). The bot's shell, files and agent panes run there, not on the host
   device. The operator picks the size and the image when the bot is made (BOT-001).
-- **BOT-011.** A bot's own computer joins the mesh as a device with a tag for that bot only. Access
+- **BOT-011.** Withdrawn (R-196): Hermes Agent is the assistant. A bot's own computer joins the mesh as a device with a tag for that bot only. Access
   rules must not let one bot's computer reach another bot's computer, or the operator's devices,
   unless the operator allows it.
-- **BOT-012.** The operator can make a bot read-only. A read-only bot can read checks, metrics, logs,
+- **BOT-012.** Withdrawn (R-196): Hermes Agent is the assistant. The operator can make a bot read-only. A read-only bot can read checks, metrics, logs,
   files and repositories that it is allowed to see, and it can write to the operator in its chat. It
   cannot run change tools (MCP-002), write files, push, start agent panes, or act on a device. The
   hub must enforce this on its side, not only in the bot's instructions.
-- **BOT-013.** A read-only bot must not be able to ask for more access itself. Only the operator can
+- **BOT-013.** Withdrawn (R-196): Hermes Agent is the assistant. A read-only bot must not be able to ask for more access itself. Only the operator can
   change a bot from read-only, and that change goes in the audit log.
 
 The bot configurator (operator direction, 2026-11-16: the customer picks both the coding agent or
 subscription, for example Claude Code or Codex, and the machine or machines that the bot runs on,
 that is cloud machines, local machines such as a MacBook, or both):
 
-- **BOT-014.** When the operator makes a bot (BOT-001), the client must show a configurator with
+- **BOT-014.** Withdrawn (R-196): Hermes Agent is the assistant. When the operator makes a bot (BOT-001), the client must show a configurator with
   two choices that the operator must make before the bot starts: the coding agent or subscription,
   and the machine or machines that the bot runs on. The configurator must write both choices into
   the bot definition (BOT-001).
-- **BOT-015.** The list of coding agents must come from what is installed on the machines that the
+- **BOT-015.** Withdrawn (R-196): Hermes Agent is the assistant. The list of coding agents must come from what is installed on the machines that the
   operator chose, for example `claude` and `codex`, and it must show a subscription only as the
   vendor's own program on that machine (BOT-003). The configurator must never read, ask for or
   store the login of a subscription.
-- **BOT-016.** The list of machines must show the operator's own devices, for example a laptop,
+- **BOT-016.** Withdrawn (R-196): Hermes Agent is the assistant. The list of machines must show the operator's own devices, for example a laptop,
   and the rented machines of the account (CVM-001), in one list. The operator can pick local
   machines, cloud machines or both. The hub must refuse a machine that the operator cannot use and
   a machine that another bot owns (BOT-011).
-- **BOT-017.** Before the operator confirms, the configurator must show for each machine whether
+- **BOT-017.** Withdrawn (R-196): Hermes Agent is the assistant. Before the operator confirms, the configurator must show for each machine whether
   the chosen agent is installed on it, whether the bot is read-only (BOT-012), and, for a rented
   machine, its cost for each day if it stays on (CVM-004).
-- **BOT-018.** A bot with more than one machine must have a rule that says which machine runs each
+- **BOT-018.** Withdrawn (R-196): Hermes Agent is the assistant. A bot with more than one machine must have a rule that says which machine runs each
   task. The first rule is the operator's order of machines, with the next machine as the fallback.
   The audit log records which machine ran each task (BOT-007).
 
@@ -140,12 +142,12 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   other), or installed and not checked. The probe of BOT-022 must run when the agent starts, when
   the operator opens the page and when the operator makes a bot. The configurator (BOT-015, BOT-017)
   must use the same result. The state must not show the name or the email of the account.
-- **BOT-025.** A conversation with a bot can change the agent or the model between two replies. The
+- **BOT-025.** Withdrawn (R-196): Hermes Agent is the assistant. A conversation with a bot can change the agent or the model between two replies. The
   operator can do it at any time. A rule can do it, for example "my Claude subscription, then Codex when
   Claude has no quota". A change by a rule must show in the conversation and in the audit log (BOT-007).
   A rule must only move between agents of the same operator. A rule must not rotate between logins of the same
   vendor, and it must not pool logins.
-- **BOT-026.** A change of agent must send a bounded handoff to the new agent. The handoff is a
+- **BOT-026.** Withdrawn (R-196): Hermes Agent is the assistant. A change of agent must send a bounded handoff to the new agent. The handoff is a
   selection of the saved messages, not a summary that an agent writes. This costs no quota of a
   subscription. The bound is 16 000 tokens by default. The operator can set it from 1 024 to 64 000
   tokens. The hub must count one token for each UTF-8 byte, with the role and the agent name of each message
@@ -153,12 +155,12 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   16 000 tokens or one quarter of the context window of the target model, whichever is larger. When the
   window is not known, the hub must use 128 000 tokens. These numbers are the T3 Code defaults. Not verified:
   they fit each adapter.
-- **BOT-027.** The handoff must contain the first request, then the newest messages that fit, in
+- **BOT-027.** Withdrawn (R-196): Hermes Agent is the assistant. The handoff must contain the first request, then the newest messages that fit, in
   order, each with its role. It must say how many messages it left out and must name the place where the
   agent can read them. It must not contain the reasoning, the tool state or the attachments of the
   agent that the bot left. The new request of the operator must never be shortened. When the handoff
   does not fit even in a new session, the hub must say so and must not cut the new request.
-- **BOT-028.** When a bot goes back to an agent that it used before, the adapter must resume the
+- **BOT-028.** Withdrawn (R-196): Hermes Agent is the assistant. When a bot goes back to an agent that it used before, the adapter must resume the
   session of that agent when the vendor's program supports it (`claude -r`, `codex exec resume`). It must
   send only a handoff of the messages since that agent last ran. Otherwise it must start a new session with
   a full bounded handoff. This follows `docs/orchestration-v2/provider-switching-and-context.md` in T3 Code.
@@ -220,6 +222,8 @@ allows or bans it. The quotes are from the pages on the date of the check. This 
 | xAI: Grok Build CLI (SuperGrok, X Premium Plus) | **Allowed** with the official `grok` program. No shared logins. | Docs: "Use headless mode for scripts, bots, or other machine-friendly tasks." Announcement: "Grok Build also provides full ACP support to build your own bots and agent orchestration apps." Consumer Terms (updated 2026-10-27): "You may not share your account credentials or make your account available to anyone else". Acceptable Use Policy bans "using bots to access, reverse engineer, decompile, disassemble or otherwise seek to obtain the source code of our Service" (the context is source code, so the clause is not a clear ban). | https://docs.x.ai/build/cli/headless-scripting, https://x.ai/news/grok-build-cli, https://x.ai/legal/terms-of-service and https://x.ai/legal/acceptable-use-policy |
 | Google: Antigravity CLI and Gemini CLI | **Restricted.** On a consumer Google login, no third-party agent or orchestrator can drive the program, even when it never reads the token. An API key, Vertex AI or Gemini Enterprise is the allowed way. | Antigravity Additional Terms, Section 6: "Using third party software, tools, or services to access the Service (e.g. using OpenClaw with Antigravity OAuth) is a breach of this Agreement." FAQ: "Wrapping `agy` inside third-party coding agents or applications, or automating account rotation, is not supported under consumer plans." A Google reply on the Antigravity CLI tracker (2026-11-12) says what is not permitted on consumer sign-in is "using agy acp as a backend worker inside a third-party coding agent, autonomous agent harness, or background orchestrator", and that a person who drives an interactive ACP session is allowed. The reply is not a term. Gemini CLI: "Directly accessing the services powering Gemini CLI ... using third-party software, tools, or services ... is a violation of applicable terms and policies." | https://antigravity.google/terms/, https://antigravity.google/docs/faq.md, https://github.com/google-antigravity/antigravity-cli/issues/1493 and https://geminicli.com/docs/resources/tos-privacy/ |
 | ACP (Agent Client Protocol) | **Unclear.** The protocol is open and has no terms on subscriptions. The terms of the agent's vendor apply. | The repository is under the Apache License 2.0. The protocol "standardizes communication between code editors ... and coding agents". Each agent does its own sign-in through the `authenticate` method. | https://github.com/agentclientprotocol/agent-client-protocol and https://agentclientprotocol.com |
+
+**A named exception for T3 Code (R-196, operator, 2026-11-18, first-hand; OD-AXT15 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md): "no, add T3 Code.").** BOT-021, BOT-032 and BOT-033 bind each adapter of Anima.ing, and they do not change. T3 Code is a program that the operator runs on his own machine, and T3 Code itself uses the Claude Agent SDK and the account methods of `codex app-server`. Anima.ing does not drive T3 Code through an adapter. R-196 permits a catalogue entry for T3 Code (AXT-020, AXT-045 and constraint C2 of that proposal) with these limits: the entry never offers, preselects or scripts the Claude subscription login, so Claude goes only through an API key, Amazon Bedrock or Google Vertex AI that the operator sets in T3 Code on the machine; the ChatGPT login of T3 Code stays on the device and never goes through the hosted hub; and the entry needs its vendor terms row (BOT-038). This exception is for T3 Code only.
 
 **The claim of T3 Code, checked.** `docs/user/faq.md` says "T3 Code is within the TOS of Claude Code,
 Codex, and Google Antigravity". The public text does not support this claim for Anima.ing.
@@ -331,21 +335,21 @@ AIS-024) read the session files of Claude Code. They hold tokens, not limits, an
 a usage limit. Thus the counts cannot tell that a limit was reached. This section adds the fallback and
 does not copy those parts (PLN-016).
 
-- **BOT-047.** The operator must be able to start a fallback session from a pane or a bot task of Claude
+- **BOT-047.** Parked (R-196). The operator must be able to start a fallback session from a pane or a bot task of Claude
   Code (BOT-032), in the same repository folder (and the same worktree) and the same pane. The fallback
   session must run a model that a model server on a device of the operator serves. It must not use the
   subscription. It must show as a fallback in the pane, with the name of the model and the device.
-- **BOT-048.** The local model is a capability of a device. The device page must show, for each device,
+- **BOT-048.** Parked (R-196). The local model is a capability of a device. The device page must show, for each device,
   one state for the fallback: no model server, model not pulled, memory below the need of the model, or
   ready. The model comes from the model library (LIBM-001 to LIBM-006), and the fit verdict comes from the
   compute plan. Unsloth gives the need of Qwen3.8-27B as 16 GB to 19 GB of memory for a 4-bit file
   (checked 2026-11-18; the source is in the note below). The hub must not pick the model for the operator
   (OD-BOT11). The probe of a device must run with an empty home folder (CAP-025).
-- **BOT-049.** The fallback session must talk to the model server directly, from the device to the
+- **BOT-049.** Parked (R-196). The fallback session must talk to the model server directly, from the device to the
   server. The hub must not carry the request (R-131). In the first version the server must be on the
   same device, on the loopback address. A server on a different device needs the path from one device
   to a different device, which is a spike (ai-direction.md, step 2; OD-BOT13).
-- **BOT-050.** The operator must always be able to start a fallback by hand ("Continue on a local
+- **BOT-050.** Parked (R-196). The operator must always be able to start a fallback by hand ("Continue on a local
   model"). Anima.ing can also offer it when the program stops on its limit. The detection must not use the
   token counts of AIS-018. It must not read a quota, a reset time, a login or an account (AIS-022,
   CAP-025). It can use only what the program itself prints in a pane that Anima.ing started (AIS-010) or
@@ -353,12 +357,12 @@ does not copy those parts (PLN-016).
   of each version of the program go in the catalog (BOT-040). A message that does not match a pattern
   gives no offer, and the manual start stays. Not verified: the exact text and the exit code of
   `claude` at its limit. Whether the daemon may notice that message at all is OD-BOT10.
-- **BOT-051.** Anima.ing must not start a fallback unless the operator set a mode for the pane, the bot or
+- **BOT-051.** Parked (R-196). Anima.ing must not start a fallback unless the operator set a mode for the pane, the bot or
   the project: off, ask each time, or start by itself. The default is open (OD-BOT9). In each mode, the
   start must go in the audit log (BOT-007) and send the alert of AIS-012, and the pane must show the
   fallback (BOT-047). The session must not have more rights than the session that stopped. The standing
   permissions of BOT-006 carry over only when the operator says so (OD-BOT12).
-- **BOT-052.** The fallback of Claude Code must run the unmodified `claude` program as the operator's own
+- **BOT-052.** Parked (R-196). The fallback of Claude Code must run the unmodified `claude` program as the operator's own
   user (BOT-021), with these values set for that process only, and not written into a settings file of the
   operator: `ANTHROPIC_BASE_URL` with the address of the local server, and a credential variable
   (`ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`) with a value that is not a secret. The reason is in the
@@ -369,12 +373,12 @@ does not copy those parts (PLN-016).
   from that login. The adapter can set `CLAUDE_CODE_ATTRIBUTION_HEADER=0`, because Unsloth reports that
   the header makes a local model about 90 % slower by a cache miss on each request. This requirement waits
   for OD-BOT8.
-- **BOT-053.** The safe alternative must exist before BOT-052 is on: a fallback with an open harness that
+- **BOT-053.** Parked (R-196). The safe alternative must exist before BOT-052 is on: a fallback with an open harness that
   speaks to the local server in the same pane, for example OpenCode, Hermes Agent or Pi, which Unsloth also
   starts against a local model (`unsloth start opencode`). It is an entry of the catalog (BOT-040) and runs as
   a runner (BOT-039). The operator picks the harness for the fallback in the same setting as the mode
   (BOT-051). With "Claude Code" not allowed (OD-BOT8), this is the only fallback.
-- **BOT-054.** The handoff must stay on the device. The daemon must write one file in its own state
+- **BOT-054.** Parked (R-196). The handoff must stay on the device. The daemon must write one file in its own state
   folder, with the rights of the user only and outside the repository, and the first request must name its
   path. The file holds: the request that the operator wants finished, as one line that the operator
   confirms (for a bot task, the title of the task, and the bounded handoff of BOT-026 and BOT-027 with
@@ -384,18 +388,18 @@ does not copy those parts (PLN-016).
   the event that a fallback started and ended (BOT-056). Resuming the stopped session with `claude -r` on
   the local model (BOT-028) is not verified: the stored thinking of a different model can fail. It is
   an option only after a test.
-- **BOT-055.** Switch back. The daemon does not know when a limit resets and must not read it
+- **BOT-055.** Parked (R-196). Switch back. The daemon does not know when a limit resets and must not read it
   (AIS-022). The pane must always offer "Return to Claude Code". The operator can set a reminder time
   (the alert of AIS-012). Two sessions must not write in one worktree: the fallback must end or pause
   before the Claude session starts. The return gives the Claude session a handoff of what changed since
   the fallback began (BOT-054, BOT-028). Return is never automatic, because a failed return would lose
   the work (OD-BOT9).
-- **BOT-056.** The audit log (BOT-007) must record each start, stop and return of a fallback, who gave it
+- **BOT-056.** Parked (R-196). The audit log (BOT-007) must record each start, stop and return of a fallback, who gave it
   (the operator or a rule), the device and the model name. The usage page (AIS-020) must show the tokens
   of a fallback session as local use and give no cost estimate for them: the public prices (MGW-014) have
   no row for a local model, and AIS-021 must not apply a Claude price to them. A session file of a fallback
   also shows as `claude` in the usage counts; the model name tells them apart.
-- **BOT-057.** The fallback is a kind of runner. It is a harness (BOT-040) and a model server of a device,
+- **BOT-057.** Parked (R-196). The fallback is a kind of runner. It is a harness (BOT-040) and a model server of a device,
   and the operator adds it from the Agents page and from "Add runner" (PNL-002, PNL-003, PNL-005). The
   menu of each pane has "Continue on a local model" (BOT-050). The local model appears in the model
   address of the compute plan when that is built (RTR-015; ai-direction.md step 4), but the first version
@@ -486,7 +490,7 @@ Serves: no row of Section 4 of the work plan names Bots yet. The nearest row is 
 
 ### Goal
 
-A person who has a machine with `anima-daemon` can put Claude Code, Codex, Gemini CLI, Cursor CLI, Aider or OpenCode on it from the device page, in a few minutes, without a terminal. Each step is shown first and is in the audit log. Anima.ing never holds the login of the person.
+A person who has a machine with `anima-daemon` can put Claude Code, Codex, Gemini CLI, Cursor CLI, Pi or OpenCode on it from the device page, in a few minutes, without a terminal. Each step is shown first and is in the audit log. Anima.ing never holds the login of the person.
 
 ### Current state (code on `origin/main` at `7342500c`, 2026-11-18)
 
@@ -532,7 +536,7 @@ Does it block this change? **No.** The operator decided OD-BOT15 (R-153): the co
 ### Not in scope
 
 - Windows machines, rented bot machines (BOT-010), and machines that do not run `anima-daemon`.
-- Agent apps that run a server (T3 Code, Orca, Paseo). They need a port and a pairing secret, and T3 Code with Claude uses the SDK that BOT-021 and BOT-032 ban. They wait for a later version of this section.
+- Agent apps that run a server (Orca, Paseo). They need a port and a pairing secret. They wait for a later version of this section. T3 Code is a tool extension of [agent-tools-as-extensions.md](agent-tools-as-extensions.md) (R-196), with its recipe in this catalogue (BOT-077) and the named exception before "The claim of T3 Code, checked".
 - Grok Build, Copilot CLI, Antigravity (BOT-045) and the other agents of BOT-043 and BOT-044. They need a dated terms row first (BOT-038). The six agents of the first version are in BOT-077.
 - Automatic update, "update when idle", and a bulk "set up all my machines" action.
 - Showing a device code or a pairing link in the client.
@@ -548,12 +552,12 @@ All requirements here are proposed and not approved. A requirement is not built 
 - **BOT-061.** A recipe must be a list of fixed steps. Each step must be a program and an argument list. The daemon must not build a command line from text that the hub, the operator or an AI agent gave. Only the machine, the agent and the folder for the session are input.
 - **BOT-062.** The install must use, in this order: a signed package that the machine's own package manager gives and the machine already uses, or the script of the vendor. For a script, the daemon must download it to a file, check its checksum when the vendor gives one, write its SHA-256 and its source address to the audit log, and only then run it. The daemon must never send a download straight into a shell.
 - **BOT-063.** The daemon must run each step as the operator's own user. It must not use `sudo`. A step that needs root must stop and tell the operator which step, and must not ask for a password.
-- **BOT-064.** A recipe of the first version (BOT-077) must not open a port or start a service. A later recipe that opens a port must open it only on the address of the machine on the Anima.ing network, never on all addresses, and the review screen must say so.
-- **BOT-065.** The operator must be able to start each install, update and removal in the app or in the command line, and must approve it on the review screen (BOT-059). An install that an AI agent asks for through MCP follows the MCP setting (R-120, MCP-012, MCP-024, MCP-025; operator, R-153, OD-BOT17): in the state `allow` it runs without a question, in `ask` the person is asked, in `off` the tool is hidden. A schedule, an event, a bot or a standing permission (BOT-006) must not start an install. A machine takes an install only when it takes work (USE-004; operator, R-153, OD-BOT20). An install that an AI agent starts must show as started by an AI agent, with the name of the MCP client (BOT-073). [NEEDS CLARIFICATION: MCP-006 says that no tool runs a command on a device. An MCP install tool needs a narrow exception, OD-BOT21. Whether an agent may start a recipe before the operator confirmed its terms row on that machine is OD-BOT22.]
+- **BOT-064.** A recipe of the first version (BOT-077) must not open a port or start a service. A later recipe that opens a port must open it only on the address of the machine on the Anima.ing network, never on all addresses, and the review screen must say so. A tool extension of agent-tools-as-extensions.md may listen on the loopback address of the device only (AXT-008; R-196, OD-AXT4).
+- **BOT-065.** The operator must be able to start each install, update and removal in the app or in the command line, and must approve it on the review screen (BOT-059). An install that an AI agent asks for through MCP follows the MCP setting (R-120, MCP-012, MCP-024, MCP-025; operator, R-153, OD-BOT17): in the state `allow` it runs without a question, in `ask` the person is asked, in `off` the tool is hidden. A schedule, an event, a bot or a standing permission (BOT-006) must not start an install. A machine takes an install only when it takes work (USE-004; operator, R-153, OD-BOT20). An install that an AI agent starts must show as started by an AI agent, with the name of the MCP client (BOT-073). Exception (R-196, OD-AXT5): an AI agent must not install Hermes Agent through MCP in any state, `allow` included; the install of Hermes always needs the click of the operator (AXT-021). [NEEDS CLARIFICATION: MCP-006 says that no tool runs a command on a device. An MCP install tool needs a narrow exception, OD-BOT21. Whether an agent may start a recipe before the operator confirmed its terms row on that machine is OD-BOT22.]
 - **BOT-066.** Each sign-in must happen on the machine, in the flow of the vendor, by the operator. This extends BOT-020 and BOT-023. Anima.ing must not read, copy, move or keep a token, key, cookie or login file. It must not run `claude setup-token`. It must give no field that takes an API key. It must never offer or automate the copy of a login file to another machine.
-- **BOT-067.** An agent has one of two sign-in kinds. (a) An account login of the vendor: Claude Code, Codex and Cursor CLI. The flows, in order of preference, are a device-code flow of the vendor, a browser on the machine itself, and, for a machine with no browser, the prompt of the vendor ("open this address on your own device and paste the code back"). (b) A key that the operator sets in the program on the machine: Gemini CLI, Aider and OpenCode (BOT-036, BOT-078). For kind (b) the review screen must say how the operator sets the key on the machine, and Anima.ing must open no pane for it in the first version (OD-BOT23). The review screen must name each condition that the vendor sets. See the table of recipes below for what is verified.
+- **BOT-067.** An agent has one of two sign-in kinds. (a) An account login of the vendor: Claude Code, Codex and Cursor CLI. The flows, in order of preference, are a device-code flow of the vendor, a browser on the machine itself, and, for a machine with no browser, the prompt of the vendor ("open this address on your own device and paste the code back"). (b) A key that the operator sets in the program on the machine: Gemini CLI, Pi and OpenCode (BOT-036, BOT-078). For kind (b) the review screen must say how the operator sets the key on the machine, and Anima.ing must open no pane for it in the first version (OD-BOT23). The review screen must name each condition that the vendor sets. See the table of recipes below for what is verified.
 - **BOT-068.** The pane in which the operator signs in must be marked "secret entry" and must show a notice: the hub relays this text and does not store it (operator, R-153, OD-BOT15). The hub must not record or log its bytes (RA-008, LOG-007). The audit log must say only that the sign-in started and finished, with the name of the method (BOT-022). The result that the page shows is only the exit code and the method name (BOT-024). The operator must open the sign-in pane in the app or in the command line. An MCP tool must not open it (MCP-006), and no MCP tool returns a code (MCP-004). The pane is for a one-time code. It is not for a key that lasts (BOT-078).
-- **BOT-069.** After the sign-in, the daemon must start the agent in a pane of the agent panes (AIS-013) in a folder that the operator chose. Until the panes are built, the daemon may start it in a `tmux` session that it names and owns. It must check that `tmux` is present and, if it is not, say so and stop. It must not install `tmux` when that needs root (BOT-063). [NEEDS CLARIFICATION: OD-BOT19.]
+- **BOT-069.** After the sign-in, the daemon must start the agent in a folder that the operator chose: in a Herdr pane when Herdr is installed on the machine (AXT-026), or else in a `tmux` session that it names and owns. R-196 withdrew the agent panes (AIS-013). It must check that `tmux` is present and, if it is not, say so and stop. It must not install `tmux` when that needs root (BOT-063). [NEEDS CLARIFICATION: OD-BOT19.]
 - **BOT-070.** After the install, the daemon must check the program with the steps of BOT-022: the file in the path, the version, and the status command. The page must show the result with the states of BOT-024. A failed step must stop the install, name the step and the cause, and leave nothing half-installed that it made.
 - **BOT-071.** The default policy for an update is "Manual". The hub must compare the version of the daemon's probe with the version of the catalog and show "update available". A version that changed without Anima.ing must be logged as "changed by the vendor". Claude Code (native install) and Cursor CLI update themselves by default, so this log line is the normal case for them; the recipe must set the switch of the vendor that turns this off when the vendor has one. [NEEDS CLARIFICATION: whether each vendor has such a switch.] An update must show what it changes, and a failed update must leave the old version working. In the first version there is no automatic update by Anima.ing.
 - **BOT-072.** A removal must use the steps of the vendor, must keep the data of the operator unless the operator chooses otherwise, and must be in the audit log.
@@ -561,8 +565,8 @@ All requirements here are proposed and not approved. A requirement is not built 
 - **BOT-074.** The catalog must be able to switch one recipe off in a daemon release, for example when a vendor changes its terms. A person must read the terms row of BOT-038 again before each release, and a row that turns "restricted" must turn its recipe off in the same release.
 - **BOT-075.** The function must have the command `anima agents install`, `status`, `update` and `remove`, and the MCP tools for the states and the versions (CMD-030). Install, update and remove are MCP change tools. They follow the MCP states and the switch "Ask before destructive actions" (MCP-012, MCP-024, MCP-025, R-153); `remove` has `destructiveHint` (MCP-009). Each call that runs without a question must be in the audit log (MCP-026, BOT-073). The tool starts only a recipe of the catalog (BOT-060, BOT-061). It must not open a session (MCP-006) and it must not take or return a secret (MCP-004). [NEEDS CLARIFICATION: OD-BOT21, the exception to MCP-006.]
 - **BOT-076.** The install runs on a machine of the operator, through the daemon. The images of rented machines and the hosted hub must carry no vendor program (BOT-031). The Claude Code recipe must work only on a machine that the operator owns, until open decision 6 above is ruled.
-- **BOT-077.** The first version must offer six recipes (operator, R-153, OD-BOT18): Claude Code, Codex, Gemini CLI, Cursor CLI, Aider and OpenCode, on macOS and on Linux, on a machine that runs `anima-daemon`. Each one is a harness that runs in a pane. Each recipe must carry its row of the vendor terms table, or "terms not checked" (BOT-041). No other recipe is in the first version.
-- **BOT-078.** A recipe for an agent that takes a key (Gemini CLI, Aider, OpenCode) must install the program and must not take, show, store or relay the key. The operator sets the key in the program on the machine himself (BOT-036, BOT-066). A recipe must not offer, preselect or script a login of a vendor for a program that is not the program of that vendor: not an Anthropic subscription (BOT-021, BOT-032), not a ChatGPT login (BOT-033), and not a consumer Google login (BOT-036, BOT-045). The Gemini CLI recipe must say that Google gives Gemini CLI to Code Assist Standard and Enterprise licences and to a paid API or Vertex key (README of the program, read 2026-11-18).
+- **BOT-077.** The first version must offer six recipes (operator, R-153, OD-BOT18): Claude Code, Codex, Gemini CLI, Cursor CLI, Pi and OpenCode, on macOS and on Linux, on a machine that runs `anima-daemon`. Pi replaces Aider (R-196, OD-AXT16: "replace Aider with Pi."). Each one is a harness that runs in a pane. Each recipe must carry its row of the vendor terms table, or "terms not checked" (BOT-041). The same catalogue also holds the recipes of three tool extensions of [agent-tools-as-extensions.md](agent-tools-as-extensions.md) (R-196): Hermes Agent, suggested first in "Add an agent" (AXT-021, AXT-023), Herdr (AXT-024) and T3 Code (AXT-045). They are tools, not harnesses. No other recipe is in the first version.
+- **BOT-078.** A recipe for an agent that takes a key (Gemini CLI, Pi, OpenCode) must install the program and must not take, show, store or relay the key. The operator sets the key in the program on the machine himself (BOT-036, BOT-066). A recipe must not offer, preselect or script a login of a vendor for a program that is not the program of that vendor: not an Anthropic subscription (BOT-021, BOT-032), not a ChatGPT login (BOT-033), and not a consumer Google login (BOT-036, BOT-045). The Gemini CLI recipe must say that Google gives Gemini CLI to Code Assist Standard and Enterprise licences and to a paid API or Vertex key (README of the program, read 2026-11-18). Pi connects "a subscription or API key" with `/login` inside the program (README of Pi, read 2026-11-18): the Pi recipe must name only a key or a provider that BOT-021, BOT-032, BOT-033 and BOT-036 permit.
 
 **The six recipes of the first version (BOT-077).** The commands below were read from the official pages named in the table on 2026-11-18. A command that is marked "not verified" was not on those pages. It comes from a note of the operator's marketing bot or from memory, and a person must check it in task BI4 and in the hand test of BI11 before it enters the catalog. [NEEDS CLARIFICATION: every "not verified" item.] Each recipe also needs the probe of BOT-022 with an empty home folder (CAP-025); the daemon has probes for Claude Code and Codex only (`crates/daemon-core/src/inventory/tools.rs`), so each other agent needs a new `ToolName`.
 
@@ -572,8 +576,10 @@ All requirements here are proposed and not approved. A requirement is not built 
 | Codex | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` on macOS and Linux. Source: [Codex CLI page](https://developers.openai.com/codex/cli), 2026-11-18. | Kind (a). `codex login` opens the browser and is the default. Source: [auth page](https://developers.openai.com/codex/auth), 2026-11-18. `codex login --with-api-key` takes a key from standard input: not used (BOT-066). | The same install command updates it (Codex CLI page). | The auth page mentions device-code failures in the login log. The flag that starts a device-code flow was not read. Terms: BOT-033, open decision 7. | `codex --version`; `codex login status`; the device-code flag. |
 | Gemini CLI | `npm install -g @google/gemini-cli`, or `brew install gemini-cli`. Source: [README](https://raw.githubusercontent.com/google-gemini/gemini-cli/main/README.md), 2026-11-18. | Kind (b) in the first version. The README names a Google sign-in for Code Assist licences of an organisation, the `GEMINI_API_KEY` variable, and Vertex AI. | `npm install -g @google/gemini-cli@latest` (README). | The README says that Gemini CLI is for Gemini Code Assist Standard and Enterprise, and that free and Google AI plans moved to Antigravity CLI on 2026-06-18. BOT-036 and BOT-045 still ban a consumer Google login and Antigravity. | Whether `npm install -g` needs root on the machine (BOT-063); Node is a prerequisite. |
 | Cursor CLI | `curl https://cursor.com/install -fsS \| bash` on macOS, Linux and WSL; the program is `agent` (`agent --version`); `~/.local/bin` must be in the path. Source: [installation page](https://cursor.com/docs/cli/installation), 2026-11-18. | Kind (a). `agent login` opens the browser; `NO_OPEN_BROWSER=1` prints the address; `agent status`; `agent logout`. Source: [authentication page](https://cursor.com/docs/cli/reference/authentication), 2026-11-18. | It updates itself by default; `agent update` updates by hand (installation page). | BOT-034 names two program names, `agent` and `cursor-agent`. An API key in the environment is the other method: not used (BOT-066). | Whether the automatic update has a switch. |
-| Aider | `python -m pip install aider-install`, then `aider-install`; or `curl -LsSf https://aider.chat/install.sh \| sh`. Source: [install page](https://aider.chat/docs/install.html), 2026-11-18. | Kind (b). A provider key, given with `--api-key` or in the environment. Aider has no login of its own. | The page does not say. | Python 3.8 to 3.13 is needed, or the installer fetches its own (page). Aider is not named in BOT-043 or BOT-044, so its terms row is "terms not checked" (BOT-041). | The update command; the version command. |
+| Pi | `curl -fsSL https://pi.dev/install.sh \| sh`; or `npm install -g --ignore-scripts @earendil-works/pi-coding-agent`. Node.js 22.19 or newer. Source: [README](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/README.md), 2026-11-18, read only; not run on a machine. | Kind (b). `/login` inside the program connects "a subscription or API key" (README). Only a key or a permitted provider (BOT-078). | `pi update` (README). | MIT. A terminal agent. As an ACP agent (BOT-019) it needs the adapter `pi-acp` ([svkozak/pi-acp](https://github.com/svkozak/pi-acp), MIT); whether the recipe installs it is not decided. Pi is not named in BOT-043 or BOT-044, so its terms row is "terms not checked" (BOT-041). | Each command on a real machine; the version command; whether `npm install -g` needs root (BOT-063); the commands of `pi-acp`. [NEEDS CLARIFICATION: whether the Pi recipe installs `pi-acp`.] |
 | OpenCode | `curl -fsSL https://opencode.ai/v2/install \| bash`; or `npm install -g @opencode/cli`; or `brew install anomalyco/tap/opencode-v2`. Source: [docs](https://opencode.ai/docs/), 2026-11-18. | Kind (b). The docs connect a provider with `/connect` inside the program. | The page does not say. | The page says that an older `mise` installs OpenCode 1. OpenCode is first in the order of BOT-043. Its providers include logins that BOT-021, BOT-032 and BOT-033 ban for a program that is not the vendor's own (BOT-078). | `opencode auth login`; the update and version commands. |
+
+**Aider (removed from the first version).** R-196 (OD-AXT16) removes Aider from the six agents: its last release is of 2025-08-09 (stale, per Anima Competitor Bot, 2026-11-18). Aider can come back as a later recipe only with a new decision. Its install facts, for a later version: `python -m pip install aider-install`, then `aider-install` ([install page](https://aider.chat/docs/install.html), 2026-11-18); kind (b); terms not checked (BOT-041).
 
 ### Interfaces (CMD-030 order)
 
@@ -640,7 +646,7 @@ sign-in:  operator --terminal (secret entry)--> vendor's own flow on the machine
 | `tmux` is missing and the panes are not built | The start step stops and says so (BOT-069). |
 | An AI agent starts an install while no operator is present (the MCP default is `allow`, R-120; R-153, OD-BOT17) | The install runs. What limits it: only a recipe of the catalog runs (BOT-060, BOT-061); no root and no port (BOT-063, BOT-064); the machine must take work (USE-004, OD-BOT20); the audit log has the event with the name of the MCP client (BOT-073, MCP-026); the page shows "started by an AI agent" (BOT-065); the catalog can switch the recipe off (BOT-074); the operator can set the tool to `ask` or `off` (MCP-012). Open: OD-BOT21 and OD-BOT22. |
 | An agent-started install and the plain-text sign-in (R-153, OD-BOT15) with no operator present | The install can finish with nobody at the machine. The sign-in cannot start by itself: it is a session, no MCP tool opens a session (MCP-006), and no MCP tool returns a code (MCP-004). The state stays "installed, signed out" until the operator opens the pane (BOT-068). The code passes through the hub only in the pane that the operator opens, with the notice, with no recording and no log (RA-008, LOG-007). If a later ruling lets a tool open that pane, the code would pass the hub with nobody to read it; the audit event and the notice are then the only limits. |
-| An operator wants to type an API key for Gemini CLI, Aider or OpenCode in a pane | Not offered in the first version. The key lasts, and R-153 covers a one-time code only (BOT-078, OD-BOT23). The review screen says how to set the key on the machine. |
+| An operator wants to type an API key for Gemini CLI, Pi or OpenCode in a pane | Not offered in the first version. The key lasts, and R-153 covers a one-time code only (BOT-078, OD-BOT23). The review screen says how to set the key on the machine. |
 | The hub is hosted and the machine is behind a router | The daemon asks the hub for work, so no inbound port is needed (USE-005). |
 
 ### Test plan
@@ -659,7 +665,7 @@ sign-in:  operator --terminal (secret entry)--> vendor's own flow on the machine
 
 | Mode | What it means here | Verdict |
 | --- | --- | --- |
-| Expand | Add apps (T3 Code, Orca, Paseo), OpenCode, auto-update, bulk setup, Windows | No. Each one adds a port, a secret or a terms conflict (BOT-021, BOT-032, BOT-046). |
+| Expand | Add apps (Orca, Paseo; T3 Code is a tool extension by R-196), OpenCode, auto-update, bulk setup, Windows | No. Each one adds a port, a secret or a terms conflict (BOT-021, BOT-032, BOT-046). |
 | Selective | Take only what is new and not already in this document: the recipe runner, the review screen, the audit events, the secret-entry pane, update detection | Yes. This is the chosen mode. |
 | Hold | Write only the requirements and build nothing | Yes for approval: nothing is built until the operator approves BOT-058 to BOT-078 (BI0) and rules OD-BOT21 to OD-BOT23. OD-BOT15 to OD-BOT20 are decided (R-153). |
 | Reduce | Two harnesses (Claude Code and Codex), two platforms, manual update, no port | The Planner recommended this. The operator chose six agents instead (OD-BOT18, R-153). The mode is now Selective with six recipes, two platforms, manual update and no port (BOT-077). |
@@ -709,7 +715,7 @@ One pull request for each task. The size of each task is a few hours to three da
 | BI2c | 2 | The recipe of Cursor CLI: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
 | BI2d | 2 | The recipe of OpenCode: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
 | BI2e | 2 | The recipe of Gemini CLI: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
-| BI2f | 2 | The recipe of Aider: new `ToolName`, probe, entry, tests | BI2 | Not started | — |
+| BI2f | 2 | The recipe of Pi: new `ToolName`, probe, entry, tests (Pi replaces Aider, R-196) | BI2 | Not started | — |
 | BI3 | 2 | The hub: the domain for requests, approval, steps and audit events; the GraphQL | BI1 | Not started | — |
 | BI4 | 3 | The daemon: take the work type and run the fixed steps of a recipe | BI1, BI2 | Not started | — |
 | BI5 | 3 | `anima agents install`, `status`, `update`, `remove` | BI3 | Not started | — |
@@ -801,16 +807,16 @@ One pull request for each task. The size of each task is a few hours to three da
 - Done: the commit that merges the entry and sets BI2e to Done.
 - Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2e of docs/proposals/bots.md. Add the catalog entry and the probe for Gemini CLI to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
 
-**BI2f. The recipe of Aider.**
-- Why: BOT-077 names Aider for the first version (operator, R-153, OD-BOT18).
-- Current state: No Aider `ToolName` or probe exists.
-- Change: add the catalog entry (BOT-040, BOT-060) from the row of Aider in the table of recipes above. Add a `ToolName` and a probe with an empty home. Use the one-liner or `aider-install` of the table above, whichever runs with no root. Aider is not in BOT-043 or BOT-044, so the terms row is "terms not checked" (BOT-041). Write the sign-in kind (Kind (b); no sign-in pane (OD-BOT23); BOT-067) and the terms row key ("terms not checked"). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry.
-- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `aider` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
+**BI2f. The recipe of Pi.**
+- Why: BOT-077 names Pi for the first version in place of Aider (operator, R-196, OD-AXT16).
+- Current state: No Pi `ToolName` or probe exists.
+- Change: add the catalog entry (BOT-040, BOT-060) from the row of Pi in the table of recipes above. Add a `ToolName` and a probe with an empty home. Use the command of the table above that runs with no root. Pi is not in BOT-043 or BOT-044, so the terms row is "terms not checked" (BOT-041). Write the sign-in kind (Kind (b); no sign-in pane (OD-BOT23); BOT-067, BOT-078: never a subscription login of a vendor that is not Pi) and the terms row key ("terms not checked"). Read each vendor page again, fill each "not verified" command, and write the source address and the date in the entry. Do not add `pi-acp` until the [NEEDS CLARIFICATION] marker of its row is answered.
+- Acceptance: pass when the entry passes the validation of BI2; a test with a fake `pi` script in a temporary folder shows that the probe finds it and prints its version with an empty home folder (BOT-022, CAP-025); no step uses root, a free-text argument or a login file (BOT-023, BOT-061, BOT-063); fail otherwise.
 - Check: `cargo nextest run -p daemon-core`, `cargo clippy -p daemon-core --all-targets -- -D warnings`, `bun run quality:documents`.
-- Out of scope: running the vendor script; the hub; the client; the hand test (BI11).
+- Out of scope: running the vendor script; `pi-acp`; the hub; the client; the hand test (BI11).
 - Always: arguments as lists; a source address and a date for each command. Ask: before a command that the vendor page does not give. Never: a step that pipes a download into a shell; a step that reads or copies a login.
 - Done: the commit that merges the entry and sets BI2f to Done.
-- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2f of docs/proposals/bots.md. Add the catalog entry and the probe for Aider to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
+- Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task BI2f of docs/proposals/bots.md. Add the catalog entry and the probe for Pi to crates/daemon-core, from the recipe table of the section 'Install an agent on a machine'. Do not run a vendor script. Run cargo nextest run -p daemon-core and bun run gates."
 
 **BI3. The hub domain.**
 - Why: the hub holds the request, the approval and the audit events (BOT-065, BOT-073). The hub API comes first (CMD-030).
@@ -925,7 +931,7 @@ Each row has one question and a recommendation. OD-BOT15 to OD-BOT20 are decided
 | OD-BOT20 | Does an install need the machine's "takes work" switch (USE-004) to be on, or a new switch? (takes work / new switch) | Proposed, not ruled: Takes work. | Decided (R-153, operator, 2026-11-18, first-hand, Grok Bot chat): "OD-BOT20: reuse the takes work switch (USE-004)." Takes work. |
 | OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/no) | Proposed, not ruled: yes, for a catalog recipe only. No tool opens a session, so the sign-in pane stays with the operator (BOT-068). Needed before task BI6. | Open |
 | OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Proposed, not ruled: no. The operator confirms the row once in the app for each recipe and machine, and then an agent may start it. | Open |
-| OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Aider, OpenCode) in the secret-entry pane, when R-153 covers a one-time code only (BOT-078)? (yes/no) | Proposed, not ruled: no in the first version. He sets the key on the machine himself. | Open |
+| OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Pi, OpenCode; Pi replaces Aider, R-196) in the secret-entry pane, when R-153 covers a one-time code only (BOT-078)? (yes/no) | Proposed, not ruled: no in the first version. He sets the key on the machine himself. | Open |
 
 ### Review notes
 
@@ -936,3 +942,4 @@ Each row has one question and a recommendation. OD-BOT15 to OD-BOT20 are decided
 - Not verified: the vendor commands marked so, the sign-in flows of Claude Code and Codex on a machine with no browser, the five-minute target, the size of the work, and whether the daemon-managed `tmux` session is acceptable to the panes plan (open decision 1 of Section 4.12.1).
 - Nothing in this section is a promise to a user. The claim rules of the product stay: a planned item is not described as shipping.
 - 2026-11-18, a pointer only. [agent-tools-as-extensions.md](agent-tools-as-extensions.md) proposes to withdraw BOT-001 to BOT-018 and BOT-025 to BOT-028, to park BOT-047 to BOT-057, and to keep BOT-019 to BOT-024, BOT-029 to BOT-046 and BOT-058 to BOT-078 (OD-AXT3). It also proposes the Hermes and Herdr recipes, Hermes first in "Add an agent" (AXT-021 to AXT-024), and a loopback-only port for a tool (AXT-008, a change to BOT-064). The operator direction is relayed and not first-hand. No requirement of this document changes until a ruling.
+- 2026-11-18, version 6. R-196 (operator, first-hand) decides OD-AXT1 to OD-AXT18 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md). This document marks BOT-001 to BOT-018 and BOT-025 to BOT-028 Withdrawn and BOT-047 to BOT-057 Parked, keeps BOT-019 to BOT-024, BOT-029 to BOT-046 and BOT-058 to BOT-078, replaces Aider with Pi in BOT-077 and task BI2f (the commands of Pi are read from its README and are not verified on a machine; it needs the adapter `pi-acp` for ACP), adds the recipes of Hermes Agent, Herdr and T3 Code to BOT-077, adds the named exception for T3 Code before "The claim of T3 Code, checked", the exception for Hermes to BOT-065 and the loopback rule for tools to BOT-064, and changes BOT-069 (a Herdr pane or `tmux`). No requirement is approved.

@@ -46,7 +46,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent. E0-5 does not wait for it (R-145) |
 | 4.19 | 3 | The watchdog | See, Use | Proposal, direction decided (R-162). After jobs (row 4.7). | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | 3 | The terminal screen (`anima tui`) | See, Reach | Direction decided (R-168). The requirements are not approved. Starts after R8a to R8d (row 4.6); the measurement TU1 may run before. | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 11.8 (a record only); TU2 to TU10 wait |
-| 4.21 | 3 | Agent tools as extensions (Hermes, Herdr in a pane) | Reach, Use | Draft, not approved. A placeholder row: operator direction relayed by Anima Product Ideas (2026-11-18), needs first-hand confirmation and a ruling (OD-AXT1, OD-AXT11). | Operator: OD-AXT1 to OD-AXT18 in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 9. Agent: None. AX1 to AX16 wait for the rulings; AX0 is a record only |
+| 4.21 | 3 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Reach, Use | Direction decided (R-196). The requirements are not approved. Tier 3, after row 4.7 (OD-AXT11); AX0 to AX2 may run earlier than the tier. | Operator: the approval of AXT-001 to AXT-045 (task AX1) in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md). Agent: task AX0 in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
@@ -214,11 +214,11 @@ The table gives the order. The section of each row below the table gives the wor
 
 ### 4.21 Agent tools as extensions
 
-- Tier: 3, after row 4.7 (the work route, which the install needs). This is a placeholder. The operator asked for a row of its own (relayed by Anima Product Ideas, 2026-11-18). It is not first-hand and it is not a ruling (OD-AXT11).
+- Tier: 3, after row 4.7 (the work route, which the install needs) (R-196, OD-AXT11: "yes, tier 3 after 4.7; AX0 to AX2 may run earlier."). Tasks AX0 to AX2 are documents and may run earlier than the tier; AX2 still waits for AX1.
 - Category: Reach, Use
-- Work: a host that opens tools of other vendors, which run on the operator's machines, in a pane of the client: Hermes Agent and Herdr first, not T3 Code (AXT-001 to AXT-043). The goal (operator, first-hand, 2026-11-18): support the open-source projects and gain their users
+- Work: a host that opens tools of other vendors, which run on the operator's machines, in a pane of the client: Hermes Agent, Herdr and T3 Code first (AXT-001 to AXT-045). The goal (operator, first-hand, 2026-11-18): support the open-source projects and gain their users
 - Work items: No work item yet. The tasks AX0 to AX16 are in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10
-- State: Draft. No requirement is approved and no task is built. OD-AXT1 asks the operator to confirm the relayed direction. OD-AXT2 and OD-AXT3 ask for the rulings that withdraw the native agent panes (AIS-009 to AIS-017) and the native bot runtime. OD-AXT4 asks if the host may start before the 15 extensions (EXT-009).
+- State: Direction decided (R-196, operator, 2026-11-18, first-hand). OD-AXT1 to OD-AXT18 are decided: the native agent panes (AIS-009 to AIS-017) and the native bot runtime are withdrawn, and the host may start before the 15 extensions with manifests of Anima.ing only (EXT-009). The requirements AXT-001 to AXT-045 are not approved; that is task AX1. Only AX0 (a record) may start now.
 
 ### Notes on the order
 
@@ -229,7 +229,7 @@ Notes:
 - The rows 4.16, 4.17 and 4.18 are tier 1 (operator, 2026-11-16). They come before the engine, the model service and the extensions. Their numbers follow 4.15 because a published number does not change.
 - Row 4.19 is tier 3, after jobs (R-162). It keeps its number.
 - Row 4.20 is tier 3, after R8a to R8d of row 4.6. It is a new row, so it follows 4.19. The operator chose a row of its own for the terminal screen (R-168). It is not a category: the command line and the MCP server stay a way to use each category.
-- Row 4.21 is a placeholder of tier 3, after row 4.7. It is a new row, so it follows 4.20. The operator chose a row of its own (relayed, 2026-11-18); OD-AXT11 asks for the tier.
+- Row 4.21 is tier 3, after row 4.7 (R-196, OD-AXT11). It is a new row, so it follows 4.20. The operator confirmed a row of its own first-hand (R-196, OD-AXT1).
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 

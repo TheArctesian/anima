@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Version 0.3 (2026-11-18). The operator approved the engine items and Projects one at a time, not the plan as one document. On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-5 and E0-6 are on `main` in part since the merge of the branch `engine/e0-5-places` (2026-11-18): their task table says what is built. E0-3, E0-7 after its contract and the other extensions are not on `main`. The operator decided T0 of E0-5 and of E0-6, the contract ruling and the gate on 2026-11-18 (R-144 to R-148). The index of the work items holds the state of each item ([work-items/](../work-items/README.md), "Engine", "Extensions" and "Decisions").
+evidence: R-196 (2026-11-18) withdraws AIS-009 to AIS-017 (Section 4.12.1) and adds a note at EXT-009. Version 0.3 (2026-11-18). The operator approved the engine items and Projects one at a time, not the plan as one document. On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-5 and E0-6 are on `main` in part since the merge of the branch `engine/e0-5-places` (2026-11-18): their task table says what is built. E0-3, E0-7 after its contract and the other extensions are not on `main`. The operator decided T0 of E0-5 and of E0-6, the contract ruling and the gate on 2026-11-18 (R-144 to R-148). The index of the work items holds the state of each item ([work-items/](../work-items/README.md), "Engine", "Extensions" and "Decisions").
 ---
 
 # Anima Extensions Plan
@@ -261,6 +261,8 @@ Map, Wardrobe, Library and Reminders use places. The places domain owns them. Th
 
 - **EXT-008.** At the first start, the client must ask the operator what Anima must do, and must offer sets of extensions. One set is the developer set: Projects, Secrets, Model gateway and AI coding sessions. The operator can select a set, select single extensions, or select none. The operator can change the selection in Settings at any time.
 - **EXT-009.** Community extensions are a later phase. Do not start them until the 15 extensions of this plan are built. The first function for other people must be a new source (Section 2.1), because a source gives records only and gets only its own token. The hub must not run the code of other people until a design for isolation and permissions is approved. (operator, 2026-11-13)
+
+  Note (R-196, operator, 2026-11-18; OD-AXT4 and OD-AXT8 of [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md)): the host of agent tools may start before the 15 extensions are built, with three limits. Its catalogue holds only manifests that Anima.ing writes; no code of a tool runs in the hub; and it starts only after the operator approves its isolation and permissions design (Section 8.3 of that proposal). "Agent tools" is one new switch of the registry and is not one of the 15. Community extensions still wait for EXT-009. The requirements of that proposal are not approved.
 
 #### 2.8.1 Community extensions
 
@@ -909,7 +911,7 @@ result gives them in named fields with a length limit (MCP-008).
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
-Proposed change, not ruled (2026-11-18): [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) proposes to withdraw AIS-009 to AIS-017 and to host Herdr as a tool extension in their place (OD-AXT2). The operator direction for it is relayed and not first-hand. Until a ruling, this section does not change. AIS-018 to AIS-024 (Section 4.12.0) stay in each case. The same proposal asks if its host may start before the 15 extensions of EXT-009 (OD-AXT4).
+**Withdrawn (R-196, operator, 2026-11-18, first-hand; OD-AXT2 of [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md)).** AIS-009 to AIS-017 are withdrawn. Anima.ing hosts Herdr as a terminal tool extension in their place. AIS-018 to AIS-024 (Section 4.12.0) stay. Review: if Herdr Cloud (a hosted relay of the maker of Herdr) ships, or the Herdr project stalls, the operator reviews this decision, and native panes can come back with a new ruling. The open decisions 1 to 3 below are superseded. The text below is kept as a record of the direction of 2026-11-16.
 
 **Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
 extension and free: background terminal panes that stay alive, one view of every agent on every
@@ -920,29 +922,29 @@ do". Status: direction only. It has no work package yet and is not in the build 
 Herdr (`github.com/herdrdev/herdr`) is Apache 2.0, so its code can be reused in this AGPL project
 with its licence notice kept. Whether to embed it or write our own is open decision 1 below.
 
-- **AIS-009.** The daemon (`anima-daemon`) on each device must run a session server that keeps terminal panes alive
+- **AIS-009.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. The daemon (`anima-daemon`) on each device must run a session server that keeps terminal panes alive
   when no client is attached, like tmux. A pane must survive a client disconnect and an agent
   restart.
-- **AIS-010.** Each pane must show a state: working, waiting for the operator, done or idle. For
+- **AIS-010.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. Each pane must show a state: working, waiting for the operator, done or idle. For
   Claude Code and Codex the state must come from the session files the collector already reads
   (AIS-001). For other programs it must come from terminal activity.
-- **AIS-011.** One page must list every pane on every device, those waiting for the operator first,
+- **AIS-011.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. One page must list every pane on every device, those waiting for the operator first,
   with the device, repository, branch and time in the current state. The operator must be able to
   open any pane in the browser terminal from this page.
-- **AIS-012.** The hub must send an alert through the notification system that sends check alerts (the NOT requirements in the design spec) when a pane
+- **AIS-012.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. The hub must send an alert through the notification system that sends check alerts (the NOT requirements in the design spec) when a pane
   changes to waiting or done. One alert per state change, and the operator can mute a pane or a
   device.
-- **AIS-013.** The operator must be able to start a new pane on a chosen device, in a chosen
+- **AIS-013.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. The operator must be able to start a new pane on a chosen device, in a chosen
   repository, from the page and from the CLI. When agent runs are approved
   (`docs/proposals/agent-runs.md`, AGN-001 to AGN-008), they must use these panes.
-- **AIS-014.** The CLI must offer `anima agents` (list panes and states, across devices) and
+- **AIS-014.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. The CLI must offer `anima agents` (list panes and states, across devices) and
   `anima attach <device>/<pane>`.
-- **AIS-015.** The operator can turn on a daily digest of finished sessions that wait for review,
+- **AIS-015.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. The operator can turn on a daily digest of finished sessions that wait for review,
   so work can be checked in one sitting instead of watching panes live.
-- **AIS-016.** Agent panes must be free on every plan, including self-host. They must not be a
+- **AIS-016.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. Agent panes must be free on every plan, including self-host. They must not be a
   paid feature of the hosted Solo plan.
 
-- **AIS-017.** The page must warn the operator when more agents need attention than one
+- **AIS-017.** Withdrawn (R-196): replaced by the Herdr tool extension of agent-tools-as-extensions.md. The page must warn the operator when more agents need attention than one
   person can follow. It must count the panes that are working or waiting at the same time,
   across devices, and compare the count with a limit the operator sets. The default limit is
   16, the ceiling DHH reports. Over the limit, the page must suggest pausing or queueing
@@ -957,10 +959,10 @@ from one seat, without a KVM box per machine.
 
 **Open decisions.**
 
-1. Embed Herdr's core or write our own session server. Embedding is faster; our own keeps one
+1. Superseded (R-196). Embed Herdr's core or write our own session server. Embedding is faster; our own keeps one
    daemon binary and one protocol.
-2. Whether the Herdr phone apps or terminal client can connect to Anima panes.
-3. How waiting-for-input is detected for agents that do not write session files.
+2. Superseded (R-196). Whether the Herdr phone apps or terminal client can connect to Anima panes.
+3. Superseded (R-196). How waiting-for-input is detected for agents that do not write session files.
 
 ### 4.13 Wardrobe
 

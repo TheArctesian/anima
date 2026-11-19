@@ -134,6 +134,17 @@ Added 2026-11-06.
 - [ ] "Already added" matches only by VPN address, so a device saved with a DNS name for this Mac is not recognised and the Mac is offered again. The hashed machine ID in R-058 replaces this after Phase 1.
 - [ ] Linux: when SSH does not answer on this computer, nothing explains why. R-059 Remote Login settings is Mac only.
 
+### R-196: agent tools as extensions
+
+Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) and R-196.
+
+- [ ] The fallback to a local model, BOT-047 to BOT-057 of [bots.md](proposals/bots.md), is parked (OD-AXT3).
+- [ ] A page of all agents on all devices, with alerts: after version 1, from the ideas `agent-state-hooks` and `needs-you-inbox` (OD-AXT10). Version 1 leaves the state of each agent to Herdr.
+- [ ] A review of the Herdr decision if Herdr Cloud ships or the Herdr project stalls (OD-AXT2). AIS-009 to AIS-017 are withdrawn, not deferred.
+- [ ] The later entries of Section 6.5.1 of the proposal, in waves: A ComfyUI and Unsloth Studio; B OpenClaw (after a security review) and Agent Zero; C JupyterLab and InvokeAI (OD-AXT17, OD-AXT18).
+- [ ] The desktop and phone applications of Herdr, Hermes Agent and T3 Code (AXT-025).
+- [ ] Aider: removed from the six agents of the first version (OD-AXT16). It comes back only with a new decision.
+
 ## 3. Ideas from other products
 
 Revisit: When the plan that owns the subject is changed next.
