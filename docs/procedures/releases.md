@@ -93,7 +93,7 @@ The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testi
 
 ### Before the first run, by the operator
 
-Agents never do these steps (R-180, UPD-012). Never put a key or a password in a chat, a commit or a log. R-116 says that the environment `release` and seven of its secrets exist; nobody confirmed that for this work, so look at each one.
+Agents never do these steps (R-180, UPD-012). Never put a key or a password in a chat, a commit or a log. See the inventory below for the secret names already present on GitHub.
 
 1. **Who can write.** Settings > Collaborators and teams: only your account has the Write or Admin role. Each account with write access can put a tag and can thus ask for a release.
 2. **Workflows from forks.** Settings > Actions > General > "Approval for running fork pull request workflows from contributors": select "Require approval for all external contributors". A workflow that a pull request from a fork starts gets no secret of the repository in a public repository, and the release workflow has no pull request trigger. On the same page, "Workflow permissions": "Read repository contents and packages permissions".
