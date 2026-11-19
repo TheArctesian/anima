@@ -62,6 +62,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
+| HT-038 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-037 with one image that is older than its tag at Docker Hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1007,6 +1008,43 @@ step 4 were not possible (OD-25).
     image, of a volume or of a network, no label and no name of an environment variable (LOG-007).
 12. On the device, run `docker ps -a`, `docker image ls` and `docker volume ls` again. Expected:
     nothing changed because of the steps.
+
+Result: Open.
+
+### HT-038: a newer image for a container, with real public registries (HOST-021; task H13)
+
+Built: `Query.containerImageUpdates` in the hub domain `crates/hub/src/work/containers/updates/`,
+`anima containers updates`, and the MCP tool `anima_container_updates`. The client does not show the
+answer yet (task H9). The tests use a test SSH server and a local HTTPS server that stands in for each
+registry. The answers of the four real registries were read by hand on the build machine on
+2026-11-19: the digest that Docker 29.9.3 keeps for `alpine:3` was the digest that Docker Hub gave
+for the tag. No test reaches a real registry, and no test ran on a hub in the pool: it is not known
+if a hosted hub can reach the registries.
+
+The check only reads. It pulls nothing and updates nothing (ETH-004, VPS-005, R-050).
+
+1. On the device, find a container whose image tag has a newer image at Docker Hub (for example a
+   container made some weeks ago from a tag such as `latest`). If there is none, write that step 2
+   had no such container.
+2. Run `anima containers updates <device>`. Expected: one row for each container. The container of
+   step 1 has the state "newer image". A container whose image was pulled today has "up to date".
+3. For one row with "up to date", run on the device
+   `docker image inspect --format '{{json .RepoDigests}}' <image>`, and compare with
+   `anima containers updates <device> --json`. Expected: `localDigest` is the digest of that
+   output, and `registryDigest` is the same.
+4. Look at a container of an image that was built on the device, if there is one. Expected: "not
+   known", reason "no local digest". Look at a container of an image of a registry other than
+   Docker Hub, ghcr.io, quay.io and mcr.microsoft.com, if there is one. Expected: "not known", reason
+   "other registry".
+5. Write down how long the command took. Expected: less than 40 seconds.
+6. In an MCP client, call `anima_container_updates` for the device. Expected: the same answers, and
+   `newer` is the number of rows with "newer image".
+7. On a hosted hub, do step 2. Expected: the same answers. If each row says "registry not read",
+   the hub of the pool cannot reach the registries: write that down.
+8. On the device, run `docker image ls` and `docker ps -a`. Expected: no image and no container
+   changed because of the steps.
+9. Read the log of the hub for the time of the steps. Expected: no name of an image, no digest and
+   no token (LOG-007).
 
 Result: Open.
 
