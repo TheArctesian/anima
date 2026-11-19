@@ -271,7 +271,7 @@ fn job_failed(job: &'static str, fault: &'static str) {
 }
 
 /// The HTTP client of the publisher: no redirect, and a stalled read ends the request.
-fn publishing_client() -> reqwest::Result<reqwest::Client> {
+pub(crate) fn publishing_client() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(10))

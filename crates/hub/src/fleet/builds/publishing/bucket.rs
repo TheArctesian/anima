@@ -72,7 +72,8 @@ pub struct Bucket {
     public_base: String,
     access_key_id: Zeroizing<String>,
     secret: Zeroizing<String>,
-    updater_key: UpdaterKey,
+    /// `None` for a bucket that only publishes what a workflow job signed (R-179).
+    updater_key: Option<UpdaterKey>,
 }
 
 /// The trimmed text of a token file of at most 1 KiB. The buffer holds the most the file may
@@ -96,8 +97,20 @@ impl Bucket {
     ///
     /// # Errors
     ///
-    /// A token file that cannot be read or is empty.
+    /// As [`Bucket::without_key`].
     pub fn open(releases: &Releases, updater_key: UpdaterKey) -> Result<Self, BucketError> {
+        let mut bucket = Self::without_key(releases)?;
+        bucket.updater_key = Some(updater_key);
+        Ok(bucket)
+    }
+
+    /// As [`Bucket::open`], with no updater key: this bucket signs nothing, and takes only
+    /// files whose signature a job of the release workflow made (R-179).
+    ///
+    /// # Errors
+    ///
+    /// A token file that cannot be read or is empty.
+    pub fn without_key(releases: &Releases) -> Result<Self, BucketError> {
         let access_key_id =
             token(&releases.access_key_id_file).map_err(|e| BucketError::AccessKeyId(e.kind()))?;
         let secret = token(&releases.secret_access_key_file)
@@ -108,7 +121,7 @@ impl Bucket {
             public_base: releases.public_base.clone(),
             access_key_id,
             secret,
-            updater_key,
+            updater_key: None,
         })
     }
 
@@ -116,8 +129,8 @@ impl Bucket {
         &self.public_base
     }
 
-    pub(super) const fn updater_key(&self) -> &UpdaterKey {
-        &self.updater_key
+    pub(super) const fn updater_key(&self) -> Option<&UpdaterKey> {
+        self.updater_key.as_ref()
     }
 
     /// The URL people read `object` at.

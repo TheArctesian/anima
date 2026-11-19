@@ -3,6 +3,8 @@
 //! files, signs the updater file with the hub's updater key and writes its `.sig`, the stable
 //! name and `latest.json`.
 
+mod built;
+mod built_refusals;
 mod fake_r2;
 mod fences;
 mod flow;

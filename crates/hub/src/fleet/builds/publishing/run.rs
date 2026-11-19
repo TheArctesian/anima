@@ -243,7 +243,7 @@ async fn changed(
 
 /// Writes `feed` to `object`. When the bucket's answer is lost, reads the object back: the
 /// write may have landed, and then the job is published (D-25).
-async fn write_feed(reach: Reach<'_>, object: &str, feed: &str) -> Result<(), Stop> {
+pub(super) async fn write_feed(reach: Reach<'_>, object: &str, feed: &str) -> Result<(), Stop> {
     let write = Write {
         object,
         headers: vec![

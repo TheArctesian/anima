@@ -13,6 +13,7 @@
 //! (D-28).
 
 mod bucket;
+mod built;
 mod feed;
 mod files;
 mod run;
@@ -31,6 +32,10 @@ use reqwest::Client;
 use sqlx::{PgConnection, PgPool};
 
 pub use bucket::{Bucket, BucketError, UploadUrl};
+pub use built::{
+    Built, BuiltError, BuiltFile, BuiltPublisher, CheckedBuilt, ReleaseError, check_built,
+    release_command, sign_built,
+};
 use run::{Outcome, Reach};
 pub use updater_key::{UpdaterKey, UpdaterKeyError};
 

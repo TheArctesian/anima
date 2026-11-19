@@ -38,8 +38,9 @@ pub use model::{
 };
 pub use page::{ReleasePage, cursor};
 pub use publishing::{
-    Bucket, BucketError, Grant, PUBLISH_SWEEP, UpdaterKey, UpdaterKeyError, UploadUrl, open_bucket,
-    publish_ready, publishing_off, upload_urls,
+    Bucket, BucketError, Built, BuiltError, BuiltFile, BuiltPublisher, CheckedBuilt, Grant,
+    PUBLISH_SWEEP, ReleaseError, UpdaterKey, UpdaterKeyError, UploadUrl, check_built, open_bucket,
+    publish_ready, publishing_off, release_command, sign_built, upload_urls,
 };
 pub use release::ReleaseInput;
 pub use updates::Updates;

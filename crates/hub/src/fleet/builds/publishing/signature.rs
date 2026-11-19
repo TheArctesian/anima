@@ -62,7 +62,10 @@ pub(super) async fn sign(
         file_name: name,
         version: &version,
     };
-    let key = reach.bucket.updater_key();
+    let key = reach
+        .bucket
+        .updater_key()
+        .ok_or_else(|| unsigned(name, &version))?;
     let text = key
         .sign(&verified.digest, &signed)
         .map_err(|_| unsigned(name, &version))?;
@@ -122,6 +125,7 @@ pub(super) async fn written(reach: Reach<'_>, work: &Work, updater: &str) -> Res
     let check = reach
         .bucket
         .updater_key()
+        .ok_or_else(|| unsigned(updater, &work.version.to_string()))?
         .check(&text)
         .map_err(|_| unsigned(updater, &work.version.to_string()))?;
     // `check` only parses; starting the stream checks the key ID and the algorithm.

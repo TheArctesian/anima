@@ -8,7 +8,10 @@ use std::time::Duration;
 
 use reqwest::{Client, Method, RequestBuilder, Response, StatusCode};
 
-use super::{bucket::Signed, files::Received};
+use super::{
+    bucket::{Signed, UploadUrl},
+    files::Received,
+};
 use crate::fleet::builds::model::UploadedFile;
 
 /// The most of a write's response body the hub reads, to see an error inside a 200.
@@ -20,6 +23,9 @@ const MAX_ETAG_BYTES: usize = 128;
 /// The longest one write, delete or `HEAD` may take. A try writes only while its hold has at
 /// least this long left (D-25).
 pub(super) const WRITE_LIMIT: Duration = Duration::from_mins(2);
+
+/// The longest the upload of one release file may take.
+const UPLOAD_LIMIT: Duration = Duration::from_mins(30);
 
 /// Why a step of publishing stopped.
 pub(super) enum Stop {
@@ -231,4 +237,33 @@ pub(super) async fn etag_now(http: &Client, signed: &Signed) -> Result<Option<St
     Ok((status == StatusCode::OK)
         .then(|| etag_of(&response))
         .flatten())
+}
+
+/// Puts `body` at the presigned `upload`, with exactly the headers it signed (BLD-060). The
+/// caller reads the object back afterwards: this answer alone proves nothing (BLD-064).
+pub(super) async fn upload(
+    http: &Client,
+    upload: UploadUrl,
+    body: bytes::Bytes,
+) -> Result<(), Stop> {
+    let mut request = http.put(&upload.url).timeout(UPLOAD_LIMIT).body(body);
+    for (name, value) in &upload.headers {
+        request = request.header(name, value);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|_| Stop::Unavailable("bucket write"))?;
+    let status = response.status();
+    if busy(status) {
+        return Err(Stop::Unavailable("bucket write"));
+    }
+    if !status.is_success() {
+        return Err(Stop::Refused(format!(
+            "The release bucket refused the upload of {} ({}).",
+            upload.name,
+            status.as_u16()
+        )));
+    }
+    Ok(())
 }
