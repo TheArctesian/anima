@@ -10,7 +10,7 @@
 # Each change inside the folders of an application releases it, tests and comments too (R-200).
 
 # The desktop application (macOS and Linux). It carries the client, the shell, `anima`, the
-# hub, the database, the gateway and `anima-link`.
+# hub, the database, the gateway, `anima-link` and `anima-daemon` (HMD-052).
 desktop out docs/
 desktop out quality/
 desktop out deploy/

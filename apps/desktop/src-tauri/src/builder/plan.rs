@@ -266,7 +266,7 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
 /// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
 /// artifact: the builder signs nothing, and the hub signs the updater file (BLD-043, R-117). On
 /// macOS Tauri signs the app with `identity`, the one this builder was built with, also in
-/// `--config` (BLD-083). Both carry the six programs and the PostgreSQL tree the carried steps
+/// `--config` (BLD-083). Both carry the seven programs and the PostgreSQL tree the carried steps
 /// put in place (INS-002, S12 2.1).
 pub fn bundle(
     clone: &Path,

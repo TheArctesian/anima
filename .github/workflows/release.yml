@@ -393,7 +393,7 @@ jobs:
         name: Check the carried programs and give the file its stable name
         run: |
           set -eu
-          for program in anima anima-local-hub anima-hub anima-database anima-gateway anima-link; do
+          for program in anima anima-local-hub anima-hub anima-database anima-gateway anima-daemon anima-link; do
             staged="apps/desktop/src-tauri/binaries/$program-x86_64-unknown-linux-gnu"
             if ! readelf -h "$staged" | grep -Eq 'Machine:[[:space:]]+Advanced Micro Devices X86-64'; then
               echo "::error::$program is not an x86-64 program."

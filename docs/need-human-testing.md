@@ -69,6 +69,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
+| HT-045 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 
 ### What a check on the hosted hub needs
 
@@ -878,6 +879,27 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.
+
+### HT-045: the application carries `anima-daemon` (HMD-052, task HM-T16)
+
+Built: on the branch `hosted/hm-t16-daemon-in-bundle` (task HM-T16 of
+[hosted-mode.md](proposals/hosted-mode.md); R-206). `apps/desktop/src-tauri/trial-bundle.sh` and the
+bundle step of the builder (`apps/desktop/src-tauri/src/builder/carried/rust_programs.rs`) build
+`anima-daemon` and name it in `bundle.externalBin`; `check-mach-o.sh` and the check of the AppImage in
+the release workflow expect it.
+
+The tests cover: the lists of programs of the builder and of the Mach-O check. Not covered: a real
+bundle. No bundle was made with this change, so nothing shows that Tauri takes the seventh program,
+that the signature and the notary service accept it, or that the shell finds it.
+
+1. Run `apps/desktop/src-tauri/trial-bundle.sh`. Expected: it ends with the place of the
+   application, with no error.
+2. Run `ls <place>/Anima.ing.app/Contents/MacOS`. Expected: eight files, and `anima-daemon` is one.
+3. Run `<place>/Anima.ing.app/Contents/MacOS/anima-daemon --help` (or with no argument). Expected:
+   the usage text of the daemon, not an error of the system.
+4. After the next release from `main`: the jobs `macos` and `linux` of the release workflow pass
+   their checks of the carried programs, and the notary step accepts the application. Expected: the
+   release is published. If a check fails, write its message here.
 
 ### HT-044: the application does not start Tailscale on a hosted hub (DEF-005)
 

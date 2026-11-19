@@ -1,4 +1,4 @@
-//! The six programs in the release (INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2): their
+//! The seven programs in the release (INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2): their
 //! build, where each is put for the bundle, the set the signed app may hold, and the Rust targets
 //! a universal build needs before a job is claimed (BLD-028).
 
@@ -113,7 +113,7 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
 }
 
 #[test]
-fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
+fn ins_002_hmd_052_the_bundle_names_the_seven_programs_and_the_tree() {
     let bins: Vec<&str> = rust_programs::PROGRAMS
         .iter()
         .map(|(_, binary)| *binary)
@@ -128,12 +128,13 @@ fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
             "anima-hub",
             "anima-database",
             "anima-gateway",
+            "anima-daemon",
             "anima-link"
         ]
     );
     assert_eq!(
         carried::bundle_settings().to_string(),
-        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"],"resources":{"database":"database"}}"#
+        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"database":"database"}}"#
     );
 }
 
@@ -164,14 +165,14 @@ fn ins_002_only_a_64_bit_x86_64_elf_file_is_a_linux_program() {
 }
 
 #[test]
-fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_six_programs() {
+fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_seven_programs() {
     let root = tempfile::tempdir().unwrap();
     let clone = fs::canonicalize(root.path()).unwrap();
     let app = clone.join("Anima.app");
     let macos = app.join("Contents/MacOS");
     fs::create_dir_all(&macos).unwrap();
     fs::write(macos.join("anima-desktop"), b"app").unwrap();
-    for program in carried::programs().take(5) {
+    for program in carried::programs().take(6) {
         fs::write(macos.join(program), b"program").unwrap();
     }
     assert_eq!(
