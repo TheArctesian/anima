@@ -566,7 +566,9 @@ over SSH only, and it has no SSH to itself (the image is Debian 13). The row sho
 adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
 
 On 2026-11-19 the operator's screenshot showed the `Hub` device Up and its single Push check,
-`Hub running`, also Up. This confirms step 2. The five-minute recheck in step 3 is open.
+`Hub running`, also Up. The operator confirmed that `Hub running` was still Up on the recheck
+more than five minutes later. The health check passed. The connection buttons in step 1 remain
+open under HMD-046.
 
 ### HT-029: the computer is Up while it is connected to the link (HM-T11)
 
