@@ -156,7 +156,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (26)
+## 3. Documents that wait for an approval (27)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -176,6 +176,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Deferred; not built |
+| [proposals/hosted-web-hub.md](proposals/hosted-web-hub.md) | Proposal | Draft |
 | [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |

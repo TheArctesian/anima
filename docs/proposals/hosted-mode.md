@@ -369,6 +369,8 @@ Not part of this decision: the sign-in of the command line to a hosted hub (OD-2
 
 Not decided. This section adds no requirement; it puts the decision HM-D17 as a question.
 
+A wider answer is possible: the operator wants a hosted hub in a browser at `hub.anima.ing` (2026-11-19). [hosted-web-hub.md](hosted-web-hub.md) has that proposal; if he chooses its option A or B, each hosted hub has a public address for these pages, and the choices below are needed only for the hub of the one-click installation.
+
 Why now: on his hosted hub the operator started Connect GitHub and the browser opened the old hub at `https://hub.anima.ing` ([DEF-003](../work-items/defects/DEF-003.md)).
 
 Facts, from the code of `dev` at `3353f648`:
