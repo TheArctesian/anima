@@ -67,6 +67,6 @@ class AccountSessionPlugin: Plugin, ASWebAuthenticationPresentationContextProvid
 }
 
 @_cdecl("init_plugin_account_session")
-func initPlugin() -> Plugin {
+public func initPlugin() -> Plugin {
   return AccountSessionPlugin()
 }
