@@ -65,7 +65,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
-| HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
+| HT-041 | The first formula and the first crate version of `anima` alone, from the release workflow (tasks B8h, R8d) | A crates.io account of the operator, the key of the tap, a public release, a Mac and a Linux computer with no Anima | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
@@ -1299,24 +1299,28 @@ State: Open.
 
 ### HT-041: the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d)
 
-Built: on the branch `release/cli-homebrew`, the first part only (task R8a): the package `anima-cli` holds a copy
-of the schema of K1, lists no test file, and builds from its own files. `cargo publish --dry-run -p anima-cli
---locked` ended with no error on 2026-11-19; it uploads nothing.
+Built: on the branch `release/cli-job` (task B8h; R-207 to R-209). The release workflow makes a standalone `anima`
+for macOS and for Linux from the applications of the same run, puts them below `anima/<version>/` of the bucket,
+pushes the formula to the tap `TheArctesian/homebrew-anima`, and publishes the crate `anima-cli` with the version
+of the release. The steps of the operator are in [releases.md](procedures/releases.md), "`anima` alone".
 
-Not built, so this check cannot start: the standalone `anima` file of a release (task R8b, OD-24), the formula
-and the tap (task R8c, OD-26), and the version of the crate (OD-W47 of [decisions.md](plan/decisions.md)): the
-crate says 0.1.0 today. The tests did not build the package on a clean Linux computer, so it is not known if
-that build needs the packages of the system for the key store (libdbus, pkg-config). No agent publishes a crate
-or pushes a tap.
+The tests read the rules of the jobs and run the two commands that write the formula and the version of the crate.
+`cargo publish --dry-run` passed on 2026-11-19. No test runs a job: no file was put in the bucket, nothing was
+pushed to the tap, nothing was sent to crates.io, and no `brew install` ran. It is not known if the Linux program
+starts on a computer with no `libdbus-1`, and if the build of the crate needs the packages `libdbus-1-dev` and
+`pkg-config` on each Linux (the job installs them).
 
-1. After the tasks R8b and R8c and the ruling of OD-W47: publish the crate, `cargo publish -p anima-cli --locked`.
-   Expected: crates.io shows `anima-cli` with the version of the release.
-2. On a computer with no Anima: `cargo install anima-cli --locked`, then `anima --version`. Expected: the version
-   of the release. On Linux, note each package of the system that the build asked for.
-3. `brew install thearctesian/anima/anima`, then `anima --version`. Expected: the same version, and no desktop
-   application and no daemon is installed.
-4. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
-   version (INS-012).
+1. Start a trial after the merge. Expected: the job `cli` passes; its log shows `ldd` of the Linux program and no
+   "not found"; the artifact `cli` holds two `.tar.gz` files, `SHA256SUMS`, `anima.rb` and `latest.json`.
+2. Do the steps of "`anima` alone" (the key of the tap, the token, the two environments), then set
+   `ANIMA_PUBLIC_CLI`, and release. Expected: the jobs `cli-publish`, `tap` and `crate` pass after `publish`.
+3. On a Mac with no Anima: `brew install thearctesian/anima/anima`, then `anima --version`. Expected: the version
+   of the release; no desktop application and no daemon is installed. `brew audit --strict --online anima` and
+   `brew test anima` pass.
+4. On a Linux computer with `x86_64`: the same with Homebrew, and `cargo install anima-cli --locked`. Expected:
+   the same version from both. Note each package of the system that the build or the program asked for.
+5. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
+   version (INS-012). crates.io shows `anima-cli` with that version.
 
 Result: Open.
 

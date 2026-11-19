@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (116)
+## 2. Open decisions (113)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -44,7 +44,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
-| OD-W47 | Which version does the crate `anima-cli` on crates.io have, now that the version of a release is the count of the first line of `main` and no file holds it (R-1… | Open. Recommendation: (C) for now, then (A). The Homebrew formula takes the version from the release with no file to change, and a version on crates.io can neve… | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -151,9 +150,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-23 | Does `anima-daemon` also ship by Homebrew or Cargo (INS-008, INS-010, INS-011; R-151) | Proposed, not ruled. The operator ruled for the command line because it "can operate alone" (R-151). The daemon is a separate program with its own install path… | [spec/design-spec.md](spec/design-spec.md) |
-| OD-24 | Which file does the Homebrew formula install, and does the release publish it with its SHA-256 (INS-010, INS-012) | Proposed, not ruled. The release would publish a standalone `anima` file for each target, with its SHA-256 in the release record (ROL-003). The formula would in… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
-| OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
 ## 3. Documents that wait for an approval (27)

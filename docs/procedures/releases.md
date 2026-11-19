@@ -280,6 +280,62 @@ For the page of the download and for a message to the persons who have 0.2.1. Th
 - **Versions.** The version is now the number of the release commit, for example 0.8.15. The numbers are higher than 0.2.1 and have gaps; each is one commit of `main`.
 - **Updates.** From this version, the application gets each change of `main` that changes it, with no step of a person. Settings > Updates shows the version and the check.
 
+### `anima` alone: Homebrew and crates.io (R-207 to R-209)
+
+Built, and never run with a switch on. A release of the desktop application can also release `anima` alone, in three jobs after the job `publish`:
+
+| Job | What it makes public | Secret, environment |
+| --- | --- | --- |
+| `cli-publish` | `anima/<version>/anima-darwin-universal.tar.gz`, `anima/<version>/anima-linux-x86_64.tar.gz`, `anima/<version>/SHA256SUMS`, then `anima/latest.json`, at `https://releases.anima.ing` | The bucket token, `release-publish` |
+| `tap` | `Formula/anima.rb` in `TheArctesian/homebrew-anima`: `brew install thearctesian/anima/anima` | `HOMEBREW_TAP_DEPLOY_KEY`, `release-tap` |
+| `crate` | The crate `anima-cli` on crates.io, with the version of the release | `CARGO_REGISTRY_TOKEN`, `release-crate` |
+
+The job `cli`, with no secret, makes the files first: each `anima` is the program inside the application that the same run built (the macOS one has its Developer ID signature), and the job starts the Linux program to see that it runs alone. A trial runs `cli` and none of the three jobs above.
+
+**The switch of its own.** The three jobs run only while `ANIMA_PUBLIC_RELEASES` and a second variable, `ANIMA_PUBLIC_CLI`, are both `on`. The second does not exist today. So the first release of the desktop application does not depend on these jobs, and the desktop jobs never wait for them.
+
+**A version on crates.io is permanent (R-209).** It cannot be deleted, only marked as withdrawn (`cargo yank`). With the switch on, each push to `main` that changes `crates/anima-cli`, the lock file or the release files becomes a version there for good. The name `anima-cli` was free on 2026-11-19; the first publish takes it for the account of the token.
+
+Before `ANIMA_PUBLIC_CLI` is set, the operator does these steps. No agent does them (R-180, R-195): each makes a credential.
+
+1. **The key of the tap.** A deploy key can write to one repository only. On your Mac:
+
+   ```sh
+   ssh-keygen -t ed25519 -N "" -C "anima release workflow" -f ~/.config/anima/tap-key
+   gh repo deploy-key add ~/.config/anima/tap-key.pub --repo TheArctesian/homebrew-anima --allow-write --title "anima release workflow"
+   ```
+2. **The environment `release-tap`**, which permits only `main`, with the key as its secret:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-tap --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-tap/deployment-branch-policies -f name=main -f type=branch
+   gh secret set HOMEBREW_TAP_DEPLOY_KEY --env release-tap --repo TheArctesian/anima.ing < ~/.config/anima/tap-key
+   rm ~/.config/anima/tap-key
+   ```
+3. **The token of crates.io.** Sign in at crates.io with your GitHub account and confirm your email address there (crates.io refuses a publish without it). Account Settings > API Tokens > New Token: name `anima release workflow`; scopes "publish-new" and "publish-update"; crates `anima-cli`; an end date that you select. It shows the token one time.
+4. **The environment `release-crate`**, the same way, then the token. The command asks for the value and does not show it:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-crate --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-crate/deployment-branch-policies -f name=main -f type=branch
+   gh secret set CARGO_REGISTRY_TOKEN --env release-crate --repo TheArctesian/anima.ing
+   ```
+
+   After the first publish, a token for only "publish-update" of `anima-cli` is enough: make it, set the secret again, and revoke the first.
+5. **The switch**, only after a release of the desktop application is public and a trial has passed with the job `cli`:
+
+   ```sh
+   gh variable set ANIMA_PUBLIC_CLI --body on --repo TheArctesian/anima.ing
+   ```
+
+If a job names an environment that does not exist, GitHub makes it with no rule; so make the two environments before the switch. To stop: `gh variable delete ANIMA_PUBLIC_CLI --repo TheArctesian/anima.ing`. A version that is on crates.io stays; `cargo yank --version <version> anima-cli` marks it as withdrawn.
+
+What is not known until the first run: if the Linux program starts on a computer with no `libdbus-1` (it uses the key store of the desktop through that library), if R2 takes the `put-object` of the `aws` program of the machine, and what `brew audit` says of the formula in the tap. HT-041 has the checks.
+
 ### To stop or undo a release
 
 - **Before the job `publish`:** cancel the run on GitHub, or delete the variable `ANIMA_PUBLIC_RELEASES`. Nothing public changed. The files of the run stay on GitHub for 7 days. No approval stops a run (R-182): if you do neither, it publishes.
