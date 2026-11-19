@@ -191,6 +191,26 @@
       "ok": false,
       "reason": "TIMED_OUT",
       "code": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000d",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "REMINDER",
+      "at": "2026-11-06T14:00:00Z",
+      "ok": true,
+      "reason": null,
+      "code": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000e",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "REMINDER",
+      "at": "2026-11-06T14:05:00Z",
+      "ok": false,
+      "reason": "CONNECTION_FAILED",
+      "code": null
     }
   ],
   "checkNotifications": [
