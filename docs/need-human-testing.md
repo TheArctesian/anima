@@ -66,6 +66,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 | HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
+| HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1112,6 +1113,48 @@ The check only reads. It pulls nothing and updates nothing (ETH-004, VPS-005, R-
    changed because of the steps.
 9. Read the log of the hub for the time of the steps. Expected: no name of an image, no digest and
    no token (LOG-007).
+
+Result: Open.
+
+### HT-042: the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, HOST-021; task H9)
+
+Built: `apps/client/src/lib/containers/` (the table, `detail/`, `log/`, `storage/`), in the tab
+"Containers" of the device page. The tests use a fake of the hub calls and, in a browser, a hub of
+example values. No test used a real hub or a real device, and no person saw the screen or compared it
+with its mockup (`docs/mockup/containers/index.html`, frames 1, 4 and 5). The download of a log ran
+in a browser of the tests, not in the desktop application.
+
+The check only reads (VPS-005, R-050). Do HT-038 and HT-039 first, or in the same sitting: this entry
+checks the screen, those check the values. Sign in to the application with a login, not an API key.
+
+1. Open the device and select the tab "Containers". Expected: a row "Containers, Images, Volumes,
+   Networks" above the table, and in each group header the state of the Compose project (for
+   example "Running" or "Partly running") before the running count.
+2. Select "Details" in the row of a running container. Expected: below the table, the sections
+   Container, Health check, Mounts, Networks, Environment, Labels and Processes. The section
+   Environment has names only. The values agree with `anima containers inspect` of HT-038.
+3. Select "Log" in the same row. Expected: the log is in the place of the details.
+4. In the log, type a word of one line in the search field. Expected: only the lines with that word,
+   and the count "n of m lines". Clear the field.
+5. Select "Error", then "Warning", "Info" and "Debug". Expected: each shows only the lines with such
+   a level word. Write down if the container writes levels in a form that the filter does not find.
+6. Turn "Wrap" off. Expected: a long line stays on one row and the region scrolls sideways. Turn
+   "Timestamps" off. Expected: no time before the lines.
+7. With a search text that shows some lines, select "Download". Expected: the application saves a
+   file named for the container, `.log`, that holds only the shown lines. In the desktop
+   application, write down where the file went, or that nothing was saved.
+8. Select "Look for newer images". Expected: after some seconds, each row has a mark beside its
+   image ("Newer image", "Up to date", or a reason), and the count says how many have a newer image.
+   The marks agree with `anima containers updates` of HT-039.
+9. Select "Images", then "Volumes", then "Networks". Expected: each list agrees with
+   `anima containers images`, `volumes` and `networks` of HT-038, and the line above the images and
+   the volumes says how much a clean-up can free. Write down how long "Images" took to show.
+10. Compare frames 1, 4 and 5 of the mockup with the screen at 1040 px, in the light and the dark
+    appearance. Write down each difference.
+11. Make the window 400 px wide. Expected: write down what cannot be read or reached; the phone
+    layout has no special form yet.
+12. Sign in with a browser session of an API key, if the hub permits one, and select "Details".
+    Expected: the sentence of the hub that it refuses, and the table stays.
 
 Result: Open.
 
