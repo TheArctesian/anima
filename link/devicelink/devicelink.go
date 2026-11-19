@@ -1,5 +1,5 @@
-// Package devicelink is the device side of the link: a loopback port that
-// reaches the hub, a keepalive that holds the link ready, and a stream that
+// Package devicelink is the device side of the link: a loopback port and,
+// for the metrics daemon, a Unix socket that reach the hub, a keepalive that holds the link ready, and a stream that
 // tells the hub that the device is connected and gives the hub the local
 // ports that the person opened.
 package devicelink
@@ -45,6 +45,10 @@ type Config struct {
 	Identity identity.Device
 	// Listen is the loopback address of the local port. Port 0 takes a free port.
 	Listen string
+	// DaemonSocket is a second way to the hub on this computer: a Unix
+	// socket for the metrics daemon, which sends its token and must not
+	// send it to a port (K8 Section 1). The link closes it. Nil means none.
+	DaemonSocket net.Listener
 	// Keepalive is the time between pings. Zero means DefaultKeepalive.
 	Keepalive time.Duration
 	// AnswerLimit is how long the device waits for one answer of the hub. A
@@ -72,6 +76,7 @@ type Config struct {
 // Link is a running device link.
 type Link struct {
 	listener  net.Listener
+	daemon    net.Listener // Config.DaemonSocket; nil when there is none
 	stop      context.CancelFunc
 	done      sync.WaitGroup
 	save      func(identity.Device) error
@@ -149,7 +154,7 @@ func Start(cfg Config) (*Link, error) {
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	link := &Link{
-		device: device, saved: cfg.Identity, listener: listener, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
+		device: device, saved: cfg.Identity, listener: listener, daemon: cfg.DaemonSocket, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
 		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf, presentNow: make(chan struct{}, 1),
 		openPort: cfg.OpenPort, giving: make(chan struct{}, maxLocalConnections),
 	}
@@ -176,7 +181,11 @@ func Start(cfg Config) (*Link, error) {
 	link.done.Add(3)
 	go link.keepAlive(ctx, every)
 	go link.stayPresent(ctx, every)
-	go link.accept(ctx)
+	go link.accept(ctx, listener)
+	if link.daemon != nil {
+		link.done.Add(1)
+		go link.accept(ctx, link.daemon)
+	}
 	return link, nil
 }
 
@@ -194,6 +203,9 @@ func (l *Link) Path() tunnel.Path {
 func (l *Link) Close() error {
 	l.stop()
 	l.listener.Close()
+	if l.daemon != nil {
+		l.daemon.Close()
+	}
 	err := l.tunnel().Close()
 	l.done.Wait()
 	return err
@@ -252,10 +264,12 @@ func (l *Link) ping(ctx context.Context) (tunnel.Path, error) {
 	return l.tunnel().Path(ctx)
 }
 
-func (l *Link) accept(ctx context.Context) {
+// accept sends each connection of one listener, the local port or the
+// socket of the daemon, to the hub.
+func (l *Link) accept(ctx context.Context, listener net.Listener) {
 	defer l.done.Done()
 	for {
-		local, err := l.listener.Accept()
+		local, err := listener.Accept()
 		if err != nil {
 			return
 		}
