@@ -1,14 +1,14 @@
 ---
 kind: Plan, with the task table for builds and runners
 state: In progress
-evidence: It was a proposal until 2026-11-17 (PLN-018). PRO-031 to PRO-053 have no ruling, except the requirements that OD-W14 to OD-W21 name. Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. Its "Tasks" holds the state of each task: P0 and R1 to R6 are done, R7 is in progress, and each other task is not started.
+evidence: It was a proposal until 2026-11-17 (PLN-018). PRO-031 to PRO-053 have no ruling, except the requirements that OD-W14 to OD-W21 name. Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. Its "Tasks" holds the state of each task: P0 and R1 to R6 are done, R7 is in progress, and each other task is not started. Version 2.3 (2026-11-18) adds the path to an automatic release of Anima, with the rows R11 to R13 and B8; no ruling approves it (OD-W26 to OD-W30 are open).
 ---
 
 # Plan: projects first (import from GitHub, the builder as a job, sign-in)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 2.2. Date: 2026-11-17. Version 2.2 adds the results of task P0 and its decisions Q1 to Q4 (operator, 2026-11-17); it changes no requirement. Version 2.1 only moved this document from `programme/proposals/projects-and-builds.md` (PLN-018, operator, 2026-11-17).
+Version: 2.3. Date: 2026-11-18. Version 2.3 adds the section "The automatic release of Anima" and the task rows R11 to R13 and B8; it changes no requirement, and its open decisions are OD-W26 to OD-W30. Version 2.2 (2026-11-17) adds the results of task P0 and its decisions Q1 to Q4 (operator, 2026-11-17); it changes no requirement. Version 2.1 only moved this document from `programme/proposals/projects-and-builds.md` (PLN-018, operator, 2026-11-17).
 From: a side chat with the operator on 2026-11-13, sent to the planning session. Version 2 adds
 the rulings of 2026-11-16 (OD-W13) and the plan for the two build models.
 Status: the header of this document holds the state (PLN-020). History: In progress. The operator decided the six points in "Decision" (OD-W11), the points in
@@ -437,6 +437,109 @@ To open the port on the VPS needs the confirmation of the operator (VPS-005).
 `L` means that the command asks for a session of the operator, as in Section 6 of the CLI and MCP
 plan. The names are proposals: that plan owns them.
 
+## The automatic release of Anima (version 2.3, 2026-11-18)
+
+This section is a plan of the path. It approves nothing and changes no requirement. Each change of a ruling or of a requirement is an open decision of the operator: OD-W26 to OD-W30 in [decisions.md](../plan/decisions.md). The task rows are in "Tasks" (R11 to R13, B8).
+
+### The goal, in the words of the operator
+
+The operator, 2026-11-18, in the orchestrating session (relayed, not first-hand in the session that records it): "but we should think through this more, I do want releases to be automatic I just want to be able to run it via anima for this project. Which requires me installing a live version of the app that automaticly updates for the UI or the CLI my hubs being linked and then me being able to configure github actions to build the apps. Then I am ready to build is the possible today?" The orchestrating session answered that it is not possible today, and proposed: publish 0.2.2 by hand through the Builds view, and plan the automatic path apart. His answer: "Yes, both". This section is the second half. It does not change the steps of the release of 0.2.2.
+
+The goal of this section: the first release of Anima that starts with no act of the operator in Anima, for the project of the Anima repository, run through Anima.
+
+He named three parts.
+
+| Part | What exists today | What is absent | Owner of the work |
+| --- | --- | --- | --- |
+| (a) An installed application that updates itself: the graphical client | The desktop application checks the feed at start and each 4 hours, and installs an update with no question (UPD-001 to UPD-005). macOS 0.2.1 is published. | No person saw an installed application update (P-17 and REL-1 of [need-human-testing.md](../need-human-testing.md) are Open). No Linux release exists. | Task R7 |
+| (a) The same for the command line | The `anima` program inside the application updates with the application. | `anima` alone, by Homebrew and by Cargo (R-151), is not built: tasks R8a to R8d. OD-24 and OD-26 of the design specification are not ruled. With Homebrew and Cargo the person runs the upgrade command: that update is not automatic, and no document plans one that is. | Tasks R8a to R8d |
+| (b) His hubs linked | The hub on the VPS can publish. A hosted hub cannot: it holds no key, and `createRelease` is refused there (R-118, PRO-037). | The release server of R-158, which is the one hub that can publish after the move (task U12 of [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md)). How a computer of the operator builds for the release server while its application is signed in to the hosted hub is not verified (task R11, decision OD-W30). | Tasks U12 and R11 |
+| (c) Builds on his machines, started from GitHub Actions or from a push | The desktop builder: while the application runs with "Build releases on this computer" on, it claims each job of its platform, runs the gates, makes the bundle, and on a Mac signs and notarizes it (BLD-020 to BLD-029, BLD-040 to BLD-047, BLD-083 to BLD-085). The hub checks, signs and publishes (BLD-045, BLD-060 to BLD-066). | The start. A release starts only when the operator presses "Release" or runs `anima release create` (BLD-001, UPD-007, OD-12). Nothing reads a push. No machine is a runner. | This section |
+
+Thus one step of a desktop release is not automatic today: the start. Each step after the start runs with no act of the operator, when a builder of each target is in operation.
+
+### Two build models, and a short form of the first one
+
+PRO-010 gives two models. The operator named GitHub Actions, which is model (b). The table gives each model in full. The column "(a) short" is model (a) with the builder that exists: the hub sees a new version on `main` and queues the release, and the desktop builders do the rest as today. It is the "later version" that OD-12 of the design specification already names.
+
+| | (a) short: the hub starts the release, the desktop builders build | (a) full: a build from a push, as work of the daemon | (b): a workflow of GitHub Actions on an owned machine |
+| --- | --- | --- | --- |
+| What starts a release | The hub reads the repository at a slow interval (PRO-021) and finds a new version mark on `main` (OD-W26) | The same signal; later the webhook receiver gives it sooner (WHK-001 to WHK-010) | A workflow file in the repository, on the same mark (`on: push`). GitHub is the scheduler (PRO-047) |
+| Who builds | The desktop application of each builder computer, as the operator, with his keychain | `anima-daemon`, in a container on Linux and as the build user on a Mac (PRO-022, PRO-029, PRO-033) | A runner for one job, which `anima-daemon` starts in the same isolation (PRO-039) |
+| Who checks, signs and publishes | The hub that holds the key, as today (R-117, R-158) | The same | The same. The workflow must give the bundle to that hub: a new function (task B8). The updater key does not go to GitHub (R-114, R-117) |
+| Tasks, in order | U12; R11; R12; R13. With R7 for Linux | W1; W2; W3; W4; A2; A5; S. Then A4 removes the old builder | W1; W2; W3; W4; B1; B2; B3; B4; B5; S; B8 |
+| Count of tasks that are not started | 4 | 7 | 11 |
+| What it needs from the operator | The release server and the move of the key (U12). The decisions OD-W26, OD-W27 and OD-W30. A Mac and a Linux computer whose application stays open. No new account and no new secret | The acceptance of the contract (W1) and of the isolation design (W2). A build user on the Mac, made one time by an administrator (PRO-024). A signing identity that a job can use for one job: not designed (W2). The acceptance of the security review (S) | Each item of (a) full. The GitHub App that exists (it has the permission, fact F2). One merge of the workflow file and of `runs-on` (PRO-045). The fork rule of the repository, set by him on GitHub (OD-W18). The decisions OD-W28 and OD-W29. Task B1 on his account |
+| Security position for the public repository | The builder refuses a commit that is not an ancestor of `origin/main` (BLD-041). The code of a fork cannot reach a builder. The build runs as the operator with his keychain; that is the state of today, and PRO-033 names it as the reason to replace the builder later. New risk: each mark on `main` becomes a signed update of each installed application with no person between. The protection of `main` and of the mark is then the only gate | Each job is isolated (PRO-029). A job of a fork gets no secret (PRO-030). The release recipe builds only an ancestor of `main` | GitHub says that a public repository must almost never use a self-hosted runner (F22). The author of a fork pull request selects the runner and the steps (F20). The approval rule of GitHub and the isolation on the machine are the two controls (PRO-029, PRO-044). OD-W18: no runner for `TheArctesian/anima.ing` before W2 and S are accepted, and the fork rule "all external contributors" first. A signed release from a runner needs a rule that the release workflow runs only for the mark on `main` and never for a pull request: not designed (B8) |
+| macOS | Fits now: the builder signs, notarizes and staples (BLD-083 to BLD-085) | Fits after W2 gives the build user a signing identity for one job | The same as (a) full |
+| Linux | Fits when task R7 has published the first Linux release | Fits: a container job | Fits: a container job |
+| Android APK (task R10) | Needs one more builder step that calls the script of M5-5, and the release key in the key store of that computer (RLS-010, RLS-011) | The script of M5-5 as a recipe step | The script of M5-5 as a workflow step |
+| iOS | Not in the automatic release. R-158: the script on his Mac (M5-4), and the upload to TestFlight is his act | The same | The same |
+| What it does not give | No isolation. No build of a different project. It keeps the Builds view and the desktop builder longer | It does not run the workflows of a repository | It needs GitHub for each release, and it is not the path for a different forge (PRO-007) |
+
+Recommendation (of the session that wrote this section; not a decision): build the short form first, because it reaches the first automatic desktop release with 4 tasks and changes no security position of a machine. Keep the order of OD-W21 for the rest: W, then B, then A. Model (b) stays the path for "configure GitHub Actions to build the apps", and it comes after W2 and S by the operator's own condition (OD-W18). When model (b) or the full model (a) can make the release, the start rule of R12 stays and only the builder changes. If the operator wants the release itself to be a workflow of GitHub Actions from the start, the short form is not built and the chain is the column (b): that is choice B of OD-W27.
+
+### The text that an automatic release changes
+
+Each row is a decision of the operator. No text is changed yet.
+
+| Text now | Where | The change | Decision |
+| --- | --- | --- | --- |
+| "Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit." | OD-12, design specification Section 14 | The second sentence becomes the rule, with the mark of OD-W26 in place of "each new commit" | OD-W26 |
+| "The operator must start a release from the Builds view with "Release <version>"." | BLD-001 | Add: the hub also starts a release when it finds the version mark on `main`, if the operator set that on for the hub | OD-W26 |
+| "A release must start only from the Builds view (BLD-001). There is no GitHub release workflow (changed by R-107; `release.yml` removed by R-114)." | UPD-007 | The first sentence gets the same addition. The second sentence changes only with model (b) | OD-W26, OD-W28 |
+| "(2) The operator starts each release from the app; the hub does not poll GitHub (OD-12)." | R-107, item 2 | A new ruling replaces this item | OD-W26 |
+| "A release still starts by hand (BLD-001, OD-12 of the design specification)." | PRO-036 of this plan | The same addition | OD-W26 |
+| "the GitHub release workflow is removed now" and "UPD-007 says there is no GitHub workflow" | R-114 | Model (b) adds a workflow file again. It is not the old `release.yml`: it holds no updater key, and it gives the bundle to the hub. The reason of R-114 was the secret `TAURI_SIGNING_PRIVATE_KEY`; that secret does not come back | OD-W28 |
+| "GitHub Actions does not build or publish a release (R-005, R-107)." | Design specification Section 3.10, first paragraph | With model (b): "A workflow of GitHub Actions can build a release on a machine of the operator. Only the hub signs and publishes." | OD-W28 |
+| "It needs no open port and no GitHub runner." | BLD-029 | With model (b), the last four words go | OD-W28 |
+| "GitHub Actions runs only deployment, never gates or tests." | R-005, CQ-010 | With model (b) the builder step of the workflow runs `bun run gates` on the owned machine (BLD-042). The operator decides if R-005 permits that | OD-W28 |
+| "no runner before tasks W2 and S are accepted, and its fork rule on GitHub set to "all external contributors" first" | PRO-044 (OD-W18) | No change is proposed. The other choices are in OD-W29 | OD-W29 |
+| "Publishing is not set up on this hub." for each hub with no key | R-118 | No change is proposed: a hosted hub does not publish | OD-W30 |
+| "It connects out to the hub over the VPN." | BLD-029 | The release server is not on the VPN of the VPS. Task U12 writes how a builder connects to it | Task U12, no new decision |
+
+### The chain
+
+One order, from today to the first release that starts with no act of the operator. A task of a different plan is only named here; its row is in its owner (PLN-016). "Agent now" says if an agent can take the task today.
+
+| Order | Task | Content, in short | Needs | Check | Agent now |
+| --- | --- | --- | --- | --- | --- |
+| 1 | R11 | Find out, from the code and with a local test, if one computer can build for a hub that is not the hub of its sign-in | — | Its row | **Yes. The first task that an agent can take today.** It builds nothing |
+| 2 | W1 | The contract of the work route, with its security review before code (R-160) | — | The programme accepts the contract | Yes (row 4.7 of the priorities names it). The short form does not need it; each other model does |
+| 3 | R9 | The bucket keeps 3 versions (BLD-086) | — | Its row | Yes |
+| 4 | R7 | The Linux release; an installed application updates | The operator | Its row | No. The operator |
+| 5 | R8a | The crate `anima-cli` is publishable | — | Its row | Yes |
+| 6 | U12 | The release server signs and publishes (R-158) | The operator: the server, the key, the token | Its row in [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md) | In part: an agent writes the procedure. The operator moves the key |
+| 7 | R12 | The start rule: the hub finds the version mark on `main` and queues the release | OD-W26, OD-W27; R11 | Its row | No, until OD-W26 and OD-W27 are decided |
+| 8 | R13 | The first release that starts with no act of the operator. A human check | R12, U12; a builder of each target in operation | Its row | No. The operator looks at the result |
+| 9 | W2 | The isolation design, with prototypes | — | The security reviewer and the operator accept it | Yes, for the prototypes and the record |
+| 10 | W3, W4 | The queue and the daemon | W1, W2 | Their rows | No, until W1 and W2 are accepted |
+| 11 | B1 | The facts of GitHub that the documentation does not state | The operator's account, a test repository | Its row | No. It needs his account |
+| 12 | B2 to B5 | Runners: the provider, the daemon, the hub, the set-up | W3, W4, B1 | Their rows | No |
+| 13 | S | The security review of builds | W4, B3, A2 | The security reviewer accepts each claim, with a test | No |
+| 14 | B8 | The release of Anima as a workflow on an owned machine | OD-W28, OD-W29; B5; S | Its row | No |
+| 15 | A2, A5, A4 | The release as work of the daemon; a build from a push; remove the desktop builder | W3, W4 | Their rows | No |
+| 16 | R8b to R8d | `anima` alone by Homebrew and Cargo | OD-24, OD-26; R7 | Their rows | No, until OD-24 and OD-26 are ruled |
+| 17 | R10, M5-5, M5-6 | The Android APK in the release, and its notice | R-158 names them | Their rows | R10: yes, the hub side |
+
+Rows 1 to 8 are the short form. Rows 9 to 14 are model (b). Row 15 is the full model (a). Rows 16 and 17 do not block the first automatic desktop release.
+
+The security review of the work route has two places, and both stay: before code, with the contract of W1 (R-160; [jobs.md](../proposals/jobs.md), "Needs"); and at the end, task S, for a native job and for a fork job on a public repository.
+
+### What stays an act of the operator
+
+- The accounts and the keys: the Apple Developer account, the Developer ID certificate and the notary profile in the keychain of the Mac (R-116); the updater key and its copy (UPD-012); the R2 token. An agent reads none of them.
+- The first move of the updater key and of the token to the release server (task U12, R-158). It is done one time.
+- A builder of each target must be in operation: a Mac with its keychain open, and a Linux computer. With the desktop builder, the application must be open (BLD-026).
+- "Restart to update" in each installed application (UPD-003): an update is installed with no question, and it is in use after the restart that the person selects.
+- `brew upgrade` or `cargo install` for `anima` alone (R-151).
+- iOS: the upload to TestFlight and each step in App Store Connect (R-158; RLS-010 of [release-four-platforms.md](../proposals/release-four-platforms.md)). The rules of the store must be read at the source before a decision.
+- Android: the release key, made one time by the operator, and the choice of a store, which is not decided.
+- The version mark itself (OD-W26): a person or an agent puts it on `main`. That act is in the repository and not in Anima.
+- A release that fails: the operator reads the log. Task R12 sends the failure to the notification channels.
+
+[release-four-platforms.md](../proposals/release-four-platforms.md), Section 9, says what "automatic" means for each of the four targets.
+
 ## Tasks
 
 The column "State" of each table holds the state of each task. Change the state in the commit that does the work (PLN-008). The
@@ -462,6 +565,9 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 | R8d | The operator publishes the first formula and the first crate version (INS-012; OD-24, OD-26). A human task, with an entry in [need-human-testing.md](../need-human-testing.md). | R8a; R8b; R8c | `cargo install anima-cli --locked` and `brew install` print the release version. The operator sets the entry to Passed. | Not started. Planned only. The agent publishes nothing. | — |
 | R9 | The bucket keeps the 3 newest published versions of each target (BLD-086). The code, its migration and its tests are on the branch `builds/keep-three-versions`, which is not merged. That branch is older than the move of the documents: it changes `docs/design-spec.md`, `docs/programme/programme.md` and `docs/releases.md`, which are now `docs/spec/design-spec.md`, `docs/rulings.md` and `docs/procedures/releases.md`. Bring it to `main`: merge `origin/main` into it, put BLD-086 in Section 3.10 of the design specification, give the migration a number that is free, and give its ruling the next free number (the branch calls it R-118, which a different ruling has; PLN-021). The branch gives the operator's words of 2026-11-12 for the ruling; they are not on `main`. Source of this row: [release-four-platforms.md](../proposals/release-four-platforms.md), RLS-007. | — | `bun run gates` passes. The pruning tests of the branch pass. After the next release of a target that has 4 versions, the bucket holds 3. | Not started. Built on the branch, not merged. | — |
 | R10 | The release has a target for the Android application. The hub checks the size, the SHA-256 and the signing certificate of the APK, writes it under `<target>/<version>/`, copies the stable name and writes the feed of the target (RLS-006, RLS-012 of [release-four-platforms.md](../proposals/release-four-platforms.md); as BLD-060 to BLD-066). It needs new BLD requirements in the design specification Section 3.10 first. Hub API, then `anima`, then MCP (CMD-030). | R-158 names it (OD-REL-4) and approves RLS-006 and RLS-012. The new BLD requirements go in the design specification in the first commit of the task (PLN-013). The check of a real APK needs task M5-5 of [mobile-plan.md](mobile-plan.md); the hub side can be built before it, with a test APK that the test signs | An APK that a different key signed is refused. An APK of the release key is at its stable name, and its feed gives the version. | Not started | — |
+| R11 | Find out if one computer can build for a hub that is not the hub of its sign-in: the desktop application as a builder for the release server (R-158) while the application is signed in to the hosted hub, and the same for `anima-daemon` (PRO-008, BLD-021 to BLD-024, BLD-029). Read the code, then try it with two local hubs. Build nothing. Write the result in this plan, below "The automatic release of Anima", and in the row OD-W30 of [decisions.md](../plan/decisions.md). | — | The result names the files and the test that show it. If the answer is no, the result names the smallest change, as a new task row. | Not started | — |
+| R12 | The start rule of a release. The hub that can publish reads the Anima repository at a slow interval and, when it finds the version mark that OD-W26 decides on a commit that is an ancestor of `origin/main` (BLD-041) with a version that is more than each published version (BLD-002), it queues the release for each target that has a builder. A setting of the hub sets the rule on; it is off by default. The hub does not start a release two times for one mark (PRO-021). It writes the start to the audit log with the actor kind of the hub (BLD-082, LOG-012), and it sends a failed release to the notification channels. New BLD requirements go in the design specification Section 3.10 in the first commit (PLN-013), with the changes of BLD-001, UPD-007 and OD-12 that the ruling gives. Hub API, then `anima release`, then MCP, then the Settings row (CMD-030). | The rulings of OD-W26 and OD-W27. R11. | A test: a mark on a commit of `main` makes one release, and a second read makes no second one. A mark on a commit that is not on `main` makes none. A version that is not more than the published one makes none. With the setting off, nothing starts. | Not started. Blocked until OD-W26 and OD-W27 are decided. | — |
+| R13 | The first release that starts with no act of the operator. A human check, with an entry in [need-human-testing.md](../need-human-testing.md) that the commit of R12 adds. | R12; U12; R7; a builder of each target in operation | The operator puts the mark on `main` and does nothing in Anima. Each feed gives the new version. An installed application updates. The operator sets the entry to Passed. | Not started | — |
 
 ## Tasks R8a to R8d: the command line alone by Homebrew and Cargo
 
@@ -607,6 +713,7 @@ Group B: runners.
 | B5 | The set-up in the client, and the pull request that changes `runs-on` (PRO-044, PRO-045). | B4 | From a project page, one press and one merge make a workflow run on an owned machine. Use a private test repository: `TheArctesian/anima.ing` gets no runner before W2 and S are accepted (OD-W18). | Not started | — |
 | B6 | On-demand mode (PRO-042). | The webhook receiver (WHK); B4 | With no idle runner, a queued job gets a runner. A lost delivery is repaired by the poll. | Not started | — |
 | B7 | Runners for an organisation (PRO-048). | A need of the operator; a new permission | Parked. | Not started | — |
+| B8 | The release of Anima as a workflow of GitHub Actions on an owned machine (model (b)). A workflow file that runs only for the version mark of OD-W26 on `main` and never for a pull request; a hub function that takes the bundle of a runner job, with the checks of BLD-060 to BLD-066 before the hub signs; the signing identity of the Mac for one job (W2). The updater key and the R2 token do not go to GitHub (R-114, R-117). It needs new BLD requirements in the design specification first, and the changes of UPD-007, BLD-029 and Section 3.10 that the ruling gives. | The rulings of OD-W28 and OD-W29. B5. S. OD-W18: no runner for `TheArctesian/anima.ing` before W2 and S are accepted. | A mark on `main` makes one workflow run on an owned machine, and the hub publishes its bundle. A pull request from a fork cannot start the workflow and cannot get the signing identity: a test for each claim. | Not started. Blocked until OD-W28 and OD-W29 are decided. | — |
 
 Group A: builds of Anima's own.
 

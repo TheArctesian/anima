@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-158 (operator, 2026-11-18) decides OD-REL-1 to OD-REL-7 and OD-ROL-15, approves RLS-001, RLS-002, RLS-006 and RLS-012, and names the tasks U2, U12, M5-3 to M5-6 and R10 of the owner plans. The other requirements of RLS-001 to RLS-014 are not approved. Version 2 (2026-11-18). It serves Section 4, rows 4.1, 4.14 and 4.18. The tasks RF1 to RF4 are Not started and no ruling names them.
+evidence: R-158 (operator, 2026-11-18) decides OD-REL-1 to OD-REL-7 and OD-ROL-15, approves RLS-001, RLS-002, RLS-006 and RLS-012, and names the tasks U2, U12, M5-3 to M5-6 and R10 of the owner plans. The other requirements of RLS-001 to RLS-014 are not approved. Version 3 (2026-11-18) adds Section 9, which approves nothing. It serves Section 4, rows 4.1, 4.14 and 4.18. The tasks RF1 to RF4 are Not started and no ruling names them.
 ---
 
 # Proposal: one release for four platforms (macOS, Linux, iOS, Android)
@@ -11,7 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the one release path for the four targets, and the order of the work |
-| Version | 2 |
+| Version | 3 |
 | Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | The header of this document holds the state (PLN-020). History: version 1 was a Draft. Version 2 (2026-11-18): the operator decided OD-REL-1 to OD-REL-7 and OD-ROL-15 (R-158). RLS-001, RLS-002, RLS-006 and RLS-012 are approved. Each other requirement is not approved and is not built (PLN-007). It stays a proposal: the operator approved the direction and four requirements, not the document (PLN-018). |
@@ -237,3 +237,16 @@ The order by what they blocked, before R-158: OD-ROL-15; then OD-REL-1 (each req
 | A change to a server, an account, a key or a store | Only the operator does these (UPD-012, VPS-005). This proposal changes none. |
 | Push notifications, a tablet layout, the phone as a daemon | [mobile-plan.md](../plans/mobile-plan.md) Section 6. |
 | A release that starts by itself from a push | OD-12 of the design specification. A release stays an act of the operator. |
+
+## 9. What "automatic" means for each target
+
+The operator asked on 2026-11-18 for releases that are automatic and run through Anima. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "The automatic release of Anima", owns the path, the comparison of the build models, the tasks and the open decisions (OD-W26 to OD-W30). This section only says what the word can mean for each target of this proposal. It approves nothing.
+
+| Target | What can run with no act of the operator | What stays his act |
+| --- | --- | --- |
+| macOS | The start (after OD-W26 and task R12), the gates, the bundle, the signature with the Developer ID, the notarization, the check and the signature of the hub, the feed, and the installation in each installed application | The certificate and the notary profile in the keychain of the Mac. A Mac builder in operation. "Restart to update" in each application |
+| Linux | The same, with no notarization, after task R7 has published the first Linux release | A Linux builder in operation. "Restart to update" |
+| Android | The build and the signature of the APK by the script of M5-5 as one more builder step, the checks of the hub and the feed (R10), and the notice in the application (M5-6). No ruling names that builder step | The release key, made one time. The person installs the new APK: the application installs nothing by itself (MOB-007). A store is not decided |
+| iOS | The archive, by the script of M5-4, when the operator starts the script | R-158: the script runs on his Mac, and the upload to TestFlight is his act. Each step in App Store Connect. Thus iOS is not in the automatic release. A release keeps one version on the four targets (RLS-001), and iOS keeps its older version until he uploads (RLS-002) |
+| `anima` alone (Homebrew, Cargo) | The standalone file and its SHA-256 in the release (R8b), after OD-24 | The first publish (R8d). The push of the tap and `cargo publish`. `brew upgrade` on each computer |
+

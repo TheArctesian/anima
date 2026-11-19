@@ -79,7 +79,7 @@ The work that must not be built: [plan/priorities.md](plan/priorities.md).
 
 ## 7. Open decisions
 
-OD-W1 to OD-W25, each with the words of the operator: [plan/decisions.md](plan/decisions.md).
+OD-W1 to OD-W30, each with the words of the operator: [plan/decisions.md](plan/decisions.md).
 
 ## 8. Changes that this plan needs in other documents
 

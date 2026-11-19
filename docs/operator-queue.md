@@ -34,11 +34,16 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (108)
+## 2. Open decisions (113)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
 | OD-W25 | What is the acceptance run of Phase 3 (WP-53, row 4.1) on a hosted hub? R-169 defers eight of its seventeen checks (P-1 to P-6, P-14, P-16), which can run only… | Open. No recommendation of the operator's side yet. The choices: (a) the run is the nine checks that stay, done on the hosted hub; (b) the run waits for the sel… | [plan/decisions.md](plan/decisions.md) |
+| OD-W26 | What starts a release of Anima with no act of the operator in Anima? Today the operator starts each release (OD-12 and BLD-001 of the design specification, UPD-… | Open. Recommendation: (A), the tag. It is one clear mark, GitHub Actions can also start from it, and the refusal of a version that is not more than the publishe… | [plan/decisions.md](plan/decisions.md) |
+| OD-W27 | Which path makes the first automatic desktop release? The choices: (A) the short form: the hub starts the release and the desktop builders of today build it (ta… | Open. Recommendation: (A) first, then the order of OD-W21 (W, B, A) with no change, so that model (b) follows for the workflows of each repository. If the relea… | [plan/decisions.md](plan/decisions.md) |
+| OD-W30 | Which hub holds the Anima project and starts its release, when the operator uses the hosted hub each day? A hosted hub cannot publish (R-118), and the release s… | Open. Recommendation: (A). Decide after the result of task R11. | [plan/decisions.md](plan/decisions.md) |
+| OD-W28 | Can a workflow of GitHub Actions build a release of Anima on an owned machine and give it to the hub? R-114 removed the release workflow, UPD-007 says that ther… | Open. Recommendation: (B) for now, and decide again when task S is accepted. The release is the one build that ends in a signature that each installed applicati… | [plan/decisions.md](plan/decisions.md) |
+| OD-W29 | The runner conditions for `TheArctesian/anima.ing`, which is public (OD-W18, PRO-044): no runner before tasks W2 and S are accepted, and the fork rule "all exte… | Open. Recommendation: (A), no change. GitHub says that a public repository must almost never use a self-hosted runner (fact F22 of the plan). | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
