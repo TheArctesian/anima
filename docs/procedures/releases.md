@@ -85,11 +85,11 @@ updater files; they come only from the hub in the Builds flow. If the hub cannot
 it is not the key of `ANIMA_UPDATER_PUBLIC_KEY`, the hub starts with publishing off and its log
 says why.
 
-## The release workflow (R-179, R-180, R-182 to R-190)
+## The release workflow (R-179, R-180, R-182 to R-184, R-190 to R-195)
 
 The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testing.md) holds the check of its runs. The [projects and builds plan](../plans/projects-and-builds-plan.md) owns the workflow design and its open decisions. This section gives the state of GitHub and the operator's steps.
 
-`.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub (R-173: the job signs; R-186: the workflow publishes; R-185: it runs the gates first). Today a tag `v<version>` on a commit of `main` starts a release, and a run by hand is a trial that publishes nothing. R-184 decided a different start, each change of `main` for the applications that it affects; it is not built, and the plan has its design and its questions. The jobs `sign` and `publish` run `anima-hub release`, which makes the checks that the hub makes for a job of the Builds view.
+`.github/workflows/release.yml` builds, signs and publishes a release on machines of GitHub, with no hub (R-173: the job signs; R-191: the workflow publishes; R-190: it runs the gates first). Today a tag `v<version>` on a commit of `main` starts a release, and a run by hand is a trial that publishes nothing. R-184 decided a different start, each change of `main` for the applications that it affects; it is not built, and the plan has its design and its questions. The jobs `sign` and `publish` run `anima-hub release`, which makes the checks that the hub makes for a job of the Builds view.
 
 **No approval (R-182).** No person approves a run. When a tag `v…` is on GitHub, the workflow builds, signs and publishes with no other act. The tag is the release.
 
@@ -105,7 +105,7 @@ On 2026-11-18 `main` had 3801 commits, which gives 0.38.1. The workflow refuses 
 
 ### The state of GitHub
 
-Read from GitHub on 2026-11-18 (evening; 2026-11-19 UTC) with `gh`. The operator, or the orchestrating session on his instruction (R-190), set each item. Never put a key or a password in a chat, a commit or a log.
+Read from GitHub on 2026-11-18 (evening; 2026-11-19 UTC) with `gh`. The operator, or the orchestrating session on his instruction (R-195), set each item. Never put a key or a password in a chat, a commit or a log.
 
 | Item | State |
 | --- | --- |
@@ -128,7 +128,7 @@ The secrets and variables. GitHub lists names and times, never values. A run mus
 | `release-publish` | The token of the bucket `anima-releases` (job `publish`) | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and the variable `RELEASES_ENDPOINT` |
 | `release-publish` | Not read by the workflow | `ACCOUNT_ID`, `S3_API`, `TOKEN_VALUE` |
 
-The operator deleted `TAURI_SIGNING_PRIVATE_KEY` from `release`, so the macOS build does not have the updater key. The orchestrating session set the two `R2_…` secrets from a file of the operator, on his instruction, and printed no value (R-190). The three names that the workflow does not read in `release-publish`, and `APPLE_SIGNING_IDENTITY`, can be deleted; a job gets each secret of its environment in memory, also one that no step names. The iOS secrets are in the environment of the macOS build for the same reason: when the iOS job is built, give them an environment of their own.
+The operator deleted `TAURI_SIGNING_PRIVATE_KEY` from `release`, so the macOS build does not have the updater key. The orchestrating session set the two `R2_…` secrets from a file of the operator, on his instruction, and printed no value (R-195). The three names that the workflow does not read in `release-publish`, and `APPLE_SIGNING_IDENTITY`, can be deleted; a job gets each secret of its environment in memory, also one that no step names. The iOS secrets are in the environment of the macOS build for the same reason: when the iOS job is built, give them an environment of their own.
 
 The iOS `.p12` holds the Apple Distribution certificate and its private key. The profile is the App Store Connect profile for `ing.anima.mobile`. The operator verified the export password against the `.p12` before he set that secret. The upload key is an App Store Connect team key with the Developer role. No Android signing secret is present.
 
@@ -165,11 +165,11 @@ If a second account gets write access: add a branch rule set for `main` with "Re
    spctl --assess --type open --context context:primary-signature --verbose Anima_0.0.1_universal.dmg
    ```
 
-   Open the DMG, then `spctl --assess --type execute --verbose "/Volumes/Anima.ing/Anima.ing.app"` (expected: `accepted`, `source=Notarized Developer ID`). On a Linux computer with `x86_64`: `chmod +x Anima_0.0.1_amd64.AppImage` and start it. The operator says that an older AppImage of Anima ran on Linux; this check is for the AppImage of today, and the first public release waits for it (R-187).
+   Open the DMG, then `spctl --assess --type execute --verbose "/Volumes/Anima.ing/Anima.ing.app"` (expected: `accepted`, `source=Notarized Developer ID`). On a Linux computer with `x86_64`: `chmod +x Anima_0.0.1_amd64.AppImage` and start it. The operator says that an older AppImage of Anima ran on Linux; this check is for the AppImage of today, and the first public release waits for it (R-192).
 
 ### The first public release
 
-It waits for the Linux check of the trial (R-187), and nothing makes it urgent before the LLC exists. It carries macOS and Linux. Its version is the version of its commit (R-183), not 0.2.2.
+It waits for the Linux check of the trial (R-192), and nothing makes it urgent before the LLC exists. It carries macOS and Linux. Its version is the version of its commit (R-183), not 0.2.2.
 
 1. Keep the three feeds of today, for a rollback:
 
@@ -202,11 +202,11 @@ It waits for the Linux check of the trial (R-187), and nothing makes it urgent b
 
 - The updater key that each installed application trusts, the Developer ID certificate and the bucket token are in the secrets of GitHub. GitHub the company can read them.
 - No person approves a release (R-182). An update is signed and published for each person or program that can put a tag `v…` as your account: your account, a token of it, and each coding agent that runs with your `gh` or git credentials on your computer. The workflow file of the tagged commit is the one that runs, so a tag on a commit with a changed workflow can skip each check of this document.
-- The protections that stay: only your account writes; only an administrator puts a tag `v…`; each environment permits only `main` and tags `v*` (`release-publish` only tags); each key is in an environment of its own, so the builds do not hold the updater key or the bucket token; the gates run before the job that signs (R-185); no pull request starts the workflow.
+- The protections that stay: only your account writes; only an administrator puts a tag `v…`; each environment permits only `main` and tags `v*` (`release-publish` only tags); each key is in an environment of its own, so the builds do not hold the updater key or the bucket token; the gates run before the job that signs (R-190); no pull request starts the workflow.
 - When the start becomes each change of `main` (R-184), the tag rule protects nothing: each push to `main` that affects an application is then a public update. Until the operator adds `main` to the environment `release-publish`, GitHub refuses the job `publish` of such a run; that is the last switch.
 - The actions of GitHub that the workflow uses are pinned to a commit, but the machines, the images and the tools that they install (Homebrew, apt, `linuxdeploy`, the crates and packages of the lock files) are code of other people that runs in the jobs that build.
-- The hub on the VPS also holds a copy of the updater key, and the Builds path can still sign through it. The operator left it for now (R-189). One key is in two places until he decides.
-- The standard runners of GitHub cost nothing for a public repository (R-188 has the source). If the repository becomes private, each macOS minute is charged.
+- The hub on the VPS also holds a copy of the updater key, and the Builds path can still sign through it. The operator left it for now (R-194). One key is in two places until he decides.
+- The standard runners of GitHub cost nothing for a public repository (R-193 has the source). If the repository becomes private, each macOS minute is charged.
 
 ## What a release carries
 

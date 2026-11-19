@@ -94,7 +94,7 @@ jobs:
             echo "updater_public_key=$key"
           } >> "$GITHUB_OUTPUT"
 
-  # The gates of the repository on the release commit (BLD-042). R-185: the release workflow
+  # The gates of the repository on the release commit (BLD-042). R-190: the release workflow
   # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
   gates:
     needs: commit

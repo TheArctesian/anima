@@ -901,7 +901,7 @@ GraphQL through the client's developer tools or `curl` with a login token.
 
 Result: Open.
 
-### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-187)
+### HT-036: the release workflow of GitHub Actions (tasks B8b to B8d, R-179, R-180, R-182 to R-184, R-190 to R-192)
 
 Built: on `main` since 3ae44093. `.github/workflows/release.yml` builds the macOS and the Linux
 application on machines of GitHub, signs the macOS one with the Developer ID and has it notarized, signs the two
@@ -913,14 +913,14 @@ The tests ran the three `anima-hub release` commands against a bucket in the pro
 throwaway key. `actionlint` read the workflow file, and a test reads its rules. `check-mach-o.sh` was run on the
 installed application 0.2.1. No test runs the workflow, reads a secret of GitHub, imports the certificate,
 sends anything to the notary service or reaches the R2 bucket. The operator says that an older AppImage of
-Anima ran on a Linux computer (R-187); the repository has no record of a start of the AppImage of today.
+Anima ran on a Linux computer (R-192); the repository has no record of a start of the AppImage of today.
 
 1. Read "The state of GitHub". Expected: three environments with no required reviewer (R-182), each with its
    rules for tags and branches, and the secrets under the names of the table.
 2. Do "A trial that publishes nothing" with the version `0.0.1`. Expected: no approval is asked, each job
    passes, `publish` is skipped, and no feed of `https://releases.anima.ing` changed. `stapler validate` and
    `spctl` accept the DMG and the application of the artifact `macos`. The AppImage of the artifact `linux`
-   starts on a Linux computer; the first public release waits for this (R-187). In each of the two, Settings >
+   starts on a Linux computer; the first public release waits for this (R-192). In each of the two, Settings >
    Updates does not say "This is a local build", and it offers the published version (the build of the workflow
    has the updater; a build by hand with `trial-bundle.sh` has not, DEF-001).
 3. Do "The first public release". Expected: the tag is `v` with the version that
