@@ -6,6 +6,8 @@ export interface IndexShown {
   readonly stayAwake: boolean;
   readonly desktopRows: boolean;
   readonly mcpPermissions: boolean;
+  /** False on a hub that Anima.ing hosts: it has no VPN (R-211). */
+  readonly vpn: boolean;
 }
 
 /** Each section of the page: its anchor, heading, icon and the line under the heading (SET-001). */
@@ -45,7 +47,7 @@ export function indexOf(shown: IndexShown): readonly IndexEntry[] {
     extensions,
     integrations,
     shown.mcpPermissions && mcp,
-    vpn,
+    shown.vpn && vpn,
   ];
   return entries.filter((entry) => entry !== false);
 }

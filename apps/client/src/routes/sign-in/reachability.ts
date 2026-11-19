@@ -16,7 +16,8 @@ export interface HubUnreachable {
 
 /** The notice for `status`, or `null` when the hub is not unreachable; `now` dates the data age (NET-004). */
 export function hubUnreachable(status: HubStatus, origin: string, now: Date): HubUnreachable | null {
-  const banner = unreachableBanner(status, origin, now);
+  // The password page is the sign-in of a hub that is not hosted (R-129), so the advice names the VPN client.
+  const banner = unreachableBanner(status, origin, now, false);
   if (banner === null) return null;
   return { title: `Can't reach ${hubHost(origin)}`, advice: 'Check the VPN client.', origin, age: banner.age };
 }

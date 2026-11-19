@@ -1,7 +1,7 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { hasStoredHubAddress, storedHubAddress } from '$lib/desktop/address';
-import { isHostedHub } from '$lib/hosted/mark';
+import { hubIsHosted } from '$lib/hosted/mark';
 import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { accessApi } from './api';
@@ -20,7 +20,7 @@ function failed(): void {
 
 /** The sign-in of this client's hub: the password page, or the account for a hosted hub (R-129). */
 export function goToSignIn(): void {
-  const hosted = isHostedHub(localStorage, storedHubAddress(localStorage).origin);
+  const hosted = hubIsHosted(storedHubAddress(localStorage).origin);
   goto(resolve(signInPathFor(hosted))).catch(failed);
 }
 
