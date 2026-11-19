@@ -43,7 +43,7 @@ impl Config {
     pub fn parse(bytes: &[u8]) -> Result<Self, ConfigError> {
         let stored: Stored = serde_json::from_slice(bytes).map_err(|_| ConfigError::Unreadable)?;
         Ok(Self {
-            hub: Origin::parse(&stored.hub)?,
+            hub: Origin::parse_kept(&stored.hub)?,
             device: stored.device,
             device_name: stored.device_name,
         })

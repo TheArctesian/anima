@@ -3,7 +3,7 @@
 
 use std::fs::DirBuilder;
 use std::io;
-use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _, PermissionsExt as _};
+use std::os::unix::fs::DirBuilderExt as _;
 use std::path::{Path, PathBuf};
 
 use crate::config::private_file::{self, PrivateFileError};
@@ -15,6 +15,7 @@ pub const HOME_VARIABLE: &str = "ANIMA_DAEMON_HOME";
 const CONFIG_FILE: &str = "daemon.json";
 const TOKEN_FILE: &str = "token";
 const FOLDER: &str = "anima-daemon";
+const LINK_SOCKET: &str = "link.sock";
 
 /// The folder holding the daemon's own files.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,6 +74,13 @@ impl Home {
         &self.dir
     }
 
+    /// The socket that `anima-link device` makes for a daemon that was enrolled with an old
+    /// link origin (K8 Section 1).
+    #[must_use]
+    pub fn link_socket(&self) -> PathBuf {
+        self.dir.join(LINK_SOCKET)
+    }
+
     /// The token file of the Linux token store.
     #[must_use]
     pub fn token_path(&self) -> PathBuf {
@@ -95,21 +103,11 @@ impl Home {
             .recursive(true)
             .mode(0o700)
             .create(&self.dir)?;
-        let metadata = std::fs::symlink_metadata(&self.dir)?;
-        let running = private_file::running_user()?;
-        if !metadata.is_dir()
-            || private_file::folder_exposed(metadata.permissions().mode(), metadata.uid(), running)
-        {
-            return Err(HomeError::Exposed);
+        if private_file::folder_private(&self.dir)? {
+            Ok(())
+        } else {
+            Err(HomeError::Exposed)
         }
-        for parent in self.dir.ancestors().skip(1) {
-            if !parent.as_os_str().is_empty()
-                && private_file::parent_replaceable(std::fs::metadata(parent)?.permissions().mode())
-            {
-                return Err(HomeError::Exposed);
-            }
-        }
-        Ok(())
     }
 
     /// The configuration file; `None` when the daemon was never enrolled. The folder and the

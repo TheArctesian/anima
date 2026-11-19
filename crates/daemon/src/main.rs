@@ -78,7 +78,7 @@ async fn enrol(
             Err(error) => return usage(&error),
         },
     };
-    let client = match HubClient::new(hub.url().clone(), TIMEOUT) {
+    let client = match HubClient::reaching(hub.reach(), &home.link_socket(), TIMEOUT) {
         Ok(client) => client,
         Err(error) => return failure(&error),
     };

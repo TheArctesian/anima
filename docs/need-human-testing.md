@@ -61,6 +61,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a tag | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
+| HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 
 ### What a check on the hosted hub needs
 
@@ -980,6 +981,51 @@ looked at with the network off.
    no device of step 1 is shown anywhere before the sign-in.
 
 Result: Open.
+
+### HT-037: the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004)
+
+Built: on the branch `daemon/w0-link-socket` (task W0 of
+[projects-and-builds-plan.md](plans/projects-and-builds-plan.md); K8 Section 1). `anima-link device
+-daemon-socket <path>` makes a Unix socket that only its user can open (`link/statedir/listenowned.go`,
+`link/devicelink`). The daemon reaches a hub in the link mode only through that socket
+(`crates/daemon/src/hub.rs`, `hub/link_socket.rs`, `config/origin.rs`): its origin is `unix:<path>`,
+and it refuses `--hub http://127.0.0.1:<port>`. A daemon that was enrolled at a port keeps its files
+and uses `link.sock` in its own folder.
+
+The tests cover: a request on the socket reaches a test hub through a real device link; the mode of
+the socket; the refusal of a folder that other users can reach, by the link and by the daemon; a push
+and its token on the socket with a scripted hub; no request to the port for an old origin; the start
+of a daemon with old files. Not covered: a real hub, the renewal of a token over days, a daemon that
+runs as its installed unit (the sandbox of the unit must let it open the socket), a second user of
+the computer, and a hosted hub. On a hosted hub only the desktop application starts the link today,
+with no socket for the daemon (HM-D16), so this check uses a hub that you start in the link mode.
+
+It needs: a hub in the link mode ([local-hub.md](procedures/setup/local-hub.md), or Section 7 of
+[link.md](procedures/setup/link.md)), and one computer with a device link that joined it (Section 3
+of link.md) and the two programs of this build. `<FOLDER>` is `~/.config/anima-daemon` on Linux and
+`~/Library/Application Support/anima-daemon` on a Mac.
+
+1. On the computer, stop the device link and start it with the socket:
+   `mkdir -p -m 700 "<FOLDER>"`, then `anima-link device -state <DIR> -daemon-socket "<FOLDER>/link.sock"`.
+   Expected: the log line "the device link is ready" names the socket, and `ls -l "<FOLDER>/link.sock"`
+   starts with `srw-------`.
+2. Make an enrolment code for the computer in Anima. Run `anima-daemon enrol - --hub "unix:<FOLDER>/link.sock"`
+   and paste the code. Expected: "Enrolled", with the name of the device.
+3. Run `anima-daemon install`. Wait 2 minutes. Expected: in Anima the device shows metrics, and its
+   check of the daemon is Up. This proves that the installed unit can open the socket.
+4. Run `anima-daemon enrol - --hub http://127.0.0.1:8443` with any text as the code. Expected: a refusal
+   that names `-daemon-socket`, and no request to the hub.
+5. Stop the device link for 3 minutes, then start it again as in step 1. Expected: the metrics have no
+   hole after some minutes (the daemon kept its samples), and no new enrolment was necessary.
+6. As a second user of the computer, if it has one: `nc -U "<FOLDER>/link.sock"`. Expected:
+   "Permission denied".
+7. Only if a computer still has a daemon that was enrolled at a port of the link: install this build
+   of the daemon there and start its link with `-daemon-socket "<FOLDER>/link.sock"`. Expected: the
+   metrics continue with no new enrolment.
+8. Leave the daemon in operation for 8 days. Expected: the device is still Up (the token was renewed
+   through the socket).
+
+State: Open.
 
 ## Not built yet
 
