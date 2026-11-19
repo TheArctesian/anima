@@ -4,7 +4,7 @@
 - Source: the vault note "Product Ideas from Research" (idea 8) and the private working note "Labelled Login Profiles"
 - Status: Framed
 - Serves: No row names it (gap). The Bots proposal (`bots.md`) has no priorities row. Not confirmed.
-- Owner if it becomes work: Open. `bots.md` (BOT-025, BOT-046, OD-BOT decision 8).
+- Owner if it becomes work: Open. `bots.md` (BOT-046, OD-BOT decision 8; BOT-025 is withdrawn by R-196).
 - Effort: M (estimate). Recommendation: should (the research verdict, not a decision)
 
 ## The idea
@@ -20,7 +20,7 @@ Let an operator choose which of their own accounts an agent uses on a machine, o
 Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../plan/register.md) and [deferred.md](../../deferred.md).
 
 - ownership.md: no concern for logins.
-- bots.md: BOT-025 and BOT-046 ban rotating, switching and pooling; a second login of the same vendor on one machine is open decision 8 and unruled. BOT-021 and BOT-032 constrain the Claude program.
+- bots.md: BOT-025 (withdrawn by R-196 with the bot runtime) and BOT-046 ban rotating, switching and pooling; a second login of the same vendor on one machine is open decision 8 and unruled. BOT-021 and BOT-032 constrain the Claude program.
 - register.md and deferred.md: no item found.
 - Terms: Anthropic allows the user's own login on the unmodified `claude` (see Agent Coverage vs Orca); needs the terms check before any build.
 - Checked on 2026-11-18 against the repository at commit `866f667f`. This is a keyword search, not a full read.

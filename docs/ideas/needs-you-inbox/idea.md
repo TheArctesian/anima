@@ -3,8 +3,8 @@
 - From: the Anima Product Ideas bot, from competitor research, 2026-11-17
 - Source: the vault note "Product Ideas from Research" (idea 3) and the private working note "Needs You Inbox"
 - Status: Framed
-- Serves: Row 4.8 The other extensions (inferred; AIS-012 and AIS-017 are in `extensions-plan.md`), with the phone app in row 4.14 Mobile clients. Not confirmed.
-- Owner if it becomes work: Open. AIS-012 and AIS-017 sit in `extensions-plan.md`; BOT-006 in `bots.md`.
+- Serves: Row 4.8 The other extensions (inferred; AIS-012 and AIS-017 were in `extensions-plan.md` (R-196, 2026-11-18, withdrew AIS-009 to AIS-017; the agent panes are now the Herdr tool extension of [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md))), with the phone app in row 4.14 Mobile clients. Not confirmed.
+- Owner if it becomes work: Open. AIS-012 and AIS-017 are withdrawn (R-196), and BOT-006 of `bots.md` is withdrawn (R-196). [NEEDS CLARIFICATION: the owner is now [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md) (OD-AXT10: "state hooks and the Needs-you inbox come next"), or a new proposal.]
 - Effort: M (estimate). Recommendation: should (the research verdict, not a decision)
 
 ## The idea
@@ -14,28 +14,28 @@ An inbox where an agent's question can be answered from the phone, a message can
 ## Evidence
 
 - Competitor research, checked 2026-11-17 (vault note "Product Ideas from Research"): Muster has an Asks page, shows Claude Code questions as forms on the phone, queues messages for a busy session, and resumes after a usage limit resets. Agent Manager answers any agent without attaching to it. cmux has notification rings. T3 Code has a thread inbox with snooze. The public pages are not re-checked here, and their dates are not verified.
-- Pain in plain words: an agent stalls on one machine while the operator works on another. The repository already counts two to sixteen agents that need attention (AIS-017).
+- Pain in plain words: an agent stalls on one machine while the operator works on another. The repository already counts two to sixteen agents that need attention (AIS-017, withdrawn by R-196).
 
 ## Overlap check
 
 Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../plan/register.md) and [deferred.md](../../deferred.md).
 
 - ownership.md: AI coding sessions belong to the extensions plan; mobile belongs to `mobile-plan.md`.
-- extensions-plan.md: AIS-012 sends one alert on a state change; AIS-017 warns when more agents need attention than one person can handle. No answer form, no queue.
-- bots.md: BOT-006 asks before risky actions. BOT-047 to BOT-057 cover fall back to a local model after a limit.
+- extensions-plan.md: AIS-012 sent one alert on a state change; AIS-017 warned (both withdrawn by R-196; version 1 of agent tools leaves agent state to Herdr, OD-AXT10) when more agents need attention than one person can handle. No answer form, no queue.
+- bots.md: BOT-006 asked before risky actions (withdrawn, R-196). BOT-047 to BOT-057 cover fall back to a local model after a limit (parked, R-196).
 - Constraint: CAP-025, AGN-014 and AIS-022 bar reading usage limits, so resume must infer the limit from terminal output.
 - register.md and deferred.md: no inbox item found.
 - Checked on 2026-11-18 against the repository at commit `866f667f`. This is a keyword search, not a full read.
 
 ## Narrowest version, and when to stop
 
-- Narrowest version: Answer-from-phone for one agent (Claude Code): the alert of AIS-012 opens a form with the question and a reply box. Queue and resume come later.
-- Stop if: agent terminal output cannot be parsed into a question reliably enough to show a form, or if the alert of AIS-012 is enough in a week of real use.
+- Narrowest version: Answer-from-phone for one agent (Claude Code): an alert (AIS-012 is withdrawn by R-196; [NEEDS CLARIFICATION: the source of the alert, for example the status protocol of Herdr]) opens a form with the question and a reply box. Queue and resume come later.
+- Stop if: agent terminal output cannot be parsed into a question reliably enough to show a form, or if the alert is enough in a week of real use.
 
 ## Open questions
 
 - Should the first version cover answering only, with no queue and no resume? (yes/no)
-- Should the resume after a limit be dropped in favour of the local-model fallback (BOT-047 to BOT-057)? (yes/no)
+- Should the resume after a limit be dropped in favour of the local-model fallback (BOT-047 to BOT-057, parked by R-196)? (yes/no)
 
 ## Reviews
 
