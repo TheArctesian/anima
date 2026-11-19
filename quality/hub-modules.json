@@ -18,7 +18,8 @@
     "core_dumps",
     "records",
     "instants",
-    "sealing_keys"
+    "sealing_keys",
+    "lease"
   ],
   "wiring": [
     "main",

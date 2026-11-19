@@ -11,6 +11,7 @@ pub mod engine;
 pub mod fingerprint;
 pub mod fleet;
 pub mod ids;
+pub mod lease;
 pub mod paging;
 pub mod scalars;
 pub mod schema;
