@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User documentation (docs.anima.ing) mockups</title>
+<style>
+/* Layout: a review board for the docs site docs.anima.ing (user-documentation.md, proposed, not approved).
+   Frame 1 is the docs home, frame 2 a task page (Remote access), frame 3 the generated CLI reference,
+   frame 4 the privacy page (UDOC-004 to UDOC-016, UDOC-021, UDOC-026, UDOC-027, UDOC-040 to UDOC-044).
+   No font, script or image comes from a third party (UDOC-005): IBM Plex is named, and the system font is the fallback. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, sizes, type), as in the other mockups. A frame is dark (.gd) or light (.gl). */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+
+/* One frame: a page of the docs site. The side menu at the start (UDOC-009), the page at the end. */
+.frame { max-inline-size: 1040px; border: var(--border-thin, 1px) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); display: grid; grid-template-columns: 14rem 1fr; min-block-size: 30rem; }
+.frame.ref { grid-template-columns: 14rem 1fr 9rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-1); align-content: start; }
+.logo { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--weight-medium); margin-block-end: var(--space-4); }
+.mark { inline-size: 1.5rem; block-size: 1.5rem; border-radius: 22%; background: var(--accent); }
+.search { block-size: var(--control-md); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-pill); padding: 0 var(--space-3); display: flex; align-items: center; justify-content: space-between; color: var(--text-secondary); font-size: var(--text-sm); margin-block-end: var(--space-4); }
+kbd { font-family: var(--font-ui); font-size: 0.75rem; }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+.nav { color: var(--text-secondary); padding: 2px 0; }
+.nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.page { padding: var(--space-8); max-inline-size: 46rem; display: grid; gap: var(--space-4); align-content: start; }
+.page h2 { margin: 0; font-weight: var(--weight-light); font-size: var(--text-display); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); }
+.page h3 { margin: var(--space-2) 0 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.page p { margin: 0; line-height: var(--leading-normal); }
+.lead { font-size: var(--text-lg); color: var(--text-secondary); }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.card { border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-raised); padding: var(--space-4); display: grid; gap: var(--space-1); }
+.card b { font-weight: var(--weight-medium); }
+.detail { color: var(--text-secondary); font-size: var(--text-sm); }
+.mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.agents { border-block-start: var(--border-thin) solid var(--border-subtle); padding-block-start: var(--space-3); color: var(--text-secondary); font-size: var(--text-sm); }
+.agents a, .foot a { color: var(--accent); }
+table { border-collapse: collapse; inline-size: 100%; font-size: var(--text-sm); }
+th, td { text-align: start; padding: var(--space-2) var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); vertical-align: top; }
+th { color: var(--text-secondary); font-weight: var(--weight-medium); }
+.rec { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--accent); color: var(--accent); font-size: 0.75rem; }
+ol.steps { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: var(--space-2); line-height: var(--leading-normal); }
+pre { margin: var(--space-1) 0 0; padding: var(--space-3); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--text-sm); display: flex; justify-content: space-between; }
+.copy { font-family: var(--font-ui); color: var(--text-secondary); }
+.note { border-inline-start: 3px solid var(--border-strong); padding: var(--space-2) var(--space-3); background: var(--surface-raised); }
+.foot { color: var(--text-secondary); font-size: var(--text-sm); border-block-start: var(--border-thin) solid var(--border-subtle); padding-block-start: var(--space-3); }
+.cmd { border-block-end: var(--border-thin) solid var(--border-subtle); padding-block-end: var(--space-3); display: grid; gap: var(--space-1); }
+.flag { display: grid; grid-template-columns: 6rem 1fr; gap: var(--space-2); font-size: var(--text-sm); }
+.toc { padding: var(--space-8) var(--space-3); font-size: var(--text-sm); color: var(--text-secondary); display: grid; gap: var(--space-1); align-content: start; }
+.gen { font-size: 0.75rem; color: var(--text-secondary); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<h1 class="board">User documentation: docs.anima.ing</h1>
+<p class="about">Proposed, not approved. Owner: docs/proposals/user-documentation.md (UDOC-001 to UDOC-048). Four frames: the docs home, a task page, the generated CLI reference, and the privacy page. The text is an example; the real pages come from docs/user/. Nothing here is built.</p>
+
+<div class="frames">
+
+<figure>
+<div class="frame gd">
+  <nav class="side" aria-label="Docs">
+    <div class="logo"><span class="mark"></span>Anima.ing Docs</div>
+    <div class="search">Search <kbd>⌘K</kbd></div>
+    <div class="group">Get started</div>
+    <div class="nav">What Anima.ing is</div><div class="nav">Install</div><div class="nav">The first run</div><div class="nav">Add your first machine</div>
+    <div class="group">Reach your machines</div><div class="nav">Remote access</div>
+    <div class="group">Watch your machines</div>
+    <div class="group">Use AI agents</div>
+    <div class="group">Run your own hub</div>
+    <div class="group">Reference</div>
+    <div class="group">Help</div>
+  </nav>
+  <main class="page">
+    <h2>Anima.ing documentation</h2>
+    <p class="lead">Bring every machine you own back online, and reach it from any of your devices.</p>
+    <div class="cards">
+      <div class="card"><b>Install</b><span class="detail">macOS, Linux, and the command line</span></div>
+      <div class="card"><b>Add your first machine</b><span class="detail">Join a second computer to your hub</span></div>
+      <div class="card"><b>Remote access</b><span class="detail">A terminal, a desktop, a web interface</span></div>
+      <div class="card"><b>Use AI agents</b><span class="detail"><span class="mono">anima mcp</span> and what an agent can do</span></div>
+    </div>
+    <p class="note">There is no public download yet. Join the waitlist, or build it yourself.</p>
+    <p class="agents">For agents: <a>llms.txt</a> · <a>llms-full.txt</a> · add <span class="mono">.md</span> to any page · <span class="mono">anima docs search</span></p>
+  </main>
+</div>
+<figcaption>Frame 1, the docs home (dark). The side menu is sorted by task (UDOC-009); the search opens with Cmd+K or Ctrl+K (UDOC-015); the line for agents points to the copy of UDOC-026 and UDOC-027; the limit is named (UDOC-014).</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl">
+  <nav class="side" aria-label="Docs">
+    <div class="logo"><span class="mark"></span>Anima.ing Docs</div>
+    <div class="search">Search <kbd>⌘K</kbd></div>
+    <div class="group">Reach your machines</div>
+    <div class="nav on">Remote access</div><div class="nav">SSH</div><div class="nav">Desktop</div><div class="nav">Web interfaces</div><div class="nav">The VPN</div><div class="nav">Stay awake</div>
+  </nav>
+  <main class="page">
+    <h2>Remote access</h2>
+    <p class="lead">Open a terminal, a desktop or a web interface of a machine on your hub, from any of your devices.</p>
+    <table>
+      <thead><tr><th>Way</th><th>Needs on the machine</th><th>Works from</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>SSH</td><td>An SSH server</td><td>Desktop, web, phone, command line</td><td><span class="rec">We recommend</span></td></tr>
+        <tr><td>Desktop</td><td>VNC or RDP</td><td>Desktop, web</td><td></td></tr>
+        <tr><td>Web interface</td><td>A program on a local port</td><td>Desktop, web, phone</td><td></td></tr>
+      </tbody>
+    </table>
+    <h3>Open a terminal</h3>
+    <ol class="steps">
+      <li>Open the machine in the app, or use the command line.</li>
+      <li>Start SSH:<pre>anima ssh my-mac <span class="copy">Copy</span></pre></li>
+      <li>Check: the prompt of <span class="mono">my-mac</span> shows.</li>
+    </ol>
+    <p class="foot">Last changed 2026-11-19 · <a>Edit this page</a> · <a>View as .md</a></p>
+  </main>
+</div>
+<figcaption>Frame 2, a task page (light). One plain first sentence (UDOC-011), a table that compares the ways and names the default (UDOC-013), numbered steps with a command to copy and a check (UDOC-012), the date and the edit link (UDOC-008). The rows of the table are examples, not verified.</figcaption>
+</figure>
+
+<figure>
+<div class="frame ref gd">
+  <nav class="side" aria-label="Docs">
+    <div class="logo"><span class="mark"></span>Anima.ing Docs</div>
+    <div class="search">Search <kbd>⌘K</kbd></div>
+    <div class="group">Reference</div>
+    <div class="nav on">CLI commands</div><div class="nav">MCP tools</div><div class="nav">Settings</div><div class="nav">Privacy</div>
+  </nav>
+  <main class="page">
+    <h2>CLI commands</h2>
+    <p class="lead">Every public <span class="mono">anima</span> command and flag.</p>
+    <p class="gen">Generated from the program. Do not edit this page.</p>
+    <div class="cmd">
+      <span class="mono">anima device list [--status] [--tag] [--name] [--site] [--sort] [--all]</span>
+      <p>List devices, with filters and pages.</p>
+      <div class="flag"><span class="mono">--tag</span><span>Only devices with this tag; repeat for more than one.</span></div>
+      <div class="flag"><span class="mono">--name</span><span>Only devices whose name holds this text (any case).</span></div>
+      <div class="flag"><span class="mono">--all</span><span>Every page, not only the first.</span></div>
+    </div>
+    <div class="cmd">
+      <span class="mono">anima docs search &lt;words&gt;</span>
+      <p>Print the ten best sections of the docs, best first. Proposed (UDOC-034).</p>
+    </div>
+  </main>
+  <aside class="toc" aria-label="On this page"><b>On this page</b><span>auth</span><span>context</span><span>device</span><span>docs</span><span>mcp</span><span>ssh</span></aside>
+</div>
+<figcaption>Frame 3, the CLI reference (dark), generated from <span class="mono">Cli::command()</span> (UDOC-021 to UDOC-025). The text of <span class="mono">anima device list</span> is its help text at 3353f648.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl">
+  <nav class="side" aria-label="Docs">
+    <div class="logo"><span class="mark"></span>Anima.ing Docs</div>
+    <div class="search">Search <kbd>⌘K</kbd></div>
+    <div class="group">Reference</div>
+    <div class="nav">CLI commands</div><div class="nav">MCP tools</div><div class="nav">Settings</div><div class="nav on">Privacy</div>
+  </nav>
+  <main class="page">
+    <h2>Privacy and outbound connections</h2>
+    <p class="lead">This page lists every network connection that each Anima.ing program makes, when, and what it sends.</p>
+    <table>
+      <thead><tr><th>Connection</th><th>Program</th><th>When</th><th>What it sends</th><th>Can you turn it off</th></tr></thead>
+      <tbody>
+        <tr><td>Update feed</td><td>Desktop app</td><td>At start, then on a schedule</td><td>Your IP address, the app version</td><td>Example</td></tr>
+        <tr><td>Your hub</td><td>All programs</td><td>When you use them</td><td>Your data, to your own hub</td><td>—</td></tr>
+        <tr><td>docs.anima.ing</td><td>Your browser</td><td>When you read the docs</td><td>Your IP address, the browser name</td><td>No analytics</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Example rows only. The real rows come from the inventory of task UD0, each with the code that makes the connection (UDOC-041, UDOC-042).</p>
+  </main>
+</div>
+<figcaption>Frame 4, the privacy page (light), UDOC-040 to UDOC-044. The first sentence about telemetry is open until UD0: the website uses Vercel Web Analytics (OD-21), and AXT-044 adds opt-in counts.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

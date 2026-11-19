@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (14)
+## 1. In the order of the priorities (15)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -33,9 +33,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
+| 4.22 | User documentation and the docs site docs.anima.ing | Operator: OD-UD1 to OD-UD13 in user-documentation.md Section 9, then the approval of UDOC-001 to UDOC-048. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (116)
+## 2. Open decisions (129)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -133,6 +134,19 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
+| OD-UD1 | Do you confirm that the docs live on a separate site, `docs.anima.ing`? (yes/no) | Open. Relayed by Anima Product Ideas (2026-11-19, 12:23 PT), not first-hand | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD2 | Do you confirm that the source is Markdown in this repository, `docs/user/`, and that the docs site publishes it? (yes/no) | Open. Relayed, not first-hand | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD3 | Do you confirm that the first version is the full set of Section 6.2.1 (effort L), published in the waves of Section 10? (yes/no) | Open. Relayed, not first-hand | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD4 | Do you confirm the new row 4.22 in the priorities, at tier 1, after row 4.3? (one choice: tier 1 after 4.3; tier 3 after 4.21; tier 2 beside 2a and 2b) | Open. The row is relayed; the tier is the Planner's recommendation | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD5 | Does this proposal own the user docs and docs.anima.ing (a new row in ownership.md, UDOC), and does design specification Section 3.12 stay the owner of the mark… | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD6 | Does SITE-007 (static files only, no account, sign-in, form, cookie or server code) apply to docs.anima.ing? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD7 | Does SITE-008 apply to docs.anima.ing without its exception, so the docs site has no analytics at all? (one choice: no analytics; the same exception for Vercel… | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD8 | Does SITE-012 (no text about a paid hosted option until you approve the words) apply to docs.anima.ing? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD9 | Does ASD-STE100 apply to the user pages in `docs/user/`? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD10 | Do you fold the idea Agent-Readable Surface (a skill file, `llms.txt`, an install prompt) into this proposal (UDOC-031, UDOC-032), and delete its idea folder? (… | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD11 | Where is the code of the docs site? (one choice: `apps/docs/` in this repository; a route group in `anima-site`; a new repository) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD12 | Is the docs MCP local only: two read tools in `anima mcp` that read the docs inside the program, with no remote docs MCP server in the first version? (yes/no) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
+| OD-UD13 | Do the install steps of SITE-005 move to the docs, so that `www.anima.ing` links to the install page of docs.anima.ing? (yes/no; it changes SITE-005) | Open | [proposals/user-documentation.md](proposals/user-documentation.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
@@ -156,7 +170,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (26)
+## 3. Documents that wait for an approval (27)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -185,6 +199,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
+| [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
 ## 4. Checks that only the operator can do (74)
