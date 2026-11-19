@@ -69,6 +69,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
+| HT-045 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 
 ### What a check on the hosted hub needs
 
@@ -902,6 +903,46 @@ sign-in to the hosted hub.
 4. Open the settings of the device (the panel "Daemon"), and press "Add device" on the Devices page
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
+
+### HT-045: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+
+Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
+phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
+on the first screen are on. The steps are those of the desktop app: a code, the page of the account in the browser of
+the phone (`phone_browser.rs`), "Your hub is starting", then the link in the app joins the hub (M3-1) and the device
+list opens. The phone gives the cloud a name that it makes one time and keeps, `iphone-` or `android-` with six
+hexadecimal digits.
+
+The tests cover the answers of WorkOS and of the cloud, the name of the phone, the refresh token in memory, the check
+of the address that the browser gets, and the choices and the words of the screens. The shell compiles for the iPhone
+simulator and for Android with the stable Rust toolchain of this Mac. The steps of the sign-in were seen in a desktop
+browser at 390 by 844 px with a stand-in cloud. Not covered: no build ran on a simulator, an emulator or a phone; no
+phone called WorkOS or the cloud; the browser of a phone was not opened; no phone joined a hosted hub. The join
+through the link in the app is also not proven (HT-025).
+
+This build keeps the refresh token and the hub token in memory (OD-M7): after the app is closed and opened again, the
+person signs in again. That is correct for this check and not for a release (MOB-006, task M5-1).
+
+Steps 1 to 4 need no real phone. Use the Android emulator with a route to the internet, or the iPhone simulator.
+
+1. Build this branch for the simulator or the emulator (`link/build-phone.sh`, then the Tauri build). Open the app.
+   Expected: the first screen, with "Sign in" and "Sign up" on, and no line "Not on phones yet.".
+2. Tap "Sign in". Expected: "Starting", then "Continue in your browser" with a code of eight letters, and the browser
+   of the phone opens the page of the account with the same code. If the browser does not open, the line says so, and
+   "Open the page" opens it.
+3. In the browser, sign in with the Anima.ing account and confirm the code. Go back to the app. Expected: within some
+   seconds "Your hub is starting", then "Connecting" with the words "this device", then the device list of the
+   hosted hub. No step asks for an invite, an address or a password.
+4. On the hub, in Settings, look at the devices of the link. Expected: one device with the name `iphone-…` or
+   `android-…`. Close the app, open it, and sign in again. Expected: the device list again, and still one such device
+   of this phone on the link, with the same name.
+5. Do steps 1 to 4 on a real iPhone and on a real Android phone, on mobile data and on Wi-Fi. Expected: as above.
+6. On a real phone, at step 2, do not sign in: tap "Back". Expected: the first screen. Tap "Sign in" again, and in the
+   browser refuse the sign-in. Expected: "Sign-in cancelled" with "Try again".
+7. On a real phone, look at the steps: "Back" and the button are easy to tap, and no text is smaller than the text of
+   the invite steps (HT-025, step 6).
+
+Result: Open.
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 

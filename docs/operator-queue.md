@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (14)
+## 1. In the order of the priorities (15)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -34,8 +34,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-045 (the account sign-in on a phone, task M3-4) and HT-025 (the join through the link) in need-human-testing.md, and OD-M9 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (116)
+## 2. Open decisions (117)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -68,6 +69,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-M9 | Does the phone application get to a hosted hub through the link in the application, through the gateway of the web hub at `hub.anima.ing` (hosted-web-hub.md), o… | Open (2026-11-19). Recommendation of the session that built task M3-4: the link now, and the gateway later only as a second path. Reasons: the link is the decis… | [plans/mobile-plan.md](plans/mobile-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
@@ -188,7 +190,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (75)
+## 4. Checks that only the operator can do (76)
 
 | Check | What |
 | --- | --- |
@@ -221,6 +223,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-026 | the use of AI agent programs from real session files |
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |
+| HT-045 | the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4) |
 | HT-043 | a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010) |
 | HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |

@@ -117,6 +117,8 @@
   async function meetThisMachine(): Promise<void> {
     const storage = browserStorage();
     if (storage === null || !isHostedHub(storage, hub.address.origin)) return askAboutThisMachine();
+    // A phone is not a computer of the hub, and its shell has no `cloud_device` (MOB-005, mobile plan M3-4).
+    if (!capabilities().thisMachine) return;
     const added = await addThisComputer({
       device: readCloudDevice,
       linkDevices: () => linkApi(hub).devices(),

@@ -42,10 +42,10 @@ describe('shellCapabilities (WP-42 D-4)', () => {
     expect(shellCapabilities(computer(MAC))).toBeNull();
   });
 
-  it('MOB-004, MOB-031: the mobile app keeps the access token and runs the device link, and has no desktop-only feature, on an iPhone and on Android', () => {
+  it('MOB-004, MOB-031, M3-4: the mobile app keeps the access token, runs the device link and signs in to the account, and has no desktop-only feature, on an iPhone and on Android', () => {
     expect(shellCapabilities(touch(IPHONE))).toEqual(MOBILE);
     expect(shellCapabilities(touch(ANDROID))).toEqual(MOBILE);
-    expect(Object.entries(MOBILE).filter(([, answer]) => answer)).toEqual([['keyStore', true], ['deviceLink', true]]);
+    expect(Object.entries(MOBILE).filter(([, answer]) => answer)).toEqual([['keyStore', true], ['deviceLink', true], ['cloudAccount', true]]);
   });
 
   it('MOB-004: an iPad that asks for the desktop site still gets the mobile answers', () => {

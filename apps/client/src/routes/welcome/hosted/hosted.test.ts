@@ -94,6 +94,14 @@ describe('nextStep (HMD-023)', () => {
   });
 });
 
+describe('the words of a step on a phone', () => {
+  it('MOB-016: on a phone the steps say "this device"', () => {
+    expect(stepText({ kind: 'connecting' }, 'this device').line).toBe('Connecting this device to your hub.');
+    expect(stepText({ kind: 'failed', problem: 'refused', from: { kind: 'connecting' } }, 'this device').line).toBe('Your hub refused this device.');
+    expect(stepText({ kind: 'connecting' }).line).toBe('Connecting this computer to your hub.');
+  });
+});
+
 describe('runStep with the stand-in', () => {
   it('HMD-023, HMD-025: walks from the code to done, making the hub on the way', async () => {
     const steps = await walk(account({ polls: 2, starts: 2 }));

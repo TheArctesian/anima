@@ -1,8 +1,18 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "phone",
-  "description": "The phone apps: the device link inside the app, with the desktop link's three commands (mobile plan M3-1, MOB-031).",
+  "description": "The phone apps: the device link inside the app, with the desktop link's three commands (mobile plan M3-1, MOB-031), and the sign-in to the Anima.ing account with the cloud commands of the desktop app but `cloud_device` (mobile plan M3-4; HMD-032 to HMD-035, HMD-043). The page of the sign-in opens in the browser of the phone; the shell takes only an https address. The WorkOS tokens and the device code never reach the web view. Main web view only.",
   "platforms": ["iOS", "android"],
   "webviews": ["main"],
-  "permissions": ["allow-link-join", "allow-link-status", "allow-link-leave"]
+  "permissions": [
+    "allow-link-join",
+    "allow-link-status",
+    "allow-link-leave",
+    "allow-cloud-sign-in-start",
+    "allow-cloud-sign-in-poll",
+    "allow-cloud-sign-in-resume",
+    "allow-cloud-hub",
+    "allow-cloud-hub-access",
+    "allow-system-browser-open"
+  ]
 }

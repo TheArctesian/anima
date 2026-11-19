@@ -27,5 +27,5 @@ export const DESKTOP_MAC: Capabilities = {
 /** A browser: every desktop-only feature off. */
 export const BROWSER: Capabilities = browserCapabilities;
 
-/** The mobile app: the key store and no desktop-only feature (MOB-004). */
-export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true };
+/** The mobile app: the key store, the device link, the account sign-in and no desktop-only feature (MOB-004). */
+export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true, cloudAccount: true };

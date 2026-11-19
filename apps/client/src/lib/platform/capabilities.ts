@@ -35,7 +35,8 @@ export interface Capabilities {
   readonly deviceLink: boolean;
   /**
    * The shell signs in to the Anima.ing account with `cloud_sign_in_start` and the other cloud commands (HM-T1 to
-   * HM-T7): the hosted sign-in needs it with `deviceLink`. The mobile shell has no cloud commands yet.
+   * HM-T7): the hosted sign-in needs it with `deviceLink`. The mobile shell has these commands too (mobile plan M3-4),
+   * but not `cloud_device`: that one reads a computer, so it goes with `thisMachine`.
    */
   readonly cloudAccount: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */

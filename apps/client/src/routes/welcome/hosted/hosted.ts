@@ -88,7 +88,8 @@ const PROBLEM_TEXT: Readonly<Record<Problem, StepText>> = {
   payment: { title: 'Payment failed', line: 'Pay on cloud.anima.ing, then retry.', action: 'Retry' },
 };
 
-export function stepText(step: HostedStep): StepText {
+/** The words of `step`. `here` names what signs in: a phone says "this device" (MOB-016). */
+export function stepText(step: HostedStep, here: 'this computer' | 'this device' = 'this computer'): StepText {
   switch (step.kind) {
     case 'start':
       return { title: 'Starting', line: 'Getting a code.', action: null };
@@ -101,11 +102,11 @@ export function stepText(step: HostedStep): StepText {
     case 'hub':
       return { title: 'Your hub is starting', line: JOB_LINE[step.job ?? 'asking'], action: null };
     case 'connecting':
-      return { title: 'Connecting', line: 'Connecting this computer to your hub.', action: null };
+      return { title: 'Connecting', line: `Connecting ${here} to your hub.`, action: null };
     case 'done':
       return { title: 'Your hub is ready', line: 'Opening your devices.', action: null };
     case 'failed':
-      if (step.problem === 'refused' && step.from.kind === 'connecting') return { ...PROBLEM_TEXT.refused, line: 'Your hub refused this computer.' };
+      if (step.problem === 'refused' && step.from.kind === 'connecting') return { ...PROBLEM_TEXT.refused, line: `Your hub refused ${here}.` };
       return PROBLEM_TEXT[step.problem];
   }
 }
