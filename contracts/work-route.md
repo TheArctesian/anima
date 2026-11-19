@@ -1,6 +1,6 @@
 # K10 — Work route: claim, report, log, stop and a secret for one job
 
-Status: **proposed, not accepted** (task W1 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md); version 0.2, 2026-11-18). Version 0.1 was the text that the security review read; version 0.2 has the changes that the review asked for, and each is marked with its finding (SF-003 to SF-014). No ruling accepts this text. Build nothing from it (PLN-007, CON-001). R-160 (operator, 2026-11-18) confirmed the work route and its default; it approved no requirement one by one and no contract. The security review of this text is in [security-findings.md](../docs/security-findings.md), entries SF-003 to SF-014; each is open until the operator closes it, and four of them name a risk that only the operator can accept (SF-003, SF-004, SF-006, SF-013). The sentence with which the operator accepts the contract is at the end, in Section 14.
+Status: **proposed, not accepted** (task W1 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md); version 0.3, 2026-11-18). Version 0.3 has the answers of the operator to three findings (R-185: SF-003, a machine with no list of repositories refuses each item; R-186: SF-006, the device list now and the device key later; R-187: SF-013, accepted); those rulings accept no contract. Version 0.1 was the text that the security review read; version 0.2 has the changes that the review asked for, and each is marked with its finding (SF-003 to SF-014). No ruling accepts this text. Build nothing from it (PLN-007, CON-001). R-160 (operator, 2026-11-18) confirmed the work route and its default; it approved no requirement one by one and no contract. The security review of this text is in [security-findings.md](../docs/security-findings.md), entries SF-003 to SF-014; each is open until the operator closes it, and four of them name a risk that only the operator can accept (SF-003, SF-004, SF-006, SF-013). The sentence with which the operator accepts the contract is at the end, in Section 14.
 
 Requirements: USE-001 to USE-009 and JOB-010, JOB-011 of [jobs.md](../docs/proposals/jobs.md); PRO-006, PRO-022 to PRO-024, PRO-029, PRO-030, PRO-034, PRO-039 to PRO-043, PRO-050 of the plan above; MET-013, MET-020, LOG-005, LOG-007, LOG-012 of the design specification. The number K9 is reserved for the link ([s6-spec-delta.md](../docs/plans/one-click/s6-spec-delta.md)).
 
@@ -45,7 +45,7 @@ A hub that does not have this contract answers 404 to each route. The daemon the
 | --- | --- | --- |
 | If the machine takes work | The machine | The switch at the machine (USE-004). The hub cannot set it on. A machine whose switch is off sends `"switch": "off"`. If the hub answers such a claim with an `Item`, the daemon drops the answer and starts nothing; the same when the device policy does not permit work. The machine keeps the switch where no job and no other user can write it, and an update of the daemon does not change it (SF-007). |
 | If a Mac takes a `native` item | The machine | The setting of PRO-024, made at the Mac. The hub cannot set it on. The rules of the switch apply to it (SF-007). |
-| Which repositories the machine works for | The machine, if its owner sets it | The machine can hold a list of owners and repositories. With a list, the daemon refuses an item of a different repository (`repository_not_permitted`). With no list, each repository of the hub is permitted: that is the default of R-160 (SF-003). |
+| Which repositories the machine works for | The owner of the machine | The machine holds a list of the owners and the repositories of GitHub that it builds. The owner of the machine sets it at the machine; the hub cannot write it, and the rules of the switch apply to it (SF-007). The daemon refuses an item of a repository that is not in the list (`repository_not_permitted`). A machine with no list refuses each item that names a repository. The work route stays on by default (R-160); the list is the control of R-185 (SF-003). |
 | Which machines get a secret of a project | The operator | An item that names a secret goes only to a device that the operator named for that project. The placement and the secret route each check it (SF-006). |
 | The work types | The daemon program | The fixed list of Section 6. The hub cannot add a type. |
 | The steps of an item | The daemon program, or the workflow file | The hub names no program, no command, no argument, no path, no address, no image and no environment variable. |
@@ -54,7 +54,7 @@ A hub that does not have this contract answers 404 to each route. The daemon the
 | Which machine gets an item | The hub | The placement function (PRO-051). |
 | When work runs on a machine | The machine | The device policy (USE-009): mains power, quiet hours, an active operator. |
 
-What the fixed list does and does not give (SF-003). The hub names no command. But the hub names the repository and the commit of a `build`, and for a `runner` it gives a JIT configuration that the machine cannot read into its parts with certainty. The code of that repository, or the steps of a workflow, then run on the machine. Thus a person who controls the hub can run code of their choice on each machine that takes work, inside the isolation of task W2 and not outside it. The isolation is the limit, not the list. The operator accepted this cost with OD-W10 and R-160 ([jobs.md](../docs/proposals/jobs.md), "Decision"); the list of the row above is the one control that the owner of a machine has against it.
+What the fixed list does and does not give (SF-003). The hub names no command. But the hub names the repository and the commit of a `build`, and for a `runner` it gives a JIT configuration that the machine cannot read into its parts with certainty. The code of that repository, or the steps of a workflow, then run on the machine. Thus a person who controls the hub can run code of their choice on each machine that takes work, inside the isolation of task W2 and not outside it. The isolation is the limit, not the list. The operator accepted this cost with OD-W10 and R-160 ([jobs.md](../docs/proposals/jobs.md), "Decision"); the list of the row above is the one control that the owner of a machine has against it, and R-185 (operator, 2026-11-18: "A: allow-list at machine") makes it a condition: no list, no work for a repository.
 
 ## 4. Claim
 
@@ -121,7 +121,7 @@ Before it starts an item, the daemon checks it. It refuses the item when one of 
 | `policy` | The device policy does not permit work now (USE-009) |
 | `no_isolation` | The machine cannot make the isolation now: no container runtime, no build user |
 | `unclean` | The machine is not clean (Section 9) |
-| `repository_not_permitted` | The machine has a list of repositories, and the repository of the item is not in it (Section 3) |
+| `repository_not_permitted` | The repository of the item is not in the list of the machine, or the machine has no list (Section 3; R-185) |
 | `runner_too_old` | `runnerVersion` is lower than the lowest version that this daemon accepts (Section 6.2) |
 
 A daemon refuses a member that it does not know because a newer hub can send a member that makes an item more narrow. A daemon that ignored it would run the item with less limit than the hub asked.
@@ -272,7 +272,7 @@ Request:
 - The machine does the same at the start of the daemon for each item that a stop of the daemon or of the machine left.
 - The result says what was deleted (`cleanup`). If one thing cannot be deleted, the machine sets itself `unclean`, claims no item, and says so in each claim. Only a clean-up that succeeds, or the operator at the machine, sets it back.
 - The machine keeps its own log of the work that it took. It writes the entry of an item before the state `preparing`, and it also writes each item that it refused: the id, the type, the kind, the project, the repository, the commit and the recipe or the version and the SHA-256 of the runner program, the purposes of the secrets, the times and the outcome. It holds no secret. The log is outside the isolation; a job and the build user cannot write it, and the hub cannot delete it (SF-012).
-- A job that makes the clean-up fail takes its machine out of work until the owner acts. With a warm runner on a public repository, one pull request from a fork can do that for each machine. This is accepted in this version: a machine that is not clean must not take the next job. The controls are the isolation of task W2 and the approval rule of GitHub (F18) (SF-013).
+- A job that makes the clean-up fail takes its machine out of work until the owner acts. With a warm runner on a public repository, one pull request from a fork can do that for each machine. The operator accepts this (R-187, 2026-11-18: "A: accept"): a machine that is not clean must not take the next job. The controls are the isolation of task W2 and the approval rule of GitHub (F18) (SF-013).
 
 ## 10. What the hub records
 
@@ -307,13 +307,13 @@ The body of each refusal is `{ "error": "<CODE>" }` and nothing else.
 | W1-P1 | The runner program and the checkout come from GitHub. MET-020 says that the daemon connects only to the hub | The job gets them inside the isolation, with the network of the job. The part of the daemon that speaks to the hub makes no request to GitHub. Task W2 must show it |
 | W1-P2 | How the runner program takes the JIT configuration with no command line that a different user can read | Task B1 must prove one way (a file inside the isolation, or the environment of the one process) |
 | W1-P3 | One contract for results that the model work shares ([jobs.md](../docs/proposals/jobs.md), "Needs") | Not in this version. `result` has only fixed codes, so a later contract can add members |
-| W1-P4 | A work token that is not the daemon token | Not proposed: one token proves one device. The security review (SF-006) proposes a different thing: a key of the device that signs each claim and each request for a secret, so that a stolen token alone gets no secret. Not in this version; the operator decides with SF-006 |
+| W1-P4 | A work token that is not the daemon token | Not proposed: one token proves one device. The security review (SF-006) proposes a different thing: a key of the device that signs each claim and each request for a secret, so that a stolen token alone gets no secret. Not in this version. The operator decided (R-186, 2026-11-18: "A: device list, key later"): the device list now; the key is task W7 of the plan, before a machine that he does not own alone takes work, and it will change this contract with a ruling |
 | W1-P5 | The work types of the model service (OD-C9, R-165) | Each is one more type of the fixed list, added with a ruling. Not in this version |
 
 ## 14. Acceptance
 
 This contract is a proposal until the operator accepts it with a ruling (CON-001). The sentence:
 
-> I accept the work route contract K10, version 0.2, as written in `contracts/work-route.md`, and for each open finding of its security review I accept the state that `docs/security-findings.md` gives.
+> I accept the work route contract K10, version 0.3, as written in `contracts/work-route.md`, and for each open finding of its security review I accept the state that `docs/security-findings.md` gives.
 
 If the operator wants a finding corrected first, the correction changes this text, raises its version, and the sentence then names the new version. After the ruling: the status line of this file changes, the table "Contracts" of [rulings.md](../docs/rulings.md) is not changed (it is the state of Phase 1), K8 gets its one changed sentence, and tasks W3 and W4 can start when task W2 is also accepted.

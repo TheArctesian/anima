@@ -1,21 +1,21 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-139 (operator, 2026-11-17): the update of machines, stages A and B. Stage C (the hub of a server) is deferred and its requirements are marked "Not approved". Version 2 (2026-11-17). Tasks U1 (R-122) and U4 are Done. The other tasks are Not started. OD-ROL-15 is decided (R-158): a release server signs. Version 2.1 (2026-11-18) adds OD-ROL-16, open: the method of the update of a hosted hub.
+evidence: Approved by R-139 (operator, 2026-11-17): the update of machines, stages A and B. Stage C (the hub of a server) is deferred and its requirements are marked "Not approved". Version 2 (2026-11-17). Tasks U1 (R-122) and U4 are Done. The other tasks are Not started. OD-ROL-15 is decided (R-158): a release server signs. Version 2.1 (2026-11-18) adds OD-ROL-16: the method of the update of a hosted hub. Version 2.2 (2026-11-18): OD-ROL-16 is decided (R-189: a volume, a copy, a replacement); ROL-053, ROL-054 and task U13.
 ---
 
 # Plan: update the daemon and the hub on each machine (one press, and automatic)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 2.1. Date: 2026-11-18. Version 2.1 adds the section "The update of a hosted hub" and the open decision OD-ROL-16; it changes no requirement. Version 2 is of 2026-11-17. Version 1 (2026-11-16) was the proposal. Version 2 is the plan: R-139 approves stages A and B, defers stage C, and decides OD-ROL-1 to OD-ROL-14. It adds the section "The hub that the pool runs" and OD-ROL-15.
+Version: 2.2. Date: 2026-11-18. Version 2.2 records R-189 (OD-ROL-16 is decided: option B with three conditions), adds ROL-053 and ROL-054 and task U13, and says what the pool plan must take. Version 2.1 adds the section "The update of a hosted hub" and the open decision OD-ROL-16; it changes no requirement. Version 2 is of 2026-11-17. Version 1 (2026-11-16) was the proposal. Version 2 is the plan: R-139 approves stages A and B, defers stage C, and decides OD-ROL-1 to OD-ROL-14. It adds the section "The hub that the pool runs" and OD-ROL-15.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog
 ([watchdog.md](../proposals/watchdog.md)), and the update of the daemon and the hub.
 Status: the header of this document holds the state (PLN-020). History: a proposal until 2026-11-17. The
 operator decided its tier (OD-W23) and OD-ROL-8 on 2026-11-16, and approved it on 2026-11-17 (R-139).
 A requirement with the words "Not approved" has no ruling and is not built (PLN-007).
 Map: [work-plan.md](../work-plan.md), category Foundation, decision OD-W23.
-Identifiers: ROL-001 to ROL-052. The prefix `UPD` belongs to the desktop application (design
+Identifiers: ROL-001 to ROL-054. The prefix `UPD` belongs to the desktop application (design
 specification Section 3.9) and is not changed here.
 
 ## Problem
@@ -66,7 +66,8 @@ The operator will use only the hosted version (R-130). A hosted hub is a contain
 service makes from an image ([hosted-mode.md](../proposals/hosted-mode.md)). This changes the plan:
 
 - The pool replaces the container of a hosted hub. That work belongs to the pool service in the
-  private repository. This plan does not update a hosted hub.
+  private repository. This plan does not update a hosted hub. The method is decided (R-189): a volume,
+  a copy, a replacement; see "The update of a hosted hub".
 - A hub on the operator's computer updates with the desktop application (ROL-020). That stays.
 - A hub on a server that a person runs (the self-hosted setup of `deploy/`) is updated by hand, as
   today. Stage C, which gave that work to a daemon on the server, is deferred (R-139). Its
@@ -79,9 +80,9 @@ service makes from an image ([hosted-mode.md](../proposals/hosted-mode.md)). Thi
   only makes releases signs, and the VPS hub signs until that server has published one release.
   Task U12 is the move. Task U2 does not wait for the move: the record has the same form in the two places.
 
-## The update of a hosted hub (OD-ROL-16, open)
+## The update of a hosted hub (OD-ROL-16: decided, R-189)
 
-The operator, 2026-11-18, on the fact that a hosted hub has no update path and must be deleted and made again for a new image: "this also needs a better method". His words were typed in a side chat of the orchestrating session; they are relayed here. He selected no method. This section gives the options and what the code of this repository shows. It decides nothing.
+The operator, 2026-11-18, on the fact that a hosted hub has no update path and must be deleted and made again for a new image: "this also needs a better method". His words were typed in a side chat of the orchestrating session; they are relayed here. He selected no method that day. On a question card of the orchestrating session he then selected "B: volume, copy, replace" (R-189, 2026-11-18; relayed). This section gives the options, what the code of this repository shows, and what the decision adds.
 
 Who owns what. The pool service in the private repository makes, replaces and deletes the container of a hosted hub; its method is its own plan. This repository owns what the hub program must permit: where a hub keeps its state, what a newer program does with an older database, and how a copy of the state is made. OD-ROL-16 is the decision for this repository. The pool plan takes its result.
 
@@ -108,15 +109,30 @@ The options:
 | C | The hub updates itself from the release feed, as the desktop application does | No work of the pool for each update | The hub in a container must then replace its own programs: it needs a right that ROL-015 keeps away from the part that speaks to the network, and the container must never get the Docker socket (ROL-019). No image of the hub is published (OD-ROL-3 is deferred). Each hub of each person updates when it wants, with no steps and no copy first |
 | D | Delete and make again, with an export before and an import after | No volume to keep. It is the method of today with one more step | The hub is away for the whole time. The import needs an empty database and each key file of the root. A fault in the middle leaves no hub. The address of the hub and its place on the link can change, so each device joins again unless the export holds the link key |
 
-A side chat recommended option B to the operator on 2026-11-18. He did not answer. The check against the code: the facts agree with B, with three conditions that the recommendation must carry.
+The operator selected option B (R-189). The check against the code: the facts agree with B, with three conditions, and R-189 carries them.
 
 1. The copy is of the whole root, made while the hub is stopped or as an atomic snapshot, with a `pg_dump` in it that `anima-database` can check. The code does not accept a copy of a cluster that runs as a backup.
 2. The way back is the copy. It is not the older image on the new database: the migrations cannot be undone, and no gate proves ROL-034 (task U9). When U9 exists, the older image on the same volume becomes a second, faster way back.
 3. The programs run from the image, not from `programs/current` on the volume. If not, option B becomes option A without the pool knowing.
 
-Recommendation (of the session that wrote this section; not a decision): B, with the three conditions. Build task U9 before the first update of a hub that holds the data of a person who is not the operator. Option A is acceptable only as a step for the hub of the operator alone, before B exists. Options C and D are not recommended.
+Not decided by R-189 (a recommendation of the session that wrote this section): build task U9 before the first update of a hub that holds the data of a person who is not the operator. Options A, C and D are not selected.
 
-What OD-ROL-16 would add to this plan if the operator selects B: one requirement that the state of a hub is below one root and that the programs can run from outside it (true today, to be stated and tested); one command that makes and checks a copy of the whole root; and task U9 moved before the first update at the pool. Stage C (a hub on a server that a person runs) stays deferred (R-139); the same three conditions would apply to it.
+Until option B exists: the operator deletes his own hub by hand and the pool makes it again at his next sign-in (R-189). That is acceptable for his hub only: it is his own hub and he deletes it himself. It is not a method for the hub of a different person.
+
+What R-189 adds to this plan: the requirements ROL-053 and ROL-054 (in "Requirements", "The copy of a hub before its replacement") and task U13. Stage C (a hub on a server that a person runs) stays deferred (R-139); the same three conditions would apply to it.
+
+What the pool plan must take. The pool service is in the private repository, and no session of this repository changes it. Its plan must take these points from this section:
+
+1. One volume for each hosted hub, at the root that the pool gives with `--root`. Each thing that must stay is below that root: the database cluster, the vault key, the sealing keys, the sealed files, the state of the link with its key, the logs.
+2. Before each update: stop the hub, make a copy of the whole root, and make sure that the copy holds a dump that `anima-database` can check (ROL-054 gives the command). A copy of a hub that runs is not a copy, unless the provider makes an atomic snapshot.
+3. The programs of the hub run from the image, not from `programs/current` below the root (ROL-053). If not, a new image does not change the programs.
+4. The way back is the copy on a new volume, with the older image. It is not the older image on the volume that the new hub has used: the migrations go one way.
+5. The update goes in steps: one hub, a check that it answers and that its machines are connected, then the others (as ROL-023, ROL-026 and ROL-027 for machines).
+6. A new image with a different PostgreSQL major version cannot start on the old volume. That case needs a dump and a restore, with each method.
+7. A hub that has no volume of its own today needs one move first. For the hub of the operator the move is the deletion of point "Until option B exists".
+8. A hub must keep its address and its link key through an update, so that its devices stay joined. A copy of the whole root gives that.
+
+Two facts of the pool of 2026-11-18, as the orchestrating session relayed them (not seen by a session of this repository): the image of a hosted hub is `anima-hub-2ba73005`; and the operator deleted his hub `h6opknk7w29jw56jqd0kc` that day (the pool answered 200). A new hub is made at his next sign-in, which he has not reported.
 
 ## Requirements
 
@@ -272,6 +288,15 @@ What OD-ROL-16 would add to this plan if the operator selects B: one requirement
   The actor kind of a rollout from the press is User. The actor kind of an automatic rollout is
   Hub (LOG-013). An API key must not start a rollout (OD-ROL-9).
 
+### The copy of a hub before its replacement (R-189)
+
+- **ROL-053.** A hub must keep each file of its state below one root, and its programs must be
+  able to run from a place that is not below that root. A test must prove the two parts. (True
+  in the code of 2026-11-18; not stated and not tested before.)
+- **ROL-054.** One command must make a copy of the whole root of a stopped hub, with a dump of the
+  database in it, and one command must check a copy: each part is present and the dump can be
+  read. The command must refuse a hub that runs. It must write no key and no secret to its output.
+
 ## In the client
 
 The build order is CMD-030: the hub API, the `anima` command, the MCP tool, then the client.
@@ -344,7 +369,7 @@ programs. The operator must accept this again, or select a second key (OD-ROL-2)
 | OD-ROL-13 | On a computer that has the desktop application, who updates the daemon: the rollout, or the application when it updates itself | The rollout only. The application installs the daemon only when the computer has none (MET-019). Two updaters for one program can roll each other back. | Decided (R-139): the rollout only. |
 | OD-ROL-14 | Is the desktop application part of a rollout? | No. UPD-001 to UPD-006 stay. The application installs with no prompt and waits for "Restart to update". | Decided (R-139): no. |
 | OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), which place holds the key and signs? The options A to E, with their risks, are in [release-four-platforms.md](../proposals/release-four-platforms.md) Section 5: (A) the VPS hub stays; (B) a small server that only makes releases, apart from the pool; (C) a server of the pool or a hosted hub; (D) the account service; (E) the computer of the operator. | Version 2 of this plan recommended: the VPS hub stays (option A), until a different design is approved. A hosted hub is on a server that it shares with the hubs of other persons, and its key would sign a program for each machine of each person. Task U2 waits for this decision. | Decided (R-158, operator, 2026-11-18: "B: release server"): option B. A small server that only makes releases holds the updater key and signs. It is at Hetzner and is not a host of the pool. The hub on the VPS signs until that server has published one release; then the VPS hub can go away. One updater key, moved one time; no new key. Task U12 is the move. |
-| OD-ROL-16 | A hosted hub has no update path: for a new image the pool deletes it and makes it again. The operator (2026-11-18): "this also needs a better method". Which method must the hub program of this repository support? The options A to D, with what the code shows, are in "The update of a hosted hub": (A) the pool puts new programs into the container that runs; (B) the state of a hub is on a volume of its own, the container is replaced, with a copy before each update and a rollout in steps; (C) the hub updates itself from the release feed; (D) delete and make again, with an export and an import. | B, with three conditions: the copy is of the whole root of a stopped hub or an atomic snapshot, with a `pg_dump` that can be checked; the way back is the copy, because the migrations go one way and no gate proves ROL-034 (task U9); the programs run from the image and not from the volume. | Open. A side chat recommended B on 2026-11-18 and the operator did not answer. |
+| OD-ROL-16 | A hosted hub has no update path: for a new image the pool deletes it and makes it again. The operator (2026-11-18): "this also needs a better method". Which method must the hub program of this repository support? The options A to D, with what the code shows, are in "The update of a hosted hub": (A) the pool puts new programs into the container that runs; (B) the state of a hub is on a volume of its own, the container is replaced, with a copy before each update and a rollout in steps; (C) the hub updates itself from the release feed; (D) delete and make again, with an export and an import. | B, with three conditions: the copy is of the whole root of a stopped hub or an atomic snapshot, with a `pg_dump` that can be checked; the way back is the copy, because the migrations go one way and no gate proves ROL-034 (task U9); the programs run from the image and not from the volume. | Decided (R-189, operator, 2026-11-18: "B: volume, copy, replace"), with the three conditions. Until it exists he deletes his own hub by hand. ROL-053, ROL-054, task U13. |
 
 The tier of this proposal is decision OD-W23 of the work plan.
 
@@ -366,6 +391,7 @@ U1 and U4 are done. The other tasks are not started. The states obey PLN-007.
 | U10 | Stage C: the image of the hub in the release, the replacement of the hub with the backup and the check (ROL-019, ROL-033, ROL-035). | Deferred (R-139): not approved. U6, U9; FND-006; the operator for the first installation on the VPS (VPS-005) | Not started | — |
 | U11 | The security review of the update. | U6; then U10 | Not started | — |
 | U12 | (2026-11-18: R-173 says that the job of a release workflow signs, with the updater key as a secret of GitHub. What the release server is still for is OD-W34 of the work plan. Do not build this task before that answer.) The place that signs moves as OD-ROL-15 decides. An agent writes the procedure in `deploy/README.md` and in [releases.md](../procedures/releases.md): the set-up of the place, the two secret files of the updater key, the R2 token, the check that publishing is on, and how a builder connects to it. The operator moves the key and the token (UPD-012); an agent never reads them. One release is published from the new place before the old place is stopped. | R-158 names this task. The operator: the new server, each change to a server (VPS-005), and the move of the key and the token (UPD-012). An agent can write the procedure before the server exists | An entry in [need-human-testing.md](../need-human-testing.md): the start log of the new place shows publishing on, one release is published from it, and an installed application updates to it. | Not started | — |
+| U13 | The hub side of the update of a hosted hub (R-189; ROL-053, ROL-054): the test that the state is below one root and that the programs run from outside it; the command that makes a copy of the whole root of a stopped hub, and the command that checks a copy, in `anima-local-hub` with `anima-database` for the dump. It is a command of the hub programs on a server, not a function of the hub API, so no `anima` command and no MCP tool (CMD-030). The pool work is in the private repository and is not this task. | R-189 names this task | The gates: a copy of a stopped hub passes the check; a copy with a missing key file or a broken dump fails it; the command refuses a hub that runs; a hub started on the copy with the same programs reads its data. | Not started | — |
 
 The release record in [releases.md](../procedures/releases.md) holds what is released. The macOS releases 0.2.0 and 0.2.1 do not have U1: its commits are not in them. Thus no machine has a released daemon that reports its version, and ROL-044 applies only to the daemons that the operator built by hand. The next release carries U1.
 U1 and U3 need no release. U2 and each later task need a release for their target.

@@ -44,7 +44,6 @@ that owns the area.
 | SF-010 | The log of a job carries text to the client and to an AI agent | Work route (contract K10, not built) | Open |
 | SF-011 | A device can hold the queue | Work route (contract K10, not built) | Open |
 | SF-012 | The log of the machine could not check the hub | Work route (contract K10, not built) | Open |
-| SF-013 | A job can take its machine out of work | Work route (contract K10, not built) | Open |
 | SF-014 | The hub can name an old runner program | Work route (contract K10, not built) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
@@ -148,7 +147,7 @@ Effect, and who can cause it: A person who controls the hub, with nothing else. 
 
 Mitigation now: Version 0.2 says this in plain words in Section 3. It adds a list of owners and repositories that the owner of a machine can set at the machine, and the check of the JIT configuration if task B1 shows that it can be read. The isolation of task W2 is the limit.
 
-State: Open. It needs the operator: the rest of the risk is the cost of OD-W10 and R-160, and only he can accept it. Recommendation: accept, with the list at the machine.
+State: Open. The operator decided on 2026-11-18 (R-185: "A: allow-list at machine"): he accepts that the hub selects the repository, with the list at the machine. The owner of each machine lists the owners and the repositories of GitHub that it builds; the machine refuses each other item, and a machine with no list refuses each item that names a repository. Version 0.3 of the contract has this rule. No code exists: task W4 builds the list and its test. The entry stays Open until then; only the operator closes it.
 
 ### SF-004: A job can take the daemon token through the port of the link
 
@@ -190,7 +189,7 @@ Effect, and who can cause it: A second machine that is enrolled at the hub, or a
 
 Mitigation now: Version 0.2: the operator names the devices that get items with secrets for each project, and the placement and the secret route check it. The audit entry of each release stays. Not in the text: a key of the device that signs each request, so that a token alone is not sufficient.
 
-State: Open. It needs the operator: accept the bearer token with the device list, or ask for the device key before code. Recommendation: the device list now, the device key as a task before a machine that he does not own alone takes work.
+State: Open. The operator decided on 2026-11-18 (R-186: "A: device list, key later"): the device list for each project now (task W3 builds it), and the key of the device that signs each request as task W7 of [projects-and-builds-plan.md](plans/projects-and-builds-plan.md), before a machine that he does not own alone takes work. No code exists. The entry stays Open until the list is built and tested; the key is then the rest of the finding.
 
 ### SF-007: The switch at the machine depended on the hub
 
@@ -276,20 +275,6 @@ Mitigation now: Version 0.2: the entry is written before the start, also for a r
 
 State: Open. The text is changed; no code exists.
 
-### SF-013: A job can take its machine out of work
-
-Requirements: task W1; [work-route.md](../contracts/work-route.md). Severity: Low.
-
-What it is: A job that makes the clean-up fail leaves the machine `unclean` until its owner acts. With warm runners on a public repository, one pull request from a fork for each machine does it.
-
-Where: [work-route.md](../contracts/work-route.md), Section 9.
-
-Effect, and who can cause it: The author of a job. Effect: no machine takes work.
-
-Mitigation now: None in the contract: a machine that is not clean must not take the next job. The isolation of task W2 and the approval rule of GitHub (F18) are the controls. Version 0.2 says so.
-
-State: Open. It needs the operator. Recommendation: accept.
-
 ### SF-014: The hub can name an old runner program
 
 Requirements: task W1; [work-route.md](../contracts/work-route.md). Severity: Note.
@@ -306,4 +291,20 @@ State: Open. The text is changed; no code exists.
 
 ## Closed
 
-None.
+| Entry | Subject | Area | State |
+| --- | --- | --- | --- |
+| SF-013 | A job can take its machine out of work | Work route (contract K10, not built) | Accepted (R-187) |
+
+### SF-013: A job can take its machine out of work
+
+Requirements: task W1; [work-route.md](../contracts/work-route.md). Severity: Low.
+
+What it is: A job that makes the clean-up fail leaves the machine `unclean` until its owner acts. With warm runners on a public repository, one pull request from a fork for each machine does it.
+
+Where: [work-route.md](../contracts/work-route.md), Section 9.
+
+Effect, and who can cause it: The author of a job. Effect: no machine takes work.
+
+Mitigation now: None in the contract: a machine that is not clean must not take the next job. The isolation of task W2 and the approval rule of GitHub (F18) are the controls. Version 0.2 says so.
+
+State: Accepted (operator, 2026-11-18, R-187: "A: accept"; relayed by the orchestrating session). The reason: a machine that could not clean up must take no more work until its owner clears it, and the other choice, a machine that takes the next job when it is not clean, is worse. The controls stay the isolation of task W2 and the approval rule of GitHub (F18).
