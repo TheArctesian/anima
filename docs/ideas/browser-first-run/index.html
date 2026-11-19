@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect your first device · Anima.ing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@200;400;500&display=swap">
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="desktop.css">
+<link rel="stylesheet" href="browser.css">
+<link rel="stylesheet" href="hub.css">
+<script src="particle-door.js" defer></script>
+<script src="icons.js" defer></script>
+<script src="hub.js" defer></script>
+<script src="walkthrough.js" defer></script>
+</head>
+<body>
+<header>
+  <a class="brand" href="#sign-in"><img src="logo.svg" width="22" height="22" alt="">Anima.ing</a>
+</header>
+<main class="section">
+  <div class="layout">
+    <div>
+      <section id="sign-in" data-screen>
+        <h1 tabindex="-1">Sign in to Anima.ing</h1>
+        <p class="lead">One account for your hub and every machine on it.</p>
+        <div class="methods">
+          <a class="action" href="#github-verify"><span class="icon icon-sm" data-icon="simple-icons:github"></span>Continue with GitHub</a>
+          <a class="action" href="#hub"><span class="icon icon-sm" data-icon="simple-icons:apple"></span>Continue with Apple</a>
+          <button class="action" type="button" disabled><span class="icon icon-sm" data-icon="simple-icons:google"></span>Continue with Google <small>Coming soon</small></button>
+        </div>
+        <form data-next="email-code">
+          <label class="field">Email
+            <input type="email" placeholder="you@example.com" required maxlength="254" autocomplete="off">
+          </label>
+          <button class="action" type="submit">Continue with email</button>
+        </form>
+      </section>
+
+      <section id="github-verify" data-screen hidden>
+        <h1 tabindex="-1">Verify your email</h1>
+        <p class="lead">Enter the code sent to your email address.</p>
+        <form data-next="hub">
+          <label class="field">Verification code
+            <input inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+          </label>
+          <button class="action" type="submit">Verify email</button>
+        </form>
+      </section>
+
+      <section id="email-code" data-screen hidden>
+        <h1 tabindex="-1">Check your email</h1>
+        <p class="lead">Enter the one-time code sent to your email address.</p>
+        <form data-next="authenticator">
+          <label class="field">Sign-in code
+            <input inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+          </label>
+          <button class="action" type="submit">Continue</button>
+        </form>
+      </section>
+
+      <section id="authenticator" data-screen hidden>
+        <h1 tabindex="-1">Enter your authenticator code</h1>
+        <p class="lead">Use the six-digit code from your authenticator app.</p>
+        <form data-next="hub">
+          <label class="field">Authenticator code
+            <input inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+          </label>
+          <button class="action" type="submit">Verify code</button>
+        </form>
+      </section>
+
+      <section id="hub" data-screen hidden>
+        <div class="hub-label"><span class="hub-mark"><img src="logo.svg" width="20" height="20" alt=""></span><div><strong>Personal hub</strong><small>Free plan</small></div></div>
+        <h1 tabindex="-1" id="hub-title">Connect your first device</h1>
+        <p class="lead" id="hub-intro">Bring a computer or server into your hub. Start setup while your hub starts.</p>
+        <div class="first-use" id="first-use" hidden>
+          <button class="action" type="button" id="open-terminal" aria-expanded="false" aria-controls="terminal-session">Open a terminal</button>
+          <button class="quiet" type="button" id="add-device" aria-controls="setup" aria-expanded="false">Add another device</button>
+          <button class="quiet" type="button" data-show-path="mcp">Set up MCP</button>
+          <div class="terminal-session" id="terminal-session" hidden>
+            <small>Terminal preview</small><p id="terminal-destination"></p>
+          </div>
+        </div>
+        <div id="setup">
+          <div class="path-picker" role="group" aria-label="Connection method">
+            <button type="button" data-path="cli" aria-pressed="true" aria-controls="cli-path"><span class="icon icon-sm" data-icon="carbon:terminal"></span>CLI</button>
+            <button type="button" data-path="app" aria-pressed="false" aria-controls="app-path"><span class="icon icon-sm" data-icon="carbon:application"></span>Connect an app</button>
+            <button type="button" data-path="mcp" aria-pressed="false" aria-controls="mcp-path"><span class="icon icon-sm" data-icon="simple-icons:modelcontextprotocol"></span>MCP</button>
+          </div>
+
+          <p id="copy-feedback" role="status" hidden></p>
+          <div class="setup-panel" id="cli-path">
+            <div class="setup-heading">
+              <h2>Install the Anima CLI</h2>
+              <label class="target-label"><span class="visually-hidden">CLI install target</span>
+                <select id="cli-target"><option value="mac">macOS</option><option value="linux-x64">Linux x86-64</option><option value="linux-arm">Linux ARM64</option></select>
+              </label>
+            </div>
+            <p>Use the terminal on the machine you want to connect.</p>
+            <div class="copy-line">
+              <code id="installer-sample"># Preview installer for macOS</code>
+              <button class="copy" type="button" data-copy="installer-sample">Copy install command</button>
+            </div>
+            <small class="preview-note">Installer preview. This copies a placeholder comment.</small>
+            <ol class="cli-steps">
+              <li>Sign in in your browser when the CLI asks.</li>
+              <li>Return to your terminal. Setup resumes there.</li>
+            </ol>
+            <div class="inset" id="cli-handoff" role="group" aria-label="Terminal sign-in preview" hidden>
+              <p><strong id="handoff-title"></strong></p>
+              <p id="handoff-instructions" tabindex="-1" role="status"></p>
+              <button class="action" type="button" id="approve-cli" hidden>Authorize terminal</button>
+            </div>
+            <div class="server-options">
+              <button class="quiet" type="button" aria-expanded="false" aria-controls="server-panel">Connecting a server?</button>
+              <div id="server-panel" class="inset" hidden>
+                <button class="quiet" type="button" id="use-server">Connect a server I already have</button>
+                <button class="quiet" type="button" aria-expanded="false" aria-controls="vps-panel">Create a new VPS</button>
+                <div id="vps-panel" hidden>
+                  <h3>Review a new VPS</h3>
+                  <dl><div><dt>Provider</dt><dd>Unavailable in preview</dd></div><div><dt>Recurring price</dt><dd>Quote required</dd></div></dl>
+                  <p>Creating a VPS requires a provider quote and your confirmation of the price.</p>
+                  <button class="action" type="button" disabled>Confirm and create VPS</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-panel" id="app-path" hidden>
+            <h2 id="app-title">Connect with the Anima app</h2>
+            <div id="local-app" hidden>
+              <p>Sign in to the app to connect this device.</p>
+              <button class="action" type="button" id="open-app">
+                <span class="icon icon-sm" id="app-platform-icon"></span>Install or open Anima
+              </button>
+            </div>
+            <button class="quiet" type="button" id="share-app" aria-expanded="false" aria-controls="share-panel">
+              Set up on another device<span class="icon icon-sm" data-icon="carbon:chevron-down"></span>
+            </button>
+            <div id="share-panel" hidden>
+              <label class="app-platform" for="app-target">Platform on the other device</label>
+              <select id="app-target">
+                <option value="">Choose a platform</option><option value="mac">macOS</option><option value="linux">Linux</option><option value="ios">iOS</option><option value="android">Android</option>
+              </select>
+              <div class="share-code" id="share-code" hidden>
+                <img src="app-handoff-qr.png" width="92" height="92" alt="QR code for the sample app setup link">
+                <div>
+                  <p>Scan the QR code or open the sample link on the other device.</p>
+                  <code id="app-handoff-link" hidden>https://anima.invalid/connect/demo</code>
+                  <button class="copy" type="button" data-copy="app-handoff-link"><span class="icon icon-sm" data-icon="carbon:copy"></span>Copy sample link</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-panel" id="mcp-path" hidden>
+            <h2>Connect an AI client with MCP</h2>
+            <p>Use your Anima hub from a client that supports local MCP servers, such as Codex or Claude Desktop.</p>
+            <ol class="cli-steps">
+              <li>Install the Anima CLI and sign in to your hub.</li>
+              <li>In your AI client’s MCP settings, add a local server with the command below.</li>
+            </ol>
+            <div class="copy-line"><code id="mcp-command">anima mcp</code><button class="copy" type="button" data-copy="mcp-command">Copy MCP command</button></div>
+            <small class="preview-note">MCP uses the CLI session. Hosted browser sign-in is proposed.</small>
+            <button type="button" class="quiet" data-show-path="cli">Go to CLI setup</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="desktop" data-screen class="desktop" hidden>
+        <div class="frame gd">
+          <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
+          <h1 tabindex="-1">Sign in</h1>
+          <div class="step"><h2>Continue in your browser</h2><p class="line">Check that the browser shows this code.</p>
+            <p class="code">WDJB-MJHT</p><div class="actions"><a href="#hub">Back</a><a class="button" href="#device-code">Open the page</a></div></div>
+        </div>
+      </section>
+
+      <section id="device-code" data-screen hidden>
+        <h1 tabindex="-1">Connect this computer</h1>
+        <p class="lead">Check that this code matches the one in Anima.ing.</p>
+        <p class="sample-code">WDJB-MJHT</p>
+        <div class="handoff"><a class="action" href="#connecting">Confirm code</a></div>
+      </section>
+
+      <section id="connecting" data-screen class="desktop" hidden>
+        <div class="frame gd">
+          <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
+          <h1 tabindex="-1">Sign in</h1>
+          <div class="step"><h2>Connecting</h2><p class="line">Connecting this computer to your hub.</p><div class="actions"><a href="#hub">Back to your hub</a></div></div>
+        </div>
+      </section>
+
+      <section id="connected" data-screen class="desktop" hidden>
+        <div class="frame gd">
+          <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
+          <h1 tabindex="-1">Devices</h1>
+          <ul class="device-list">
+            <li><span id="native-device">MacBook Pro</span><span class="device-status">Online</span></li>
+          </ul>
+          <div class="actions"><a href="#hub">Back to your hub</a></div>
+        </div>
+      </section>
+    </div>
+    <aside class="hub-side">
+      <div class="door-stage">
+        <canvas id="doors" class="doors" aria-hidden="true"></canvas>
+        <div class="hub-status" id="hub-status" role="status" hidden><span class="status-dot" aria-hidden="true"></span><span id="hub-state">Hub starting</span></div>
+      </div>
+      <section class="devices" id="hub-devices" aria-labelledby="devices-title" hidden>
+        <div class="devices-heading"><h2 id="devices-title">Devices</h2><span id="device-count">0 online</span></div>
+        <ul id="machine-list" aria-label="Hub devices"></ul>
+        <template id="machine-row">
+          <li class="machine">
+            <span class="machine-icon icon"></span>
+            <div class="machine-name"><strong></strong><small></small></div>
+            <span class="machine-status"><span class="status-dot" aria-hidden="true"></span><span class="machine-state"></span></span>
+          </li>
+        </template>
+        <p class="visually-hidden" id="machine-announcement" role="status"></p>
+      </section>
+    </aside>
+  </div>
+</main>
+<footer class="review">
+  <div class="demo-controls">
+    <strong>Preview controls</strong>
+    <button type="button" data-demo="reset">New signup</button>
+    <button type="button" data-demo="return">Returning user</button>
+    <button type="button" data-demo="ready" hidden>Simulate hub ready</button>
+    <button type="button" data-demo="cli" hidden>Simulate CLI browser sign-in</button>
+    <button type="button" data-demo="online" hidden>Simulate machine online</button>
+    <button type="button" data-demo="app-open" hidden>Simulate opening link on other device</button>
+    <button type="button" data-demo="app-online" hidden>Simulate app online</button>
+  </div>
+  <p id="review-note" aria-live="polite">
+    <span data-note="sign-in">Proposed browser flow. GitHub returns through hosted AuthKit. Google public launch is pending. For the email preview, use <code>you@example.com</code>.</span>
+    <span data-note="github-verify" hidden>Hosted AuthKit after GitHub returns. WorkOS requests this code only if the email address needs verification. <a href="#hub">Preview the return with an already verified email</a>. Use any six digits in this preview.</span>
+    <span data-note="email-code" hidden>Hosted AuthKit email sign-in. The one-time sign-in code also verifies the email address. Use any six digits in this preview.</span>
+    <span data-note="authenticator" hidden>Proposed email policy. Hosted AuthKit guides people through first-time authenticator setup when needed. The policy and how social sign-ins meet the second-factor requirement still need verification. Use any six digits in this preview.</span>
+    <span data-note="hub" hidden>Local prototype. Hub provisioning, hosted CLI sign-in and machine enrollment are simulated. App setup uses a sample link and simulated installs. VPS pricing requires provider details.</span>
+    <span data-note="google-test" hidden>Simulated Google test return. Google verifies email automatically. Public launch and social MFA policy are pending. The hub destination is proposed.</span>
+    <span data-note="desktop" hidden>After opening Anima.ing, choose Sign in. This frame is the browser handoff from the approved desktop board.</span>
+    <span data-note="device-code" hidden>Device authorization in the browser. Complete any account sign-in steps that the browser requires, then return to the desktop app.</span>
+    <span data-note="connecting" hidden>The desktop flow waits for this computer to report online. Use the preview event below.</span>
+    <span data-note="connected" hidden>The desktop app opens Devices after connecting.</span>
+  </p>
+  <nav aria-label="Mockup review">
+    <a href="#sign-in">Sign-in choices</a>
+    <a href="#google-test">Preview Google test return</a>
+    <a href="../../mockup/first-run/index.html">Approved desktop board</a>
+  </nav>
+</footer>
+</body>
+</html>
