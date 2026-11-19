@@ -39,8 +39,8 @@ const DIGESTS_FORMAT: &str = concat!(
 
 /// The most different tags one read asks the registries for.
 pub(super) const MOST_TAGS: usize = 40;
-/// The longest all the reads of the registries may take together.
-const REGISTRIES_LIMIT: Duration = Duration::from_secs(30);
+/// The longest the read of one tag may take: the token and the manifest.
+const READ_LIMIT: Duration = Duration::from_secs(25);
 
 /// Whether a newer image exists for one container.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -95,7 +95,9 @@ enum Line {
 pub(super) struct Found {
     /// `(identifier, name, image)` of each container, in Docker's order.
     containers: Vec<(String, String, String)>,
-    digests: HashMap<Reference, String>,
+    /// The digests of each tag. Docker can keep more than one for a tag, for example when
+    /// an index was published again with the same image.
+    digests: HashMap<Reference, Vec<String>>,
 }
 
 /// Reads the answer of [`command`].
@@ -127,7 +129,7 @@ pub(super) fn found(output: &CommandOutput) -> Result<Found, Error> {
             } => {
                 let place = named(&format!("{repository}:{tag}"));
                 if let (Named::Tag(reference), true) = (place, is_digest(&digest)) {
-                    read.digests.insert(reference, digest);
+                    read.digests.entry(reference).or_default().push(digest);
                 }
             }
         }
@@ -194,28 +196,35 @@ fn not_known(reason: NotKnown, local: Option<String>) -> Verdict {
     (UpdateState::NotKnown, Some(reason), local, None)
 }
 
-/// The verdict for a tag the device has the digest `local` for.
-fn judged(local: &str, read: Option<&Result<String, FetchError>>) -> Verdict {
-    let mine = Some(local.to_owned());
+/// The verdict for a tag the device has the digests `local` for: up to date when the
+/// registry gives one of them.
+fn judged(local: &[String], read: Option<&Result<String, FetchError>>) -> Verdict {
+    let first = local.first().cloned();
     match read {
-        Some(Ok(remote)) if remote == local => {
-            (UpdateState::UpToDate, None, mine, Some(remote.clone()))
-        }
-        Some(Ok(remote)) => (UpdateState::NewerImage, None, mine, Some(remote.clone())),
-        Some(Err(FetchError::NotThere)) => not_known(NotKnown::NotAtRegistry, mine),
-        Some(Err(FetchError::Failed)) | None => not_known(NotKnown::RegistryNotRead, mine),
+        Some(Ok(remote)) if local.contains(remote) => (
+            UpdateState::UpToDate,
+            None,
+            Some(remote.clone()),
+            Some(remote.clone()),
+        ),
+        Some(Ok(remote)) => (UpdateState::NewerImage, None, first, Some(remote.clone())),
+        Some(Err(FetchError::NotThere)) => not_known(NotKnown::NotAtRegistry, first),
+        Some(Err(FetchError::Failed)) | None => not_known(NotKnown::RegistryNotRead, first),
     }
 }
 
 /// Asks the registries for each wanted tag, all at the same time, and gives the answer for
-/// each container. A registry that does not answer in [`REGISTRIES_LIMIT`] is not read.
+/// each container. A read that does not end in [`READ_LIMIT`], the look-up of its host
+/// included, is a registry that was not read; the other reads keep their answers.
 pub(super) async fn compare(found: Found, egress: &Egress) -> Vec<ImageUpdate> {
     let wanted = found.wanted();
-    let asked = join_all(wanted.iter().map(|reference| egress.digest(reference)));
+    let answers = join_all(wanted.iter().map(|reference| async move {
+        tokio::time::timeout(READ_LIMIT, egress.digest(reference))
+            .await
+            .unwrap_or(Err(FetchError::Failed))
+    }))
+    .await;
     let read: HashMap<Reference, Result<String, FetchError>> =
-        match tokio::time::timeout(REGISTRIES_LIMIT, asked).await {
-            Ok(answers) => wanted.into_iter().zip(answers).collect(),
-            Err(_) => HashMap::new(),
-        };
+        wanted.into_iter().zip(answers).collect();
     found.compared(&read)
 }

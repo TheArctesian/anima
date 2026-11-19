@@ -105,6 +105,31 @@ impl Egress {
         origin.join(path).map_err(|_| FetchError::Failed)
     }
 
+    /// Where the manifest of `reference` is.
+    pub(in crate::work::containers) fn manifest_url(
+        &self,
+        reference: &Reference,
+    ) -> Result<Url, FetchError> {
+        let path = format!("/v2/{}/manifests/{}", reference.repository, reference.tag);
+        self.url(reference.registry.host(), &path)
+    }
+
+    /// Where `reference` gets its token; `None` for a registry that asks for none.
+    pub(in crate::work::containers) fn token_url(
+        &self,
+        reference: &Reference,
+    ) -> Result<Option<Url>, FetchError> {
+        let Some((host, path, service)) = reference.registry.token() else {
+            return Ok(None);
+        };
+        let scope = format!("repository:{}:pull", reference.repository);
+        let mut url = self.url(host, path)?;
+        url.query_pairs_mut()
+            .append_pair("service", service)
+            .append_pair("scope", &scope);
+        Ok(Some(url))
+    }
+
     /// The digest the registry gives now for the tag of `reference`.
     ///
     /// # Errors
@@ -114,20 +139,11 @@ impl Egress {
         &self,
         reference: &Reference,
     ) -> Result<String, FetchError> {
-        let registry = reference.registry;
-        let token = match registry.token() {
-            Some((host, path, service)) => {
-                let scope = format!("repository:{}:pull", reference.repository);
-                let mut url = self.url(host, path)?;
-                url.query_pairs_mut()
-                    .append_pair("service", service)
-                    .append_pair("scope", &scope);
-                Some(self.token(url).await?)
-            }
+        let token = match self.token_url(reference)? {
+            Some(url) => Some(self.token(url).await?),
             None => None,
         };
-        let path = format!("/v2/{}/manifests/{}", reference.repository, reference.tag);
-        let url = self.url(registry.host(), &path)?;
+        let url = self.manifest_url(reference)?;
         let mut request = self
             .pinned_client(&url)
             .await?
@@ -160,12 +176,9 @@ impl Egress {
             .send()
             .await
             .map_err(|_| FetchError::Failed)?;
-        match response.status() {
-            StatusCode::OK => {}
-            StatusCode::NOT_FOUND | StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
-                return Err(FetchError::NotThere);
-            }
-            _ => return Err(FetchError::Failed),
+        // A token endpoint that refuses says nothing of the image: the registry was not read.
+        if response.status() != StatusCode::OK {
+            return Err(FetchError::Failed);
         }
         let mut body = Vec::new();
         while let Some(chunk) = response.chunk().await.map_err(|_| FetchError::Failed)? {

@@ -122,12 +122,11 @@ async fn host_021_a_private_or_unknown_tag_is_not_there_and_no_redirect_is_follo
 #[tokio::test]
 async fn host_021_a_registry_at_an_address_the_policy_refuses_is_not_connected_to() {
     let registry = registry().await;
-    // The default policy refuses loopback, where the stand-in listens.
-    let origin = format!("https://localhost:{}/", registry.port())
-        .parse()
-        .unwrap();
-    let refused = Egress::new(crate::fleet::targets::AddressPolicy::default())
-        .standing_in(origin, Vec::new());
+    // The same server and the same trusted certificate as the tests that reach it: only the
+    // policy differs. The default policy refuses loopback, where the stand-in listens.
+    let (origin, root) = registry.place();
+    let refused =
+        Egress::new(crate::fleet::targets::AddressPolicy::default()).standing_in(origin, root);
     assert_eq!(
         refused.digest(&reference("alpine:3")).await,
         Err(FetchError::Failed)
@@ -203,11 +202,7 @@ async fn host_021_each_container_has_the_answer_for_the_tag_it_names() {
             UpdateState::NotKnown,
             Some(NotKnown::OtherRegistry),
         ),
-        (
-            "by-id",
-            UpdateState::NotKnown,
-            Some(NotKnown::NoLocalDigest),
-        ),
+        ("by-id", UpdateState::NotKnown, Some(NotKnown::NoName)),
         (
             "secret",
             UpdateState::NotKnown,
@@ -247,6 +242,84 @@ async fn host_021_a_registry_that_is_not_read_is_no_error_and_one_tag_is_asked_f
     assert_eq!(read[0].local_digest.as_deref(), Some(OLD));
     // `alpine:3` of two containers: one token request. The private tag: one more.
     assert_eq!(registry.heads().len(), 2);
+}
+
+#[tokio::test]
+async fn host_021_a_tag_with_two_digests_is_up_to_date_when_the_registry_gives_one_of_them() {
+    let registry = registry().await;
+    // Docker writes one line for each digest it keeps for a tag. The registry gives OLD for
+    // `alpine:3` and NEW for `freikin/dawarich`; each is the second digest of its tag here.
+    let more = concat!(
+        r#"{"kind":"image","repository":"alpine","tag":"3","digest":"NEW"}"#,
+        "\n",
+        r#"{"kind":"image","repository":"freikin/dawarich","tag":"latest","digest":"NEW"}"#,
+        "\n",
+    )
+    .replace("NEW", NEW);
+    let found = updates::found(&output(&format!("{}{more}", listed()), 0)).unwrap();
+    let read = updates::compare(found, &registry.egress()).await;
+    assert_eq!(
+        (read[0].state, read[0].local_digest.as_deref()),
+        (UpdateState::UpToDate, Some(OLD))
+    );
+    assert_eq!(
+        (read[1].state, read[1].local_digest.as_deref()),
+        (UpdateState::UpToDate, Some(NEW))
+    );
+}
+
+#[tokio::test]
+async fn host_021_a_token_endpoint_that_refuses_is_a_registry_that_was_not_read() {
+    let registry = serve(|_, _| answer("403 Forbidden", "")).await;
+    let read = registry.egress().digest(&reference("alpine:3")).await;
+    assert_eq!(read, Err(FetchError::Failed));
+}
+
+#[test]
+fn host_021_each_request_goes_to_the_fixed_host_of_the_registry_of_the_name() {
+    let egress = Egress::new(crate::fleet::targets::AddressPolicy::default());
+    let places = |image: &str| {
+        let reference = reference(image);
+        let token = egress.token_url(&reference).unwrap().map(String::from);
+        (
+            token,
+            String::from(egress.manifest_url(&reference).unwrap()),
+        )
+    };
+    let scope = "scope=repository%3Alibrary%2Falpine%3Apull";
+    assert_eq!(
+        places("alpine:3"),
+        (
+            Some(format!(
+                "https://auth.docker.io/token?service=registry.docker.io&{scope}"
+            )),
+            "https://registry-1.docker.io/v2/library/alpine/manifests/3".to_owned()
+        )
+    );
+    assert_eq!(
+        places("ghcr.io/a/b.c:v1_x"),
+        (
+            Some(
+                "https://ghcr.io/token?service=ghcr.io&scope=repository%3Aa%2Fb.c%3Apull"
+                    .to_owned()
+            ),
+            "https://ghcr.io/v2/a/b.c/manifests/v1_x".to_owned()
+        )
+    );
+    assert_eq!(
+        places("quay.io/prometheus/prometheus"),
+        (
+            None,
+            "https://quay.io/v2/prometheus/prometheus/manifests/latest".to_owned()
+        )
+    );
+    assert_eq!(
+        places("mcr.microsoft.com/dotnet/runtime:8.0"),
+        (
+            None,
+            "https://mcr.microsoft.com/v2/dotnet/runtime/manifests/8.0".to_owned()
+        )
+    );
 }
 
 #[test]

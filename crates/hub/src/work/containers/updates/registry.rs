@@ -97,6 +97,14 @@ fn tag_ok(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte))
 }
 
+/// True for what Docker shows when a container has no name for its image: `sha256:` and
+/// digits, or 12 or more hex digits alone.
+fn is_identifier(image: &str) -> bool {
+    let digits = image.strip_prefix("sha256:");
+    let hex = |text: &str| text.bytes().all(|byte| byte.is_ascii_hexdigit());
+    digits.is_some() || (image.len() >= 12 && hex(image))
+}
+
 /// Reads an image name as Docker does: `[host[:port]/]repository[:tag][@digest]`. The first
 /// part is a host when it has a dot or a colon or is `localhost`; with no host the registry
 /// is Docker Hub, and a Docker Hub repository of one part is in `library/`. No tag is the
@@ -104,6 +112,9 @@ fn tag_ok(text: &str) -> bool {
 pub(in crate::work::containers) fn named(image: &str) -> Named {
     if image.contains('@') {
         return Named::Pinned;
+    }
+    if is_identifier(image) {
+        return Named::NoName;
     }
     let (host, rest) = match image.split_once('/') {
         Some((first, rest))

@@ -60,6 +60,9 @@ fn host_021_a_name_the_hub_does_not_read_reaches_no_registry() {
     }
     for no_name in [
         "",
+        // What Docker shows for a container whose image has no name now.
+        "f59abe656b69",
+        "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",
         "Alpine",
         "alpine:",
         "alpine:-1",

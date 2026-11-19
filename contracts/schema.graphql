@@ -1117,8 +1117,8 @@ digest. OTHER_REGISTRY: the image is of a registry that Anima does not read (it 
 mcr.microsoft.com, with no account). NO_NAME: the container names an identifier, or a name no registry accepts.
 NO_LOCAL_DIGEST: Docker keeps no registry digest for the tag (the image was built on the device, or the tag is not on
 the device now). NOT_AT_REGISTRY: the registry has no such tag for a reader with no account (private, or gone).
-REGISTRY_NOT_READ: the registry did not answer in time, the hub may not reach it, or the device has more than 40
-different tags.
+REGISTRY_NOT_READ: the registry did not answer as a registry does or in time, the hub may not reach it, or the device
+has more than 40 different tags.
 """
 enum ContainerImageUpdateReason {
   PINNED_DIGEST
@@ -1139,7 +1139,7 @@ type ContainerImageUpdate {
   state: ContainerImageUpdateState!
   "Not null when state is NOT_KNOWN."
   reason: ContainerImageUpdateReason
-  "The digest that the device has for the tag."
+  "The digest that the device has for the tag. When Docker keeps more than one, the one that the registry gives, or the first."
   localDigest: String
   "The digest that the registry gives for the tag now."
   registryDigest: String
@@ -3170,7 +3170,7 @@ type Query {
   containerStorage(deviceId: ID!): ContainerStorage!
   "The networks of Docker on a device, each with the containers on it (HOST-020). The errors of containers apply. Open to a read key."
   containerNetworks(deviceId: ID!): [ContainerNetwork!]!
-  "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. The errors of containers apply. Open to a read key."
+  "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. Each read asks the registries again: the hub keeps no answer. The errors of containers apply. Open to a read key."
   containerImageUpdates(deviceId: ID!): [ContainerImageUpdate!]!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)

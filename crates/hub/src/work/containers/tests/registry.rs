@@ -31,12 +31,14 @@ pub(super) struct Registry {
 impl Registry {
     /// The rules of a connection that reaches this server in place of every registry.
     pub(super) fn egress(&self) -> Egress {
-        let origin = format!("https://localhost:{}/", self.port).parse().unwrap();
-        Egress::new(crate::fleet::ssh::tests::reaching()).standing_in(origin, self.root.clone())
+        let (origin, root) = self.place();
+        Egress::new(crate::fleet::ssh::tests::reaching()).standing_in(origin, root)
     }
 
-    pub(super) const fn port(&self) -> u16 {
-        self.port
+    /// The origin of this server and the certificate it presents.
+    pub(super) fn place(&self) -> (reqwest::Url, Vec<u8>) {
+        let origin = format!("https://localhost:{}/", self.port).parse().unwrap();
+        (origin, self.root.clone())
     }
 
     /// The head of each request received, in order: the request line, then its header lines.
