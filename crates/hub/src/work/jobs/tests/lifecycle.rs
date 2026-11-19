@@ -149,14 +149,14 @@ fn k10_5_a_refused_job_goes_back_to_the_queue_and_not_to_that_machine_and_no_lea
 #[test]
 fn k10_7_a_build_whose_lease_ended_goes_back_two_times_and_fails_the_third_time() {
     let mut job = held(WorkType::Build);
-    for lost in 1..=2 {
+    for (lost, held_by, next) in [(1, PVE, MAC), (2, MAC, PVE)] {
         job = lifecycle::lease_lost(&job, at(100));
         assert_eq!(
             (job.state, job.lost, job.holder),
             (State::Queued, lost, None)
         );
-        assert_eq!(job.last_device, Some(device(PVE)));
-        job = lifecycle::claimed(&job, device(MAC), at(200));
+        assert_eq!(job.last_device, Some(device(held_by)));
+        job = lifecycle::claimed(&job, device(next), at(200));
     }
     let failed = lifecycle::lease_lost(&job, at(300));
     assert_eq!((failed.state, failed.lost), (State::Failed, 3));
