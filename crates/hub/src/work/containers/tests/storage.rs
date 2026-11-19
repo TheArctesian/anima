@@ -79,7 +79,7 @@ fn host_020_each_image_has_its_sizes_and_the_containers_that_name_it() {
         shared_size: "420.8MB".to_owned(),
         unique_size: "49.49MB".to_owned(),
         created: "2026-11-16 12:24:00 -0800 PST".to_owned(),
-        container_count: 1,
+        container_count: Some(1),
         containers: names(&["dawarich_app"]),
     };
     assert_eq!(read.images[0], dawarich);
@@ -94,13 +94,42 @@ fn host_020_each_image_has_its_sizes_and_the_containers_that_name_it() {
 }
 
 #[test]
+fn host_020_a_count_that_docker_does_not_give_and_a_short_identifier_hide_no_row() {
+    let text = SIZES.replace(r#""count":"1""#, r#""count":"N/A""#).replace(
+        "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",
+        "f59abe656b69",
+    );
+    let users = USERS.replace(
+        r#""image":"f59abe656b69""#,
+        r#""image":"sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf""#,
+    );
+    let read = storage::storage(&output(&format!("{text}{users}"), 0)).unwrap();
+    assert_eq!(read.images.len(), 3);
+    assert_eq!(read.images[0].container_count, None);
+    assert_eq!(read.volumes[0].container_count, None);
+    // An older Docker writes 12 digits of the identifier; the container names all 64.
+    assert_eq!(read.images[1].containers, ["old-db"]);
+}
+
+#[test]
+fn host_020_a_container_that_names_a_digest_is_found_by_the_identifier_only() {
+    // `redis@sha256:...` was made from an older image; the name `redis` is now of a new one.
+    let users = USERS.replace(
+        r#""image":"redis""#,
+        r#""image":"redis@sha256:0000000000000000000000000000000000000000000000000000000000000000""#,
+    );
+    let read = storage::storage(&output(&format!("{SIZES}{users}"), 0)).unwrap();
+    assert_eq!(read.images[2].containers, [] as [String; 0]);
+}
+
+#[test]
 fn host_020_each_volume_has_its_size_and_the_containers_that_mount_it() {
     let read = storage::storage(&output(&format!("{SIZES}{USERS}"), 0)).unwrap();
     let used = Volume {
         name: "app-data".to_owned(),
         driver: "local".to_owned(),
         size: "232.9MB".to_owned(),
-        container_count: 1,
+        container_count: Some(1),
         // `app-data-old` of the container `cache` is a different volume.
         containers: names(&["dawarich_app"]),
     };
@@ -110,7 +139,7 @@ fn host_020_each_volume_has_its_size_and_the_containers_that_mount_it() {
             read.volumes[1].container_count,
             read.volumes[1].containers.len()
         ),
-        (0, 0)
+        (Some(0), 0)
     );
 }
 
@@ -154,10 +183,6 @@ fn host_020_a_device_with_nothing_has_empty_lists_and_a_failed_answer_is_an_erro
     for read in [
         storage::storage(&output(SECRET, 0)),
         storage::storage(&output(NETWORKS, 0)),
-        storage::storage(&output(
-            &SIZES.replace(r#""count":"1""#, r#""count":"N/A""#),
-            0,
-        )),
     ] {
         assert!(matches!(read, Err(Error::Unreadable)), "{read:?}");
     }

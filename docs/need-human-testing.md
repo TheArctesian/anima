@@ -964,7 +964,8 @@ Built: in the hub domain `crates/hub/src/work/containers/`, `Query.containerDeta
 The tests use a test SSH server that answers with fixed text, and a scripted hub. The fixed text is
 what Docker 29.9.3 wrote on the build machine (a Mac) for the same command lines, run in a shell and
 not through the hub. No test ran the commands through the hub on a device, on Linux, or on an older
-Docker.
+Docker. A Docker older than about 20.10 can refuse `docker system df -v --format`; then step 7 and
+step 8 give "docker did not succeed on the device": write down the Docker version.
 
 The check only reads. It starts, stops, removes and changes nothing on the device (VPS-005, R-050).
 The hub must be of this build; a local hub is sufficient
@@ -988,8 +989,9 @@ step 4 were not possible (OD-25).
    FORBIDDEN.
 6. Run `anima containers list <device>`. Expected: the last column gives, for each container of a
    Compose project, the name of the project and its state, for example `dawarich (running)`. If the
-   device has a project of which one container is stopped with an exit status that is not 0, its
-   state is "partly running". Do not stop a container for this step.
+   device has a project of which one container is stopped and one runs, its state is "partly
+   running"; this is also the state of a project whose set-up container ended with exit status 0.
+   Do not stop a container for this step.
 7. Run `anima containers images <device>`. Expected: one row for each image of `docker image ls` on
    the device, with the same size, and in the last column the names of the containers that use it
    (or a number when the hub could not find the names). The line below the table gives the space

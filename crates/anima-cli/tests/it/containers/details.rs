@@ -42,7 +42,7 @@ fn storage() -> Value {
         "images": [
             { "id": IMAGE, "repository": "freikin/dawarich", "tag": "latest", "size": "470MB",
               "sharedSize": "420.8MB", "uniqueSize": "49.49MB",
-              "created": "2026-11-16 12:24:00 -0800 PST", "containerCount": 1,
+              "created": "2026-11-16 12:24:00 -0800 PST", "containerCount": 3,
               "containers": ["dawarich_app"] },
             { "id": format!("sha256:{}", "b".repeat(64)), "repository": null, "tag": null,
               "size": "13.6MB", "sharedSize": "0B", "uniqueSize": "13.6MB",
@@ -141,10 +141,11 @@ async fn host_020_containers_images_lists_each_image_and_says_what_a_clean_up_ca
         lines[1].starts_with("5a703ad0d72c ")
             && lines[1].contains("freikin/dawarich")
             && lines[1].contains("470MB")
-            && lines[1].ends_with("dawarich_app"),
+            && lines[1].ends_with("dawarich_app (+2)"),
         "{}",
         run.stdout
     );
+    // Docker counts three containers for the first image and the hub found the name of one.
     // An image with no name, and containers that name it in a way the hub cannot match: the
     // number that Docker counts.
     assert!(

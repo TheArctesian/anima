@@ -49,7 +49,7 @@ impl Image {
         &self.created
     }
 
-    async fn container_count(&self) -> u32 {
+    async fn container_count(&self) -> Option<u32> {
         self.container_count
     }
 
@@ -72,7 +72,7 @@ impl Volume {
         &self.size
     }
 
-    async fn container_count(&self) -> u32 {
+    async fn container_count(&self) -> Option<u32> {
         self.container_count
     }
 

@@ -71,11 +71,14 @@ fn reclaimable(invocation: &Invocation, found: &Storage, kind: &str) {
     }
 }
 
-fn users(count: i64, names: &[String]) -> String {
-    if names.is_empty() {
-        count.to_string()
-    } else {
-        names.join(", ")
+/// The names of the containers, with how many more Docker counts when the hub found not
+/// all of them; the number alone when it found none.
+fn users(count: Option<i64>, names: &[String]) -> String {
+    let found = i64::try_from(names.len()).unwrap_or(i64::MAX);
+    match count {
+        _ if names.is_empty() => count.map_or_else(|| "-".to_owned(), |count| count.to_string()),
+        Some(count) if count > found => format!("{} (+{})", names.join(", "), count - found),
+        _ => names.join(", "),
     }
 }
 

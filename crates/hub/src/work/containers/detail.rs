@@ -15,8 +15,8 @@ use super::{
     Error,
     docker::{failure, says_no_container, state},
     model::{
-        ContainerDetail, ContainerId, Health, HealthCheck, HealthRun, Label, Mount, NetworkAddress,
-        Process,
+        ContainerDetail, ContainerId, ContainerState, Health, HealthCheck, HealthRun, Label, Mount,
+        NetworkAddress, Process,
     },
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
@@ -58,33 +58,45 @@ pub(super) fn command(container: &ContainerId) -> FixedCommand {
 
 /// The container, as [`DETAIL_FORMAT`] writes it. Docker writes `null` for a list or a map
 /// that is empty.
+/// Only the identifier and the name must be there: a value that a Docker does not write is
+/// empty, so one such value does not hide the rest.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Inspected {
     id: String,
     name: String,
+    #[serde(default)]
     image: String,
+    #[serde(default)]
     image_id: String,
+    #[serde(default)]
     path: String,
     args: Option<Vec<String>>,
+    #[serde(default)]
     working_dir: String,
+    #[serde(default)]
     user: String,
-    restart: Restart,
+    restart: Option<Restart>,
+    #[serde(default)]
     state: String,
+    #[serde(default)]
     exit_code: i32,
+    #[serde(default)]
     started_at: String,
+    #[serde(default)]
     finished_at: String,
+    #[serde(default)]
     restarts: u32,
     check: Option<Check>,
     health: Option<HealthRead>,
     mounts: Option<Vec<MountRead>>,
-    networks: Option<BTreeMap<String, Endpoint>>,
+    networks: Option<BTreeMap<String, Option<Endpoint>>>,
     labels: Option<BTreeMap<String, String>>,
-    env: Vec<String>,
+    env: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
 struct Restart {
     name: String,
     maximum_retry_count: u32,
@@ -100,19 +112,24 @@ struct Check {
 
 #[derive(Deserialize)]
 struct HealthRead {
+    #[serde(default)]
     status: String,
+    #[serde(default)]
     failing: u32,
+    #[serde(default)]
     runs: Vec<RunRead>,
 }
 
 #[derive(Deserialize)]
 struct RunRead {
+    #[serde(default)]
     end: String,
+    #[serde(default)]
     exit: i32,
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "PascalCase", default)]
 struct MountRead {
     #[serde(rename = "Type")]
     kind: String,
@@ -123,7 +140,20 @@ struct MountRead {
     writable: bool,
 }
 
-#[derive(Deserialize)]
+impl Default for MountRead {
+    fn default() -> Self {
+        Self {
+            kind: String::new(),
+            name: None,
+            source: String::new(),
+            destination: String::new(),
+            writable: true,
+        }
+    }
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default)]
 struct Endpoint {
     #[serde(rename = "IPAddress")]
     ipv4: String,
@@ -135,33 +165,39 @@ struct Endpoint {
     mac: String,
 }
 
-/// The details the command line wrote: the container on the first line, then the table of
-/// `docker top`, or Docker's error when the container does not run.
+/// How the line starts that [`DETAIL_FORMAT`] writes.
+const DETAIL_START: &str = r#"{"id":"#;
+
+/// The details the command line wrote: the line of the container, then the table of
+/// `docker top`, or Docker's error when the container does not run. Both commands also write
+/// standard error to the output, so a warning of Docker can be before either part.
 ///
 /// # Errors
 /// `NoContainer` when Docker says it knows no such container; `Unreadable` when the output
-/// was cut or the first line is not what the format writes; `NoDocker` or `DockerFailed` when
-/// the first command did not succeed for another reason.
+/// was cut or the line of the container is not what the format writes; `NoDocker` or
+/// `DockerFailed` when the first command wrote no such line and did not succeed.
 pub(super) fn detail(output: &CommandOutput) -> Result<ContainerDetail, Error> {
     if output.cut {
         return Err(Error::Unreadable);
     }
     let text = String::from_utf8_lossy(&output.stdout);
-    let (first, rest) = text.split_once('\n').unwrap_or((&text, ""));
-    let Ok(read) = serde_json::from_str::<Inspected>(first) else {
+    let mut lines = text.lines();
+    let Some(line) = lines.find(|line| line.starts_with(DETAIL_START)) else {
         return Err(match output.exit_status {
             Some(0) => Error::Unreadable,
             _ if says_no_container(&text) => Error::NoContainer,
             _ => failure(output),
         });
     };
-    Ok(container(read, processes(rest)))
+    let read = serde_json::from_str::<Inspected>(line).map_err(|_| Error::Unreadable)?;
+    Ok(container(read, processes(lines)))
 }
 
 fn container(read: Inspected, processes: Vec<Process>) -> ContainerDetail {
     let mut command = vec![read.path];
     command.extend(read.args.unwrap_or_default());
     let health = read.health.as_ref();
+    let state = state(&read.state);
     ContainerDetail {
         id: read.id,
         name: read.name.trim_start_matches('/').to_owned(),
@@ -170,14 +206,16 @@ fn container(read: Inspected, processes: Vec<Process>) -> ContainerDetail {
         command,
         working_dir: read.working_dir,
         user: read.user,
-        restart_policy: restart_policy(&read.restart),
-        state: state(&read.state),
+        restart_policy: restart_policy(&read.restart.unwrap_or_default()),
+        state,
         exit_code: read.exit_code,
         started_at: instant(&read.started_at),
         finished_at: instant(&read.finished_at),
         restart_count: read.restarts,
         health_check: read.check.and_then(health_check),
-        health: health.map_or(Health::None, |health| health_of(&health.status)),
+        health: health
+            .filter(|_| state == ContainerState::Running)
+            .map_or(Health::None, |health| health_of(&health.status)),
         failing_streak: health.map_or(0, |health| health.failing),
         last_health_run: health
             .and_then(|health| health.runs.last())
@@ -195,7 +233,7 @@ fn container(read: Inspected, processes: Vec<Process>) -> ContainerDetail {
             .networks
             .unwrap_or_default()
             .into_iter()
-            .map(|(name, endpoint)| address(name, endpoint))
+            .map(|(name, endpoint)| address(name, endpoint.unwrap_or_default()))
             .collect(),
         labels: read
             .labels
@@ -203,7 +241,7 @@ fn container(read: Inspected, processes: Vec<Process>) -> ContainerDetail {
             .into_iter()
             .map(|(name, value)| Label { name, value })
             .collect(),
-        environment_names: read.env,
+        environment_names: read.env.unwrap_or_default(),
         processes,
     }
 }
@@ -271,13 +309,11 @@ fn address(network: String, endpoint: Endpoint) -> NetworkAddress {
 }
 
 /// The rows of the table of `docker top`: the columns `PID`, `UID` or `USER`, and the last
-/// column, which is the command. Any other text gives no process.
-fn processes(table: &str) -> Vec<Process> {
-    let mut lines = table.lines();
-    let Some(header) = lines.next() else {
-        return Vec::new();
-    };
-    let columns: Vec<&str> = header.split_whitespace().collect();
+/// column, which is the command. The table starts at the first line that has a column `PID`;
+/// with no such line there is no process.
+fn processes<'a>(mut lines: impl Iterator<Item = &'a str>) -> Vec<Process> {
+    let header = lines.find(|line| line.split_whitespace().any(|column| column == "PID"));
+    let columns: Vec<&str> = header.unwrap_or_default().split_whitespace().collect();
     let Some(pid) = columns.iter().position(|column| *column == "PID") else {
         return Vec::new();
     };

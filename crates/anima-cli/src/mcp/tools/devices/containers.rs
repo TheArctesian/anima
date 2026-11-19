@@ -16,6 +16,7 @@ use crate::mcp::arguments::{json, object, parse};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
+use crate::mcp::tools::devices::DeviceTool;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -24,7 +25,32 @@ pub struct ContainerListInput {
     device: String,
 }
 
-pub fn definition() -> Definition {
+/// The definition of a container tool.
+pub fn definition_of(tool: DeviceTool) -> Definition {
+    match tool {
+        DeviceTool::ContainerStorage => storage_definition(),
+        DeviceTool::ContainerNetworks => networks_definition(),
+        _ => definition(),
+    }
+}
+
+/// Runs a container tool.
+///
+/// # Errors
+/// [`ToolError`] for wrong arguments or the hub's refusal.
+pub async fn call(
+    tool: DeviceTool,
+    hub: &Hub,
+    arguments: Option<JsonObject>,
+) -> Result<Value, ToolError> {
+    match tool {
+        DeviceTool::ContainerStorage => storage(hub, arguments).await,
+        DeviceTool::ContainerNetworks => networks(hub, arguments).await,
+        _ => list(hub, arguments).await,
+    }
+}
+
+fn definition() -> Definition {
     Definition::new::<ContainerListInput>(
         "anima_container_list",
         Access::Read,
@@ -50,7 +76,7 @@ pub fn definition() -> Definition {
     ])
 }
 
-pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: ContainerListInput = parse(arguments)?;
     let found = fetch(hub, &input.device).await?;
     Ok(Value::Object(object([
@@ -59,7 +85,7 @@ pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     ])))
 }
 
-pub fn storage_definition() -> Definition {
+fn storage_definition() -> Definition {
     Definition::new::<ContainerListInput>(
         "anima_container_storage",
         Access::Read,
@@ -91,7 +117,7 @@ pub fn storage_definition() -> Definition {
     ])
 }
 
-pub async fn storage(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn storage(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: ContainerListInput = parse(arguments)?;
     let found = storage::fetch(hub, &input.device).await?;
     Ok(Value::Object(object([
@@ -101,7 +127,7 @@ pub async fn storage(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, 
     ])))
 }
 
-pub fn networks_definition() -> Definition {
+fn networks_definition() -> Definition {
     Definition::new::<ContainerListInput>(
         "anima_container_networks",
         Access::Read,
@@ -120,7 +146,7 @@ pub fn networks_definition() -> Definition {
     ])
 }
 
-pub async fn networks(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn networks(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: ContainerListInput = parse(arguments)?;
     let found = networks::fetch(hub, &input.device).await?;
     Ok(Value::Object(object([

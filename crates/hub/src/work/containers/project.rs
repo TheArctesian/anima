@@ -3,10 +3,11 @@
 //! One rule, in this order; the first that applies gives the state:
 //!
 //! 1. A container restarts, or is dead: `Failing`.
-//! 2. Some containers run and some do not: `PartlyRunning`. A container that ended with exit
-//!    status 0 is finished work (a migration, a set-up step) and does not count here.
-//! 3. Every container that counts runs, and one fails its health check: `Unhealthy`.
-//! 4. Every container that counts runs: `Running`.
+//! 2. Some containers run and some do not: `PartlyRunning`. A container that ended counts as
+//!    one that does not run, with any exit status: the list of Docker cannot tell a set-up
+//!    step that finished from a service that was stopped.
+//! 3. Every container runs, and one fails its health check: `Unhealthy`.
+//! 4. Every container runs: `Running`.
 //! 5. No container runs and one is paused: `Paused`.
 //! 6. No container runs: `Stopped`.
 //!
@@ -20,12 +21,8 @@ use super::model::{Container, ContainerState, Health, ProjectState};
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Part {
     Failing,
-    Running {
-        unhealthy: bool,
-    },
+    Running { unhealthy: bool },
     Paused,
-    /// Ended with exit status 0.
-    Finished,
     Stopped,
     Unknown,
 }
@@ -37,7 +34,6 @@ fn part(container: &Container) -> Part {
             unhealthy: container.health == Health::Unhealthy,
         },
         ContainerState::Paused => Part::Paused,
-        ContainerState::Exited if container.status.starts_with("Exited (0)") => Part::Finished,
         ContainerState::Exited | ContainerState::Created | ContainerState::Removing => {
             Part::Stopped
         }

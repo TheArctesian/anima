@@ -112,7 +112,7 @@ pub enum Health {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
 #[graphql(name = "ComposeProjectState")]
 pub enum ProjectState {
-    /// Every container runs. One that ended with exit status 0 does not count.
+    /// Every container runs.
     Running,
     /// Every container runs and one fails its health check.
     Unhealthy,

@@ -925,7 +925,8 @@ The one state of a Compose project, which the hub makes from the states of its c
 The first rule that applies gives the state: FAILING, a container restarts or is dead; UNKNOWN, a container has a
 state this hub does not know; PAUSED, no container runs and one is paused; STOPPED, no container runs;
 PARTLY_RUNNING, some containers run and some do not; UNHEALTHY, every container runs and one fails its health check;
-RUNNING. A container that ended with exit status 0 is finished work and does not make a project PARTLY_RUNNING.
+RUNNING. A container that ended is one that does not run, with any exit status: the list of Docker cannot tell a
+set-up step that finished from a service that was stopped.
 """
 enum ComposeProjectState {
   RUNNING
@@ -961,6 +962,7 @@ type Container {
 type ContainerHealthCheck {
   "The test as Docker keeps it: CMD or CMD-SHELL, then the command."
   test: [String!]!
+  "Null when the default of Docker applies (30 seconds)."
   intervalSeconds: Int
 }
 
@@ -1028,6 +1030,7 @@ type ContainerDetail {
   restartCount: Int!
   "Null when the container has no health check."
   healthCheck: ContainerHealthCheck
+  "NONE for a container that does not run."
   health: ContainerHealth!
   "The health checks that failed one after the other, to now."
   failingStreak: Int!
@@ -1043,7 +1046,7 @@ type ContainerDetail {
 
 "One image of a device (HOST-020). A size is the text that Docker writes, for example: 13.6MB."
 type ContainerImage {
-  "sha256: and 64 hexadecimal characters."
+  "The identifier as Docker writes it: sha256: and 64 hexadecimal characters, or fewer on an older Docker."
   id: String!
   "Null for an image with no name."
   repository: String
@@ -1055,8 +1058,8 @@ type ContainerImage {
   uniqueSize: String!
   "The time as Docker writes it, for example: 2026-11-05 10:00:31 -0800 PST."
   created: String!
-  "How many containers use the image, as Docker counts them."
-  containerCount: Int!
+  "How many containers use the image, as Docker counts them; null when Docker gives no number."
+  containerCount: Int
   "The names of the containers that name this image by its repository and tag or by its identifier. A container that names the image in a different way is in containerCount only."
   containers: [String!]!
 }
@@ -1066,8 +1069,8 @@ type ContainerVolume {
   name: String!
   driver: String!
   size: String!
-  "How many containers use the volume, as Docker counts them."
-  containerCount: Int!
+  "How many containers use the volume, as Docker counts them; null when Docker gives no number."
+  containerCount: Int
   containers: [String!]!
 }
 

@@ -57,8 +57,9 @@ pub struct Image {
     pub unique_size: String,
     /// The time as Docker writes it.
     pub created: String,
-    /// How many containers use the image, as Docker counts them.
-    pub container_count: u32,
+    /// How many containers use the image, as Docker counts them; `None` when Docker gives
+    /// no number.
+    pub container_count: Option<u32>,
     /// The names of the containers that name this image.
     pub containers: Vec<String>,
 }
@@ -69,8 +70,9 @@ pub struct Volume {
     pub name: String,
     pub driver: String,
     pub size: String,
-    /// How many containers use the volume, as Docker counts them.
-    pub container_count: u32,
+    /// How many containers use the volume, as Docker counts them; `None` when Docker gives
+    /// no number.
+    pub container_count: Option<u32>,
     pub containers: Vec<String>,
 }
 
@@ -170,8 +172,8 @@ struct ImageLine {
 }
 
 impl ImageLine {
-    fn image(self) -> Result<Image, Error> {
-        Ok(Image {
+    fn image(self) -> Image {
+        Image {
             id: self.id,
             repository: named(self.repository),
             tag: named(self.tag),
@@ -179,9 +181,9 @@ impl ImageLine {
             shared_size: self.shared,
             unique_size: self.unique,
             created: self.created,
-            container_count: count(&self.count)?,
+            container_count: self.count.parse().ok(),
             containers: Vec::new(),
-        })
+        }
     }
 }
 
@@ -194,14 +196,14 @@ struct VolumeLine {
 }
 
 impl VolumeLine {
-    fn volume(self) -> Result<Volume, Error> {
-        Ok(Volume {
+    fn volume(self) -> Volume {
+        Volume {
             name: self.name,
             driver: self.driver,
             size: self.size,
-            container_count: count(&self.count)?,
+            container_count: self.count.parse().ok(),
             containers: Vec::new(),
-        })
+        }
     }
 }
 
@@ -267,18 +269,21 @@ impl User {
         text.split(',').any(|name| name.trim() == wanted)
     }
 
-    /// Whether the container names this image: by `repository:tag`, by the repository alone
-    /// for the tag `latest`, or by 12 or more digits of the identifier.
+    /// Whether the container names this image: by 12 or more digits of the identifier, by
+    /// `repository:tag`, or by the repository alone for the tag `latest`. A container that
+    /// names a digest (`name@sha256:...`) is found by the identifier only: the name can be
+    /// of a newer image now.
     fn runs(&self, image: &Image) -> bool {
-        let named = self.image.split('@').next().unwrap_or_default();
         let digits = image.id.trim_start_matches("sha256:");
-        let by_id = named.trim_start_matches("sha256:");
-        if by_id.len() >= 12 && digits.starts_with(by_id) {
+        let by_id = self.image.trim_start_matches("sha256:");
+        let same_start = digits.starts_with(by_id) || by_id.starts_with(digits);
+        if same_start && by_id.len().min(digits.len()) >= 12 {
             return true;
         }
         match (&image.repository, &image.tag) {
             (Some(repository), Some(tag)) => {
-                named == format!("{repository}:{tag}") || (tag == "latest" && named == repository)
+                self.image == format!("{repository}:{tag}")
+                    || (tag == "latest" && self.image == *repository)
             }
             _ => false,
         }
@@ -330,8 +335,8 @@ pub(super) fn storage(output: &CommandOutput) -> Result<Storage, Error> {
     let mut users = Vec::new();
     for line in lines(output)? {
         match line {
-            Line::Image(line) => read.images.push(line.image()?),
-            Line::Volume(line) => read.volumes.push(line.volume()?),
+            Line::Image(line) => read.images.push(line.image()),
+            Line::Volume(line) => read.volumes.push(line.volume()),
             Line::Usage(line) => read.usage.push(line.usage()?),
             Line::Container(user) => users.push(user),
             Line::Network(_) => return Err(Error::Unreadable),

@@ -60,13 +60,14 @@ fn host_019_one_stopped_container_of_three_makes_the_project_partly_running() {
 }
 
 #[test]
-fn host_019_a_container_that_ended_with_status_0_is_finished_work() {
+fn host_019_a_container_that_ended_with_status_0_is_one_that_does_not_run() {
+    // Docker's list cannot tell a set-up step that finished from a service that was stopped
+    // with `docker stop`, which also ends with status 0.
     let rows = [
         ("running", "Up 3 hours"),
         ("exited", "Exited (0) 3 hours ago"),
     ];
-    assert_eq!(project(&rows), ProjectState::Running);
-    // With nothing running, the same container is a stopped project.
+    assert_eq!(project(&rows), ProjectState::PartlyRunning);
     assert_eq!(project(&rows[1..]), ProjectState::Stopped);
 }
 
