@@ -168,6 +168,9 @@ describe("is this commit of main a release (R-184, R-200)", () => {
     expect(decision(folder, "HEAD", "desktop", "0.2.1", "0.2.1").printed).toBe("release 0.2.6");
   });
 
+});
+
+describe("how main must move for the version to be safe (R-200)", () => {
   test("R-200 dev comes into main by a merge commit: one release, with the next number of main", () => {
     const folder = repository();
     const tip = git(folder, "rev-parse", "HEAD");
@@ -206,6 +209,9 @@ describe("is this commit of main a release (R-184, R-200)", () => {
     expect(decision(folder, "--before", "0".repeat(40), "HEAD", "desktop", "none").printed).toBe("release 0.0.1");
   });
 
+});
+
+describe("what release-decision cannot read", () => {
   test.each([
     ["an application that the map does not have", ["HEAD", "phone", "none"]],
     ["a published version that is no version", ["HEAD", "desktop", "latest"]],
