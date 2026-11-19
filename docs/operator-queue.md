@@ -156,6 +156,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-24 | Which file does the Homebrew formula install, and does the release publish it with its SHA-256 (INS-010, INS-012) | Proposed, not ruled. The release would publish a standalone `anima` file for each target, with its SHA-256 in the release record (ROL-003). The formula would in… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
 ## 3. Documents that wait for an approval (25)
 
