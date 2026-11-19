@@ -1,0 +1,3586 @@
+# K1 — GraphQL schema
+#
+# Status: frozen for Phase 3 (change only through a programme ruling, CON-001).
+# The client generates its TypeScript types from this file (API-008, R-020).
+# CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
+# An addition marked @pending is ignored until the hub declares it; then the
+# programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
+# Conventions: contracts/conventions.md.
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite` and `claimDeviceToken` (API-003, D-4, R-111, R-129).
+
+scalar DateTime # RFC 3339, UTC
+scalar IpAddr # "10.10.0.12" or an IPv6 address
+scalar Cidr # "10.10.0.0/24"
+scalar JSON # only for audit change records
+
+directive @oneOf on INPUT_OBJECT
+
+"A K1 addition that the hub does not serve yet (P2-002, P3-002). CON-002 ignores it only while the hub lacks it."
+directive @pending on OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM | ENUM_VALUE | UNION | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+# ---------------------------------------------------------------- shared
+
+enum Status {
+  UP
+  DOWN
+  DEGRADED
+  MAINTENANCE
+  UNKNOWN
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+# ---------------------------------------------------------------- access (WP-05)
+
+type Operator {
+  id: ID!
+  username: String!
+  totpEnabled: Boolean!
+}
+
+type AuthPayload {
+  "Bearer token. The client keeps it in the OS key store (SEC-002)."
+  token: String!
+  expiresAt: DateTime!
+  operator: Operator!
+}
+
+input LoginInput {
+  username: String!
+  password: String!
+  totpCode: String
+}
+
+# Phase 3 (WP-43). D-3, D-4, D-23.
+
+enum TokenScope {
+  READ
+  WRITE
+}
+
+"Set by signInBrowser together with the __Host-anima cookie. The token itself is never returned (D-3)."
+type BrowserSignIn {
+  operator: Operator!
+  expiresAt: DateTime!
+}
+
+# Actor kinds (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned).
+
+"What an API key is made for: a script that the operator runs, or an AI agent. Set once (LOG-015)."
+enum MadeFor {
+  USER
+  AGENT
+}
+
+type ApiKey {
+  id: ID!
+  "1..64 characters, unique."
+  name: String!
+  scope: TokenScope!
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) It never changes. Each request with an AGENT key is recorded as AGENT (LOG-015, LOG-017)."
+  madeFor: MadeFor!
+  "The first 12 characters of the secret, for example anima_Ab12Cd, so the operator can tell keys apart."
+  prefix: String!
+  expiresAt: DateTime!
+  createdAt: DateTime!
+  lastUsedAt: DateTime
+}
+
+type ApiKeyCreated {
+  key: ApiKey!
+  "Shown once. The hub keeps only its SHA-256 (INT-003, P3-004)."
+  secret: String!
+}
+
+"Shown once. The hub keeps only its SHA-256; one use, 15 minutes (MET-012, K8)."
+type DaemonEnrolment {
+  code: String!
+  expiresAt: DateTime!
+}
+
+input ApiKeyInput {
+  name: String!
+  scope: TokenScope!
+  "Required; it cannot change later (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) (LOG-015)."
+  madeFor: MadeFor!
+  "Required; at most one year from now (D-23)."
+  expiresAt: DateTime!
+}
+
+# ---------------------------------------------------------------- devices (WP-06)
+
+enum OperatingSystem {
+  LINUX
+  MACOS
+  WINDOWS
+  OTHER
+}
+
+type Site {
+  id: ID!
+  name: String!
+  subnet: Cidr!
+  devices(first: Int = 50, after: String): DeviceConnection!
+  "The device that sends Wake-on-LAN packets at this site (D-2)."
+  wakeRelay: Device
+}
+
+"""The VPN as the hub's own VPN node sees it (VPN-005, VPN-008)."""
+type VpnPicture {
+  "When the hub last read its VPN status."
+  readAt: DateTime!
+  "False when the last read failed; the picture is then from readAt."
+  fresh: Boolean!
+  hub: VpnNode!
+  "One entry for each site, in site name order (VPN-009)."
+  sites: [SitePath!]!
+  "Every peer of the hub, in name order. A node that is not a peer of the hub is not here (VPN-011)."
+  nodes: [VpnNode!]!
+  "Whether the hub can reach the broker that makes keys and approves routes (VP-7)."
+  broker: BrokerState!
+}
+
+"""A one-use, one-hour pre-auth key, shown once (VPN-001, VPN-003, LOG-007)."""
+type VpnKey {
+  "The pre-auth key: shown once, never stored by the hub."
+  key: String!
+  expiresAt: DateTime!
+  "The commands for the new computer, in order; none holds the key."
+  steps: [String!]!
+}
+
+"""A node the broker registered or renewed (vpn.md 6B and Section 7)."""
+type VpnRegistration {
+  name: String!
+  address: IpAddr!
+  keyExpiry: DateTime
+}
+
+"""Whether the hub can reach the VPN broker on the VPS (VP-7, BD-15)."""
+enum BrokerState {
+  "ANIMA_VPN_BROKER is not set."
+  NOT_SET
+  "The socket is not there: the broker is not installed on the VPS."
+  NOT_INSTALLED
+  READY
+  "The last call failed or its reply was unreadable."
+  FAILED
+}
+
+"""How the hub reaches one site (VPN-009)."""
+type SitePath {
+  site: Site!
+  "The subnet router that serves the site subnet, or null."
+  router: VpnNode
+  state: SiteRouteState!
+  path: VpnPath!
+  "The DERP region, when the path is RELAYED."
+  relayRegion: String
+  "True when the router's device has a Tailscale ping check, which keeps the path known."
+  hasPingCheck: Boolean!
+  "A router of the site that offers the site subnet and waits for its approval, from the broker; null when none waits or the broker is not READY (BD-16)."
+  waitingRouter: VpnNode
+}
+
+enum SiteRouteState {
+  SERVING
+  OFFLINE
+  NO_ROUTER
+}
+
+enum VpnPath {
+  DIRECT
+  PEER_RELAY
+  RELAYED
+  UNKNOWN
+}
+
+enum VpnRole {
+  HUB
+  ROUTER
+  DAEMON
+  CLIENT
+  OTHER
+}
+
+enum KeyState {
+  NEVER
+  VALID
+  EXPIRING
+  EXPIRED
+  TAGGED_WITH_EXPIRY
+}
+
+"""One node of the VPN. Name and OS come from the node and are cleaned (VPN-008)."""
+type VpnNode {
+  name: String!
+  address: IpAddr!
+  os: String!
+  role: VpnRole!
+  tags: [String!]!
+  "The subnet routes Headscale lets this node serve."
+  routes: [Cidr!]!
+  "The routes the node offers that wait for approval, from the broker (BD-16)."
+  waitingRoutes: [Cidr!]!
+  online: Boolean!
+  lastSeen: DateTime
+  keyExpiry: DateTime
+  keyState: KeyState!
+  path: VpnPath!
+  relayRegion: String
+  "The Anima device on this node, or null."
+  device: Device
+  inAnima: Boolean!
+}
+
+enum SshAuth {
+  PASSWORD
+  PRIVATE_KEY
+}
+
+type SshSettings {
+  enabled: Boolean!
+  port: Int!
+  username: String!
+  auth: SshAuth!
+  "True when the hub holds a secret for this device. Secrets are never returned."
+  credentialStored: Boolean!
+  hostKey: HostKey
+}
+
+type HostKey {
+  algorithm: String!
+  fingerprintSha256: String!
+  firstSeenAt: DateTime!
+}
+
+enum RdpSecurity {
+  ANY
+  NLA
+  NLA_EXT
+  TLS
+  VMCONNECT
+  RDP
+}
+
+enum RdpResizeMethod {
+  DISPLAY_UPDATE
+  RECONNECT
+}
+
+enum MetricsSource {
+  NONE
+  SSH
+  "Set only by enrolment (MET-011, R-092 D-7)."
+  DAEMON
+}
+
+"RA-020. TELNET joins when Telnet exists."
+enum AccessWarning {
+  IGNORED_CERTIFICATE
+  RDP_SECURITY
+  UNENCRYPTED_VNC
+}
+
+type ServerCertificate {
+  fingerprintSha256: String!
+  subject: String
+  notAfter: DateTime
+  firstSeenAt: DateTime!
+}
+
+type RdpSettings {
+  enabled: Boolean!
+  "Default 3389."
+  port: Int!
+  username: String!
+  domain: String
+  "Default NLA."
+  security: RdpSecurity!
+  "Default false."
+  ignoreCertificate: Boolean!
+  "Default DISPLAY_UPDATE."
+  resizeMethod: RdpResizeMethod!
+  "Default true."
+  audioOut: Boolean!
+  "Default false."
+  microphone: Boolean!
+  "Default false (RA-021)."
+  sharedDrive: Boolean!
+  credentialStored: Boolean!
+  serverCertificate: ServerCertificate
+}
+
+type VncSettings {
+  enabled: Boolean!
+  "Default 5900."
+  port: Int!
+  "macOS Screen Sharing needs one."
+  username: String
+  credentialStored: Boolean!
+}
+
+"What may leave or enter the device in a session (RA-032, RA-033). All default true."
+type TransferPolicy {
+  upload: Boolean!
+  download: Boolean!
+  copy: Boolean!
+  paste: Boolean!
+}
+
+type Device {
+  id: ID!
+  site: Site!
+  name: String!
+  host: String!
+  "The host when it is an IP literal; otherwise the address the last check resolved, or null (R-026)."
+  ip: IpAddr
+  kind: String!
+  os: OperatingSystem!
+  "The Linux distribution's os-release ID, read over SSH; null until read or when not Linux (DEV-016)."
+  distribution: String
+  tags: [String!]!
+  "Manual maintenance flag (CHK-006). The effective status already includes windows."
+  maintenance: Boolean!
+  "Worst status of the device's checks (CHK-004)."
+  status: Status!
+  ssh: SshSettings!
+  rdp: RdpSettings!
+  vnc: VncSettings!
+  "Lower-case aa:bb:cc:dd:ee:ff (RA-031)."
+  macAddress: String
+  metricsSource: MetricsSource!
+  "True when the source is DAEMON and no batch came in the last 30 seconds (MET-018)."
+  metricsStale: Boolean!
+  "The version of the device's daemon from its last batch; null unless the source is DAEMON and the daemon sent one (R-122, ROL-051)."
+  daemonVersion: String
+  transfer: TransferPolicy!
+  accessWarnings: [AccessWarning!]!
+  "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
+  sessionLimit: Int
+  # web_interfaces
+  webInterfaces: [WebInterface!]!
+  # web_interfaces (WEB-002)
+  webInterfaceSuggestions: [WebInterfaceSuggestion!]!
+  # metrics
+  readings: Readings
+  # metrics (MET-003, MET-009)
+  metrics(range: MetricRange!): [MetricSeries!]!
+  # metrics
+  gpus: [Gpu!]!
+  # metrics (MET-026, MET-029)
+  storage: Storage!
+  checks: [Check!]!
+  "Uptime ratio 0..1 from aggregate tables (CHK-011)."
+  uptime(window: UptimeWindow!): Float
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type DeviceEdge {
+  cursor: String!
+  node: Device!
+}
+
+type DeviceConnection {
+  edges: [DeviceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Ties and orders (R-044). Names compare in byte order.
+NAME: name.
+STATUS: worst first in severity order DOWN, DEGRADED, UNKNOWN, MAINTENANCE, UP; then name.
+UPTIME: lowest 24 h uptime first, null last; then name.
+The client uses the same order when it re-sorts on live changes.
+"""
+enum DeviceSort {
+  NAME
+  STATUS
+  UPTIME
+}
+
+input DeviceFilter {
+  status: [Status!]
+  tags: [String!]
+  "Case-insensitive substring of the name."
+  name: String
+  siteId: ID
+}
+
+input SshSettingsInput {
+  enabled: Boolean!
+  port: Int = 22
+  username: String!
+  auth: SshAuth!
+}
+
+input RdpSettingsInput {
+  enabled: Boolean!
+  port: Int = 3389
+  username: String!
+  domain: String
+  security: RdpSecurity = NLA
+  ignoreCertificate: Boolean = false
+  resizeMethod: RdpResizeMethod = DISPLAY_UPDATE
+  audioOut: Boolean = true
+  microphone: Boolean = false
+  sharedDrive: Boolean = false
+}
+
+input VncSettingsInput {
+  enabled: Boolean!
+  port: Int = 5900
+  username: String
+}
+
+input TransferPolicyInput {
+  upload: Boolean = true
+  download: Boolean = true
+  copy: Boolean = true
+  paste: Boolean = true
+}
+
+input PasswordCredentialInput {
+  password: String!
+}
+
+input CreateDeviceInput {
+  siteId: ID!
+  name: String!
+  host: String!
+  kind: String = "server"
+  os: OperatingSystem = OTHER
+  tags: [String!] = []
+  ssh: SshSettingsInput
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  macAddress: String
+  metricsSource: MetricsSource = NONE
+  transfer: TransferPolicyInput
+  "When true (the default), the hub adds one ICMP check (spec 6.2)."
+  addDefaultCheck: Boolean = true
+  sessionLimit: Int
+}
+
+input UpdateDeviceInput {
+  siteId: ID
+  name: String
+  host: String
+  kind: String
+  os: OperatingSystem
+  tags: [String!]
+  maintenance: Boolean
+  ssh: SshSettingsInput
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  "An empty string clears the address."
+  macAddress: String
+  metricsSource: MetricsSource
+  transfer: TransferPolicyInput
+  "1..100; 0 clears the limit."
+  sessionLimit: Int
+}
+
+input SshCredentialInput @oneOf {
+  password: String
+  privateKey: PrivateKeyInput
+}
+
+input PrivateKeyInput {
+  key: String!
+  passphrase: String
+}
+
+type ConnectionTestResult {
+  reachable: Boolean!
+  authenticated: Boolean!
+  "Present when the host key is not yet accepted or has changed (SEC-006, SEC-007)."
+  hostKey: HostKey
+  hostKeyChanged: Boolean!
+  message: String
+  serverCertificate: ServerCertificate
+  certificateChanged: Boolean!
+  "True only when the hub read the RDP server certificate and it equals the accepted pin (CR-3, SEC-007)."
+  certificateMatched: Boolean!
+}
+
+input ConnectionTestInput {
+  "Test a saved device, or test unsaved values from the form (DEV-013)."
+  deviceId: ID
+  host: String
+  ssh: SshSettingsInput
+  credential: SshCredentialInput
+  protocol: Protocol = SSH
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  password: PasswordCredentialInput
+}
+
+# ---------------------------------------------------------------- checks (WP-09)
+
+"Identifiers are fixed forever (CHK-009)."
+enum CheckType {
+  ICMP
+  TCP
+  TLS
+  HTTP
+  DNS
+  PUSH
+  GROUP
+  DOCKER
+  SNMP
+  TAILSCALE_PING
+  SYSTEMD
+  DOMAIN_EXPIRY
+}
+
+type Check {
+  id: ID!
+  device: Device!
+  parent: Check
+  type: CheckType!
+  name: String!
+  intervalSeconds: Int!
+  retries: Int!
+  retryIntervalSeconds: Int!
+  degradedThresholdMs: Int!
+  invert: Boolean!
+  paused: Boolean!
+  config: CheckConfig!
+  status: Status!
+  lastHeartbeat: Heartbeat
+  "Days until the TLS certificate expires (CHK-007). Only TLS and HTTPS checks."
+  certificateDaysLeft: Int
+  "DOMAIN_EXPIRY only: whole days until the registration expires."
+  domainDaysLeft: Int
+  # notifications (composition, K3)
+  notifications: CheckNotifications!
+  heartbeats(first: Int = 100, after: String): HeartbeatConnection!
+  uptime(window: UptimeWindow!): Float
+}
+
+union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig | DockerConfig | SnmpConfig | TailscalePingConfig | SystemdConfig | DomainExpiryConfig
+
+"Up when running (and healthy, when a health check exists); Degraded when starting; else Down. Through the SSH link (D-3)."
+type DockerConfig {
+  container: String!
+  timeoutMs: Int!
+}
+
+"Up when ActiveState is active. Through the SSH link (D-3)."
+type SystemdConfig {
+  unit: String!
+  timeoutMs: Int!
+}
+
+enum SnmpVersion {
+  V2C
+  V3
+}
+
+"Community and v3 passwords are never returned (SEC-005)."
+type SnmpConfig {
+  port: Int!
+  version: SnmpVersion!
+  oid: String!
+  "Up when equal; null: Up when the OID answers."
+  expected: String
+  username: String
+  timeoutMs: Int!
+}
+
+"Disco ping through the LocalAPI proxy (D-4). The target defaults to the device host."
+type TailscalePingConfig {
+  target: String
+  timeoutMs: Int!
+}
+
+enum IpVersion {
+  V4
+  V6
+}
+
+type IcmpConfig {
+  timeoutMs: Int!
+  ipVersion: IpVersion!
+}
+
+type TcpConfig {
+  port: Int!
+  timeoutMs: Int!
+}
+
+type TlsConfig {
+  port: Int!
+  serverName: String
+  timeoutMs: Int!
+}
+
+enum HttpMethod {
+  GET
+  HEAD
+  POST
+  PUT
+  PATCH
+  DELETE
+  OPTIONS
+}
+
+type HttpHeader {
+  name: String!
+  "Values of headers named Authorization or Cookie are never returned."
+  value: String
+}
+
+type StatusRange {
+  from: Int!
+  to: Int!
+}
+
+enum HttpAuthKind {
+  NONE
+  BASIC
+  BEARER
+}
+
+type HttpConfig {
+  url: String!
+  method: HttpMethod!
+  headers: [HttpHeader!]!
+  body: String
+  maxRedirects: Int!
+  acceptedStatus: [StatusRange!]!
+  keyword: String
+  jsonQuery: String
+  jsonExpected: String
+  authKind: HttpAuthKind!
+  verifyTls: Boolean!
+  timeoutMs: Int!
+}
+
+enum DnsRecordType {
+  A
+  AAAA
+  CNAME
+  MX
+  NS
+  TXT
+  SRV
+  PTR
+}
+
+type DnsConfig {
+  name: String!
+  recordType: DnsRecordType!
+  resolver: IpAddr
+  expected: String
+}
+
+type PushConfig {
+  "Path on the hub that the device calls. The token is part of the path."
+  pushPath: String!
+}
+
+type GroupConfig {
+  children: [Check!]!
+}
+
+"Degraded below warnDays, Down after expiry, Unknown when RDAP gives no expiry date (D-29)."
+type DomainExpiryConfig {
+  domain: String!
+  warnDays: Int!
+  timeoutMs: Int!
+}
+
+input CheckConfigInput @oneOf {
+  icmp: IcmpConfigInput
+  tcp: TcpConfigInput
+  tls: TlsConfigInput
+  http: HttpConfigInput
+  dns: DnsConfigInput
+  push: Boolean
+  group: GroupConfigInput
+  docker: DockerConfigInput
+  snmp: SnmpConfigInput
+  tailscalePing: TailscalePingConfigInput
+  systemd: SystemdConfigInput
+  domainExpiry: DomainExpiryConfigInput
+}
+
+input DockerConfigInput {
+  container: String!
+  timeoutMs: Int = 10000
+}
+
+input SystemdConfigInput {
+  unit: String!
+  timeoutMs: Int = 10000
+}
+
+input SnmpConfigInput {
+  port: Int = 161
+  version: SnmpVersion = V2C
+  oid: String!
+  expected: String
+  community: String
+  username: String
+  authPassword: String
+  privacyPassword: String
+  timeoutMs: Int = 5000
+}
+
+input TailscalePingConfigInput {
+  target: String
+  timeoutMs: Int = 5000
+}
+
+# ---------------------------------------------------------------- metrics (WP-28)
+
+enum MetricKind {
+  CPU_PERCENT
+  MEMORY_PERCENT
+  MEMORY_BYTES
+  DISK_PERCENT
+  DISK_BYTES
+  NETWORK_IN_BPS
+  NETWORK_OUT_BPS
+  UPTIME_SECONDS
+  LOAD_1
+  LOAD_5
+  LOAD_15
+  GPU_PERCENT
+  VRAM_PERCENT
+  VRAM_BYTES
+  GPU_TEMPERATURE_C
+  GPU_POWER_W
+  "Memory in use by a unified-memory GPU (Apple), shown as a number, never a VRAM bar (MET-007, R-092 D-6)."
+  GPU_MEMORY_BYTES
+  "Bytes read from one drive per second; the label is the drive name (MET-028)."
+  DISK_READ_BPS
+  "Bytes written to one drive per second; the label is the drive name (MET-028)."
+  DISK_WRITE_BPS
+  "The share of time one drive had I/O in flight; the label is the drive name (MET-028)."
+  DISK_BUSY_PERCENT
+}
+
+# MET-003
+enum MetricRange {
+  HOUR
+  DAY
+  WEEK
+}
+
+enum GpuVendor {
+  NVIDIA
+  AMD
+  INTEL
+  APPLE
+}
+
+type Gpu {
+  index: Int!
+  name: String!
+  vendor: GpuVendor!
+  "False for integrated and Apple GPUs (MET-007)."
+  hasVram: Boolean!
+}
+
+type MetricPoint {
+  at: DateTime!
+  value: Float!
+  min: Float
+  max: Float
+}
+
+"Label: mount point, interface name, or 'GPU <index> <name>' (MET-009). Bytes are Float (above 2^31)."
+type MetricSeries {
+  kind: MetricKind!
+  label: String!
+  gpuIndex: Int
+  points: [MetricPoint!]!
+}
+
+"The latest values for the card (MET-004, MET-008). Disk: the fullest mount. VRAM: the GPU with the highest use."
+type Readings {
+  at: DateTime!
+  cpuPercent: Float
+  memoryPercent: Float
+  diskPercent: Float
+  "The mount point of the fullest mount, the one diskPercent is of (MET-030)."
+  diskMount: String
+  "The device's drives other than the one that holds diskMount, unmounted ones counted; 0 when the hub knows no drives (MET-030, MET-031)."
+  otherDrives: Int!
+  vramPercent: Float
+  vramGpu: Gpu
+}
+
+"What a drive is made of, detected from its transport and rotation (MET-027)."
+enum DriveKind {
+  NVME
+  SSD
+  HDD
+  DISK
+}
+
+"A mounted file system and its latest use; a value is null without a sample in the last 2 minutes (MET-029). Bytes are Float."
+type Mount {
+  path: String!
+  usedBytes: Float
+  "Used over the percent used; null while nothing is used."
+  sizeBytes: Float
+  percent: Float
+}
+
+"One Storage row: a drive, or a mount on no drive the hub knows (a network file system, every mount on macOS), which has no name, kind or activity (MET-029, MET-031)."
+type Drive {
+  "The kernel name, for example nvme1n1."
+  name: String
+  kind: DriveKind
+  sizeBytes: Float
+  "False for a drive with no mount: the client shows it as Not mounted."
+  mounted: Boolean!
+  mounts: [Mount!]!
+  readBps: Float
+  writeBps: Float
+  busyPercent: Float
+}
+
+"A device's storage, drive by drive, never one total (MET-026)."
+type Storage {
+  "Mounted drives by name, then mounts on no known drive by path, then unmounted drives by name."
+  drives: [Drive!]!
+}
+
+# Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
+"A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
+type DeviceCapabilities {
+  device: Device!
+  "aarch64 or x86_64."
+  architecture: String!
+  "macos or linux."
+  os: String!
+  "For example 27.0 (macOS) or 24.04 (the Linux distribution; the kernel release when it has none). 1 to 64 bytes of [0-9A-Za-z.+_-]."
+  osVersion: String!
+  "The tools the daemon found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
+  tools: [Tool!]!
+  "The installed Rust targets (rustup), in byte order."
+  buildTargets: [String!]!
+  "When the hub stored this inventory."
+  foundAt: DateTime!
+}
+
+"One tool the daemon found (CAP-024, CAP-025)."
+type Tool {
+  "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude or codex."
+  name: String!
+  "1 to 64 bytes of [0-9A-Za-z.+_-]; null when the tool is not usable."
+  version: String
+  "False when the tool was found but its version probe timed out, failed or printed no version."
+  usable: Boolean!
+  "Why the tool is not usable; null when it is (CAP-024)."
+  reason: NotUsableReason
+}
+
+"Why a found tool is not usable: a fixed code, never text from the device (CAP-024)."
+enum NotUsableReason {
+  "Its version probe ran past its time limit."
+  TIMED_OUT
+  "It could not start, or exited with a failure."
+  EXITED
+  "It ran but printed no version the daemon reads."
+  NO_VERSION
+  "A reason this hub does not know (a newer daemon's)."
+  FAILED
+}
+
+# The containers of a device (R-149; HOST-001, HOST-010; stage 1 of hosted applications). Read now from the device
+# through the hub's SSH link with fixed docker commands; the hub keeps nothing of them (LOG-007).
+"What Docker says a container is doing. UNKNOWN is a state this hub does not know."
+enum ContainerState {
+  RUNNING
+  EXITED
+  RESTARTING
+  PAUSED
+  CREATED
+  REMOVING
+  DEAD
+  UNKNOWN
+}
+
+"What the status text of a container says of its health check. NONE: no health check, or not running."
+enum ContainerHealth {
+  HEALTHY
+  UNHEALTHY
+  STARTING
+  NONE
+}
+
+"""
+The one state of a Compose project, which the hub makes from the states of its containers (HOST-019; R-150).
+The first rule that applies gives the state: FAILING, a container restarts or is dead; UNKNOWN, a container has a
+state this hub does not know; PAUSED, no container runs and one is paused; STOPPED, no container runs;
+PARTLY_RUNNING, some containers run and some do not; UNHEALTHY, every container runs and one fails its health check;
+RUNNING. A container that ended is one that does not run, with any exit status: the list of Docker cannot tell a
+set-up step that finished from a service that was stopped.
+"""
+enum ComposeProjectState {
+  RUNNING
+  UNHEALTHY
+  PARTLY_RUNNING
+  FAILING
+  PAUSED
+  STOPPED
+  UNKNOWN
+}
+
+"One container of a device (HOST-001). Every text is from the device."
+type Container {
+  "The full identifier of Docker: 64 hexadecimal characters."
+  id: String!
+  name: String!
+  image: String!
+  state: ContainerState!
+  "The status text of Docker, for example: Up 3 hours (healthy)."
+  status: String!
+  health: ContainerHealth!
+  "Each published or exposed port, as Docker writes it, for example: 0.0.0.0:8080->80/tcp."
+  ports: [String!]!
+  createdAt: DateTime
+  "The Compose project of the container; null when it has none."
+  composeProject: String
+  composeService: String
+  "The one state of the Compose project of the container (HOST-019); null when it has none. Each container of a project has the same value."
+  composeProjectState: ComposeProjectState
+}
+
+"The health check that Docker runs in a container."
+type ContainerHealthCheck {
+  "The test as Docker keeps it: CMD or CMD-SHELL, then the command."
+  test: [String!]!
+  "Null when the default of Docker applies (30 seconds)."
+  intervalSeconds: Int
+}
+
+"The last run of a health check. The hub does not read what the check wrote."
+type ContainerHealthRun {
+  endedAt: DateTime
+  exitCode: Int!
+}
+
+"One mount of a container."
+type ContainerMount {
+  "volume, bind or tmpfs, as Docker writes it."
+  type: String!
+  "The name of the volume; null for a mount that is not a volume."
+  name: String
+  "The path on the device."
+  source: String!
+  "The path in the container."
+  destination: String!
+  readOnly: Boolean!
+}
+
+"The addresses of a container on one network."
+type ContainerNetworkAddress {
+  network: String!
+  ipv4: String
+  ipv6: String
+  gateway: String
+  macAddress: String
+}
+
+type ContainerLabel {
+  name: String!
+  value: String!
+}
+
+"One process of a running container."
+type ContainerProcess {
+  pid: Int!
+  user: String
+  command: String!
+}
+
+"The details of one container (HOST-017; R-150). Every text is from the device. The hub keeps none of them (LOG-007)."
+type ContainerDetail {
+  id: String!
+  name: String!
+  "The image as the container names it."
+  image: String!
+  "The identifier of the image: sha256: and 64 hexadecimal characters."
+  imageId: String!
+  "The program and its arguments."
+  command: [String!]!
+  workingDir: String!
+  "The user the program runs as; empty for the default of the image."
+  user: String!
+  "no, always, unless-stopped, or on-failure with its limit, for example: on-failure:3."
+  restartPolicy: String!
+  state: ContainerState!
+  "The exit status of the last run; 0 while the container runs."
+  exitCode: Int!
+  startedAt: DateTime
+  finishedAt: DateTime
+  "How many times Docker restarted the container."
+  restartCount: Int!
+  "Null when the container has no health check."
+  healthCheck: ContainerHealthCheck
+  "NONE for a container that does not run."
+  health: ContainerHealth!
+  "The health checks that failed one after the other, to now."
+  failingStreak: Int!
+  lastHealthRun: ContainerHealthRun
+  mounts: [ContainerMount!]!
+  networks: [ContainerNetworkAddress!]!
+  labels: [ContainerLabel!]!
+  "The names of the environment variables. The hub never reads a value: a value can hold a secret (HOST-017)."
+  environmentNames: [String!]!
+  "The processes of a running container; empty when it does not run."
+  processes: [ContainerProcess!]!
+}
+
+"One image of a device (HOST-020). A size is the text that Docker writes, for example: 13.6MB."
+type ContainerImage {
+  "The identifier as Docker writes it: sha256: and 64 hexadecimal characters, or fewer on an older Docker."
+  id: String!
+  "Null for an image with no name."
+  repository: String
+  tag: String
+  size: String!
+  "The part of the size that other images share."
+  sharedSize: String!
+  "The part that a removal of this image frees."
+  uniqueSize: String!
+  "The time as Docker writes it, for example: 2026-11-05 10:00:31 -0800 PST."
+  created: String!
+  "How many containers use the image, as Docker counts them; null when Docker gives no number."
+  containerCount: Int
+  "The names of the containers that name this image by its repository and tag or by its identifier. A container that names the image in a different way is in containerCount only."
+  containers: [String!]!
+}
+
+"One volume of a device (HOST-020)."
+type ContainerVolume {
+  name: String!
+  driver: String!
+  size: String!
+  "How many containers use the volume, as Docker counts them; null when Docker gives no number."
+  containerCount: Int
+  containers: [String!]!
+}
+
+"The space of one type of thing that Docker keeps on a device, and what a clean-up can free (HOST-020)."
+type ContainerDiskUsage {
+  "Images, Containers, Local Volumes or Build Cache, as Docker writes it."
+  type: String!
+  totalCount: Int!
+  activeCount: Int!
+  size: String!
+  "The space that a clean-up can free, for example: 49.63MB (10%). Anima removes nothing in stage 1."
+  reclaimable: String!
+}
+
+"The images and the volumes of a device, with the space of each type (HOST-020; R-150)."
+type ContainerStorage {
+  images: [ContainerImage!]!
+  volumes: [ContainerVolume!]!
+  usage: [ContainerDiskUsage!]!
+}
+
+"One network of Docker on a device (HOST-020)."
+type ContainerNetwork {
+  id: String!
+  name: String!
+  driver: String!
+  scope: String!
+  "True when the network has no route to outside the device."
+  internal: Boolean!
+  "The names of the containers on the network."
+  containers: [String!]!
+}
+
+"Whether a newer image exists for a container (HOST-021; R-150). UP_TO_DATE: the registry gives the digest that the device has for the tag. NEWER_IMAGE: it gives a different digest, so a pull would get a newer image. NOT_KNOWN: the hub cannot say; reason says why."
+enum ContainerImageUpdateState {
+  UP_TO_DATE
+  NEWER_IMAGE
+  NOT_KNOWN
+}
+
+"""
+Why the hub cannot say whether a newer image exists (HOST-021). PINNED_DIGEST: the container names its image by a
+digest. OTHER_REGISTRY: the image is of a registry that Anima does not read (it reads Docker Hub, ghcr.io, quay.io and
+mcr.microsoft.com, with no account). NO_NAME: the container names an identifier, or a name no registry accepts.
+NO_LOCAL_DIGEST: Docker keeps no registry digest for the tag (the image was built on the device, or the tag is not on
+the device now). NOT_AT_REGISTRY: the registry has no such tag for a reader with no account (private, or gone).
+REGISTRY_NOT_READ: the registry did not answer as a registry does or in time, the hub may not reach it, or the device
+has more than 40 different tags.
+"""
+enum ContainerImageUpdateReason {
+  PINNED_DIGEST
+  OTHER_REGISTRY
+  NO_NAME
+  NO_LOCAL_DIGEST
+  NOT_AT_REGISTRY
+  REGISTRY_NOT_READ
+}
+
+"Whether a newer image exists for one container (HOST-021). Anima updates nothing by itself (ETH-004)."
+type ContainerImageUpdate {
+  containerId: String!
+  "The name of the container."
+  container: String!
+  "The image as the container names it."
+  image: String!
+  state: ContainerImageUpdateState!
+  "Not null when state is NOT_KNOWN."
+  reason: ContainerImageUpdateReason
+  "The digest that the device has for the tag. When Docker keeps more than one, the one that the registry gives, or the first."
+  localDigest: String
+  "The digest that the registry gives for the tag now."
+  registryDigest: String
+}
+
+"One line of the log of a container: what it wrote to either output stream."
+type ContainerLogLine {
+  "When Docker took the line; null when the line has no time."
+  at: DateTime
+  text: String!
+}
+
+"The last lines of the log of one container, oldest first. The hub keeps none of them (LOG-007)."
+type ContainerLog {
+  lines: [ContainerLogLine!]!
+  "True when the lines passed 4 MiB: the newest lines are missing."
+  cut: Boolean!
+}
+
+# The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
+"The AI agent program a session comes from (AIS-018)."
+enum AgentSource {
+  CLAUDE_CODE
+  CODEX
+}
+
+"What a device's daemon can read of the sessions of the AI agent programs, as it sent last (AIS-024)."
+enum AgentUsageState {
+  "It reads the session files of its user."
+  READING
+  "It runs as the systemd system unit: This daemon runs as a system unit and cannot see the sessions of a user."
+  SYSTEM_UNIT
+  "The operator turned the function off on the device, or its settings file cannot be read."
+  TURNED_OFF
+}
+
+"A dimension that agentUsage sums by."
+enum AgentUsageDimension {
+  DEVICE
+  SOURCE
+  "The model of each token count. Sessions, prompts and tool calls count under the model of their session: the model with the most output tokens in it, the first by name on a tie; none for a session with no tokens."
+  MODEL
+  REPOSITORY
+  "The UTC day. A session with use on two days counts on each."
+  DAY
+}
+
+"Which use agentUsage sums. Each part narrows the rows; null parts admit all."
+input AgentUsageFilter {
+  deviceId: ID
+  source: AgentSource
+  "host/owner/name, exactly as the daemon sends it (K8 Section 4)."
+  repository: String
+  "The first UTC day, YYYY-MM-DD. Default: 29 days before lastDay."
+  firstDay: String
+  "The last UTC day, YYYY-MM-DD, included. Default: today (UTC, by the hub's clock)."
+  lastDay: String
+}
+
+"The answer of agentUsage (AIS-020, AIS-021, AIS-024)."
+type AgentUsage {
+  "The days summed, YYYY-MM-DD, both included."
+  firstDay: String!
+  lastDay: String!
+  "One row for each group, newest day first, then by device name (byte order), source, model and repository, a missing model or repository last. At most 1000."
+  rows: [AgentUsageRow!]!
+  "How many groups are not in rows because of the limit of 1000."
+  rowsLeftOut: Int!
+  "Everything the filter admits, in one row with no dimension."
+  total: AgentUsageRow!
+  "Each device whose daemon sent a usage state, by device name; only the device of filter.deviceId when it is given."
+  devices: [AgentUsageDevice!]!
+  "The day of the public list prices of estimatedCostUsd, YYYY-MM-DD."
+  pricesAsOf: String!
+}
+
+"The sums of one group. A dimension that by does not name is null; MODEL and REPOSITORY are also null for use with no model or no repository. Every text comes from a device. Counts are whole numbers; a Float holds a count above 2^31 exactly up to 2^53."
+type AgentUsageRow {
+  device: Device
+  source: AgentSource
+  model: String
+  repository: String
+  "YYYY-MM-DD."
+  day: String
+  "The sessions with use in the group."
+  sessions: Int!
+  prompts: Float!
+  toolCalls: Float!
+  "Input tokens not read from or written to the cache."
+  inputTokens: Float!
+  "Output tokens, reasoning included."
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  "An estimate in US dollars: the tokens of each model times its public list price of pricesAsOf (AIS-021). It is not the bill of a subscription. Null when no token of the group has a known price; never a guess for a model with no known price."
+  estimatedCostUsd: Float
+  "The tokens of models with no known price, which estimatedCostUsd leaves out."
+  unpricedTokens: Float!
+}
+
+"A device's usage state (AIS-024)."
+type AgentUsageDevice {
+  device: Device!
+  state: AgentUsageState!
+}
+
+type MetricSample {
+  kind: MetricKind!
+  label: String!
+  value: Float!
+}
+
+type MetricsAdded {
+  deviceId: ID!
+  at: DateTime!
+  samples: [MetricSample!]!
+  readings: Readings!
+}
+
+
+input IcmpConfigInput {
+  timeoutMs: Int = 2000
+  ipVersion: IpVersion = V4
+}
+
+input TcpConfigInput {
+  port: Int!
+  timeoutMs: Int = 5000
+}
+
+input TlsConfigInput {
+  port: Int = 443
+  serverName: String
+  timeoutMs: Int = 5000
+}
+
+input HttpHeaderInput {
+  name: String!
+  value: String!
+}
+
+input StatusRangeInput {
+  from: Int!
+  to: Int!
+}
+
+input HttpAuthInput @oneOf {
+  basic: BasicAuthInput
+  bearerToken: String
+}
+
+input BasicAuthInput {
+  username: String!
+  password: String!
+}
+
+input HttpConfigInput {
+  url: String!
+  method: HttpMethod = GET
+  headers: [HttpHeaderInput!] = []
+  body: String
+  maxRedirects: Int = 10
+  acceptedStatus: [StatusRangeInput!] = [{ from: 200, to: 299 }]
+  keyword: String
+  jsonQuery: String
+  jsonExpected: String
+  auth: HttpAuthInput
+  verifyTls: Boolean = true
+  timeoutMs: Int = 10000
+}
+
+input DnsConfigInput {
+  name: String!
+  recordType: DnsRecordType = A
+  resolver: IpAddr
+  expected: String
+}
+
+input GroupConfigInput {
+  childIds: [ID!]!
+}
+
+input CreateCheckInput {
+  deviceId: ID!
+  parentId: ID
+  name: String!
+  config: CheckConfigInput!
+  intervalSeconds: Int = 60
+  retries: Int = 3
+  retryIntervalSeconds: Int = 20
+  degradedThresholdMs: Int = 1000
+  invert: Boolean = false
+}
+
+input UpdateCheckInput {
+  parentId: ID
+  name: String
+  config: CheckConfigInput
+  intervalSeconds: Int
+  retries: Int
+  retryIntervalSeconds: Int
+  degradedThresholdMs: Int
+  invert: Boolean
+}
+
+input DomainExpiryConfigInput {
+  domain: String!
+  "1 to 365 (R-093)."
+  warnDays: Int = 30
+  timeoutMs: Int = 10000
+}
+
+"The values the client pre-fills in a new check (D-26). Bounds as checks.checks."
+type CheckDefaults {
+  intervalSeconds: Int!
+  retries: Int!
+  retryIntervalSeconds: Int!
+  degradedThresholdMs: Int!
+}
+
+input CheckDefaultsInput {
+  intervalSeconds: Int!
+  retries: Int!
+  retryIntervalSeconds: Int!
+  degradedThresholdMs: Int!
+}
+
+type Heartbeat {
+  at: DateTime!
+  status: Status!
+  responseTimeMs: Int
+  message: String
+}
+
+type HeartbeatEdge {
+  cursor: String!
+  node: Heartbeat!
+}
+
+type HeartbeatConnection {
+  edges: [HeartbeatEdge!]!
+  pageInfo: PageInfo!
+}
+
+enum UptimeWindow {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+# ---------------------------------------------------------------- maintenance (WP-09)
+
+enum WindowKind {
+  MANUAL
+  SINGLE
+  RECURRING_INTERVAL
+  RECURRING_WEEKDAY
+  RECURRING_DAY_OF_MONTH
+}
+
+enum Weekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum TargetType {
+  DEVICE
+  CHECK
+  TAG
+}
+
+type WindowTarget {
+  type: TargetType!
+  "Device ID, check ID or tag name."
+  target: String!
+}
+
+"A rule with fields, never cron text (MW-004). Times are local to `timezone` (MW-001)."
+type MaintenanceWindow {
+  id: ID!
+  name: String!
+  kind: WindowKind!
+  timezone: String!
+  "MANUAL only."
+  activeManual: Boolean
+  "SINGLE only."
+  startsAt: DateTime
+  endsAt: DateTime
+  "RECURRING_INTERVAL only."
+  firstStartAt: DateTime
+  everyDays: Int
+  "RECURRING_WEEKDAY and RECURRING_DAY_OF_MONTH. HH:MM local; may end after midnight (MW-002)."
+  weekdays: [Weekday!]
+  "1..31, or -1 for the last day of the month."
+  daysOfMonth: [Int!]
+  startTime: String
+  durationMinutes: Int
+  targets: [WindowTarget!]!
+  activeNow: Boolean!
+}
+
+input WindowTargetInput {
+  type: TargetType!
+  target: String!
+}
+
+input MaintenanceWindowInput {
+  name: String!
+  kind: WindowKind!
+  timezone: String!
+  startsAt: DateTime
+  endsAt: DateTime
+  firstStartAt: DateTime
+  everyDays: Int
+  weekdays: [Weekday!]
+  daysOfMonth: [Int!]
+  startTime: String
+  durationMinutes: Int
+  targets: [WindowTargetInput!]!
+}
+
+# ---------------------------------------------------------------- events (WP-05)
+
+enum Severity {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum EventSource {
+  CHECK
+  SESSION
+  DEVICE
+  ACCESS
+  HUB
+  METRICS
+  NOTIFICATION
+  VPN
+}
+
+# Actor kinds (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned).
+
+"Who did a recorded action: USER a person, AGENT an AI agent, HUB the code of Anima (LOG-012)."
+enum ActorKind {
+  USER
+  AGENT
+  HUB
+}
+
+"The kind of token a request signed in with (LOG-018). A HUB entry has none."
+enum TokenKind {
+  LOGIN
+  BROWSER
+  API_KEY
+}
+
+type Event {
+  id: ID!
+  at: DateTime!
+  severity: Severity!
+  source: EventSource!
+  deviceId: ID
+  deviceName: String
+  message: String!
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for an event written before LOG-013."
+  actorKind: ActorKind
+}
+
+type EventEdge {
+  cursor: String!
+  node: Event!
+}
+
+type EventConnection {
+  edges: [EventEdge!]!
+  pageInfo: PageInfo!
+}
+
+input EventFilter {
+  severity: [Severity!]
+  source: [EventSource!]
+  deviceId: ID
+  since: DateTime
+  "Only events whose message or device name holds this text, with case ignored. 1 to 200 characters; blank matches every event (LOG-011)."
+  text: String
+}
+
+type AuditEntry {
+  id: ID!
+  at: DateTime!
+  operatorName: String!
+  action: String!
+  targetType: String!
+  targetId: String!
+  clientAddr: IpAddr!
+  "Changed fields. Secret values are replaced with \"[redacted]\"."
+  change: JSON!
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for an entry written before LOG-012. A HUB entry names the operator who started what the hub acted on, when there is one (for example the session the hub ended); otherwise operatorName is Anima, with the nil operator ID."
+  actorKind: ActorKind
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for a HUB entry and an old entry (LOG-018)."
+  tokenKind: TokenKind
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) The API key's name, for an API_KEY entry only; never the key (LOG-018)."
+  apiKeyName: String
+}
+
+type AuditEdge {
+  cursor: String!
+  node: AuditEntry!
+}
+
+type AuditConnection {
+  edges: [AuditEdge!]!
+  pageInfo: PageInfo!
+}
+
+"(R-138, LOG-027) The check of the hash chain of the audit log. It changes nothing."
+type AuditChainCheck {
+  "True when the check found no fault."
+  intact: Boolean!
+  "The links that the check read, up to the first fault."
+  links: Int!
+  "The links whose entry the retention dropped (one year)."
+  dropped: Int!
+  "The sequence number of the newest link that the check read; null for an empty chain."
+  headSeq: Int
+  "Its SHA-256 hash, 64 lower-case hexadecimal characters. Keep a copy outside the hub: a later head that does not continue it shows that the chain was written again."
+  headHash: String
+  "The first fault; null when intact."
+  fault: AuditChainFault
+}
+
+"(R-138, LOG-027) The first place where the chain and the entries do not agree."
+type AuditChainFault {
+  kind: AuditChainFaultKind!
+  "The link; null for NOT_LINKED."
+  seq: Int
+  entryId: ID!
+  at: DateTime!
+}
+
+"(R-138, LOG-027)"
+enum AuditChainFaultKind {
+  "The entry does not give the hash of its link: a field changed, or entries changed places."
+  CHANGED
+  "The link has no entry, and the entry's day is inside the retention."
+  MISSING
+  "A sequence number is missing, or a previous hash is not the hash of the link before."
+  BROKEN
+  "An entry has no link: the hub did not write it."
+  NOT_LINKED
+}
+
+# ---------------------------------------------------------------- notifications (WP-45)
+# NOT-001..007, D-16..D-22.
+
+enum ChannelKind {
+  WEBHOOK
+  NTFY
+  EMAIL
+  APPRISE
+}
+
+enum NotificationKind {
+  DOWN
+  UP
+  STILL_DOWN
+  CERTIFICATE_EXPIRY
+  DOMAIN_EXPIRY
+  TEST
+}
+
+enum WebhookMethod {
+  POST
+  PUT
+}
+
+enum SmtpSecurity {
+  TLS
+  STARTTLS
+}
+
+enum AppriseMode {
+  STATELESS_URLS
+  CONFIG_KEY
+}
+
+"The URL can hold a credential, so only its origin is returned (D-17)."
+type WebhookSettings {
+  origin: String!
+  method: WebhookMethod!
+  "Names only; values are sealed."
+  headerNames: [String!]!
+}
+
+"The topic and token are sealed: on a public server the topic is the credential."
+type NtfySettings {
+  server: String!
+  priority: Int!
+  tokenStored: Boolean!
+}
+
+type EmailSettings {
+  host: String!
+  port: Int!
+  security: SmtpSecurity!
+  username: String
+  from: String!
+  to: [String!]!
+  passwordStored: Boolean!
+}
+
+"The URLs or the key are sealed."
+type AppriseSettings {
+  server: String!
+  mode: AppriseMode!
+  tags: [String!]!
+}
+
+union ChannelSettings = WebhookSettings | NtfySettings | EmailSettings | AppriseSettings
+
+type NotificationTemplate {
+  title: String!
+  body: String!
+}
+
+type NotificationChannel {
+  id: ID!
+  name: String!
+  kind: ChannelKind!
+  "On for each new check (NOT-003)."
+  onByDefault: Boolean!
+  settings: ChannelSettings!
+  "Null: the installation's default template (NOT-007)."
+  template: NotificationTemplate
+  lastDelivery: Delivery
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Delivery {
+  id: ID!
+  channelId: ID
+  channelName: String!
+  kind: NotificationKind!
+  at: DateTime!
+  ok: Boolean!
+  "Null when ok. The client shows a fixed sentence for each value; no hub or target text is shown (CR-14)."
+  reason: DeliveryReason
+  "The HTTP status or SMTP reply code, when the reason has one."
+  code: Int
+}
+
+enum DeliveryReason {
+  TARGET_NOT_PERMITTED
+  BAD_ADDRESS
+  SECRET_UNREADABLE
+  SETUP_FAILED
+  CONNECTION_FAILED
+  TLS_FAILED
+  TIMED_OUT
+  HTTP_STATUS
+  NO_STARTTLS
+  SMTP_REFUSED
+  NOT_UNDERSTOOD
+}
+
+type DeliveryEdge {
+  cursor: String!
+  node: Delivery!
+}
+
+type DeliveryConnection {
+  edges: [DeliveryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type CheckNotifications {
+  channels: [NotificationChannel!]!
+  "Send again after each N Down heartbeats; 0: never (NOT-005)."
+  resendEveryBeats: Int!
+}
+
+type NotificationSettings {
+  "Days before expiry, descending, 1..365, at most 5 values (NOT-006, D-22). Default [21, 14, 7]."
+  certificateDays: [Int!]!
+  template: NotificationTemplate!
+  "The placeholders a template may use (D-21)."
+  placeholders: [String!]!
+}
+
+"""
+On update, a secret field that is null keeps the stored value; an empty string clears it where it is optional.
+When the target changes (webhook origin, ntfy server, email host or port, Apprise server), every stored secret must
+be sent again or cleared, or the update is VALIDATION. `headers`: null keeps, [] removes all, a list replaces all.
+The kind of a channel never changes. URLs and servers are https only; a server is an origin only (CR-14).
+"""
+input WebhookSettingsInput {
+  url: String
+  method: WebhookMethod = POST
+  headers: [HttpHeaderInput!]
+}
+
+input NtfySettingsInput {
+  server: String = "https://ntfy.sh"
+  topic: String
+  token: String
+  priority: Int = 3
+}
+
+input EmailSettingsInput {
+  host: String!
+  port: Int = 587
+  security: SmtpSecurity = STARTTLS
+  username: String
+  password: String
+  from: String!
+  to: [String!]!
+}
+
+input AppriseSettingsInput {
+  server: String!
+  mode: AppriseMode = STATELESS_URLS
+  urls: [String!]
+  key: String
+  tags: [String!] = []
+}
+
+input ChannelSettingsInput @oneOf {
+  webhook: WebhookSettingsInput
+  ntfy: NtfySettingsInput
+  email: EmailSettingsInput
+  apprise: AppriseSettingsInput
+}
+
+input NotificationTemplateInput {
+  title: String!
+  body: String!
+}
+
+input NotificationChannelInput {
+  name: String!
+  onByDefault: Boolean = false
+  settings: ChannelSettingsInput!
+  "Null: the default template."
+  template: NotificationTemplateInput
+}
+
+input CheckNotificationsInput {
+  channelIds: [ID!]!
+  "Send again after each N Down heartbeats, 0..1000; 0: never (NOT-005)."
+  resendEveryBeats: Int = 0
+}
+
+input NotificationSettingsInput {
+  "Days 1..365, in any order; at most 5 once duplicates are removed; stored largest first (NOT-006, D-22)."
+  certificateDays: [Int!]!
+  template: NotificationTemplateInput!
+}
+
+# ---------------------------------------------------------------- retention (WP-46)
+# HUB-005, D-25.
+
+enum RetentionSubject {
+  HEARTBEATS
+  METRICS
+  EVENTS
+  DELIVERIES
+}
+
+type RetentionPeriod {
+  subject: RetentionSubject!
+  days: Int!
+  minDays: Int!
+  maxDays: Int!
+  defaultDays: Int!
+}
+
+# ---------------------------------------------------------------- device link (S6)
+# FRN-009, LNK-003, LNK-004 (OR-S6-3). The hub asks anima-link through its control socket
+# (ANIMA_LINK_CONTROL). Without the socket, or when the link does not answer, each link field is
+# UNAVAILABLE.
+
+"""How a device of the link reaches the hub now (LNK-006)."""
+enum LinkPath {
+  DIRECT
+  RELAYED
+  "No packet has crossed yet."
+  NONE
+}
+
+"""A device the link permits (LNK-004)."""
+type LinkDevice {
+  "The device's public key, as revokeLinkDevice takes it."
+  key: String!
+  "The short form of key that anima-link join prints on the device."
+  fingerprint: String!
+  name: String!
+  "The device's link address: the client address the hub records for it."
+  address: IpAddr!
+  path: LinkPath!
+  "The relay's name when path is RELAYED."
+  relay: String
+  "When the device's key stops being permitted; null when the link gives no time."
+  expiresAt: DateTime
+  "The streams open now."
+  streams: Int!
+}
+
+"""An invite for a new device of the link: shown once, works once, expires (LNK-003, LOG-007)."""
+type LinkInvite {
+  "The invite text. The hub keeps no copy and writes it to no log or audit entry."
+  invite: String!
+  expiresAt: DateTime!
+}
+
+"""What a hosted hub gives the Anima.ing cloud for a new device (hosted-mode.md HMD-037, R-129): shown once, never logged (LOG-007)."""
+type HostedDeviceInvite {
+  "The link invite: works once and expires (LNK-003). Null when a device with this name is already on the link: the claim then gives that device a new token."
+  invite: String
+  "The one-time claim that the device that joined with invite trades for its token (claimDeviceToken)."
+  claim: String!
+  expiresAt: DateTime!
+}
+
+# ---------------------------------------------------------------- sessions (WP-10)
+
+enum Protocol {
+  SSH
+  RDP
+  VNC
+}
+
+enum SessionEndReason {
+  OPERATOR
+  REMOTE_CLOSED
+  GATEWAY_ERROR
+  AUTH_FAILED
+  HOST_KEY_MISMATCH
+  "The client sent an instruction that does not decode (GW-011, R-034)."
+  PROTOCOL_ERROR
+  TIMEOUT
+  HUB_SHUTDOWN
+  "The RDP certificate differs from the accepted one (D-5)."
+  SERVER_CERTIFICATE_MISMATCH
+}
+
+type Session {
+  id: ID!
+  deviceId: ID
+  deviceName: String!
+  protocol: Protocol!
+  operatorName: String!
+  startedAt: DateTime!
+  endedAt: DateTime
+  endReason: SessionEndReason
+  # RA-034: which computer holds it
+  clientAddr: IpAddr!
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
+}
+
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
+}
+
+"Single-use ticket for the WebSocket tunnel (API-009). See contracts/tunnel.md."
+type SessionTicket {
+  sessionId: ID!
+  token: String!
+  tunnelPath: String!
+  expiresAt: DateTime!
+  "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
+  wakeSent: Boolean!
+}
+
+type WakeResult {
+  sentAt: DateTime!
+  relayName: String!
+}
+
+type SessionChange {
+  session: Session!
+}
+
+# ---------------------------------------------------------------- web interfaces (WP-30)
+
+enum OpenIn {
+  ANIMA_TAB
+  SYSTEM_BROWSER
+}
+
+type WebInterface {
+  id: ID!
+  deviceId: ID!
+  label: String!
+  url: String!
+  openIn: OpenIn!
+  "Pinned on accept (WEB-008)."
+  pinnedFingerprintSha256: String
+  pinnedAt: DateTime
+}
+
+type WebInterfaceSuggestion {
+  checkId: ID!
+  url: String!
+  label: String!
+}
+
+input WebInterfaceInput {
+  "Defaults to the URL's host."
+  label: String
+  url: String!
+  openIn: OpenIn = ANIMA_TAB
+}
+
+input DisplayInput {
+  "Only these values come from the client (GW-012)."
+  widthPx: Int!
+  heightPx: Int!
+  dpi: Int = 96
+  timezone: String
+}
+
+input StartSessionInput {
+  deviceId: ID!
+  protocol: Protocol!
+  display: DisplayInput!
+}
+
+# ---------------------------------------------------------------- builds (WP-36, R-107)
+
+"What a release is built for (BLD-001, BLD-003)."
+enum BuildTarget {
+  "An AppImage, built on Linux on x86_64."
+  LINUX_X86_64
+  "An app and a DMG, built on macOS on aarch64."
+  DARWIN_UNIVERSAL
+}
+
+"Section 3.10.1 says which changes are permitted (BLD-010)."
+enum BuildJobState {
+  QUEUED
+  CLAIMED
+  BUILDING
+  UPLOADING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum BuilderOs {
+  LINUX
+  MACOS
+}
+
+"As Tauri names it."
+enum BuilderArch {
+  X86_64
+  AARCH64
+}
+
+type BuilderPlatform {
+  os: BuilderOs!
+  arch: BuilderArch!
+}
+
+input BuilderPlatformInput {
+  os: BuilderOs!
+  arch: BuilderArch!
+}
+
+type Release {
+  id: ID!
+  version: String!
+  "40 lower-case hex digits."
+  commit: String!
+  createdAt: DateTime!
+  "The operator who started it."
+  createdBy: String!
+  "One job for each selected target."
+  jobs: [BuildJob!]!
+}
+
+type ReleaseEdge {
+  cursor: String!
+  node: Release!
+}
+
+type ReleaseConnection {
+  edges: [ReleaseEdge!]!
+  pageInfo: PageInfo!
+}
+
+type BuildJob {
+  id: ID!
+  releaseId: ID!
+  target: BuildTarget!
+  version: String!
+  commit: String!
+  state: BuildJobState!
+  failureReason: String
+  "Leases that ended without a report (BLD-006)."
+  attempts: Int!
+  builderId: ID
+  "The builder that last claimed it."
+  builderName: String
+  leaseEndsAt: DateTime
+  queuedAt: DateTime!
+  claimedAt: DateTime
+  buildingAt: DateTime
+  uploadingAt: DateTime
+  publishedAt: DateTime
+  failedAt: DateTime
+  cancelledAt: DateTime
+  "When it entered its current state (BLD-080)."
+  stateChangedAt: DateTime!
+}
+
+type BuildLogLine {
+  sequence: Int!
+  "Redacted before it was stored (BLD-049)."
+  text: String!
+}
+
+type BuildJobUpdate {
+  job: BuildJob!
+  "The log lines this change added."
+  logLines: [BuildLogLine!]!
+}
+
+type Builder {
+  id: ID!
+  name: String!
+  platform: BuilderPlatform!
+  "The VPN address it enrolled from and must call from (BLD-024)."
+  clientAddr: IpAddr!
+  enrolledAt: DateTime!
+  lastSeenAt: DateTime
+  "It called within the last 60 seconds (BLD-007)."
+  online: Boolean!
+}
+
+type BuilderEnrolment {
+  builder: Builder!
+  "The builder token, shown once (BLD-023)."
+  token: String!
+  expiresAt: DateTime!
+}
+
+input BuildFileInput {
+  name: String!
+  "64 hex digits."
+  sha256: String!
+  "In bytes."
+  size: Int!
+}
+
+"A presigned PUT for one file of a job (BLD-060). The URL is a credential: never log it (LOG-007, BLD-049)."
+type BuildUploadUrl {
+  name: String!
+  url: String!
+  "Headers the PUT must send exactly as given: Content-Length, Cache-Control and Content-Type."
+  headers: [BuildUploadHeader!]!
+  expiresAt: DateTime!
+}
+
+type BuildUploadHeader {
+  name: String!
+  value: String!
+}
+
+# ---------------------------------------------------------------- extensions (E0-8, K-E7)
+# Operator, 2026-11-13; ruling number to be assigned. Pending until the hub serves it.
+
+enum DataClass { A B C }
+
+enum NavigationGroup { INFRASTRUCTURE LIFE BELONGINGS VAULT WORK BOTTOM }
+
+type NavigationEntry {
+  group: NavigationGroup!
+  label: String!
+  "A client route, for example /projects."
+  route: String!
+}
+
+type Extension {
+  "Stable identifier, for example projects."
+  key: String!
+  name: String!
+  dataClass: DataClass!
+  "False: listed, not built. setExtension refuses it with CONFLICT."
+  built: Boolean!
+  "True: part of the engine, always on, no switch (Integrations, ENG-002)."
+  fixed: Boolean!
+  on: Boolean!
+  "Keys this one cannot work without. Setting it on sets them on too (EXT-011)."
+  needs: [String!]!
+  worksWith: [String!]!
+  "Keys that are on and need this one. Not empty: setting it off is refused (EXT-012)."
+  neededBy: [String!]!
+  "Show it only while `on`."
+  navigation: NavigationEntry
+  "Null: never changed."
+  changedAt: DateTime
+}
+
+# ---------------------------------------------------------------- sources (E0-2, K-E1)
+
+enum AcquisitionMethod { TOKEN_PULL }
+enum SourceHealth { OK STARTING STALLED NEVER_SYNCED PAUSED NEEDS_RECONNECT }
+enum PauseReason { OPERATOR EXTENSION_OFF }
+enum SyncTrigger { CONNECT SCHEDULE MANUAL }
+enum SyncOutcome { OK FAILED STOPPED }
+
+type Source {
+  "Stable identifier, for example github."
+  key: String!
+  name: String!
+  acquisition: AcquisitionMethod!
+  scopes: [String!]!
+  "Null: the source asks for read-only scopes. Otherwise why it does not (SRC-010)."
+  writeReason: String
+  gives: [String!]!
+  pollIntervalSeconds: Int!
+  "Keys of the extensions that use it."
+  consumers: [String!]!
+  accounts: [SourceAccount!]!
+}
+
+type SyncProblem {
+  code: String!
+  subject: String!
+  message: String!
+}
+
+type SyncRun {
+  id: ID!
+  trigger: SyncTrigger!
+  startedAt: DateTime!
+  endedAt: DateTime
+  "Null while it runs."
+  outcome: SyncOutcome
+  inserted: Int!
+  changed: Int!
+  unchanged: Int!
+  removed: Int!
+  problems: [SyncProblem!]!
+  "Fixed words. Never a token, a key or a provider reply (LOG-007)."
+  error: String
+}
+
+type SourceAccount {
+  id: ID!
+  sourceKey: String!
+  label: String!
+  "For GitHub: <App ID>/<installation ID>."
+  instanceKey: String!
+  "Never the value (KEY-002)."
+  credentialStored: Boolean!
+  health: SourceHealth!
+  "Set when health is PAUSED."
+  pausedBy: PauseReason
+  "The last successful sync."
+  lastSyncAt: DateTime
+  lastError: String
+  failureCount: Int!
+  "Null while paused."
+  nextSyncAt: DateTime
+  syncing: Boolean!
+  "Newest first, 1 to 20 (ITG-003)."
+  runs(first: Int = 20): [SyncRun!]!
+  createdAt: DateTime!
+}
+
+input GithubAppInput {
+  label: String!
+  "Digits only."
+  appId: String!
+  "Digits only."
+  installationId: String!
+  "SECRET. The App's private key as PEM text. Never returned, logged or put in the audit log (PRJ-018)."
+  privateKey: String!
+}
+
+# Connect GitHub in three presses (operator, 2026-11-14; ruling number to be assigned; PRJ-039 to PRJ-042, K-E1 Section 7a).
+
+enum GithubConnectPhase {
+  WAITING_FOR_BROWSER
+  AT_GITHUB
+  APP_CREATED
+  CONNECTED
+  FAILED
+  CANCELLED
+}
+
+enum GithubConnectFailure {
+  EXPIRED
+  EXCHANGE_REFUSED
+  GITHUB_UNREACHABLE
+  REPLY_UNUSABLE
+  KEY_REFUSED
+}
+
+"The one attempt to connect GitHub that the hub holds in memory. Holds no key, code, ticket or state (PRJ-041, LOG-007)."
+type GithubConnectAttempt {
+  id: ID!
+  phase: GithubConnectPhase!
+  "Who started it."
+  startedBy: ActorKind!
+  startedAt: DateTime!
+  "55 minutes after startedAt."
+  expiresAt: DateTime!
+  "The hub page a signed-in operator opens: <public origin>/connect/github. Holds no secret and no one-time value (PRJ-041)."
+  pageUrl: String!
+  "From APP_CREATED on. Text from GitHub."
+  appId: String
+  appSlug: String
+  ownerLogin: String
+  "Set in APP_CREATED: where the operator presses Install."
+  installUrl: String
+  "Where the operator deletes an App the hub does not use: set in FAILED or CANCELLED when an App may exist. GitHub has no API to delete an App."
+  appSettingsUrl: String
+  failure: GithubConnectFailure
+  "Fixed words. Never a key, a code or a provider reply (LOG-007)."
+  message: String
+  "Set in CONNECTED."
+  account: SourceAccount
+}
+
+input StartGithubConnectInput {
+  "1 to 64 characters. Null: the login of the App's owner."
+  label: String
+  "A GitHub organisation login. Null: the operator's own account. The graphical client offers the personal account only."
+  organisation: String
+}
+
+"ONE-TIME. Never logged, never in the audit log, never returned by an MCP tool (MCP-004)."
+type GithubConnectLink {
+  "ONE-TIME. Works once, for 5 minutes, in one browser. Never logged; no MCP tool returns it."
+  url: String!
+  expiresAt: DateTime!
+}
+
+# ---------------------------------------------------------------- projects (XP-02, first slice)
+
+enum ResourceKind { CLOUDFLARE VERCEL SERVER DESKTOP_APPLICATION }
+enum ResourceState { FOUND_IN_REPOSITORY CONFIRMED }
+enum RepositorySign { WRANGLER_CONFIG VERCEL_JSON VERCEL_DEPLOYMENT DOCKERFILE COMPOSE_FILE TAURI_CONF }
+
+type ProjectRepository {
+  id: ID!
+  "owner/name (PRJ-016)."
+  fullName: String!
+  url: String!
+  defaultBranch: String
+  private: Boolean!
+  archived: Boolean!
+  fork: Boolean!
+  description: String
+  pushedAt: DateTime
+  leftOut: Boolean!
+  "True: the connection no longer lists it. The record is kept."
+  gone: Boolean!
+  "The client shows \"not connected\" from this and does not ask for the lists below unless it is READY (PRJ-032)."
+  access: RepositoryAccess!
+}
+
+type ResourceEvidence {
+  sign: RepositorySign!
+  "Null for a deployment record."
+  path: String
+}
+
+type ProjectResource {
+  id: ID!
+  kind: ResourceKind!
+  "FOUND_IN_REPOSITORY until the operator confirms it (PRO-004)."
+  state: ResourceState!
+  evidence: [ResourceEvidence!]!
+  foundAt: DateTime!
+  confirmedAt: DateTime
+}
+
+type Project {
+  id: ID!
+  slug: String!
+  name: String!
+  "The full name of its first repository; other extensions keep this text (PRJ-016, RLK-004)."
+  subjectKey: String!
+  repositories: [ProjectRepository!]!
+  resources: [ProjectResource!]!
+  "When the hub last read its repositories."
+  syncedAt: DateTime
+}
+
+type ProjectEdge {
+  cursor: String!
+  node: Project!
+}
+
+enum ProjectOrder { NAME LAST_COMMIT CREATED COMMIT_COUNT STARS }
+
+input ProjectBrowse {
+  order: ProjectOrder
+  language: String
+  minSizeKib: Int
+  maxSizeKib: Int
+}
+
+type ProjectConnection {
+  languages: [String!]!
+  edges: [ProjectEdge!]!
+  pageInfo: PageInfo!
+}
+
+# ---------------------------------------------------------------- projects: work, code and history (XP-02, second slice)
+# PRJ-027 to PRJ-035, OD-E14. Read live from GitHub through the hub with a short cache in hub memory; none of it is stored
+# (K-E1 Section 13). "Text from GitHub" in a doc string means other people can write it: the client shows it as plain text,
+# never as HTML, and MCP passes it through `mcp/untrusted.rs`. Pull requests and issues have no hub ID; GitHub's numbers
+# are not UUIDs (K7, IDs). Names are forge-neutral (PRO-007).
+
+"Whether the hub can read and change a repository on GitHub now."
+enum RepositoryAccess {
+  READY
+  "No source account holds it (the account was removed and the records kept)."
+  NOT_CONNECTED
+  "GitHub refused the key of its account."
+  NEEDS_RECONNECT
+  "Its account is paused."
+  PAUSED
+  LEFT_OUT
+  "The connection no longer lists it."
+  GONE
+}
+
+"When the hub read an answer from GitHub (PRJ-032)."
+type ForgeRead {
+  "When GitHub gave this answer."
+  at: DateTime!
+  "True: the newest read failed and this is the last good answer, at most one hour old."
+  stale: Boolean!
+  "Set when stale. Fixed words; never a provider reply (LOG-007)."
+  problem: String
+}
+
+enum OpenOrClosed { OPEN CLOSED ALL }
+enum ChecksState { NONE PENDING PASSED FAILED }
+
+"The check runs and commit statuses of one commit, counted together."
+type CommitChecks {
+  sha: String!
+  "FAILED when any failed; else PENDING when any is not finished; else PASSED; NONE when the commit has none."
+  state: ChecksState!
+  passed: Int!
+  failed: Int!
+  pending: Int!
+  "Skipped, neutral or cancelled."
+  other: Int!
+  "Up to 10 names of failed checks, each at most 100 characters. Text from GitHub."
+  failing: [String!]!
+  "True: the commit has more than 100 check runs or statuses; the counts cover the first 100 of each."
+  partial: Boolean!
+}
+
+enum PullRequestState { OPEN CLOSED MERGED }
+enum MergeMethod { MERGE SQUASH REBASE }
+enum MergeState {
+  "No conflict and the checks passed."
+  CLEAN
+  "No conflict; a check that is not required failed or still runs."
+  UNSTABLE
+  CONFLICT
+  "A required check or review is missing."
+  BLOCKED
+  "The base branch moved and the repository requires an up-to-date branch."
+  BEHIND
+  DRAFT
+  "GitHub has not computed it yet. Ask again."
+  UNKNOWN
+}
+
+type PullRequestMergeability {
+  state: MergeState!
+  "True only for CLEAN on an open pull request that is not a draft (PRJ-033)."
+  canMerge: Boolean!
+}
+
+"Identity is the repository and the number. It has no hub ID: the hub does not store it."
+type PullRequest {
+  repository: ID!
+  number: Int!
+  "At most 300 characters. Text from GitHub."
+  title: String!
+  state: PullRequestState!
+  draft: Boolean!
+  "Text from GitHub."
+  authorLogin: String!
+  "Text from GitHub."
+  headBranch: String!
+  "40 lower-case hex digits."
+  headSha: String!
+  baseBranch: String!
+  "True: the head branch is in another repository. Such a pull request is never merged in bulk, and its workflow runs are not run again from Anima (PRO-013)."
+  fromFork: Boolean!
+  "owner/name of the head repository; null when it was deleted. Text from GitHub."
+  headRepository: String
+  "Up to 20 names. Text from GitHub."
+  labels: [String!]!
+  comments: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  mergedAt: DateTime
+  "The page on GitHub (PRJ-010)."
+  url: String!
+  "Markdown source, cut at 20,000 characters. Text from GitHub: plain text, never HTML."
+  body: String
+  bodyCut: Boolean!
+  "Costs one GitHub request for each pull request when selected. Null for one that is not open."
+  mergeability: PullRequestMergeability
+  "The checks of headSha. Costs two GitHub requests for each pull request when selected."
+  checks: CommitChecks
+}
+
+type PullRequestEdge {
+  cursor: String!
+  node: PullRequest!
+}
+
+type PullRequestConnection {
+  edges: [PullRequestEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+  "The merge methods the repository allows. Costs one GitHub request when selected (kept 10 minutes)."
+  mergeMethods: [MergeMethod!]!
+}
+
+enum IssueCloseReason { COMPLETED NOT_PLANNED }
+
+type Issue {
+  repository: ID!
+  number: Int!
+  "At most 300 characters. Text from GitHub."
+  title: String!
+  open: Boolean!
+  "Set for a closed issue when GitHub gives it."
+  closeReason: IssueCloseReason
+  "Text from GitHub."
+  authorLogin: String!
+  "Up to 20 names. Text from GitHub."
+  labels: [String!]!
+  "Up to 10 logins. Text from GitHub."
+  assignees: [String!]!
+  comments: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  closedAt: DateTime
+  url: String!
+  "Markdown source, cut at 20,000 characters. Text from GitHub: plain text, never HTML."
+  body: String
+  bodyCut: Boolean!
+}
+
+type IssueEdge {
+  cursor: String!
+  node: Issue!
+}
+
+type IssueConnection {
+  edges: [IssueEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+type IssueComment {
+  "GitHub's comment number, as digits."
+  id: ID!
+  "Text from GitHub."
+  authorLogin: String!
+  "Markdown source, cut at 20,000 characters. Text from GitHub: plain text, never HTML."
+  body: String!
+  bodyCut: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  url: String!
+}
+
+type IssueCommentEdge {
+  cursor: String!
+  node: IssueComment!
+}
+
+type IssueCommentConnection {
+  edges: [IssueCommentEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+enum WorkflowRunStatus { QUEUED IN_PROGRESS COMPLETED }
+enum WorkflowConclusion { SUCCESS FAILURE CANCELLED SKIPPED TIMED_OUT ACTION_REQUIRED NEUTRAL STALE OTHER }
+
+type Workflow {
+  "GitHub's workflow number, as digits."
+  id: ID!
+  "Text from GitHub."
+  name: String!
+  "For example .github/workflows/ci.yml. Text from GitHub."
+  path: String!
+  "False: the workflow is disabled on GitHub."
+  active: Boolean!
+  url: String!
+}
+
+type WorkflowJobs {
+  total: Int!
+  succeeded: Int!
+  failed: Int!
+  running: Int!
+  queued: Int!
+  "Skipped or cancelled."
+  other: Int!
+  "Up to 10 names of failed jobs, each at most 100 characters. Text from GitHub."
+  failing: [String!]!
+  "True: the run has more than 100 jobs; the counts cover the first 100."
+  partial: Boolean!
+}
+
+type WorkflowRun {
+  repository: ID!
+  "GitHub's run number across the repository, as digits (it does not fit Int)."
+  id: ID!
+  workflowId: ID!
+  "The workflow's name. Text from GitHub."
+  name: String!
+  "The count of runs of this workflow."
+  runNumber: Int!
+  attempt: Int!
+  "For example push, pull_request, workflow_dispatch."
+  event: String!
+  status: WorkflowRunStatus!
+  "Null until COMPLETED."
+  conclusion: WorkflowConclusion
+  "Null for a run with no branch. Text from GitHub."
+  branch: String
+  "40 lower-case hex digits. Each confirmation shows it (PRJ-034)."
+  headSha: String!
+  "The first line of the commit message, at most 200 characters. Text from GitHub."
+  commitTitle: String
+  "Text from GitHub."
+  actorLogin: String
+  "True: the head commit is in another repository. The hub does not run such a run again (PRO-013)."
+  fromFork: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  startedAt: DateTime
+  url: String!
+  "COMPLETED and not fromFork."
+  rerunnable: Boolean!
+  "rerunnable, and the conclusion is FAILURE, CANCELLED or TIMED_OUT."
+  failedJobsRerunnable: Boolean!
+  "QUEUED or IN_PROGRESS."
+  cancellable: Boolean!
+  "Costs one GitHub request for each run when selected."
+  jobs: WorkflowJobs
+}
+
+type WorkflowRunEdge {
+  cursor: String!
+  node: WorkflowRun!
+}
+
+type WorkflowRunConnection {
+  edges: [WorkflowRunEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+"GitHub accepted the request; the run appears in workflowRuns a moment later."
+type WorkflowDispatch {
+  repository: ID!
+  workflowId: ID!
+  branch: String!
+  acceptedAt: DateTime!
+}
+
+type Commit {
+  repository: ID!
+  "40 lower-case hex digits."
+  sha: String!
+  "The first line of the message, at most 200 characters. Text from GitHub."
+  title: String!
+  "The rest of the message, cut at 5,000 characters. Text from GitHub."
+  message: String
+  "The name in the commit. Text from GitHub."
+  authorName: String!
+  "The GitHub login, when GitHub matched one. Text from GitHub."
+  authorLogin: String
+  committedAt: DateTime!
+  parents: [String!]!
+  url: String!
+  "Costs two GitHub requests for each commit when selected."
+  checks: CommitChecks
+}
+
+type CommitEdge {
+  cursor: String!
+  node: Commit!
+}
+
+type CommitConnection {
+  edges: [CommitEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+type Branch {
+  "Text from GitHub."
+  name: String!
+  sha: String!
+  protected: Boolean!
+  "True for the repository's default branch."
+  default: Boolean!
+}
+
+type BranchEdge {
+  cursor: String!
+  node: Branch!
+}
+
+type BranchConnection {
+  edges: [BranchEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+"A release on GitHub. Not a release of Anima (type Release)."
+type RepositoryRelease {
+  "GitHub's release number, as digits."
+  id: ID!
+  "Text from GitHub."
+  tag: String!
+  "Text from GitHub."
+  name: String
+  draft: Boolean!
+  prerelease: Boolean!
+  "Text from GitHub."
+  authorLogin: String
+  createdAt: DateTime!
+  publishedAt: DateTime
+  url: String!
+}
+
+type RepositoryReleaseEdge {
+  cursor: String!
+  node: RepositoryRelease!
+}
+
+type RepositoryReleaseConnection {
+  edges: [RepositoryReleaseEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+enum CommitStatusState { PENDING SUCCESS FAILURE ERROR }
+
+type CommitStatus {
+  repository: ID!
+  sha: String!
+  context: String!
+  state: CommitStatusState!
+  description: String
+  targetUrl: String
+  createdAt: DateTime!
+}
+
+enum CodeEntryKind { FILE DIRECTORY SYMLINK SUBMODULE }
+
+type CodeEntry {
+  "One path segment. Text from GitHub."
+  name: String!
+  "From the repository root, no leading slash. Text from GitHub."
+  path: String!
+  kind: CodeEntryKind!
+  "Bytes; 0 for anything but a FILE."
+  size: Int!
+  sha: String!
+}
+
+type CodeDirectory {
+  repository: ID!
+  "The branch name or commit asked for."
+  ref: String!
+  "Empty for the root."
+  path: String!
+  "Directories first, then by name."
+  entries: [CodeEntry!]!
+  "True: GitHub lists at most 1,000 entries of one directory and this one may have more."
+  partial: Boolean!
+  read: ForgeRead!
+}
+
+enum CodeFileContent {
+  "text holds the file."
+  TEXT
+  "Not valid UTF-8, or it holds a NUL byte. No content is returned."
+  BINARY
+  "Larger than 1,000,000 bytes. No content is returned."
+  TOO_LARGE
+}
+
+"Bytes from a repository: untrusted. The hub does not look for secrets in it and makes no promise that it holds none."
+type CodeFile {
+  repository: ID!
+  ref: String!
+  "The path GitHub read. When the path asked is a link to a file in the same repository, the path of that file."
+  path: String!
+  name: String!
+  sha: String!
+  "Bytes."
+  size: Int!
+  content: CodeFileContent!
+  "Only for TEXT. Plain text: never render it as HTML and never run it."
+  text: String
+  "The file on GitHub (PRJ-010)."
+  url: String!
+  readAt: DateTime!
+}
+
+input NewIssueInput {
+  repository: ID!
+  "1 to 256 characters."
+  title: String!
+  "At most 65,536 characters."
+  body: String
+  "At most 20, each 1 to 50 characters."
+  labels: [String!]
+}
+
+input MergePullRequestInput {
+  repository: ID!
+  number: Int!
+  "The head commit the operator saw, 40 hex digits. CONFLICT when the head moved since."
+  expectedHeadSha: String!
+  method: MergeMethod!
+  "True also merges an UNSTABLE pull request (a check that is not required failed). BLOCKED is never merged."
+  allowFailingChecks: Boolean = false
+  "Required for a pull request from a fork: must equal its headRepository."
+  forkConfirmed: String
+}
+
+input PullRequestTargetInput {
+  repository: ID!
+  number: Int!
+  expectedHeadSha: String!
+}
+
+enum MergeOutcome {
+  MERGED
+  "It was merged before this request. Nothing was changed."
+  ALREADY_MERGED
+  HEAD_MOVED
+  "Conflict, a failed or missing check, a draft, or closed."
+  NOT_MERGEABLE
+  "GitHub had not computed whether it can merge. Try again."
+  NOT_READY
+  "From a fork: merge it alone, with forkConfirmed (PRO-013)."
+  FORK_REFUSED
+  "The repository does not allow this merge method."
+  METHOD_REFUSED
+  NOT_FOUND
+  "GitHub refused or could not be reached. Nothing was changed."
+  FAILED
+  "The request was sent and no answer came. It may be merged: read the list again."
+  UNKNOWN
+  "The hub stopped before it reached this one (90 seconds for the whole request)."
+  NOT_ATTEMPTED
+}
+
+type PullRequestMerge {
+  repository: ID!
+  number: Int!
+  outcome: MergeOutcome!
+  "Fixed words. Never a provider reply (LOG-007)."
+  message: String!
+  "Set for MERGED."
+  mergeSha: String
+}
+
+"One named input of a workflow started by hand. The operator types the name; GitHub checks it (PRJ-035)."
+input WorkflowInputValue {
+  "1 to 100 characters: letters, digits, - and _."
+  name: String!
+  "At most 1,024 characters."
+  value: String!
+}
+
+input DispatchWorkflowInput {
+  repository: ID!
+  workflowId: ID!
+  "A branch of this repository."
+  branch: String!
+  "At most 25."
+  inputs: [WorkflowInputValue!] = []
+}
+
+input CommitStatusInput {
+  repository: ID!
+  "40 hex digits."
+  sha: String!
+  state: CommitStatusState!
+  "anima/ then 1 to 40 of a-z, 0-9 and -. Anima cannot write the context of another system."
+  context: String!
+  "At most 140 characters."
+  description: String
+  "Null, or an address below the hub's public origin."
+  targetUrl: String
+}
+
+# ---------------------------------------------------------------- timeline and record links (E0-4, K-E3, K-E4)
+# Operator, 2026-11-16; ruling number to be assigned. Requirement IDs: TML-001 to TML-007, RLK-001, RLK-002, RLK-004.
+
+"The closed list of TML-004. A new value needs a change to docs/plans/extensions-plan.md."
+enum EvidenceCategory { SLEEP WORKOUT VISIT TRAVEL CODE MESSAGE POST MEDIA READING SPENDING DOCUMENT DEVICE SESSION NOTE }
+
+"How the source knows what an entry says (TML-003)."
+enum EvidenceBasis { OBSERVED PLANNED OPERATOR_REPORTED INFERRED }
+
+"One entry of the timeline. The hub makes it from a record of the owning domain when the timeline is read; it is not stored (TML-001)."
+type Evidence {
+  "The record this entry is made from, as kind:id (K-E4), for example event:0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d."
+  reference: String!
+  "The key of the source that recorded it, for example event_log."
+  source: String!
+  category: EvidenceCategory!
+  "One line for a list."
+  title: String!
+  start: DateTime!
+  "Null: the source gives no end time. Then uncertainty says so (TML-006)."
+  end: DateTime
+  "When the hub received the record, when that is later than the event, such as a delayed import (TML-009). It never replaces start. Null: the hub saw the event when it happened, as for the event log."
+  receivedAt: DateTime
+  basis: EvidenceBasis!
+  "What the source does not say about this entry, one sentence each (TML-006)."
+  uncertainty: [String!]!
+  "The reference of the entry of a higher-ranked source for the same event (TML-005). The entry that has it is kept, not deleted. It is set only when both entries are among those read for this page."
+  supersededBy: String
+}
+
+type EvidenceEdge {
+  cursor: String!
+  node: Evidence!
+}
+
+type EvidenceConnection {
+  edges: [EvidenceEdge!]!
+  pageInfo: PageInfo!
+}
+
+"A link from one record to another (RLK-001). Neither record has to exist (RLK-002)."
+type RecordLink {
+  id: ID!
+  "The record the link starts at, as kind:id."
+  source: String!
+  "The record the link points to, as kind:id."
+  target: String!
+  "What the link means, in lower snake case, for example lent_to."
+  kind: String!
+  "The text to show for the target while it has no record (RLK-002). It is kept after the target has one."
+  label: String
+  "The name of the source record. Null: no domain gives one. A date or a repository key is its own name."
+  sourceTitle: String
+  "The name of the target record. Null: no domain gives one; show label."
+  targetTitle: String
+  createdAt: DateTime!
+}
+
+input RecordLinkInput {
+  source: String!
+  target: String!
+  "Lower snake case, 1 to 40 characters, starts with a letter."
+  kind: String!
+  "One line of at most 200 characters."
+  label: String
+}
+
+# Files and extraction proposals (R-148; K-E4 Sections 9, 10 and 13; FIL-001 to FIL-005, VIS-001 to VIS-004)
+
+"A file of one record (FIL-001). Its bytes go through POST and GET /files/v1/attachments, not through GraphQL."
+type Attachment {
+  id: ID!
+  "The record the file belongs to, as kind:id."
+  owner: String!
+  name: String!
+  mediaType: String!
+  "The SHA-256 of the plain bytes, in lower-case hexadecimal."
+  hash: String!
+  "The data key that seals the piece: engine or the key of an extension (VLT-003)."
+  key: String!
+  "The size of the plain bytes; at most 268435456."
+  size: Int!
+  archiveId: ID
+  "The position read from the photo at upload with keep_location=true (FIL-003); null otherwise. Metadata of the file: not evidence of where the operator was."
+  latitude: Float
+  longitude: Float
+  createdAt: DateTime!
+}
+
+"The unit of deletion of one import (FIL-004)."
+type Archive {
+  id: ID!
+  owner: String!
+  name: String!
+  createdAt: DateTime!
+}
+
+enum ExtractedFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  REFERENCE
+}
+
+"Where the extraction ran (VIS-002)."
+enum ExtractionOrigin {
+  CLIENT
+  HUB
+}
+
+enum ProposalState {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+}
+
+"One typed field of an extraction (VIS-004). value is text in the form of its type: a number, a date YYYY-MM-DD, true or false, or a record kind:id."
+type ExtractedField {
+  name: String!
+  type: ExtractedFieldType!
+  value: String!
+  "0 to 1; null when the extractor gave none: unknown, not certain."
+  confidence: Float
+}
+
+input ExtractedFieldInput {
+  "Lower snake case, 1 to 40 characters; once in a list."
+  name: String!
+  type: ExtractedFieldType!
+  "At most 2000 characters, in the form of its type."
+  value: String!
+  confidence: Float
+}
+
+"The result of one extraction. Nothing of it is a record until the operator confirms it (VIS-001); a decided proposal does not change."
+type ExtractionProposal {
+  id: ID!
+  attachmentId: ID
+  owner: String!
+  "What the extension asked for, in lower snake case, for example book."
+  form: String!
+  origin: ExtractionOrigin!
+  "As the extraction gave them while PROPOSED; as the operator left them once CONFIRMED."
+  fields: [ExtractedField!]!
+  state: ProposalState!
+  createdAt: DateTime!
+  decidedAt: DateTime
+}
+
+input ProposeExtractionInput {
+  owner: String!
+  form: String!
+  "The key of the extension that asked for the form. Its data class decides where the extraction may run: for Class A the hub refuses HUB (VLT-001, VIS-002)."
+  extension: String!
+  origin: ExtractionOrigin!
+  "An attachment of the same owner."
+  attachmentId: ID
+  "At most 100."
+  fields: [ExtractedFieldInput!]!
+}
+
+"A place (K-E4 Section 8; PLC-001 to PLC-006). Its reference is place:<id>."
+type Place {
+  id: ID!
+  "The place this one is inside. Null for a top-level place."
+  parentId: ID
+  "The name the operator gave."
+  name: String!
+  "What to call the place: the operator's name, never the geocoder's (PLC-003)."
+  title: String!
+  "Top-level places only (PLC-002)."
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  category: String!
+  icon: String!
+  aliases: [String!]!
+  geocoderName: String
+  "The sites placed here (PLC-006)."
+  siteIds: [ID!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input PlaceInput {
+  "One line of 1 to 120 characters."
+  name: String!
+  parentId: ID
+  "Latitude, longitude and radius go together, and only on a top-level place."
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  "home, work, site, shop, leisure, travel, storage or other."
+  category: String!
+  icon: String!
+  aliases: [String!]
+  geocoderName: String
+}
+
+"A field that is left out keeps its value."
+input PlaceChangeInput {
+  name: String
+  "Null makes the place a top-level place."
+  parentId: ID
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  category: String
+  icon: String
+  aliases: [String!]
+  "Null removes the geocoder name."
+  geocoderName: String
+}
+
+input PlaceSplitInput {
+  "The new top-level place."
+  new: PlaceInput!
+  "Child places of the place that move into the new place."
+  children: [ID!]
+  "Sites that move to the new place."
+  sites: [ID!]
+  "Record links that move to the new place."
+  links: [ID!]
+}
+
+# ---------------------------------------------------------------- root types
+
+type Query {
+  me: Operator!
+
+  sites: [Site!]!
+  device(id: ID!): Device
+  devices(filter: DeviceFilter, sort: DeviceSort = NAME, first: Int = 50, after: String): DeviceConnection!
+  tags: [String!]!
+
+  check(id: ID!): Check
+
+  maintenanceWindows: [MaintenanceWindow!]!
+
+  events(filter: EventFilter, first: Int = 100, after: String): EventConnection!
+  "actorKind (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned): only the entries of that kind; an entry with no recorded kind matches none (LOG-020)."
+  audit(first: Int = 100, after: String, actorKind: ActorKind): AuditConnection!
+  "(R-138, LOG-027) Checks the hash chain of the audit log. It changes nothing."
+  auditChain: AuditChainCheck!
+
+  sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
+
+  # Phase 3
+  "Login or browser token only (D-23, R-100)."
+  apiKeys: [ApiKey!]!
+  checkDefaults: CheckDefaults!
+  notificationChannels: [NotificationChannel!]!
+  notificationSettings: NotificationSettings!
+  deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection!
+  retention: [RetentionPeriod!]!
+
+  # Phase 3: builds (WP-36, R-107)
+  "Newest first (BLD-080)."
+  releases(first: Int = 20, after: String): ReleaseConnection!
+  "The highest version published or under way with the patch plus 1; null before the first."
+  nextReleaseVersion: String
+  "Whether this hub holds the release bucket and the updater key, so it can publish a release. createRelease is refused with CONFLICT when false. (R-118; PRO-037, PRO-038, OD-W20)"
+  releasePublishing: Boolean!
+  builders: [Builder!]!
+  "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
+  buildJobLog(id: ID!, after: Int, first: Int = 500): [BuildLogLine!]!
+
+  # Phase 3: VPN (VP-5)
+  "The VPN picture; null when the hub has no LocalAPI proxy or has not read it yet (VPN-005)."
+  vpn: VpnPicture
+  "The Headscale server every Anima node logs in to; the desktop app takes its own VPN address only from a client logged in to it (ADR-005)."
+  vpnLoginServer: String!
+
+  # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
+  "All 15, in the order of the plan."
+  extensions: [Extension!]!
+  sources: [Source!]!
+  sourceAccounts(sourceKey: String): [SourceAccount!]!
+  "By name, then ID. leftOut false: the projects with at least one repository that is not left out. leftOut true: only the projects whose repositories are all left out. The two lists hold every project once. first is 1 to 200. CONFLICT while Projects is off."
+  projects(leftOut: Boolean = false, first: Int = 50, after: String, browse: ProjectBrowse): ProjectConnection!
+  "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
+  project(slug: String!): Project
+  "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."
+  githubConnect: GithubConnectAttempt
+
+  # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
+  "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
+  capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
+
+  # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
+  "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
+  agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+  "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
+  containers(deviceId: ID!): [Container!]!
+  "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
+  containerLog(deviceId: ID!, containerId: String!, lines: Int): ContainerLog!
+  "The details of one container (HOST-017): its command, restart policy, health check, mounts, networks, labels and processes, and the names of its environment variables with no value. containerId is 12 to 64 lower-case hexadecimal characters. The errors of containers apply; NOT_FOUND also when the device has no such container. A command or a label can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
+  containerDetail(deviceId: ID!, containerId: String!): ContainerDetail!
+  "The images and the volumes of a device, with the size of each, the containers that use it and the space that a clean-up can free (HOST-020). Read-only: it removes nothing. Docker measures each volume, so the read can take up to 30 seconds. The errors of containers apply. Open to a read key."
+  containerStorage(deviceId: ID!): ContainerStorage!
+  "The networks of Docker on a device, each with the containers on it (HOST-020). The errors of containers apply. Open to a read key."
+  containerNetworks(deviceId: ID!): [ContainerNetwork!]!
+  "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. Each read asks the registries again: the hub keeps no answer. The errors of containers apply. Open to a read key."
+  containerImageUpdates(deviceId: ID!): [ContainerImageUpdate!]!
+
+  # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
+  "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
+  timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
+  "The links that start or end at record (kind:id), newest first, at most 200. VALIDATION when record is not kind:id."
+  recordLinks(record: String!): [RecordLink!]!
+  # Files and extraction proposals (R-148; K-E4 Section 13)
+  "The files of owner (kind:id), newest first, at most 200. VALIDATION when owner is not kind:id."
+  attachments(owner: String!): [Attachment!]!
+  "The proposals of owner (or of every record) in state (or any), newest first, at most 200."
+  extractionProposals(owner: String, state: ProposalState): [ExtractionProposal!]!
+
+  # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
+  "The places that are not merged, by name."
+  places: [Place!]!
+  "One place. A place that was merged gives the place it was merged into (PLC-004)."
+  place(id: ID!): Place
+
+  # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
+  # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
+  # unknown repository ID or a number, run or path GitHub does not have; VALIDATION (with extensions.fields) for a bad
+  # first, after, ref, path, sha or text length; UNAVAILABLE when GitHub cannot be reached, limits requests, or answers
+  # something the hub cannot use, and no earlier answer is held; FORBIDDEN for the token rules. No new code.
+  # repository is always ProjectRepository.id. fresh true skips the cache (the hub still reuses an answer less than
+  # 5 seconds old). A page cursor holds GitHub's page number and the page size: after with a different first is
+  # VALIDATION. Pages are GitHub's pages, so a row can repeat or be skipped when the list changes between pages.
+  "Newest updated first. first is 1 to 50. One GitHub request, and more for mergeability and checks when selected (PRJ-031, PRJ-033)."
+  pullRequests(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 20, after: String, fresh: Boolean = false): PullRequestConnection!
+  "Null when the repository has no pull request with this number."
+  pullRequest(repository: ID!, number: Int!, fresh: Boolean = false): PullRequest
+  "Newest updated first; pull requests are not in it. first is 1 to 100. A page can hold fewer than first rows and still have a next page (PRJ-031)."
+  issues(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 30, after: String, fresh: Boolean = false): IssueConnection!
+  "Null when the repository has no issue with this number, or the number is a pull request."
+  issue(repository: ID!, number: Int!, fresh: Boolean = false): Issue
+  "Oldest first. number is an issue or a pull request. first is 1 to 100."
+  issueComments(repository: ID!, number: Int!, first: Int = 30, after: String, fresh: Boolean = false): IssueCommentConnection!
+  "Every workflow of the repository, at most 100, by name (PRJ-035)."
+  workflows(repository: ID!, fresh: Boolean = false): [Workflow!]!
+  "Newest first. branch null: every branch. status null: every status. first is 1 to 50 (PRJ-031, PRJ-034)."
+  workflowRuns(repository: ID!, branch: String, status: WorkflowRunStatus, first: Int = 20, after: String, fresh: Boolean = false): WorkflowRunConnection!
+  "Null when the repository has no run with this number."
+  workflowRun(repository: ID!, runId: ID!, fresh: Boolean = false): WorkflowRun
+  "Newest first. ref is a branch name or a 40-digit commit; null: the default branch. first is 1 to 100."
+  commits(repository: ID!, ref: String, first: Int = 30, after: String, fresh: Boolean = false): CommitConnection!
+  "By name. first is 1 to 100."
+  branches(repository: ID!, first: Int = 100, after: String, fresh: Boolean = false): BranchConnection!
+  "Newest first. first is 1 to 100. Releases on GitHub, not releases of Anima."
+  repositoryReleases(repository: ID!, first: Int = 20, after: String, fresh: Boolean = false): RepositoryReleaseConnection!
+  "One directory. ref null: the default branch. path empty: the root. VALIDATION when the path is a file. Names only: open to a read key."
+  codeDirectory(repository: ID!, ref: String, path: String = "", fresh: Boolean = false): CodeDirectory!
+  "One file, never kept by the hub. VALIDATION when the path is a directory. No MCP tool returns it (operator, 2026-11-14; ruling number to be assigned). Login or browser token only (D-23, R-100)."
+  codeFile(repository: ID!, ref: String, path: String!): CodeFile!
+
+  # S6: the device link (FRN-009, OR-S6-3)
+  "The devices the link permits, in the link's order (LNK-004)."
+  linkDevices: [LinkDevice!]!
+
+  # Operational keys (R-147; K-E5 Section 2.2). No field holds a value.
+  "Each operational key that is not removed, by name. Open to a read key: no field holds a value."
+  operationalKeys: [OperationalKey!]!
+  "Null when no operational key that is not removed has this name."
+  operationalKey(name: String!): OperationalKey
+}
+
+type Mutation {
+  login(input: LoginInput!): AuthPayload!
+  "Login or browser token only (D-23, R-100)."
+  logout: Boolean!
+
+  createSite(name: String!, subnet: Cidr!): Site!
+  createDevice(input: CreateDeviceInput!): Device!
+  "Login or browser token only (D-23, R-100)."
+  updateDevice(id: ID!, input: UpdateDeviceInput!): Device!
+  "Deletes credentials, checks, heartbeats and metrics too (DEV-015). Returns the deleted ID. Login or browser token only (D-23, R-100)."
+  deleteDevice(id: ID!): ID!
+  "Login or browser token only (D-23, R-100)."
+  setSshCredential(deviceId: ID!, credential: SshCredentialInput!): SshSettings!
+  "Login or browser token only (D-23, R-100)."
+  clearSshCredential(deviceId: ID!): SshSettings!
+  testConnection(input: ConnectionTestInput!): ConnectionTestResult!
+  "The fingerprint must equal the one the hub saw, or the hub returns CONFLICT. Login or browser token only (D-23, R-100)."
+  acceptHostKey(deviceId: ID!, fingerprintSha256: String!): HostKey!
+
+  createCheck(input: CreateCheckInput!): Check!
+  updateCheck(id: ID!, input: UpdateCheckInput!): Check!
+  deleteCheck(id: ID!): ID!
+  setCheckPaused(id: ID!, paused: Boolean!): Check!
+
+  createMaintenanceWindow(input: MaintenanceWindowInput!): MaintenanceWindow!
+  updateMaintenanceWindow(id: ID!, input: MaintenanceWindowInput!): MaintenanceWindow!
+  deleteMaintenanceWindow(id: ID!): ID!
+  setManualWindowActive(id: ID!, active: Boolean!): MaintenanceWindow!
+
+  "Login or browser token only (D-23, R-100)."
+  startSession(input: StartSessionInput!): SessionTicket!
+  endSession(id: ID!): Session!
+
+  setSiteWakeRelay(siteId: ID!, deviceId: ID): Site!
+  "Login or browser token only (D-23, R-100)."
+  setRdpCredential(deviceId: ID!, credential: PasswordCredentialInput!): RdpSettings!
+  "Login or browser token only (D-23, R-100)."
+  clearRdpCredential(deviceId: ID!): RdpSettings!
+  "Login or browser token only (D-23, R-100)."
+  setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings!
+  "Login or browser token only (D-23, R-100)."
+  clearVncCredential(deviceId: ID!): VncSettings!
+  "The fingerprint must equal the one the hub saw, or CONFLICT. Login or browser token only (D-23, R-100)."
+  acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
+  "A ticket for the files tunnel of a live SSH session (K4 §9). Login or browser token only (D-23, R-100)."
+  openFiles(sessionId: ID!): SessionTicket!
+  wakeDevice(deviceId: ID!): WakeResult!
+  createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface!
+  updateWebInterface(id: ID!, input: WebInterfaceInput!): WebInterface!
+  deleteWebInterface(id: ID!): ID!
+  acceptWebInterfaceSuggestion(checkId: ID!): WebInterface!
+  dismissWebInterfaceSuggestion(checkId: ID!): ID!
+  "Pins the certificate and writes an audit entry (WEB-008, WEB-009). Login or browser token only (D-23, R-100)."
+  acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
+
+  # Phase 3
+  "Signed out (D-4), or a login or browser token; never an API key (D-23, R-100). Sets the __Host-anima cookie; refused unless Origin is the public origin."
+  signInBrowser(input: LoginInput!): BrowserSignIn!
+  "Login or browser token only (D-23, R-100)."
+  createApiKey(input: ApiKeyInput!): ApiKeyCreated!
+  "Login or browser token only (D-23, R-100)."
+  revokeApiKey(id: ID!): ID!
+  "Login or browser token only (INT-003, D-23, R-100). A new code makes the device's earlier unused codes useless."
+  enrolDaemon(deviceId: ID!): DaemonEnrolment!
+  "Login or browser token only (D-23, R-100). The source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7)."
+  revokeDaemonToken(deviceId: ID!): Device!
+
+  setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
+
+  createNotificationChannel(input: NotificationChannelInput!): NotificationChannel!
+  updateNotificationChannel(id: ID!, input: NotificationChannelInput!): NotificationChannel!
+  deleteNotificationChannel(id: ID!): ID!
+  "Sends at once and waits at most 8 seconds (NOT-004)."
+  sendTestNotification(id: ID!): Delivery!
+  setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications!
+  setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings!
+
+  "Login or browser token only (D-23, R-100)."
+  setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
+
+  # Phase 3: builds (WP-36, R-107)
+  "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."
+  createRelease(version: String!, commit: String!, targets: [BuildTarget!]!): Release!
+  "Only a QUEUED job; CONFLICT otherwise (BLD-008). Login or browser token only (D-23, R-107)."
+  cancelBuildJob(id: ID!): BuildJob!
+  "Records the builder at the request's address; returns its token once (BLD-023, D-1). Login or browser token only (D-23, R-107)."
+  enrolBuilder(name: String!, platform: BuilderPlatformInput!): BuilderEnrolment!
+  "Deletes the builder and revokes its token (BLD-025). Returns the ID. Login or browser token only (D-23, R-107)."
+  revokeBuilder(id: ID!): ID!
+
+  "Builder token only (D-1). Null when no job waits or the builder holds a lease (BLD-004, BLD-029)."
+  claimBuildJob(platform: BuilderPlatformInput!): BuildJob
+  "Builder token only; the lease holder only. Extends the lease (BLD-005, BLD-010, BLD-048)."
+  reportBuildJob(id: ID!, state: BuildJobState, logLines: [String!]!, failureReason: String): BuildJob!
+  "Builder token only; the lease holder of an UPLOADING job only. One presigned PUT URL, 15 minutes, for each named file under <target>/<version>/ (BLD-060, BLD-061). Only the target's updater file, its DMG on macOS and SHA256SUMS are granted (R-108). The files later reported must be exactly these."
+  buildUploadUrls(id: ID!, files: [BuildFileInput!]!): [BuildUploadUrl!]!
+  "Builder token only. Ends the lease; the hub then verifies and publishes in the background, ending PUBLISHED or FAILED (BLD-063 to BLD-070)."
+  reportBuildUploaded(id: ID!, files: [BuildFileInput!]!, feed: String!): BuildJob!
+
+  # Phase 3: VPN (VP-7, VP-10)
+  "A one-use, one-hour key for a Linux computer of the operator (VPN-003). Login or browser token only (D-23)."
+  createVpnInvite: VpnKey!
+  "A one-use, one-hour key for the subnet router of a site (VPN-001). Login or browser token only (D-23)."
+  createRouterKey(siteId: ID!): VpnKey!
+  "Registers the computer that shows this auth ID on its own screen (vpn.md 6B). Login or browser token only (D-23)."
+  registerVpnNode(authId: String!): VpnRegistration!
+  "Sets the key expiry of an untagged operator node to a staggered date 90 to 180 days from now (vpn.md Section 7). Login or browser token only (D-23)."
+  renewVpnKey(name: String!): VpnRegistration!
+  "Approves the waiting route of the site's router. Login or browser token only (D-23)."
+  approveSiteRoute(siteId: ID!): Boolean!
+
+  # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
+  "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Login or browser token only (D-23, R-100)."
+  setExtension(key: String!, on: Boolean!): [Extension!]!
+  "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Login or browser token only (D-23, R-100)."
+  connectGithubApp(input: GithubAppInput!): SourceAccount!
+  "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
+  syncSourceAccount(id: ID!): SourceAccount!
+  setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount!
+  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). deleteRecords true deletes what it imported, except the operator's decisions: a repository left out (PRO-002) or one whose project holds a confirmed resource (PRO-004) is kept without an account, and the account that lists it next adopts it as it is. Returns the ID. Login or browser token only (D-23, R-100)."
+  removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID!
+  "By the repository's ID (ProjectRepository.id). The hub does not import or read the repository again until it is restored, and its proposed resources are withdrawn (PRO-002). No change when it is already left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
+  leaveOutRepository(id: ID!): Project!
+  "By the repository's ID. Its proposed resources come back, and its account is made due so its signs are read again on the next sync (PRO-002). No change when it is not left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
+  restoreRepository(id: ID!): Project!
+  "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
+  confirmProjectResource(id: ID!): ProjectResource!
+  "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. Login or browser token only (D-23, R-100)."
+  startGithubConnect(input: StartGithubConnectInput): GithubConnectAttempt!
+  "Returns a ONE-TIME link; an earlier one stops working. CONFLICT outside WAITING_FOR_BROWSER and AT_GITHUB. FORBIDDEN for a request that declares an AI agent. Login or browser token only (D-23, R-100)."
+  openGithubConnect(id: ID!): GithubConnectLink!
+  "Drops the attempt and any key it holds. NOT_FOUND for another id; CONFLICT once CONNECTED. Login or browser token only (D-23, R-100)."
+  cancelGithubConnect(id: ID!): GithubConnectAttempt!
+
+  # Projects: the first GitHub changes (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-029, OD-E14)
+  # The errors of the Projects queries above apply. Each is a named change (K-E1 Section 13); the hub never repeats one.
+  # The roots closed to API keys use temporary words until the task that lists them in API_KEY_REFUSED_ROOTS restores
+  # "Login or browser token only (D-23, R-100)." (key_roots.rs keys on that phrase).
+  "Makes an issue on GitHub. Not repeated by the hub: after UNAVAILABLE the issue may exist. Writes an audit entry (PRJ-028)."
+  createIssue(input: NewIssueInput!): Issue!
+  "number is an issue or a pull request. body is 1 to 65,536 characters. Not repeated by the hub. Writes an audit entry (PRJ-028)."
+  addIssueComment(repository: ID!, number: Int!, body: String!): IssueComment!
+  "Closes or opens an issue. reason only with open false. No change when it is already so. VALIDATION when the number is a pull request. Writes an audit entry (PRJ-028)."
+  setIssueOpen(repository: ID!, number: Int!, open: Boolean!, reason: IssueCloseReason): Issue!
+  "CONFLICT when the head moved, it cannot merge, GitHub has not computed it, or the method is not allowed. FORBIDDEN for a pull request from a fork without forkConfirmed, and for any pull request from a fork when the request declares an AI agent (PRO-013). Returns it unchanged when it is already merged. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  mergePullRequest(input: MergePullRequestInput!): PullRequest!
+  "1 to 20 pull requests, no pair twice, merged one after another in the order given; a failure does not stop the rest. One result for each, in the same order (PRJ-033). Only CLEAN ones; never one from a fork. One audit entry for each one the hub sent to GitHub. Login or browser token only (D-23, R-100)."
+  mergePullRequests(pullRequests: [PullRequestTargetInput!]!, method: MergeMethod!): [PullRequestMerge!]!
+  "Runs every job again. CONFLICT when it is not rerunnable or expectedHeadSha is not its head commit (PRJ-034). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  rerunWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "Runs only the failed jobs again. CONFLICT as rerunWorkflowRun. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  rerunFailedWorkflowJobs(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "CONFLICT when it is not cancellable or expectedHeadSha is not its head commit. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  cancelWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "Starts a workflow by hand on a branch (PRJ-035). VALIDATION when GitHub refuses the branch or the inputs; CONFLICT when the workflow is not active. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  dispatchWorkflow(input: DispatchWorkflowInput!): WorkflowDispatch!
+  "Writes a commit status under an anima/ context (PRO-010). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  setCommitStatus(input: CommitStatusInput!): CommitStatus!
+
+  # S6: the device link (FRN-009, OR-S6-3)
+  "An invite for a new device named name (1 to 64 visible characters). Shown once; it works once and expires (LNK-003). The response is no-store. Writes an audit entry without the invite (LOG-005, LOG-007). Login or browser token only (D-23)."
+  createLinkInvite(name: String!): LinkInvite!
+  "Removes the device with this key from the link and closes its streams; returns how many it closed (LNK-004). NOT_FOUND when the link does not list the key. Writes an audit entry. Login or browser token only (D-23)."
+  revokeLinkDevice(key: String!): Int!
+  # The hosted mode: the Anima.ing account is the only way in (hosted-mode.md HMD-037, R-129)
+  "An invite and a one-time claim for the device named name, for the Anima.ing cloud only: cloudKey is the key of ANIMA_HOSTED_CLOUD_KEY_FILE. A device already on the link gets a claim and no invite. A new claim for a name ends the open claim of that name. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for a wrong key. The response is no-store."
+  hostedDeviceInvite(cloudKey: String!, name: String!): HostedDeviceInvite!
+  "A login token for the device that sends this through the link, when it joined with the invite of claim. The claim works once, until its invite expires. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for any other refusal. The response is no-store."
+  claimDeviceToken(claim: String!): AuthPayload!
+
+  # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
+  "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."
+  linkRecords(input: RecordLinkInput!): RecordLink!
+  "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
+  unlinkRecords(id: ID!): ID!
+
+  # Files and extraction proposals (R-148; K-E4 Section 13). Each change writes one audit entry and one event.
+  "Removes one file and returns its ID; its piece goes when no other file has the same bytes and key. NOT_FOUND when no file has this ID; UNAVAILABLE with no file store."
+  deleteAttachment(id: ID!): ID!
+  "Makes an archive, the unit of deletion of one import (FIL-004). VALIDATION for an owner that is not kind:id or a name that is not one line of 1 to 200 characters."
+  createArchive(owner: String!, name: String!): Archive!
+  "Deletes an archive with each of its files and each record that came from it, then the pieces that no file uses (FIL-004); returns its ID. NOT_FOUND when there is none."
+  deleteArchive(id: ID!): ID!
+  "Stores the result of one extraction as a proposal (VIS-001). VALIDATION with extensions.fields for a bad form, field, attachment or extension, and for origin HUB on a Class A form (VIS-002)."
+  proposeExtraction(input: ProposeExtractionInput!): ExtractionProposal!
+  "Confirms a proposal with the fields as the operator left them. NOT_FOUND; CONFLICT when it is decided."
+  confirmExtraction(id: ID!, fields: [ExtractedFieldInput!]!): ExtractionProposal!
+  "Rejects a proposal. NOT_FOUND; CONFLICT when it is decided."
+  rejectExtraction(id: ID!): ExtractionProposal!
+
+  # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
+  "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."
+  createPlace(input: PlaceInput!): Place!
+  "Changes a place. A name from a geocoder never replaces name (PLC-003). CONFLICT for a merged place."
+  updatePlace(id: ID!, input: PlaceChangeInput!): Place!
+  "Moves every reference of from to into and returns the remaining place (PLC-004)."
+  mergePlaces(from: ID!, into: ID!): Place!
+  "Makes a new top-level place from input.new and moves the named children, sites and links of the place to it. Returns the new place (PLC-004)."
+  splitPlace(id: ID!, input: PlaceSplitInput!): Place!
+  "Deletes a place that has no reference. A place with references is merged into replacement; with none given the answer is CONFLICT with extensions.references, the count of each sort of reference (PLC-005). Returns the ID of the place."
+  deletePlace(id: ID!, replacement: ID): ID!
+  "Links a site to a place, or with a null place removes the link. Returns the place, or null when the link was removed (PLC-006). NOT_FOUND when the site or the place does not exist."
+  setSitePlace(site: ID!, place: ID): Place
+
+  # Operational keys (R-147; K-E5 Section 2.2). A value goes in and never comes out: only a daemon gets one (K8). Each change writes one audit entry and one event, neither with a value.
+  "Makes the key with its first value as version 1. VALIDATION for a field or a value of a length a key cannot have; CONFLICT when a key, removed or not, has the name. Login or browser token only (D-23, R-147)."
+  createOperationalKey(input: CreateOperationalKeyInput!): OperationalKey!
+  "Replaces the metadata. NOT_FOUND for an unknown name. Login or browser token only (D-23, R-147)."
+  updateOperationalKey(name: String!, input: UpdateOperationalKeyInput!): OperationalKey!
+  "Ends the active version and the retrieval of the key; the name stays taken. The answer holds the key as it was and the consumers that held the ended version. Login or browser token only (D-23, R-147)."
+  removeOperationalKey(name: String!): OperationalKeyEnding!
+  "Makes value the active version and supersedes the old one at once (R-147). rotatedAtProvider records what the operator says: the hub changes nothing at the provider, so a client says recorded, not rotated, when it is false. Login or browser token only (D-23, R-147)."
+  rotateOperationalKey(name: String!, value: String!, rotatedAtProvider: Boolean!): OperationalKeyEnding!
+  "Ends the active version with no new one. Login or browser token only (D-23, R-147)."
+  revokeOperationalKey(name: String!): OperationalKeyEnding!
+  "Lets the daemon of device fetch the key for workload: a trust decision. No change when the grant exists. NOT_FOUND for an unknown name or device. Login or browser token only (D-23, R-147)."
+  grantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
+  "Ends a grant; the daemon drops the key at its next report. NOT_FOUND when there is no such grant. Login or browser token only (D-23, R-147)."
+  ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
+}
+
+type Subscription {
+  deviceStatusChanged(deviceId: ID): DeviceStatusChange!
+  heartbeatAdded(checkId: ID, deviceId: ID): HeartbeatAdded!
+  eventAdded(minSeverity: Severity = INFO): Event!
+  "Every start and end of a session, from every client (RA-034)."
+  sessionChanged: SessionChange!
+  metricsAdded(deviceId: ID): MetricsAdded!
+  "Every change to a build job, with the log lines it added (BLD-081)."
+  buildJobUpdated(jobId: ID): BuildJobUpdate!
+  "Each new VPN picture, about once a minute."
+  vpnChanged: VpnPicture!
+  "Each change of an account: a sync that starts or ends, a pause, a new key. (operator, 2026-11-13; ruling number to be assigned; K-E1)"
+  sourceAccountChanged(id: ID): SourceAccount!
+  "Each change of the open attempt to connect GitHub. Open to a read key (operator, 2026-11-14; ruling number to be assigned; K-E1 Section 7a)."
+  githubConnectChanged: GithubConnectAttempt!
+}
+
+type DeviceStatusChange {
+  deviceId: ID!
+  status: Status!
+  at: DateTime!
+}
+
+type HeartbeatAdded {
+  checkId: ID!
+  deviceId: ID!
+  heartbeat: Heartbeat!
+}
+
+# Operational keys (R-147; K-E5 Section 2). No type holds a value.
+
+"An operational key: a credential or a runtime secret that a server of the operator needs. No field holds its value."
+type OperationalKey {
+  id: ID!
+  "1 to 80 of a-z, 0-9, _, . and -; starts with a letter."
+  name: String!
+  provider: String!
+  purpose: String!
+  "How to rotate the key at its provider; at most 4000 characters."
+  instructions: String!
+  "An https address at the provider."
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+  due: OperationalKeyDue!
+  "The number of the active version; null when no version is active."
+  activeVersion: Int
+  "When the newest version was recorded, and the operator who recorded it."
+  lastRotatedAt: DateTime!
+  lastRotatedBy: String!
+  createdAt: DateTime!
+  createdBy: String!
+  "Newest first."
+  versions: [OperationalKeyVersion!]!
+  consumers: [OperationalKeyConsumer!]!
+}
+
+"DUE: the last rotation is older than rotationDays. EXPIRING: in the 14 days before expiresAt. EXPIRED: after it; the key is given no more."
+enum OperationalKeyDue {
+  CURRENT
+  DUE
+  EXPIRING
+  EXPIRED
+}
+
+"A key has at most one ACTIVE version. A version that ended is never active again; its sealed value is deleted 30 days after it ended."
+enum OperationalKeyVersionState {
+  ACTIVE
+  SUPERSEDED
+  REVOKED
+  EXPIRED
+}
+
+type OperationalKeyVersion {
+  number: Int!
+  state: OperationalKeyVersionState!
+  createdAt: DateTime!
+  createdBy: String!
+  endedAt: DateTime
+  "What the operator said: the key was also changed at its provider."
+  rotatedAtProvider: Boolean!
+}
+
+"A server that may fetch the key: the device of its daemon and the workload that uses the key there."
+type OperationalKeyConsumer {
+  deviceId: ID!
+  "1 to 40 of a-z, 0-9, _, . and -; starts with a letter."
+  workload: String!
+  grantedAt: DateTime!
+  grantedBy: String!
+  "The version in the daemon's cache at its last report (heldSeenAt); null when it held none."
+  heldVersion: Int
+  heldSeenAt: DateTime
+  fetchedVersion: Int
+  fetchedAt: DateTime
+}
+
+"The answer of a change that ends a version."
+type OperationalKeyEnding {
+  key: OperationalKey!
+  "The version that ended; null when no version was active."
+  endedVersion: Int
+  "The consumers whose daemon held the ended version at its last report. A connected daemon drops it at its next report; a server with no contact keeps its copy, so revoke the key at the provider when a server is lost."
+  stillHeldBy: [OperationalKeyConsumer!]!
+}
+
+input CreateOperationalKeyInput {
+  name: String!
+  provider: String!
+  purpose: String!
+  instructions: String! = ""
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+  "The first value: 1 to 16384 bytes."
+  value: String!
+}
+
+"The whole metadata; it replaces the stored one."
+input UpdateOperationalKeyInput {
+  provider: String!
+  purpose: String!
+  instructions: String!
+  providerLink: String
+  rotationDays: Int
+  expiresAt: DateTime
+}

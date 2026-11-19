@@ -7,7 +7,7 @@ use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/credentials/set_ssh.graphql",
     response_derives = "Debug, Serialize",
     skip_serializing_none
@@ -16,7 +16,7 @@ pub struct SshCredentialSet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/credentials/set_rdp.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -24,7 +24,7 @@ pub struct RdpCredentialSet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/credentials/set_vnc.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -32,7 +32,7 @@ pub struct VncCredentialSet;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/credentials/clear_ssh.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -41,7 +41,7 @@ pub struct SshCredentialClear;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/credentials/clear_rdp.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -50,7 +50,7 @@ pub struct RdpCredentialClear;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/devices/credentials/clear_vnc.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

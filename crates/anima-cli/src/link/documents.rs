@@ -7,22 +7,19 @@ use crate::hub::scalars::{DateTime, IpAddr};
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/link/devices.graphql",
     response_derives = "Debug, Serialize"
 )]
 pub struct LinkDevices;
 
 #[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "../../contracts/schema.graphql",
-    query_path = "src/link/invite.graphql"
-)]
+#[graphql(schema_path = "schema.graphql", query_path = "src/link/invite.graphql")]
 pub struct LinkInvite;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/link/revoke.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

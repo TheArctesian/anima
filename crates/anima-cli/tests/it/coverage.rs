@@ -15,6 +15,18 @@ use k1_exceptions::EXCEPTIONS;
 const SCHEMA: &str = include_str!("../../../../contracts/schema.graphql");
 const ROOTS: [&str; 3] = ["Query", "Mutation", "Subscription"];
 
+/// The copy of K1 that the package holds, so that `cargo install anima-cli` builds from the
+/// files of the package (INS-011). `schema-copy.sh` makes it.
+const PACKAGED_SCHEMA: &str = include_str!("../../schema.graphql");
+
+#[test]
+fn the_packaged_schema_is_k1() {
+    assert!(
+        PACKAGED_SCHEMA == SCHEMA,
+        "crates/anima-cli/schema.graphql is not contracts/schema.graphql: run crates/anima-cli/schema-copy.sh"
+    );
+}
+
 /// `Type.field` for every root field of K1.
 fn root_fields() -> BTreeSet<String> {
     let document = schema::parse_schema::<String>(SCHEMA).expect("K1 parses");

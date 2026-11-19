@@ -4,7 +4,7 @@ use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/retention/list.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -12,7 +12,7 @@ pub struct RetentionList;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/retention/set.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

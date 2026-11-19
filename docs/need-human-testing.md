@@ -64,6 +64,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
+| HT-040 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
 
 ### What a check on the hosted hub needs
 
@@ -974,6 +975,14 @@ this run: the bucket token (a trial does not use it), and each check of step 2 t
 commands on the DMG, the start of the AppImage on Linux, and Settings > Updates in the two applications. The
 run was of the tag trigger of that commit; the trigger on a push to `main` (task B8g) has not run.
 
+Observation (2026-11-19, 09:43 UTC; read from GitHub by an agent, not a result of the operator): the first run
+of the trigger on a push to `main`, run 44498918610, for the merge commit eb226c8d. Only the job `commit` ran,
+and it passed; each other job was skipped. Its log has the decision "nothing: this push is a release of 0.8.12,
+and public releases are off (the variable ANIMA_PUBLIC_RELEASES is not `on`)". The feeds still gave 0.2.1 for
+macOS and none for Linux. This is the expected result of step 3, seen for a merge commit and not for a change
+of a document; the check that the tip of `main` before the push is on the first line passed for a merge with
+`--no-ff`.
+
 Result: Open.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
@@ -1139,6 +1148,29 @@ of link.md) and the two programs of this build. `<FOLDER>` is `~/.config/anima-d
    through the socket).
 
 State: Open.
+
+### HT-040: the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d)
+
+Built: on the branch `release/cli-homebrew`, the first part only (task R8a): the package `anima-cli` holds a copy
+of the schema of K1, lists no test file, and builds from its own files. `cargo publish --dry-run -p anima-cli
+--locked` ended with no error on 2026-11-19; it uploads nothing.
+
+Not built, so this check cannot start: the standalone `anima` file of a release (task R8b, OD-24), the formula
+and the tap (task R8c, OD-26), and the version of the crate (OD-W47 of [decisions.md](plan/decisions.md)): the
+crate says 0.1.0 today. The tests did not build the package on a clean Linux computer, so it is not known if
+that build needs the packages of the system for the key store (libdbus, pkg-config). No agent publishes a crate
+or pushes a tap.
+
+1. After the tasks R8b and R8c and the ruling of OD-W47: publish the crate, `cargo publish -p anima-cli --locked`.
+   Expected: crates.io shows `anima-cli` with the version of the release.
+2. On a computer with no Anima: `cargo install anima-cli --locked`, then `anima --version`. Expected: the version
+   of the release. On Linux, note each package of the system that the build asked for.
+3. `brew install thearctesian/anima/anima`, then `anima --version`. Expected: the same version, and no desktop
+   application and no daemon is installed.
+4. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
+   version (INS-012).
+
+Result: Open.
 
 ## Not built yet
 

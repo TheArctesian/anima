@@ -9,7 +9,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/kinds.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -17,7 +17,7 @@ pub struct SourceKinds;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/accounts.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -27,7 +27,7 @@ pub struct SourceAccounts;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/connect.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -35,7 +35,7 @@ pub struct SourceConnect;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/sync.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -44,7 +44,7 @@ pub struct SourceSync;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/pause.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -53,7 +53,7 @@ pub struct SourcePause;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/remove.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -62,7 +62,7 @@ pub struct SourceRemove;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/watch.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",

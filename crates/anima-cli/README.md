@@ -5,7 +5,15 @@ The `anima` command line (docs/plans/cli-mcp-plan.md). `hub/` is the only networ
 
 ## Install
 
-Install the desktop application (`Anima.dmg` or `Anima-x86_64.AppImage`); it carries `anima` at
+Three ways give the same program (INS-001, INS-010, INS-011). The Homebrew formula and the crate
+are not published yet (tasks R8b to R8d of the projects and builds plan):
+
+```sh
+brew install thearctesian/anima/anima   # the formula of the tap; installs `anima` only
+cargo install anima-cli --locked        # builds `anima` from the crate
+```
+
+Or install the desktop application (`Anima.dmg` or `Anima-x86_64.AppImage`); it carries `anima` at
 the same version (INS-001 to INS-003). In the application, open Settings > Updates > Command line
 tool and select **Install**, then **Confirm**. Then, for a coding agent:
 
@@ -24,9 +32,11 @@ A release build sets `ANIMA_VERSION`; `build.rs` makes it the version `anima --v
 2. `src/checks/<verb>.graphql`: one operation per file, named `Check<Verb>` (`query CheckGet(...)`).
    Select only what the command prints; never a secret field.
 3. `src/checks/documents.rs`: one struct per file, as in `devices/documents.rs`:
-   `#[derive(GraphQLQuery)] #[graphql(schema_path = "../../contracts/schema.graphql",
+   `#[derive(GraphQLQuery)] #[graphql(schema_path = "schema.graphql",
    query_path = "src/checks/get.graphql", response_derives = "Debug, Serialize",
    variables_derives = "Debug", skip_serializing_none)] pub struct CheckGet;`
+   `schema.graphql` is the copy of K1 (`contracts/schema.graphql`) that the package holds; after
+   a change of K1, run `crates/anima-cli/schema-copy.sh` (a test fails when the two differ).
    The build fails when the document does not agree with K1 (CMD-004). Import the custom
    scalars the document uses from `crate::hub::scalars`. A document whose variables or answer
    hold a secret derives neither `Debug` nor `Serialize` (see `auth/documents.rs`).

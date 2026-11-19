@@ -22,3 +22,36 @@ desktop in deploy/bin/commit-version
 desktop in deploy/bin/affected-applications
 desktop in deploy/bin/release-decision
 desktop in deploy/release/
+
+# `anima` alone (Homebrew and Cargo; task B8h). No job releases it yet. It is built from
+# crates/anima-cli, the copy of the schema in it, and the Cargo files of the root; a test
+# compares the crates below with the answer of `cargo metadata`.
+cli out docs/
+cli out quality/
+cli out deploy/
+cli out apps/
+cli out link/
+cli out design/
+cli out contracts/
+cli out crates/anima-database/
+cli out crates/anima-gateway/
+cli out crates/anima-local-hub/
+cli out crates/daemon/
+cli out crates/daemon-core/
+cli out crates/guac-protocol/
+cli out crates/hub/
+cli out crates/providers/
+cli out crates/rdp-test-device/
+cli out crates/redaction/
+cli out crates/theme/
+cli out crates/updater-signature/
+cli out AGENTS.md
+cli out CLAUDE.md
+cli out README.md
+cli out bun.lock
+cli out package.json
+cli out eslint.config.js
+cli in deploy/bin/commit-version
+cli in deploy/bin/affected-applications
+cli in deploy/bin/release-decision
+cli in deploy/release/

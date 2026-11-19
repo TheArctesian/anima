@@ -8,7 +8,7 @@ use crate::hub::scalars::IpAddr;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/write/create.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Deserialize",
@@ -18,7 +18,7 @@ pub struct CheckCreate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/write/update.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Deserialize",
@@ -28,7 +28,7 @@ pub struct CheckUpdate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/write/update_ungrouped.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Deserialize",
@@ -38,7 +38,7 @@ pub struct CheckUpdateUngrouped;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/write/delete.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -47,7 +47,7 @@ pub struct CheckDelete;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/write/pause.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -56,7 +56,7 @@ pub struct CheckSetPaused;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/checks/write/notifications.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

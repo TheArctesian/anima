@@ -8,7 +8,7 @@ use crate::hub::scalars::DateTime;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/connect/state.graphql",
     response_derives = "Debug, Serialize"
 )]
@@ -16,7 +16,7 @@ pub struct GithubConnectState;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/connect/start.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug",
@@ -26,14 +26,14 @@ pub struct GithubConnectStart;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/connect/open.graphql"
 )]
 pub struct GithubConnectOpen;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/connect/cancel.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
@@ -42,7 +42,7 @@ pub struct GithubConnectCancel;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    schema_path = "../../contracts/schema.graphql",
+    schema_path = "schema.graphql",
     query_path = "src/sources/connect/changed.graphql",
     response_derives = "Debug, Serialize"
 )]
