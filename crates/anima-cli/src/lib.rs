@@ -41,6 +41,7 @@ pub mod pull_requests;
 pub mod raw_mode;
 pub mod record_links;
 pub mod releases;
+pub mod reminders;
 pub mod repositories;
 pub mod retention;
 pub mod sessions;

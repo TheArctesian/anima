@@ -29,6 +29,7 @@ mod notifications;
 mod operator;
 mod places;
 mod projects;
+mod reminders;
 mod retention;
 mod sessions;
 mod sources;

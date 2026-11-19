@@ -48,9 +48,10 @@ pub(super) enum NotificationKind {
     CertificateExpiry,
     DomainExpiry,
     Test,
+    Reminder,
 }
 mirror!(Notification => NotificationKind {
-    Down, Up, StillDown, CertificateExpiry, DomainExpiry, Test
+    Down, Up, StillDown, CertificateExpiry, DomainExpiry, Test, Reminder
 });
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]

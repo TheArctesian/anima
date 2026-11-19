@@ -68,6 +68,25 @@ pub(super) async fn samples_between(
     .await
 }
 
+/// The samples that the hub got after `after` and not after `until`, in the order of their
+/// arrival, at most `limit`.
+pub(super) async fn samples_received(
+    db: impl PgExecutor<'_>,
+    (after, until): (DateTime<Utc>, DateTime<Utc>),
+    limit: i64,
+) -> Result<Vec<SampleRow>, sqlx::Error> {
+    sqlx::query_as(&format!(
+        "SELECT {SAMPLE} FROM locations.sample \
+         WHERE received_at > $1 AND received_at <= $2 \
+         ORDER BY received_at, id LIMIT $3"
+    ))
+    .bind(after)
+    .bind(until)
+    .bind(limit)
+    .fetch_all(db)
+    .await
+}
+
 #[derive(sqlx::FromRow)]
 struct TokenRow {
     id: IngestTokenId,

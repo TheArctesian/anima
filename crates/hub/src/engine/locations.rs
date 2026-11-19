@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 pub use context::{
     Actor, ActorKind, Basis, Direction, End, MatchRule, OperatorEvidence, RULE,
-    Stored as StoredContext, operator_evidence,
+    Stored as StoredContext, inside, operator_evidence,
 };
 pub use model::{Bad, IngestToken, NewSample, Origin, Position, Provider, Sample, Stored};
 pub use routes::router;
@@ -184,6 +184,26 @@ pub async fn samples(
         return Err(Error::Invalid(bad));
     }
     between(db, seal, (from, to), first).await
+}
+
+/// The samples that the hub got after `after` and not after `until`, in the order of their
+/// arrival, at most `limit`: for a reader that follows the new samples with a cursor (K-E6
+/// Section 4).
+///
+/// # Errors
+/// `Key`, `Damaged`, `Database`.
+pub async fn received(
+    conn: &mut PgConnection,
+    seal: &Seal,
+    span: (DateTime<Utc>, DateTime<Utc>),
+    limit: i64,
+) -> Result<Vec<Sample>, Error> {
+    let rows = store::samples_received(conn, span, limit).await?;
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+    let key = seal.key()?;
+    rows.into_iter().map(|row| opened(&key, row)).collect()
 }
 
 /// One transfer at the SSH and SFTP boundary, as `sessions` saw it: the event that the event

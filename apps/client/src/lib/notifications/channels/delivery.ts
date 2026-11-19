@@ -11,6 +11,7 @@ const KIND_LABELS: Record<NotificationKind, string> = {
   CERTIFICATE_EXPIRY: 'Certificate expiry',
   DOMAIN_EXPIRY: 'Domain expiry',
   TEST: 'Test',
+  REMINDER: 'Reminder',
 };
 
 /** Said for a failed delivery that carries no sentence. */

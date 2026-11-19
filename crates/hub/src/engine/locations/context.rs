@@ -10,7 +10,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 
 use super::model::Sample;
 use crate::{
-    engine::places::Place,
+    engine::places::{Centre, Place},
     fleet::events,
     ids::{DeviceId, EventId, PlaceId, SampleId, SiteId},
 };
@@ -166,6 +166,12 @@ fn distance_m((lat_a, lon_a): (f64, f64), (lat_b, lon_b): (f64, f64)) -> f64 {
     let half_lon = ((lon_b - lon_a).to_radians() / 2.0).sin();
     let h = half_lat * half_lat + phi_a.cos() * phi_b.cos() * half_lon * half_lon;
     2.0 * EARTH_RADIUS_M * h.sqrt().min(1.0).asin()
+}
+
+/// Whether `point` (latitude, longitude) is inside the radius of `centre`.
+#[must_use]
+pub fn inside(centre: &Centre, point: (f64, f64)) -> bool {
+    distance_m(point, (centre.latitude, centre.longitude)) <= f64::from(centre.radius_m)
 }
 
 /// The top-level place whose radius contains `point`: the nearest centre when more than one

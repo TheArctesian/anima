@@ -48,6 +48,8 @@ pub enum NotificationKind {
     CertificateExpiry,
     DomainExpiry,
     Test,
+    /// A reminder of the engine (REM-010).
+    Reminder,
 }
 
 impl NotificationKind {
@@ -61,6 +63,7 @@ impl NotificationKind {
             Self::CertificateExpiry => "certificate_expiry",
             Self::DomainExpiry => "domain_expiry",
             Self::Test => "test",
+            Self::Reminder => "reminder",
         }
     }
 
@@ -74,6 +77,7 @@ impl NotificationKind {
             Self::CertificateExpiry,
             Self::DomainExpiry,
             Self::Test,
+            Self::Reminder,
         ]
         .into_iter()
         .find(|kind| kind.as_str() == text)

@@ -140,6 +140,15 @@
       "places",
       "events",
       "access"
+    ],
+    "reminders": [
+      "places",
+      "locations",
+      "notifications",
+      "credentials",
+      "events",
+      "extensions",
+      "sources"
     ]
   },
   "graphql": {
@@ -218,6 +227,9 @@
       "access"
     ],
     "locations": [
+      "access"
+    ],
+    "reminders": [
       "access"
     ]
   }

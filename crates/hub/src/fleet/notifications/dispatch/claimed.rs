@@ -150,6 +150,7 @@ const fn kind_words(kind: NotificationKind) -> &'static str {
         NotificationKind::CertificateExpiry => "certificate expiry",
         NotificationKind::DomainExpiry => "domain expiry",
         NotificationKind::Test => "test",
+        NotificationKind::Reminder => "reminder",
     }
 }
 

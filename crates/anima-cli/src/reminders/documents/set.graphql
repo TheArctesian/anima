@@ -1,0 +1,18 @@
+mutation ReminderSet($id: ID!, $input: ReminderRuleInput!) {
+  updateReminderRule(id: $id, input: $input) {
+    id
+    name
+    message
+    trigger
+    unless
+    cooldownMinutes
+    dailyLimit
+    channelIds
+    enabled
+    revision
+    createdAt
+    updatedAt
+    lastFiringAt
+    firedToday
+  }
+}

@@ -6,6 +6,7 @@
 mod decisions;
 mod kinds;
 mod leases;
+mod reminders;
 mod requests;
 mod retries;
 mod secrets;
