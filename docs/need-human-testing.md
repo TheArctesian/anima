@@ -68,7 +68,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
-| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Open |
+| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
 
 ### What a check on the hosted hub needs
 
@@ -526,6 +526,10 @@ Result: Open. First try on 2026-11-18, after the hub of the account was made aga
 list showed one row for this Mac, Unknown, "No checks yet", with a host that starts with `fd41:4e49:4d41:`, and
 the log showed "Device ... added" with no question. The app made the new hub and joined its link with no step,
 although it held the link and the token of the deleted hub. Not seen in the picture: steps 2 and 3.
+
+Linux check on 2026-11-19: the Devices list showed one `pop-os` row after sign-in, and the
+operator confirmed that it still showed one row after reopening the AppImage. The `Link` site
+in the device details still needs a check.
 
 ### HT-028: the hosted hub is a device of its own device list (HM-T9)
 
@@ -1581,7 +1585,7 @@ covers (HM-D11): "the device doesn't auto add it should and the hub is not there
 
 ### HT-045: Linux opens the account sign-in screen before a hub is chosen (HMD-022)
 
-State: Open. The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
+The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
 before a token read when no hub address is saved. Tests cover a missing token, an old token
 for the default hub and a refused key store. They also check that a chosen hub still resumes
 with its token. An automatic Linux WebKit check reached the screen with an old default-hub
@@ -1597,6 +1601,7 @@ complete a real account sign-in.
 3. Quit the app and start it again.
    Expected: the chosen hub's device list opens without another sign-in.
 
-Result: Open. On 2026-11-19 the operator reported that the Linux preview worked and showed the
+Result: Passed. On 2026-11-19 the operator reported that the Linux preview worked and showed the
 signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
-The `pop-os` row shows the generic Linux logo and no metrics. No result was reported for step 3.
+The operator then quit and reopened the preview. It returned to the same hub without another
+sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
