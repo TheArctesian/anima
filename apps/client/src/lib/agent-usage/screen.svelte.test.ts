@@ -113,12 +113,13 @@ it('AIS-020: with no daemon that sent counts the page is an empty state that say
   expect(document.querySelector('table')).toBeNull();
 });
 
-it('DEF-002: on a hub that Anima.ing hosts the empty state says that the installation by the application is not built yet, and offers no link', async () => {
+it('DEF-002, R-212: on a hub that Anima.ing hosts the empty state says that the installation by the application is coming soon, and offers no link', async () => {
   hub.answer = { ...ANSWER, rows: [], devices: [] };
   hub.everyone = [];
   await open(DEFAULT_QUERY, true);
   expect(text()).toContain('No use counts yet');
-  expect(text()).toContain('the application will install the daemon on this computer. That is not built yet');
+  expect(text()).toContain('Coming soon: the Anima.ing application will install the daemon on this computer.');
+  expect(text()).not.toContain('not built');
   expect(text()).not.toContain('To install it');
   expect(document.querySelector('a')).toBeNull();
 });
