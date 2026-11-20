@@ -24,7 +24,11 @@ tauri-build.workspace = true
 # `unstable`: child web views in the main window and moving them to a window of their own
 # (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
 # `tray-icon`: the menu bar or tray item of the stay-awake control (AWK-004).
-tauri = { workspace = true, features = ["unstable", "tray-icon"] }
+# Not `workspace = true`: the Tauri CLI does not read the features of an inherited dependency, so it
+# would not see `tray-icon` and the AppImage would not carry libayatana-appindicator3. The library of
+# the system then loads beside the older GLib of the AppImage and the application stops at start.
+# Keep the version and the first two features the same as the workspace entry.
+tauri = { version = "2", default-features = false, features = ["wry", "compression", "unstable", "tray-icon"] }
 # `generate_context!` parses the `plugins` config in tauri.conf.json with serde_json.
 serde_json.workspace = true
 

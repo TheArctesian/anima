@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { gateList, ofGroups } from "../../src/gates/gates.ts";
-import { choose, describeChoice, fastGates, type Layout } from "../../src/gates/tier.ts";
+import { choose, describeChoice, fastGates, isBusy, macOnly, type Layout } from "../../src/gates/tier.ts";
 
 const LAYOUT: Layout = {
   crates: [
@@ -106,5 +106,67 @@ describe("the groups of the gates (--group)", () => {
       "go-fmt", "go-vet", "go-staticcheck", "go-revive", "go-test", "go-build",
     ]);
     expect(ofGroups(FULL, ["rust"]).map((gate) => gate.name)).toEqual(["fmt", "clippy", "rust-test", "doctest", "pinning"]);
+  });
+});
+
+describe("R-268 the fast tier of a busy machine", () => {
+  const busy = (paths: string[]) => fastGates(choose(paths, LAYOUT), FULL, { paths, packages: LAYOUT.packages });
+  const busyNames = (paths: string[]) => busy(paths).map((gate) => gate.name);
+  const tests = (paths: string[]) => busy(paths).filter((gate) => gate.name === "test").map((gate) => gate.argv.join(" "));
+
+  test("a machine is busy only above the limit", () => {
+    expect(isBusy(18, 18)).toBe(false);
+    expect(isBusy(18.5, 18)).toBe(true);
+  });
+
+  test("a change that names each Rust package keeps format and lint and leaves the tests out", () => {
+    expect(busyNames(["Cargo.lock"])).toEqual(["fmt", "clippy", ...QUALITY]);
+  });
+
+  test("a change in one crate still runs the tests of that crate", () => {
+    const paths = ["crates/hub/src/main.rs"];
+    expect(busyNames(paths)).toEqual(["fmt", "clippy", "rust-test", ...QUALITY]);
+    expect(busy(paths).find((gate) => gate.name === "rust-test")?.argv).toContain("anima-hub");
+  });
+
+  test("a change that names each bun package keeps lint and the checks of types and leaves tests and the build out", () => {
+    expect(busyNames(["package.json"])).toEqual(["install", "lint", "check", ...QUALITY]);
+  });
+
+  test("a changed test file of a package runs that file, not each test of the package", () => {
+    const paths = ["deploy/test/gates-workflow.test.ts", "deploy/release.ts"];
+    expect(busyNames(paths)).toEqual(["install", "lint", "check", "test", ...QUALITY]);
+    expect(tests(paths)).toEqual(["bun test deploy/test/gates-workflow.test.ts"]);
+  });
+
+  test("a change of a package with no changed test file runs the tests of that package", () => {
+    expect(tests(["quality/src/limits.ts"])).toEqual(["bun run --filter @anima/quality test"]);
+  });
+
+  test("a change of a workflow file runs the workflow tests, not each test of the deploy package", () => {
+    expect(tests([".github/workflows/gates.yml"])).toEqual(["bun test workflow"]);
+  });
+
+  test("a change that only a Mac tests leaves nothing out, however busy the machine is", () => {
+    for (const path of [
+      "apps/desktop/src-tauri/check-mach-o.sh",
+      "apps/desktop/src-tauri/trial-bundle.sh",
+      "crates/daemon/src/keys/store/keychain.rs",
+      "crates/daemon/src/token_store/keychain.rs",
+      "crates/daemon/src/units/plan.rs",
+      "link/statedir/access_darwin.go",
+      "deploy/test/check-mach-o.test.ts",
+    ]) {
+      const paths = [path, "Cargo.lock", "package.json"];
+      expect(macOnly(paths), path).toEqual([path]);
+      expect(busy(paths), path).toEqual(fastGates(choose(paths, LAYOUT), FULL));
+    }
+    expect(macOnly(["crates/daemon/src/hub.rs", "link/tunnel/dial.go", "deploy/test/release.test.ts"])).toEqual([]);
+  });
+
+  test("Go and the quality gates are never left out, and documents and the full list do not change", () => {
+    expect(busyNames(["link/tunnel/dial.go"])).toEqual(names(["link/tunnel/dial.go"]));
+    expect(busyNames(["docs/rulings.md"])).toEqual(["documents"]);
+    expect(busy(["some/unknown/path.bin"])).toEqual(FULL);
   });
 });

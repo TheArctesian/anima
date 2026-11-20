@@ -12,12 +12,16 @@ use std::{
     time::Duration,
 };
 
-use std::{sync::Arc, thread, time::Instant};
+use std::{
+    sync::{Arc, Mutex, PoisonError},
+    thread,
+    time::Instant,
+};
 
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
-use super::{LinkError, device::DeviceLink, folder, folders, launch, printed};
+use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 use crate::daemon::{placement, this_user};
 
@@ -121,9 +125,27 @@ impl Kept {
             .ok_or(LinkError::Failed)
     }
 
-    /// Whether the unit of the user is installed.
-    pub fn installed(&self) -> bool {
-        ask(self, &["unit", "show"], ASK_LIMIT).is_some_and(|shown| printed::unit_installed(&shown))
+    /// Whether the installed unit runs the link of this folder. The file and the label of the
+    /// unit are the same for each copy of the app, so a unit that is there can be the unit of a
+    /// different folder: that one is never changed or removed from here.
+    pub fn keeps_this_folder(&self) -> bool {
+        let Some(folder) = self.folder.to_str() else {
+            return false;
+        };
+        ask(self, &["unit", "show"], ASK_LIMIT)
+            .and_then(|shown| printed::unit_file(&shown))
+            .and_then(|file| fs::read_to_string(file).ok())
+            .is_some_and(|unit| printed::unit_runs_folder(&unit, folder))
+    }
+
+    /// Removes the unit and writes why to the log: each removal by the app has its line.
+    pub fn remove_because(&self, reason: &'static str) -> Result<(), LinkError> {
+        let result = self.remove();
+        match &result {
+            Ok(()) => log::warn!("the unit of the device link was removed: {reason}"),
+            Err(_) => log::warn!("the unit of the device link was not removed ({reason})"),
+        }
+        result
     }
 
     /// The port that the running link listens on; none while no link runs on this folder.
@@ -156,10 +178,46 @@ impl Kept {
         }
     }
 
-    /// Has the app watch the running link.
+    /// Installs and starts the unit again. The copy of the link program is made again from
+    /// `carried` when it is gone. False when the folder of the link is not marked for a unit,
+    /// when there is no program to run, or when the link program refuses the unit.
+    pub fn put_back(&self, carried: Option<&Path>, home: Option<&Path>) -> bool {
+        if !folder::wants_unit(&self.folder) {
+            return false;
+        }
+        let placed = self.program.is_file()
+            || carried
+                .zip(home)
+                .is_some_and(|(carried, home)| place(carried, home).is_ok());
+        placed && self.install().is_ok()
+    }
+
+    /// Has the app watch the running link, and put the unit back when the link stays down
+    /// (something outside the app removed the unit or ended its link).
     pub fn watch(self, device: &DeviceLink) {
         let port = self.port;
-        device.watch(port, move || self.serving());
+        let repair = Mutex::new(Repair::default());
+        device.watch(port, move || {
+            let serving = self.serving();
+            let due = repair
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .due(serving.is_some());
+            if due {
+                let carried = crate::carried::program(super::PROGRAM);
+                let home = crate::user_folders::home();
+                if self.put_back(carried.as_deref(), home.as_deref()) {
+                    log::warn!(
+                        "the device link of the unit did not answer: the unit was installed and started again"
+                    );
+                } else {
+                    log::warn!(
+                        "the device link of the unit did not answer, and the unit could not be put back"
+                    );
+                }
+            }
+            serving
+        });
     }
 }
 
@@ -201,11 +259,12 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     })
 }
 
-/// The link of `folder` when a unit of the user keeps it now.
+/// The link of `folder` when a unit of the user keeps it now: a unit for a different folder
+/// is not it.
 pub fn now(folder: &Path, port: u16) -> Option<Kept> {
     at(folder, port)
         .ok()
-        .filter(|link| link.program.is_file() && link.installed())
+        .filter(|link| link.program.is_file() && link.keeps_this_folder())
 }
 
 /// The socket for the daemon of the link that a unit keeps on `port`, when that link made it.
@@ -254,11 +313,11 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
     }
     device.stop();
     if link.install().is_err() {
-        let _ = link.remove();
+        let _ = link.remove_because("`anima-link unit install` failed");
         return Err("`anima-link unit install` failed");
     }
     if !answers(&link, READY_LIMIT) {
-        let _ = link.remove();
+        let _ = link.remove_because("its link did not answer on its port");
         return Err("the link of the unit did not answer on its port");
     }
     link.watch(device);

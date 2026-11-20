@@ -189,6 +189,9 @@
             onRange={(range) => { go({ tab: 'overview', section: null, range }); }}
             onRetry={() => void metrics.load(place.range, device.metricsSource)}
             onSettings={daemonPanel}
+            onConnect={phone ? undefined : connect}
+            onOpenWeb={openWeb}
+            onSection={settings}
           />
         {/if}
       </TabPanel>
