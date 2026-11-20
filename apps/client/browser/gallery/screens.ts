@@ -24,4 +24,12 @@ export const SCREENS: readonly Screen[] = [
       await expect(page.getByRole('table', { name: 'By device' })).toBeVisible();
     },
   },
+  {
+    name: 'welcome',
+    signedOut: true,
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/welcome`);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    },
+  },
 ];
