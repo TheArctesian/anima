@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NO_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
 
 describe('parseHubAddress', () => {
-  it('NET-005, R-214: the client has no default hub; the address of no hub is a host that never resolves', () => {
+  it('NET-005, R-225: the client has no default hub; the address of no hub is a host that never resolves', () => {
     expect(new URL(NO_HUB_ADDRESS.origin).hostname.endsWith('.invalid')).toBe(true);
     expect(parseHubAddress(NO_HUB_ADDRESS.origin)).toEqual({ ok: true, value: NO_HUB_ADDRESS });
   });

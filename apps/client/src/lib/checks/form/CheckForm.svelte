@@ -57,7 +57,7 @@
     { value: 'TAILSCALE_PING', label: 'Tailscale ping' },
     { value: 'DOMAIN_EXPIRY', label: 'Domain expiry' },
   ];
-  // A hub that Anima.ing hosts has no VPN, so it offers no Tailscale ping; a check that already is one keeps its type (R-211).
+  // A hub that Anima.ing hosts has no VPN, so it offers no Tailscale ping; a check that already is one keeps its type (R-222).
   const hosted = contextHubIsHosted();
   const TYPES = ALL_TYPES.filter((entry) => !hosted || entry.value !== 'TAILSCALE_PING' || untrack(() => check?.type) === 'TAILSCALE_PING');
 

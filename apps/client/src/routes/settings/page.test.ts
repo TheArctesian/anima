@@ -318,7 +318,7 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
   expect(button.getAttribute('aria-disabled')).toBe('false');
 });
 
-it('CLI-002, D-5, R-214: Change hub signs out, clears the token, forgets the address and starts again at the first-run choices', async () => {
+it('CLI-002, D-5, R-225: Change hub signs out, clears the token, forgets the address and starts again at the first-run choices', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
   hubButton(target, 'Change hub').click();

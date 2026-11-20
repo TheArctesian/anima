@@ -45,7 +45,7 @@ export interface UnreachableBanner {
   readonly age: string;
 }
 
-/** The banner for `status`, or `null` when the hub is not unreachable. `now` dates the data age; a hosted hub has no VPN to check (R-211). */
+/** The banner for `status`, or `null` when the hub is not unreachable. `now` dates the data age; a hosted hub has no VPN to check (R-222). */
 export function unreachableBanner(status: HubStatus, origin: string, now: Date, hosted: boolean): UnreachableBanner | null {
   if (status.connection !== 'unreachable') return null;
   // A copy on the screen may be older than the last contact, and is all there is after a start with no hub (FND-007).

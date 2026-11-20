@@ -38,7 +38,7 @@
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub } = capabilities();
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
-  // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-211).
+  // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
   const vpnShown = !hubIsHosted(useHub().address.origin);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());

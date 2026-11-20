@@ -9,7 +9,7 @@ function isMissingContext(error: unknown): boolean {
 
 /**
  * Whether the hub above the component is hosted by Anima.ing; `false` when no hub is above it or it has no address.
- * Call it while the component is created (R-211).
+ * Call it while the component is created (R-222).
  */
 export function contextHubIsHosted(): boolean {
   try {

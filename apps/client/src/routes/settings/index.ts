@@ -6,7 +6,7 @@ export interface IndexShown {
   readonly stayAwake: boolean;
   readonly desktopRows: boolean;
   readonly mcpPermissions: boolean;
-  /** False on a hub that Anima.ing hosts: it has no VPN (R-211). */
+  /** False on a hub that Anima.ing hosts: it has no VPN (R-222). */
   readonly vpn: boolean;
 }
 

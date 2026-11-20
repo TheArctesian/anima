@@ -1,7 +1,7 @@
 ---
 kind: Plan
-state: Withdrawn. The site language replaces it (R-209)
-evidence: R-209 of rulings.md.
+state: Withdrawn. The site language replaces it (R-220)
+evidence: R-220 of rulings.md.
 ---
 
 # Anima UI redesign: plan and prompt (v0.2)

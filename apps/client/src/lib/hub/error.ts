@@ -30,7 +30,7 @@ export const UNREACHABLE: HubError = {
   message: `The hub did not answer. ${networkAdvice(false)}.`,
 };
 
-/** No answer arrived from a hub that Anima.ing hosts: it has no VPN to check (R-211). */
+/** No answer arrived from a hub that Anima.ing hosts: it has no VPN to check (R-222). */
 const UNREACHABLE_HOSTED: HubError = {
   code: 'unreachable',
   message: `The hub did not answer. ${networkAdvice(true)}.`,

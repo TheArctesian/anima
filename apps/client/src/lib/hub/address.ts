@@ -19,7 +19,7 @@ interface AddressError {
 type AddressResult = { readonly ok: true; readonly value: HubAddress } | { readonly ok: false; readonly error: AddressError };
 
 /**
- * The address of a client that has no hub yet. The client has no default hub (NET-005, DNS-001, R-214): with no saved
+ * The address of a client that has no hub yet. The client has no default hub (NET-005, DNS-001, R-225): with no saved
  * address the desktop app shows the first-run choices. `.invalid` never resolves (RFC 2606), so nothing is sent anywhere.
  */
 export const NO_HUB_ADDRESS: HubAddress = Object.freeze({

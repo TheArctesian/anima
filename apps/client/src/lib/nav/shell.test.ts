@@ -264,7 +264,7 @@ it('H-2: the hub is created with the stored address and the key store as its tok
   expect(fake.options?.token).toBe(keyStore.read);
 });
 
-it('H-2, R-214: with nothing stored the client has no hub: its address is one that never resolves', () => {
+it('H-2, R-225: with nothing stored the client has no hub: its address is one that never resolves', () => {
   keyStore.available.mockReturnValue(true);
   show();
   expect(fake.options?.address.origin).toBe('https://no-hub.invalid');

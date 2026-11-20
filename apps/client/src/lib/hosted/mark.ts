@@ -28,7 +28,7 @@ function browserStore(): Storage | null {
 }
 
 /**
- * Whether the hub at `origin` is hosted by Anima.ing. The one place where the client decides it (R-211): such a hub is
+ * Whether the hub at `origin` is hosted by Anima.ing. The one place where the client decides it (R-222): such a hub is
  * reached through the link and has no VPN (DEF-005), so no screen names a VPN for it.
  */
 export function hubIsHosted(origin: string): boolean {
@@ -36,7 +36,7 @@ export function hubIsHosted(origin: string): boolean {
   return storage !== null && isHostedHub(storage, origin);
 }
 
-/** What the operator can check when the hub does not answer, with no full stop (NET-004, R-211). */
+/** What the operator can check when the hub does not answer, with no full stop (NET-004, R-222). */
 export function networkAdvice(hosted: boolean): string {
   return hosted ? "Check this computer's network" : 'Check the VPN client';
 }

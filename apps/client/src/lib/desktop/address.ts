@@ -11,7 +11,7 @@ function readText(storage: Storage): string | null {
   }
 }
 
-/** The hub the operator chose, or the address of no hub when nothing is stored or the stored text no longer parses (CLI-002, R-214). */
+/** The hub the operator chose, or the address of no hub when nothing is stored or the stored text no longer parses (CLI-002, R-225). */
 export function storedHubAddress(storage: Storage): HubAddress {
   const text = readText(storage);
   if (text === null) return NO_HUB_ADDRESS;

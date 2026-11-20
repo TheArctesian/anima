@@ -39,7 +39,7 @@ describe('navigation view logic', () => {
     });
   });
 
-  it('NET-004, R-211: for a hosted hub the banner names the network of the computer, not a VPN', () => {
+  it('NET-004, R-222: for a hosted hub the banner names the network of the computer, not a VPN', () => {
     expect(unreachableBanner(status('unreachable', null), 'http://127.0.0.1:4810', NOW, true)?.advice).toBe("Check this computer's network");
   });
 

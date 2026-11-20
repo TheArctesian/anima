@@ -8,7 +8,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe('the mark of a hosted hub (R-129, R-211)', () => {
+describe('the mark of a hosted hub (R-129, R-222)', () => {
   it('a hub is hosted only at the address that was marked', () => {
     expect(hubIsHosted(HUB)).toBe(false);
     markHosted(localStorage, HUB);

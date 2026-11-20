@@ -27,7 +27,7 @@
 
   /**
    * Changing the hub signs out and forgets its address, then the client starts again at the first-run choices: Sign in,
-   * Sign up and Join a hub. It does not go to the password page of the hub that was left (R-214).
+   * Sign up and Join a hub. It does not go to the password page of the hub that was left (R-225).
    */
   async function change(): Promise<void> {
     if (busy) return;
