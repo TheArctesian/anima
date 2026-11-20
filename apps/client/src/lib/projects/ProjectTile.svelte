@@ -13,11 +13,11 @@
     /** In select mode, whether the project is selected (PRO-060); undefined out of select mode. */
     selected?: boolean | undefined;
     onSelect?: (selected: boolean) => void;
-    /** Shows the name of the project's group; false under the head of that group (PRO-061). */
-    showGroup?: boolean;
+    /** The name of the card's group, shown under its state; none under the head of that group (PRO-061). */
+    groupName?: string | undefined;
   }
 
-  const { project, onLeaveOut, onRestore, selected, onSelect, showGroup = true }: Props = $props();
+  const { project, onLeaveOut, onRestore, selected, onSelect, groupName }: Props = $props();
   const reason = $derived(lookReason(project));
 </script>
 
@@ -37,7 +37,7 @@
     </span>
     <span class="side">
       <span class="state">{projectStatusWords(project)}</span>
-      {#if showGroup && project.group != null}<span class="group">{project.group.name}</span>{/if}
+      {#if groupName !== undefined}<span class="group">{groupName}</span>{/if}
     </span>
   </div>
   {#if reason !== null}<p class="why">{reason}</p>{/if}

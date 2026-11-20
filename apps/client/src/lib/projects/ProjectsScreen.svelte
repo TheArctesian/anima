@@ -16,6 +16,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import GroupHead from './groups/GroupHead.svelte';
   import SelectBar from './groups/SelectBar.svelte';
+  import { ProjectGroups } from './groups/groups.svelte';
   import { sectionsByGroup, storedClosed, storedShowBy, storeView, type ShowBy } from './groups/view';
 
   interface Props {
@@ -25,9 +26,11 @@
      * on this computer): GitHub cannot open such a hub in a browser, so only the key file of a GitHub App connects it.
      */
     keyFileOnly?: boolean;
+    /** The operator's groups of cards, kept on this computer (PRO-059). */
+    projectGroups?: ProjectGroups;
   }
 
-  const { store, keyFileOnly = false }: Props = $props();
+  const { store, keyFileOnly = false, projectGroups = new ProjectGroups(localStorage) }: Props = $props();
   let showing = $state<'main' | 'leftOut'>('main');
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
   /** The one group the operator chose to see, or all of them (R-224). */
@@ -42,7 +45,7 @@
   const byGroup = $derived(GROUP_ORDER.map((group) => ({ group, title: GROUP_TITLES[group], projects: projects.filter((project) => groupOf(project) === group) })));
   /** The main view in groups, problems first, or in the operator's groups; the left-out view is one plain group. */
   const groups = $derived.by(() => {
-    if (byOwnGroup) return sectionsByGroup(projects, store.groups, !store.filtered).map((each) => ({ key: each.id ?? '', ...each }));
+    if (byOwnGroup) return sectionsByGroup(projects, projectGroups.groups, (id) => projectGroups.of(id)).map((each) => ({ key: each.id ?? '', ...each }));
     if (grouped) return byGroup.filter((each) => each.projects.length > 0 && (only === 'all' || only === each.group)).map((each) => ({ key: each.group, id: null, ...each }));
     return [{ key: 'all', id: null, title: null, projects }];
   });
@@ -103,7 +106,7 @@
     </div>
   {/if}
   {#if selecting}
-    <SelectBar {store} {selected} shown={shownIds} onDone={toggleSelecting} />
+    <SelectBar groups={projectGroups} {selected} shown={shownIds} onDone={toggleSelecting} />
   {/if}
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />
@@ -113,7 +116,7 @@
   {:else if store.status === 'failed'}
     <ErrorState message={`Projects did not load. ${store.loadProblem}`} onRetry={() => void store.load()} />
   {:else if projects.length === 0 && store.filtered}
-    <EmptyState title="No matching projects" line="Change the group, language or size filter." />
+    <EmptyState title="No matching projects" line="Change the language or size filter." />
   {:else if projects.length === 0 && showing === 'main'}
     <EmptyState title="No projects yet" line={keyFileOnly ? 'Connect GitHub with the key file of a GitHub App.' : 'Connect GitHub.'}>
       {#snippet action()}
@@ -129,7 +132,7 @@
     {#each groups as group (group.key)}
       <section class="group" aria-label={group.title ?? (showing === 'leftOut' ? 'Left out' : 'All projects')}>
         {#if byOwnGroup}
-          <GroupHead {store} section={{ id: group.id, title: group.title ?? '', projects: group.projects }} open={open(group.key)} onToggle={() => toggleHead(group.key)} controls={`group-${group.key || 'none'}`} />
+          <GroupHead groups={projectGroups} section={{ id: group.id, title: group.title ?? '', projects: group.projects }} open={open(group.key)} onToggle={() => toggleHead(group.key)} controls={`group-${group.key || 'none'}`} />
         {:else if group.title !== null}
           <h2>{group.title}<span class="count">{group.projects.length}</span></h2>
         {/if}
@@ -143,7 +146,7 @@
                   onRestore={(id) => void store.restore(id)}
                   selected={selecting ? selected.has(project.id) : undefined}
                   onSelect={(on) => (on ? selected.add(project.id) : selected.delete(project.id))}
-                  showGroup={!byOwnGroup}
+                  groupName={byOwnGroup ? undefined : projectGroups.of(project.id)?.name}
                 />
               </li>
             {:else}

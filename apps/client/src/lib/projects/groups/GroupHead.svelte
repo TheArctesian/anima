@@ -2,12 +2,12 @@
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Icon from '$lib/icons/Icon.svelte';
-  import type { ProjectsStore } from '../store.svelte';
+  import type { ProjectGroups } from './groups.svelte';
   import NameModal from './NameModal.svelte';
   import type { GroupSection } from './view';
 
   interface Props {
-    store: ProjectsStore;
+    groups: ProjectGroups;
     section: GroupSection;
     open: boolean;
     onToggle: () => void;
@@ -15,7 +15,7 @@
     controls: string;
   }
 
-  const { store, section, open, onToggle, controls }: Props = $props();
+  const { groups, section, open, onToggle, controls }: Props = $props();
   let renaming = $state(false);
   let deleting = $state(false);
   const id = $derived(section.id);
@@ -41,16 +41,19 @@
       title="Rename group"
       start={section.title}
       saveLabel="Rename"
-      onSave={(name) => store.renameGroup(id, name)}
+      onSave={(name) => groups.rename(id, name)}
       onClose={() => (renaming = false)}
     />
     {#if deleting}
       <ConfirmModal
         open={deleting}
         title={`Delete the group ${section.title}?`}
-        body="The group goes. Its projects stay, with no group: no project is deleted or left out."
+        body="The group goes from this screen. Its cards stay, under Ungrouped: no project changes."
         confirmLabel="Delete group"
-        onConfirm={() => store.deleteGroup(id)}
+        onConfirm={() => {
+          groups.delete(id);
+          return Promise.resolve({ ok: true, value: null });
+        }}
         onCancel={() => (deleting = false)}
       />
     {/if}
