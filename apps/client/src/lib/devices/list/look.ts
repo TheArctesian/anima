@@ -1,5 +1,5 @@
 import type { Beat } from '$lib/checks/heartbeats';
-import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
+import type { Status } from '$lib/hub/generated/graphql';
 import type { CardDevice } from '../api';
 import type { ListQuery } from '../query';
 
@@ -26,7 +26,7 @@ export type ListEntry<T> =
  */
 export function listItems<T extends LookDevice>(devices: readonly T[], query: Pick<ListQuery, 'sort' | 'statuses'>): readonly ListEntry<T>[] {
   const rows = devices.map((device) => ({ kind: 'device' as const, key: device.id, device }));
-  if (!grouped(query.sort, query.statuses)) return rows;
+  if (!grouped(query)) return rows;
   const counts = new Map<GroupKey, number>();
   for (const device of devices) counts.set(groupOf(device.status), (counts.get(groupOf(device.status)) ?? 0) + 1);
   const items: ListEntry<T>[] = [];
@@ -42,7 +42,8 @@ export function listItems<T extends LookDevice>(devices: readonly T[], query: Pi
   return items;
 }
 
-function grouped(sort: DeviceSort, statuses: readonly Status[]): boolean {
+/** Whether the list has group titles: sorted by status and not filtered by it (D18). */
+export function grouped({ sort, statuses }: Pick<ListQuery, 'sort' | 'statuses'>): boolean {
   return sort === 'STATUS' && statuses.length === 0;
 }
 

@@ -28,7 +28,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import Tally from '../list/Tally.svelte';
-  import { tallyOf, type Tally as Counts } from '../list/look';
+  import { grouped, tallyOf, type Tally as Counts } from '../list/look';
 
   interface Props {
     /** The query in the URL. */
@@ -67,6 +67,9 @@
           },
         },
   );
+
+  /** Which face the results show; a change of face cross-fades, a change inside one does not. */
+  const face = $derived(listing.skeleton ? 'skeleton' : list === null ? 'none' : phoneLayout() ? 'phone' : query.view);
 
   /** The counts are of every device: while a count filters the list, they keep the last unfiltered ones (D18). */
   let tally = $state<Counts>({ total: 0, parts: [] });
@@ -116,12 +119,16 @@
   </div>
 {/if}
 
+<!-- One layer for each face: the skeleton, the list, the grid or the phone rows. A new face cross-fades over the old one
+     in the same place (5.7.3, Loading); data that changes in a face stays in its layer and moves by its rows. -->
 <div class="results" aria-busy={listing.skeleton}>
-  {#if listing.skeleton}
-    <div class="layer" transition:crossFade><Skeleton view={query.view} /></div>
-  {:else if list !== null}
+  {#key face}
     <div class="layer" transition:crossFade>
-      {#if list.devices.length === 0}
+      {#if listing.skeleton}
+        <Skeleton view={query.view} grouped={grouped(query)} />
+      {:else if list === null}
+        <!-- Nothing has loaded yet, and the skeleton waits for its threshold. -->
+      {:else if list.devices.length === 0}
         <div class="empty">
           {#if isFiltered(query)}
             <p>No devices match</p>
@@ -145,7 +152,7 @@
       {:else}
         <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
       {/if}
-      {#if list.hasNextPage}
+      {#if !listing.skeleton && list?.hasNextPage === true}
         <div class="more">
           {#if listing.moreError !== null}<p role="alert">{listing.moreError.message}</p>{/if}
           <button
@@ -160,7 +167,7 @@
         </div>
       {/if}
     </div>
-  {/if}
+  {/key}
 </div>
 
 <!-- In the phone layout the logs are a page of the bar, not a panel over the list (MOB-013). -->
