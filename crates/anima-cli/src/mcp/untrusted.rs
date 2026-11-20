@@ -42,8 +42,8 @@ fn cut(cleaned: String, cap: usize) -> String {
 }
 
 /// `value` with every string cleaned and capped; the key `text` (a log line) gets the
-/// larger cap, and the key `body` (Markdown from GitHub) keeps its line breaks and gets
-/// [`BODY_CAP`].
+/// larger cap, and the keys `body` (Markdown from GitHub) and `composeFile` (the Compose file
+/// of a command that the agent gave, HOST-022) keep their line breaks and get [`BODY_CAP`].
 #[must_use]
 pub fn cleaned(value: Value) -> Value {
     cleaned_under(value, TEXT_CAP)
@@ -64,7 +64,7 @@ fn cleaned_under(value: Value, cap: usize) -> Value {
                 .map(|(key, value)| {
                     let value = match (key.as_str(), value) {
                         ("text", value) => cleaned_under(value, LOG_LINE_CAP),
-                        ("body", Value::String(body)) => {
+                        ("body" | "composeFile", Value::String(body)) => {
                             Value::String(capped_lines(&body, BODY_CAP))
                         }
                         (_, value) => cleaned_under(value, TEXT_CAP),

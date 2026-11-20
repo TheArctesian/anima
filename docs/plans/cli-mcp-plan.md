@@ -385,7 +385,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
@@ -415,7 +415,13 @@ the volumes and the networks of one device (HOST-020, R-150); `anima_container_l
 one state of each Compose project (HOST-019) and where Compose found the project (R-211, task H15;
 `anima containers projects` lists the projects). `anima_container_updates` (read, tool set `devices`)
 says for each container whether its public registry has a newer image (HOST-021); it pulls and
-updates nothing. No tool returns the details of a container
+updates nothing. `anima_compose_check` and `anima_compose_from_run` (read, tool set `devices`; HOST-022, task
+H29) give the syntax check of a Compose file and the Compose file of one `docker run` command
+(`anima containers check-file` and `anima containers from-run`). The hub reads only the text that
+the agent gives: it reaches no device, runs nothing and keeps nothing. A problem of the check holds
+a fixed code, a position and at most the name of a service and of a key, never a value of the file.
+The converted file holds only the values of the command that the agent gave; the key `composeFile`
+is cut at 4,000 characters as `body` is. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a
 secret as the environment can (MCP-004), so the root is closed to every API key and only
 `anima containers inspect` reads it.

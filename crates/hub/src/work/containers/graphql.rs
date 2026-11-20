@@ -1,7 +1,9 @@
 //! The root queries of the containers of a device (K1; HOST-001, R-149; HOST-017 to
 //! HOST-021, R-150). `containerLog` and `containerDetail` are closed to every API key: a log,
-//! a command or a label can hold a secret (D-23, MCP-004).
+//! a command or a label can hold a secret (D-23, MCP-004). `composeFileCheck` and
+//! `composeFromDockerRun` (HOST-022) reach no device: they read only the text of the caller.
 
+mod compose_file;
 mod disk;
 mod objects;
 mod sentences;
@@ -12,10 +14,13 @@ use async_graphql::{Context, ID, Object, Result};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
+use self::compose_file::FromDockerRun;
 pub(super) use self::sentences::to_graphql;
 use super::{
     Container, ContainerDetail, ContainerId, ContainerLog, ImageUpdate, LineCount, Network, Reach,
-    Storage, Tail, detail, image_updates, list, log, networks, storage,
+    Storage, Tail,
+    compose_file::{Check, check, convert},
+    detail, image_updates, list, log, networks, storage,
 };
 use crate::{
     api_errors::{FieldError, invalid, schema_dependency},
@@ -121,5 +126,19 @@ impl Query {
     ) -> Result<Vec<ImageUpdate>> {
         let (reach, device, now) = asked(ctx, &device_id)?;
         image_updates(reach, device, now).await.map_err(to_graphql)
+    }
+
+    /// The check of the syntax of a Compose file (HOST-022). It reaches no device and keeps
+    /// nothing; the hub writes the text to no log (LOG-007).
+    #[graphql(guard = "Authenticated")]
+    async fn compose_file_check(&self, file: String) -> Check {
+        check(&file)
+    }
+
+    /// The Compose file of one `docker run` command (HOST-022). It runs nothing, reaches no
+    /// device and keeps nothing; the hub writes the command to no log (LOG-007).
+    #[graphql(guard = "Authenticated")]
+    async fn compose_from_docker_run(&self, command: String) -> FromDockerRun {
+        FromDockerRun(convert(&command))
     }
 }

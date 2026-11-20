@@ -1,8 +1,11 @@
 //! `anima containers`: the containers of a device, read through the hub's SSH link (HOST-001,
 //! HOST-013, HOST-017 to HOST-021, CMD-030). The lists are open to any token; a log and the
-//! details of a container need a login (D-23).
+//! details of a container need a login (D-23). `check-file` and `from-run` (HOST-022) read
+//! the text of a Compose file or of a `docker run` command, and reach no device.
 
+pub mod check_file;
 pub mod documents;
+pub mod from_run;
 pub mod inspect;
 pub mod list;
 pub mod logs;
@@ -37,6 +40,14 @@ pub enum ContainerCommand {
     /// Show for each container whether its public registry has a newer image for its tag.
     /// Anima updates nothing.
     Updates(updates::UpdatesArgs),
+    /// Check the syntax of a Compose file (`-` for standard input). No device is reached.
+    /// It is a check of the syntax only: it does not say that a machine accepts the file.
+    /// The exit status is 1 when the file has an error.
+    CheckFile(check_file::CheckFileArgs),
+    /// Change one `docker run` command into a Compose file: give the command after `--`,
+    /// or on standard input. Nothing is run and no device is reached. The file goes to
+    /// standard output and the notes to standard error.
+    FromRun(from_run::FromRunArgs),
 }
 
 impl ContainerCommand {
@@ -55,6 +66,8 @@ impl ContainerCommand {
             Self::Networks(args) => args.run(invocation).await,
             Self::Projects(args) => args.run(invocation).await,
             Self::Updates(args) => args.run(invocation).await,
+            Self::CheckFile(args) => args.run(invocation).await,
+            Self::FromRun(args) => args.run(invocation).await,
         }
     }
 }
