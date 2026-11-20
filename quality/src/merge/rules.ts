@@ -61,3 +61,23 @@ export function gatesRefusal(runs: CheckRun[]): string | undefined {
   const bad = last.find((run) => run.status !== "completed" || run.conclusion !== "success");
   return bad === undefined ? undefined : `the job \`passed\` of the gates is ${bad.status}, ${bad.conclusion ?? "no conclusion"}`;
 }
+
+/** The table of the decisions of the work plan: each session adds rows to it, so it merges by union (`.gitattributes`). */
+export const DECISIONS = "docs/plan/decisions.md";
+
+/**
+ * The identifiers that are the first cell of more than one row of a table in `text`. A union
+ * merge keeps the two versions of a row that two branches changed; this finds them.
+ */
+export function rowsTwice(text: string): string[] {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const line of text.split("\n")) {
+    const id = /^\| ([A-Z][A-Za-z0-9-]*-[A-Za-z0-9-]+) \|/.exec(line)?.[1];
+    if (id === undefined) continue;
+    if (seen.has(id)) twice.add(id);
+    seen.add(id);
+  }
+  return [...twice];
+}
+

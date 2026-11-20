@@ -5,6 +5,7 @@ import { checkDocuments, MOCKUP, parseKnown } from "../src/documents/documents.t
 import { QUEUE } from "../src/documents/queue.ts";
 import { REGISTER } from "../src/documents/register.ts";
 import { isShared, placeholders } from "../src/merge/numbers.ts";
+import { DECISIONS, rowsTwice } from "../src/merge/rules.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
 import { report } from "../src/report.ts";
 
@@ -37,5 +38,9 @@ if (isShared(head) || isShared(process.env["GITHUB_REF_NAME"] ?? "")) {
   for (const placeholder of placeholders(documents)) {
     violations.push({ path: "docs", signal: "number-not-assigned", detail: `${placeholder}: run the merge script` });
   }
+}
+// The decisions table merges by union: a row that two branches changed is there two times.
+for (const id of rowsTwice(documents.find((document) => document.path === DECISIONS)?.text ?? "")) {
+  violations.push({ path: DECISIONS, signal: "decision-row-twice", detail: `${id}: keep one row` });
 }
 process.exit(report("documents", violations));

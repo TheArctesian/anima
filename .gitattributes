@@ -1,7 +1,8 @@
 docs/plan/register.md merge=union
 docs/operator-queue.md merge=union
 # Documents that each branch adds entries to at the same place: keep the lines of the two sides.
-# A branch that changes a line that a different branch also changed gets the two lines; the
-# documents gate and a reader find that. Not for documents whose rows are changed in place.
+# A branch that changes a line that a different branch also changed gets the two lines. For
+# the decisions table the documents gate finds that (decision-row-twice).
 docs/rulings.md merge=union
 docs/need-human-testing.md merge=union
+docs/plan/decisions.md merge=union

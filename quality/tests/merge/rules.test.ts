@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { conflictsForAHand, gatesRefusal, mergeMessage, parseMergeRule } from "../../src/merge/rules.ts";
+import { conflictsForAHand, gatesRefusal, mergeMessage, parseMergeRule, rowsTwice } from "../../src/merge/rules.ts";
 
 describe("the merge of a branch into dev", () => {
   test("PLN-020 a conflict in a generated file needs no hand; each other conflict does", () => {
@@ -48,3 +48,21 @@ describe("the two rules of a merge (quality/merge-rule.json; R-NEW-gaterule, R-N
     expect(gatesRefusal([run("completed", "success"), run("completed", "cancelled")])).toContain("cancelled");
   });
 });
+
+describe("a table that merges by union", () => {
+  test("a row that two branches changed is found two times; rows that were only added are not", () => {
+    const table = [
+      "| Decision | Question | State |",
+      "| --- | --- | --- |",
+      "| OD-W38 | A question | Open. |",
+      "| OD-W39 | A question | Open. |",
+      "| OD-W39 | A question | Decided (R-200). |",
+      "| OD-W40 | Added by one branch | Open. |",
+      "| OD-W-NEW-x | Added by the other branch | Open. |",
+      "A line of text with OD-W38 in it.",
+    ].join("\n");
+    expect(rowsTwice(table)).toEqual(["OD-W39"]);
+    expect(rowsTwice("no table")).toEqual([]);
+  });
+});
+
