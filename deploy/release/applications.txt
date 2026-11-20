@@ -33,6 +33,7 @@ cli out apps/
 cli out link/
 cli out design/
 cli out contracts/
+cli out crates/anima-applications/
 cli out crates/anima-database/
 cli out crates/anima-gateway/
 cli out crates/anima-local-hub/
@@ -65,6 +66,7 @@ cli in deploy/bin/crate-version
 ios out docs/
 ios out quality/
 ios out deploy/
+ios out crates/anima-applications/
 ios out crates/anima-database/
 ios out crates/anima-gateway/
 ios out crates/anima-local-hub/
