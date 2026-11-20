@@ -1,15 +1,15 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.2 (2026-11-19). Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. No implementation or hardware validation has been performed. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
+evidence: Version 0.3 (2026-11-20). Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. No implementation or hardware validation has been performed. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
 ---
 
 # Proposal: Anima OS for spare computers
 
 | Item | Value |
 | --- | --- |
-| Version | 0.2 |
-| Date | 2026-11-19 |
+| Version | 0.3 |
+| Date | 2026-11-20 |
 | Status | Draft. The header holds the state. This proposal is not permission to build or release. |
 | Serves | [Priority 4.16](../plan/priorities.md): a dedicated-machine installation path. This mapping adds no new tier and does not delay existing install work. Workload dependencies remain in rows 4.7 and 4.9; updates in 4.18. |
 | Owner | This proposal owns the proposed OS image, installer, host state layout and recovery integration. Existing owners retain application, job, agent, identity and permission semantics. |
@@ -134,7 +134,7 @@ No task is buildable from this Draft. Each later claim must name its task and ap
 
 | Task | Work | Depends on | State | Completion evidence |
 | --- | --- | --- | --- | --- |
-| OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Not started | Per-owner task/revision/status map, exact contract deltas and experiment acceptance protocol; council input is in Section 12 |
+| OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Planning complete | Section 13 is the OS0 acceptance record: dependency snapshot, proposed contract deltas, bounded experiment protocol and handoff; no implementation approval or runtime evidence |
 | OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Not started | Four separate pass/fail/blocked records; F1/F2 need not wait for UI, physical models or F4 |
 | OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Not started | M1 record |
 | OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Not started | M2 record |
@@ -223,7 +223,7 @@ F4 includes data and metadata pressure, retained snapshots and cleanup that free
 
 Before each experiment, fix iteration counts, injection points, resource limits, management response/error thresholds and pass/fail rules in its brief. Report measurements and exact revisions; do not invent public minimum resources from an unrun test.
 
-The recommended first authorized implementation is F1 plus the UEFI slice of F2 on disposable x86-64 VM disks: shared Btrfs, read-only normal root, identity/configuration and workload sentinels, one declared custom service, interrupted activation and failed-health fallback. It proves only that narrow architecture claim. UI selection and named physical hardware do not block this experiment; F3/F4 and physical qualification retain their separate gates. OS0 remains planning work; this council review does not complete its dependency audit or authorize OS1.
+The recommended first authorized implementation is F1 plus the UEFI slice of F2 on disposable x86-64 VM disks: shared Btrfs, read-only normal root, identity/configuration and workload sentinels, one declared custom service, interrupted activation and failed-health fallback. It proves only that narrow architecture claim. UI selection and named physical hardware do not block this experiment; F3/F4 and physical qualification retain their separate gates. OS0 remains planning work; Section 13 completes its bounded dependency audit and brief. Neither the council nor the brief authorizes OS1.
 
 ### 12.5 Qualification and preview delivery
 
@@ -232,6 +232,80 @@ Start the hardware matrix during feasibility: exact model/firmware, architecture
 A preview after M2 needs its own evidence packet: exact digest/source revision, passed install/pair/unselected-disk checks for named preview targets, recovery/removal instructions, absent milestones clearly listed and explicit publication authorization. OS7/OS8 accept this preview packet independently of the later stable packet. Stable still requires M1-M5 and the selected hardware evidence.
 
 Write installation instructions with M2 and recovery instructions with M4, then validate them on a clean target. The [user documentation owner](user-documentation.md) proposes `docs/user/` for user-facing sources; the OS repository's documentation should hold developer/build material and link to those guides rather than create a second user manual.
+
+## 13. Overnight prototype implementation brief — OS0 acceptance record
+
+This section is the deliverable requested by “finish it off” and “enough so we can do an overnight build.” It prepares one bounded implementation run. It does not claim that a complete supported OS can be built overnight. The first run targets F1 and the UEFI portion of F2; all other product commitments remain in the stable scope.
+
+### 13.1 Dependency snapshot and changes required
+
+Audit basis: proposal revision `39db123c`, based on `origin/dev` revision `f30663a6`, inspected on 2026-11-20. These are source/plan observations, not fresh runtime verification. Refresh the table before integration if owner plans have changed. Branch-only implementation is not assumed present in the base.
+
+| Dependency / owner | Observed state at audit | Missing work / gate | Effect on overnight run |
+| --- | --- | --- | --- |
+| [K8 enrollment](../../contracts/daemon-push.md), daemon/link | Enrollment contract and daemon sources exist; K8 only permits its declared interface plus K10. Work-route W0 lists branch implementation awaiting human/hosted checks. | Installation-session authorization and live-to-installed identity transaction require reviewed contract changes. Existing enrollment alone does not authorize disk erasure. | No real hub enrollment, account or credentials. Use explicitly synthetic identity sentinels. F3 waits. |
+| [Work execution W2-W4](../plans/projects-and-builds-plan.md) and [K10](../../contracts/work-route.md) | W2 isolation evidence incomplete for Linux; W3 queue partly implemented on its branch; W4 daemon execution Not started. Wire types exist in `crates/daemon-core/src/wire/work.rs`; this is not proof of an execution engine. | Approved Linux isolation, integrated queue/daemon, offline and retention decisions below. | No real jobs or replacement scheduler. F4 waits. |
+| [Hosted applications H28/H31/H32](../plans/hosted-applications-plan.md) | Compose validation, applications program and installer tasks Not started. | Owner runtime and storage/capture hooks; their W3/W4 dependencies. | A synthetic persistent test service exercises mounts only; it is not Anima app support. |
+| [Agent runs](agent-runs.md), [routed command lines](routed-command-lines.md) | Draft proposals; routed execution has reviewed findings and pending operator decisions. | Approved agent execution/permission contract and implementation. | No agent shell endpoint, model credentials or agent execution in the VM. |
+| [Updates U3-U6](../plans/daemon-and-hub-update-plan.md) | U4 contract Done; U3 prototype, U5 rollout rules and U6 integration Not started. | OS-owned daemon/link version-set ownership and rollout integration. | Exercise local image activation with a test health endpoint; no competing product updater or rollout API. |
+| Backup/restore and local recovery | OS requirements proposed; no selected appliance backup engine or validated key lifecycle in this audit. | Capture/restore inventory, destination adapters, authorization and recovery evidence. | Keep data sentinels through OS fallback; do not label this backup or replacement-machine restore. |
+| User guides and hardware | Existing documentation owner; no named OS reference machines or measured minimums. | Hardware selection and physical human checks. | Write developer reproduction and VM recovery instructions; mark every physical family untested. |
+
+Proposed contract deltas for owner review, outside the overnight code scope:
+
+1. **Offline work:** add an explicit per-attempt execution policy distinguishing lease-bound work from work authorized to finish disconnected. For a disconnected-continuation attempt, the hub must not automatically reassign merely because its heartbeat expires. Specify a maximum authorization lifetime, locally enforced limits, cancellation delivery and reconciliation of a terminal result. A replacement attempt must wait for proof the old execution ended, effective fencing, or an explicit owner-approved duplicate-risk policy. Do not claim exactly-once side effects from queue bookkeeping. Existing lease-bound behavior remains until the owner approves a change. Apps, runners and agents need their own explicit mapping; one build-policy field is not enough.
+2. **Retained state:** define a retained dataset identifier, owning workload, authorized writers, quota/retention class and an explicit export/commit operation. Execution scratch and temporary secrets retain mandatory cleanup. Persistent workspaces need a separate approved mount/lifecycle. Publish retained-output metadata only after commit; incomplete exports stay visibly incomplete. Backup includes committed retained datasets, not the execution sandbox. Completion, daemon crash and restart must preserve committed outputs while removing temporary secrets.
+3. **Installation:** define attempt identifier, live identity, owner, disk fingerprint, approved plan digest, expiry and state transitions. Separate pairing approval from erase authorization; consumed authorization and status retries must be idempotent. Specify token replacement and the installed-device identity handoff under K8. Disk substitution, conflicting approval and uncertain state stop destructive progress.
+4. **Host activation:** define a canonical configuration revision and diff, approval/grant binding, privileged activation principal, maintenance authorization and audit record. The request cannot accept an arbitrary command hidden inside a bounded package grant. The OS update owner and existing updater must agree which controls the packaged daemon/link versions.
+
+These are reviewable design proposals, not amendments to K8/K10. OD-AOS7 remains open because the current rules cannot be changed by this brief.
+
+### 13.2 Fixed first-run scope and preflight
+
+Build a local x86-64 UEFI/QEMU prototype from a pinned NixOS stable input. The runner resolves the then-supported stable input from official NixOS sources, records its exact revision in a lockfile and does not change it mid-run. This is an experimental base choice, not final approval of the distribution/repository decision.
+
+Use a dedicated prototype directory in the authorized implementation worktree. Do not create a remote repository, alter the operator's desktop/system configuration, publish artifacts, write physical block devices or enroll a production account. Use a new local repository only if its location is explicitly selected before the run; otherwise keep the experiment under the existing worktree. The later `anima-os` repository decision must not block a self-contained experiment.
+
+Preflight records available disk/RAM, host architecture, Nix, QEMU, UEFI firmware and acceleration. On the current planning shell, `nix` and `qemu-system-x86_64` were not found on PATH. Therefore this machine is **not yet verified build-ready**. The implementation run must provision an explicitly authorized build environment or use an already prepared one before claiming it can execute overnight. Do not silently install a system daemon or change host services. KVM absence permits a documented slower emulation run; it does not justify skipping tests. If tooling cannot be obtained within scope, deliver the source and exact setup blocker without claiming a built image.
+
+Proposed guest test budget: 2 vCPUs, 4 GiB RAM, a 24 GiB disposable primary virtual disk and a second 1 GiB sentinel disk. These are test-fixture settings, not product minimums. Confine disk paths to a freshly created experiment directory; reject block-device paths, symlinks outside that directory and existing unrelated images. Use no guest access to host home, SSH agents, production secrets or writable host-directory shares.
+
+Deliver a bootable VM disk image and reproducible build/test commands first. A downloadable installer ISO, graphical setup, BIOS/ARM boot, TPM/encryption, pairing, real workloads, full backup and stable release are outside this first run. Do not spend the run making a decorative interface or empty repository scaffold.
+
+### 13.3 Implementation order and acceptance protocol
+
+The runner creates task rows/claims through the repository workflow once OS1 is authorized. Implement in this order and retain useful partial results when a later step fails:
+
+| Step | Concrete work | Test and pass criterion |
+| --- | --- | --- |
+| 1. Build inputs and disk | Pin flake inputs; define UEFI boot, one shared Btrfs filesystem and explicit root/state/store/boot write boundaries. Add a serial console. | Build command exits successfully; manifest records source/lock/image hashes and tooling versions. Boot reaches the local test health endpoint within 180 seconds under accelerated test conditions. Slower emulation requires a predeclared recorded timeout, not a retrospective pass. |
+| 2. State and custom service | Add synthetic identity/configuration, workload data and a declared stateful test service; document the mount inventory. | Five clean reboot cycles preserve hashes of identity/configuration and workload sentinels; normal root is mounted read-only. Both an unprivileged workload and the simulated daemon identity fail base/store/boot writes. The maintenance path can make an authorized change. |
+| 3. Configuration lifecycle | Add, update and remove one declared package/service configuration through the controlled local path. | Each operation completes once; reboot uses the requested revision; service data remains in its designated dataset. A rejected configuration leaves the known-good revision active. No unrestricted daemon-user activation permission. |
+| 4. Candidate activation | Stage version B from known-good A, with explicit pending/verified/committed state and protected fallback. | Three A-to-B activation cycles succeed; candidate and fallback identities are observable. A deliberate required-health failure recovers A without reverting the workload sentinel. Local health does not depend on internet or hub availability. |
+| 5. Failure injection | Cut VM power during staging, boot-entry publication and before health commit; separately test a rejected boot entry, early boot hang and failed userspace health. | Run each case three times from a clean fixture. Every case ends in a known revision or a clearly reported recovery failure; no silent pass or destroyed sentinel. Automatic recovery passes only if the guest restarts without test-harness reset. Proposed limit: two candidate attempts, then one fallback attempt; if both fail, bounded recovery state with no reboot loop. Record any watchdog gap as a failed F2 case. |
+| 6. Capacity smoke test | On a clone, fill disposable workload storage while retaining a known-good system and attempt a rejected or safe update staging operation. | Within 30 seconds the local health/status path responds or reports a measured failure; no protected-state deletion, partial active configuration or sentinel change. Record Btrfs data/metadata usage. This preliminary result does not complete F4/M5 capacity qualification. |
+| 7. Reproduction and report | Rebuild/evaluate from the recorded lockfile, run smoke tests from a clean VM copy and inspect the unrelated disk. | Manifest and configuration identity are reproducible; do not claim bit-for-bit image reproducibility without measuring it. Sentinel disk hash is unchanged. Report every case as Passed, Failed, Blocked or Not run, with logs and reasons. |
+
+Host-side test probes may observe serial output and terminate a timed-out VM to collect evidence. Such intervention must be recorded and cannot count as autonomous recovery. Guest internet may be used for build preparation only as documented; disconnect it during the local-health recovery case.
+
+### 13.4 Stop conditions and morning handoff
+
+Treat “overnight” as one bounded run, proposed maximum eight hours after tooling is ready. Check elapsed time between build/test stages. Stop launching new long work with 30 minutes left and use that time for the report and cleanup. The deadline is not permission to mark unfinished cases passed. No self-scheduled continuation or remote deployment is part of this brief.
+
+Stop dependent work on a missing prerequisite, an unresolvable failed F1/F2 condition, a request for credentials unavailable to the runner, or a required change to a frozen contract. Continue independent documentation or test harness work that remains within scope. Do not repeatedly rebuild identical inputs after an unchanged failure; record the cause and change hypothesis before another attempt.
+
+Morning deliverables:
+
+- Exact source commit, lockfile, build command and environment inventory.
+- VM image path, size and SHA-256 if built; otherwise the first build failure and reproduction command.
+- Mount/state inventory, local activation states and boot-failure result matrix.
+- Test logs with no credentials, sentinel hashes, timings and automatic-versus-harness recovery distinction.
+- One-command VM launch and test instructions, plus how to remove only the disposable artifacts.
+- A short verdict: F1 pass/fail/blocked, UEFI F2 pass/fail/blocked, what can be demonstrated, and the next specific fix. BIOS, ARM, physical machines, pairing and real Anima workloads remain explicitly untested.
+
+Commit source/docs and leave large VM artifacts outside git. Push only the authorized implementation branch through normal gates; publishing an image or merging to `main` requires separate release authorization. Update OS1 with evidence for the slice actually attempted, never mark all F1-F4 complete from this run.
+
+OS0 is complete as planning work through this record. The remaining pre-run actions are concrete: authorize this OS1 slice, choose/provision its build environment, and claim the task. The broader product decisions need not be reopened for the VM experiment.
 
 ## Appendix A. Recorded direction
 
