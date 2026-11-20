@@ -13,7 +13,9 @@ use crate::invocation::Invocation;
 /// `NotificationChannelInput` as JSON; exactly one key under `settings`.
 const DOCUMENT_HELP: &str = r#"The document is JSON in the shape of K1 NotificationChannelInput; exactly one key under "settings":
   {"name": "ops", "onByDefault": true,
-   "settings": {"ntfy": {"server": "https://ntfy.sh", "topic": "my-topic", "token": "tk_..."}}}
+   "settings": {"ntfy": {"server": "https://ntfy.sh", "topic": "<a random topic>", "token": "tk_..."}}}
+For the topic of ntfy, use a random one: `anima notify channel topic` prints one of 22 characters.
+The hub sends no reminder to an ntfy channel whose topic is shorter than 16 characters.
 Other settings: "webhook" {"url", "method", "headers": [{"name", "value"}]}, "email" {"host", "port",
 "security", "username", "password", "from", "to": []}, "apprise" {"server", "mode", "urls": [], "key", "tags": []}.
 On update, a secret left out keeps its stored value. Pass the file with --from-file, or - for standard input."#;
@@ -32,6 +34,8 @@ pub enum ChannelCommand {
     Delete(DeleteArgs),
     /// Send a test message through a channel and show the result.
     Test(TestArgs),
+    /// Print a new random topic of 22 characters for an ntfy channel. Nothing is stored.
+    Topic,
 }
 
 impl ChannelCommand {
@@ -46,6 +50,7 @@ impl ChannelCommand {
             Self::Update(args) => args.run(invocation).await,
             Self::Delete(args) => args.run(invocation).await,
             Self::Test(args) => args.run(invocation).await,
+            Self::Topic => super::channel_topic::run(invocation),
         }
     }
 }

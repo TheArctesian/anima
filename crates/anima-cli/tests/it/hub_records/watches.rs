@@ -1,5 +1,5 @@
-//! `release log --follow` and `vpn status --watch` against the scripted subscription hub
-//! (CMD-020, BLD-081).
+//! `release log --follow`, `vpn status --watch` and `reminder watch` against the scripted
+//! subscription hub (CMD-020, BLD-081, REM-008).
 
 use serde_json::{Value, json};
 
@@ -91,4 +91,53 @@ async fn cmd_020_vpn_status_watch_prints_one_line_for_each_picture() {
         "{}",
         lines[0]
     );
+}
+
+fn sent_firing(id: &str, text: &str) -> Value {
+    json!({ "reminderFirings": {
+        "id": id, "ruleId": "0190a000-0000-7000-9400-000000000001", "subject": "",
+        "text": text, "state": "SENT", "reason": null,
+        "dueAt": "2026-11-20T08:00:00+00:00", "sentAt": "2026-11-20T08:00:30+00:00",
+        "snoozedUntil": null, "decidedAt": null,
+    }})
+}
+
+#[tokio::test]
+async fn rem_008_reminder_watch_prints_one_line_for_each_reminder_that_is_sent() {
+    let firings = vec![
+        sent_firing("0190a000-0000-7000-9400-000000000002", "Stand up"),
+        sent_firing(
+            "0190a000-0000-7000-9400-000000000003",
+            "You have a reminder.",
+        ),
+    ];
+    let hub = SubscriptionHub::start(Script::Next(firings)).await;
+    let run = signed_in()
+        .run(&["reminder", "watch", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let lines: Vec<&str> = run.stdout.lines().collect();
+    assert_eq!(
+        lines,
+        [
+            "2026-11-20T08:00:30+00:00  0190a000-0000-7000-9400-000000000002  Stand up",
+            "2026-11-20T08:00:30+00:00  0190a000-0000-7000-9400-000000000003  You have a reminder.",
+        ]
+    );
+}
+
+#[tokio::test]
+async fn rem_008_reminder_watch_json_is_one_firing_per_line() {
+    let firings = vec![sent_firing(
+        "0190a000-0000-7000-9400-000000000002",
+        "Stand up",
+    )];
+    let hub = SubscriptionHub::start(Script::Next(firings)).await;
+    let run = signed_in()
+        .run(&["reminder", "watch", "--json", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let first: Value = serde_json::from_str(run.stdout.trim()).expect("JSON");
+    assert_eq!(first["state"], "SENT");
+    assert_eq!(first["text"], "Stand up");
 }

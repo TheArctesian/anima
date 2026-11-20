@@ -2,6 +2,7 @@
 //! REM-007).
 
 mod firings;
+mod live;
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
