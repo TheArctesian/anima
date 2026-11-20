@@ -14,6 +14,7 @@ export interface RunnerReport {
   readonly activeCPUCount: number;
   readonly physicalMemoryBytes: number;
   readonly availableProcessBytes?: number;
+  readonly availableSystemMemoryBytes?: number;
   readonly availableStorageBytes?: number;
 }
 
@@ -25,7 +26,7 @@ function isRunnerReport(value: unknown): value is RunnerReport {
     && [report.osVersion, report.observedAt, report.charging, report.thermal].every((field) => typeof field === 'string')
     && [report.foreground, report.lowPowerMode, report.simulated].every((field) => typeof field === 'boolean')
     && [report.logicalCPUCount, report.activeCPUCount, report.physicalMemoryBytes].every((field) => typeof field === 'number')
-    && [report.availableProcessBytes, report.availableStorageBytes].every((field) => field === undefined || typeof field === 'number');
+    && [report.availableProcessBytes, report.availableSystemMemoryBytes, report.availableStorageBytes].every((field) => field === undefined || typeof field === 'number');
 }
 
 export async function readRunnerReport(): Promise<RunnerReport> {

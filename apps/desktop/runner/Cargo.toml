@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-runner"
-description = "Reads local runner capability signals on iOS (OD-14)"
+description = "Reads local runner capability signals on iOS and Android (OD-14)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -25,7 +25,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
   // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5).
   if (isMobile(agent)) {
     const apple = isApple(agent);
-    return { ...MOBILE_SHELL, accountSession: apple, runnerReport: apple };
+    return { ...MOBILE_SHELL, accountSession: apple, runnerReport: true };
   }
   const { userAgent } = agent;
   return {

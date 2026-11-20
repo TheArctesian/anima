@@ -33,7 +33,11 @@
 {#if report}
   <SettingRow label="Power">{report.charging}</SettingRow>
   <SettingRow label="Thermal state">{report.thermal}</SettingRow>
-  <SettingRow label="Available app memory">{formatRunnerBytes(report.availableProcessBytes)}</SettingRow>
+  {#if report.platform === 'android'}
+    <SettingRow label="Available system memory">{formatRunnerBytes(report.availableSystemMemoryBytes)}</SettingRow>
+  {:else}
+    <SettingRow label="Available app memory">{formatRunnerBytes(report.availableProcessBytes)}</SettingRow>
+  {/if}
   <SettingRow label="Available storage">{formatRunnerBytes(report.availableStorageBytes)}</SettingRow>
   <details>
     <summary>Technical report</summary>

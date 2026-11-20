@@ -6,10 +6,10 @@ use tauri::plugin::{Builder, TauriPlugin};
 #[cfg(target_os = "ios")]
 tauri::ios_plugin_binding!(init_plugin_runner);
 
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "android"))]
 pub struct Runner<R: Runtime>(tauri::plugin::PluginHandle<R>);
 
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "android"))]
 impl<R: Runtime> Runner<R> {
     /// Reads a fresh native capability report.
     ///
@@ -20,7 +20,7 @@ impl<R: Runtime> Runner<R> {
         self.0
             .run_mobile_plugin_async("readCapabilities", ())
             .await
-            .map_err(|_| "The iOS runner report is unavailable.")
+            .map_err(|_| "The native runner report is unavailable.")
     }
 }
 
@@ -28,13 +28,16 @@ impl<R: Runtime> Runner<R> {
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("runner")
         .setup(|app, api| {
-            #[cfg(target_os = "ios")]
+            #[cfg(any(target_os = "ios", target_os = "android"))]
             {
                 use tauri::Manager;
+                #[cfg(target_os = "ios")]
                 let handle = api.register_ios_plugin(init_plugin_runner)?;
+                #[cfg(target_os = "android")]
+                let handle = api.register_android_plugin("ing.anima.runner", "RunnerPlugin")?;
                 app.manage(Runner(handle));
             }
-            #[cfg(not(target_os = "ios"))]
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             let _ = (app, api);
             Ok(())
         })

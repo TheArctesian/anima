@@ -1576,7 +1576,7 @@ capabilities and tap Read capabilities. Expect the current power state, thermal 
 memory headroom, and available storage. Open Technical report and expect the platform, OS,
 observation time, and discovery data. Disconnect or reconnect power, wait for iOS to update
 the battery state, and tap Refresh. Expect a new observation time and the updated power state.
-The Android and browser clients have no report entry in this increment.
+Verify that the browser client has no report entry.
 
 ## Not built yet
 
