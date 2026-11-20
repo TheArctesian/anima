@@ -27,6 +27,7 @@
   // Once, not in an effect: `watch` reads and writes the control's own state.
   onMount(() => control.watch());
 
+  const windows = /Windows NT/.test(navigator.userAgent);
   const status = $derived(control.status);
   const notice = $derived(status === null ? null : sleepNotice(thisComputerIsHub, status));
   const setUpRow = $derived(mac && status !== null);
@@ -54,7 +55,11 @@
       {#if status !== null}
         {describeStayAwake(status)}
         {#if status.lid === 'unsupported'}
-          This desktop controls the closed lid. Change it in power settings.
+          {#if windows}
+            Closed-lid sleep control is unavailable on this computer.
+          {:else}
+            This desktop controls the closed lid. Change it in power settings.
+          {/if}
         {/if}
       {/if}
     </p>

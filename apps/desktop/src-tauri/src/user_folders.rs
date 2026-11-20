@@ -45,7 +45,6 @@ pub fn of_this_user() -> Option<PathBuf> {
 }
 
 /// The hub root of the hub on this computer.
-#[cfg(unix)]
 pub fn hub_root(application: &Path) -> PathBuf {
     application.join("hub")
 }

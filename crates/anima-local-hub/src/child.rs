@@ -4,20 +4,28 @@
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
-use std::process::{ExitStatus, Stdio};
+use std::process::ExitStatus;
+#[cfg(unix)]
+use std::process::Stdio;
 use std::time::Duration;
 
+#[cfg(unix)]
 use nix::sys::signal::{Signal, kill};
+#[cfg(unix)]
 use nix::unistd::Pid;
 use tokio::io::{AsyncBufReadExt as _, AsyncRead, BufReader};
+#[cfg(unix)]
 use tokio::net::unix::pipe;
+#[cfg(unix)]
 use tokio::process::Command;
 use tokio::sync::{mpsc, watch};
 
 use crate::log_file::LogFile;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
+#[cfg(windows)]
+mod windows;
 
 /// The most bytes of one output line that go to the log.
 const LINE_LIMIT: usize = 16 * 1024;
@@ -79,6 +87,7 @@ impl Stop {
     ///
     /// # Errors
     /// When the signals cannot be watched.
+    #[cfg(unix)]
     pub fn on_signals() -> io::Result<Self> {
         use tokio::signal::unix::{SignalKind, signal};
         let mut terminate = signal(SignalKind::terminate())?;
@@ -122,7 +131,12 @@ pub enum Stopped {
 #[derive(Debug)]
 pub struct Child {
     name: &'static str,
+    #[cfg(unix)]
     process: Pid,
+    #[cfg(windows)]
+    input: Option<tokio::process::ChildStdin>,
+    #[cfg(windows)]
+    job: Option<anima_windows::job::Job>,
     exit: watch::Receiver<Option<ExitStatus>>,
     lines: Option<mpsc::UnboundedReceiver<String>>,
 }
@@ -137,6 +151,7 @@ impl Child {
     ///
     /// # Errors
     /// [`ChildError::Start`] when the program cannot be run.
+    #[cfg(unix)]
     pub fn start(
         spec: &Spec,
         log: LogFile,
@@ -261,6 +276,7 @@ impl Child {
     ///
     /// # Errors
     /// [`ChildError::Signal`] when a live member cannot be signalled.
+    #[cfg(unix)]
     pub async fn stop(mut self, limit: Duration) -> Result<Stopped, ChildError> {
         if let Some(status) = self.ended() {
             return Ok(Stopped::Ended(status));
@@ -275,6 +291,7 @@ impl Child {
     }
 
     /// A process that ended between the look and the signal is not an error.
+    #[cfg(unix)]
     fn signal(&self, signal: Signal) -> Result<(), ChildError> {
         if self.ended().is_some() {
             return Ok(());

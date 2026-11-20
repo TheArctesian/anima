@@ -11,12 +11,10 @@ mod device;
 mod error;
 mod folder;
 mod joining;
-#[cfg(unix)]
 mod kept;
 mod printed;
-mod restarts;
-#[cfg(unix)]
 mod repair;
+mod restarts;
 mod state;
 
 #[cfg(all(test, unix))]
@@ -41,13 +39,14 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
-#[cfg(unix)]
-pub use kept::{daemon_socket, hosted_hub_opened};
+pub use kept::daemon_socket;
+pub use kept::hosted_hub_opened;
+#[cfg(windows)]
+pub use kept::owns_background;
 #[cfg(unix)]
 pub use state::DeviceState;
 pub use state::Event;
 use state::{Phase, Reason};
-#[cfg(unix)]
 use std::thread;
 
 const PROGRAM: &str = "anima-link";
@@ -136,7 +135,6 @@ pub fn start(device: &Arc<DeviceLink>) {
     resume(device, program.clone(), &folders);
     // A link that the app runs for a hosted hub goes to a unit of the user (HMD-058), off this
     // thread: the start of the app does not wait for it.
-    #[cfg(unix)]
     if let Some(program) = program.filter(|_| folder::wants_unit(&folders.device)) {
         let device = Arc::clone(device);
         thread::spawn(move || kept::hand_over(&device, program, &folders.device));
@@ -152,7 +150,6 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
         device.record(Event::Unable(Reason::NoPort));
         return;
     };
-    #[cfg(unix)]
     if let Some(link) = kept::now(&folders.device, port) {
         // The unit runs the copy of an earlier app: it gets the program of this app (HMD-055).
         if let Some(carried) = &program {
@@ -178,7 +175,6 @@ fn replace(
 ) -> Result<(), LinkError> {
     device.stop();
     // A unit of the join before must not run while its folder is swapped.
-    #[cfg(unix)]
     if let Some(before) = kept::now(&folders.device, port)
         && before.remove().is_err()
     {
@@ -227,7 +223,6 @@ pub async fn link_join<R: Runtime>(
         let env = environment(|name| std::env::var_os(name));
         let joined = joining::join(&program, &folders, &line, &env)?;
         replace(&device, program.clone(), &folders, joined.port)?;
-        #[cfg(unix)]
         if device.in_background() {
             let _ = folder::want_unit(&folders.device);
             kept::keep_or_run(&device, program, &folders.device, joined.port);
@@ -300,7 +295,6 @@ pub async fn link_leave<R: Runtime>(
         let _claim = claim;
         let folders = folders()?;
         device.stop();
-        #[cfg(unix)]
         if let Some(link) = kept::now(&folders.device, 0) {
             link.remove()?;
             kept::unplace(&link.program);

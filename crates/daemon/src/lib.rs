@@ -18,4 +18,8 @@ pub mod report;
 pub mod runtime;
 pub mod sampling;
 pub mod token_store;
+#[cfg_attr(windows, path = "units/windows.rs")]
 pub mod units;
+
+#[cfg(test)]
+mod test_links;

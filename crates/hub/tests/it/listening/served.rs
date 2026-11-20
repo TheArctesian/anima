@@ -32,10 +32,12 @@ use super::{DEADLINE, Running, finished, spawn};
 /// A LOGIN role in `anima_runtime`, as the deployment's hub login is (R-016).
 async fn runtime_login(pool: &PgPool) -> String {
     let role = format!("anima_test_{}_edge", uuid::Uuid::now_v7().simple());
-    sqlx::query(&format!("create role {role} login in role anima_runtime"))
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query(&format!(
+        "create role {role} login password '{role}' in role anima_runtime"
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
     role
 }
 
@@ -49,7 +51,7 @@ fn url_as(role: &str, database: &str) -> String {
         .map_or((host, None), |(b, q)| (b, Some(q)));
     let server = base.split_once('/').map_or(base, |(server, _)| server);
     let query = query.map_or_default(|q| format!("?{q}"));
-    format!("{scheme}://{role}@{server}/{database}{query}")
+    format!("{scheme}://{role}:{role}@{server}/{database}{query}")
 }
 
 /// The files a served hub reads, in one temporary folder.

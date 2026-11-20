@@ -1,3 +1,4 @@
+import type { IconName } from '$lib/icons/icons';
 import type { Builder } from '../api';
 import type { BuildTarget, JobChange, JobView, ReleaseView } from './api';
 
@@ -5,7 +6,14 @@ import type { BuildTarget, JobChange, JobView, ReleaseView } from './api';
 export const TARGETS: readonly { readonly value: BuildTarget; readonly label: string }[] = [
   { value: 'LINUX_X86_64', label: 'linux-x86_64' },
   { value: 'DARWIN_UNIVERSAL', label: 'darwin-universal' },
+  { value: 'WINDOWS_X86_64', label: 'windows-x86_64' },
 ];
+
+export const TARGET_ICONS: Readonly<Record<BuildTarget, IconName>> = {
+  LINUX_X86_64: 'simple-icons:linux',
+  DARWIN_UNIVERSAL: 'simple-icons:apple',
+  WINDOWS_X86_64: 'simple-icons:windows',
+};
 
 const STATE_LABELS: Record<JobView['state'], string> = {
   QUEUED: 'Queued',
@@ -56,7 +64,11 @@ export function timeInState(job: Pick<JobView, 'stateChangedAt'>, now: Date): st
 /** Whether a builder with this platform can build the target (BLD-003). */
 function builds(builder: Builder, target: BuildTarget): boolean {
   const { os, arch } = builder.platform;
-  return target === 'LINUX_X86_64' ? os === 'LINUX' && arch === 'X86_64' : os === 'MACOS' && arch === 'AARCH64';
+  switch (target) {
+    case 'LINUX_X86_64': return os === 'LINUX' && arch === 'X86_64';
+    case 'DARWIN_UNIVERSAL': return os === 'MACOS' && arch === 'AARCH64';
+    case 'WINDOWS_X86_64': return os === 'WINDOWS' && arch === 'X86_64';
+  }
 }
 
 /**

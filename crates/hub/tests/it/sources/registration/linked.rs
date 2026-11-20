@@ -25,7 +25,10 @@ use crate::{
 fn linked(kit: &Kit, given: Option<&str>) -> crate::hub::Hub {
     let mut env = std::collections::BTreeMap::from([(
         "ANIMA_LINK_SOCKET".to_owned(),
-        "/run/anima/link.sock".to_owned(),
+        std::env::temp_dir()
+            .join("anima-registration-test.sock")
+            .display()
+            .to_string(),
     )]);
     if let Some(origin) = given {
         env.insert("ANIMA_PUBLIC_ORIGIN".to_owned(), origin.to_owned());

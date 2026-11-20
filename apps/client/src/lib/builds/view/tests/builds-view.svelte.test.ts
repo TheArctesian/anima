@@ -112,7 +112,7 @@ it('BLD-001: the version is prefilled from the hub and the release is created wi
   type(input(target, 'Commit'), COMMIT);
   await submit(target);
   const create = hub.sent.find((request) => request.operation === 'CreateRelease');
-  expect(create?.variables).toEqual({ version: '0.1.14', commit: COMMIT, targets: ['LINUX_X86_64', 'DARWIN_UNIVERSAL'] });
+  expect(create?.variables).toEqual({ version: '0.1.14', commit: COMMIT, targets: ['LINUX_X86_64', 'DARWIN_UNIVERSAL', 'WINDOWS_X86_64'] });
 });
 
 it('BLD-001: the button names the version, and the operator can change the version and the targets', async () => {
@@ -121,6 +121,7 @@ it('BLD-001: the button names the version, and the operator can change the versi
   type(input(target, 'Commit'), COMMIT);
   expect(target.querySelector<HTMLButtonElement>('form button[type="submit"]')?.textContent.trim()).toBe('Release 0.2.0');
   input(target, 'darwin-universal').click();
+  input(target, 'windows-x86_64').click();
   flushSync();
   await submit(target);
   const create = hub.sent.find((request) => request.operation === 'CreateRelease');

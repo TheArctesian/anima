@@ -145,3 +145,25 @@ func readFile(path string) (*os.File, error) {
 
 // Windows cannot flush a directory handle. Each file is flushed before its rename.
 func syncDirectory(*os.File) error { return nil }
+
+// CheckFile refuses anything other than a private regular file of this directory.
+// It checks the opened file and never reads or prints its contents.
+func (d *Dir) CheckFile(name string) error {
+	if name == "." || name == ".." || filepath.Base(name) != name {
+		return ErrExposed
+	}
+	path := filepath.Join(d.path, name)
+	file, err := readFile(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !stat.Mode().IsRegular() || !ownerOnly(stat, path) {
+		return ErrExposed
+	}
+	return nil
+}

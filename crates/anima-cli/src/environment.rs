@@ -79,7 +79,8 @@ fn config_dir(xdg: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> 
     Some(base.join("anima"))
 }
 
-#[cfg(test)]
+// XDG paths are the Unix configuration contract; Windows uses LOCALAPPDATA.
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

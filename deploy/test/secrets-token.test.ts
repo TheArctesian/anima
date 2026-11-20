@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ function tokenFile(folder: string): string {
   return join(folder, "cloudflare_dns_token");
 }
 
-describe("make-secrets Cloudflare token from stdin (DNS-003)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets Cloudflare token from stdin (DNS-003)", () => {
   test("DNS-003: it stores the first line with mode 0400 and prints nothing of it", async () => {
     const folder = newSecretsPath();
     const result = await makeSecrets(folder, { args: TOKEN_ARGS, stdin: "cf-secret-token\nextra\n" });
@@ -39,7 +40,7 @@ describe("make-secrets Cloudflare token from stdin (DNS-003)", () => {
   );
 });
 
-describe("make-secrets token prompt (DNS-003)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets token prompt (DNS-003)", () => {
   function sttyShim(): { shims: string; log: string } {
     const log = join(scratchFolder(), "stty.log");
     return { shims: shimFolder({ stty: `echo "$*" >>"${log}"` }), log };

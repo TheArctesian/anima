@@ -151,6 +151,7 @@ async fn cmd_010_ctrl_c_at_the_password_cancels_and_restores_the_terminal(pool: 
 
 /// `SIGINT` from another program at the password ends `anima` as the signal would (128 + 2)
 /// and restores the terminal first.
+#[cfg(unix)]
 #[sqlx::test(migrations = "../hub/migrations")]
 async fn cmd_010_sigint_at_the_password_restores_the_terminal(pool: PgPool) {
     let hub = RealHub::start(pool).await;

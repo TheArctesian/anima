@@ -32,10 +32,10 @@ describe('shellCapabilities (WP-42 D-4)', () => {
     expect(shellCapabilities(computer(LINUX))).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false });
   });
 
-  it('WIN1: Windows exposes the client and link, but no Unix host installation or release controls', () => {
+  it('WIN2: Windows exposes the native hub, device controls and release builder', () => {
     expect(shellCapabilities(computer('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'))).toEqual({
-      ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false, updates: false,
-      builds: false, mcpPermissions: true, commandLine: false, stayAwake: false, localHub: false,
+      ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false,
+      builds: true, mcpPermissions: true, commandLine: true, stayAwake: true, localHub: true,
     });
   });
 

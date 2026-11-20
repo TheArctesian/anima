@@ -101,7 +101,8 @@ export type BuildTarget =
   /** An app and a DMG, built on macOS on aarch64. */
   | 'DARWIN_UNIVERSAL'
   /** An AppImage, built on Linux on x86_64. */
-  | 'LINUX_X86_64';
+  | 'LINUX_X86_64'
+  | 'WINDOWS_X86_64';
 
 /** As Tauri names it. */
 export type BuilderArch =
@@ -110,7 +111,8 @@ export type BuilderArch =
 
 export type BuilderOs =
   | 'LINUX'
-  | 'MACOS';
+  | 'MACOS'
+  | 'WINDOWS';
 
 export type BuilderPlatformInput = {
   arch: BuilderArch;

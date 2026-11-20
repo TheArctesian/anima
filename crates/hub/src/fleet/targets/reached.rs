@@ -22,8 +22,13 @@ use std::{
 
 use tokio::{
     io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _, ReadBuf},
-    net::{TcpStream, UnixStream},
+    net::TcpStream,
 };
+
+#[cfg(windows)]
+use anima_windows::socket::Stream as UnixStream;
+#[cfg(unix)]
+use tokio::net::UnixStream;
 
 use super::AddressPolicy;
 use crate::config::LINK_DEVICES;
@@ -86,6 +91,7 @@ pub fn on_link(ip: IpAddr) -> bool {
 /// One request on the dial socket of the link.
 async fn dial(socket: &Path, device: Ipv6Addr, port: u16) -> io::Result<UnixStream> {
     let mut stream = UnixStream::connect(socket).await?;
+    #[cfg(unix)]
     if stream.peer_cred()?.uid() != rustix::process::geteuid().as_raw() {
         return Err(io::ErrorKind::PermissionDenied.into());
     }

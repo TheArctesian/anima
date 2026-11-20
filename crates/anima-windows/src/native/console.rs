@@ -46,3 +46,36 @@ pub fn restore() -> io::Result<()> {
     }
     Ok(())
 }
+
+/// Attach a GUI-subsystem command to its caller's console, preserving redirected pipes.
+/// Call before any Rust standard I/O is used. A scheduled task normally has no parent console.
+/// # Errors
+/// There is no parent console, the process is already attached, or restoration fails.
+pub fn attach_parent() -> io::Result<()> {
+    use windows::Win32::{
+        Storage::FileSystem::{FILE_TYPE_DISK, FILE_TYPE_PIPE, GetFileType},
+        System::Console::{
+            ATTACH_PARENT_PROCESS, AttachConsole, STD_ERROR_HANDLE, STD_OUTPUT_HANDLE, SetStdHandle,
+        },
+    };
+    let redirected: Vec<_> = [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE]
+        .into_iter()
+        .filter_map(|name| {
+            // SAFETY: borrowed standard handles are inspected, never closed or dereferenced.
+            let handle = unsafe { GetStdHandle(name) }.ok()?;
+            // SAFETY: GetFileType accepts the borrowed handle and reports invalid handles as unknown.
+            matches!(
+                unsafe { GetFileType(handle) },
+                FILE_TYPE_DISK | FILE_TYPE_PIPE
+            )
+            .then_some((name, handle))
+        })
+        .collect();
+    // SAFETY: attaches this process to its parent without allocating a console window.
+    unsafe { AttachConsole(ATTACH_PARENT_PROCESS) }.map_err(io::Error::other)?;
+    for (name, handle) in redirected {
+        // SAFETY: redirected handles belong to this process and remain open across attachment.
+        unsafe { SetStdHandle(name, handle) }.map_err(io::Error::other)?;
+    }
+    Ok(())
+}

@@ -11,3 +11,21 @@ mod native;
 
 #[cfg(windows)]
 pub use native::console;
+
+#[cfg(windows)]
+pub mod search_path;
+
+#[cfg(windows)]
+pub use native::process;
+
+#[cfg(windows)]
+pub use native::job;
+
+#[cfg(windows)]
+pub use native::socket;
+
+#[cfg(windows)]
+pub use native::power;
+
+#[cfg(windows)]
+pub mod shutdown;

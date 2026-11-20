@@ -23,6 +23,9 @@ pub struct Here {
     /// The user that runs the command.
     pub user: u32,
     pub macos: bool,
+    /// Windows roaming application settings, including redirected user profiles.
+    #[cfg(windows)]
+    pub roaming: Option<PathBuf>,
 }
 
 impl Here {
@@ -48,24 +51,50 @@ impl Here {
             path,
             user,
             macos: cfg!(target_os = "macos"),
+            #[cfg(windows)]
+            roaming: std::env::var_os("APPDATA")
+                .map(PathBuf::from)
+                .filter(|path| {
+                    path.is_absolute()
+                        && path
+                            .ancestors()
+                            .all(|part| anima_windows::files::secure(part, false).unwrap_or(false))
+                }),
         })
     }
 
-    fn root(&self) -> Root<'_> {
+    fn root(&self, path: &Path) -> Root<'_> {
+        let home = self.home.as_path();
+        #[cfg(windows)]
+        let home = self
+            .roaming
+            .as_deref()
+            .filter(|root| path.starts_with(root))
+            .unwrap_or(home);
+        #[cfg(unix)]
+        let _ = path;
         Root {
-            home: self.home.as_path(),
+            home,
             user: self.user,
         }
     }
 }
 
 mod program;
+#[cfg(windows)]
+mod windows;
 use program::program;
 pub use program::{Checked, CommandError, check_command};
 
 /// Whether the agent is on this computer (MCP-027).
 #[must_use]
 pub fn present(agent: &Agent, here: &Here) -> bool {
+    #[cfg(windows)]
+    if matches!(agent.id, "claude-desktop" | "zed") {
+        return windows::file(agent.id, here.roaming.as_deref())
+            .and_then(|path| path.parent().map(Path::is_dir))
+            .unwrap_or(false);
+    }
     agent
         .programs
         .iter()
@@ -77,6 +106,10 @@ pub fn present(agent: &Agent, here: &Here) -> bool {
 }
 
 fn file_of(agent: &Agent, here: &Here) -> Option<PathBuf> {
+    #[cfg(windows)]
+    if matches!(agent.id, "claude-desktop" | "zed") {
+        return windows::file(agent.id, here.roaming.as_deref());
+    }
     match agent.way {
         Way::File { place, .. } => Some(file(place, &here.home, here.macos, Path::is_file)),
         Way::Own { .. } => None,
@@ -107,7 +140,7 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
             let Some(path) = file_of(agent, here) else {
                 return State::Unreadable;
             };
-            let Ok(text) = files::read(here.root(), &path) else {
+            let Ok(text) = files::read(here.root(&path), &path) else {
                 return State::Unreadable;
             };
             match jsonc::member(text.as_deref().unwrap_or(""), keys, NAME) {
@@ -237,7 +270,7 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
     match agent.way {
         Way::File { keys, shape, .. } => {
             let path = file_of(agent, here).ok_or(SetupError::NoProgram)?;
-            let before = files::read(here.root(), &path)?;
+            let before = files::read(here.root(&path), &path)?;
             let text = before.as_deref().unwrap_or("");
             let after = match action {
                 Action::Install => {
@@ -249,7 +282,7 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
             };
             match after {
                 Some(after) if after != text => Ok(files::replace(
-                    here.root(),
+                    here.root(&path),
                     &path,
                     before.as_deref(),
                     &after,

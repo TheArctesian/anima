@@ -132,6 +132,9 @@ impl Workshop<'_> {
             fs::remove_dir_all(&self.clone).map_err(|_| BuilderError::Failed)?;
         }
         let parent = self.clone.parent().ok_or(BuilderError::Failed)?;
+        #[cfg(windows)]
+        anima_windows::files::directory(parent).map_err(|_| BuilderError::Failed)?;
+        #[cfg(unix)]
         fs::create_dir_all(parent).map_err(|_| BuilderError::Failed)?;
         self.run(&plan::clone(&self.repository, &self.clone))
             .await?;
@@ -227,7 +230,7 @@ impl Workshop<'_> {
         self.at(commit).await?;
         let signer = self.signer(commit, target).await?;
         self.tree(commit, target, signer.as_ref()).await?;
-        self.link(commit).await?;
+        self.link(commit, target).await?;
         self.stage(target, &link::copies(&self.clone, target), &[link::PROGRAM])
             .await?;
         self.check_staged(target, &[link::PROGRAM]).await?;

@@ -141,3 +141,27 @@ fn bld_061_a_job_uploads_only_its_targets_release_files() {
         assert_eq!(content_type(target, version, name), None, "{name}");
     }
 }
+
+#[test]
+fn windows_release_accepts_only_its_versioned_nsis_installer() {
+    let version = "0.1.12".parse().unwrap();
+    assert_eq!(
+        content_type(Target::WindowsX86_64, version, "Anima_0.1.12_x64-setup.exe"),
+        Some("application/octet-stream")
+    );
+    for name in [
+        "Anima_0.1.11_x64-setup.exe",
+        "script.exe",
+        "Anima.app.tar.gz",
+    ] {
+        assert_eq!(content_type(Target::WindowsX86_64, version, name), None);
+    }
+    let files = [
+        file("Anima_0.1.12_x64-setup.exe", b"installer"),
+        file("SHA256SUMS", b"s"),
+    ];
+    assert_eq!(
+        stable_copy(Target::WindowsX86_64, &files).unwrap().1,
+        "Anima-x86_64-setup.exe"
+    );
+}

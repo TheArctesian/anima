@@ -295,7 +295,6 @@ pub async fn cloud_hub_access(
             })
             .await;
         if !matches!(answered, Err(CloudError::NotReady)) || started.elapsed() >= NOT_READY_LIMIT {
-            #[cfg(unix)]
             if let Ok(access) = &answered {
                 crate::link::hosted_hub_opened(&webview, access.is_joined());
             }
@@ -318,7 +317,7 @@ pub async fn cloud_hub_access(
 #[tauri::command]
 pub async fn cloud_device(webview: Webview) -> Result<CloudDevice, CloudError> {
     from_main(&webview)?;
-    // The sign-in is only on macOS and Linux (`capabilities/cloud.json`).
+    // Desktop sign-in uses the native OS reported by this shell.
     let os = OperatingSystem::current().ok_or(CloudError::Unconfigured)?;
     // The client asks this only for a hosted hub, at each start: the shell then knows that a
     // unit of the user must keep the link, also when no sign-in runs (HMD-058).

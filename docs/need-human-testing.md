@@ -2338,3 +2338,52 @@ other entry; a real coding agent connection remains to be tested.
    command succeeds. Do not assume that all agent-specific automatic setup paths work yet.
 
 Result: Open.
+
+### WIN2 continuation checks for HT-NEW-windows
+
+The entry HT-NEW-windows remains Open. These checks extend that entry; they are not a pass record.
+
+1. In Windows Settings > Updates, install the command line tool. Confirm the displayed user-PATH
+   folder. Open a fresh terminal and run `anima --version`; it must resolve to the bundled CLI.
+   Remove it and open another terminal; unrelated PATH entries must remain unchanged.
+2. In Settings > MCP, inspect an installed coding agent, confirm the shown change and connect
+   the agent to `anima mcp`. Remove Anima's entry; other server entries and their settings must remain.
+3. After the hosted connection hands off to Task Scheduler, close Anima. Its link must remain
+   connected. Open Anima again, sign out/in to Windows, and verify reconnection without a password
+   prompt, elevation prompt, or an extra console window.
+4. Remove the link through Anima. Its task and persistent process must stop. Repeat with a
+   standard non-administrator Windows account; the VM's administrator account is insufficient proof.
+
+5. Open the hosted hub with the bundled daemon present. This Windows computer must appear
+   once, enroll automatically, and have a running per-user daemon task. Check CPU, memory,
+   disk and network metrics. Close Anima and confirm new metrics still arrive; sign out/in
+   and confirm both tasks restart. Do not treat device registration alone as metrics acceptance.
+6. On a Windows laptop, choose Keep awake in Settings and confirm the tray agrees. Wait past
+   the configured idle sleep time; the computer should remain running while the display may
+   sleep. Turn it off, quit, then separately force-close the app; each must release Anima's
+   request (`powercfg /requests` can inspect it). Repeat on battery and test the saved floor:
+   below the floor it must pause, and connecting mains must resume it. Check Modern Standby
+   hardware separately. On a laptop whose power policy permits it, choose the closed-lid level.
+   Anima must use a temporary copy of the active power plan and restore the previous plan on
+   Off, normal exit and force-closing the app. The original plan's settings must not change.
+   Select a different power plan while the hold is active, then stop the hold: the selected
+   plan must remain active. Restart after an interrupted guard and verify recovery removes
+   Anima's temporary plan. A VM without a lid, or a machine with locked policy, must show
+   this level as unavailable.
+
+7. Install the local hub from Settings on a standard Windows account. Wait for Ready, close
+   the app and reopen it; the hub must remain available. Stop and start it, make a backup,
+   and recover that backup into a fresh folder. Confirm the account and devices survive.
+   This check does not authorize deleting an existing hub or replacing its database.
+8. On a Windows builder with the documented native compiler tools, enable building and
+   run a trial Windows release. Its gates must pass before packaging. Cancel during a build;
+   no compiler or packaging child may remain. Test the signed installer update with the
+   private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
+   Do not enable or publish a public feed as part of this check.
+
+9. Download the `windows-trial` artifact from a successful dev workflow and install it in
+   a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and
+   automatic updates are disabled. For a signed release trial on main, confirm the installer
+   shows the expected verified publisher and its timestamp is valid. Test a private update
+   from the previous signed version and check the link, daemon and hub after restart.
+   Certificate provisioning and this signed trial remain Open.

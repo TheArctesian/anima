@@ -10,7 +10,7 @@
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::net::{SocketAddr, TcpStream};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::mpsc;
 use std::thread;
@@ -18,12 +18,19 @@ use std::time::{Duration, Instant};
 
 use tempfile::TempDir;
 
+mod platform;
 mod root_copy;
 
 const LIMIT: Duration = Duration::from_secs(120);
-const LOCAL_HUB: &str = env!("CARGO_BIN_EXE_anima-local-hub");
+fn local_hub() -> PathBuf {
+    std::env::var_os("ANIMA_LOCAL_HUB_EXE").map_or_else(
+        || PathBuf::from(env!("CARGO_BIN_EXE_anima-local-hub")),
+        PathBuf::from,
+    )
+}
 
 /// The stand-in for `anima-link hub`: the ready line of the real one, on standard error.
+#[cfg(unix)]
 const LINK: &str = r#"#!/bin/sh
 trap 'exit 0' TERM
 echo 'time=2026-11-15T10:00:00Z level=INFO msg="the hub link is ready" relay=stand-in devices=0' >&2
@@ -32,10 +39,10 @@ while :; do sleep 0.1; done
 
 /// The folder cargo builds every program of the workspace into.
 fn built() -> PathBuf {
-    let folder = Path::new(LOCAL_HUB).parent().unwrap().to_path_buf();
+    let folder = local_hub().parent().unwrap().to_path_buf();
     for name in ["anima-hub", "anima-database", "anima-gateway"] {
         assert!(
-            folder.join(name).is_file(),
+            platform::program(&folder, name).is_file(),
             "{name} is not built beside anima-local-hub: build the workspace (`cargo build --workspace`)"
         );
     }
@@ -44,23 +51,7 @@ fn built() -> PathBuf {
 
 /// A folder with the built programs and the stand-in link, as `install` would carry them.
 fn programs(rig: &Rig) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt as _;
-    let folder = rig.folder.path().join("programs");
-    if !folder.is_dir() {
-        std::fs::create_dir(&folder).unwrap();
-        for name in [
-            "anima-local-hub",
-            "anima-hub",
-            "anima-database",
-            "anima-gateway",
-        ] {
-            std::os::unix::fs::symlink(built().join(name), folder.join(name)).unwrap();
-        }
-        std::fs::write(folder.join("anima-link"), LINK).unwrap();
-        let mode = std::fs::Permissions::from_mode(0o700);
-        std::fs::set_permissions(folder.join("anima-link"), mode).unwrap();
-    }
-    folder
+    platform::programs(rig.folder.path(), &built())
 }
 
 /// The PostgreSQL 17 the gates already need (`quality/bin/with-postgres.ts`); never skipped.
@@ -75,7 +66,7 @@ fn tree() -> PathBuf {
     named
         .into_iter()
         .chain(known)
-        .find(|folder| folder.join("bin/postgres").is_file())
+        .find(|folder| anima_database::Tree::at(folder).is_ok())
         .expect("no PostgreSQL 17 found: install it or set ANIMA_POSTGRES_TREE")
 }
 
@@ -95,9 +86,10 @@ impl Drop for Running {
 
 impl Rig {
     fn new() -> Self {
-        Self {
-            folder: tempfile::tempdir().unwrap(),
-        }
+        let folder = tempfile::tempdir().unwrap();
+        #[cfg(windows)]
+        anima_windows::files::protect(folder.path()).unwrap();
+        Self { folder }
     }
 
     fn root(&self) -> PathBuf {
@@ -105,9 +97,9 @@ impl Rig {
     }
 
     fn command(&self, command: &str) -> Command {
-        let mut program = Command::new(LOCAL_HUB);
+        let mut program = Command::new(local_hub());
+        platform::environment(&mut program);
         program
-            .env_clear()
             .env("HOME", self.folder.path())
             .arg(command)
             .arg("--root")
@@ -125,6 +117,7 @@ impl Rig {
             .arg(programs(self))
             .arg("--tree")
             .arg(tree())
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
             .unwrap();
@@ -171,8 +164,7 @@ impl Rig {
 }
 
 fn stop(mut running: Running) -> ExitStatus {
-    let process = nix::unistd::Pid::from_raw(i32::try_from(running.0.id()).unwrap());
-    nix::sys::signal::kill(process, nix::sys::signal::Signal::SIGTERM).unwrap();
+    platform::stop(&mut running.0);
     let started = Instant::now();
     loop {
         if let Some(status) = running.0.try_wait().unwrap() {
@@ -189,9 +181,10 @@ fn hub_address(status: &serde_json::Value) -> SocketAddr {
 
 /// `anima-hub health`, the probe that the Docker installation uses.
 fn hub_is_healthy(address: SocketAddr) -> bool {
-    Command::new(built().join("anima-hub"))
+    let mut command = Command::new(platform::program(&built(), "anima-hub"));
+    platform::environment(&mut command);
+    command
         .arg("health")
-        .env_clear()
         .env("ANIMA_LISTEN", address.to_string())
         .status()
         .unwrap()
@@ -264,10 +257,7 @@ fn f_6_the_hub_is_in_the_link_mode_and_its_link_is_up() {
         "{graphql}"
     );
     // The hub made the link's socket in the short socket folder (S5).
-    let socket = std::fs::symlink_metadata(rig.folder.path().join("s/link.sock")).unwrap();
-    assert!(std::os::unix::fs::FileTypeExt::is_socket(
-        &socket.file_type()
-    ));
+    platform::assert_socket(&rig.folder.path().join("s/link.sock"));
     let started = Instant::now();
     while rig.status()["link"]["state"] != "up" {
         assert!(started.elapsed() < LIMIT, "{}", rig.logs());

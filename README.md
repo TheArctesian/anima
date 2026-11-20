@@ -287,7 +287,7 @@ Planned, not available today:
 - A signed Linux release
 - The hosted mode: sign in, and a hub is made for your account. Free below a usage line, with Solo hosting at $19 / month or $199 / year (waitlist only)
 - A native RDP gateway
-- A signed Windows release and Windows host services
+- A signed public Windows release (native host services are part of the local Windows trial)
 - An Anima.ing-operated Tailcat relay
 - Jobs across machines, and running models on hardware you already have
 - A local copy of data that third-party services hold about you

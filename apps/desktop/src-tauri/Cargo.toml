@@ -142,5 +142,6 @@ allow_attributes_without_reason = "deny"
 
 
 [target.'cfg(target_os = "windows")'.dependencies]
+anima-windows = { path = "../../../crates/anima-windows" }
 keyring = { workspace = true, features = ["windows-native"] }
 open = "5"

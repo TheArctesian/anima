@@ -26,3 +26,6 @@ pub use folders::Folders;
 pub use link_member::Backoff;
 pub use members::{Carried, Pool};
 pub use vault_key::KeyError;
+
+#[cfg(all(test, windows))]
+mod windows_tests;

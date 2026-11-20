@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/affected-applications and deploy/bin/release-decision: which push to `main` is a
 // release of the desktop application (R-184, R-198, R-200, R-201). Each repository here is made
 // in a temporary folder; the commands under test are the files of this repository, and the map
@@ -61,7 +62,7 @@ function repository(): string {
 const affected = (folder: string, from: string, to: string): Ran => run(["/bin/sh", join(BIN, "affected-applications"), from, to], folder);
 const decision = (folder: string, ...given: string[]): Ran => run(["/bin/sh", join(BIN, "release-decision"), ...given], folder);
 
-describe("which change affects the desktop application (R-184, R-200)", () => {
+describe.skipIf(process.platform === "win32")("which change affects the desktop application (R-184, R-200)", () => {
   const folder = repository();
   const start = git(folder, "rev-parse", "HEAD");
 
@@ -114,7 +115,7 @@ describe("which change affects the desktop application (R-184, R-200)", () => {
   });
 });
 
-describe("is this commit of main a release (R-184, R-201)", () => {
+describe.skipIf(process.platform === "win32")("is this commit of main a release (R-184, R-201)", () => {
   test("the first release: a feed that does not exist releases, also after a change of documents only", () => {
     const folder = repository();
     change(folder, "docs/a.md");
@@ -173,7 +174,7 @@ describe("is this commit of main a release (R-184, R-201)", () => {
 
 });
 
-describe("how main must move for the version to be safe (R-201)", () => {
+describe.skipIf(process.platform === "win32")("how main must move for the version to be safe (R-201)", () => {
   test("R-201 dev comes into main by a merge commit: one release, with the next number of main", () => {
     const folder = repository();
     const tip = git(folder, "rev-parse", "HEAD");
@@ -214,7 +215,7 @@ describe("how main must move for the version to be safe (R-201)", () => {
 
 });
 
-describe("what release-decision cannot read", () => {
+describe.skipIf(process.platform === "win32")("what release-decision cannot read", () => {
   test.each([
     ["an application that the map does not have", ["HEAD", "phone", "none"]],
     ["a published version that is no version", ["HEAD", "desktop", "latest"]],

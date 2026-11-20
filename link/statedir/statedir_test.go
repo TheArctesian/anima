@@ -3,6 +3,7 @@ package statedir_test
 import (
 	"context"
 	"errors"
+	"github.com/TheArctesian/anima/link/testpath"
 	"net"
 	"os"
 	"path/filepath"
@@ -24,15 +25,6 @@ func open(t *testing.T, path string) *statedir.Dir {
 	}
 	t.Cleanup(func() { dir.Close() })
 	return dir
-}
-
-func mode(t *testing.T, path string) os.FileMode {
-	t.Helper()
-	stat, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return stat.Mode().Perm()
 }
 
 func TestAFileComesBackAsItWasWritten(t *testing.T) {
@@ -60,17 +52,13 @@ func TestLNK008OnlyTheOwnerCanReachTheDirectoryAndItsFiles(t *testing.T) {
 	if err := dir.Write("note.json", note{"x"}); err != nil {
 		t.Fatal(err)
 	}
-	if got := mode(t, path); got != 0o700 {
-		t.Errorf("directory mode = %o, want 700", got)
-	}
+	testpath.AssertPrivate(t, path)
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if got := mode(t, filepath.Join(path, entry.Name())); got != 0o600 {
-			t.Errorf("%s mode = %o, want 600", entry.Name(), got)
-		}
+		testpath.AssertPrivate(t, filepath.Join(path, entry.Name()))
 	}
 	if len(entries) != 2 {
 		t.Errorf("the directory holds %d files, want the lock and the note (no temporary file left)", len(entries))
@@ -80,6 +68,9 @@ func TestLNK008OnlyTheOwnerCanReachTheDirectoryAndItsFiles(t *testing.T) {
 func TestLNK008ADirectoryThatOthersCanReadIsRefused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state")
 	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := testpath.Chmod(path, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := statedir.Open(path); !errors.Is(err, statedir.ErrExposed) {
@@ -93,7 +84,7 @@ func TestLNK008AFileThatOthersCanReadIsRefused(t *testing.T) {
 	if err := dir.Write("note.json", note{"x"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(filepath.Join(path, "note.json"), 0o644); err != nil {
+	if err := testpath.Chmod(filepath.Join(path, "note.json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var got note
@@ -135,7 +126,7 @@ func TestLNK008ADamagedFileGivesAnErrorWithoutItsContent(t *testing.T) {
 
 func shortDir(t *testing.T) string {
 	t.Helper()
-	path, err := os.MkdirTemp("/tmp", "anima-state-")
+	path, err := testpath.MkdirTemp("anima-state-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,9 +142,7 @@ func TestLNK008OnlyTheOwnerCanConnectToASocketOfTheDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	if got := mode(t, filepath.Join(path, "c.sock")); got != 0o600 {
-		t.Errorf("socket mode = %o, want 600", got)
-	}
+	testpath.AssertPrivate(t, filepath.Join(path, "c.sock"))
 	conn, err := statedir.Dial(context.Background(), path, "c.sock")
 	if err != nil {
 		t.Fatalf("the owner cannot connect: %v", err)
@@ -218,7 +207,7 @@ func TestLNK008ADirectoryThatAnotherUserCanReplaceIsRefused(t *testing.T) {
 	if err := os.Mkdir(parent, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(parent, 0o777); err != nil {
+	if err := testpath.Chmod(parent, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := statedir.Open(filepath.Join(parent, "state")); !errors.Is(err, statedir.ErrExposed) {
@@ -232,7 +221,7 @@ func TestLNK008ALinkAboveCannotHideAFolderThatOthersCanWrite(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(shared, "inner"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(shared, 0o777); err != nil {
+	if err := testpath.Chmod(shared, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(base, "link")

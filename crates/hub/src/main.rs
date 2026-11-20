@@ -7,6 +7,8 @@
 //! the release workflow, which need no hub (R-179).
 
 mod core_dumps;
+mod shutdown;
+use shutdown::first_stop_signal;
 mod operator;
 mod upkeep;
 
@@ -277,44 +279,6 @@ async fn open_sessions(
     let (live, ended) = sessions::open(pool, now).await?;
     tracing::info!(ended, "stale sessions ended");
     Ok(live)
-}
-
-/// The first stop signal. A second one ends the process at once, without waiting for the
-/// sessions or the drain.
-async fn first_stop_signal() {
-    stop_signal().await;
-    tracing::info!("hub stopping");
-    tokio::spawn(async {
-        stop_signal().await;
-        tracing::warn!("second stop signal; exiting now");
-        std::process::exit(1);
-    });
-}
-
-/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched is logged and never
-/// resolves, so the other one still stops the hub.
-async fn stop_signal() {
-    let interrupt = async {
-        if let Err(error) = tokio::signal::ctrl_c().await {
-            tracing::warn!(%error, "cannot watch Ctrl-C");
-            std::future::pending::<()>().await;
-        }
-    };
-    let terminate = async {
-        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-            Ok(mut terminate) => {
-                terminate.recv().await;
-            }
-            Err(error) => {
-                tracing::warn!(%error, "cannot watch SIGTERM");
-                std::future::pending::<()>().await;
-            }
-        }
-    };
-    tokio::select! {
-        () = interrupt => {}
-        () = terminate => {}
-    }
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

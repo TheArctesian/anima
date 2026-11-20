@@ -34,7 +34,6 @@ pub struct HubAccess {
 
 impl HubAccess {
     /// Whether this device is on the link of the hub already: the cloud then gives no invite.
-    #[cfg(unix)]
     pub fn is_joined(&self) -> bool {
         self.invite.is_none()
     }

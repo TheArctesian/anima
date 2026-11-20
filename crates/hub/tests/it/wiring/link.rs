@@ -3,10 +3,10 @@
 //! name a client then name a device: the permitted clients (NET-001, NET-002), the builder's
 //! binding (BLD-024), the daemon routes' refusal log (K8) and the audit log (LOG-005).
 
+use crate::local_socket::Stream as UnixStream;
 use std::{
     collections::BTreeMap,
     net::{Ipv6Addr, SocketAddr},
-    os::unix::fs::PermissionsExt as _,
     path::PathBuf,
     sync::Arc,
     time::Duration,
@@ -28,7 +28,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::{
     io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _},
-    net::{TcpStream, UnixStream},
+    net::TcpStream,
     task::JoinHandle,
 };
 
@@ -72,7 +72,7 @@ impl Drop for Linked {
 async fn serve_linked(pool: &PgPool) -> Linked {
     let secret = enrol(pool).await;
     let folder = tempfile::tempdir().unwrap();
-    std::fs::set_permissions(folder.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    crate::local_socket::protect(folder.path());
     let socket = folder.path().join("link.sock");
     let env = BTreeMap::from([
         ("ANIMA_LISTEN".to_owned(), "127.0.0.1:0".to_owned()),

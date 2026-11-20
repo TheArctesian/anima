@@ -83,7 +83,11 @@ fn ace_allows(acl: *const ACL, index: u32, user: &Identity, denied: u32) -> io::
     let sid = PSID(std::ptr::from_ref(&ace.SidStart).cast_mut().cast());
     // DELETE, WRITE_DAC, WRITE_OWNER, FILE_WRITE_DATA/ADD_FILE, APPEND_DATA/ADD_SUBDIR,
     // WRITE_EA, DELETE_CHILD, WRITE_ATTRIBUTES, GENERIC_ALL, GENERIC_WRITE.
-    Ok(user.trusted(sid) || ace.Mask & denied == 0)
+    // Windows owns and updates system programs through TrustedInstaller. It is trusted
+    // for integrity checks, but does not grant access to the user's private secret files.
+    Ok(user.trusted(sid)
+        || ace.Mask & denied == 0
+        || (denied != u32::MAX && identity::installer(sid)))
 }
 
 pub(crate) fn protect(file: &File) -> io::Result<()> {
@@ -179,3 +183,14 @@ pub(crate) fn copy_acl(source: &File, destination: &File) -> io::Result<()> {
 #[cfg(test)]
 #[path = "descriptor_tests.rs"]
 mod tests;
+
+pub(crate) fn single_name(file: &File) -> io::Result<bool> {
+    use windows::Win32::Storage::FileSystem::{
+        BY_HANDLE_FILE_INFORMATION, GetFileInformationByHandle,
+    };
+    let mut properties = BY_HANDLE_FILE_INFORMATION::default();
+    // SAFETY: the file owns the borrowed handle; the initialized output lives through the call.
+    unsafe { GetFileInformationByHandle(HANDLE(file.as_raw_handle()), &raw mut properties) }
+        .map_err(failure)?;
+    Ok(properties.nNumberOfLinks == 1)
+}

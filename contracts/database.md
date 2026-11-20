@@ -145,12 +145,12 @@ sessions.host_keys        device_id uuid pk fk -> devices.devices on delete casc
 
 builds.releases           id uuid pk, version text (MAJOR.MINOR.PATCH), commit_sha text (40 hex),
                           created_by uuid fk -> access.operators, created_by_name text, created_at
-builds.builders           id uuid pk, name text, os text check in ('linux','macos'),
+builds.builders           id uuid pk, name text, os text check in ('linux','macos','windows'),
                           arch text check in ('x86_64','aarch64'), client_addr inet,
                           token_id uuid unique fk -> access.api_tokens on delete cascade,
                           enrolled_at, last_seen_at null
 builds.jobs               id uuid pk, release_id uuid fk cascade, target text check in
-                          ('linux-x86_64','darwin-universal'), version text, state text check in
+                          ('linux-x86_64','darwin-universal','windows-x86_64'), version text, state text check in
                           ('queued','claimed','building','uploading','published','failed',
                           'cancelled'), failure_reason null, attempts int 0..3,
                           builder_id uuid null fk on delete set null, builder_name null,

@@ -1,3 +1,5 @@
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 
 use super::*;
@@ -48,10 +50,14 @@ fn vlt_003_a_key_is_made_at_first_use_for_the_hub_user_only_and_never_written_ag
 
     let first = keys.key("wardrobe").unwrap();
     let path = folder.path().join("data-keys/wardrobe.key");
+    #[cfg(unix)]
     let mode = std::fs::metadata(&path).unwrap().permissions().mode();
     let again = keys.key("wardrobe").unwrap();
 
+    #[cfg(unix)]
     assert_eq!(mode & 0o777, 0o600);
+    #[cfg(windows)]
+    assert!(anima_windows::files::secure(&path, true).unwrap());
     assert_eq!(first.id(), again.id());
     let sealed = first.seal("files.piece:1", b"plain");
     assert_eq!(again.open("files.piece:1", &sealed).unwrap(), b"plain");

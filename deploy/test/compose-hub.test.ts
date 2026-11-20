@@ -305,7 +305,7 @@ describe("hub image build context", () => {
     const root = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { workspaces: string[] };
     const manifests = ["package.json"];
     for (const glob of root.workspaces) {
-      for (const found of new Bun.Glob(`${glob}/package.json`).scanSync({ cwd: ROOT })) manifests.push(found);
+      for (const found of new Bun.Glob(`${glob}/package.json`).scanSync({ cwd: ROOT })) manifests.push(found.replaceAll("\\", "/"));
     }
     const members = [...new Set(manifests)].filter((path) => !path.includes("node_modules"));
     expect(members).toContain("apps/client/package.json");

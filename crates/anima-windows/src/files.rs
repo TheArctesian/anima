@@ -38,6 +38,18 @@ pub fn read(path: &Path, private: bool) -> io::Result<File> {
     Ok(file)
 }
 
+/// Create a new regular file inheriting an already private, trusted directory's ACL.
+/// # Errors
+/// The directory is exposed or replaceable, or the file already exists/cannot be created.
+pub fn create_new(path: &Path) -> io::Result<File> {
+    let parent = std::path::absolute(path.parent().ok_or(io::ErrorKind::InvalidInput)?)?;
+    directory(&parent)?;
+    if !secure(&parent, true)? {
+        return Err(io::ErrorKind::PermissionDenied.into());
+    }
+    OpenOptions::new().write(true).create_new(true).open(path)
+}
+
 /// Protect a file or directory with an inheritable, non-inherited user/SYSTEM/admin ACL.
 /// # Errors
 /// The path is a reparse point, cannot be opened, or the ACL cannot be applied.
@@ -81,4 +93,30 @@ pub fn copy_acl(source: &Path, destination: &Path) -> io::Result<()> {
         &open(source, 0x0002_0080)?,
         &open(destination, 0x0006_0080)?,
     )
+}
+
+/// Atomically replace a private file after its contents have been flushed by the caller.
+/// # Errors
+/// Either parent is untrusted, the source is exposed, or Windows cannot publish the file.
+pub fn rename_flushed(from: &Path, to: &Path) -> io::Result<()> {
+    for path in [from, to] {
+        let parent = path.parent().ok_or(io::ErrorKind::InvalidInput)?;
+        directory(parent)?;
+        if !secure(parent, true)? {
+            return Err(io::ErrorKind::PermissionDenied.into());
+        }
+    }
+    read(from, true)?;
+    native::rename::flushed(from, to)
+}
+
+/// Open a checked regular file that has exactly one filesystem name.
+/// # Errors
+/// Untrusted files and hard links are refused before any contents are read.
+pub fn read_single(path: &Path) -> io::Result<File> {
+    let file = read(path, false)?;
+    if !native::single_name(&file)? {
+        return Err(io::ErrorKind::PermissionDenied.into());
+    }
+    Ok(file)
 }

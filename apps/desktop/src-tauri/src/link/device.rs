@@ -25,7 +25,6 @@ use super::{
 
 const POLL: Duration = Duration::from_millis(50);
 /// How often a link that a unit keeps is asked for its port.
-#[cfg(unix)]
 pub const WATCH_EVERY: Duration = Duration::from_secs(2);
 /// How long a child that was asked to stop (its standard input closed) has before it is killed.
 pub const STOP_PATIENCE: Duration = Duration::from_secs(3);
@@ -50,7 +49,6 @@ pub struct DeviceLink {
     running: Mutex<Option<Running>>,
     /// Set once the hub of this run is a hosted one: a unit of the user then keeps the link
     /// running with the app closed (HMD-058).
-    #[cfg(unix)]
     background: AtomicBool,
     pid: Arc<AtomicU32>,
 }
@@ -74,13 +72,11 @@ impl DeviceLink {
     }
 
     /// From now, a link that this device joins is handed to a unit of the user.
-    #[cfg(unix)]
     pub fn keep_in_background(&self) {
         self.background.store(true, Ordering::Release);
     }
 
     /// Whether a unit of the user must keep the link of this device.
-    #[cfg(unix)]
     pub fn in_background(&self) -> bool {
         self.background.load(Ordering::Acquire)
     }
@@ -108,7 +104,6 @@ impl DeviceLink {
     /// Watches a device link that a unit of the user keeps running (HMD-058): `serving` asks
     /// the link for the port it listens on. No child is started, and [`Self::stop`] ends only
     /// the watch: the link runs on with the app closed.
-    #[cfg(unix)]
     pub fn watch(&self, port: u16, serving: impl Fn() -> Option<u16> + Send + 'static) {
         let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(before) = running.take() {
@@ -170,7 +165,6 @@ fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>
 }
 
 /// Asks the kept link for its port until `stop`, and records when it comes up and goes down.
-#[cfg(unix)]
 fn observe(
     port: u16,
     serving: &dyn Fn() -> Option<u16>,

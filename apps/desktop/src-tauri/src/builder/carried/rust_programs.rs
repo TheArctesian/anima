@@ -29,6 +29,9 @@ const VERSION_VARIABLE: &str = "ANIMA_VERSION";
 fn built(clone: &Path, target: Target, triple: &str, binary: &str) -> PathBuf {
     match target {
         Target::LinuxX86_64 => artifact::target_folder(clone).join(format!("release/{binary}")),
+        Target::WindowsX86_64 => {
+            artifact::target_folder(clone).join(format!("{triple}/release/{binary}.exe"))
+        }
         Target::DarwinUniversal => {
             artifact::target_folder(clone).join(format!("{triple}/release/{binary}"))
         }
@@ -42,7 +45,7 @@ pub fn build(clone: &Path, target: Target, version: &Version) -> Command {
     for (package, binary) in PROGRAMS {
         args.extend(["--package", package, "--bin", binary]);
     }
-    if target == Target::DarwinUniversal {
+    if target != Target::LinuxX86_64 {
         for triple in triples(target) {
             args.extend(["--target", triple]);
         }
@@ -51,6 +54,11 @@ pub fn build(clone: &Path, target: Target, version: &Version) -> Command {
     cargo
         .env
         .push((VERSION_VARIABLE, version.as_str().to_owned()));
+    if target == Target::WindowsX86_64 {
+        cargo
+            .env
+            .push(("RUSTFLAGS", "-C target-feature=+crt-static".to_owned()));
+    }
     cargo
 }
 

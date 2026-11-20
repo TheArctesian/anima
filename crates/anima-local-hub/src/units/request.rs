@@ -34,6 +34,10 @@ pub struct Request<'a> {
 
 impl Request<'_> {
     pub(super) fn unit_file(&self) -> PathBuf {
+        #[cfg(windows)]
+        if self.platform == Platform::Windows {
+            return self.folders.root().join("task.xml");
+        }
         unit_file::file(self.platform, self.home)
     }
 
@@ -56,6 +60,8 @@ impl Request<'_> {
         match self.platform {
             Platform::MacOs => Step::launchctl(&["bootout", &format!("gui/{}/{LABEL}", self.uid)]),
             Platform::Linux => Step::systemctl(&["stop", SYSTEMD_UNIT]),
+            #[cfg(windows)]
+            Platform::Windows => self.task("/End").stopping(self.folders.clone()),
         }
         .may_fail()
     }
@@ -69,6 +75,18 @@ impl Request<'_> {
                     &file.to_string_lossy(),
                 ])
                 .retried_after(BOOTSTRAP_RETRY),
+            ],
+            #[cfg(windows)]
+            Platform::Windows => vec![
+                Step::task(&[
+                    "/Create",
+                    "/TN",
+                    &self.task_name(),
+                    "/XML",
+                    &file.to_string_lossy(),
+                    "/F",
+                ]),
+                self.task("/Run"),
             ],
             Platform::Linux => vec![
                 Step::systemctl(&["daemon-reload"]),
@@ -88,6 +106,8 @@ impl Request<'_> {
         match self.platform {
             Platform::MacOs => self.start(file),
             Platform::Linux => vec![Step::systemctl(&["start", SYSTEMD_UNIT])],
+            #[cfg(windows)]
+            Platform::Windows => vec![self.task("/Run")],
         }
     }
 
@@ -96,6 +116,20 @@ impl Request<'_> {
         match self.platform {
             Platform::MacOs => self.stop(),
             Platform::Linux => Step::systemctl(&["disable", "--now", SYSTEMD_UNIT]).may_fail(),
+            #[cfg(windows)]
+            Platform::Windows => Step::task(&["/Delete", "/TN", &self.task_name(), "/F"])
+                .stopping(self.folders.clone())
+                .may_fail(),
         }
+    }
+}
+
+#[cfg(windows)]
+impl Request<'_> {
+    fn task_name(&self) -> String {
+        super::windows::task_name(self.folders.root())
+    }
+    fn task(&self, action: &str) -> Step {
+        Step::task(&[action, "/TN", &self.task_name()])
     }
 }

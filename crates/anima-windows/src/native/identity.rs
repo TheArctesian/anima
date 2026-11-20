@@ -16,9 +16,12 @@ use windows::{
 pub(super) struct Identity(Box<[usize; 64]>);
 impl Identity {
     pub(super) fn current() -> windows::core::Result<Self> {
+        Self::of_process(unsafe { GetCurrentProcess() })
+    }
+    pub(super) fn of_process(process: HANDLE) -> windows::core::Result<Self> {
         let mut token = HANDLE::default();
         unsafe {
-            OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &raw mut token)?;
+            OpenProcessToken(process, TOKEN_QUERY, &raw mut token)?;
         }
         let mut result = Self(Box::new([0; 64]));
         let mut size = 0;
@@ -27,7 +30,7 @@ impl Identity {
                 token,
                 TokenUser,
                 Some(result.0.as_mut_ptr().cast()),
-                512,
+                64 * usize::BITS / 8,
                 &raw mut size,
             )
         };
@@ -68,7 +71,7 @@ pub(super) fn installer(sid: PSID) -> bool {
         return false;
     }
     let mut buffer = [0_usize; 64];
-    let mut size = 512;
+    let mut size = 64 * usize::BITS / 8;
     let mut domain = [0_u16; 256];
     let mut domain_size = 256;
     let mut kind = SID_NAME_USE::default();

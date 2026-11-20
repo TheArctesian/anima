@@ -1,0 +1,110 @@
+name: windows-trial
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: windows-trial-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  BUN_VERSION: "1.3.14"
+  CI: "true"
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    outputs:
+      updater_sha256: ${{ steps.digest.outputs.updater_sha256 }}
+      cli_sha256: ${{ steps.digest.outputs.cli_sha256 }}
+    env:
+      VERSION: "0.0.1"
+      RUSTC_WRAPPER: ""
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      GOENV: "off"
+      GOTOOLCHAIN: local
+      GOWORK: "off"
+      GOFLAGS: -mod=readonly
+      GOPROXY: https://proxy.golang.org
+      GOSUMDB: sum.golang.org
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Build the native installer and run the Windows gates
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'MSVC build tools are missing' }
+          Import-Module "$installation/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          & ./deploy/bin/windows-bundle.ps1 -Version $env:VERSION
+          $env:ANIMA_POSTGRES_TREE = "$pwd/apps/desktop/src-tauri/database"
+          $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
+          & bun deploy/bin/windows-command.ts cargo install cargo-nextest --locked
+          if ($LASTEXITCODE -ne 0) { throw 'cargo-nextest installation failed' }
+          & bun run gates 2>&1 | Tee-Object -FilePath windows-gates.log
+          if ($LASTEXITCODE -ne 0) { throw 'Windows gates failed' }
+          & bun deploy/bin/windows-command.ts cargo test -p anima-app --lib start_menu_environment_builds_with_the_discovered_windows_compiler -- --ignored
+          if ($LASTEXITCODE -ne 0) { throw 'Start-menu compiler discovery failed' }
+      - id: digest
+        name: Give the checked installer its stable name and digest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory out | Out-Null
+          $installer = "Anima_$($env:VERSION)_x64-setup.exe"
+          Copy-Item "target/x86_64-pc-windows-msvc/release/bundle/nsis/Anima.ing_$($env:VERSION)_x64-setup.exe" "out/$installer"
+          $digest = (Get-FileHash "out/$installer" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "updater_sha256=$digest" >> $env:GITHUB_OUTPUT
+          "$digest  $installer" | Set-Content out/SHA256SUMS
+          "Commit: $env:GITHUB_SHA`nUnsigned Windows trial. Updates disabled. Version 0.0.1." | Set-Content out/README.txt
+          $cli = "target/x86_64-pc-windows-msvc/release/anima.exe"
+          if ((& $cli --version) -ne "anima $env:VERSION" -or $LASTEXITCODE -ne 0) { throw 'The standalone CLI did not start at the release version' }
+          New-Item -ItemType Directory out-cli | Out-Null
+          Compress-Archive -Path $cli -DestinationPath out-cli/anima-windows-x86_64.zip
+          $cliDigest = (Get-FileHash out-cli/anima-windows-x86_64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "cli_sha256=$cliDigest" >> $env:GITHUB_OUTPUT
+      - name: Install and check the packaged programs
+        shell: pwsh
+        run: ./deploy/windows/install.ps1 -Installer "out/Anima_$($env:VERSION)_x64-setup.exe" -Version $env:VERSION
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-trial
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-trial-cli
+          path: out-cli/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Keep the gate log even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-gates
+          path: windows-gates.log
+          if-no-files-found: ignore
+          retention-days: 14

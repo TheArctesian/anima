@@ -1,7 +1,7 @@
 // What deploy/compose.yaml gives the LocalAPI proxy (D-4, VPN-005, NET-003, SEC-001). Nothing here starts Docker.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { readConfig } from "../localapi/server.ts";
 
 const ROOT = join(import.meta.dir, "..", "..");
@@ -55,7 +55,7 @@ describe("localapi service (D-4)", () => {
 
   test("D-4 the default socket path lies inside the mount", () => {
     const mount = localapi.volumes?.[0];
-    expect(defaults.socketPath).toBe(join(mount?.target ?? "", "tailscaled.sock"));
+    expect(defaults.socketPath).toBe(posix.join(mount?.target ?? "", "tailscaled.sock"));
   });
 
   test("VPN-005 the hub reaches the proxy at localapi:<port the proxy listens on>, and does not wait for it", () => {

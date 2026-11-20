@@ -1,5 +1,5 @@
-//! Windows loopback credentials go only to the live device-link child (WIN1, F-10).
-//! An arbitrary local hub is refused until its Windows owner can be proved.
+//! Windows loopback credentials go only to the live child or the protected persistent
+//! link executable running as this user (WIN2, F-10). Other local servers are refused.
 #[path = "origin.rs"]
 mod origin;
 use crate::{
@@ -9,12 +9,9 @@ use crate::{
 use std::{ffi::OsStr, sync::Arc, time::Duration};
 use tauri::{Runtime, State, Webview};
 
-fn listens(text: &str, port: u16, pid: u32) -> bool {
-    if pid == 0 {
-        return false;
-    }
+fn listener_pid(text: &str, port: u16) -> Option<u32> {
     let address = format!("127.0.0.1:{port}");
-    let mut found = false;
+    let mut found = None;
     for line in text.lines() {
         let fields: Vec<_> = line.split_whitespace().collect();
         if fields.len() != 5 || fields[0] != "TCP" || fields[3] != "LISTENING" {
@@ -24,16 +21,22 @@ fn listens(text: &str, port: u16, pid: u32) -> bool {
             || fields[1] == format!("0.0.0.0:{port}")
             || fields[1] == format!("[::]:{port}");
         if relevant {
-            if fields[4].parse::<u32>().ok() != Some(pid) {
-                return false;
+            let pid = fields[4].parse::<u32>().ok().filter(|pid| *pid != 0)?;
+            if found.is_some_and(|before| before != pid) {
+                return None;
             }
-            found = true;
+            found = Some(pid);
         }
     }
     found
 }
 
-/// Fail closed unless the socket belongs to the app's still-running link child.
+#[cfg(test)]
+fn listens(text: &str, port: u16, pid: u32) -> bool {
+    listener_pid(text, port) == Some(pid)
+}
+
+/// Fail closed unless the socket belongs to this user's verified device link.
 #[tauri::command]
 pub async fn hub_listener_check<R: Runtime>(
     webview: Webview<R>,
@@ -66,8 +69,16 @@ pub async fn hub_listener_check<R: Runtime>(
                 max_bytes: 1024 * 1024,
             },
         );
-        printed.is_ok_and(|output| listens(&String::from_utf8_lossy(&output), port, pid))
-            && device.child_pid() == pid
+        printed.is_ok_and(|output| {
+            listener_pid(&String::from_utf8_lossy(&output), port).is_some_and(|listener| {
+                if pid == 0 {
+                    crate::link::owns_background(listener)
+                } else {
+                    listener == pid
+                }
+            })
+        }) && device.child_pid() == pid
+            && device.state().serves(port)
     })
     .await
     .unwrap_or(false);

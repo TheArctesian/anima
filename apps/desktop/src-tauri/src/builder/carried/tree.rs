@@ -44,8 +44,19 @@ pub fn build(
     work: &Path,
     identity: Option<&str>,
 ) -> Result<Command, BuilderError> {
+    if target == Target::WindowsX86_64 {
+        let mut step = command(
+            Program::Bun,
+            clone,
+            &["apps/desktop/src-tauri/database-tree/windows.ts"],
+        );
+        step.args.push(work.as_os_str().to_owned());
+        step.args.push(clone.join(OUT).into_os_string());
+        return Ok(step);
+    }
     let recipe_target = match target {
         Target::LinuxX86_64 => "linux",
+        Target::WindowsX86_64 => unreachable!("Windows uses its native recipe"),
         Target::DarwinUniversal => "darwin-universal",
     };
     let mut sh = command(Program::Sh, clone, &[RECIPE, recipe_target]);
@@ -59,3 +70,10 @@ pub fn build(
     }
     Ok(sh)
 }
+
+/// Files the native Windows recipe reads, checked against the release commit.
+pub const WINDOWS_COMMITTED: [&str; 3] = [
+    "apps/desktop/src-tauri/database-tree/windows.ts",
+    "apps/desktop/src-tauri/database-tree/windows.pin.json",
+    "apps/desktop/src-tauri/database-tree/postgresql.pin",
+];
