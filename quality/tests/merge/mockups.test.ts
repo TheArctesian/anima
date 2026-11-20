@@ -53,6 +53,14 @@ function finish(root: string): string | undefined {
   return checkMockups([index, record], (screen, at) => layoutChangedSince(root, screen, at))[0]?.signal;
 }
 
+/** Starts a merge that is expected to stop on conflicts; fails if git did not start it at all. */
+function mergeStopped(root: string, branch: string): void {
+  const done = Bun.spawnSync(["git", "merge", "--no-ff", "--no-commit", branch], { cwd: root });
+  if (Bun.spawnSync(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], { cwd: root }).exitCode !== 0) {
+    throw new Error(`git merge ${branch} did not start: ${done.stderr.toString()}`);
+  }
+}
+
 function conflicted(root: string): string[] {
   return git(root, "diff", "--name-only", "--diff-filter=U").split("\n").filter((path) => path !== "");
 }
@@ -60,6 +68,9 @@ function conflicted(root: string): string[] {
 function repository(): string {
   const root = mkdtempSync(join(tmpdir(), "anima-mockups-"));
   git(root, "init", "--quiet", "--initial-branch=dev");
+  // The identity lives in the repository, so a runner with no global git identity can merge too.
+  git(root, "config", "user.name", "test");
+  git(root, "config", "user.email", "test@anima.invalid");
   return root;
 }
 
@@ -75,7 +86,7 @@ describe("PLN-019 the records of the mockups at a merge", () => {
     const record = { path: RECORD, text: recordText(cells(first)) };
     commit(root, { [RECORD]: record.text, [MOCKUPS]: newIndex([record]) }, "records");
 
-    Bun.spawnSync(["git", "merge", "--no-ff", "--no-commit", "ui/projects"], { cwd: root });
+    mergeStopped(root, "ui/projects");
     expect(conflicted(root)).toEqual([MOCKUPS]);
     expect(conflictsForAHand(conflicted(root))).toEqual([]);
     expect(settleMockups(root).sort()).toEqual([MOCKUPS, RECORD]);
@@ -95,7 +106,7 @@ describe("PLN-019 the records of the mockups at a merge", () => {
     const later = commit(root, { [`${SCREEN}/Head.svelte`]: "<h2></h2>\n" }, "head");
     commit(root, { [RECORD]: recordText(cells(later, "Dev.")) }, "compared again");
 
-    Bun.spawnSync(["git", "merge", "--no-ff", "--no-commit", "ui/words"], { cwd: root });
+    mergeStopped(root, "ui/words");
     expect(conflicted(root)).toEqual([RECORD]);
     expect(conflictsForAHand(conflicted(root))).toEqual([]);
     settleMockups(root);

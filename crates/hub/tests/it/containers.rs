@@ -2,6 +2,8 @@
 //! K7): the sign-in, the values the hub refuses before it reaches a device, and a device the
 //! hub cannot read. The reads against an SSH server are in the crate (`work/containers/tests`).
 
+mod compose_file;
+
 use std::sync::Arc;
 
 use anima_hub::{

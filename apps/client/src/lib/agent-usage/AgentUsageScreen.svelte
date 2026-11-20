@@ -150,9 +150,15 @@
 
   .columns {
     display: grid;
-    grid-template-columns: calc(var(--space-16) * 3.5) minmax(0, 1fr);
+    /* The repositories take the width of their longest name, from 224 px up to 352 px, so a name is cut only when it is
+       longer than that. */
+    grid-template-columns: fit-content(calc(var(--space-16) * 5.5)) minmax(0, 1fr);
     gap: var(--space-6);
     align-items: start;
+  }
+
+  .columns > :global(:first-child) {
+    min-inline-size: calc(var(--space-16) * 3.5);
   }
 
   .main {

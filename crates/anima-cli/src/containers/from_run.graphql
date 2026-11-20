@@ -1,0 +1,10 @@
+query ComposeFromDockerRunRead($command: String!) {
+  composeFromDockerRun(command: $command) {
+    composeFile
+    service
+    refusal
+    refusedAt
+    notes
+    notConverted
+  }
+}
