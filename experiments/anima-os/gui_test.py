@@ -54,34 +54,49 @@ def prepare(output):
     with (output / 'sentinel.raw').open('wb') as stream:
         stream.write(b'ANIMA_GUI_UNSELECTED_DISK')
         stream.truncate(32 * 1024**3)
+    with (output / 'data.raw').open('wb') as stream:
+        stream.truncate(40 * 1024**3)
     return disk
 
 
 def graphical_install(machine, output, password):
+    from gui_actions import locate, tap
     machine.expect(r'root@anima-live:[^\r\n]*#', timeout=240)
     machine.send('stty -echo')
-    machine.command("timeout 90 sh -c 'until grep -q \"2 devices detected\" /root/.cache/calamares/session.log 2>/dev/null; do sleep 1; done'", timeout=100)
-    time.sleep(5)
+    machine.command("timeout 90 sh -c 'until DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority xdotool search --class calamares; do sleep 1; done'", timeout=100)
+    time.sleep(8)
+    machine.command('busctl call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus StartServiceByName su fi.w1.wpa_supplicant1 0; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces')
     screenshot(output, 'welcome')
-    machine.command('head -c 1048576 /dev/vda | sha256sum > /run/before-disk')
+    machine.command('head -c 1048576 /dev/vda | sha256sum > /run/before-disk; head -c 1048576 /dev/vdc | sha256sum > /run/before-data')
     machine.command('nmcli connection add type ethernet con-name anima-fixture ifname fixture0; nmcli connection modify anima-fixture connection.autoconnect no')
-    click(machine, 987, 749)  # Welcome -> keyboard
-    click(machine, 987, 749)  # Keyboard -> owner
-    enter_password(machine, output, password)
-    click(machine, 987, 749)  # Owner -> disks
-    screenshot(output, 'disks')
-    click(machine, 325, 190)  # Explicitly choose erase on the first, 64 GiB disk.
-    click(machine, 987, 749)
-    screenshot(output, 'summary')
-    click(machine, 987, 749)
-    screenshot(output, 'confirmation')
-    click(machine, 692, 444)  # Go back from destructive confirmation.
-    machine.command('head -c 1048576 /dev/vda | sha256sum | diff /run/before-disk -')
-    click(machine, 987, 749)
-    click(machine, 815, 444)
+    tap(machine, output, 'Continue'); screenshot(output, 'network')
+    tap(machine, output, 'Continue'); screenshot(output, 'keyboard')
+    tap(machine, output, 'Continue')
+    for label in ('at least 12', 'Confirm password'):
+        x, y, _, height = locate(output, label)
+        click(machine, x+150, y+height+28)
+        for character in password:
+            qmp(output, 'send-key', {'keys': [{'type': 'qcode', 'data': character}], 'hold-time': 20})
+            time.sleep(0.04)
+    tap(machine, output, 'Continue')
+    tap(machine, output, 'Choose an installation disk')
+    machine.command('DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority xdotool key --delay 150 Home Down Return')
+    _, y, _, height = locate(output, '/dev/vdc')
+    click(machine, 226, y+height//2)
+    screenshot(output, 'storage')
+    tap(machine, output, 'Continue'); screenshot(output, 'review')
+    # No authorization: clicking the destructive button must leave both disks intact.
+    tap(machine, output, 'Erase selected disks')
+    machine.command('head -c 1048576 /dev/vda | sha256sum | diff /run/before-disk -; head -c 1048576 /dev/vdc | sha256sum | diff /run/before-data -')
+    _, y, _, height = locate(output, 'authorize erasing'); click(machine, 220, y+height//2)
+    tap(machine, output, 'Back')
+    _, y, _, height = locate(output, '/dev/vdc'); click(machine, 226, y+height//2); click(machine, 226, y+height//2)
+    tap(machine, output, 'Continue'); tap(machine, output, 'Erase selected disks')
+    machine.command('head -c 1048576 /dev/vda | sha256sum | diff /run/before-disk -; head -c 1048576 /dev/vdc | sha256sum | diff /run/before-data -')
+    _, y, _, height = locate(output, 'authorize erasing'); click(machine, 220, y+height//2)
+    tap(machine, output, 'Erase selected disks')
     machine.command("timeout 1200 sh -c 'until grep -q ANIMA_INSTALL_COMPLETE /root/.cache/calamares/session.log; do if grep -q \"Installation failed:\" /root/.cache/calamares/session.log; then exit 1; fi; sleep 2; done'", timeout=1210)
-    time.sleep(2)
-    screenshot(output, 'finished')
+    time.sleep(2); screenshot(output, 'finished')
 
 
 def installed_checks(machine, password):
@@ -95,12 +110,14 @@ def installed_checks(machine, password):
     machine.send('sudo -v'); machine.expect('password for admin:'); machine.send(password)
     machine.expect(r'admin@anima:[^\r\n]*\$')
     machine.command('sudo test -r /persist/owner-password; sudo find /persist/network-connections -name "*.nmconnection" -printf "%m\\n" | grep -qx 600')
+    machine.command("test $(jq length /persist/data-volumes.json) = 1; volume=$(jq -r '.[0].uuid' /persist/data-volumes.json); mountpoint -q /persist/volumes/$volume; echo volume-retained | sudo tee /persist/volumes/$volume/sentinel >/dev/null")
     machine.command('echo retained > ~/gui-sentinel; cp /etc/machine-id ~/machine-id-before')
     machine.send('sudo systemctl reboot')
     machine.expect('anima login:', timeout=240)
     machine.send('admin'); machine.expect('Password:'); machine.send(password)
     machine.expect(r'admin@anima:[^\r\n]*\$'); machine.send('stty -echo')
     machine.command('grep -qx retained ~/gui-sentinel; cmp /etc/machine-id ~/machine-id-before; nmcli -g NAME connection show | grep -qx anima-fixture')
+    machine.command("volume=$(jq -r '.[0].uuid' /persist/data-volumes.json); mountpoint -q /persist/volumes/$volume; grep -qx volume-retained /persist/volumes/$volume/sentinel")
 
 
 def run(iso, output):
@@ -111,12 +128,12 @@ def run(iso, output):
     machine = Machine(output, disk, boot_iso=iso)
     try:
         graphical_install(machine, output, password)
-        results.append({'case': 'graphical-offline-install-and-cancel', 'result': 'Passed'})
+        results.append({'case': 'graphical-multidrive-install-and-authorization-reset', 'result': 'Passed'})
         machine.send('systemctl poweroff'); machine.wait_exit(); machine.close()
         machine = Machine(output, disk)
         installed_checks(machine, password)
         screenshot(output, 'installed-console')
-        results.append({'case': 'installed-login-readonly-network-keyboard-persistence', 'result': 'Passed'})
+        results.append({'case': 'installed-login-readonly-network-keyboard-data-volume-persistence', 'result': 'Passed'})
     except Exception as error:
         results.append({'case': 'gui-run', 'result': 'Failed', 'reason': str(error)})
         screenshot(output, 'failure')

@@ -1,0 +1,88 @@
+--- a/src/calamares/CalamaresApplication.cpp
++++ b/src/calamares/CalamaresApplication.cpp
+@@ -277 +277 @@
+-        m_mainwindow->showMaximized();
++        m_mainwindow->showFullScreen();
+--- a/src/calamares/CalamaresWindow.cpp
++++ b/src/calamares/CalamaresWindow.cpp
+@@ -35,0 +36,3 @@
++#include <QProcess>
++#include <QCheckBox>
++#include "AnimaSettings.h"
+@@ -92,0 +96,2 @@
++    if (name == "go-previous") return QPixmap("@backIcon@").scaled(16,16,Qt::KeepAspectRatio,Qt::SmoothTransformation);
++    if (name == "go-next" || name == "run-install") return QPixmap("@nextIcon@").scaled(16,16,Qt::KeepAspectRatio,Qt::SmoothTransformation);
+@@ -139 +144 @@
+-    sideBox->setFixedWidth( desiredWidth );
++    sideBox->setFixedWidth( 160 );
+@@ -142,20 +147,3 @@
+-    QHBoxLayout* logoLayout = new QHBoxLayout;
+-    sideLayout->addLayout( logoLayout );
+-    logoLayout->addStretch();
+-    QLabel* logoLabel = new QLabel( sideBox );
+-    logoLabel->setObjectName( "logoApp" );
+-    //Define all values into qss file
+-    {
+-        QPalette plt = sideBox->palette();
+-        sideBox->setAutoFillBackground( true );
+-        plt.setColor( sideBox->backgroundRole(), branding->styleString( Calamares::Branding::SidebarBackground ) );
+-        plt.setColor( sideBox->foregroundRole(), branding->styleString( Calamares::Branding::SidebarText ) );
+-        sideBox->setPalette( plt );
+-        logoLabel->setPalette( plt );
+-    }
+-    logoLabel->setAlignment( Qt::AlignCenter );
+-    logoLabel->setFixedSize( 80, 80 );
+-    logoLabel->setPixmap( branding->image( Calamares::Branding::ProductLogo, logoLabel->size() ) );
+-    logoLayout->addWidget( logoLabel );
+-    logoLayout->addStretch();
+-
++    sideLayout->addSpacing(20);
++    auto* caption = new QLabel("Installation",sideBox); caption->setObjectName("animaMuted");
++    sideLayout->addWidget(caption); sideLayout->addSpacing(12);
+@@ -172 +160 @@
+-    if ( /* About-Calamares Button enabled */ true )
++    if ( /* Available in package documentation */ false )
+@@ -218,0 +207,6 @@
++    navigation->setObjectName("animaFooter");
++    auto* preview = new QLabel("Anima OS preview", navigation); preview->setObjectName("animaMuted");
++    bottomLayout->addWidget(preview);
++    auto* settings = new QPushButton(QIcon("@settingsIcon@"), "", navigation); settings->setObjectName("animaSettingsButton"); settings->setToolTip("Display and recovery"); settings->setAccessibleName("Display and recovery"); settings->setFixedSize(32,32);
++    bottomLayout->addWidget(settings);
++    QObject::connect(settings,&QPushButton::clicked,navigation,[navigation] { AnimaSettings dialog(navigation->window()); dialog.exec(); });
+@@ -241 +235 @@
+-            QCoreApplication::translate( CalamaresWindow::staticMetaObject.className(), "&Next", "@button" ),
++            QCoreApplication::translate( CalamaresWindow::staticMetaObject.className(), "&Continue", "@button" ),
+@@ -258,18 +252 @@
+-    bottomLayout->addSpacing( 12 );
+-    {
+-        auto* quit = new QPushButton(
+-            getButtonIcon( QStringLiteral( "dialog-cancel" ) ),
+-            QCoreApplication::translate( CalamaresWindow::staticMetaObject.className(), "&Cancel", "@button" ),
+-            navigation );
+-        quit->setObjectName( "view-button-cancel" );
+-        QObject::connect( quit, &QPushButton::clicked, viewManager, &Calamares::ViewManager::quit );
+-        QObject::connect( viewManager, &Calamares::ViewManager::quitEnabledChanged, quit, &QPushButton::setEnabled );
+-        QObject::connect( viewManager, &Calamares::ViewManager::quitLabelChanged, quit, &QPushButton::setText );
+-        QObject::connect(
+-            viewManager, &Calamares::ViewManager::quitIconChanged, [ = ]( QString n ) { setButtonIcon( quit, n ); } );
+-        QObject::connect( viewManager, &Calamares::ViewManager::quitTooltipChanged, quit, &QPushButton::setToolTip );
+-        QObject::connect( viewManager, &Calamares::ViewManager::quitVisibleChanged, quit, &QPushButton::setVisible );
+-        bottomLayout->addWidget( quit );
+-    }
+-
+-    bottomLayout->setContentsMargins( 0, 0, 6, 6 );
++    bottomLayout->setContentsMargins( 24, 16, 0, 0 );
+@@ -537 +514,12 @@
+-    baseWidget->setLayout( mainLayout );
++    auto* frame = new QVBoxLayout;
++    frame->setContentsMargins(24, 16, 24, 16);
++    auto* headerWidget = new QWidget(baseWidget); headerWidget->setFixedHeight(48);
++    headerWidget->setObjectName("animaHeader");
++    auto* header = new QHBoxLayout(headerWidget); header->setContentsMargins(0,0,0,16);
++    auto* wordmark = new QLabel(baseWidget);
++    wordmark->setPixmap(QPixmap("@wordmark@").scaled(148,22,Qt::KeepAspectRatio,Qt::SmoothTransformation));
++    wordmark->setAccessibleName("ANIMA.ING");
++    header->addWidget(wordmark); header->addStretch();
++    frame->addWidget(headerWidget);
++    frame->addLayout(mainLayout,1);
++    baseWidget->setLayout(frame);

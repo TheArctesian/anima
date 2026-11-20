@@ -5,7 +5,7 @@ let
     name = "anima-installer";
     filter = path: type:
       (type == "directory" && builtins.baseNameOf path != "__pycache__")
-      || (type == "regular" && builtins.elem (builtins.baseNameOf path) [ "install.py" "disks.py" ]);
+      || (type == "regular" && builtins.elem (builtins.baseNameOf path) [ "install.py" "disks.py" "volumes.py" ]);
   };
   installer = pkgs.writeShellApplication {
     name = "anima-install";
@@ -18,9 +18,10 @@ let
   };
   gui = import ./calamares.nix { inherit pkgs lib installedSystem installerSource; };
 in {
-  imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-graphical-base.nix" ./branding.nix ./live-desktop.nix ];
+  imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-graphical-base.nix" ./branding.nix ./live-desktop.nix ./display.nix ];
   networking.hostName = lib.mkForce "anima-live";
-  networking.wireless.enable = lib.mkForce false;
+  # NetworkManager enables wpa_supplicant for its D-Bus Wi-Fi backend.
+  # Forcing wireless off also removes that service and leaves adapters unavailable.
   networking.networkmanager.enable = true;
   networking.useDHCP = lib.mkForce false;
   services.openssh.enable = lib.mkForce false;
@@ -40,13 +41,16 @@ in {
   isoImage.volumeID = "ANIMA_PREVIEW";
   isoImage.squashfsCompression = "zstd -Xcompression-level 6";
   isoImage.storeContents = [ installedSystem ];
-  services.xserver.desktopManager.xfce.enable = true;
+  services.xserver.windowManager.openbox.enable = true;
   services.xserver.displayManager.lightdm.enable = true;
-  services.displayManager.defaultSession = "xfce";
-  programs.nm-applet.enable = true;
+  services.displayManager.defaultSession = "none+openbox";
+  programs.nm-applet.enable = false;
   programs.partition-manager.enable = true;
   users.users.nixos.name = "anima";
   services.displayManager.autoLogin = { enable = true; user = "anima"; };
+  services.xserver.displayManager.sessionCommands = ''
+    ( sleep 2; ${gui.launcher}/bin/anima-setup ) &
+  '';
   system.activationScripts.animaDesktop = {
     deps = [ "users" "groups" ];
     text = ''

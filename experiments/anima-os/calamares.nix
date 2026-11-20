@@ -12,19 +12,25 @@ let
     cp ${./calamares/branding.desc} $out/share/calamares/branding/anima/branding.desc
     cp ${./calamares/stylesheet.qss} $out/share/calamares/branding/anima/stylesheet.qss
     cp ${./branding/welcome.png} $out/share/calamares/branding/anima/welcome.png
+    cp ${./branding/back.svg} $out/share/calamares/branding/anima/back.svg
+    cp ${./branding/next.svg} $out/share/calamares/branding/anima/next.svg
     cp ${./branding/logo.png} $out/share/calamares/branding/anima/logo.png
     cat > $out/etc/calamares/settings.conf <<SETTINGS
     ${yaml {
       modules-search = [ "local" "@out@/lib/calamares/modules" ];
       branding = "anima";
-      sequence = [ { show = [ "welcome" "keyboard" "users" "partition" "summary" ]; }
-        { exec = [ "anima" ]; } { show = [ "finished" ]; } ];
-      prompt-install = true; dont-chroot = false; oem-setup = false;
-      disable-cancel = false; disable-cancel-during-exec = true;
+      instances = map (name: { module = "animasetup"; id = name; config = "${name}.conf"; }) [ "Welcome" "Network" "Storage" "Review" "Ready" ];
+      sequence = [ { show = [ "animasetup@Welcome" "animasetup@Network" "keyboard" "users" "animasetup@Storage" "animasetup@Review" ]; }
+        { exec = [ "anima" ]; } { show = [ "animasetup@Ready" ]; } ];
+      prompt-install = false; dont-chroot = false; oem-setup = false;
+      disable-cancel = true; disable-cancel-during-exec = true;
       hide-back-and-next-during-exec = true; quit-at-end = false;
     }}
     SETTINGS
     substituteInPlace $out/etc/calamares/settings.conf --replace-fail @out@ $out
+    for page in Welcome Network Storage Review Ready; do
+      echo "page: $page" > $out/etc/calamares/modules/$page.conf
+    done
     cp ${pkgs.writeText "welcome.conf" (yaml {
       showSupportUrl = false; showKnownIssuesUrl = false; showReleaseNotesUrl = false;
       requirements = { requiredStorage = 32; requiredRam = 2; check = [ "storage" "ram" "root" ]; required = [ "storage" "ram" "root" ]; };
@@ -47,12 +53,19 @@ let
     cp ${pkgs.writeText "finished.conf" (yaml { restartNowEnabled = false; restartNowChecked = false; })} $out/etc/calamares/modules/finished.conf
   '';
   calamares = pkgs.calamares.overrideAttrs (old: {
-    patches = old.patches ++ [ ./calamares/selection.patch ./calamares/contrast.patch ];
+    patches = old.patches ++ [ ./calamares/selection.patch ./calamares/contrast.patch ./calamares/fullscreen.patch ./calamares/forms.patch ];
+    postPatch = (old.postPatch or "") + ''
+      cp -r ${./calamares/animasetup} src/modules/animasetup
+      cp ${./calamares/shell/AnimaSettings.h} src/calamares/AnimaSettings.h
+      chmod -R u+w src/modules/animasetup
+      substituteInPlace src/modules/animasetup/Hero.cpp --replace-fail @hero@ ${./branding/hero.png}
+      substituteInPlace src/calamares/CalamaresWindow.cpp --replace-fail @wordmark@ ${./branding/wordmark.svg} --replace-fail @settingsIcon@ ${./branding/settings.svg} --replace-fail @backIcon@ ${./branding/back.svg} --replace-fail @nextIcon@ ${./branding/next.svg}
+    '';
     buildInputs = old.buildInputs ++ [ pkgs.python3 ];
   });
   launcher = pkgs.writeShellApplication {
     name = "anima-setup";
-    runtimeInputs = with pkgs; [ python3 util-linux parted btrfs-progs dosfstools systemd mkpasswd ckbcomp ];
+    runtimeInputs = with pkgs; [ python3 util-linux parted btrfs-progs dosfstools systemd mkpasswd ckbcomp networkmanager networkmanagerapplet xfce4-terminal ];
     text = ''
       if [[ $EUID -ne 0 ]]; then
         exec /run/wrappers/bin/sudo --preserve-env=DISPLAY,XAUTHORITY "$0"
@@ -60,7 +73,7 @@ let
       exec 9>/run/anima-installer.lock
       flock --nonblock 9 || exit 1
       umask 077
-      python3 -c 'import sys,json; sys.path.insert(0,"${installerSource}"); from disks import inventory; print(json.dumps(inventory()))' > /run/anima-installer-disks.json
+      python3 -c 'import sys,json; sys.path.insert(0,"${installerSource}"); from disks import inventory,eligible; print(json.dumps([dict(d,eligible=eligible(d)) for d in inventory()]))' > /run/anima-installer-disks.json
       export XDG_DATA_DIRS="${extension}/share:''${XDG_DATA_DIRS:-/run/current-system/sw/share}"
       export XDG_CONFIG_DIRS="${extension}/etc:/etc/xdg"
       exec ${calamares}/bin/calamares --xdg-config

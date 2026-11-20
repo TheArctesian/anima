@@ -34,6 +34,8 @@ def run(iso, output):
     try:
         machine.expect(r'root@anima-live:[^\r\n]*#', timeout=240)
         machine.send('stty -echo')
+        machine.command('busctl call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus StartServiceByName su fi.w1.wpa_supplicant1 0; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces')
+        results.append({'case': 'wifi-supplicant-dbus-activation', 'result': 'Passed'})
         machine.command('systemctl stop display-manager; pkill -TERM -x calamares || true; sleep 1')
         machine.command('test -d /sys/firmware/efi; test ! -e /var/lib/anima-daemon/token')
         machine.command('parted -s /dev/vda mklabel gpt mkpart primary ext4 1MiB 65MiB; udevadm settle; mkfs.ext4 -F /dev/vda1; mkdir /mnt/blocked-target; mount -t ext4 /dev/vda1 /mnt/blocked-target', timeout=60)

@@ -8,7 +8,7 @@ import subprocess
 
 def inventory():
     result = subprocess.run(['lsblk', '--json', '--tree', '--bytes', '--paths', '--output',
-                             'PATH,TYPE,SIZE,MODEL,SERIAL,RO,MOUNTPOINTS,LABEL,MAJ:MIN'],
+                             'PATH,TYPE,SIZE,MODEL,SERIAL,RO,MOUNTPOINTS,LABEL,MAJ:MIN,TRAN,RM'],
                             check=True, capture_output=True, text=True)
     devices = json.loads(result.stdout)['blockdevices']
     if any(device['type'] == 'part' for device in devices):
@@ -29,6 +29,7 @@ def busy(device):
 
 def eligible(device):
     return (device['type'] == 'disk' and not device['ro'] and
+            device.get('tran') != 'usb' and not device.get('rm', False) and
             int(device['size']) >= 32 * 1024**3 and not busy(device))
 
 
@@ -36,13 +37,13 @@ def identity(device):
     return tuple(device.get(field) for field in ('path', 'maj:min', 'size', 'model', 'serial'))
 
 
-def validate(selected, devices):
+def validate(selected, devices, check_labels=True):
     candidates = [device for device in devices if identity(device) == identity(selected)]
     if len(candidates) != 1 or not eligible(candidates[0]):
         raise ValueError('Selected disk changed or became busy; start selection again.')
     # The preview uses fixed labels. Never install beside another matching OS.
     for device in devices:
-        if device['path'] != selected['path']:
+        if check_labels and device['path'] != selected['path']:
             if any(node.get('label') in ('ANIMA_OS', 'ANIMA_EFI') for node in descendants(device)):
                 raise ValueError('Another disk already has Anima labels; disconnect it before installing.')
     path = Path(selected['path'])

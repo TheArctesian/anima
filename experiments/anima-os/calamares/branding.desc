@@ -17,18 +17,21 @@ strings:
   releaseNotesUrl: ""
   donateUrl: ""
 images:
+  go-previous: back.svg
+  go-next: next.svg
+  run-install: next.svg
   productIcon: logo.png
   productLogo: logo.png
   productWelcome: welcome.png
 style:
-  SidebarBackground: "#2E3440"
+  SidebarBackground: "#1B1D21"
   SidebarText: "#ECEFF4"
   SidebarTextCurrent: "#ECEFF4"
-  SidebarBackgroundCurrent: "#5E81AC"
+  SidebarBackgroundCurrent: "#30434B"
 uploadServer:
   type: none
 slideshow: show.qml
 slideshowAPI: 1
-windowExpanding: normal
+windowExpanding: fullscreen
 sidebar: widget
 navigation: widget

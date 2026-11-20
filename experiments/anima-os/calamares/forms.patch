@@ -1,0 +1,70 @@
+--- a/src/modules/keyboard/KeyboardPage.cpp
++++ b/src/modules/keyboard/KeyboardPage.cpp
+@@ -125,0 +126,23 @@
++    auto* hidden = new QWidget(this);
++    hidden->setLayout(layout()); hidden->hide();
++    auto* form = new QVBoxLayout(this);
++    form->setContentsMargins(32,28,32,24); form->setSpacing(12);
++    auto* heading = new QLabel("Keyboard",this); heading->setObjectName("animaHeading"); form->addWidget(heading);
++    form->addWidget(new QLabel("Choose the keyboard you will use on this machine.",this));
++    form->addSpacing(12);
++    form->addWidget(new QLabel("Keyboard model",this));
++    form->addWidget(ui->physicalModelSelector);
++    auto* layouts = new QComboBox(this); layouts->setModel(config->keyboardLayouts());
++    layouts->setCurrentIndex(config->keyboardLayouts()->currentIndex());
++    connect(layouts,qOverload<int>(&QComboBox::currentIndexChanged),this,[config](int index) { config->keyboardLayouts()->setCurrentIndex(index); });
++    connect(config->keyboardLayouts(),&KeyboardLayoutModel::currentIndexChanged,layouts,&QComboBox::setCurrentIndex);
++    form->addWidget(new QLabel("Layout",this)); form->addWidget(layouts);
++    auto* variants = new QComboBox(this); variants->setModel(config->keyboardVariants());
++    variants->setCurrentIndex(config->keyboardVariants()->currentIndex());
++    connect(variants,qOverload<int>(&QComboBox::currentIndexChanged),this,[config](int index) { config->keyboardVariants()->setCurrentIndex(index); });
++    connect(config->keyboardVariants(),&KeyboardVariantsModel::currentIndexChanged,variants,&QComboBox::setCurrentIndex);
++    form->addWidget(new QLabel("Variant",this)); form->addWidget(variants);
++    form->addWidget(new QLabel("Test your keyboard",this)); form->addWidget(ui->LE_TestKeyboard);
++    form->addStretch();
++    for(auto* combo : findChildren<QComboBox*>()) combo->setMaximumWidth(760);
++    ui->LE_TestKeyboard->setMaximumWidth(760);
+--- a/src/modules/users/UsersPage.cpp
++++ b/src/modules/users/UsersPage.cpp
+@@ -188,0 +189,10 @@
++    auto* hidden = new QWidget(this); hidden->setLayout(layout()); hidden->hide();
++    auto* form = new QVBoxLayout(this); form->setContentsMargins(32,28,32,24); form->setSpacing(12);
++    auto* heading = new QLabel("Owner account",this); heading->setObjectName("animaHeading"); form->addWidget(heading);
++    auto* note = new QLabel("Create the password used to sign in and administer this server.",this); note->setWordWrap(true); form->addWidget(note);
++    form->addSpacing(12); form->addWidget(new QLabel("Username: admin",this));
++    form->addWidget(new QLabel("Password — at least 12 characters",this)); form->addWidget(ui->textBoxUserPassword);
++    form->addWidget(new QLabel("Confirm password",this)); form->addWidget(ui->textBoxUserVerifiedPassword);
++    form->addWidget(ui->labelUserPasswordError);
++    ui->textBoxUserPassword->setMaximumWidth(760); ui->textBoxUserVerifiedPassword->setMaximumWidth(760);
++    form->addStretch();
+--- a/src/calamares/progresstree/ProgressTreeDelegate.cpp
++++ b/src/calamares/progresstree/ProgressTreeDelegate.cpp
+@@ -21 +21 @@
+-static constexpr int const item_margin = 8;
++static constexpr int const item_margin = 10;
+@@ -25 +25 @@
+-    return Calamares::defaultFontSize() + 4;
++    return Calamares::defaultFontSize() + 1;
+@@ -62,0 +63 @@
++        if (index.row() == index.data(Calamares::ViewManager::ProgressTreeItemCurrentIndex).toInt()) painter->fillRect(QRect(option.rect.left(),option.rect.top(),2,option.rect.height()),QColor("#88C0D0"));
+@@ -67 +68 @@
+-            textRect, Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextSingleLine, index.data().toString(), &boundingBox );
++            textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, QString("%1   %2").arg(index.row()+1,2,10,QChar('0')).arg(index.data().toString()), &boundingBox );
+--- a/src/modules/users/UsersViewStep.cpp
++++ b/src/modules/users/UsersViewStep.cpp
+@@ -48 +48 @@
+-    return tr( "Users" );
++    return tr( "Account" );
+--- a/src/libcalamaresui/viewpages/ViewStep.cpp
++++ b/src/libcalamaresui/viewpages/ViewStep.cpp
+@@ -88 +88 @@
+-    return QSize( s->pixelMetric( QStyle::PM_LayoutLeftMargin ), s->pixelMetric( QStyle::PM_LayoutTopMargin ) );
++    return QSize(24,28);
+--- a/src/libcalamaresui/ViewManager.cpp
++++ b/src/libcalamaresui/ViewManager.cpp
+@@ -419 +419 @@
+-        UPDATE_BUTTON_PROPERTY( nextLabel, nextIsInstallationStep );
++        UPDATE_BUTTON_PROPERTY( nextLabel, QString("Erase selected disks & install") );
+@@ -424 +424 @@
+-        UPDATE_BUTTON_PROPERTY( nextLabel, tr( "&Next", "@button" ) );
++        UPDATE_BUTTON_PROPERTY( nextLabel, tr( "&Continue", "@button" ) );

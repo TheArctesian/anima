@@ -6,7 +6,7 @@ import sys
 import libcalamares
 
 sys.path.insert(0, '@installerSource@')
-from install import install_selected
+from install import install_plan
 
 
 def pretty_name():
@@ -16,14 +16,18 @@ def pretty_name():
 def run():
     gs = libcalamares.globalstorage
     try:
-        if gs.value('partitionChoices') != {'install': 'erase', 'swap': 'none'}:
-            raise ValueError('This preview supports dedicated-disk installation only.')
         if gs.value('username') != 'admin':
             raise ValueError('The local owner account must be admin.')
+        paths = gs.value('animaSelectedDisks') or []
+        if not paths or paths != gs.value('animaAuthorizedDisks') or len(paths) != len(set(paths)):
+            raise ValueError('Disk selections changed or were not authorized. Review again.')
         devices = json.loads(Path('/run/anima-installer-disks.json').read_text())
-        selected = [d for d in devices if d['path'] == gs.value('animaSelectedDisk')]
-        if len(selected) != 1:
-            raise ValueError('Disk was not present when setup started. Restart the installer.')
+        selected = []
+        for path in paths:
+            matches = [d for d in devices if d['path'] == path]
+            if len(matches) != 1:
+                raise ValueError('Selected disk was not present when setup started.')
+            selected.append(matches[0])
         password = libcalamares.utils.obscure(gs.value('password'))
         if len(password) < 12:
             raise ValueError('The owner password must contain at least 12 characters.')
@@ -35,7 +39,7 @@ def run():
                                  '-variant', gs.value('keyboardVariant') or ''],
                                 check=True, capture_output=True, text=True).stdout
         libcalamares.job.setprogress(0.05)
-        install_selected('@installedSystem@', selected[0], hashed, keymap)
+        install_plan('@installedSystem@', selected[0], hashed, {'keymap': keymap, 'data': selected[1:]})
         libcalamares.job.setprogress(1.0)
         libcalamares.utils.debug('ANIMA_INSTALL_COMPLETE')
     except subprocess.CalledProcessError as error:

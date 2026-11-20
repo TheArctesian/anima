@@ -44,6 +44,8 @@ class Machine:
             '-drive', f'file={directory / "sentinel.raw"},format=raw,if=virtio',
             '-nic', 'none',
         ]
+        if (directory / 'data.raw').exists():
+            args.extend(['-drive', f'file={directory / "data.raw"},format=raw,if=virtio'])
         if boot_iso is not None:
             args.extend(["-cdrom", str(boot_iso), "-boot", "once=d"])
         self.process = subprocess.Popen(args, stdin=slave, stdout=slave, stderr=slave)

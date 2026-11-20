@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from disks import eligible, inventory, validate
+from volumes import prepare_volumes, validate_plan
 
 ROOT = Path('/mnt/anima-install')
 
@@ -84,22 +85,27 @@ def install(system):
 
 
 def install_selected(system, selected, hashed, keymap='include "us"\n'):
+    return install_plan(system, selected, hashed, {"keymap": keymap, "data": []})
+
+
+def install_plan(system, selected, hashed, options):
+    keymap = options.get("keymap", 'include "us"\n')
     if not keymap or len(keymap) > 1024 * 1024:
         raise ValueError("Invalid keyboard map; no disk changed.")
     if os.geteuid() != 0 or not Path("/sys/firmware/efi").exists():
         raise ValueError("Installation requires root and UEFI boot.")
     if ROOT.exists() or not Path(system, "bin/switch-to-configuration").is_file():
         raise ValueError("Mount directory is busy or offline system is missing.")
-    disk = validate(selected, inventory())
+    disk = validate_plan(selected, options.get("data", []), inventory())[0]
     # Calamares keeps its own files private; Nix needs public system directories.
     previous_mask = os.umask(0o022)
     try:
-        install_validated(system, disk, hashed, keymap)
+        install_validated(system, disk, hashed, options)
     finally:
         os.umask(previous_mask)
 
 
-def install_validated(system, disk, hashed, keymap):
+def install_validated(system, disk, hashed, options):
     ROOT.mkdir(parents=True)
     mounted = False
     try:
@@ -123,7 +129,8 @@ def install_validated(system, disk, hashed, keymap):
         (ROOT / 'persist/home').mkdir(mode=0o755)
         secret = ROOT / 'persist/owner-password'
         write_password(secret, hashed)
-        (ROOT / "persist/console.map").write_text(keymap)
+        (ROOT / "persist/console.map").write_text(options.get("keymap", 'include "us"\n'))
+        prepare_volumes(options.get("data", []), ROOT / "persist")
         run('nixos-install', '--root', str(ROOT), '--system', system, '--no-root-passwd', '--no-channel-copy', '--option', 'substituters', '')
         copy_network_profiles(ROOT / "persist/network-connections")
         run('sync')

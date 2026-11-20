@@ -1,6 +1,6 @@
 { pkgs, ... }:
 {
-  environment.systemPackages = [ pkgs.nordic pkgs.papirus-icon-theme ];
+  environment.systemPackages = [ pkgs.nordic pkgs.papirus-icon-theme pkgs.xfce4-terminal ];
   services.xserver.desktopManager.xfce.enableScreensaver = false;
   services.logind.settings.Login = { HandleLidSwitch = "ignore"; HandleLidSwitchExternalPower = "ignore"; IdleAction = "ignore"; };
   systemd.targets.sleep.enable = false;
@@ -21,7 +21,7 @@
     gtk-theme-name=Nordic
     gtk-icon-theme-name=Papirus-Dark
     gtk-application-prefer-dark-theme=true
-    gtk-font-name=DejaVu Sans 10
+    gtk-font-name=IBM Plex Sans 10
   '';
   environment.etc."xdg/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml".text = ''
     <?xml version="1.0" encoding="UTF-8"?>
@@ -47,20 +47,15 @@
     ColorUseTheme=FALSE
     FontName=DejaVu Sans Mono 11
   '';
+  environment.etc."xdg/openbox/rc.xml".text = ''
+    <openbox_config xmlns="http://openbox.org/3.4/rc">
+      <applications><application class="*calamares*"><decor>no</decor></application></applications>
+      <keyboard><keybind key="C-A-t"><action name="Execute"><command>xfce4-terminal --disable-server</command></action></keybind></keyboard>
+    </openbox_config>
+  '';
+  fonts.packages = [ pkgs.ibm-plex ];
   services.xserver.displayManager.sessionCommands = ''
     ${pkgs.xset}/bin/xset s off -dpms
-    # Monitor names are discovered in the live session, not assumed at build time.
-    (
-      ${pkgs.xrandr}/bin/xrandr --query | awk '/ connected/ {print $1}' | while read -r monitor; do
-        for workspace in 0 1 2 3; do
-          ${pkgs.xfconf}/bin/xfconf-query -c xfce4-desktop \
-            -p "/backdrop/screen0/monitor$monitor/workspace$workspace/last-image" \
-            --create -t string -s ${./branding/hero.png}
-          ${pkgs.xfconf}/bin/xfconf-query -c xfce4-desktop \
-            -p "/backdrop/screen0/monitor$monitor/workspace$workspace/image-style" \
-            --create -t int -s 5
-        done
-      done
-    ) &
+    ${pkgs.xsetroot}/bin/xsetroot -solid '#1B1D21'
   '';
 }

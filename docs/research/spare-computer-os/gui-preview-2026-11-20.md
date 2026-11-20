@@ -50,3 +50,25 @@ The installed runtime is unchanged: existing enrollment/monitoring and local Pod
 not completed Anima app/job/agent orchestration.
 
 Visual checks: [live desktop](gui-screenshots/desktop.png), [installer summary](gui-screenshots/installer.png), [boot splash](gui-screenshots/boot.png).
+
+## Wi-Fi backend correction after hardware trial
+
+The operator's RTL8821CE is detected with `rtw88_8821ce`; NetworkManager reports no rfkill block or missing firmware, but cannot activate `fi.w1.wpa_supplicant1`. The live ISO forced wireless off, removing the backend required by NetworkManager. Remove that override.
+
+Direct review (Predictable): keep NetworkManager's standard D-Bus backend configuration. Add a live-ISO regression check that activates the backend and reads its Interfaces property. The check fails on the delivered GUI ISO and passes after booting the rebuilt ISO, SHA256 `e75864eeaceef1b9612708135735dca21ac198d1e8b7c5c4190dd95b962139a4`. Documents and Python syntax checks pass. The new image has not repeated the full installation suite; installation logic is unchanged. Physical Wi-Fi scanning and connection remain open under HT-NEW-aospreview.
+
+## Fullscreen revision under R-NEW-aosfullscreen
+
+This revision supersedes the live-desktop presentation above. Its reference is the operator-approved `anima-installer-wordmark-preview.html` in the local `anima-os-designs/fullscreen-calamares` directory. Fullscreen Calamares uses the supplied vector wordmark, IBM Plex Sans, Graphite surfaces, white text and frost controls. The Anima-site door is behind the welcome/completion content. Openbox supplies only the underlying window session; there is no desktop panel. Account and keyboard forms retain their real validation. Mockup hardware/progress values are not shipped.
+
+Direct review (Idiomatic, Predictable): remove the About control and stacked sidebar utilities, put display/recovery and reduced motion in a frameless styled dialog behind a Carbon settings icon, and use the same Carbon arrows as the client for footer navigation. Initialize navigation correctly before the first step emits updates. Erase approval is the explicit review checkbox plus the labelled installation action; there is no second stock confirmation popup. Wi-Fi passwords use a styled dialog and a private process pipe, not command-line arguments. NetworkManager scan results retain both adapter identity and BSSID through activation.
+
+Direct review (Predictable): selected additional data drives receive separate Btrfs filesystems, not an implicit pool. Every identity is validated before the first destructive operation, and additional drives are revalidated immediately before use. Authorization must exactly match the reviewed selection. USB/removable, busy and unselected disks are not installation targets. The installed system mounts recorded data-volume UUIDs; absent volumes are reported without blocking boot. Installer hardware inventory is a startup snapshot, not an automatic hotplug selection mechanism.
+
+Display evidence: the styled orientation dialog reverted a virtual display to its previous orientation after its countdown. Automatic orientation uses the internal panel's reported mounting orientation, not an accelerometer. Physical touchscreen transforms and the operator's panel remain unqualified.
+
+Networking evidence: installer and appliance use the same redistributable firmware set; no evidence supports adding unrelated firmware to fix this Realtek failure. The standard NetworkManager supplicant wiring is restored. A virtual-radio development check completed WPA authentication and a connection with a fixture static address. Its same-host DHCP fixture did not establish DHCP, so this does not qualify DHCP, internet access or the physical RTL8821CE. Physical scan/authentication/address acquisition and profile persistence remain in HT-NEW-aospreview.
+
+Repository validation: 6,468 Rust tests passed (one skipped). The initial broad client test run hit 16 timeouts while other build work ran; the full client suite then passed all 4,873 tests with four workers. Client production build and limits, names, imports, documents and baseline checks passed. Installer regression tests (13), display parser test (1) and VM harness tests (3) passed. Final combined-image installation evidence is recorded separately when complete; these checks do not establish visual approval or physical hardware support.
+
+Final combined-image evidence: [fullscreen results](fullscreen-preview-results.json), SHA256 `637c0d4f2fd27a5a8fa51cd91e1cc98eadbc6d8e54257baf0c35af36e636fe2f`. All three graphical cases and all nine CLI cases passed on this exact image, including two selected disks, authorization reset after selection changes, boot without the ISO, private network-profile persistence, a separate data volume across reboot and the full unselected-disk hash. Early GUI-driver trials failed on OCR/button targeting; they were retained and corrected before the passing run. The actual final welcome and storage screens were inspected; Carbon footer icons render and the native erase confirmation is absent.

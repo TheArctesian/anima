@@ -39,6 +39,14 @@
   systemd.targets.sleep.enable = false;
   systemd.targets.suspend.enable = false;
   systemd.targets.hibernate.enable = false;
+  systemd.services.anima-data-volumes = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" ];
+    path = [ pkgs.util-linux ];
+    serviceConfig.Type = "oneshot";
+    serviceConfig.RemainAfterExit = true;
+    serviceConfig.ExecStart = "${pkgs.python3}/bin/python3 ${./installer/mount_volumes.py}";
+  };
   systemd.services.anima-keymap = {
     wantedBy = [ "multi-user.target" ];
     after = [ "local-fs.target" "systemd-vconsole-setup.service" ];
