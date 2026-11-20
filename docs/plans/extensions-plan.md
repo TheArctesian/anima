@@ -1175,13 +1175,13 @@ One pull request for each task. All tasks are Not started; none starts before OB
 | --- | --- | --- | --- |
 | OB0 | Pass when the record gives the measured resources, the run behind the hub, the error tracking result and the engine choice; fail otherwise | `bun run quality:documents` | Code |
 | OB1, OB2, OB15 | Pass when the ruling or the documents exist and the gates pass; fail otherwise | `bun run quality:register`, `bun run quality:documents` | Code |
-| OB3 | Pass when the four switches are off by default, the foundation tests pass with all off, and the registry test lists 19 entries; fail otherwise | `cargo nextest run -p hub engine::extensions`, `bun run gates` | Pages |
-| OB4 | Pass when each path outside OBS-061 gets 404, the limits hold under a load test, and the listener has no route to the API (test); fail otherwise | `cargo nextest run -p hub public_path` | Routes of other tasks |
-| OB5 | Pass when the snapshot has no address (test), the bars match the aggregates with maintenance, and No data shows for a gap; fail otherwise | `cargo nextest run -p hub status_pages` | — |
-| OB6 | Pass when the hub proposes a machine from metrics, installs the stack with a pinned digest on a test machine, and its checks are Up; fail otherwise | `cargo nextest run -p hub observability`, the human check of OB18 | The VM path |
-| OB7 | Pass when a request with no key gets 401, a large body is refused, an event reaches the stack, and a fixture secret is redacted; fail otherwise | `cargo nextest run -p hub intake` | SDKs other than PostHog |
-| OB8, OB9 | Pass when fixture logs make issues in a test stack and one notification each hour, and Projects shows analytics from the stack; fail otherwise | `cargo nextest run -p hub observability` | — |
-| OB10 | Pass when a link redirects, a paused link gives 404, and a private target is refused; fail otherwise | `cargo nextest run -p hub short_links` | Public link making |
+| OB3 | Pass when the four switches are off by default, the foundation tests pass with all off, and the registry test lists 19 entries; fail otherwise | `cargo nextest run -p anima-hub engine::extensions`, `bun run gates` | Pages |
+| OB4 | Pass when each path outside OBS-061 gets 404, the limits hold under a load test, and the listener has no route to the API (test); fail otherwise | `cargo nextest run -p anima-hub public_path` | Routes of other tasks |
+| OB5 | Pass when the snapshot has no address (test), the bars match the aggregates with maintenance, and No data shows for a gap; fail otherwise | `cargo nextest run -p anima-hub status_pages` | — |
+| OB6 | Pass when the hub proposes a machine from metrics, installs the stack with a pinned digest on a test machine, and its checks are Up; fail otherwise | `cargo nextest run -p anima-hub observability`, the human check of OB18 | The VM path |
+| OB7 | Pass when a request with no key gets 401, a large body is refused, an event reaches the stack, and a fixture secret is redacted; fail otherwise | `cargo nextest run -p anima-hub intake` | SDKs other than PostHog |
+| OB8, OB9 | Pass when fixture logs make issues in a test stack and one notification each hour, and Projects shows analytics from the stack; fail otherwise | `cargo nextest run -p anima-hub observability` | — |
+| OB10 | Pass when a link redirects, a paused link gives 404, and a private target is refused; fail otherwise | `cargo nextest run -p anima-hub short_links` | Public link making |
 | OB11, OB12 | Pass when the commands follow the output rules and the MCP tools pass their JSON-RPC tests; fail otherwise | `cargo nextest run -p anima-cli` | — |
 | OB13 | Pass when the pages match the mockup at 1040 px, light and dark, and the mockup row names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run gates` | — |
 | OB14 | Pass when a VM is made, the stack runs on it and is removed with it; fail otherwise | The human check | — |
