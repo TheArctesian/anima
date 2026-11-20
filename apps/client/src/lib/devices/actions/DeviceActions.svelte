@@ -25,9 +25,11 @@
     screenSharing?: CardScreenSharing;
     /** Icon buttons named by their tooltip and label, for the list's fixed connect column (UR-7, D18). */
     compact?: boolean;
+    /** A row of the list: no action that cannot work now, so each row keeps one line (R-NEW-listlayout). */
+    row?: boolean;
   }
 
-  const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false }: Props = $props();
+  const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false, row = false }: Props = $props();
   const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
   const web = $derived(webInterfacesOf(device));
 </script>
@@ -47,7 +49,8 @@
       {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} size="sm" />{/if}{protocol}</button
     >
   {/each}
-  {#if screenSharing !== undefined && offersScreenSharing(device)}
+  <!-- The setup needs the device: a row of the list does not offer it for a device that is down (R-NEW-listlayout). -->
+  {#if screenSharing !== undefined && offersScreenSharing(device) && !(row && device.status === 'DOWN')}
     <ScreenSharingButton {device} calls={screenSharing.calls} onReady={screenSharing.onReady} compact />
   {/if}
   {#if onOpenWeb !== undefined && web.length > 0}
@@ -59,8 +62,8 @@
       }}
     />
   {/if}
-  {#if wake !== undefined && canWake(device)}
-    <!-- Up needs no wake. The slot is one button tall, and the button's status line floats above it: it moves nothing (MOT-007). -->
+  {#if wake !== undefined && canWake(device) && !(row && device.status === 'UP')}
+    <!-- Up needs no wake: a row of the list leaves the button out, each other place shows it disabled. The slot is one button tall, and the button's status line floats above it: it moves nothing (MOT-007). -->
     <span class="wake-slot"><WakeButton deviceId={device.id} api={wake} disabled={device.status === 'UP'} /></span>
   {/if}
 </span>

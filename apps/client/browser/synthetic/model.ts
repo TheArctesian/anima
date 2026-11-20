@@ -46,9 +46,11 @@ export function connection(nodes: readonly unknown[], page: Page = {}): Row {
   };
 }
 
-function heartbeats(): Row[] {
+/** A fixture row may give `status` and `message`, for the pictures of a device that is not up; each other row is up. */
+function heartbeats(row: Row = {}): Row[] {
   const at = (minute: number): string => `2026-11-06T10:0${String(minute)}:00Z`;
-  return [2, 1, 0].map((minute) => ({ at: at(minute), status: 'UP', responseTimeMs: 12 + minute, message: null }));
+  const status = row.status ?? 'UP';
+  return [2, 1, 0].map((minute) => ({ at: at(minute), status, responseTimeMs: status === 'UP' ? 12 + minute : null, message: row.message ?? null }));
 }
 
 export function checkView(state: HubState, row: Row): Row {
@@ -62,10 +64,10 @@ export function checkView(state: HubState, row: Row): Row {
     paused: false,
     ...row,
     config: { __typename: CHECK_CONFIG_TYPES[key] ?? 'IcmpConfig', ...(config as Row) },
-    status: 'UP',
-    lastHeartbeat: heartbeats()[0],
-    heartbeats: (page: Page) => connection(heartbeats(), page),
-    uptime: () => 1,
+    status: row.status ?? 'UP',
+    lastHeartbeat: heartbeats(row)[0],
+    heartbeats: (page: Page) => connection(heartbeats(row), page),
+    uptime: () => row.uptime ?? 1,
     device: () => deviceOf(state, String(row.deviceId)),
   };
 }
@@ -104,12 +106,12 @@ export function deviceView(state: HubState, source: Row): Row {
   return {
     ...row,
     site: site ?? { id: row.siteId, name: 'site', subnet: '10.0.0.0/24' },
-    status: 'UP',
+    status: row.status ?? 'UP',
     readings: row.metricsSource === 'SSH' ? { ...READINGS, vramGpu: gpus[0] ?? null } : null,
     gpus,
     checks: () => state.fixtures.checks.filter((found) => found.deviceId === id).map((found) => checkView(state, found)),
     metrics: ({ range }: { range: string }) => seriesOf(state, id, range),
-    uptime: () => 1,
+    uptime: () => row.uptime ?? 1,
     createdAt: '2026-10-01T09:00:00Z',
     updatedAt: '2026-10-01T09:00:00Z',
   };

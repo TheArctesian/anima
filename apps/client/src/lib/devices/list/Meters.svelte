@@ -7,9 +7,11 @@
   interface Props {
     readings: BarReadings | null;
     source: MetricsSource | null | undefined;
+    /** The list's form: the value over its bar in a fixed slot, the words in the column head (R-NEW-listlayout). */
+    compact?: boolean;
   }
 
-  const { readings, source }: Props = $props();
+  const { readings, source, compact = false }: Props = $props();
   const row = $derived(barRow(readings, source));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
   const ICONS: Record<Bar['key'], IconName> = {
@@ -26,10 +28,10 @@
 {#if row.kind === 'empty'}
   <span class="none">{row.text}</span>
 {:else}
-  <span class="meters">
+  <span class="meters" class:compact>
     {#each row.bars as bar (bar.key)}
       <span
-        class="meter"
+        class="meter {bar.key}"
         class:degraded={bar.degraded}
         role={bar.percent === null ? undefined : 'meter'}
         aria-label={bar.percent === null ? undefined : bar.label}
@@ -104,6 +106,20 @@
     transform: scaleX(var(--fill));
     transform-origin: left center;
     transition: transform var(--duration-base) var(--ease-enter);
+  }
+
+  /*
+   * The list: three slots of one width, so each row has one height and the values stand under the words of the column
+   * head. The memory of a GPU is not in the list: the tile and the device page show it.
+   */
+  .compact {
+    grid-template-columns: repeat(3, var(--usage-slot));
+    gap: var(--space-3);
+  }
+
+  .compact .word,
+  .compact .vram {
+    display: none;
   }
 
   .degraded {

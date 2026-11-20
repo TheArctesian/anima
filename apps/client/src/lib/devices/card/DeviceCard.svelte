@@ -58,7 +58,7 @@
     </span>
     <span class="marks">
       <WarningBadge warnings={device.accessWarnings} />
-      <StatusBadge status={device.status} deviceId={device.id} />
+      <StatusBadge status={device.status} deviceId={device.id} plain />
     </span>
   </header>
   <p class="host"><span title={line.host}>{line.host}</span>{#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}</p>

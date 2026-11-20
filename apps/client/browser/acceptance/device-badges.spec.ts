@@ -21,9 +21,13 @@ test('DEV-007: the wide device list gives the name and address separate lines', 
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(addressBox.y);
   expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(1280);
 
-  const memory = table.getByRole('row', { name: /gpu-box/ }).getByText('Memory', { exact: true });
+  // The words of the usage are in the column head, whole; a row has the values only, so each row has one height.
+  const memory = table.getByRole('columnheader', { name: 'Usage: CPU, memory, disk' }).getByText('Memory', { exact: true });
   await expect(memory).toBeVisible();
   expect(await memory.evaluate((label) => label.scrollWidth)).toBeLessThanOrEqual(await memory.evaluate((label) => label.clientWidth));
+  await expect(table.getByRole('row', { name: /gpu-box/ }).getByRole('meter', { name: 'Memory' })).toBeVisible();
+  const heights = await Promise.all(['gpu-box', 'win-desktop', 'mac-mini'].map(async (device) => (await table.getByRole('row', { name: new RegExp(device) }).boundingBox())?.height));
+  expect(new Set(heights).size).toBe(1);
 });
 
 test('DEV-007, RA-020: status and warning sit side by side inside the Status column', async ({ page, hub }) => {

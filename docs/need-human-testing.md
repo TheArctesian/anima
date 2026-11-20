@@ -2303,3 +2303,30 @@ Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text
    Expected: the group heads and the section labels are in sentence case.
 
 Result: Open.
+
+### HT-NEW-listlayout: the layout of the Devices list (R-NEW-listlayout)
+
+Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
+`apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
+a device that is down shows no usage, and in a browser at 1280 px that three rows have one height. The list was looked
+at only in pictures of the web client with sample devices, at 800, 1280 and 1600 px. No person saw it in a desktop
+window with real devices.
+
+1. Open "Devices" as a list, in a window about 1280 px wide, with a device that is down and a device with metrics.
+   Expected: each row has the same height. The column heads are "Name", "Status", "24 h", "Last 50 checks", "CPU",
+   "Memory", "Disk" and "Connect", each on one line and on the edge of its cells.
+2. Look at the device that is down.
+   Expected: "Down" with a red dot and no fill, then how long, for example "over 15 min". Under it the reason; a click
+   on the reason opens the checks of the device. The usage is a dash. The row has no "+ VNC".
+3. Look at a device with metrics and at a device with none.
+   Expected: three values with a thin bar under each, under the words of the column head; "No metrics" for the other.
+4. Look at a device with a long name and an IPv6 address.
+   Expected: the name is whole where the window has room. The address shows its first two and its last two groups; the
+   pointer on it shows the whole address.
+5. Look at a device that is up and has a MAC address, and at one with no screen sharing.
+   Expected: no "Wake" in the row. "+ VNC" has no dashed border and opens the setup as before.
+6. Make the window narrow (below 1100 px) and select the grid view.
+   Expected: no part lies over another. In a narrow list the reason of a problem stands where the usage was.
+
+Result: Open.
+

@@ -35,3 +35,13 @@ export function hostLine(device: Pick<CardDevice, 'host' | 'ip'>): { host: strin
   const showIp = device.ip !== null && device.ip !== '' && !isAddress(device.host);
   return { host: device.host, ip: showIp ? device.ip : null };
 }
+
+/**
+ * An address short enough for a row: a long IPv6 address keeps its first two groups and its last two, which name the
+ * network and the device; each other host is whole. The whole address is the tooltip of the row.
+ */
+export function shortHost(host: string): string {
+  const groups = host.split(':');
+  if (groups.length < 6 || host.includes('.')) return host;
+  return `${groups.slice(0, 2).join(':')}:…:${groups.slice(-2).join(':')}`;
+}

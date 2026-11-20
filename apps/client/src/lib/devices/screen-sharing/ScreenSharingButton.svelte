@@ -86,6 +86,7 @@
     type="button"
     class="device-action dashed"
     class:roomy={!compact}
+    class:quiet-setup={compact}
     tabindex="0"
     bind:this={button}
     title="Set up screen sharing"
@@ -138,6 +139,18 @@
   .setup .dashed {
     gap: 0;
     padding-inline: var(--space-2);
+  }
+
+  /* In a list row or a tile the setup is a quiet action: no border, the secondary colour (R-NEW-listlayout). */
+  .setup .quiet-setup {
+    min-block-size: var(--control-sm);
+    border-color: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .setup .quiet-setup:hover {
+    color: var(--text);
   }
 
   .dashed[aria-disabled='true'] {

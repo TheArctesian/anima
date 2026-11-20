@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { runs } from '../../motion/engine.fixture';
 import { duration } from '../../motion/tokens';
-import { hostLine, statusLabel } from './card';
+import { hostLine, shortHost, statusLabel } from './card';
 import { shown } from './status.fixture.svelte';
 import StatusEdge from '../status/StatusEdge.svelte';
 import StatusBadge from '../status/StatusBadge.svelte';
@@ -36,6 +36,13 @@ afterEach(async () => {
 it('6.1 card: a status is text, not only colour', () => {
   expect(statusLabel('MAINTENANCE')).toBe('Maintenance');
   expect(statusLabel('UP')).toBe('Up');
+});
+
+it('a long IPv6 address keeps its first two and its last two groups; each other host is whole', () => {
+  expect(shortHost('fd41:4e49:4d41:1e00:8c2f:11ff:fe6a:90b3')).toBe('fd41:4e49:…:fe6a:90b3');
+  expect(shortHost('fe80::1')).toBe('fe80::1');
+  expect(shortHost('10.40.0.21')).toBe('10.40.0.21');
+  expect(shortHost('nas.annex.example')).toBe('nas.annex.example');
 });
 
 it('D-7: an IP shows next to a host name, not next to an IP host, and not when unknown', () => {
