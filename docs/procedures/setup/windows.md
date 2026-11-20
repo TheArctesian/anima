@@ -1,6 +1,6 @@
 # Build the Windows client
 
-Task: WIN1 in [projects-and-builds-plan.md](../../plans/projects-and-builds-plan.md).
+Tasks: WIN1 and WIN2 in [projects-and-builds-plan.md](../../plans/projects-and-builds-plan.md).
 This is a local Windows 11 x86_64 client. It is not a public signed release.
 
 ## Build on Windows
@@ -10,14 +10,14 @@ Microsoft C++ Build Tools with Desktop development with C++ and a Windows SDK.
 The Rust version comes from `rust-toolchain.toml`. Windows 11 supplies WebView2;
 the NSIS installer can install the runtime if it is absent.
 
-From a checkout, run in PowerShell:
+From a checkout, run in a PowerShell session permitted to execute reviewed local scripts:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy/bin/windows-bundle.ps1
+.\deploy\bin\windows-bundle.ps1
 ```
 
 The script builds `anima-link.exe` with the same Tailcat tags as the Unix bundle,
-then the native app and a per-user NSIS installer. It does not need an updater key.
+the native `anima.exe` CLI, then the app and a per-user NSIS installer. It does not need an updater key.
 The installer is in `target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
 The installer and app have no Windows signing certificate for this local trial.
 
@@ -35,8 +35,8 @@ accepts only a port served by the app's live device-link child; an unrelated loc
 hub is refused. Closing the app stops its device link.
 
 Local hub and daemon installation, persistent background link services, the release
-builder, CLI installation, MCP configuration, stay-awake controls and automatic updates
-are not available on Windows in this first build. Their Unix implementations are not
+builder, CLI PATH installation, automatic coding-agent configuration, stay-awake controls and automatic updates
+are not available on Windows in this trial build. The bundled CLI and MCP tool permissions are available. Their Unix implementations are not
 compiled into this shell. Windows capabilities hide their controls.
 
 ## Test
@@ -81,9 +81,9 @@ run was killed; the completed client run used `--maxWorkers=2`.
 
 The native CLI now cross-compiles. Windows paths, Credential Manager selection,
 console control events, VT input and handle-based ACL checks replace the corresponding
-Unix boundaries. MCP configuration replacement preserves an existing ACL. These changes
-are not in the WIN1 installer, and no additional desktop capability is enabled yet.
-Windows executables use a static CRT: the first CLI smoke test could not start because
+Unix boundaries. MCP configuration replacement preserves an existing ACL. The WIN2 installer bundles the CLI and exposes the shared MCP permissions panel;
+automatic coding-agent setup and the other host capabilities remain disabled.
+The CLI build uses a static CRT (Tauri configures the desktop runtime separately): the first CLI smoke test could not start because
 `VCRUNTIME140.dll` was absent (exit `0xc0000135`). After the static-CRT change, the
 VM ran `anima --version` and `anima mcp agents`, and both native ACL test cases passed.
 These are smoke/security checks, not full MCP agent acceptance. The Linux CLI's 207
@@ -106,3 +106,41 @@ controls, persistent link/daemon, power controls, native PostgreSQL/local hub, b
 update packaging and runtime acceptance. The new internal Windows boundary crate also
 needs a distribution design that preserves the CLI's standalone Cargo package; do not
 publish either crate from this trial.
+
+## Normal-launch investigation and restart handling
+
+The unchanged installed app was opened from the Windows Start menu on 2026-11-20.
+It connected to the hosted hub. Its helper remained PID 5932 for six minutes
+(02:04:55 to 02:10:55 local time), with the same SHA-256 as the packaged link recorded above. Defender reported
+antivirus, real-time protection and behavior monitoring enabled; its latest detection
+still preceded this launch. This supports a launch-context hypothesis for the prior
+behavior detection, but does not prove its cause or complete Windows acceptance.
+Use the installed shortcut to open the app; the test procedure must not launch it
+through a Run-dialog PowerShell command with execution-policy bypass.
+
+The child supervisor now stops after three consecutive runs shorter than one minute,
+reports the exhausted restart budget, and logs that it stopped. A stable run resets
+that budget. An explicit restart clears the previous failure status immediately.
+The Linux link tests pass (36), including the early-exit stop and explicit-restart case;
+the client link tests pass (8). The first new restart test found a stale-state race;
+`DeviceLink::start` now records Starting before spawning the worker, and the corrected
+implementation passes the same test. This is not a Defender exception or a detection
+bypass.
+
+For cross-built CLI binaries and native boundary tests, set `RUSTFLAGS="-C target-feature=+crt-static"`. Do not set it globally for the desktop build: it conflicts with Tauri's static-vcruntime configuration.
+
+The Windows CLI also installed and removed its MCP entry in an isolated Cursor-format
+configuration below the VM's temporary folder. The pre-existing `other` entry remained
+unchanged. This verifies file editing on Windows; it does not replace testing a real
+coding agent's MCP connection.
+
+The updated installer completed with exit 0, and its CLI printed `anima 0.1.0` from
+the installed folder. After a Windows restart, launching the app from Start reconnected
+to the hosted hub; Defender's latest detection still preceded the normal-launch tests.
+The installed desktop executable matches the build after the expected three-byte Tauri
+bundle marker change from `UNK` to `NSS`; the CLI hash matches its build directly.
+
+The native MCP permissions module passes its Windows tests as part of 136 shell tests.
+The client platform, link and MCP tests pass (79). The Windows settings view exposes
+tool permissions but hides automatic coding-agent setup until that native installer
+integration is complete. Frame 3 of the MCP mockup records this platform variant.

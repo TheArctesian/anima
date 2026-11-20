@@ -2192,4 +2192,19 @@ terminated its `anima-link.exe` child (`Behavior:Win32/SuspClickFix.F`). The des
 was stopped to end its restart loop. Detection cause is unresolved; Defender remains
 enabled, with no new exclusions. Sustained connection and restart acceptance remain open.
 
+Further agent observation, 2026-11-20: starting the unchanged app from the Start menu
+kept the same connection-helper process alive for six minutes, with no new Defender
+detection and all three reported protection modes enabled. This supports a launch-context
+hypothesis; it does not establish the detector's cause. WIN2 adds a bounded retry policy
+and bundles a native CLI. A temporary MCP configuration add/remove test preserved the
+other entry; a real coding agent connection remains to be tested.
+
+8. With the WIN2 installer, open PowerShell and run
+   `& "$env:LOCALAPPDATA\Anima.ing\anima.exe" --help`.
+   Expected: the native CLI prints its commands without a missing-runtime error.
+9. In a supported coding agent installed on Windows, configure its MCP command as
+   the installed `anima.exe` with argument `mcp`, then connect it to your configured hub.
+   Expected: the agent lists the same permitted hub tools as on Linux/macOS, and a read
+   command succeeds. Do not assume that all agent-specific automatic setup paths work yet.
+
 Result: Open.

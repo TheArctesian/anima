@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "windows",
-  "description": "Windows client commands, main webview only (WIN1). No Unix host installation, builder, MCP, or updater commands.",
+  "description": "Windows client, connection and native MCP permission commands, main webview only (WIN1, WIN2).",
   "webviews": [
     "main"
   ],
@@ -25,6 +25,8 @@
     "allow-web-view-pin",
     "allow-web-view-pop-out",
     "allow-web-view-close",
-    "allow-web-certificate-read"
+    "allow-web-certificate-read",
+    "allow-mcp-permissions-read",
+    "allow-mcp-permissions-write"
   ]
 }

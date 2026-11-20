@@ -26,7 +26,6 @@ mod link;
 mod local_hub;
 #[cfg(all(desktop, unix))]
 mod mcp_agents;
-#[cfg(not(target_os = "windows"))]
 mod mcp_permissions;
 #[cfg(mobile)]
 mod memory_tokens;

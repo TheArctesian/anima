@@ -1,6 +1,7 @@
 //! Windows client entry point (WIN1). Unix host installation and build commands are not registered.
 use crate::{
-    cloud, hub_listener, keystore, link, process_log, system_browser, this_machine, web_view,
+    cloud, hub_listener, keystore, link, mcp_permissions, process_log, system_browser,
+    this_machine, web_view,
 };
 use std::sync::Arc;
 use tauri::Manager;
@@ -32,6 +33,8 @@ pub fn run() {
             cloud::cloud_hub,
             cloud::cloud_hub_access,
             cloud::cloud_device,
+            mcp_permissions::mcp_permissions_read,
+            mcp_permissions::mcp_permissions_write,
             process_log::process_log_folder_open,
             this_machine::this_machine_read,
             system_browser::system_browser_open,

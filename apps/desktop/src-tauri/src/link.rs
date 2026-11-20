@@ -14,6 +14,7 @@ mod joining;
 #[cfg(unix)]
 mod kept;
 mod printed;
+mod restarts;
 mod state;
 
 #[cfg(all(test, unix))]

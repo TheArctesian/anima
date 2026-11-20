@@ -19,7 +19,8 @@ use std::{
 
 use super::{
     printed::{self, DeviceLine},
-    state::{DeviceState, Event},
+    restarts::Restarts,
+    state::{DeviceState, Event, Reason},
 };
 
 const POLL: Duration = Duration::from_millis(50);
@@ -99,6 +100,7 @@ impl DeviceLink {
         let state = Arc::clone(&self.state);
         let stop_seen = Arc::clone(&stop);
         let pid = Arc::clone(&self.pid);
+        record(&self.state, Event::Starting { port: launch.port });
         let thread = thread::spawn(move || supervise(&launch, &stop_seen, &state, &pid));
         *running = Some(Running { stop, thread });
     }
@@ -147,9 +149,18 @@ fn record(state: &Mutex<DeviceState>, event: Event) {
 
 /// Starts the child, waits for its end, pauses and starts it again, until `stop`.
 fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>, pid: &AtomicU32) {
+    let mut restarts = Restarts::default();
     while !stop.load(Ordering::Acquire) {
+        let began = Instant::now();
         record(state, Event::Starting { port: launch.port });
         run_once(launch, stop, state, pid);
+        let port_taken =
+            state.lock().unwrap_or_else(PoisonError::into_inner).reason == Some(Reason::PortTaken);
+        if !stop.load(Ordering::Acquire) && !port_taken && !restarts.after(began.elapsed()) {
+            tauri_plugin_log::log::warn!("device link stopped after repeated early exits");
+            record(state, Event::Unable(Reason::RepeatedFailure));
+            return;
+        }
         let resume = Instant::now() + launch.restart_after;
         while !stop.load(Ordering::Acquire) && Instant::now() < resume {
             thread::sleep(POLL);

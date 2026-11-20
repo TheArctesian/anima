@@ -11,7 +11,8 @@
       }
     },
     "externalBin": [
-      "binaries/anima-link"
+      "binaries/anima-link",
+      "binaries/anima"
     ]
   }
 }

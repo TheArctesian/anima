@@ -10,8 +10,3 @@ rustc-wrapper = "quality/bin/rustc-cache.sh"
 [env]
 # The default of 10 GiB was full with eight worktrees; a full cache drops entries.
 SCCACHE_CACHE_SIZE = "40G"
-
-# Windows installers and diagnostic executables run on a clean OS without a separately
-# installed Visual C++ runtime (WIN2). Link the CRT into each binary.
-[target.'cfg(windows)']
-rustflags = ["-C", "target-feature=+crt-static"]

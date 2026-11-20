@@ -1,10 +1,10 @@
-# WIN1: Build a local Windows x86_64 installer, including the device link.
+# WIN1: Build a local Windows x86_64 installer, including the device link and native CLI.
 # Run in PowerShell with Rust/rustup, Bun, Go and the MSVC build tools on PATH.
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path "$PSScriptRoot/../..").Path
 $before = Get-Location
 $saved = @{}
-foreach ($name in @('RUSTC_WRAPPER', 'ANIMA_LOCAL_BUILD', 'GOOS', 'GOARCH')) {
+foreach ($name in @('RUSTC_WRAPPER', 'RUSTFLAGS', 'ANIMA_LOCAL_BUILD', 'GOOS', 'GOARCH')) {
     $saved[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 function Invoke-Checked([string]$program, [string[]]$arguments) {
@@ -31,6 +31,13 @@ try {
     Invoke-Checked go @('build', '-trimpath', '-ldflags=-s -w', '-tags', $tags,
         '-o', "$binaries/anima-link-x86_64-pc-windows-msvc.exe", './cmd/anima-link')
     Set-Location $root
+    # The CLI links its CRT; Tauri applies its own static-vcruntime configuration.
+    $env:RUSTFLAGS = "$($saved['RUSTFLAGS']) -C target-feature=+crt-static"
+    Invoke-Checked cargo @('build', '-p', 'anima-cli', '--bin', 'anima', '--release',
+        '--target', 'x86_64-pc-windows-msvc')
+    Copy-Item "$root/target/x86_64-pc-windows-msvc/release/anima.exe" `
+        "$binaries/anima-x86_64-pc-windows-msvc.exe" -Force
+    $env:RUSTFLAGS = $saved['RUSTFLAGS']
     Invoke-Checked bun @('run', '--cwd', 'apps/desktop', 'tauri', 'build',
         '--target', 'x86_64-pc-windows-msvc', '--config', 'src-tauri/tauri.windows.conf.json')
 } finally {

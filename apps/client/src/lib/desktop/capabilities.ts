@@ -38,7 +38,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     thisMachine: true,
     systemSettings: isMac(userAgent),
     builds: !windows,
-    mcpPermissions: !windows,
+    mcpPermissions: true,
     commandLine: !windows,
     stayAwake: !windows,
     localHub: !windows,
