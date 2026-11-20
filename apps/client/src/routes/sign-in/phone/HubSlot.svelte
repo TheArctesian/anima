@@ -14,24 +14,26 @@
   const { host, unreachable, onchange, onretry }: Props = $props();
 </script>
 
-<!-- The hub slot of the phone layout (mockup 3): one row of a fixed height under the button. It names the hub, or says
-     that the hub does not answer; because its height never changes, the notice moves no control (MOB-018). -->
-<div class={['slot', unreachable && 'bad']} role="status">
+<!-- Keep address editing available even when the configured hub cannot be reached (MOB-018). -->
+<div class={['slot', unreachable && 'bad']}>
   <Icon name={unreachable ? 'carbon:unlink' : 'carbon:network-3'} size="lg" />
-  <p><b>{unreachable ? `Can't reach ${host}` : host}</b>{unreachable ? "Check this device's network." : 'Hub address'}</p>
+  <p role="status"><b>{unreachable ? `Can't reach ${host}` : host}</b>{unreachable ? "Check this device's network." : 'Hub address'}</p>
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
-  <button type="button" tabindex="0" onclick={unreachable ? onretry : onchange} {@attach press()}>{unreachable ? 'Retry' : 'Change'}</button>
+  <div class="actions">
+    <button type="button" tabindex="0" onclick={onchange} {@attach press()}>Change hub address</button>
+    {#if unreachable}<button type="button" tabindex="0" onclick={onretry} {@attach press()}>Retry</button>{/if}
+  </div>
 </div>
 
 <style>
-  /* The sizes are those of mockup 3: 68 px high, 12 px padding and gap, 14 px text. */
   .slot {
     box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    block-size: calc(var(--space-16) + var(--space-1));
-    padding: 0 var(--space-3);
+    min-block-size: calc(var(--space-16) + var(--space-1));
+    flex-wrap: wrap;
+    padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-md);
     color: var(--text-secondary);
     font-size: var(--text-md);
@@ -59,6 +61,12 @@
     font-weight: var(--weight-medium);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: end;
   }
 
   button {

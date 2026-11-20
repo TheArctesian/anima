@@ -1743,8 +1743,10 @@ Open the integrated iOS build on a physical device with a test hub. In Settings,
 capabilities and tap Read capabilities. Expect the current power state, thermal state, app
 memory headroom, and available storage. Open Technical report and expect the platform, OS,
 observation time, and discovery data. Disconnect or reconnect power, wait for iOS to update
-the battery state, and tap Refresh. Expect a new observation time and the updated power state.
-Verify that the browser client has no report entry.
+the battery state, and tap Refresh. Expect the Last checked time to advance and the report to
+show the updated power state. With VoiceOver on iOS or TalkBack on Android, refresh the report
+and listen for “Capability report refreshed.” Verify that the browser client has no report entry.
+
 ### HT-065: the measurements of the isolation design on Linux (task W2, R-188, R-264)
 
 Built: the script [linux-job.sh](research/work-isolation/linux-job.sh) of the record

@@ -24,6 +24,7 @@ mod link;
 mod local_hub;
 #[cfg(desktop)]
 mod mcp_agents;
+#[cfg(desktop)]
 mod mcp_permissions;
 #[cfg(mobile)]
 mod memory_tokens;

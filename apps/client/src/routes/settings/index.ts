@@ -20,7 +20,7 @@ export const SECTIONS = {
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
   linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'Devices that reach this hub over the link.' },
   stayAwake: { id: 'settings-stay-awake', title: 'Stay awake', icon: 'carbon:power', description: 'Keeps this computer on for a hub or agent.' },
-  runner: { id: 'settings-runner', title: 'Runner capabilities', icon: 'carbon:chip', description: 'Local capability report.' },
+  runner: { id: 'settings-runner', title: 'Runner capabilities', icon: 'carbon:chip', description: 'Memory, storage, power, and thermal state.' },
   appearance: { id: 'settings-appearance', title: 'Appearance', icon: 'carbon:color-palette', description: 'How Anima.ing looks on this device.' },
   notifications: { id: 'settings-notifications', title: 'Notifications', icon: 'carbon:notification', description: 'Where the hub sends alerts.' },
   checkDefaults: { id: 'settings-check-defaults', title: 'Default check settings', icon: 'carbon:settings-adjust', description: 'New checks start with these settings.' },

@@ -49,7 +49,7 @@ it('FRN-001, HMD-022: the desktop app offers the invite, the hub address and a h
   expect(target.querySelector('h1')?.textContent).toBe('Join a hub');
   expect(choices(target)).toEqual([
     { title: 'Join with an invite', href: '/welcome/join', reason: null },
-    { title: 'Use a hub address', href: '/sign-in', reason: null },
+    { title: 'Use a hub address', href: '/welcome/address', reason: null },
     { title: 'Create a hub on this computer', href: '/welcome/create', reason: null },
   ]);
   expect(target.querySelector('a.back')?.getAttribute('href')).toBe('/welcome');
@@ -61,7 +61,7 @@ it('FRN-001: a build that carries no hub programs keeps Create off with the reas
   expect(choices(target)[2]).toEqual({ title: 'Create a hub on this computer', href: null, reason: 'This build does not carry the hub programs.' });
 });
 
-it('CLI-001: a browser does not ask the shell, and only the hub address is on', async () => {
+it('CLI-001: a browser does not ask the shell, and only sign-in to the current hub is on', async () => {
   mocks.desktop = false;
   const target = await open();
   expect(mocks.carried).not.toHaveBeenCalled();
