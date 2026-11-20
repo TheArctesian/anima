@@ -35,3 +35,7 @@ The signed public package matches this exact appliance closure; its signature, s
 Local evidence: `/home/okita/.local/share/anima-os-prototype/2026-11-20/node-final-001/`. The installer and console screenshots in that folder show the battery fixture; no synthetic battery data ships in the image.
 
 The [final automatic-recovery test](installed-operation-recovery.json) passed: an actually masked NetworkManager caused two failed candidate boots, followed by the previous system with its identity and persistent data intact.
+
+## Hosted delivery check
+
+Public delivery rejected urllib's default client identity with Cloudflare HTTP 403 / code 1010. The feed was not published. An explicit `AnimaOS-Updater/1` User-Agent returned HTTP 200; the production fetch function then downloaded and verified the complete public archive. The image was rebuilt with this transport correction before delivery. Signature, redirect and size restrictions remain unchanged.

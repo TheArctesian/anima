@@ -20,7 +20,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def fetch(url, output, limit):
     if not url.startswith('https://releases.anima.ing/os/preview/x86_64-linux/'):
         raise ValueError('The update address is outside the Anima OS preview channel.')
-    with urllib.request.build_opener(NoRedirect()).open(url, timeout=30) as response:
+    request = urllib.request.Request(url, headers={'User-Agent': 'AnimaOS-Updater/1'})
+    with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:
         count = 0
         while chunk := response.read(1024 * 1024):
             count += len(chunk)
