@@ -177,6 +177,8 @@ Read 2026-11-19 at the operator's request:
 
 - 2026-11-19: Decision 25 accepted A default with optional C + D. The operator asked how many questions remain. Proposed three remaining product-decision groups followed by consolidation and engineering defaults, not further low-level questionnaires.
 
+- 2026-11-19: The operator asked for Proxmox or VMware precedent in the remaining decisions. Include sourced precedent, distinguish it from recommendations and retain the three remaining discussion groups.
+
 ## Source text
 
 Selected direct operator messages, unchanged:
@@ -304,3 +306,16 @@ In response to Decision 24:
 In response to Decision 25:
 
 > agreed how many more questions
+
+Process request:
+
+> Okay lets keep going but in the decion include what the Proxmox or VMWare would do
+
+## Decision 26 preparation: enrollment and unattended installation
+
+Not yet selected. Proposed default: standard ISO with a short-lived pairing flow approved in Anima and explicit disk confirmation before installation. Optional prepared installation profile: scoped enrollment authorization and explicit disk selection/erase permission; stop if selection is ambiguous. An alternative is local installation with administrator credentials followed by enrollment. Local recovery remains available; proof of ownership, token lifetime and transfer/re-enrollment need specification.
+
+Precedent checked 2026-11-19:
+
+- [Proxmox installation documentation](https://github.com/proxmox/pve-docs/blob/master/pve-installation.adoc): local graphical/text installation, administrator password, and unattended installation via a prepared ISO and answer file. This is not automatic assignment to an Anima-style account.
+- [Broadcom ESXi scripted-installation article](https://knowledge.broadcom.com/external/article/440457/esxi-scripted-installation-fails-to-dyna.html): ESXi 7/8 scripted setup uses kickstart configuration for host-specific installation settings. We should adopt explicit prepared configuration as a pattern, not copy example first-disk overwrite directives.
