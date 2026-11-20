@@ -44,6 +44,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 22: backup encryption and recovery keys | Decided | A + B: encrypt backups before transfer, provide exportable owner-held recovery material, and optionally keep a copy on another explicitly authorized trusted device. A backup destination does not automatically receive decryption authority. Scheduled backups run without repeated password entry after setup. Recovery must not rely solely on the source machine; account/service-assisted recovery and unencrypted backup mode are not selected. Key storage, rotation, revocation and recovery testing remain to be designed. Disk encryption remains opt-in/off by default. |
 | Decision 23: server power behavior | Decided | A + C + D: stay available on external power, including supported closed-lid laptop use; protect laptops on battery loss; recover availability after power returns where hardware supports it. No automatic idle sleep in the first version. Keep thermal safeguards and deliberate shutdown/reboot/recovery available. Critical-battery protective action is distinct from ordinary idle sleep; exact shutdown/suspend choice remains engineering work. Resume approved services, not blindly interrupted jobs. The operator names Proxmox as the server-operation reference; this does not select its virtualization stack or change NixOS/Btrfs choices. |
 | Decision 24: app access and internet use | Decided | A default, with B and C available per app: private Anima-network access by default; explicit LAN publication; explicit public publication through supported hosting paths. Keep host administration and recovery separate. These are inbound exposure choices, not a ban on outbound internet use. The operator explicitly requires agentic software to be able to use the internet. Support outbound access for workloads within their permissions; exact egress policy remains open. Installing a workload must not implicitly publish it. |
+| Decision 25: outbound networking | Decided | A default, optional C + D: ordinary outbound internet within existing workload permissions, with optional destination-restricted and offline profiles. No extra per-workload internet approval step is selected beyond existing grants. Outbound access does not grant credentials, host control, other workload data or arbitrary private-network access. Inbound publication remains separate. Enforcement and supported allowlist semantics must be reconciled with existing Anima permission/network owners. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -80,7 +81,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 25: what default outbound-network policy should apply to workloads? Alternatives: ordinary outbound internet allowed within existing grants; network access requested/approved per workload; destination allowlists; optional offline/restricted profiles. Recommendation: ordinary outbound internet for network-enabled workloads, plus explicit restricted/offline profiles. Inbound publication stays separate. No answer yet; do not infer permission to access arbitrary LAN services, host control sockets, secrets or other workload data. Reuse existing network/execution grant owners.
+2. Finish the product choices in three remaining discussion groups: enrollment/ownership and unattended-install authorization; update channels/timing and workload interruption; first-release hardware examples and acceptance scope. Then consolidate the proposal and recommend engineering defaults together instead of continuing an unbounded component questionnaire. Existing provisional local-interface choice can be reviewed during consolidation. Exact protocol, package, partition, retention and test choices can remain explicit proposed defaults or validation tasks.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -173,6 +174,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 23 accepted A + C + D, with explicit server-first direction and no ordinary idle sleep. Proxmox is an operational reference. Its official feature overview (https://www.proxmox.com/en/products/proxmox-virtual-environment/features, read 2026-11-19) describes centralized server/workload administration; this check did not establish exact host suspend defaults. No Proxmox implementation or architecture was selected. Next: app network exposure.
 
 - 2026-11-19: Decision 24 accepted A + B + C with private access as default. The operator noted agents need internet use; explicitly separated inbound publication from outbound workload connectivity. Next: default outbound policy.
+
+- 2026-11-19: Decision 25 accepted A default with optional C + D. The operator asked how many questions remain. Proposed three remaining product-decision groups followed by consolidation and engineering defaults, not further low-level questionnaires.
 
 ## Source text
 
@@ -297,3 +300,7 @@ In response to Decision 23:
 In response to Decision 24:
 
 > A and B Adn C is fine reminder that some agentic software also need to use the internet
+
+In response to Decision 25:
+
+> agreed how many more questions
