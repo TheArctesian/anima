@@ -11,6 +11,7 @@ mod lifecycle;
 mod model;
 mod placement;
 mod reporting;
+mod results;
 mod store;
 #[cfg(test)]
 mod tests;
