@@ -20,7 +20,7 @@ The image is `/tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso`. Runtim
 2. Fullscreen Calamares opens directly. Use its Network step to scan for Wi-Fi and connect. Installation also works offline.
 3. Choose the keyboard layout and local `admin` password. Explicitly select an internal installation disk of at least 32 GiB. Optional additional data disks become separate Btrfs volumes; USB/removable drives are excluded.
 4. Review each disk's identity and erase action. Check the erase authorization, then select **Erase selected disks & install**. Changing selections clears authorization. Unselected disks remain untouched; this preview does not support dual boot or repair that preserves the selected disk's data.
-5. After completion, shut down, remove the USB and start the machine. The installed server uses a branded console. Log in as `admin`, then use `anima-status` and `nmtui`. Root login is locked; administrative commands require `sudo` and the chosen password.
+5. After completion, shut down, remove the USB and start the machine. The installed server opens the Anima graphical console. Unlock it with the local admin password chosen during installation. Network, storage, display, diagnostics, lock and power controls are available there. Root login remains locked; Ctrl+Alt+F2 provides authenticated text recovery.
 
 The footer settings icon opens display orientation, reduced motion and recovery controls. Ctrl+Alt+F2 opens a text recovery console. For CLI installation, stop Calamares before running `anima-install`; both installers share an exclusive installation lock. The CLI uses a typed disk-specific erase phrase.
 
@@ -30,11 +30,11 @@ The preview uses fixed filesystem labels and refuses installation while another 
 
 ## Connect monitoring
 
-The installed daemon retains its existing private-network restrictions. First establish connectivity to your compatible private hub (for a Tailscale network, run `sudo tailscale up` and complete its sign-in). Create a device enrollment code in Anima. Run `sudo anima-enroll`, enter the hub origin, then paste the code at the hidden prompt. Never put the code in a shell command or test log.
+Sign in with WorkOS from the Anima screen, complete the secure browser flow, then choose **Add this computer**. The console obtains the account’s hub access, joins the private link, identifies or creates this machine’s device record, and exchanges a fresh enrollment code for the daemon token internally. Neither the code nor account tokens appear in the UI, process arguments or operation logs. Existing daemon enrollment is not silently replaced. A machine-ID-derived name distinguishes spare computers. The link runs as a system service and survives local screen locking and reboots.
 
-The service starts only after enrollment exists. It provides the existing device monitoring and credential behavior; packaging it does not add a job/agent execution engine. Hosted enrollment is still subject to the existing HM-D16 integration gap. No production account was enrolled during the image tests.
+This flow depends on the account service and compatible hub routes being available. It reports failures rather than displaying a mock success. Sign-in tokens are memory-only; restart sign-in after a failed enrollment. No production account was enrolled during automated image testing. Packaging monitoring does not add the planned managed job/agent execution engine.
 
-Podman is available for local containers. Managed app publication, Anima-scheduled jobs/agents, owner grant UI, automatic updates, backup/restore, encryption and hub-driven installation are not implemented by this preview. The separate recovery prototype proves specific failure scenarios; that evidence is not a claim that the installed preview has a production update coordinator.
+Locking conceals the local interface and closes its authenticated command session; it does not suspend the server or stop its monitoring/link services. Already-authorized operations may finish. Enrollment has a cross-process lock so a new local session cannot race the previous enrollment. Display orientation has a backend-enforced 15-second rollback and is session-local. Restart and shutdown require a visible confirmation.
 
 ## Automated VM installation tests
 
@@ -69,4 +69,4 @@ The combined revision replaces the live desktop with fullscreen Calamares. The N
 
 Storage supports one explicitly selected internal OS disk plus explicitly selected additional internal data disks, each a separate Btrfs volume. USB/removable and busy drives are excluded. Review identifies each disk and erase action; changed selections invalidate authorization. All selected identities are rechecked before erasure, and data disks are checked again immediately before use. A hardware failure can still leave selected disks partially written. Unselected disks are never formatted. Additional volumes mount by UUID under `/persist/volumes/<UUID>`; a missing volume is reported and left unmounted without blocking server boot. No pooling/RAID or automatic workload placement is implied.
 
-Account and keyboard setup remain real. Encryption, configurable hostname/timezone and hub pairing are not implemented by this preview; mockup examples are not shipped as functional settings.
+Account and keyboard setup remain real. Encryption, configurable hostname/timezone are not implemented by this preview; mockup examples are not shipped as functional settings.

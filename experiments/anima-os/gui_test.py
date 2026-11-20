@@ -99,7 +99,7 @@ def graphical_install(machine, output, password):
     time.sleep(2); screenshot(output, 'finished')
 
 
-def installed_checks(machine, password):
+def installed_checks(machine, password, output):
     machine.expect('anima login:', timeout=240)
     machine.send('admin'); machine.expect('Password:'); machine.send(password)
     machine.expect(r'admin@anima:[^\r\n]*\$'); machine.send('stty -echo')
@@ -107,11 +107,13 @@ def installed_checks(machine, password):
     machine.command('command -v lspci; command -v nmcli; systemctl is-active NetworkManager; systemctl show -p Result --value anima-keymap | grep -qx success; systemctl show -p ExecMainStartTimestampMonotonic --value anima-keymap | grep -qv "^0$"; test -s /persist/console.map')
     machine.command('nmcli -g NAME connection show | grep -qx anima-fixture')
     machine.command("podman info --format '{{.Host.Security.Rootless}}' | grep -qx true", timeout=60)
-    machine.send('sudo -v'); machine.expect('password for admin:'); machine.send(password)
-    machine.expect(r'admin@anima:[^\r\n]*\$')
+    from console_checks import installed_console
+    installed_console(machine, output, password)
+    machine.send('sudo -s'); machine.expect('password for admin:'); machine.send(password)
+    machine.expect(r'root@anima:[^\r\n]*#')
     machine.command('sudo test -r /persist/owner-password; sudo find /persist/network-connections -name "*.nmconnection" -printf "%m\\n" | grep -qx 600')
     machine.command("test $(jq length /persist/data-volumes.json) = 1; volume=$(jq -r '.[0].uuid' /persist/data-volumes.json); mountpoint -q /persist/volumes/$volume; echo volume-retained | sudo tee /persist/volumes/$volume/sentinel >/dev/null")
-    machine.command('echo retained > ~/gui-sentinel; cp /etc/machine-id ~/machine-id-before')
+    machine.command('echo retained > /home/admin/gui-sentinel; cp /etc/machine-id /home/admin/machine-id-before; chown admin:users /home/admin/gui-sentinel /home/admin/machine-id-before')
     machine.send('sudo systemctl reboot')
     machine.expect('anima login:', timeout=240)
     machine.send('admin'); machine.expect('Password:'); machine.send(password)
@@ -131,9 +133,9 @@ def run(iso, output):
         results.append({'case': 'graphical-multidrive-install-and-authorization-reset', 'result': 'Passed'})
         machine.send('systemctl poweroff'); machine.wait_exit(); machine.close()
         machine = Machine(output, disk)
-        installed_checks(machine, password)
+        installed_checks(machine, password, output)
         screenshot(output, 'installed-console')
-        results.append({'case': 'installed-login-readonly-network-keyboard-data-volume-persistence', 'result': 'Passed'})
+        results.append({'case': 'installed-gui-auth-lock-network-display-readonly-persistence', 'result': 'Passed'})
     except Exception as error:
         results.append({'case': 'gui-run', 'result': 'Failed', 'reason': str(error)})
         screenshot(output, 'failure')

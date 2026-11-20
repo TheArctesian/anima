@@ -31,7 +31,7 @@ void Setup::setConfigurationMap(const QVariantMap& config) {
     }
     if (mode == "Network") { page = networkPage(); return; }
     if (mode == "Ready") {
-        page = heroPage("Installation complete", "Shut down, remove the installation USB, then start the computer.\nLog in as admin with your chosen password.\nThe installed system is a server console.");
+        page = heroPage("Installation complete", "Shut down, remove the installation USB, then start the computer.\nUnlock the local interface with your chosen admin password.\nSign in to Anima to add this computer.");
         auto* button = new QPushButton("Shut down", page);
         page->layout()->addWidget(button);
         connect(button, &QPushButton::clicked, this, [] { QProcess::startDetached("systemctl", {"poweroff"}); });

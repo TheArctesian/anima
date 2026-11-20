@@ -10,3 +10,7 @@ strip experiments/anima-os/payload/anima-daemon
 git rev-parse HEAD > experiments/anima-os/payload/SOURCE-REVISION
 sha256sum Cargo.lock > experiments/anima-os/payload/CARGO-LOCK-SHA256
 sha256sum experiments/anima-os/payload/anima-daemon > experiments/anima-os/payload/BINARY-SHA256
+
+(cd link && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o ../experiments/anima-os/payload/anima-link ./cmd/anima-link)
+sha256sum link/go.sum > experiments/anima-os/payload/GO-SUM-SHA256
+sha256sum experiments/anima-os/payload/anima-link > experiments/anima-os/payload/LINK-BINARY-SHA256

@@ -1,6 +1,6 @@
 { config, lib, pkgs, daemonPackage, ... }:
 {
-  imports = [ ./branding.nix ];
+  imports = [ ./branding.nix ./console.nix ./display.nix ];
   system.stateVersion = "26.05";
   networking.hostName = "anima";
   boot.loader.systemd-boot.enable = true;
@@ -29,8 +29,8 @@
   users.users.admin = { isNormalUser = true; extraGroups = [ "wheel" "networkmanager" ]; hashedPasswordFile = "/persist/owner-password"; };
   users.users.anima-daemon = { isSystemUser = true; group = "anima-daemon"; };
   users.groups.anima-daemon = {};
-  systemd.tmpfiles.rules = [ "d /var/lib/anima-daemon 0700 anima-daemon anima-daemon -" "d /persist/apps 0750 root root -" ];
-  environment.systemPackages = (with pkgs; [ daemonPackage btrfs-progs curl jq git vim nano tmux podman-compose ])
+  systemd.tmpfiles.rules = [ "d /var/lib/anima-link 0700 anima-daemon anima-daemon -" "d /var/lib/anima-daemon 0700 anima-daemon anima-daemon -" "d /persist/apps 0750 root root -" ];
+  environment.systemPackages = [ (import ./link-package.nix { inherit pkgs; }) ] ++ (with pkgs; [ daemonPackage btrfs-progs curl jq git vim nano tmux podman-compose ])
     ++ import ./local-tools.nix { inherit pkgs daemonPackage; };
   environment.etc."anima-smoke-image.tar.gz".source = import ./smoke-image.nix { inherit pkgs; };
   virtualisation.podman.enable = true;
@@ -90,6 +90,22 @@
       SocketBindDeny = "any";
       IPAddressDeny = "any";
       IPAddressAllow = [ "localhost" "100.64.0.0/10" "fd7a:115c:a1e0::/48" ];
+    };
+  };
+  systemd.services.anima-link = {
+    description = "Anima persistent private hub link";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    before = [ "anima-daemon.service" ];
+    unitConfig.ConditionPathExists = "/var/lib/anima-link/device.json";
+    serviceConfig = {
+      User = "anima-daemon"; Group = "anima-daemon";
+      ExecStart = "${import ./link-package.nix { inherit pkgs; }}/bin/anima-link device -state /var/lib/anima-link -daemon-socket /var/lib/anima-daemon/link.sock";
+      Restart = "on-failure"; RestartSec = 5; UMask = "0077";
+      NoNewPrivileges = true; ProtectSystem = "strict"; ProtectHome = true;
+      ReadWritePaths = [ "/var/lib/anima-link" "/var/lib/anima-daemon" ];
+      PrivateTmp = true; LimitCORE = 0;
     };
   };
   services.tailscale.enable = true;

@@ -85,6 +85,9 @@ def run(iso, output):
         machine.command('podman exec anima-smoke /bin/wget -qO- http://127.0.0.1:8080 | grep -qx anima-app-ok; podman rm -f anima-smoke', timeout=60)
         machine.command(f'podman run --rm {limits} anima-preview-smoke:local /bin/sh -c "! touch /write-test && echo anima-job-ok" | grep -qx anima-job-ok', timeout=60)
         results.append({'case': 'rootless-isolated-app-and-job', 'result': 'Passed', 'limitation': 'Local Podman only, not Anima orchestration or an agent run'})
+        from console_checks import installed_console
+        installed_console(machine, output, password)
+        results.append({'case': 'installed-gui-auth-lock-network-display-fixed-footer', 'result': 'Passed'})
         machine.send('sudo systemctl reboot'); machine.expect(r'password for admin:'); machine.send(password)
         machine.expect('anima login:', timeout=240); machine.send('admin')
         machine.expect('Password:'); machine.send(password)

@@ -1,0 +1,17 @@
+{
+  "iso_sha256": "efa1cb1192049d0b37a69d8081f78715ccc40a229449d74c70677dc3d1879461",
+  "results": [
+    {
+      "case": "graphical-multidrive-install-and-authorization-reset",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-gui-auth-lock-network-display-readonly-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ]
+}
