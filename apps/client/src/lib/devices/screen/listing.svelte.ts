@@ -1,7 +1,7 @@
 import { SvelteMap } from 'svelte/reactivity';
 import { addBeat, beatOf, latestBeats, type Beat } from '$lib/checks/heartbeats';
 import type { Hub, HubError } from '$lib/hub/hub';
-import type { StatusChange } from '../api';
+import type { ReadingsChange, StatusChange } from '../api';
 import { devicesApi } from '../client';
 import { appendPage, applyReadings, applyStatus, applyVncEnabled, fromPage, type DeviceList } from '../list';
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
@@ -90,7 +90,7 @@ export class Listing {
         this.#onStatus(change);
       },
       onReadings: (change) => {
-        if (this.list !== null) this.list = applyReadings(this.list, change);
+        this.#onReadings(change);
       },
       onBeat: (added) => {
         const known = this.beats.get(added.deviceId);
@@ -153,6 +153,17 @@ export class Listing {
       this.beats.clear();
       this.#show(fromPage(result.value));
     }
+  }
+
+  /**
+   * Shows the new readings. A device that the list holds with no metrics source has gained one since the list loaded,
+   * for example a daemon that enrolled meanwhile: the first page loads again, so that its row shows its bars (MET-007).
+   */
+  #onReadings(change: ReadingsChange): void {
+    if (this.list === null) return;
+    const listed = this.list.devices.find((device) => device.id === change.deviceId);
+    this.list = applyReadings(this.list, change);
+    if (listed?.metricsSource === 'NONE') void this.#refresh();
   }
 
   #onStatus(change: StatusChange): void {
