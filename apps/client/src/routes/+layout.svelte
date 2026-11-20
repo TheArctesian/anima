@@ -9,6 +9,7 @@
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { installDaemonOnThisComputer } from '$lib/desktop/daemon/here';
+  import { daemonHere, stateAfter } from '$lib/desktop/daemon/state.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
   import { provideHub } from '$lib/hub/context';
   import { createHub, desktopRecentCopy, type HubAddress } from '$lib/hub/hub';
@@ -94,7 +95,11 @@
     });
     provideHub(hub);
     // On a hosted hub the daemon of this computer is installed with no question (HMD-053). It waits for the sign-in.
-    if (capabilities().thisMachine && hubIsHosted(address.origin)) void installDaemonOnThisComputer(hub);
+    if (capabilities().thisMachine && hubIsHosted(address.origin)) {
+      void installDaemonOnThisComputer(hub, (did) => {
+        daemonHere.current = did === 'installing' ? { kind: 'installing' } : stateAfter(did);
+      });
+    }
     // A hub that stops answering may come back as another program on the same port: once the connection is not live,
     // the next request checks again (M-C, MF-1).
     $effect(() => {

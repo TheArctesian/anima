@@ -3,6 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fakeUsageHub, type FakeUsageHub } from '$lib/agent-usage/agent-usage.fixture';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import { daemonHere } from '$lib/desktop/daemon/state.svelte';
 import { markHosted } from '$lib/hosted/mark';
 import Page from './+page.svelte';
 
@@ -77,5 +78,11 @@ it('DEF-002: the hub that this client marked as hosted gets the empty state with
   markHosted(localStorage, HUB);
   await open('');
   expect(document.querySelector('a')).toBeNull();
-  expect(document.body.textContent).toContain('Coming soon: the Anima.ing application will install the daemon on this computer.');
+  // No install runs in this test, as in a browser: the page says where one runs.
+  expect(document.body.textContent).toContain('Open the Anima.ing application on a computer and sign in: it installs the daemon there.');
+  if (app !== undefined) await unmount(app);
+  daemonHere.current = { kind: 'failed', reason: 'The hub made no enrolment code.' };
+  await open('');
+  expect(document.body.textContent).toContain('The daemon was not installed on this computer. The hub made no enrolment code.');
+  daemonHere.current = { kind: 'idle' };
 });

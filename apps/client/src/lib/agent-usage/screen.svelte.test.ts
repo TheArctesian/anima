@@ -31,12 +31,12 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-async function open(query: UsageQuery = DEFAULT_QUERY, hosted = false): Promise<UsageStore> {
+async function open(query: UsageQuery = DEFAULT_QUERY, hostedLine?: string): Promise<UsageStore> {
   const store = new UsageStore(agentUsageApi(hub).read);
   const reading = store.load(usageRequest(query, NOW));
   app = mount(AgentUsageScreen, {
     target: document.body,
-    props: { store, query, hosted, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
+    props: { store, query, hostedLine, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
   });
   flushSync();
   await reading;
@@ -113,13 +113,13 @@ it('AIS-020: with no daemon that sent counts the page is an empty state that say
   expect(document.querySelector('table')).toBeNull();
 });
 
-it('DEF-002, R-223: on a hub that Anima.ing hosts the empty state says that the installation by the application is coming soon, and offers no link', async () => {
+it('DEF-002, HMD-053: on a hub that Anima.ing hosts the empty state says where the daemon of this computer stands, and offers no link', async () => {
   hub.answer = { ...ANSWER, rows: [], devices: [] };
   hub.everyone = [];
-  await open(DEFAULT_QUERY, true);
+  await open(DEFAULT_QUERY, 'The Anima.ing application is installing the daemon on this computer.');
   expect(text()).toContain('No use counts yet');
-  expect(text()).toContain('Coming soon: the Anima.ing application will install the daemon on this computer.');
-  expect(text()).not.toContain('not built');
+  expect(text()).toContain('The daemon of each device reports the use of the AI agent programs. The Anima.ing application is installing the daemon on this computer.');
+  expect(text()).not.toContain('Coming soon');
   expect(text()).not.toContain('To install it');
   expect(document.querySelector('a')).toBeNull();
 });

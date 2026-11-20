@@ -138,9 +138,13 @@ export function installDaemonHere(parts: DaemonHereParts): Promise<DaemonHere> {
   return running;
 }
 
-/** The install for the computer the app runs on, with the calls of `hub` and of the desktop shell. */
-export function installDaemonOnThisComputer(hub: Hub): Promise<DaemonHere> {
-  return installDaemonHere({
+/**
+ * The install for the computer the app runs on, with the calls of `hub` and of the desktop shell. `show` gets
+ * 'installing' at once and what the install did at its end, so that a page can say where it stands.
+ */
+export function installDaemonOnThisComputer(hub: Hub, show: (did: DaemonHere | 'installing') => void): Promise<DaemonHere> {
+  show('installing');
+  const done = installDaemonHere({
     bundled: daemonBundled,
     device: readCloudDevice,
     linkDevices: () => linkApi(hub).devices(),
@@ -153,6 +157,8 @@ export function installDaemonOnThisComputer(hub: Hub): Promise<DaemonHere> {
     origin: hub.address.origin,
     log: warnToProcessLog,
   });
+  void done.then(show);
+  return done;
 }
 
 /** For tests: the next call runs as the first of a start of the app. */
