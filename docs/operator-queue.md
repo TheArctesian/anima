@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (150)
+## 2. Open decisions (154)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -50,6 +50,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W50 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the jobs of the work route? K1 changes only by a ruling (CON-001). Part 1 of task… | Open. Recommendation: approve the five fields as proposed; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI1 | Does "Set up all" also replace an entry `anima` that a person wrote and that starts a different program (state `different`)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI2 | Which agents are in the first build: the eight of 12.2? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI3 | May the command run the own program of an agent (`claude`, `codex`, `gemini`) to set it up, or must it only write files? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI4 | Does the application set up the agents by itself at the first sign-in? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
