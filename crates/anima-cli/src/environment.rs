@@ -71,11 +71,12 @@ pub fn process_config_dir() -> Option<PathBuf> {
     config_dir(variable("XDG_CONFIG_HOME"), variable("HOME"))
 }
 
-/// The home folder of this process (`HOME`) when it is an absolute path: the session files of
+/// The home folder of this process (`HOME`; `USERPROFILE` on Windows) when it is an absolute path: the session files of
 /// the agent programs of this user are below it (THR-007).
 #[must_use]
 pub fn process_home() -> Option<PathBuf> {
-    variable("HOME")
+    let name = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+    variable(name)
         .map(PathBuf::from)
         .filter(|home| home.is_absolute())
 }

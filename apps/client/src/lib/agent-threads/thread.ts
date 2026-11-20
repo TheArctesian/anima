@@ -56,7 +56,7 @@ export function programName(program: Program): string {
 /** The last part of a folder path: the name a person knows the folder by. */
 export function folderName(folder: string | null): string {
   if (folder === null) return 'No folder';
-  const parts = folder.split('/').filter((part) => part !== '');
+  const parts = folder.split(/[/\\]/).filter((part) => part !== '');
   return parts.at(-1) ?? folder;
 }
 

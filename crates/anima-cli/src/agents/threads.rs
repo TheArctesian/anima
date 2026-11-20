@@ -9,9 +9,9 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
+use agent_threads::Source;
+use agent_threads::Thread;
 use chrono::{DateTime, Utc};
-use daemon_core::agent_threads::Thread;
-use daemon_core::agent_usage::Source;
 use serde::Serialize;
 
 use crate::environment::process_home;
@@ -104,6 +104,12 @@ impl ThreadRow {
             last: thread.last.max(modified),
         }
     }
+}
+
+/// The last part of a folder path that is not empty, with the separators of each system.
+#[must_use]
+pub fn folder_name(folder: &str) -> Option<&str> {
+    folder.rsplit(['/', '\\']).find(|part| !part.is_empty())
 }
 
 /// The words of a program for a person and in JSON.
@@ -209,11 +215,7 @@ fn table(rows: &[ThreadRow]) -> Table {
             || "-".to_owned(),
             |at| at.format("%Y-%m-%d %H:%M").to_string(),
         );
-        let folder = row
-            .folder
-            .as_deref()
-            .and_then(|folder| folder.rsplit('/').next())
-            .unwrap_or("-");
+        let folder = row.folder.as_deref().and_then(folder_name).unwrap_or("-");
         table.row(vec![
             Cell::new(&last),
             Cell::toned(shown::program_words(row.program), Tone::Muted),

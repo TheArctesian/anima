@@ -2,8 +2,8 @@
 
 use std::fmt::Write as _;
 
+use agent_threads::{Entry, EntryKind, Thread};
 use chrono::{DateTime, Utc};
-use daemon_core::agent_threads::{Entry, EntryKind, Thread};
 use serde::Serialize;
 
 use super::ThreadRow;

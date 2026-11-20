@@ -92,10 +92,7 @@ impl AgentTool {
 
 /// What an agent gets of a row: no start of a prompt, no path, no branch.
 fn narrow(row: &ThreadRow) -> Value {
-    let folder = row
-        .folder
-        .as_deref()
-        .and_then(|folder| folder.rsplit('/').find(|part| !part.is_empty()));
+    let folder = row.folder.as_deref().and_then(threads::folder_name);
     serde_json::json!({
         "id": row.id,
         "program": row.program,

@@ -2,6 +2,9 @@
 //! `docs/proposals/agent-threads.md`): the prompts, the replies, the reasoning, the tool calls
 //! with their results and patches, and the ends of the turns, in the order of the file.
 //!
+//! A crate of its own, so that the `anima` command is built from this reader alone and not from
+//! the core of the daemon (`deploy/release/applications.txt`).
+//!
 //! Pure: [`ThreadReader`] takes the lines of one session file and gives a [`Thread`]. It reads
 //! the file of the program as the program wrote it and starts nothing. The text it keeps is
 //! held to [`MAX_TEXT`] for each entry and [`MAX_ENTRIES`] for each thread. Whoever reads the
@@ -19,7 +22,12 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 
-use crate::agent_usage::Source;
+/// The agent program a session file comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Source {
+    ClaudeCode,
+    Codex,
+}
 
 /// A time of a line.
 type Time = DateTime<Utc>;

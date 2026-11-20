@@ -87,7 +87,7 @@ The licence is MIT: "Copyright (c) 2026 T3 Tools Inc." MIT permits a copy of the
 | 2.9 | The diff of each turn | must | Nothing | The patch of each edit in the file (TH1) | Read side: the patch of each edit. Checkpoint diffs: stage 4 |
 | 2.10 | Errors with Retry | must | Nothing | — | Stage 1b |
 | 2.11 | Context meter; usage page; limits | should; later | Agent usage (AIS-018 to AIS-024, built) | `fleet/agent_usage` | A link from a thread to its usage (TH4); use by thread needs AIS-018 to change (OD-THR9) |
-| 3.1 | One adapter interface and one event model | must | Nothing | `daemon-core` (pure core) | `daemon_core::agent_threads` (TH1) is the start of the event model |
+| 3.1 | One adapter interface and one event model | must | Nothing | `daemon-core` (pure core) | the crate `agent-threads` (TH1) is the start of the event model |
 | 3.2 | Permission modes: supervised, accept edits, auto, full access | must (supervised and full) | Nothing | — | Stage 3; the default is OD-THR6 |
 | 3.3 | Codex through `codex app-server` | must | BOT-033 permits only `codex exec` and `codex exec resume` (Draft) | — | OD-THR3 |
 | 3.4 | Claude Code through the Agent SDK | must | BOT-032 permits only the `claude` program (Draft) | — | Through `claude -p` with stream JSON (Section 4.4); OD-THR2 |
@@ -153,7 +153,7 @@ T3 Code uses the Claude Agent SDK and the account methods of `codex app-server`.
 
 - **THR-020.** The Claude Code adapter must run the installed `claude` program, as the vendor published it, with `-p`, `--input-format stream-json`, `--output-format stream-json` and `--verbose`, and with `--resume <id>` for an existing thread. It must take approvals through `--permission-prompt-tool` with a tool of the thread runner, so that each approval comes to the runner and then to the person. It must not use the Agent SDK, make or pass a long-lived token (`claude setup-token`), or read the login file (BOT-020, BOT-032). [NEEDS CLARIFICATION: that `--permission-prompt-tool` with stream JSON input gives every approval that the interactive program asks for, and that a turn can be stopped; not verified, task TH10 measures it.]
 - **THR-021.** The Codex adapter: OD-THR3. With `codex exec --json` and `codex exec resume` (BOT-033) a turn has no approvals: the sandbox mode is fixed for the turn, and the program asks nothing. With `codex app-server` a turn has approvals, steer and interrupt, as in T3 Code. Recommendation: `codex app-server` with only the thread, turn and approval methods, never an account method (`account/login/start`, `chatgptAuthTokens`, `account/read`), and only on a device where the person signed in to Codex on that device. This needs a ruling that changes BOT-033.
-- **THR-022.** Each adapter must turn the events of its program into the entries of `daemon_core::agent_threads` (TH1): prompt, reply, reasoning, tool call with result and patch, plan, approval, question, end of turn (with the reason), error. The client draws only these entries; it never reads a format of a vendor.
+- **THR-022.** Each adapter must turn the events of its program into the entries of the crate `agent-threads` (TH1): prompt, reply, reasoning, tool call with result and patch, plan, approval, question, end of turn (with the reason), error. The client draws only these entries; it never reads a format of a vendor.
 
 ### 4.5 How the client gets the stream
 
@@ -212,7 +212,7 @@ The operator said on 2026-11-20, first-hand to the orchestrating session: "There
 
 ## 5. Requirements of stage 1a (the read side)
 
-- **THR-003.** `daemon_core::agent_threads` must read the lines of one session file of Claude Code (`~/.claude/projects/<project>/<id>.jsonl`) or Codex (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) into a thread: the prompts the person typed, the replies, the reasoning, the tool calls with their results and the patch of an edit, the ends of the turns and the compaction marks, in the order of the file. Lines of a sub-agent and lines that the program wrote for itself are not entries. It is pure; it reads no file.
+- **THR-003.** the crate `agent-threads` must read the lines of one session file of Claude Code (`~/.claude/projects/<project>/<id>.jsonl`) or Codex (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) into a thread: the prompts the person typed, the replies, the reasoning, the tool calls with their results and the patch of an edit, the ends of the turns and the compaction marks, in the order of the file. Lines of a sub-agent and lines that the program wrote for itself are not entries. It is pure; it reads no file.
 - **THR-004.** The title of a thread is the title that the person or the program gave (`custom-title`, `thread_name_updated`), else the first line of the first prompt, at most 80 characters.
 - **THR-005.** A tool call has a kind (command, edit, read, search, web, agent, plan, question, other) from the name of the tool, and one line that says what it does (the command, the path, the pattern).
 - **THR-006.** The text of one entry is held to 64 KiB and the output of one tool call to 16 KiB, cut at a character boundary with a mark; a thread holds at most 20,000 entries and counts the rest. A line that is not JSON changes nothing.
@@ -237,7 +237,7 @@ CMD-030 order: there is no hub API in stage 1a, and the plan gives the reason th
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
 | TH0 | This proposal, the ruling, the rows, the mockup, the inventory record, the security read | — | The documents gate | In progress (branch `docs/agent-threads`) |
-| TH1 | `daemon_core::agent_threads`: the reader of THR-003 to THR-006 | TH0 merged (PLN-011) | Tests `thr_001` to `thr_006` | Built on `threads/read-side` |
+| TH1 | the crate `agent-threads`: the reader of THR-003 to THR-006 | TH0 merged (PLN-011) | Tests `thr_001` to `thr_006` | Built on `threads/read-side` |
 | TH2 | `anima agents threads` and `anima agents thread` (THR-007, THR-008) | TH1 | Tests `thr_007`, `thr_008`, with a home folder of test files and a link that is refused | Built on `threads/read-side` |
 | TH3 | The MCP tool `anima_agents_threads` (THR-018, THR-029) | TH2 | The catalogue tests (MCP-009, MCP-011) | Built on `threads/read-side` |
 | TH4 | The desktop shell commands `agent_threads_list` and `agent_thread_read` (main web view only, WEB-007), and the page Threads (THR-013 to THR-017) | TH2; the mockup approved | Client tests; HT-NEW-threadview | Built on `threads/read-side`. No person saw it in a window; not compared with the mockup; no separate reviewer read the page |

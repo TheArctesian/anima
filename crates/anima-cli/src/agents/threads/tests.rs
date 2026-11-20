@@ -92,6 +92,7 @@ fn thr_007_a_thread_is_found_by_its_id_or_the_end_of_its_file_name() {
     ));
 }
 
+#[cfg(unix)]
 #[test]
 fn thr_007_a_session_file_that_is_a_link_is_not_listed() {
     let home = home();
@@ -142,6 +143,7 @@ fn thr_007_a_glance_reads_the_title_from_the_end_of_a_long_file() {
     assert!(Path::new(&file).exists());
 }
 
+#[cfg(unix)]
 #[test]
 fn thr_007_a_session_file_with_a_second_name_is_not_read() {
     let home = home();
@@ -152,6 +154,7 @@ fn thr_007_a_session_file_with_a_second_name_is_not_read() {
     assert!(!ids(&list(home.path(), None, DEFAULT_LIMIT)).contains(&"8b8b8b8b-hard"));
 }
 
+#[cfg(unix)]
 #[test]
 fn thr_007_a_root_folder_that_is_a_link_gives_no_thread() {
     let home = home();

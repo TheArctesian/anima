@@ -2,19 +2,20 @@
 //! THR-007): only the names below, never a link, and never a settings or credential file of
 //! the programs. A folder on the way from the home folder to a session file must be a real
 //! folder, and a session file must belong to this user and have one name (no hard link). This
-//! is the I/O edge; `daemon_core::agent_threads` reads the lines.
+//! is the I/O edge; the crate `agent-threads` reads the lines.
 //!
 //! - `.claude/projects/<project>/<id>.jsonl`: the session `<id>` (sub-agents are not threads);
 //! - `.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`: a Codex thread, named inside the file.
 
 use std::fs::{self, DirEntry, File};
 use std::io::{self, BufRead as _, BufReader, Read as _, Seek as _, SeekFrom};
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use daemon_core::agent_threads::{Thread, ThreadReader};
-use daemon_core::agent_usage::Source;
+use agent_threads::Source;
+use agent_threads::{Thread, ThreadReader};
 
 /// The most files one walk lists, so a folder full of files cannot hold the command.
 const MAX_FILES: usize = 100_000;
@@ -160,7 +161,9 @@ fn skip_line(source: &mut impl io::BufRead) -> io::Result<u64> {
 }
 
 /// Opens the regular file at `path` for reading without following a link in its last part
-/// (`O_NOFOLLOW`), and without waiting on a pipe (`O_NONBLOCK`).
+/// (`O_NOFOLLOW`), and without waiting on a pipe (`O_NONBLOCK`); the file must belong to this
+/// user and have one name.
+#[cfg(unix)]
 fn open_no_link(path: &Path) -> io::Result<File> {
     use rustix::fs::{Mode, OFlags};
     let flags = OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC;
@@ -168,12 +171,27 @@ fn open_no_link(path: &Path) -> io::Result<File> {
     let metadata = file.metadata()?;
     let own = metadata.uid() == rustix::process::getuid().as_raw();
     if !metadata.is_file() || !own || metadata.nlink() != 1 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "not a regular file of this user with one name",
-        ));
+        return Err(not_a_session_file());
     }
     Ok(file)
+}
+
+/// Opens the regular file at `path` for reading; a path whose last part is a link or a
+/// reparse point is refused. Windows gives no owner and no count of names here: the folder of
+/// the profile of the user is the limit.
+#[cfg(windows)]
+fn open_no_link(path: &Path) -> io::Result<File> {
+    if !fs::symlink_metadata(path)?.is_file() {
+        return Err(not_a_session_file());
+    }
+    File::open(path)
+}
+
+fn not_a_session_file() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "not a regular file of this user with one name",
+    )
 }
 
 fn file(entry: &DirEntry, source: Source) -> Option<SessionFile> {
