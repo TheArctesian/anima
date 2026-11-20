@@ -2628,7 +2628,8 @@ control group, its user and its folders.
    Expected: `/var/lib/anima/hub/log/anima-daemon.log` exists and shows no error. `/run/anima/own-daemon.code` does
    not exist. `/var/lib/anima/hub/daemon/token` exists, mode 0600.
 2. Open the hub in the client, go to "Devices" and open the row of the hub.
-   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The memory total is that of the container
+   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The row shows the logo and the name of the
+   distribution of the image (for example Debian), and the device page offers no SSH, RDP, VNC or screen sharing. The memory total is that of the container
    (1.5 GiB on the plan of the read of 2026-11-20), not that of the server. The disk shows the bytes of the hub's data
    with no total and no percent.
 3. Restart the hub.
