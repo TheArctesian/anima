@@ -25,7 +25,7 @@ or limit what it can touch.
 ## Proposal
 
 - **AGN-001.** An AI agent run is a job ([jobs.md](jobs.md)). The rules USE-001 to USE-007 apply.
-- **AGN-002.** A run must name its workspace: one machine and one folder. The machine is the one that the caller names or that routing picks (ROU-001 of [jobs.md](jobs.md), R-242). The run must not read
+- **AGN-002.** A run must name its workspace: one machine and one folder. The machine is the one that the caller names or that routing picks (ROU-001 of [jobs.md](jobs.md), R-243). The run must not read
   or write outside the workspace.
 - **AGN-003.** A run must not have access to the credentials of the coordinator.
 - **AGN-004.** Each run must have an allow list of tools.

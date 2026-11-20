@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: Version 4 (2026-11-19): R-242 (operator, first-hand, 16:41 to 16:50 PT) adds automatic routing of work to the right machine for all work (ROU-001 to ROU-014, not approved; tasks RT0 to RT8) and changes JOB-015 and MCP-006. Direction decided (OD-W10; R-160, 2026-11-18, confirms it also for a hosted hub and replaces the "command channel" item of R-115). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md).
+evidence: Version 4 (2026-11-19): R-243 (operator, first-hand, 16:41 to 16:50 PT) adds automatic routing of work to the right machine for all work (ROU-001 to ROU-014, not approved; tasks RT0 to RT8) and changes JOB-015 and MCP-006. Direction decided (OD-W10; R-160, 2026-11-18, confirms it also for a hosted hub and replaces the "command channel" item of R-115). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md).
 ---
 
 # Proposal: jobs (work that the coordinator gives to a machine)
@@ -16,7 +16,7 @@ The requirements are not yet approved one by one. The decision changes R-115. Ve
 JOB-011, a proposal that follows OD-W13. Version 3 adds
 JOB-012 to JOB-027, jobs that an AI agent starts.
 Map: [work-plan.md](../work-plan.md), category Use, decisions OD-W5, OD-W6, OD-W10 and OD-W13.
-Identifiers: USE-001 to USE-009, JOB-001 to JOB-027, ROU-001 to ROU-014, OD-ROU1 to OD-ROU6, tasks RT0 to RT8.
+Identifiers: USE-001 to USE-009, JOB-001 to JOB-027, ROU-001 to ROU-016, OD-ROU1 to OD-ROU9, tasks RT0 to RT8.
 
 ## Problem
 
@@ -128,32 +128,34 @@ of a model (its Section 5.2); this proposal does not use that word for jobs.
 - **JOB-014.** When no machine fits, the hub must refuse the job at once. The refusal must name
   each requirement that no machine meets. Example: "No machine has the target
   `aarch64-unknown-linux-gnu`".
-- **JOB-015.** No command and no MCP tool takes a command line for a machine (USE-006, MCP-006).
+- **JOB-015.** No command and no MCP tool takes a command line for a machine (USE-006, MCP-006). Exception (R-244, OD-ROU1): a routed session or command line (ROU-015, ROU-016); not approved, no effect before RT7.
   A caller names a job type from the fixed list and gives the parameters of that type. When the
-  caller names no machine, routing picks it and starts the work with no question (ROU-001, R-242).
+  caller names no machine, routing picks it and starts the work with no question (ROU-001, R-243).
   Routing does not change this rule: it never adds a command line or a work type.
 - **JOB-016.** The build of a project and the test of a project are the first two job types
   that a caller can start. The steps come from the configuration of the project (PRO-009), not
   from the caller.
 
-### Automatic routing to the right machine (R-242)
+### Automatic routing to the right machine (R-243)
 
-The operator, first-hand (R-242, 2026-11-19): "And then also the MCP layer just automatically does the routing for you. Like if this machine is not the right machine to run it, then the other machine is the right machine to run it." (16:36 PT), then "Multiplexer Q1: ... send MCP machine routing to the jobs and agent-runs work on row 4.7." and "Multiplexer Q2: automatic for all work." The Planner had recommended that routing suggests a machine and asks first. These requirements are not approved (task RT1). The security review RT7 comes before any routed start ships. Placement stays one pure function (USE-003, JOB-013, CMP-011, PRO-051); routing is the use of that function for work that an AI agent or a person starts with no machine named.
+The operator, first-hand (R-243, 2026-11-19): "And then also the MCP layer just automatically does the routing for you. Like if this machine is not the right machine to run it, then the other machine is the right machine to run it." (16:36 PT), then "Multiplexer Q1: ... send MCP machine routing to the jobs and agent-runs work on row 4.7." and "Multiplexer Q2: automatic for all work." The Planner had recommended that routing suggests a machine and asks first. These requirements are not approved (task RT1). The security review RT7 comes before any routed start ships. Placement stays one pure function (USE-003, JOB-013, CMP-011, PRO-051); routing is the use of that function for work that an AI agent or a person starts with no machine named.
 
-- **ROU-001.** When a caller (the `anima` command, an MCP tool, or a run) starts work and names no machine, the hub must pick the machine with the placement function and start the work there, with no question to the operator. "Work" is a job of a type in the fixed list (USE-006, JOB-015), an agent run ([agent-runs.md](agent-runs.md)), and an agent task that BOT-069 starts in a Herdr pane (AXT-012, AXT-026). The container work types of [hosted-applications-stage-2.md](hosted-applications-stage-2.md) Section 4 are not routed: an application has one machine, the item names it, and R-234 limits what an API key or an MCP tool may ask for there; routing does not change R-226 to R-238. The placement of a managed stack (extensions-plan.md OBS-032) is a proposal of the hub that the operator confirms, not a routed start. [NEEDS CLARIFICATION: OD-ROU1, whether "all work" also means an interactive session or a command line on a device; the recommendation is no.]
-- **ROU-002.** The right machine is the result of the placement function over: the requirement set (JOB-012: tools and versions from the inventory, CAP-023; the build target; free memory; free disk), the device policy (USE-004, USE-009), the state of the machine (online; no check of the machine Down), the work that runs on it now, and whether it holds the local copy of the repository. Among machines that fit, the order is [NEEDS CLARIFICATION: OD-ROU2]. The function takes the time as a parameter (CQ-021).
+- **ROU-001.** When a caller (the `anima` command, an MCP tool, or a run) starts work and names no machine, the hub must pick the machine with the placement function and start the work there, with no question to the operator. "Work" is a job of a type in the fixed list (USE-006, JOB-015), an agent run ([agent-runs.md](agent-runs.md)), and an agent task that BOT-069 starts in a Herdr pane (AXT-012, AXT-026). The container work types of [hosted-applications-stage-2.md](hosted-applications-stage-2.md) Section 4 are not routed: an application has one machine, the item names it, and R-234 limits what an API key or an MCP tool may ask for there; routing does not change R-226 to R-238. The placement of a managed stack (extensions-plan.md OBS-032) is a proposal of the hub that the operator confirms, not a routed start. "Work" also includes an interactive session and a command line on a device (R-244, OD-ROU1: "OD-ROU1: yes, automatic routing also opens sessions and command lines."; against the recommendation). ROU-015 and ROU-016 apply to them.
+- **ROU-002.** The right machine is the result of the placement function over: the requirement set (JOB-012: tools and versions from the inventory, CAP-023; the build target; free memory; free disk), the device policy (USE-004, USE-009), the state of the machine (online; no check of the machine Down), the work that runs on it now, and whether it holds the local copy of the repository. Among machines that fit, the hub picks the machine with the most free memory (R-244, OD-ROU2). The function takes the time as a parameter (CQ-021).
 - **ROU-003.** Routing never widens access. It picks only from the machines that the caller's token may use (MCP-003, INT-003), that take work (USE-004), and where the needed tool is installed and granted (AXT grants for each device). It never installs a tool (AXT-021), never sets "takes work" on, never moves a secret to a machine that the work could not get without routing (JOB-010, JOB-020), and never uses a machine that the operator excluded (ROU-006).
 - **ROU-004.** The result of a routed start must name the machine and give the reason in one line, for example "studio: has cargo 1.83 and 22 GB free; laptop refused: 2 GB free". The caller sees it in the reply of the command or of the MCP tool. The text is data (MCP-008).
 - **ROU-005.** Each routing decision must write one audit entry (LOG-005, LOG-012 to LOG-020): the actor kind and the caller, the work type, the requirement set, each candidate with the reason it was refused, the machine picked, and the time. It holds no secret and no prompt text (LOG-007). `anima routing log` and the MCP read tool `anima_routing_log` read these entries.
-- **ROU-006.** Pins. The operator can pin a machine for a project, for an agent or for one start, and can exclude a machine from routing (it still takes work that names it). A caller can name a machine; then routing does not run. A pinned or named machine that does not fit is refused with the reasons (JOB-014); routing must not pick a different machine in its place (as RTR-014: a named node is never replaced silently). [NEEDS CLARIFICATION: OD-ROU3.]
-- **ROU-007.** When no machine fits, the hub must refuse the work at once and name each requirement that no machine meets (JOB-014). [NEEDS CLARIFICATION: OD-ROU4, whether the work waits in the queue for a time, or the client offers a VM ([cloud-machines.md](cloud-machines.md)).]
+- **ROU-006.** Pins. The operator can pin a machine for a project, for an agent or for one start, and can exclude a machine from routing (it still takes work that names it). A caller can name a machine; then routing does not run. A pinned or named machine that does not fit is refused with the reasons (JOB-014); routing must not pick a different machine in its place (as RTR-014: a named node is never replaced silently). Both the operator and the caller can pin (R-244, OD-ROU3).
+- **ROU-007.** When no machine fits, the work waits in the queue until a machine fits (R-244, OD-ROU4: "OD-ROU4: queue the work until a machine fits."; against the recommendation). The reply names each requirement that no machine meets now (JOB-014) and says that the work waits. [NEEDS CLARIFICATION: OD-ROU7, the time after which queued work is refused; OD-ROU8, where the operator and the caller see and cancel queued work.] A session or a command line does not wait in the queue: it is refused at once with the reasons.
 - **ROU-008.** If a machine stops during routed work, USE-007 applies: the hub routes the work again, and that is a new decision with its own audit entry. A run that wrote to a scratch ref starts again from its last commit (AGN-011).
 - **ROU-009.** The tools that start routed work follow the MCP states (MCP-002): with nothing saved they are `allow` (R-120) and route with no question; `ask` makes each start a question; `off` hides them. Routing never changes a state.
-- **ROU-010.** A limit: at most 30 routed starts for each caller in each hour, and at most the free slots of the machines. [NEEDS CLARIFICATION: OD-ROU5; the numbers are a recommendation.]
+- **ROU-010.** A limit: at most 30 routed starts for each caller in each hour, and at most the free slots of the machines. (R-244, OD-ROU5.) Queued work counts at its start.
 - **ROU-011.** The client shows the machine and the reason on each routed item of the list of what runs (PRO-052) and on the Agents page (AXT-051).
 - **ROU-012.** The command line has `anima work start <type>` with the parameters of the type and an optional `--on <machine>`; MCP has the same as one change tool. [NEEDS CLARIFICATION: the names are a suggestion for the interface review.]
-- **ROU-013.** A routed start from the Chat page follows ROU-009 and needs no click (CHAT-041, R-242). [NEEDS CLARIFICATION: OD-ROU6.] Each other tool of the Chat page that acts on a machine keeps the click.
-- **ROU-014.** No routed start ships before the security review RT7 passes with no open finding of severity high. The review covers: a prompt injection that makes an agent start work on many machines; the reach of a write key; a secret on a machine that routing picked; the limits of ROU-010.
+- **ROU-013.** A routed start from the Chat page follows ROU-009 and needs no click (CHAT-041, R-243; R-244, OD-ROU6). Each other tool of the Chat page that acts on a machine keeps the click.
+- **ROU-015.** A routed session or command line is a session of the hub (design specification Section 6.3) with the access rules and the record of an SSH session. It opens on the machine that routing picked, as the user of the daemon, and never with more rights than a session that the operator opens. Each routed session writes one audit entry when it opens and one when it closes: the caller, the machine, the reason, the start, the end and the exit state; no command text, no output and no prompt (LOG-007). [NEEDS CLARIFICATION: OD-ROU9, whether the command text of a routed command line is kept in the audit entry; the recommendation is no.]
+- **ROU-016.** A routed session or command line must not ship before RT7 passes, and it has its own part of that review. It is not a pane: AXT-012 does not change, and only the operator opens a pane.
+- **ROU-014.** No routed start ships before the security review RT7 passes with no open finding of severity high. The review covers: a prompt injection that makes an agent start work on many machines; the reach of a write key; a secret on a machine that routing picked; the limits of ROU-010; a session or a command line that routing opens (ROU-015, ROU-016); queued work that starts later than the caller expects.
 
 #### Tasks of routing
 
@@ -162,7 +164,7 @@ One pull request for each task. All are Not started. They follow W3 (the queue a
 | Task | Wave | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | RT0 | 0 | A record: the inputs of ROU-002 that exist (inventory CAP-023, free memory MET, checks) and a threat model of automatic starts for RT7 | — | Not started | — |
-| RT1 | 1 | The operator approves ROU-001 to ROU-014 and decides OD-ROU1 to OD-ROU6 | The operator | Not started | — |
+| RT1 | 1 | The operator approves ROU-001 to ROU-016 and decides OD-ROU7 to OD-ROU9 | The operator | Not started | — |
 | RT2 | 1 | Docs: the contract text for the routed start and the audit entry (K1 schema; K10 if the claim carries the reason) | RT1 | Not started | — |
 | RT3 | 2 | Hub: routing over the placement function, the reasons, the audit entry (ROU-002 to ROU-005, ROU-007) | RT2; W3 | Not started | — |
 | RT4 | 2 | Hub: pins and exclusions (ROU-006), the limit (ROU-010), failover (ROU-008) | RT3 | Not started | — |
@@ -177,7 +179,7 @@ One pull request for each task. All are Not started. They follow W3 (the queue a
 | RT1, RT2 | Pass when the ruling or the documents exist and the gates pass; fail otherwise | `bun run quality:register`, `bun run quality:documents` | Code |
 | RT3 | Pass when the function is pure (a table test with fixed inventory and time), a machine without the grant or the tool never fits, no fit refuses with each reason, and each decision writes one audit entry with no secret; fail otherwise | `cargo nextest run -p anima-hub` | Pins |
 | RT4 | Pass when a pinned machine that does not fit is refused and never replaced, an excluded machine is never picked, the 31st start in an hour is refused, and a stopped machine leads to a new decision; fail otherwise | `cargo nextest run -p anima-hub` | — |
-| RT5 | Pass when the commands follow the output rules, the MCP tool follows `allow`, `ask` and `off`, and both pass their JSON-RPC tests (MCP-017); fail otherwise | `cargo nextest run -p anima-cli` | Sessions (OD-ROU1) |
+| RT5 | Pass when the commands follow the output rules, the MCP tool follows `allow`, `ask` and `off`, and both pass their JSON-RPC tests (MCP-017); fail otherwise | `cargo nextest run -p anima-cli` | — |
 | RT6 | Pass when the client shows the machine and the reason, and the mockup row names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run gates` | — |
 | RT7 | Pass when no finding of severity high is open and the `HT-nnn` entries exist; fail otherwise | `bun run quality:documents` | Fixes outside the findings |
 | RT8 | Pass when the operator sets the entry to Passed; fail otherwise | — | — |
@@ -194,12 +196,15 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 
 | Number | Question | Recommendation, with strengths and weaknesses | State |
 | --- | --- | --- | --- |
-| OD-ROU1 | Does "automatic for all work" include an interactive session or a command line on a device (open point 1 of cli-mcp-plan.md, MCP-006)? (yes/no) | No: work of the fixed types and agent runs only. Strength: keeps JOB-015 and USE-006, so a prompt injection cannot run a command on each machine. Weakness: an agent cannot open a shell on another machine. | Open |
-| OD-ROU2 | The order among machines that fit (one choice: the one with the local copy, then the most free memory; the most free memory only; the operator's fixed order of machines) | Local copy first, then most free memory. Strength: no transfer of the tree, and a fast start. Weakness: one machine can get most of the work. | Open |
-| OD-ROU3 | Who can pin a machine? (one choice: the operator only, in settings; also a caller with `--on`) | Both. Strength: an agent that knows a reason can name a machine, and a named machine is never replaced. Weakness: a caller can always pick the strongest machine. | Open |
-| OD-ROU4 | When no machine fits (one choice: refuse at once with the reasons; wait in the queue for up to 15 minutes; offer a VM) | Refuse at once. Strength: JOB-014 as it is; the agent can act on the reason. Weakness: work that would fit in a minute is refused. | Open |
-| OD-ROU5 | The limit of ROU-010: 30 routed starts for each caller in each hour? (yes/no) | Yes, change later from the audit log. Strength: stops a loop or an injection from filling all machines. Weakness: a real burst can hit it. | Open |
-| OD-ROU6 | Does a routed start from the Chat page also need no click (CHAT-041)? (yes/no) | Yes, as R-242 says "all work"; the MCP state `ask` stays available. Strength: one rule for routing. Weakness: the Chat page is weaker than the click rule of Hermes for this one tool. | Open |
+| OD-ROU1 | Does "automatic for all work" include an interactive session or a command line on a device (open point 1 of cli-mcp-plan.md, MCP-006)? (yes/no) | Decided (R-244): "OD-ROU1: yes, automatic routing also opens sessions and command lines." Against the recommendation. ROU-001, ROU-015, ROU-016. |
+| OD-ROU2 | The order among machines that fit (one choice: the one with the local copy, then the most free memory; the most free memory only; the operator's fixed order of machines) | Decided (R-244): "OD-ROU2: the machine with the most free memory." Against the recommendation (local copy first). |
+| OD-ROU3 | Who can pin a machine? (one choice: the operator only, in settings; also a caller with `--on`) | Decided (R-244): "OD-ROU3: both the operator and the caller can pin a machine." As recommended. |
+| OD-ROU4 | When no machine fits (one choice: refuse at once with the reasons; wait in the queue for up to 15 minutes; offer a VM) | Decided (R-244): "OD-ROU4: queue the work until a machine fits." Against the recommendation. ROU-007; OD-ROU7 and OD-ROU8 open. |
+| OD-ROU5 | The limit of ROU-010: 30 routed starts for each caller in each hour? (yes/no) | Decided (R-244): "OD-ROU5: yes, a limit of 30 routed starts per caller per hour." As recommended. |
+| OD-ROU6 | Does a routed start from the Chat page also need no click (CHAT-041)? (yes/no) | Decided (R-244): "OD-ROU6: yes, routed starts from the Chat page need no click." As recommended. |
+| OD-ROU7 | After how long is queued work refused? (one choice: 1 hour; 24 hours; never, until cancelled) | Open. Recommendation: 24 hours, then refused with the reasons and one notification. Strength: no work starts days late; a nightly window still fits. Weakness: a long job on a busy fleet can still time out. |
+| OD-ROU8 | Where are queued items seen and cancelled? (one choice: the list of what runs (PRO-052) with the state Queued, plus `anima work list --queued` and an MCP read; the needs-you inbox only) | Open. Recommendation: the list of what runs, the command and MCP, with Cancel for the operator and the caller that queued it. Strength: CMD-030 order; one list. Weakness: none known. |
+| OD-ROU9 | Does the audit entry of a routed command line keep the command text? (yes/no) | Open. Recommendation: no; the entry keeps the caller, the machine, the times and the exit state (LOG-007). Strength: no secret in the log. Weakness: the log cannot show what ran. |
 
 ### The working tree
 
@@ -242,7 +247,7 @@ A job builds a commit. The working tree of the operator has changes that are not
 | Question | Recommendation |
 | --- | --- |
 | How does the working tree get to the other machine? | A scratch ref on the forge (JOB-017). A file sync is a second transport. |
-| Does MCP-006 stay? | Changed by R-242: an MCP tool may start work of a fixed type, or an agent run, on the machine that routing picks (ROU-001). No tool takes a command line (JOB-015). Open point 1 of [cli-mcp-plan.md](../plans/cli-mcp-plan.md) (a session for an agent) stays open (OD-ROU1). |
+| Does MCP-006 stay? | Changed by R-243: an MCP tool may start work of a fixed type, or an agent run, on the machine that routing picks (ROU-001). R-244 (OD-ROU1) adds routed sessions and command lines (ROU-015, ROU-016); open point 1 of [cli-mcp-plan.md](../plans/cli-mcp-plan.md) is thus decided for routed work. |
 | Which token can start a job? | A write API key, with the MCP tool `off` until the operator allows it (MCP-002). |
 
 ## Decision (OD-W10, operator, 2026-11-12)

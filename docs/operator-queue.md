@@ -36,7 +36,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (148)
+## 2. Open decisions (142)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -115,9 +115,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
-| OD-AXT19 | Where does the state of a Herdr pane come from? (one choice: a state interface of Herdr, if one exists (task AX17 checks); the hook protocol of the idea `agent-… | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
-| OD-AXT20 | Does the view send an alert when an agent waits for input? (yes/no) | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
-| OD-AXT21 | Does the Agents page replace the link list of PNL-002, or add a tab beside it? (one choice: replace; a tab "All devices") | Open | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -153,12 +150,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | The forms of the shell stay. The refresh of a real token is step 4 of HT-022. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| OD-ROU1 | Does "automatic for all work" include an interactive session or a command line on a device (open point 1 of cli-mcp-plan.md, MCP-006)? (yes/no) | Open | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU2 | The order among machines that fit (one choice: the one with the local copy, then the most free memory; the most free memory only; the operator's fixed order of… | Open | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU3 | Who can pin a machine? (one choice: the operator only, in settings; also a caller with `--on`) | Open | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU4 | When no machine fits (one choice: refuse at once with the reasons; wait in the queue for up to 15 minutes; offer a VM) | Open | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU5 | The limit of ROU-010: 30 routed starts for each caller in each hour? (yes/no) | Open | [proposals/jobs.md](proposals/jobs.md) |
-| OD-ROU6 | Does a routed start from the Chat page also need no click (CHAT-041)? (yes/no) | Open | [proposals/jobs.md](proposals/jobs.md) |
+| OD-ROU7 | After how long is queued work refused? (one choice: 1 hour; 24 hours; never, until cancelled) | Open. Recommendation: 24 hours, then refused with the reasons and one notification. Strength: no work starts days late; a nightly window still fits. Weakness: a… | [proposals/jobs.md](proposals/jobs.md) |
+| OD-ROU8 | Where are queued items seen and cancelled? (one choice: the list of what runs (PRO-052) with the state Queued, plus `anima work list --queued` and an MCP read;… | Open. Recommendation: the list of what runs, the command and MCP, with Cancel for the operator and the caller that queued it. Strength: CMD-030 order; one list.… | [proposals/jobs.md](proposals/jobs.md) |
+| OD-ROU9 | Does the audit entry of a routed command line keep the command text? (yes/no) | Open. Recommendation: no; the entry keeps the caller, the machine, the times and the exit state (LOG-007). Strength: no secret in the log. Weakness: the log can… | [proposals/jobs.md](proposals/jobs.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
