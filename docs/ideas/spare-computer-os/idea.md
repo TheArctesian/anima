@@ -40,6 +40,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 18: resource priorities | Decided | A + D: service-first by default, with owner-selectable service-first, worker-first and balanced profiles. Reserve capacity for OS, remote management and recovery under every profile. Jobs use remaining capacity under service-first, and admission may wait. Explain effects of profile changes; do not silently kill running work. Existing scheduler/workload owners define enforcement, resource limits and admission behavior. |
 | Decision 19: automatic storage cleanup | Decided | A + B + C: eligible regenerable caches/unused images; history expired under explicit retention; completed job workspaces/artifacts explicitly marked disposable with a configured lifetime. Protect active/pinned workloads, designated recovery points and the previous known-good system. Preserve persistent app data, user files, credentials and unmarked job outputs. If permitted cleanup is insufficient, alert and restrict new allocations rather than broaden deletion authority. Exact eligibility, retention and pressure thresholds remain open. |
 | Decision 20: backup destinations | Decided | A + B + C: another explicitly authorized enrolled Anima machine, user-provided network storage, and a deliberately selected separate attached or secondary drive. Do not automatically use or format unselected disks. User-provided cloud/object storage and Anima-managed backup storage are not selected for the first version. Expose destination configuration and last successful backup; define capacity, authentication, retention and restore validation. Same-disk snapshots are not disk-failure backups. |
+| Decision 21: backup coverage | Decided | A + D: after destination/policy approval, cover managed persistent data and configuration by default, with optional owner-selected extra paths. Include persistent agent/job workspaces and retained outputs; exclude regenerable OS packages/caches and explicitly disposable work. Show exclusions and workloads without a reliable backup method. Define app-consistent capture and restore handling, including custom services. Credential/identity recovery and backup encryption remain open. Whole-disk imaging is not selected as the default. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -76,7 +77,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 21: what should a configured backup include by default? Alternatives: managed persistent data plus configuration, excluding regenerable/disposable state; a whole-machine image; explicit owner selection only. Optional addition: owner-selected unmanaged paths. Recommendation: managed persistent data/configuration by default with explicit extra paths, after destination and policy approval. Credentials, identity restoration, encryption, app-consistent capture, retention and restore validation need separate design. No selection yet; encryption of backup content is not decided by installation-disk encryption being off.
+2. Decision 22: how should backups be encrypted and recovery keys controlled? Options: encrypt before transfer with owner-controlled recovery material; add an explicitly authorized second-device key copy; service/account-assisted key recovery; encryption optional. Recommendation: encryption before transfer with an exportable owner recovery key and optional explicitly authorized second-device copy, without assuming service-held keys. Automatic backups must not require a password each run; recovery must not depend only on the failed source machine. No selection yet. Key-storage design and authentication remain to be specified; installation disk encryption stays opt-in/off by default.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -161,6 +162,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 19 accepted A + B + C. Completed work is removable only when explicitly disposable under its declared lifetime; persistent/unmarked data stays protected. Next: backup destinations beyond same-disk snapshots.
 
 - 2026-11-19: Decision 20 accepted A + B + C: another enrolled machine, network storage and selected separate drives. Cloud destinations and Anima-operated storage are not in the selected first-version scope. Next: default backup coverage.
+
+- 2026-11-19: Decision 21 accepted A + D: managed persistent data/configuration and extra owner-selected paths. Next: backup encryption and recovery-key ownership, separately from installation-disk encryption.
 
 ## Source text
 
@@ -269,3 +272,7 @@ In response to Decision 19:
 In response to Decision 20:
 
 > Yeah A B C
+
+In response to Decision 21 (recommendation A + D):
+
+> Agreed
