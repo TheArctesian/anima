@@ -16,7 +16,7 @@ pub struct Environment {
     pub token: Option<Zeroizing<String>>,
     /// `ANIMA_TOKEN_STORE=file`: keep the token in the 0600 file, not the OS key store.
     pub token_file: bool,
-    /// `$XDG_CONFIG_HOME/anima`, or `~/.config/anima` (CMD-015).
+    /// Unix: `$XDG_CONFIG_HOME/anima` or `~/.config/anima`; Windows: `%LOCALAPPDATA%/Anima/cli`.
     pub config_dir: Option<PathBuf>,
     /// `NO_COLOR` is set and not empty (CMD-027).
     pub no_colour: bool,
@@ -43,7 +43,7 @@ impl Environment {
                 .and_then(|value| value.into_string().ok())
                 .map(Zeroizing::new),
             token_file: value("ANIMA_TOKEN_STORE").is_some_and(|value| value == "file"),
-            config_dir: config_dir(value("XDG_CONFIG_HOME"), value("HOME")),
+            config_dir: process_config_dir(),
             no_colour: value("NO_COLOR").is_some(),
             terminals: Terminals {
                 stdin: std::io::stdin().is_terminal(),
@@ -58,10 +58,16 @@ fn variable(name: &str) -> Option<OsString> {
     std::env::var_os(name).filter(|value| !value.is_empty())
 }
 
-/// The configuration folder of this process, read from no variable but `XDG_CONFIG_HOME` and
-/// `HOME`: for a caller that needs the file and never the token (the desktop Settings panel).
+/// The configuration folder from the platform environment: `LOCALAPPDATA` on Windows,
+/// `XDG_CONFIG_HOME`/`HOME` on Unix. Does not read the token.
 #[must_use]
 pub fn process_config_dir() -> Option<PathBuf> {
+    if cfg!(windows) {
+        return variable("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .filter(|folder| folder.is_absolute())
+            .map(|folder| folder.join("Anima/cli"));
+    }
     config_dir(variable("XDG_CONFIG_HOME"), variable("HOME"))
 }
 

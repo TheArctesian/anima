@@ -76,3 +76,33 @@ checks, and 727 deployment tests. The client suite completed with 434 files pass
 and one old assertion that rejected Windows. That assertion now rejects Android;
 the changed device tests and platform tests pass (43 tests). A default-worker client
 run was killed; the completed client run used `--maxWorkers=2`.
+
+## WIN2 work in progress
+
+The native CLI now cross-compiles. Windows paths, Credential Manager selection,
+console control events, VT input and handle-based ACL checks replace the corresponding
+Unix boundaries. MCP configuration replacement preserves an existing ACL. These changes
+are not in the WIN1 installer, and no additional desktop capability is enabled yet.
+Windows executables use a static CRT: the first CLI smoke test could not start because
+`VCRUNTIME140.dll` was absent (exit `0xc0000135`). After the static-CRT change, the
+VM ran `anima --version` and `anima mcp agents`, and both native ACL test cases passed.
+These are smoke/security checks, not full MCP agent acceptance. The Linux CLI's 207
+library tests pass, including its 23 MCP installation tests. Limits, names, imports
+and document checks pass. The cross-linker warns about absent Microsoft CRT debug
+symbols (`LNK4099`); the binaries run without the external CRT DLL.
+
+The VM's Defender history on 2026-11-20 records repeated successful termination of
+`anima-link.exe`, with `Behavior:Win32/SuspClickFix.F` (threat ID 2147939205). The app
+subsequently showed its local connection as disconnected. The app was stopped to end
+its child restart loop. Defender was not disabled and no exclusion was added. This is
+an unresolved Windows acceptance blocker; the prior successful connection does not
+prove sustained operation. The detection's cause is not established. Microsoft documents
+[this behavior detection](https://www.microsoft.com/en-us/wdsi/threats/malware-encyclopedia-description?Name=Behavior%3AWin32%2FSuspClickFix.F)
+and provides a [developer analysis submission](https://www.microsoft.com/en-us/wdsi/filesubmission).
+No file was submitted.
+
+Remaining WIN2 work includes native CLI distribution and MCP agent paths, desktop setup
+controls, persistent link/daemon, power controls, native PostgreSQL/local hub, builder,
+update packaging and runtime acceptance. The new internal Windows boundary crate also
+needs a distribution design that preserves the CLI's standalone Cargo package; do not
+publish either crate from this trial.

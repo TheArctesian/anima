@@ -2187,4 +2187,9 @@ installed app resumed the saved account and showed Devices, Connected, and one h
 Up. The original transport failure was not isolated. No application code changed.
 Operator confirmation and remote-session testing remain outstanding.
 
+Agent observation, 2026-11-20: later the client disconnected while Defender repeatedly
+terminated its `anima-link.exe` child (`Behavior:Win32/SuspClickFix.F`). The desktop
+was stopped to end its restart loop. Detection cause is unresolved; Defender remains
+enabled, with no new exclusions. Sustained connection and restart acceptance remain open.
+
 Result: Open.

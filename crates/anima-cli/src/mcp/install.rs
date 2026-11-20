@@ -131,10 +131,10 @@ fn usage(message: String) -> Failure {
 
 /// This computer, from the process: the home folder, `PATH` and the user of the home folder.
 fn here() -> Result<Here, Failure> {
-    let home = std::env::var_os("HOME")
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
         .map(PathBuf::from)
         .filter(|home| home.is_absolute())
-        .ok_or_else(|| usage("HOME is not set to a folder.".to_owned()))?;
+        .ok_or_else(|| usage("The user home is not set to a folder.".to_owned()))?;
     let path = std::env::var_os("PATH")
         .map_or_else(Vec::new, |path| std::env::split_paths(&path).collect());
     Here::for_this_user(home, path).ok_or_else(|| {

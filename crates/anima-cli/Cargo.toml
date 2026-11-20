@@ -35,7 +35,7 @@ clap.workspace = true
 clap_complete.workspace = true
 # `anima ssh` and the hidden prompts (CMD-010): raw mode and the window size, restored on
 # every exit (K4 Section 8).
-crossterm.workspace = true
+crossterm = { workspace = true, features = ["windows"] }
 # The stream and sink halves of the subscription and tunnel WebSockets (CMD-003).
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 graphql_client.workspace = true
@@ -54,8 +54,6 @@ rustls.workspace = true
 rmcp = { workspace = true, features = ["elicitation"] }
 # The MCP tools' input schemas (MCP-009).
 schemars.workspace = true
-# `O_NOFOLLOW` with the value of each system, for the files of other programs (MCP-034).
-rustix = { version = "1.1", features = ["fs"] }
 serde.workspace = true
 serde_json.workspace = true
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
@@ -90,3 +88,11 @@ sha1.workspace = true
 # Each end-to-end test gets its own migrated database on the throwaway server (R-009, R-019).
 sqlx.workspace = true
 tokio = { workspace = true, features = ["process"] }
+
+[target.'cfg(unix)'.dependencies]
+# `O_NOFOLLOW` for other programs' configuration files (MCP-034).
+rustix = { version = "1.1", features = ["fs"] }
+
+[target.'cfg(windows)'.dependencies]
+anima-windows = { path = "../anima-windows" }
+keyring = { workspace = true, features = ["windows-native"] }
