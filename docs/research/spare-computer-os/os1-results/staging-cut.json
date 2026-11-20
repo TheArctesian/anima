@@ -1,0 +1,37 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "staging-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "staging-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "staging-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "staging-cut/1/serial.log",
+      "sha256": "82b3b93ef9100b2654412d8190c89d48a59dfece4bc05b73c6b4124cf79d0e19"
+    },
+    {
+      "path": "staging-cut/2/serial.log",
+      "sha256": "d08b563c5f0afd3ba69f533440291c1d0e66affabdec0aed037993fce9e36e35"
+    },
+    {
+      "path": "staging-cut/3/serial.log",
+      "sha256": "d5008b1ba08571e024a991027ec108428cb0312580ea023ea9b66dd4b985d1ff"
+    }
+  ]
+}

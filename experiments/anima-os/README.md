@@ -69,7 +69,7 @@ invalidates the affected run.
 ## Recovery experiment
 
 Known-good A is the initial default. Tests rename B's entry to `anima-b+2.conf`
-and choose it as the default. The candidate has two attempts. Healthy local
+and select `anima-*.conf`, keeping A eligible after B's attempts expire. The candidate has two attempts. Healthy local
 verification invokes systemd's boot blessing; a deliberately failed B health
 check triggers the failure unit to reboot without blessing. A failing fallback
 prints `ANIMA_RECOVERY_REQUIRED` and leaves the console available, without
@@ -88,6 +88,12 @@ Stop only the QEMU process associated with the run. Delete only the named run
 directory after retaining its evidence. Removing the `/tmp/anima-os-image`
 symlink releases that result reference; Nix store garbage collection is a
 separate owner operation. Do not run global cleanup or delete unrelated images.
+
+The `initrd-emergency-policy` follow-up adds `boot.panic_on_fail` only to the
+candidate entry on its disposable copy, then deliberately selects an initrd
+emergency target. NixOS has a built-in panic-on-fail unit; `panic=10` restarts the
+guest and the counter can select A. This tests a proposed candidate policy, not
+a change to the base artifact or proof of recovery before the initrd starts.
 
 ## Primary references
 

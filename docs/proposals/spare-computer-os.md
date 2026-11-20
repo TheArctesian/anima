@@ -1,16 +1,16 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.3 (2026-11-20). Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. No implementation or hardware validation has been performed. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
+evidence: Version 0.4 (2026-11-20). The operator authorized the bounded OS1 prototype; implementation and VM evidence are in the OS1 record. Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. A disposable x86-64 UEFI prototype is implemented under R-NEW-aosprototype; no physical hardware support or production integration is validated. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
 ---
 
 # Proposal: Anima OS for spare computers
 
 | Item | Value |
 | --- | --- |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-11-20 |
-| Status | Draft. The header holds the state. This proposal is not permission to build or release. |
+| Status | Draft outside the explicitly authorized OS1 F1/UEFI-F2 experiment. The header holds the state. No release is authorized. |
 | Serves | [Priority 4.16](../plan/priorities.md): a dedicated-machine installation path. This mapping adds no new tier and does not delay existing install work. Workload dependencies remain in rows 4.7 and 4.9; updates in 4.18. |
 | Owner | This proposal owns the proposed OS image, installer, host state layout and recovery integration. Existing owners retain application, job, agent, identity and permission semantics. |
 | Identifiers | AOS-001 to AOS-024; open decisions OD-AOS1 to OD-AOS7; proposed tasks OS0 to OS8 |
@@ -103,7 +103,7 @@ These are starting designs, not accepted implementations or support guarantees.
 
 ## 6. First feasibility experiments
 
-All experiments are proposed, not started. Use disposable VM disks and isolated test identities. No real disk may be erased by an experiment without explicit target authorization.
+F1 and the UEFI slice of F2 are authorized and implemented as a bounded experiment; see the [OS1 record](../research/spare-computer-os/os1-prototype-2026-11-20.md) for evidence and limits. F3/F4 remain unapproved and not started. Use disposable VM disks and isolated test identities. No real disk may be erased by an experiment without explicit target authorization.
 
 | Experiment | Question | Pass evidence | If it fails |
 | --- | --- | --- | --- |
@@ -135,7 +135,7 @@ Only the bounded OS1 F1/UEFI-F2 experiment in Section 13 is authorized by R-NEW-
 | Task | Work | Depends on | State | Completion evidence |
 | --- | --- | --- | --- | --- |
 | OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Planning complete | Section 13 is the OS0 acceptance record: dependency snapshot, proposed contract deltas, bounded experiment protocol and handoff; no implementation approval or runtime evidence |
-| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | In progress: bounded F1/UEFI-F2 only (R-NEW-aosprototype) | Branch `os/os1-uefi-prototype`; F3/F4 remain unapproved; report each gate separately |
+| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Bounded run implemented; qualification findings recorded, F2 not passed | [OS1 evidence](../research/spare-computer-os/os1-prototype-2026-11-20.md), implementation `29a875a2`; F1 fixture proof only, shutdown/initrd policy limits remain; F3/F4 unapproved |
 | OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Not started | M1 record |
 | OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Not started | M2 record |
 | OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
@@ -162,7 +162,7 @@ The implementation proposal is complete for review with these open decisions. No
 
 ## 10. Validation, risks and planning integration
 
-This is a documentation change only. Run `bun run quality:register`, `bun run quality:documents` and `bun run gates:fast`; the repository's branch/merge-train gates govern landing. No OS build, recovery trial, network integration or backup restore has been run.
+The proposal began as documentation only. OS1 now includes a disposable VM image and test harness; the [OS1 record](../research/spare-computer-os/os1-prototype-2026-11-20.md) owns its results. Run `bun run quality:register`, `bun run quality:documents`, `bun run gates:fast` and the prototype-specific checks. The branch/merge-train gates govern landing. Production network integration and backup restore remain unimplemented.
 
 Primary risks: read-only base plus host customization; fallback differences across firmware; TPM/update policy compatibility; missing ARM/Intel Mac drivers; shared storage exhaustion; workload-consistent backups; secret-bearing restore; and existing contracts that prohibit a proposed action. OS0 must reconcile the recent routed-command-line and agent-layer work instead of treating this proposal as an override.
 
@@ -212,8 +212,8 @@ Backup design separates production, restore and deletion authority. Define key e
 
 | Evidence gate | Prerequisites | Added pass evidence | Current state |
 | --- | --- | --- | --- |
-| F1 state/customization | Approved bounded brief; selected experimental base | Mount inventory and custom-service lifecycle above; normal write restrictions and interrupted activation | Not started |
-| F2 recovery | F1 candidate; boot-path-specific harness | Rejected boot entry, early kernel hang, userspace health failure and shutdown hang; identify what forces the next boot, timeout/retry bounds and outcome when both versions fail | Not started |
+| F1 state/customization | Approved bounded brief; selected experimental base | Mount inventory and custom-service lifecycle above; normal write restrictions and interrupted activation | Fixture proof recorded in OS1; real network/identity integration untested |
+| F2 recovery | F1 candidate; boot-path-specific harness | Rejected boot entry, early kernel hang, userspace health failure and shutdown hang; identify what forces the next boot, timeout/retry bounds and outcome when both versions fail | Partial: local-health fallback and bounded recovery proved; base initrd and shutdown hang cases fail; see OS1 |
 | F3 installation | Approved identity/installation contract deltas; F1/F2 base | Transaction and cutover tests in Section 12.3; unselected-disk hashes unchanged | Not started |
 | F4 workload/storage | Approved owner runtimes and OD-AOS7 resolution for affected behavior | App/job/agent coexistence; partition/reassignment and retained-state tests; workload writes, snapshots and update staging competing for shared capacity | Not started |
 
