@@ -1,3 +1,4 @@
+import { HUB_ORIGIN } from '../synthetic/access';
 import { expect } from '@playwright/test';
 import type { Screen } from './shots';
 import { openedDialog, openSettings, section } from './steps';
@@ -28,6 +29,21 @@ function channelDialog(slug: string, channel: string): Screen {
 }
 
 export const SETTINGS_SCREENS: readonly Screen[] = [
+  {
+    name: 'extensions-list',
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/extensions`);
+      await page.getByText('Projects', { exact: true }).waitFor();
+    },
+  },
+  {
+    name: 'extensions-grid',
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/extensions`);
+      await page.getByRole('radio', { name: 'Grid' }).click();
+      await page.getByText('Projects', { exact: true }).waitFor();
+    },
+  },
   { name: 'settings-page', open: openSettings },
   ...SECTIONS.map(sectionScreen),
   {
