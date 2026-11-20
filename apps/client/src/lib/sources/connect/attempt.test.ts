@@ -41,7 +41,7 @@ it('PRJ-039: CONNECTED says the first sync started, or that Projects is off', ()
     start: false,
   });
   expect(describeAttempt(attempt({ phase: 'CONNECTED', account: { health: 'PAUSED', pausedBy: 'EXTENSION_OFF' } })).line).toBe(
-    'GitHub is connected. Set Projects on in Settings > Extensions to read it.',
+    'GitHub is connected. Set Projects on in Extensions to read it.',
   );
 });
 

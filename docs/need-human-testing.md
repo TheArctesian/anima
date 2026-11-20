@@ -76,11 +76,13 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-NEW-overviewfull | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
+| HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1909,6 +1911,26 @@ host key, with many check states or while it loads.
 
 Result: Open.
 
+### HT-057: the Settings page after the interface review (R-224)
+
+Built on the branch `ui/v2-settings` (`1ffb6bf8`): the index of the Settings page (`apps/client/src/routes/settings/index.ts`,
+`apps/client/src/lib/page/contents/PageIndex.svelte`) names three groups, "Hub and account", "This computer" and
+"Connections", and the sections of the page are in the same order. The tests prove the order and the group names. The
+page was looked at only in pictures of the web client at 1280 px. No person saw it in the desktop application, which
+has the sections Hub, Stay awake, Updates and MCP, or on a phone.
+
+1. Open Settings in the desktop application, in a window about 1280 px wide.
+   Expected: the index at the left has three small titles. Under "Hub and account": Account, Hub, Notifications, Default
+   check settings, Data retention. Under "This computer": Stay awake, Appearance, Updates, MCP. Under "Connections":
+   Integrations, API keys, Extensions, and VPN on a hub that is not hosted.
+2. Scroll the page from the top to the foot.
+   Expected: the sections come in the order of the index, and the index marks the section at the top of the window.
+3. Select "MCP" in the index, then "Account".
+   Expected: the page goes to that section each time.
+4. Make the window narrow (below 1100 px).
+   Expected: the index is one row of links above the sections, with no group title.
+5. Open Settings on a phone.
+   Expected: Account and Hub are first and "Leave" is last; no part lies over another.
 ### HT-052: the tab Containers of a device after the interface review (R-224)
 
 Built on the branch `ui/v2-device-containers`, in `apps/client/src/lib/containers`: the table has one column "State" with
@@ -1967,5 +1989,29 @@ daemon, on a hosted hub, at other widths or while it loads.
 8. Make the window narrow (about 900 px), then reload the page, in the light and the dark appearance.
    Expected: "Connect", "SSH host key" and "About" are above the facts as one column; while the page loads, grey shapes
    are where the cards then are.
+### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
+
+Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
+name of the hub, and Extensions is an entry directly above Settings that opens the new page
+`apps/client/src/routes/extensions`. The Settings page has no section Extensions on a computer. The tests prove the
+order of the entries. The bar was looked at only in pictures of the web client at 1280 px; the page Extensions was
+pictured with no extension. No person saw the narrow bar, the panel of Live sessions at its new place, the page with
+its switches, or the phone.
+
+1. Open the application in a window about 1280 px wide.
+   Expected: the top of the bar has Devices, Agent usage, and Projects while that extension is on. At the foot, from the
+   top: Live sessions with its count, the name of the hub with "Connected", Extensions, Settings.
+2. Select "Live sessions" while a session is open.
+   Expected: its panel opens beside the bar and is whole inside the window; "Stop" ends the session.
+3. Select "Extensions".
+   Expected: a page "Extensions" opens with each extension and its switch. Set Projects on: "Projects" comes into the
+   top of the bar at once. Set it off again.
+4. Open Settings.
+   Expected: there is no section Extensions, and the index does not list it.
+5. Make the bar narrow with the control at its top.
+   Expected: the same order as icons; each icon has its name as a tooltip; Live sessions keeps its count.
+6. Open the application on a phone, then Settings.
+   Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
+   "Open Extensions", which opens the page.
 
 Result: Open.
