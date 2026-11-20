@@ -76,6 +76,8 @@ provider-dawarich = { path = "../providers/dawarich" }
 async-trait = "0.1"
 # The hub's own user id, which the link's control socket and its process must have (FRN-009).
 rustix = { version = "1.1", features = ["process"] }
+# The events of a Compose file for its syntax check (HOST-022). No machine is reached.
+yaml-rust2 = { version = "0.13", default-features = false }
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on

@@ -1,0 +1,48 @@
+Categories:
+  - System
+License: AGPL-3.0-or-later
+WebSite: https://anima.ing
+SourceCode: https://github.com/TheArctesian/anima.ing
+
+AutoName: Anima.ing
+Summary: Manage your devices and connect to them remotely
+Description: |-
+  Connect to your Anima hub to see your devices, check their availability, and open SSH sessions.
+
+RepoType: git
+Repo: https://github.com/TheArctesian/anima.ing.git
+
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1000
+    disable: Replace the trial version with the first signed release and verify the reproducible build.
+    commit: FDROID_RELEASE_COMMIT
+    sudo:
+      - apt-get update
+      - apt-get install -y --no-install-recommends ca-certificates curl gcc libc6-dev make openjdk-21-jdk-headless pkg-config unzip
+    srclibs:
+      - rustup@1.28.2
+    # The Go header test uses this fixture. The APK build does not read it.
+    rm:
+      - link/hublink/testdata/device-header.bin
+    build:
+      - export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+      - export ANDROID_HOME="$$SDK$$" NDK_HOME="$$NDK$$"
+      - sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'platforms;android-37.0' 'build-tools;36.0.0'
+      - $$rustup$$/rustup-init.sh -y --profile minimal --default-toolchain none
+      - source "$HOME/.cargo/env"
+      - rustup target add aarch64-linux-android
+      - tools=$(mktemp -d)
+      - curl -fLsS -o "$tools/go.tar.gz" https://go.dev/dl/go1.27.4.linux-amd64.tar.gz
+      - echo "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840  $tools/go.tar.gz" | sha256sum -c -
+      - tar -xzf "$tools/go.tar.gz" -C "$tools"
+      - curl -fLsS -o "$tools/bun.zip" https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/bun-linux-x64.zip
+      - echo "951ee2aee855f08595aeec6225226a298d3fea83a3dcd6465c09cbccdf7e848f  $tools/bun.zip" | sha256sum -c -
+      - unzip -q "$tools/bun.zip" -d "$tools"
+      - export PATH="$JAVA_HOME/bin:$tools/go/bin:$tools/bun-linux-x64:$PATH"
+      - apps/desktop/src-tauri/build-android-apk.sh $$VERSION$$ $$VERCODE$$
+    output: target/android/Anima-unsigned.apk
+    ndk: r28c
+
+AutoUpdateMode: None
+UpdateCheckMode: None

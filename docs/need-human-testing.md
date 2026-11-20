@@ -64,6 +64,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
+| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -117,7 +118,7 @@ Operator report (2026-11-20): installed and rebooted on physical hardware to a t
 VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
 
 1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
-2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation. Keep settings open while changing between portrait and landscape: the panel must recenter within the screen, its body must scroll on a short display, and Done must remain visible and clickable. The operator reported this failure on 2026-11-20; the rotation-panel follow-up needs physical retesting.
 3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
 4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
 5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
@@ -1685,6 +1686,17 @@ checks the screen, those check the values. Sign in to the application with a log
     layout has no special form yet.
 12. Sign in with a browser session of an API key, if the hub permits one, and select "Details".
     Expected: the sentence of the hub that it refuses, and the table stays.
+
+Result: Open.
+
+### HT-069: install and update Anima from F-Droid (M5-7)
+
+The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
+
+1. Install the signed release APK from the Anima release server. Open Anima and sign in. Expected: the app starts and reads the device list.
+2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
+3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
+4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
 
 Result: Open.
 

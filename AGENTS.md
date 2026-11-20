@@ -186,7 +186,8 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
 - A session claims its task (PLN-022). One file in [docs/claims/](docs/claims/README.md) for each task that
   a session builds now. Read them before you take a task; delete yours in the merge.
 - A mockup agrees with the application (PLN-019). If you change the layout of a screen that
-  [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit.
+  [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit, and write the
+  comparison in the record of the mockup (`docs/mockup/records/<name>.md`), not in the table.
 - Do not build from a document that is not in Section 9 of the work plan.
 - Do not make a new plan, proposal or task breakdown unless the same commit adds its row to
   Section 9 and names the row of Section 4 that it serves. If no row applies, ask the operator.
@@ -212,8 +213,20 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
   `socket`, with no space). Use the same placeholder in each file that names the thing, also in a
   file name. Do not write a whole placeholder as an example in a document: the merge would number it. The merge into `dev` gives each
   placeholder the next free number (PLN-021). The documents gate refuses a placeholder on `dev` and on `main`.
-- `docs/plan/register.md` and `docs/operator-queue.md` are generated. Never solve a conflict in them by
-  hand: run `bun run quality:register`, which writes them again from the documents (PLN-020).
+- Do not write a placeholder in a Svelte or CSS file of a screen that [docs/mockup/README.md](docs/mockup/README.md)
+  lists. The merge would number it in the merge commit, after the commit at which the mockup was compared,
+  and the mockup check (PLN-019) would fail on the merge. Name the plan row (for example "W3 of
+  projects-and-builds-plan.md") or a number that exists. The documents gate refuses such a placeholder on
+  each branch (`number-placeholder-in-screen`), so `bun run gates:fast` finds it before the push.
+- When the train leaves a branch out, it says why in one line, also in `bun quality/bin/train.ts --plan`,
+  until the branch moves.
+- `docs/plan/register.md`, `docs/operator-queue.md` and the table of `docs/mockup/README.md` are generated. Never
+  solve a conflict in them by hand: run `bun run quality:register`, which writes them again from the documents
+  (PLN-020) and from the records of the mockups (PLN-019).
+- The comparison of a mockup is in its own record, `docs/mockup/records/<name>.md`, one file for each mockup.
+  Two branches conflict there only when both compared the same mockup; the merge script then keeps the
+  comparison at the later commit and the document gates check it on the merge commit. A branch that changed
+  the table of before the records needs only a merge: each row that it changed becomes its record.
 - The workflow `merge-to-dev` runs `bun quality/bin/merge.ts <branch> --push`; a session that merges by
   hand runs `bun quality/bin/merge.ts <branch>` in a clean worktree on `dev`. It refuses a branch whose
   gates did not pass on GitHub (`quality/merge-rule.json`). It merges

@@ -3,9 +3,9 @@
 
 use crate::ids::{
     ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-    IngestTokenId, JobId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId,
-    RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SessionId, SiteId, SourceAccountId,
-    WindowId,
+    IngestTokenId, JobId, KeyOfferId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId,
+    RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SealedRecordId, SessionId, SiteId,
+    SourceAccountId, WindowId,
 };
 
 /// The thing an audited action changed.
@@ -67,6 +67,10 @@ pub enum AuditTarget {
     IngestToken(IngestTokenId),
     /// A reminder rule (K-E6 Section 2).
     ReminderRule(ReminderRuleId),
+    /// A record that a client sealed; the change never holds a byte of it (VLT-004).
+    SealedRecord(SealedRecordId),
+    /// An offer of the vault key to a new client (VLT-002).
+    VaultKeyOffer(KeyOfferId),
     /// A job of the work route (K10 Section 10).
     Job(JobId),
 }
@@ -105,6 +109,8 @@ impl AuditTarget {
             Self::LocationSamples => "location_samples",
             Self::IngestToken(_) => "location_ingest_token",
             Self::ReminderRule(_) => "reminder_rule",
+            Self::SealedRecord(_) => "sealed_record",
+            Self::VaultKeyOffer(_) => "vault_key_offer",
             Self::Job(_) => "job",
         }
     }
@@ -141,6 +147,8 @@ impl AuditTarget {
             Self::LocationSamples => "location_samples".to_owned(),
             Self::IngestToken(id) => id.to_string(),
             Self::ReminderRule(id) => id.to_string(),
+            Self::SealedRecord(id) => id.to_string(),
+            Self::VaultKeyOffer(id) => id.to_string(),
             Self::Job(id) => id.to_string(),
         }
     }

@@ -373,7 +373,7 @@ What is not known until the first run: if the Linux program starts on a computer
 
 ### The iOS application: TestFlight (R-203; task B8i)
 
-Built as three jobs of the release workflow, and never run: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` calls `apps/desktop/src-tauri/ios-archive.sh`, which is task M5-4 of the [mobile plan](../plans/mobile-plan.md) and does not exist yet.
+Built as three jobs of the release workflow: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` runs `apps/desktop/src-tauri/ios-archive.sh` on `macos-26` for the Xcode and SDK versions required by [App Store Connect](https://developer.apple.com/news/upcoming-requirements/). The first signed trial is open in [HT-046](../need-human-testing.md#ht-046-the-ios-application-from-the-release-workflow-to-testflight-task-b8i).
 
 **Two switches of its own.** `ANIMA_IOS_BUILD` lets the job `ios` run, in a trial and for a push to `main`: it builds and signs, and uploads nothing. While it is not `on`, no iOS job runs, and a trial is not red for it. `ANIMA_PUBLIC_TESTFLIGHT`, which only the operator sets, lets a push to `main` also send that build to TestFlight. Neither exists today, and they do not depend on `ANIMA_PUBLIC_RELEASES`.
 
