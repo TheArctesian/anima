@@ -44,6 +44,16 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "Mutation.reportBuildUploaded",
         "builder token only: the desktop builder (BLD-022)",
     ),
+    (
+        "Mutation.offerVaultKey",
+        "client work: a client adds a client by QR code; no command takes part in a key offer \
+         (K-E5 Section 3, a trust decision)",
+    ),
+    (
+        "Query.vaultKeyOffer",
+        "client work: a client adds a client by QR code; no command takes part in a key offer \
+         (K-E5 Section 3, a trust decision)",
+    ),
     ("Query.operationalKeys", NO_KEY_NOUN),
     ("Query.operationalKey", NO_KEY_NOUN),
     ("Mutation.createOperationalKey", NO_KEY_NOUN),

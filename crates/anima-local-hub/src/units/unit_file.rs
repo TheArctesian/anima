@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anima_database::Platform;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The launchd label, which is also the file name without `.plist`.
@@ -29,6 +29,9 @@ pub struct Launch {
 pub enum RenderError {
     #[error("a path of the hub cannot be written in a unit file: {0}")]
     Path(String),
+    #[cfg(windows)]
+    #[error("the Windows account identity cannot be read")]
+    Identity,
 }
 
 /// Where the unit file of this user is.
@@ -41,6 +44,8 @@ pub fn file(platform: Platform, home: &Path) -> PathBuf {
         // As the agent: `XDG_CONFIG_HOME` is not read, so the file is where the next
         // `install` or `remove` looks for it whatever the environment of that day.
         Platform::Linux => home.join(".config/systemd/user").join(SYSTEMD_UNIT),
+        #[cfg(windows)]
+        Platform::Windows => home.join("AppData/Local/Anima/hub/task.xml"),
     }
 }
 
@@ -63,6 +68,8 @@ pub fn render(platform: Platform, launch: &Launch) -> Result<String, RenderError
     match platform {
         Platform::MacOs => Ok(launch_agent(&words)),
         Platform::Linux => systemd_unit(&words),
+        #[cfg(windows)]
+        Platform::Windows => super::windows::render(&words),
     }
 }
 

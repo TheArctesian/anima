@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -9,7 +10,7 @@ function mode(folder: string, name = ""): number {
   return statSync(join(folder, name)).mode & 0o777;
 }
 
-describe("make-secrets values (DB-002, SEC-004)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets values (DB-002, SEC-004)", () => {
   test("DB-002: makes every generated secret file with mode 0440 in a 0700 folder", async () => {
     const folder = newSecretsPath();
     expect((await makeSecrets(folder)).exitCode).toBe(0);
@@ -51,7 +52,7 @@ describe("make-secrets values (DB-002, SEC-004)", () => {
   });
 });
 
-describe("make-secrets reruns (DB-002, SEC-004)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets reruns (DB-002, SEC-004)", () => {
   test("DB-002: a second run changes no file", async () => {
     const folder = newSecretsPath();
     await makeSecrets(folder);
@@ -94,7 +95,7 @@ describe("make-secrets reruns (DB-002, SEC-004)", () => {
   });
 });
 
-describe("make-secrets existing files (DB-002, SEC-004)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets existing files (DB-002, SEC-004)", () => {
   const goodKey = Buffer.alloc(32, 7).toString("base64");
 
   test("DB-002: a password file with a trailing newline is refused by name", async () => {

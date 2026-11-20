@@ -6,9 +6,11 @@ use std::{
     ffi::OsString,
     fs::{self, File},
     io::{self, Read},
-    os::unix::fs::{MetadataExt, OpenOptionsExt},
     path::{Path, PathBuf},
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 
 use super::{
     carried,
@@ -37,6 +39,7 @@ pub fn target_folder(clone: &Path) -> PathBuf {
 fn bundle_folder(clone: &Path, target: Target) -> PathBuf {
     match target {
         Target::LinuxX86_64 => target_folder(clone).join("release/bundle"),
+        Target::WindowsX86_64 => target_folder(clone).join("x86_64-pc-windows-msvc/release/bundle"),
         Target::DarwinUniversal => {
             target_folder(clone).join("universal-apple-darwin/release/bundle")
         }
@@ -52,13 +55,16 @@ pub fn updater_file(clone: &Path, target: Target, version: &Version) -> PathBuf 
             version.as_str()
         )),
         Target::DarwinUniversal => folder.join(format!("macos/{PRODUCT}.app.tar.gz")),
+        Target::WindowsX86_64 => {
+            folder.join(format!("nsis/{PRODUCT}_{}_x64-setup.exe", version.as_str()))
+        }
     }
 }
 
 /// The DMG people download, made on macOS only (BLD-063).
 pub fn dmg_file(clone: &Path, target: Target, version: &Version) -> Option<PathBuf> {
     match target {
-        Target::LinuxX86_64 => None,
+        Target::LinuxX86_64 | Target::WindowsX86_64 => None,
         Target::DarwinUniversal => Some(
             bundle_folder(clone, target)
                 .join(format!("dmg/{PRODUCT}_{}_universal.dmg", version.as_str())),
@@ -116,11 +122,13 @@ pub fn stabilize_names(
             "appimage/{DISPLAY}_{}_amd64.AppImage",
             version.as_str()
         )),
+        Target::WindowsX86_64 => bundle_folder(clone, target)
+            .join(format!("nsis/{DISPLAY}_{}_x64-setup.exe", version.as_str())),
         Target::DarwinUniversal => bundle_folder(clone, target)
             .join(format!("dmg/{DISPLAY}_{}_universal.dmg", version.as_str())),
     };
     let wanted = match target {
-        Target::LinuxX86_64 => updater_file(clone, target, version),
+        Target::LinuxX86_64 | Target::WindowsX86_64 => updater_file(clone, target, version),
         Target::DarwinUniversal => dmg_file(clone, target, version).ok_or(BuilderError::Bundle)?,
     };
     if wanted == produced || (!produced.exists() && wanted.is_file()) {
@@ -145,15 +153,20 @@ pub fn own_file(clone: &Path, path: &Path) -> Result<PathBuf, BuilderError> {
 /// from this one descriptor, so the bytes recorded are the bytes checked.
 pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
     let real = own_file(clone, path)?;
-    let file = fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(nix::libc::O_NOFOLLOW)
-        .open(real)
-        .map_err(|_| BuilderError::Bundle)?;
-    let kind = file.metadata().map_err(|_| BuilderError::Bundle)?;
-    (kind.is_file() && kind.nlink() == 1)
-        .then_some(file)
-        .ok_or(BuilderError::Bundle)
+    #[cfg(windows)]
+    return anima_windows::files::read_single(&real).map_err(|_| BuilderError::Bundle);
+    #[cfg(unix)]
+    {
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(nix::libc::O_NOFOLLOW)
+            .open(real)
+            .map_err(|_| BuilderError::Bundle)?;
+        let kind = file.metadata().map_err(|_| BuilderError::Bundle)?;
+        (kind.is_file() && kind.nlink() == 1)
+            .then_some(file)
+            .ok_or(BuilderError::Bundle)
+    }
 }
 
 /// The app's own executable, once its `Contents/MacOS` holds exactly it and the seven carried
@@ -195,13 +208,19 @@ pub fn own_folder(clone: &Path, folder: &Path) -> Result<PathBuf, BuilderError> 
 /// cannot hold; the staged file must then pass the `lipo` or ELF check, which no key or other
 /// text file passes. The Mach-O check of the app reads each file's first bytes through it too.
 pub fn open_built(clone: &Path, path: &Path) -> Result<File, BuilderError> {
-    let file = fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(nix::libc::O_NOFOLLOW)
-        .open(own_file(clone, path)?)
-        .map_err(|_| BuilderError::Bundle)?;
-    let kind = file.metadata().map_err(|_| BuilderError::Bundle)?;
-    kind.is_file().then_some(file).ok_or(BuilderError::Bundle)
+    #[cfg(windows)]
+    return anima_windows::files::read(&own_file(clone, path)?, false)
+        .map_err(|_| BuilderError::Bundle);
+    #[cfg(unix)]
+    {
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(nix::libc::O_NOFOLLOW)
+            .open(own_file(clone, path)?)
+            .map_err(|_| BuilderError::Bundle)?;
+        let kind = file.metadata().map_err(|_| BuilderError::Bundle)?;
+        kind.is_file().then_some(file).ok_or(BuilderError::Bundle)
+    }
 }
 
 /// Copies cargo's output `from` to `to`, a new file in a folder inside the clone, mode 0755.
@@ -220,6 +239,9 @@ pub fn stage(clone: &Path, from: &Path, to: &Path) -> Result<(), BuilderError> {
         Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(BuilderError::Bundle),
         _ => {}
     }
+    #[cfg(windows)]
+    let mut output = anima_windows::files::create_new(to).map_err(|_| BuilderError::Bundle)?;
+    #[cfg(unix)]
     let mut output = fs::OpenOptions::new()
         .write(true)
         .create_new(true)

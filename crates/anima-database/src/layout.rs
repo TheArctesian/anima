@@ -11,7 +11,7 @@
 
 use std::path::{Path, PathBuf};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// PostgreSQL names its socket file after the port, also when it listens on no port.
@@ -29,10 +29,15 @@ const MACOS_APPLICATION: &str = "ing.anima.desktop";
 pub enum Platform {
     MacOs,
     Linux,
+    #[cfg(windows)]
+    Windows,
 }
 
 impl Platform {
     /// The platform this program was built for.
+    #[cfg(windows)]
+    pub const HOST: Self = Self::Windows;
+    #[cfg(not(windows))]
     pub const HOST: Self = if cfg!(target_os = "macos") {
         Self::MacOs
     } else {
@@ -44,6 +49,8 @@ impl Platform {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserFolders {
     pub home: PathBuf,
+    #[cfg(windows)]
+    pub local_app_data: Option<PathBuf>,
     /// `XDG_DATA_HOME`. Linux only.
     pub xdg_data_home: Option<PathBuf>,
     /// `XDG_RUNTIME_DIR`. Linux only.
@@ -119,7 +126,7 @@ impl Layout {
             socket_folder,
         };
         let length = layout.socket_file().as_os_str().as_encoded_bytes().len();
-        if length > SOCKET_PATH_LIMIT {
+        if cfg!(unix) && length > SOCKET_PATH_LIMIT {
             return Err(LayoutError::SocketPathTooLong {
                 length,
                 limit: SOCKET_PATH_LIMIT,
@@ -139,6 +146,13 @@ impl Layout {
     pub fn for_user(platform: Platform, user: &UserFolders) -> Result<Self, LayoutError> {
         absolute(&user.home, "home folder")?;
         match platform {
+            #[cfg(windows)]
+            Platform::Windows => {
+                let application = given(user.local_app_data.as_deref())
+                    .map_or_else(|| user.home.join("AppData/Local"), Path::to_path_buf)
+                    .join("Anima");
+                Self::new(application.join("hub/database"), application.join("hub/pg"))
+            }
             Platform::MacOs => {
                 let application = user
                     .home

@@ -1,0 +1,8 @@
+result*
+__pycache__/
+*.qcow2
+*.raw
+*.fd
+
+payload/
+*.iso

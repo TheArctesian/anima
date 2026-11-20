@@ -52,6 +52,7 @@ impl Version {
 pub enum Target {
     LinuxX86_64,
     DarwinUniversal,
+    WindowsX86_64,
 }
 
 impl Target {
@@ -59,6 +60,7 @@ impl Target {
         match text {
             "LINUX_X86_64" => Ok(Self::LinuxX86_64),
             "DARWIN_UNIVERSAL" => Ok(Self::DarwinUniversal),
+            "WINDOWS_X86_64" => Ok(Self::WindowsX86_64),
             _ => Err(BuilderError::Target),
         }
     }
@@ -68,6 +70,7 @@ impl Target {
         match self {
             Self::LinuxX86_64 => os == "linux" && arch == "x86_64",
             Self::DarwinUniversal => os == "macos" && arch == "aarch64",
+            Self::WindowsX86_64 => os == "windows" && arch == "x86_64",
         }
     }
 
@@ -76,14 +79,19 @@ impl Target {
         match self {
             Self::LinuxX86_64 => "linux-x86_64",
             Self::DarwinUniversal => "darwin-universal",
+            Self::WindowsX86_64 => "windows-x86_64",
         }
     }
 
     /// The target this computer can build, if any.
     pub fn here() -> Result<Self, BuilderError> {
-        [Self::LinuxX86_64, Self::DarwinUniversal]
-            .into_iter()
-            .find(|target| target.buildable_on(std::env::consts::OS, std::env::consts::ARCH))
-            .ok_or(BuilderError::Platform)
+        [
+            Self::LinuxX86_64,
+            Self::DarwinUniversal,
+            Self::WindowsX86_64,
+        ]
+        .into_iter()
+        .find(|target| target.buildable_on(std::env::consts::OS, std::env::consts::ARCH))
+        .ok_or(BuilderError::Platform)
     }
 }

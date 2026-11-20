@@ -1,9 +1,10 @@
 //! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
-//! AI agent programs, their containers, sites, wake, and the changes.
+//! AI agent programs, their containers, the text of a Compose file, sites, wake, and the changes.
 
 mod agent_usage;
 mod capabilities;
 mod change;
+mod compose_file;
 mod containers;
 mod metrics;
 mod read;
@@ -27,6 +28,8 @@ pub enum DeviceTool {
     ContainerStorage,
     ContainerNetworks,
     ContainerUpdates,
+    ComposeCheck,
+    ComposeFromRun,
     Create,
     SiteCreate,
     Wake,
@@ -35,7 +38,7 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 17] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
@@ -46,6 +49,8 @@ impl DeviceTool {
         Self::ContainerStorage,
         Self::ContainerNetworks,
         Self::ContainerUpdates,
+        Self::ComposeCheck,
+        Self::ComposeFromRun,
         Self::Create,
         Self::SiteCreate,
         Self::Wake,
@@ -63,6 +68,7 @@ impl DeviceTool {
             | Self::ContainerStorage
             | Self::ContainerNetworks
             | Self::ContainerUpdates => containers::definition_of(self),
+            Self::ComposeCheck | Self::ComposeFromRun => compose_file::definition_of(self),
             Self::FleetOverview | Self::Search | Self::Get => read::definition(self),
             other => change::definition(other),
         }
@@ -84,6 +90,9 @@ impl DeviceTool {
             | Self::ContainerStorage
             | Self::ContainerNetworks
             | Self::ContainerUpdates => containers::call(self, hub, arguments).await,
+            Self::ComposeCheck | Self::ComposeFromRun => {
+                compose_file::call(self, hub, arguments).await
+            }
             Self::Create => change::create(hub, arguments).await,
             Self::SiteCreate => change::site_create(hub, arguments).await,
             Self::Wake => change::wake(hub, arguments).await,

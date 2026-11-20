@@ -4,7 +4,7 @@
 
 use std::io;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use super::install::{self, InstallError, Request, Then};

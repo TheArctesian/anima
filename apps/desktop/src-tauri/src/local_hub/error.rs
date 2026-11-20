@@ -35,7 +35,7 @@ pub enum LocalHubError {
 
 impl LocalHubError {
     /// Every error, for the tests that check each one.
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     pub const ALL: [Self; 12] = [
         Self::Caller,
         Self::Unavailable,

@@ -36,7 +36,8 @@ async fn chk_001_tcp_closed_port_fails_with_a_short_message() {
     };
     let config = CheckConfig::Tcp {
         port,
-        timeout_ms: 2000,
+        // Windows retries a refused loopback connection before reporting it.
+        timeout_ms: 5000,
     };
     let result = probe(&target("127.0.0.1"), &config, None, &env()).await;
     assert!(!result.ok);

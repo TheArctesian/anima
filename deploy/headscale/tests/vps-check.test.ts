@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,11 +12,12 @@ afterEach(removeHosts);
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
   host.harden();
 });
 
-describe("harden.sh check", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check", () => {
   test("VPS-002: check passes on a hardened host with only allowed listeners", () => {
     const run = host.run(["check"]);
     expect(run.out).toEndWith("== End of inventory\nok: no violations\n");
@@ -70,7 +72,7 @@ describe("harden.sh check", () => {
   });
 });
 
-describe("harden.sh check (boot firewall)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check (boot firewall)", () => {
   test("VPS-002: check reports a boot config that does not load the Anima rules", () => {
     host.write("etc/sysconfig/nftables.conf", '#include "/etc/nftables/anima.nft"\n');
     expect(host.run(["check"]).out).toContain("VIOLATION: /etc/sysconfig/nftables.conf does not load /etc/nftables/anima.nft at boot");
@@ -106,7 +108,7 @@ describe("harden.sh check (boot firewall)", () => {
   });
 });
 
-describe("harden.sh check (the hub's rules in the live table, VP-13)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check (the hub's rules in the live table, VP-13)", () => {
   const listing = (): string => readFileSync(join(import.meta.dir, "fixtures", "anima-filter-listing.txt"), "utf8");
 
   test("VP-13 the fixture is nft's listing of nftables.conf: it holds each VP-13 rule of the file", () => {
@@ -139,7 +141,7 @@ describe("harden.sh check (the hub's rules in the live table, VP-13)", () => {
   });
 });
 
-describe("harden.sh check (updates, Docker, OS)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check (updates, Docker, OS)", () => {
   test.each([
     ["apply_updates = yes", "apply_updates = no"],
     ["upgrade_type = default", "upgrade_type = security"],
@@ -182,7 +184,7 @@ const section = (out: string, title: string): string[] => {
   return lines.slice(start + 1, end);
 };
 
-describe("harden.sh check inventory (VPS-005)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check inventory (VPS-005)", () => {
   test("marks a listener whose program is not expected, with its unit", () => {
     host.setListeners([
       'tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=900,fd=3))',
@@ -235,7 +237,7 @@ describe("harden.sh check inventory (VPS-005)", () => {
   });
 });
 
-describe("harden.sh check inventory (known workloads, R-050)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check inventory (known workloads, R-050)", () => {
   test("R-050: a known container that publishes a public port is still a violation", () => {
     host.harden();
     host.write("etc/anima/known-workloads", "container dawarich_db\n");
@@ -258,7 +260,7 @@ describe("harden.sh check inventory (known workloads, R-050)", () => {
   });
 });
 
-describe("harden.sh updates", () => {
+describe.skipIf(process.platform === "win32")("harden.sh updates", () => {
   test("VPS-004: installs dnf-automatic, its config and schedule, and enables the timer", () => {
     const fresh = fakeHost();
     const run = fresh.run(["updates"]);

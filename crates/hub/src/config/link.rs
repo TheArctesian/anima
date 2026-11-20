@@ -99,10 +99,16 @@ pub(super) const CONTROL_RULE: &str = "must be set only with ANIMA_LINK_SOCKET: 
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Error, LISTEN, from_env, tests::env};
+    use super::super::{
+        Error, LISTEN, from_env,
+        tests::{env, host_path},
+    };
     use super::*;
 
+    #[cfg(unix)]
     const SOCKET: &str = "/run/anima/link.sock";
+    #[cfg(windows)]
+    const SOCKET: &str = "C:/run/anima/link.sock";
 
     #[test]
     fn without_the_socket_the_hub_is_not_in_the_link_mode_and_nothing_changes() {
@@ -167,12 +173,12 @@ mod tests {
 
     #[test]
     fn frn_009_the_control_socket_is_read_in_the_link_mode_only() {
-        const CONTROL: &str = "/run/anima/link/control.sock";
-        let both = from_env(&env(&[(LINK_SOCKET, SOCKET), (LINK_CONTROL, CONTROL)])).unwrap();
-        assert_eq!(both.link_control, Some(PathBuf::from(CONTROL)));
+        let control = &host_path("/run/anima/link/control.sock");
+        let both = from_env(&env(&[(LINK_SOCKET, SOCKET), (LINK_CONTROL, control)])).unwrap();
+        assert_eq!(both.link_control, Some(PathBuf::from(control)));
         let socket_only = from_env(&env(&[(LINK_SOCKET, SOCKET), (LINK_CONTROL, "")])).unwrap();
         assert_eq!(socket_only.link_control, None);
-        let alone = from_env(&env(&[(LINK_CONTROL, CONTROL)])).unwrap_err();
+        let alone = from_env(&env(&[(LINK_CONTROL, control)])).unwrap_err();
         assert!(matches!(alone, Error::LinkControlAlone), "{alone}");
         assert!(alone.to_string().contains("ANIMA_LINK_SOCKET"));
         let relative = from_env(&env(&[
@@ -210,17 +216,17 @@ mod tests {
 
     #[test]
     fn r_129_the_hosted_mode_needs_the_control_socket_of_the_link() {
-        const KEY: &str = "/run/secrets/anima/cloud_key";
+        let key = &host_path("/run/secrets/anima/cloud_key");
         let hosted = env(&[
             (LINK_SOCKET, SOCKET),
-            (LINK_CONTROL, "/run/anima/link-control.sock"),
-            (HOSTED_CLOUD_KEY_FILE, KEY),
+            (LINK_CONTROL, &host_path("/run/anima/link-control.sock")),
+            (HOSTED_CLOUD_KEY_FILE, key),
         ]);
         assert_eq!(
             from_env(&hosted).unwrap().hosted_cloud_key_file,
-            Some(PathBuf::from(KEY))
+            Some(PathBuf::from(key))
         );
-        let alone = env(&[(LINK_SOCKET, SOCKET), (HOSTED_CLOUD_KEY_FILE, KEY)]);
+        let alone = env(&[(LINK_SOCKET, SOCKET), (HOSTED_CLOUD_KEY_FILE, key)]);
         assert!(matches!(from_env(&alone), Err(Error::HostedWithoutLink)));
         assert_eq!(from_env(&env(&[])).unwrap().hosted_cloud_key_file, None);
     }

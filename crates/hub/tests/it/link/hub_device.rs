@@ -3,10 +3,8 @@
 //! check that it reports as Up, and a hub that is not hosted adds nothing.
 
 use std::{
-    fs::Permissions,
-    os::unix::fs::PermissionsExt as _,
     path::Path,
-    process::{Child, Command, Stdio},
+    process::{Child, Stdio},
     time::{Duration, Instant},
 };
 
@@ -48,19 +46,21 @@ pub struct Home {
 impl Home {
     pub async fn new(pool: &PgPool) -> Self {
         let login = format!("anima_test_{}_hub", Uuid::now_v7().simple());
-        sqlx::query(&format!("create role {login} login in role anima_runtime"))
-            .execute(pool)
-            .await
-            .unwrap();
+        sqlx::query(&format!(
+            "create role {login} login password '{login}' in role anima_runtime"
+        ))
+        .execute(pool)
+        .await
+        .unwrap();
         let database = pool.connect_options().get_database().unwrap().to_owned();
         let url = url_for(&database);
         let (scheme, rest) = url.split_once("://").unwrap();
         let host = rest.split_once('@').map_or(rest, |(_, host)| host);
         let folder = tempfile::tempdir().unwrap();
         // The folder of the link socket is the hub user's alone (NET-003).
-        std::fs::set_permissions(folder.path(), Permissions::from_mode(0o700)).unwrap();
+        crate::local_socket::protect(folder.path());
         let file = |name: &str| folder.path().join(name);
-        std::fs::write(file("url"), format!("{scheme}://{login}@{host}")).unwrap();
+        std::fs::write(file("url"), format!("{scheme}://{login}:{login}@{host}")).unwrap();
         std::fs::write(file("key"), STANDARD.encode([3_u8; 32])).unwrap();
         std::fs::write(
             file("cloud_key"),
@@ -84,9 +84,8 @@ impl Home {
     /// Starts `anima-hub`: hosted when it has the control socket of a link.
     fn start_beside(&self, control: Option<&Path>) -> Running {
         let file = |name: &str| self.folder.path().join(name);
-        let mut hub = Command::new(env!("CARGO_BIN_EXE_anima-hub"));
-        hub.env_clear()
-            .env("ANIMA_KEY_FILE", file("key"))
+        let mut hub = crate::transport::process::hub();
+        hub.env("ANIMA_KEY_FILE", file("key"))
             .env("ANIMA_DATABASE_URL_FILE", file("url"))
             .env("ANIMA_LOG", "error")
             .env("ANIMA_LISTEN", "127.0.0.1:0")

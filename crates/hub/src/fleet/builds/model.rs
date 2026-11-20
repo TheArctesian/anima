@@ -24,11 +24,18 @@ pub enum Target {
     /// An app and a DMG, built on macOS on `aarch64`.
     #[graphql(name = "DARWIN_UNIVERSAL")]
     DarwinUniversal,
+    /// An NSIS installer, built on Windows on `x86_64`.
+    #[graphql(name = "WINDOWS_X86_64")]
+    WindowsX86_64,
 }
 
 impl Target {
     /// Every target, in display order.
-    pub const ALL: [Self; 2] = [Self::LinuxX86_64, Self::DarwinUniversal];
+    pub const ALL: [Self; 3] = [
+        Self::LinuxX86_64,
+        Self::DarwinUniversal,
+        Self::WindowsX86_64,
+    ];
 
     /// The text stored in `jobs.target`, which is also the folder name under
     /// `releases.anima.ing`.
@@ -37,6 +44,7 @@ impl Target {
         match self {
             Self::LinuxX86_64 => "linux-x86_64",
             Self::DarwinUniversal => "darwin-universal",
+            Self::WindowsX86_64 => "windows-x86_64",
         }
     }
 
@@ -106,6 +114,7 @@ impl JobState {
 pub enum Os {
     Linux,
     Macos,
+    Windows,
 }
 
 /// A builder's processor architecture, as Tauri names it.
@@ -130,6 +139,7 @@ impl Platform {
         match self.os {
             Os::Linux => "linux",
             Os::Macos => "macos",
+            Os::Windows => "windows",
         }
     }
 
@@ -144,6 +154,7 @@ impl Platform {
         let os = match os {
             "linux" => Os::Linux,
             "macos" => Os::Macos,
+            "windows" => Os::Windows,
             _ => return None,
         };
         let arch = match arch {

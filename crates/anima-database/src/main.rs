@@ -22,7 +22,7 @@ use anima_database::{
     Layout, LayoutError, Limits, Platform, ServerError, Settings, Tree, UserFolders,
 };
 use clap::{Args, Parser, Subcommand};
-use tokio::signal::unix::{Signal, SignalKind, signal};
+mod stopping;
 
 /// Another copy runs this database.
 const EXIT_ANOTHER_COPY: u8 = 10;
@@ -97,7 +97,10 @@ impl Place {
             _ => Layout::for_user(
                 Platform::HOST,
                 &UserFolders {
-                    home: std::env::var_os("HOME").map_or_else(PathBuf::new, PathBuf::from),
+                    home: std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+                        .map_or_else(PathBuf::new, PathBuf::from),
+                    #[cfg(windows)]
+                    local_app_data: std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
                     xdg_data_home: std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
                     xdg_runtime_dir: std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from),
                 },
@@ -108,6 +111,7 @@ impl Place {
 
 fn main() -> ExitCode {
     // A core file of this program could hold a password; none is written.
+    #[cfg(unix)]
     nix::sys::resource::setrlimit(nix::sys::resource::Resource::RLIMIT_CORE, 0, 0).ok();
     let outcome = match Arguments::parse().command {
         Command::Serve(place) => serve(&place),
@@ -138,12 +142,9 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
         .build()?;
     // Before the server starts: a signal that comes during the start is kept, and stops the
     // server cleanly as soon as the start is done. It does not cut the start short.
-    let (terminate, interrupt) = {
+    let stop = {
         let _context = runtime.enter();
-        (
-            signal(SignalKind::terminate())?,
-            signal(SignalKind::interrupt())?,
-        )
+        stopping::Requested::new()?
     };
     let tree = Tree::at(&place.tree)?;
     let layout = place.layout()?;
@@ -156,7 +157,7 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
     }
     println!("ready");
     std::io::stdout().flush()?;
-    let ended = runtime.block_on(asked_to_stop_or_ended(&mut running, terminate, interrupt))?;
+    let ended = runtime.block_on(asked_to_stop_or_ended(&mut running, stop))?;
     if let Some(status) = ended {
         eprintln!("anima-database: the server ended by itself ({status})");
         return Ok(ExitCode::from(EXIT_SERVER_ENDED));
@@ -168,14 +169,12 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
 /// `None` when a signal asks for a stop; the exit status when the server ends by itself.
 async fn asked_to_stop_or_ended(
     running: &mut Running,
-    mut terminate: Signal,
-    mut interrupt: Signal,
+    mut stop: stopping::Requested,
 ) -> Result<Option<std::process::ExitStatus>, ServerError> {
     let mut look = tokio::time::interval(Duration::from_millis(200));
     loop {
         tokio::select! {
-            _ = terminate.recv() => return Ok(None),
-            _ = interrupt.recv() => return Ok(None),
+            () = stop.wait() => return Ok(None),
             _ = look.tick() => {
                 if let Some(status) = running.ended()? {
                     return Ok(Some(status));

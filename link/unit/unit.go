@@ -10,7 +10,7 @@ package unit
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
+	unixpath "path"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +47,10 @@ type Settings struct {
 type System struct {
 	// GOOS is a value of runtime.GOOS.
 	GOOS string
-	UID  int
+	// SID and Windows are the current Windows account and system directory.
+	SID     string
+	Windows string
+	UID     int
 	// Home is the home folder of the user, and ConfigHome the value of
 	// XDG_CONFIG_HOME (empty when it is not set).
 	Home       string
@@ -84,11 +87,12 @@ func refused(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", ErrRefused, fmt.Sprintf(format, args...))
 }
 
-// plainPath reports whether a path is absolute, clean, and holds no
+// plainPath checks Unix unit paths independently of the OS running this pure planner.
+// A path must be absolute, clean, and hold no
 // character that could end a value in a unit file: a control character, a
 // quote, a backslash, a percent sign, a dollar sign or an angle bracket.
 func plainPath(path string) bool {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !unixpath.IsAbs(path) || unixpath.Clean(path) != path {
 		return false
 	}
 	for _, char := range path {
@@ -196,7 +200,7 @@ const (
 )
 
 func darwinPlace(on System) Plan {
-	file := filepath.Join(on.Home, "Library", "LaunchAgents", Label+".plist")
+	file := unixpath.Join(on.Home, "Library", "LaunchAgents", Label+".plist")
 	domain := "gui/" + strconv.Itoa(on.UID)
 	bootout := Step{Program: launchctl, Args: []string{"bootout", domain + "/" + Label}, MayFail: true}
 	return Plan{
@@ -210,7 +214,7 @@ func darwinPlace(on System) Plan {
 func linuxPlace(on System) (Plan, error) {
 	config := on.ConfigHome
 	if config == "" {
-		config = filepath.Join(on.Home, ".config")
+		config = unixpath.Join(on.Home, ".config")
 	}
 	runtimeDir := on.RuntimeDir
 	if runtimeDir == "" {
@@ -226,7 +230,7 @@ func linuxPlace(on System) (Plan, error) {
 		}
 	}
 	return Plan{
-		File: filepath.Join(config, "systemd", "user", ServiceName),
+		File: unixpath.Join(config, "systemd", "user", ServiceName),
 		// restart starts a stopped unit and restarts a running one, so a new program is used.
 		Start: []Step{user(false, "daemon-reload"), user(false, "enable", ServiceName), user(false, "restart", ServiceName)},
 		Stop:  []Step{user(true, "disable", "--now", ServiceName)},
@@ -239,6 +243,9 @@ func linuxPlace(on System) (Plan, error) {
 // and to see whether one is there. It returns ErrRefused for a system that
 // has no unit of the user.
 func Place(on System) (Plan, error) {
+	if on.GOOS == "windows" {
+		return windowsPlace(on)
+	}
 	if !plainPath(on.Home) {
 		return Plan{}, refused("the home folder must be an absolute, plain path")
 	}
@@ -256,6 +263,9 @@ func Place(on System) (Plan, error) {
 // the system on. It returns ErrRefused for a value that cannot go into a
 // unit, and for a system that has no unit of the user.
 func PlanFor(s Settings, on System) (Plan, error) {
+	if on.GOOS == "windows" {
+		return windowsTask(s, on)
+	}
 	if err := s.check(); err != nil {
 		return Plan{}, err
 	}

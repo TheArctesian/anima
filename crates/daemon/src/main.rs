@@ -1,10 +1,13 @@
 //! `anima-daemon`: wires the command line to the library and sets the exit code. No rules here.
 
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
 
 use anima_daemon::cli::{self, CliError, CodeSource, Command};
 use anima_daemon::config::home::Home;
+#[cfg(unix)]
 use anima_daemon::config::private_file;
 use anima_daemon::hub::enrolment::Enrolment;
 use anima_daemon::hub::{HubClient, TIMEOUT};
@@ -19,6 +22,8 @@ use zeroize::Zeroizing;
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    #[cfg(windows)]
+    let _ = anima_windows::console::attach_parent();
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(
@@ -110,6 +115,7 @@ fn install(target: Target, home: &Home) -> ExitCode {
     };
     let host = Host {
         platform: Platform::current(),
+        #[cfg(unix)]
         uid: match private_file::running_user() {
             Ok(uid) => uid,
             Err(error) => return failure(&error),
@@ -142,6 +148,7 @@ fn read_code() -> Result<daemon_core::wire::EnrolmentCode, CliError> {
 }
 
 /// Completes on Ctrl-C or SIGTERM.
+#[cfg(unix)]
 async fn stop() {
     use tokio::signal::unix::{SignalKind, signal};
     let Ok(mut terminate) = signal(SignalKind::terminate()) else {
@@ -162,4 +169,9 @@ fn usage(error: &CliError) -> ExitCode {
 fn failure(error: &dyn std::error::Error) -> ExitCode {
     eprintln!("{error}");
     ExitCode::FAILURE
+}
+
+#[cfg(windows)]
+async fn stop() {
+    let _ = tokio::signal::ctrl_c().await;
 }

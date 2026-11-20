@@ -6,9 +6,9 @@ import { buildFeed } from './feed';
 /** Where the release bucket's files are public (DNS-007); the hub checks each feed URL against its own base (BLD-065). */
 export const RELEASES_BASE = 'https://releases.anima.ing';
 /** The release folder of each target, as the hub names it (BLD-060). */
-const FOLDERS: Readonly<Record<BuildTarget, string>> = { LINUX_X86_64: 'linux-x86_64', DARWIN_UNIVERSAL: 'darwin-universal' };
+const FOLDERS: Readonly<Record<BuildTarget, string>> = { LINUX_X86_64: 'linux-x86_64', DARWIN_UNIVERSAL: 'darwin-universal', WINDOWS_X86_64: 'windows-x86_64' };
 /** The platform of each target in the proposed feed (BLD-067). */
-const PLATFORMS = { LINUX_X86_64: 'linux', DARWIN_UNIVERSAL: 'macos' } as const;
+const PLATFORMS = { LINUX_X86_64: 'linux', DARWIN_UNIVERSAL: 'macos', WINDOWS_X86_64: 'windows' } as const;
 
 /** The hub refused or could not take a call of the upload; only this fixed text is kept (LOG-007). */
 export class UploadRefusedError extends Error {

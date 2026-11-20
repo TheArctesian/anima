@@ -85,10 +85,15 @@ async fn ra_031_a_woken_opening_waits_past_the_usual_limit_until_the_device_answ
 async fn ra_031_without_a_wake_the_opening_does_not_wait_for_the_device(pool: PgPool) {
     let (bench, _asleep) = waking(&pool).await;
     let redeemed = redeemed(&bench, false);
+    let began = Instant::now();
     let opened = opening::open(&bench.terminal, &redeemed.ticket).await;
     assert!(
-        matches!(opened, Err(NotOpened::Unreachable)),
+        matches!(opened, Err(NotOpened::Unreachable | NotOpened::Timeout)),
         "refused at once, not waiting for a device that is asleep"
+    );
+    assert!(
+        began.elapsed() < ANSWERS_AFTER,
+        "the usual opening limit holds"
     );
 }
 

@@ -1,0 +1,37 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "pre-health-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "pre-health-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "pre-health-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "pre-health-cut/1/serial.log",
+      "sha256": "605b0e4a9a0560fe77f9b0875f61d73f9bc56466993c88f528681c69a25e75bc"
+    },
+    {
+      "path": "pre-health-cut/2/serial.log",
+      "sha256": "692fc384d951adb9797150ffdf73b5ad3eec531c4be6bc95c92b9d570184fe9a"
+    },
+    {
+      "path": "pre-health-cut/3/serial.log",
+      "sha256": "2fc227a7db08f3fc7a7f0bad27ca6281869af5fd741f52c04d1290e843332a94"
+    }
+  ]
+}

@@ -30,7 +30,7 @@ impl Workshop<'_> {
         target: Target,
     ) -> Result<Option<Signer>, BuilderError> {
         match target {
-            Target::LinuxX86_64 => Ok(None),
+            Target::LinuxX86_64 | Target::WindowsX86_64 => Ok(None),
             Target::DarwinUniversal => {
                 self.committed(commit, &[signer::CONFIG]).await?;
                 let clone = signer::in_clone(&self.clone)?;
@@ -64,7 +64,12 @@ impl Workshop<'_> {
         target: Target,
         signer: Option<&Signer>,
     ) -> Result<(), BuilderError> {
-        self.committed(commit, &tree::COMMITTED).await?;
+        let files = if target == Target::WindowsX86_64 {
+            &tree::WINDOWS_COMMITTED[..]
+        } else {
+            &tree::COMMITTED[..]
+        };
+        self.committed(commit, files).await?;
         let work = tree::work_folder(&self.clone)?;
         on_disk::renew(&work)?;
         let identity = signer.map(|signer| signer.identity.as_str());
@@ -73,13 +78,18 @@ impl Workshop<'_> {
     }
 
     /// Builds `anima-link` for every platform with the committed recipe and modules.
-    pub async fn link(&self, commit: &Commit) -> Result<(), BuilderError> {
-        self.committed(commit, &link::COMMITTED).await?;
+    pub async fn link(&self, commit: &Commit, target: Target) -> Result<(), BuilderError> {
+        let files = if target == Target::WindowsX86_64 {
+            &link::WINDOWS_COMMITTED
+        } else {
+            &link::COMMITTED
+        };
+        self.committed(commit, files).await?;
         for path in link::ABSENT {
             on_disk::absent(&self.clone.join(path))?;
         }
         self.run(&link::verify(&self.clone)).await?;
-        self.run(&link::build(&self.clone)).await
+        self.run(&link::build_for(&self.clone, target)).await
     }
 
     /// Builds the six Rust programs with the release version (INS-002, OD-17).
@@ -123,6 +133,9 @@ impl Workshop<'_> {
             let carried = match target {
                 Target::DarwinUniversal => {
                     artifact::universal(&self.read(&mach_o::archs(&staged)).await?)
+                }
+                Target::WindowsX86_64 => {
+                    super::is_x86_64_pe(&artifact::header(&self.clone, &staged, 4096)?)
                 }
                 Target::LinuxX86_64 => {
                     super::is_x86_64_elf(&artifact::header(&self.clone, &staged, 20)?)

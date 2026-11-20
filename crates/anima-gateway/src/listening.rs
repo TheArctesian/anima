@@ -4,15 +4,28 @@
 //! session with it and nothing else. OS work only.
 
 use std::io;
+#[cfg(unix)]
 use std::os::fd::{AsFd as _, OwnedFd};
 use std::path::PathBuf;
+#[cfg(unix)]
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::net::{TcpListener, TcpStream};
-use tokio::process::{Child, Command};
+use tokio::net::TcpListener;
+#[cfg(unix)]
+use tokio::net::TcpStream;
+#[cfg(unix)]
+use tokio::process::Child;
+use tokio::process::Command;
 use tokio::sync::Semaphore;
+
+#[cfg(windows)]
+mod windows;
+#[cfg(windows)]
+pub use windows::hub_connection;
+#[cfg(windows)]
+use windows::start;
 
 /// The most sessions at one time. A connection beyond it is told that the gateway is busy
 /// and closed.
@@ -62,7 +75,11 @@ pub async fn listen(listener: TcpListener, workers: Workers) -> io::Result<()> {
             let _ = connection.try_write(busy.as_bytes());
             continue;
         };
-        match start(connection, &workers) {
+        #[cfg(unix)]
+        let started = start(connection, &workers);
+        #[cfg(windows)]
+        let started = start(connection, &workers).await;
+        match started {
             Ok(mut worker) => {
                 tokio::spawn(async move {
                     let _ = worker.wait().await;
@@ -76,8 +93,16 @@ pub async fn listen(listener: TcpListener, workers: Workers) -> io::Result<()> {
 
 /// Starts a worker with `connection` as its standard input. The worker gets no environment
 /// and no other open connection.
+#[cfg(unix)]
 fn start(connection: TcpStream, workers: &Workers) -> io::Result<Child> {
     let connection = OwnedFd::from(connection.into_std()?);
+    worker_command(workers)
+        .stdin(Stdio::from(connection))
+        .stdout(Stdio::null())
+        .spawn()
+}
+
+fn worker_command(workers: &Workers) -> Command {
     let mut command = Command::new(&workers.program);
     command.arg(WORKER);
     if let Some(other) = &workers.other_gateway {
@@ -88,17 +113,16 @@ fn start(connection: TcpStream, workers: &Workers) -> io::Result<Child> {
     }
     command
         .env_clear()
-        .stdin(Stdio::from(connection))
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .kill_on_drop(true)
-        .spawn()
+        .stderr(std::process::Stdio::inherit())
+        .kill_on_drop(true);
+    command
 }
 
 /// In a worker: the hub's connection, which the listener gave as standard input.
 ///
 /// # Errors
 /// When standard input is not a connection.
+#[cfg(unix)]
 pub fn hub_connection() -> io::Result<TcpStream> {
     let connection = std::net::TcpStream::from(io::stdin().as_fd().try_clone_to_owned()?);
     connection.set_nonblocking(true)?;
