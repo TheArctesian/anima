@@ -1,0 +1,18 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "shutdown-hang",
+      "result": "Failed",
+      "harness_reset": false,
+      "reason": "No 'ANIMA_READY revision=A' after 180s; see serial.log",
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "shutdown-hang-confirmed/1/serial.log",
+      "sha256": "abc164106b517d0ac1afaa465e64cfa8f52de1b0d573f4e6b25561083dc036e0"
+    }
+  ]
+}

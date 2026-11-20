@@ -1,0 +1,28 @@
+title-text: "Anima.ing"
+title-color: "#eceff4"
+title-font: "Unifont Regular 16"
+desktop-color: "#2e3440"
+terminal-font: "Unifont Regular 16"
+message-color: "#eceff4"
+message-bg-color: "#2e3440"
++ boot_menu {
+  left = 15%
+  top = 30%
+  width = 70%
+  height = 45%
+  item_font = "Unifont Regular 16"
+  item_color = "#eceff4"
+  selected_item_color = "#88c0d0"
+  item_height = 36
+  item_padding = 8
+  item_spacing = 8
+}
++ label {
+  left = 15%
+  top = 85%
+  width = 70%
+  height = 30
+  text = "Server preview | Enter to start"
+  color = "#eceff4"
+  font = "Unifont Regular 16"
+}

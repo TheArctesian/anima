@@ -11,7 +11,7 @@ use tokio::{
     net::{TcpListener, TcpStream, UnixListener, UnixStream},
 };
 
-use crate::fleet::targets::{AddressPolicy, Reached, connect, on_link};
+use crate::fleet::targets::{AddressPolicy, LinkPort, Reached, connect, on_link};
 
 /// The link address of the fake link's one computer.
 pub(crate) const COMPUTER: &str = "fd41:4e49:4d41::7";
@@ -148,4 +148,88 @@ fn only_the_range_of_the_link_is_on_the_link() {
     ] {
         assert!(!on_link(other.parse().unwrap()), "{other}");
     }
+}
+
+/// A program beside the hub (guacd) that connects to `port` on the loopback address.
+async fn beside_the_hub(port: &LinkPort) -> TcpStream {
+    TcpStream::connect(port.local()).await.unwrap()
+}
+
+#[tokio::test]
+async fn hmd_048_a_program_beside_the_hub_reaches_a_port_of_a_computer_through_a_port_of_the_hub() {
+    let screen = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let screen_port = screen.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        // Two connections, as a program that connects again after a refused security form.
+        for _ in 0..2 {
+            let (mut stream, _) = screen.accept().await.unwrap();
+            stream.write_all(b"RFB 003.008\n").await.unwrap();
+            let mut heard = [0; 4];
+            stream.read_exact(&mut heard).await.unwrap();
+            stream.write_all(&heard).await.unwrap();
+        }
+    });
+    let (_folder, policy) = link(Link::Carries);
+
+    let port = LinkPort::open(&policy, computer(screen_port))
+        .await
+        .unwrap()
+        .expect("a link address gets a port of the hub");
+
+    assert!(port.local().ip().is_loopback());
+    for _ in 0..2 {
+        let mut program = beside_the_hub(&port).await;
+        let mut banner = [0; 12];
+        program.read_exact(&mut banner).await.unwrap();
+        assert_eq!(&banner, b"RFB 003.008\n");
+        program.write_all(b"ping").await.unwrap();
+        let mut echoed = [0; 4];
+        program.read_exact(&mut echoed).await.unwrap();
+        assert_eq!(&echoed, b"ping");
+    }
+}
+
+#[tokio::test]
+async fn hmd_049_a_port_that_the_computer_did_not_turn_on_gives_a_closed_connection_and_no_byte() {
+    let (_folder, policy) = link(Link::Says("refused"));
+    let port = LinkPort::open(&policy, computer(5900))
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut program = beside_the_hub(&port).await;
+
+    let mut heard = Vec::new();
+    assert_eq!(program.read_to_end(&mut heard).await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn hmd_048_the_port_of_the_hub_closes_with_its_session() {
+    let (_folder, policy) = link(Link::Says("refused"));
+    let port = LinkPort::open(&policy, computer(5900))
+        .await
+        .unwrap()
+        .unwrap();
+    let local = port.local();
+
+    drop(port);
+    // The task that listens ends at its next turn.
+    tokio::task::yield_now().await;
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    assert!(TcpStream::connect(local).await.is_err());
+}
+
+#[tokio::test]
+async fn an_address_of_the_network_and_a_hub_with_no_link_get_no_port_of_the_hub() {
+    let (_folder, policy) = link(Link::Carries);
+    let network: SocketAddr = "192.0.2.7:5900".parse().unwrap();
+    assert!(LinkPort::open(&policy, network).await.unwrap().is_none());
+    let no_link = AddressPolicy::default();
+    assert!(
+        LinkPort::open(&no_link, computer(5900))
+            .await
+            .unwrap()
+            .is_none()
+    );
 }

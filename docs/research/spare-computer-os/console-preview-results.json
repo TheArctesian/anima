@@ -1,0 +1,46 @@
+{
+  "iso_sha256": "a9dfc0badc4a65cc56c3d69f268df8d68acd503ee841b004335822f53126a364",
+  "results": [
+    {
+      "case": "wifi-supplicant-dbus-activation",
+      "result": "Passed"
+    },
+    {
+      "case": "mounted-child-excluded",
+      "result": "Passed"
+    },
+    {
+      "case": "iso-uefi-live",
+      "result": "Passed"
+    },
+    {
+      "case": "cancel-before-erase",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-install",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-login-readonly-runtime",
+      "result": "Passed"
+    },
+    {
+      "case": "rootless-isolated-app-and-job",
+      "result": "Passed",
+      "limitation": "Local Podman only, not Anima orchestration or an agent run"
+    },
+    {
+      "case": "installed-gui-auth-lock-network-display-fixed-footer",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ]
+}

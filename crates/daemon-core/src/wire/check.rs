@@ -10,8 +10,8 @@ use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
 use super::{
-    Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, KeyVersion, RefusalCode,
-    versions_fit,
+    Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor, KeyVersion,
+    RefusalCode, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
 use crate::inventory::Inventory;
@@ -45,6 +45,8 @@ pub struct Accepted {
     pub agent_usage: Option<AgentUsage>,
     /// The versions the daemon's key cache holds, when the batch had a `keys` member (R-147).
     pub keys: Option<Vec<KeyVersion>>,
+    /// What the daemon says about its update, when the batch had an `update` member (R-139).
+    pub update: Option<BatchUpdate>,
 }
 
 impl Batch {
@@ -68,7 +70,11 @@ impl Batch {
             && self
                 .keys
                 .as_ref()
-                .is_none_or(|keys| versions_fit(&keys.held));
+                .is_none_or(|keys| versions_fit(&keys.held))
+            && self
+                .update
+                .as_ref()
+                .is_none_or(|update| update.fits(is_version));
         if !shaped {
             return Err(RefusalCode::Malformed);
         }
@@ -96,6 +102,7 @@ impl Batch {
             daemon_version: self.daemon_version,
             agent_usage,
             keys: self.keys.map(|keys| keys.held),
+            update: self.update,
         })
     }
 }

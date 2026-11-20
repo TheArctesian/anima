@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -57,6 +58,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-NEW-portswitches | The switches of the open ports in Settings turn SSH and screen sharing on and off for the hub (HMD-049; task HM-T13) | This Mac joined to a hub, and an application of a build that holds the branch `hosted/hm-t13-port-switches` | Open |
+| HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
@@ -104,6 +106,29 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
+### HT-069: Anima OS preview hardware and enrollment
+
+Latest operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+
+Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. Wi-Fi connection on this machine remains unverified.
+
+Built: [preview source](../experiments/anima-os/README.md), under R-274.
+
+Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-273 adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
+VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
+
+1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation.
+3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
+4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
+5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
+6. Choose **Sign in to Anima**, complete WorkOS authentication in the secure browser, then **Add this computer**. Expected: private link, device registration and daemon enrollment complete without a copied code or terminal command. Verify the actual device heartbeat in Anima; an active local service alone is insufficient. Record account-service/hub refusals without weakening trust rules. Test cancellation, retry after network loss, and existing-owner protection. Do not include credentials in screenshots or reports.
+7. Reboot, unlock and check the Anima screen. Expected: confirmed orientation, network profiles and enrollment persist, the private link resumes, and monitoring reaches the hub. Lock the local screen while observing monitoring remotely. Test hub disconnection separately; local recovery must remain usable.
+8. Compare motion on this hardware at native orientation and after rotation, including fast navigation, dialog dismissal and reduced motion. Confirm responsiveness under representative workload load and record any rendering or touch issues.
+
+This does not qualify managed apps/jobs/agents, BIOS/ARM, encryption, backups or updates on hardware.
+
+Result: Open.
 ### HT-066: a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26)
 
 Built: on the branch `hosted/hm-t26-browser-session`. A hosted hub gives the Anima.ing cloud a
@@ -745,6 +770,32 @@ covered: the real link program, a real hub that reaches the port, and the window
 4. Quit and open the application, then open Settings. Expected: "Screen sharing" is still on.
 5. Turn it off. Run the command of step 3 again. Expected: `{"open":[]}`.
 6. Open Settings on a computer that has not joined a hub. Expected: no switch of a port.
+### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
+
+Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
+address, the hub opens a port on its own loopback address for the session and gives the gateway
+(guacd) that port; each connection of the port goes through the link to the port of the computer.
+
+The tests cover, with a fake link: a program beside the hub reaches a port of a computer through
+the port of the hub, two times in one session; a port that the computer did not turn on gives a
+closed connection; the port closes with its session; a device of the network and a hub with no
+link get no such port. Not covered: a real gateway, a real computer, Screen Sharing of macOS, the
+speed of a session through the relay of the link, and RDP (no link program for Windows yet).
+
+It needs: a hub of the pool from a new hub image that has this build, and an application with the
+link program of HM-T12. The steps are for the time when both exist.
+
+1. On this Mac, turn Screen Sharing on in System Settings, General, Sharing. Do not turn port 5900
+   on for the link yet.
+2. In the application, open the device of this Mac and press VNC. Expected: the session does not
+   open, and the message says that the computer did not answer or refused. Nothing else on the
+   Mac changes.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "<the device folder of the link>" on 5900`
+   (or the switch of HM-T13 when it is built). Press VNC again. Expected: the screen of this Mac
+   shows in the session after the password of Screen Sharing.
+4. Move the mouse and type in a text field in the session for one minute. Expected: the screen
+   follows; write how slow it feels.
+5. End the session, then turn port 5900 off again. Press VNC. Expected: the session does not open.
 
 Result: Open.
 
