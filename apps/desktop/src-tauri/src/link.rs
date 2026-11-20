@@ -249,13 +249,12 @@ pub async fn link_status<R: Runtime>(
         path: None,
         latency_ms: None,
     };
-    if now.phase == Phase::Up {
-        if let Some((path, latency, key)) = blocking(move || Ok(link_path(&folders.device))).await?
-        {
-            status.path = Some(path);
-            status.latency_ms = Some(latency);
-            status.public_key = key;
-        }
+    if now.phase == Phase::Up
+        && let Some((path, latency, key)) = blocking(move || Ok(link_path(&folders.device))).await?
+    {
+        status.path = Some(path);
+        status.latency_ms = Some(latency);
+        status.public_key = key;
     }
     Ok(status)
 }
