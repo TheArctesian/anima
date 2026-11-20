@@ -130,12 +130,12 @@ An experimental preview may be prepared after M2 and an explicit preview-scope r
 
 ## 8. Proposed task sequence
 
-No task is buildable from this Draft. Each later claim must name its task and approved requirements. Scope-changing findings return to this proposal and the relevant owner before implementation.
+Only the bounded OS1 F1/UEFI-F2 experiment in Section 13 is authorized by R-NEW-aosprototype. Other implementation tasks remain unapproved. Each claim must name its task and approved scope. Scope-changing findings return to this proposal and the relevant owner before implementation.
 
 | Task | Work | Depends on | State | Completion evidence |
 | --- | --- | --- | --- | --- |
 | OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Planning complete | Section 13 is the OS0 acceptance record: dependency snapshot, proposed contract deltas, bounded experiment protocol and handoff; no implementation approval or runtime evidence |
-| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Not started | Four separate pass/fail/blocked records; F1/F2 need not wait for UI, physical models or F4 |
+| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | In progress: bounded F1/UEFI-F2 only (R-NEW-aosprototype) | Branch `os/os1-uefi-prototype`; F3/F4 remain unapproved; report each gate separately |
 | OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Not started | M1 record |
 | OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Not started | M2 record |
 | OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
@@ -154,7 +154,7 @@ Independent packaging and hardware research can proceed in parallel only after a
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Use 4.16 for the installation deliverable now; do not change its tier or authorize work ahead of its existing tasks. | Open; mapping only, no reprioritization |
 | OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Yes, sharing one installer backend; no full desktop. | Open; side-chat revisit requested |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Select available devices covering UEFI, BIOS, ARM boot, networking and optional TPM. Measure minimum resources. | Open; no hardware access or result assumed |
-| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Review AOS-001 to AOS-024, Section 12 and the exact experiment brief. Authorize F1/F2 first without implying approval of F3/F4 contract changes or later implementation. | Open; writing this proposal does not approve its build |
+| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Review AOS-001 to AOS-024, Section 12 and the exact experiment brief. Authorize F1/F2 first without implying approval of F3/F4 contract changes or later implementation. | Decided for the Section 13 F1/UEFI-F2 slice only: R-NEW-aosprototype; F3/F4 and later work remain unapproved |
 | OD-AOS6 | What custom host configuration is a supported public input? | Start with declared packages/services and reviewed modules; define allowed options, privilege boundaries and update tests before advertising arbitrary Nix modules. | Open; reconcile with Decision 16, do not narrow it silently |
 | OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Preserve Decisions 8/19/21 as the desired outcome; review a per-work-type contract delta, duplicate-execution prevention and separate retained datasets. Do not bypass current K10 rules. | Open; blocks corresponding F4 and OS4 acceptance |
 
@@ -305,7 +305,7 @@ Morning deliverables:
 
 Commit source/docs and leave large VM artifacts outside git. Push only the authorized implementation branch through normal gates; publishing an image or merging to `main` requires separate release authorization. Update OS1 with evidence for the slice actually attempted, never mark all F1-F4 complete from this run.
 
-OS0 is complete as planning work through this record. The remaining pre-run actions are concrete: authorize this OS1 slice, choose/provision its build environment, and claim the task. The broader product decisions need not be reopened for the VM experiment.
+OS0 is complete as planning work through this record. The operator authorized this OS1 slice on 2026-11-20 (R-NEW-aosprototype). The build environment is the local `framework` host with disposable QEMU disks; preparation and claim are recorded on the implementation branch. The broader product decisions need not be reopened for the VM experiment.
 
 ## Appendix A. Recorded direction
 
