@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-20",
+  "iso_sha256": "6b49842f605147a979927664c15cc9f98473f2d89c07339bd06645ff0e34c824",
+  "iso_bytes": 3097722880,
+  "gui": [
+    {
+      "case": "graphical-offline-install-and-cancel",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-login-readonly-network-keyboard-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "cli": [
+    {
+      "case": "mounted-child-excluded",
+      "result": "Passed"
+    },
+    {
+      "case": "iso-uefi-live",
+      "result": "Passed"
+    },
+    {
+      "case": "cancel-before-erase",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-install",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-login-readonly-runtime",
+      "result": "Passed"
+    },
+    {
+      "case": "rootless-isolated-app-and-job",
+      "result": "Passed",
+      "limitation": "Local Podman only, not Anima orchestration or an agent run"
+    },
+    {
+      "case": "installed-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "python_regressions": {
+    "passed": 12
+  },
+  "visual_checks": [
+    "Anima.ing GRUB menu",
+    "Anima.ing Plymouth splash",
+    "Calamares white partition labels",
+    "anima-site hero desktop"
+  ],
+  "limitations": [
+    "No physical Wi-Fi qualification",
+    "System keyfiles copied; user keyring secrets excluded",
+    "Server console after installation; no installed desktop",
+    "Experimental x86-64 UEFI; existing monitoring and local Podman only"
+  ],
+  "raw_log_sha256": {
+    "gui-test-008": "2dcd0d8e77ce0fa4760badc189356c3c68c8fe4f1b86a3228914a4ba47d3f312",
+    "iso-test-gui-001": "4af3d14bd8f70529116bff7608fcb3d1b1be9bf8e46597a8ee3d58838f07918f",
+    "gui-boot-check": "679e89db588f58ed2e0b94bad3f1572a32a3b0a92fb498b75660afb3e3e4cef2"
+  },
+  "repository_gates": {
+    "passed": 21,
+    "rust_tests_passed": 6468,
+    "rust_tests_skipped": 1
+  }
+}

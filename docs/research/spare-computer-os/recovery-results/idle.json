@@ -1,0 +1,17 @@
+{
+  "image_sha256": "40825ede35a7f372aac17920de28823fb5600dc8332265631dc12252315f85bb",
+  "results": [
+    {
+      "case": "reboot-deadline-idle",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "idle/1/serial.log",
+      "sha256": "6c523ec7e413dabd9c6519a7266e7e1780a382a87b337162cc1e506effa979b7"
+    }
+  ]
+}

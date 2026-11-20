@@ -10,6 +10,7 @@ use tokio::time::MissedTickBehavior;
 
 use super::{
     Error,
+    live::Live,
     model::Class,
     sending::{Sendable, claim_send, waiting},
     store,
@@ -50,6 +51,8 @@ pub struct Sending {
     pub db: PgPool,
     pub bus: Bus,
     pub vault: Vault,
+    /// The open applications: the same value as the schema has.
+    pub live: Live,
 }
 
 /// The event of a firing that was queued: the name of the rule for Class C, no name else.
@@ -67,9 +70,10 @@ fn fired(sendable: &Sendable) -> NewEvent {
     }
 }
 
-/// Sends one waiting firing in one transaction: the check at send time, then one outbox row
-/// for each channel. A firing that no channel takes becomes `suppressed` with its reason.
-/// `true` when at least one row was queued.
+/// Sends one waiting firing in one transaction: the check at send time, then the firing to the
+/// open applications or, when none is open, one outbox row for each channel. A firing that no
+/// application and no channel takes becomes `suppressed` with its reason. `true` when it was
+/// sent.
 async fn send_one(
     sending: &Sending,
     firing: crate::ids::FiringId,
@@ -80,6 +84,16 @@ async fn send_one(
         tx.commit().await?;
         return Ok(false);
     };
+    if sending.live.open() > 0 {
+        let shown = store::firing(&mut tx, firing).await?;
+        events::record(&mut tx, &sending.bus, now, fired(&sendable)).await?;
+        tx.commit().await?;
+        // After the commit: an application that answers at once finds the firing `sent`.
+        if let Some(shown) = shown {
+            sending.live.publish(shown);
+        }
+        return Ok(true);
+    }
     let (title, body) = lock_screen(sendable.class, &sendable.rule_name, &sendable.text);
     let reminder = Reminder {
         firing: firing.into(),
@@ -108,7 +122,7 @@ async fn send_one(
 }
 
 /// Sends each firing that waits at `now`, oldest first, at most 100, and gives how many were
-/// queued to a channel. One firing that fails does not stop the others: the first error is the
+/// sent: to the open applications or, when none is open, to a channel. One firing that fails does not stop the others: the first error is the
 /// result after all were tried.
 ///
 /// # Errors
@@ -120,7 +134,7 @@ pub async fn send_waiting(sending: &Sending, now: DateTime<Utc>) -> Result<u64, 
     let (mut sent, mut failed) = (0, None);
     for firing in firings {
         match send_one(sending, firing, now).await {
-            Ok(queued) => sent += u64::from(queued),
+            Ok(was_sent) => sent += u64::from(was_sent),
             Err(error) => failed = failed.or(Some(error)),
         }
     }

@@ -22,7 +22,7 @@ describe('the first-run choices (FRN-001)', () => {
     const choices = hubChoices({ deviceLink: true, cloudAccount: true, localHub: true, carried: true });
     expect(choices.map((choice) => [choice.title, choice.href, choice.off])).toEqual([
       ['Join with an invite', '/welcome/join', null],
-      ['Use a hub address', '/sign-in', null],
+      ['Use a hub address', '/welcome/address', null],
       ['Create a hub on this computer', '/welcome/create', null],
     ]);
   });
@@ -36,8 +36,9 @@ describe('the first-run choices (FRN-001)', () => {
     expect(choices.map((choice) => choice.off)).toEqual([null, null, 'Desktop app only.']);
   });
 
-  it('CLI-001: a browser can only use a hub address', () => {
+  it('CLI-001: a browser can only sign in to the hub that served it', () => {
     const choices = hubChoices({ deviceLink: false, cloudAccount: false, localHub: false, carried: false });
     expect(choices.map((choice) => choice.off)).toEqual(['Needs the Anima.ing app.', null, 'Desktop app only.']);
+    expect(choices[1]).toMatchObject({ title: 'Sign in to this hub', href: '/sign-in' });
   });
 });

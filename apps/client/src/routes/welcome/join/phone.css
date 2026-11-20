@@ -39,23 +39,12 @@
     margin-block-start: calc(var(--space-1) + var(--border-focus));
   }
 
-  /* 6 px between the label and its field. */
-  :root [data-join] label {
-    margin-block-end: calc(var(--space-2) * -1 - var(--border-focus));
-    line-height: var(--leading-tight);
-  }
-
   :root [data-join] textarea {
     block-size: calc(var(--space-12) * 3 + var(--space-1));
     padding: var(--space-3) calc(var(--space-3) + var(--border-focus));
     background: none;
     line-height: 1.45;
     resize: none;
-  }
-
-  /* With no refusal the line is out of the stack and takes no room, so Paste is 16 px below the field. */
-  :root [data-join] form .problem:empty {
-    position: absolute;
   }
 
   :root [data-join] button {
@@ -69,8 +58,9 @@
     font-weight: var(--weight-medium);
   }
 
-  /* Paste is a line button: no fill, the edge of a control. */
-  :root [data-join] button.secondary {
+  :root [data-join] .invite-label button {
+    block-size: auto;
+    font-size: var(--text-sm);
     border-color: var(--border-strong);
     background: none;
   }
@@ -95,5 +85,19 @@
   :root [data-join] .end {
     inset-inline: var(--space-5);
     inset-block-end: calc(var(--safe-block-end) + var(--space-2) + var(--border-focus));
+  }
+}
+
+@media (max-width: 767.98px) and (max-height: 30rem) {
+  :root [data-join] form {
+    gap: var(--space-2);
+  }
+
+  :root [data-join] form h1 {
+    margin-block: 0;
+  }
+
+  :root [data-join] textarea {
+    block-size: clamp(var(--space-12), 17svh, calc(var(--space-16) + var(--space-4)));
   }
 }

@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -56,6 +57,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
@@ -89,6 +91,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-NEW-webclientgateway | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 
@@ -103,6 +106,29 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
+### HT-069: Anima OS preview hardware and enrollment
+
+Latest operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+
+Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. Wi-Fi connection on this machine remains unverified.
+
+Built: [preview source](../experiments/anima-os/README.md), under R-274.
+
+Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-273 adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
+VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
+
+1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation.
+3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
+4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
+5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
+6. Choose **Sign in to Anima**, complete WorkOS authentication in the secure browser, then **Add this computer**. Expected: private link, device registration and daemon enrollment complete without a copied code or terminal command. Verify the actual device heartbeat in Anima; an active local service alone is insufficient. Record account-service/hub refusals without weakening trust rules. Test cancellation, retry after network loss, and existing-owner protection. Do not include credentials in screenshots or reports.
+7. Reboot, unlock and check the Anima screen. Expected: confirmed orientation, network profiles and enrollment persist, the private link resumes, and monitoring reaches the hub. Lock the local screen while observing monitoring remotely. Test hub disconnection separately; local recovery must remain usable.
+8. Compare motion on this hardware at native orientation and after rotation, including fast navigation, dialog dismissal and reduced motion. Confirm responsiveness under representative workload load and record any rendering or touch issues.
+
+This does not qualify managed apps/jobs/agents, BIOS/ARM, encryption, backups or updates on hardware.
+
+Result: Open.
 ### HT-066: a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26)
 
 Built: on the branch `hosted/hm-t26-browser-session`. A hosted hub gives the Anima.ing cloud a
@@ -760,6 +786,35 @@ state directory that the application gives it: read the two from the output of
 
 Result: Open.
 
+### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
+
+Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
+address, the hub opens a port on its own loopback address for the session and gives the gateway
+(guacd) that port; each connection of the port goes through the link to the port of the computer.
+
+The tests cover, with a fake link: a program beside the hub reaches a port of a computer through
+the port of the hub, two times in one session; a port that the computer did not turn on gives a
+closed connection; the port closes with its session; a device of the network and a hub with no
+link get no such port. Not covered: a real gateway, a real computer, Screen Sharing of macOS, the
+speed of a session through the relay of the link, and RDP (no link program for Windows yet).
+
+It needs: a hub of the pool from a new hub image that has this build, and an application with the
+link program of HM-T12. The steps are for the time when both exist.
+
+1. On this Mac, turn Screen Sharing on in System Settings, General, Sharing. Do not turn port 5900
+   on for the link yet.
+2. In the application, open the device of this Mac and press VNC. Expected: the session does not
+   open, and the message says that the computer did not answer or refused. Nothing else on the
+   Mac changes.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "<the device folder of the link>" on 5900`
+   (or the switch of HM-T13 when it is built). Press VNC again. Expected: the screen of this Mac
+   shows in the session after the password of Screen Sharing.
+4. Move the mouse and type in a text field in the session for one minute. Expected: the screen
+   follows; write how slow it feels.
+5. End the session, then turn port 5900 off again. Press VNC. Expected: the session does not open.
+
+Result: Open.
+
 ### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
 
 Built: migration `0506_events_audit_chain.sql` and the hash chain of the audit log
@@ -1048,6 +1103,9 @@ a kept link (up, down, up again, and a stop of the application that leaves the u
 the folder. Not covered: the copy to the real home folder, `launchctl`, the hand-over inside a real
 sign-in, the start of the application with a unit that runs, and an update of the application.
 
+Changed by DEF-007: the copy is `~/Library/Application Support/ing.anima.desktop/link/program/anima-link`,
+not `~/.local/bin/anima-link`. In the steps below, read `~/.local/bin/anima-link` as that path, in double quotes.
+
 It needs: this Mac with the application of this build (a trial bundle is enough), signed in to the
 hosted hub. `<DIR>` is `~/Library/Application Support/ing.anima.desktop/link/device`; put it in
 double quotes in a command, because the path has a space.
@@ -1072,6 +1130,37 @@ double quotes in a command, because the path has a space.
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
+
+### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
+
+Built: on the branch `fix/link-private-folder`. The shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies
+`anima-link` to `<application>/link/program/` (`~/.local/share/anima/link/program/` on Linux), which the
+application makes, and no longer to `~/.local/bin`. A unit of an earlier application that runs
+`~/.local/bin/anima-link` is moved to the new copy at the next start. The log has the cause when the link
+refuses the unit.
+
+The tests cover: the paths of the copy, and that a unit of an earlier application is found by its copy in
+`~/.local/bin`. Not covered: the copy into a real home folder (the check of the folders refuses the temporary
+folder of a test), systemd and `launchctl`, the install of the daemon, and the metrics at the hub.
+
+Seen by the session that wrote this (2026-11-20, on `pop-os`, with the desktop program of this branch in the
+0.0.3 AppImage; not a result): "a unit of the user keeps the device link"; `anima-link.service` active; the link
+ran from the new copy with `-daemon-socket`; the socket was made; `~/.local/bin/anima-link` was deleted.
+
+It needs: `pop-os` (Pop!_OS 24.04, `~/.local/bin` mode 775), an AppImage that holds this branch, the sign-in to
+the hosted hub; for step 5, this Mac with the unit that an earlier application made.
+
+1. On `pop-os`, run `stat -c %a ~/.local/bin`. Expected: `775` (the case of the defect). Do not change it.
+2. Open the AppImage and sign in. Wait two minutes. Expected: `systemctl --user is-active anima-link.service`
+   prints `active`, and `ls ~/.local/share/anima/link/program/anima-link` finds the file.
+3. Run `systemctl --user is-active anima-daemon.service`. Expected: `active`. The log of the application
+   (`~/.local/share/ing.anima.desktop/logs/Anima.log`) has "the daemon of this computer: try N of 5: installed".
+4. On the hub, open Devices. Expected: the row `pop-os` shows CPU, Memory and Disk, not "No metrics".
+5. On this Mac, install the application of this branch over the one before and open it. Wait one minute.
+   Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
+   the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
+
+Result: Open.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1249,9 +1338,10 @@ Observation (2026-11-19; the operator, from screenshots of a local build of `mai
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
-Built: on the branch `engine/e0-7-reminders`. The hub evaluates reminder rules each minute and sends
-each firing through the notification channels. `anima reminder` makes and changes rules, and shows,
-snoozes and acknowledges firings.
+Built: on `dev`, and steps 9 and 10 on the branch `engine/e0-7-firings-subscription`. The hub evaluates
+reminder rules each minute and sends each firing through the notification channels. `anima reminder`
+makes and changes rules, and shows, snoozes and acknowledges firings. `anima reminder watch` is an
+open application: while it runs, the hub gives it each firing and sends none to a channel.
 
 The tests use a stopped clock, a database of the test and an HTTPS server of the test in the place of
 ntfy. Not covered: the task of each minute in a hub that runs for hours, a real ntfy server and the
@@ -1280,6 +1370,11 @@ ntfy app on a phone, the text on a real lock screen, and a change of the clocks 
 8. Run `anima reminder set <rule> --message "Changed"` for the rule of step 2 in the minute before it
    is due again on the next day, or run `anima reminder disable <rule>`. Expected: a firing that
    waited is `SUPPRESSED` with the reason `rule_changed`, and the phone shows nothing.
+9. Run `anima reminder watch` in a second terminal and leave it open. Run `anima reminder test <rule>`
+   for the rule of step 2. Expected: in not more than 2 minutes the second terminal shows one line
+   with the time, the ID of the firing and `Stand up`, and the phone shows no notification. Stop the
+   command with Ctrl-C and run the test again. Expected: the phone shows the notification.
+10. Run `anima notify channel topic` two times. Expected: two different topics of 22 characters.
 
 Result: Open.
 
@@ -1780,8 +1875,10 @@ Open the integrated iOS build on a physical device with a test hub. In Settings,
 capabilities and tap Read capabilities. Expect the current power state, thermal state, app
 memory headroom, and available storage. Open Technical report and expect the platform, OS,
 observation time, and discovery data. Disconnect or reconnect power, wait for iOS to update
-the battery state, and tap Refresh. Expect a new observation time and the updated power state.
-Verify that the browser client has no report entry.
+the battery state, and tap Refresh. Expect the Last checked time to advance and the report to
+show the updated power state. With VoiceOver on iOS or TalkBack on Android, refresh the report
+and listen for “Capability report refreshed.” Verify that the browser client has no report entry.
+
 ### HT-065: the measurements of the isolation design on Linux (task W2, R-188, R-264)
 
 Built: the script [linux-job.sh](research/work-isolation/linux-job.sh) of the record

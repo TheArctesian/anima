@@ -295,6 +295,7 @@ pub async fn cloud_hub_access(
             })
             .await;
         if !matches!(answered, Err(CloudError::NotReady)) || started.elapsed() >= NOT_READY_LIMIT {
+            #[cfg(desktop)]
             if let Ok(access) = &answered {
                 crate::link::hosted_hub_opened(&webview, access.is_joined());
             }
