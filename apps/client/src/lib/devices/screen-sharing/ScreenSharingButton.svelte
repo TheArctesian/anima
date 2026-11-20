@@ -188,6 +188,10 @@
     gap: var(--space-2);
     inline-size: max-content;
     max-inline-size: min(calc(var(--space-16) * 5), calc(100vw - var(--space-4) * 2));
+    /* A cell of the Devices table sets `nowrap`, and the panel is inside it: its sentences must wrap all the same. */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: start;
     margin: 0;
     margin-block-end: var(--space-1);
     padding: var(--space-2);
