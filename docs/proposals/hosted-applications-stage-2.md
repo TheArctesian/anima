@@ -580,7 +580,7 @@ Brings to its files a Compose project that Anima did not install and that the ow
 
 ### 4.13 Which actor may ask for each type
 
-The hub applies this table (R-234). The machine cannot see the actor.
+The hub applies this table (R-234). The machine cannot see the actor. The hub makes no container item with no actor in this version: each item is the act of a person, an API key or an MCP tool (ETH-004). An update that the hub starts by itself (R-242 of [extensions-plan.md](../plans/extensions-plan.md), for two stacks of that plan) is not in this version; it needs its own row here, with a ruling.
 
 | Type | A login or a browser session | An API key or an MCP tool |
 | --- | --- | --- |
