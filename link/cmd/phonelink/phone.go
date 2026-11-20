@@ -34,6 +34,7 @@ type linkStatus struct {
 	Path      string  `json:"path,omitempty"`
 	LatencyMS float64 `json:"latencyMs,omitempty"`
 	DeviceKey string  `json:"deviceKey,omitempty"`
+	PublicKey string  `json:"publicKey,omitempty"`
 }
 
 // failure is the answer of a call that failed: a stable code, never a path, a key or the invite.
@@ -47,6 +48,7 @@ var (
 	running   *devicelink.Link
 	held      *statedir.Dir
 	deviceKey string
+	publicKey string
 )
 
 // join uses the invite in line with the identity in the directory state, and saves the joined identity.
@@ -102,7 +104,10 @@ func start(state, listen string) (started, error) {
 		return started{}, err
 	}
 	running, held = link, dir
-	deviceKey = device.Key.Public().Fingerprint()
+	key := device.Key.Public()
+	deviceKey = key.Fingerprint()
+	encoded, _ := key.MarshalText() // A populated public key always has a text form.
+	publicKey = string(encoded)
 	return started{Local: link.LocalAddr().String()}, nil
 }
 
@@ -117,7 +122,7 @@ func status() linkStatus {
 	return linkStatus{
 		Running: true, Local: running.LocalAddr().String(),
 		Path: string(path.Kind), LatencyMS: float64(path.Latency.Microseconds()) / 1000,
-		DeviceKey: deviceKey,
+		DeviceKey: deviceKey, PublicKey: publicKey,
 	}
 }
 
@@ -132,6 +137,7 @@ func stop() {
 	_ = held.Close()
 	running, held = nil, nil
 	deviceKey = ""
+	publicKey = ""
 }
 
 // code is the stable code of err that the shell gives the client, as the desktop link's codes.

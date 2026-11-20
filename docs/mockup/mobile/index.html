@@ -371,6 +371,7 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
       <div class="pair"><button class="btn pri">Sign in</button><button class="btn secondary">Sign up</button></div>
       <button class="btn join">Join a hub <svg class="i sm" aria-hidden="true"><use href="#i-right"/></svg></button>
       <p class="fine">Connect to a hub your team already runs.</p>
+      <button class="btn join">Scan enrollment QR</button>
     </div>
   </div>
 </template>
@@ -425,14 +426,15 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
           <div class="dock"><button class="btn"><svg class="i"><use href="#i-paste"/></svg>Paste invite</button></div>
         </div>
       </div></div>
-        <figcaption><b>Scan invite</b><span class="tag">dark, iOS</span><p>Joins as soon as the code is read. No confirm step.</p></figcaption></figure>
+        <figcaption><b>Scan invite</b><span class="tag">dark, iOS</span><p>Puts the invite in the field. Choose Join hub to continue.</p></figcaption></figure>
 
       <figure class="shot"><div class="phone gd ios"><div class="screen"><div class="body paste flush">
         <div style="padding-inline:20px;display:flex;flex-direction:column;flex:1;min-height:0">
           <div class="navrow"><button class="back"><svg class="i"><use href="#i-left"/></svg>Back</button></div>
-          <h2>Paste invite</h2>
+          <h2>Join with an invite</h2>
+          <button class="btn line">Scan enrollment QR</button>
           <div class="stack">
-            <div class="field"><div class="invite-label"><label>Invite</label><button class="btn line"><svg class="i"><use href="#i-paste"/></svg>Paste</button></div><p class="fine">Ask the person who runs your hub for an invite, then paste the full invite here.</p><div class="area mono"><span>anima-invite:hub.okita.example:<span class="fade">kQ7x2mVd9TzR4LwEj8HnB3sYcF6uA1pG</span><span class="caret"></span></span></div></div>
+            <div class="field"><div class="invite-label"><label>Invite</label><button class="btn line"><svg class="i"><use href="#i-paste"/></svg>Paste</button></div><p class="fine">Scan the enrollment QR or paste the full invite. Then sign in to the hub.</p><div class="area mono"><span>anima-invite:hub.okita.example:<span class="fade">kQ7x2mVd9TzR4LwEj8HnB3sYcF6uA1pG</span><span class="caret"></span></span></div></div>
             <button class="btn pri">Join hub</button>
             <p class="fine">Works once. Not kept.</p>
           </div>
@@ -489,6 +491,10 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
         <figcaption><b>Device list</b><span class="tag">dark, iOS</span><p>Problems first. The button opens the most used protocol; the row opens the device. Long names end with an ellipsis.</p></figcaption></figure>
       <figure class="shot"><div class="phone gl android"><div class="screen" data-tpl="t-devices" data-tabs="devices"></div></div>
         <figcaption><b>Device list</b><span class="tag">light, Android</span><p>Same client on Android. Only the system bars differ.</p></figcaption></figure>
+      <figure class="shot"><div class="phone gd ios"><div class="screen"><div class="body join">
+        <h2>Add device</h2>
+        <div class="stack"><button class="btn pri">Enroll this iPhone</button><button class="btn line">Enroll another device</button></div>
+        </div></div></div><figcaption><b>Device enrollment</b><span class="tag">dark, iOS</span><p>The plus button opens these choices. The next screen asks for a device name and makes a QR and a key.</p></figcaption></figure>
     </div>
   </section>
 

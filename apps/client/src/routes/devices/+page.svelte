@@ -3,24 +3,25 @@
   import { resolve } from '$app/paths';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
-  import { readThisMachine, type ThisMachine } from '$lib/desktop/this-machine';
-  import { checksApi } from '$lib/checks/api';
+  import { readThisMachine } from '$lib/desktop/this-machine';
+  import { readLink } from '$lib/desktop/link/shell';
   import type { CardDevice } from '$lib/devices/api';
   import { devicesApi } from '$lib/devices/client';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
-  import { addDevice as createWithCredential, type AddedDevice } from '$lib/devices/add/add-device';
-  import AddDeviceModal from '$lib/devices/add/AddDeviceModal.svelte';
-  import type { SitePlacement } from '$lib/devices/form/site';
-  import type { DeviceFormValues, SiteOption } from '$lib/devices/form/values';
-  import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
   import { readCloudDevice } from '$lib/desktop/cloud/device';
   import { hubIsHosted } from '$lib/hosted/mark';
-  import { addThisComputer } from '$lib/hosted/this-computer';
+  import { enrolAtAddress, enrolThisComputer, type DeviceEnrolment } from '$lib/hosted/this-computer';
+  import { enrolLinkedDevice } from '$lib/devices/enrollment/enrol-linked-device';
+  import { clearPendingEnrolment, pendingEnrolment } from '$lib/devices/enrollment/pending-enrolment';
+  import { VPN_SITE } from '$lib/devices/form/site';
+  import FormButton from '$lib/forms/FormButton.svelte';
+  import Modal from '$lib/forms/modal/Modal.svelte';
+  import InviteMaker from '$lib/link/InviteMaker.svelte';
+  import { createClock } from '$lib/nav/clock.svelte';
+  import { isAndroid, isIPad } from '$lib/platform/mobile';
   import { linkApi } from '$lib/link/api';
   import { useHub } from '$lib/hub/context';
-  import type { HubError, HubResult } from '$lib/hub/hub';
-  import { sessionsApi } from '$lib/sessions/api';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
@@ -32,26 +33,23 @@
   const sessions = useSessions();
   const hub = useHub();
   const devices = devicesApi(hub);
-  const checks = checksApi(hub);
-  const connections = sessionsApi(hub);
   const wake = wakeApi(hub);
   const screenSharing = screenSharingCalls(hub);
 
-  let sites = $state<readonly SiteOption[]>([]);
-  let adding = $state(false);
-  let addError = $state<HubError | null>(null);
-  /** This computer when it is known and not yet a device, so Add device offers it first (R-060). */
-  let machine = $state<ThisMachine | null>(null);
-  /** The app opened Add device itself, to ask about `machine`. */
-  let asking = $state(false);
-  let loadingSites = false;
-  /** Goes up when a device was added with no form, so the list is read again. */
+  const link = linkApi(hub);
+  const clock = createClock(1000);
+  const platform = capabilities();
+  const deviceName = isIPad(navigator) ? 'iPad' : isAndroid(navigator) ? 'Android device' : 'iPhone';
+  const selfLabel = platform.thisMachine ? 'Enroll this computer' : `Enroll this ${deviceName}`;
+  const canEnrolHere = platform.thisMachine || platform.deviceLink;
+  const inventory = { hosts: devices.hosts, sites: devices.sites, createSite: devices.createSite, createDevice: devices.create };
+  const hostedComputer = { ...inventory, device: readCloudDevice, linkDevices: link.devices };
+  const currentLink = { ...inventory, link: readLink, linkDevices: link.devices };
+  const mobileDevice = { name: deviceName, kind: deviceName === 'iPad' ? 'tablet' : 'phone' };
+  let panel = $state<'choose' | 'invite' | null>(null);
+  let busy = $state(false);
+  let result = $state<DeviceEnrolment | null>(null);
   let listVersion = $state(0);
-
-  /** This computer, where the client can read it; elsewhere nothing to offer (R-060). */
-  function readHere(): Promise<ThisMachine | null> {
-    return capabilities().thisMachine ? readThisMachine(hub) : Promise.resolve(null);
-  }
 
   const query = $derived(parseListQuery(page.url.searchParams));
 
@@ -66,94 +64,55 @@
     });
   }
 
-  /** Shows Add device over the list with the sites it needs, offering `offered` first when it is not null. */
-  function show(found: HubResult<readonly SiteOption[]>, offered: ThisMachine | null, ask: boolean): void {
-    addError = found.ok ? null : found.error;
-    if (!found.ok) return;
-    sites = found.value;
-    machine = offered;
-    asking = ask;
-    adding = true;
-  }
-
-  /** Once this computer is found to be a device, the prompt stops looking for the rest of the run. */
-  function remember(offer: MachineOffer): ThisMachine | null {
-    if (offer.kind === 'device') thisMachinePrompt.isADevice();
-    return offeredMachine(offer);
-  }
-
-  /**
-   * Add device (DEV-010, WP-13 H-1): the sites are read first, because the form needs a site to place the device
-   * in. This computer is read at the same time, so the form can offer it (R-060).
-   */
-  async function addDevice(): Promise<void> {
-    if (loadingSites || adding) return;
-    loadingSites = true;
-    const [found, offer] = await Promise.all([devices.sites(), machineToOffer(readHere, devices.hosts)]);
-    loadingSites = false;
-    show(found, remember(offer), false);
-  }
-
-  /**
-   * After sign-in, Add device opens by itself, once per app start, when this computer is known and not yet a
-   * device, unless the operator said not to ask again (R-060). A failure to read the sites stays quiet here.
-   */
-  async function askAboutThisMachine(): Promise<void> {
-    if (!thisMachinePrompt.due || loadingSites || adding) return;
-    loadingSites = true;
-    const offered = remember(await machineToOffer(readHere, devices.hosts));
-    const found = offered === null ? null : await devices.sites();
-    loadingSites = false;
-    // The operator may have turned the prompt off, or opened Add device, while the reads were pending.
-    if (offered === null || found === null || !found.ok || !thisMachinePrompt.due || adding) return;
-    thisMachinePrompt.asked();
-    show(found, offered, true);
-  }
-
-  /**
-   * On a hosted hub this computer becomes a device with no question (HMD-044). Such a hub reaches it by the link, not
-   * the VPN, so there is nothing to ask about.
-   */
-  async function meetThisMachine(): Promise<void> {
-    if (!hubIsHosted(hub.address.origin)) return askAboutThisMachine();
-    // A phone is not a computer of the hub, and its shell has no `cloud_device` (MOB-005, mobile plan M3-4).
-    if (!capabilities().thisMachine) return;
-    const added = await addThisComputer({
-      device: readCloudDevice,
-      linkDevices: () => linkApi(hub).devices(),
-      hosts: () => devices.hosts(),
-      sites: () => devices.sites(),
-      createSite: (name, subnet) => devices.createSite(name, subnet),
-      createDevice: (input) => devices.create(input),
+  async function enrollHere(): Promise<DeviceEnrolment> {
+    if (!platform.thisMachine) {
+      return enrolLinkedDevice(hub.address.origin, currentLink, mobileDevice);
+    }
+    if (hubIsHosted(hub.address.origin)) return enrolThisComputer(hostedComputer);
+    const machine = await readThisMachine(hub);
+    if (machine === null) return enrolLinkedDevice(hub.address.origin, currentLink, { name: 'Computer', kind: 'workstation' });
+    return enrolAtAddress(inventory, VPN_SITE, {
+      name: machine.name.trim() || 'Computer', host: machine.vpnAddress, kind: 'workstation', os: machine.os, tags: [],
     });
-    if (added) listVersion += 1;
   }
 
-  // Once, when the page mounts; nothing the prompt reads should run it again.
+  async function enroll(): Promise<void> {
+    if (busy) return;
+    busy = true;
+    result = null;
+    try {
+      result = await enrollHere();
+      if (result === 'added') listVersion += 1;
+    } catch {
+      result = 'failed';
+    } finally {
+      busy = false;
+    }
+  }
+
+  function close(): void {
+    if (!busy) panel = null;
+  }
+
+  async function enrollAfterSignIn(): Promise<void> {
+    if (!platform.deviceLink) return;
+    const invitedKey = pendingEnrolment(sessionStorage, hub.address.origin);
+    if (invitedKey !== undefined) {
+      const computer = platform.thisMachine ? await readCloudDevice() : null;
+      const device = platform.thisMachine
+        ? { name: computer?.computer || 'Computer', kind: 'workstation', os: computer?.os }
+        : mobileDevice;
+      const outcome = await enrolLinkedDevice(hub.address.origin, currentLink, { ...device, invitedKey });
+      if (outcome === 'added' || outcome === 'already-added') clearPendingEnrolment(sessionStorage);
+      if (outcome === 'added') listVersion += 1;
+    } else if (platform.thisMachine && hubIsHosted(hub.address.origin) && await enrolThisComputer(hostedComputer) === 'added') {
+      listVersion += 1;
+    }
+  }
+
   $effect(() => {
-    untrack(() => void meetThisMachine());
+    untrack(() => void enrollAfterSignIn().catch(() => undefined));
   });
-
-  function create(values: DeviceFormValues, site: SitePlacement) {
-    return createWithCredential(values, site, {
-      sites: () => devices.sites(),
-      createSite: (name, subnet) => devices.createSite(name, subnet),
-      createDevice: (input) => devices.create(input),
-      setSshCredential: (deviceId, credential) => devices.setSshCredential(deviceId, credential),
-      // DEV-011: the sessions client stores the RDP and VNC passwords; its errors never quote them (LOG-007).
-      setRdpCredential: (deviceId, credential) => connections.setCredential('RDP', deviceId, credential.password),
-      setVncCredential: (deviceId, credential) => connections.setCredential('VNC', deviceId, credential.password),
-      createCheck: (input) => checks.create(input),
-    });
-  }
-
-  function created(added: AddedDevice): void {
-    adding = false;
-    // The hub's message goes in page state, not the URL, so a reload does not replay it and no secret is involved (LOG-007).
-    const state = added.credentialError === null ? {} : { credentialError: added.credentialError.message };
-    // eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the ID is the hub's and is encoded
-    void goto(`${resolve('/devices')}/${encodeURIComponent(added.id)}`, { state });
-  }
 
   /** Opens a tab for the protocol of the button that grows from it (WP-14 H-1, RA-030, MOT-005). */
   function connect(device: CardDevice, protocol: SessionProtocol, button: HTMLElement): void {
@@ -174,38 +133,36 @@
 </script>
 
 <section>
-  {#if addError !== null}
-    <p class="notice" role="alert">Could not open Add device: {addError.message}</p>
-  {/if}
   {#key listVersion}
-    <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} {screenSharing} />
+    <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => { result = null; panel = 'choose'; }} onConnect={connect} onOpenWeb={openWeb} {wake} {screenSharing} />
   {/key}
 </section>
 
-<AddDeviceModal
-  open={adding}
-  {sites}
-  {machine}
-  {asking}
-  onDontAsk={() => {
-    thisMachinePrompt.turnOff();
-    adding = false;
-  }}
-  onCreate={create}
-  onTest={connections.testConnection}
-  onClose={() => {
-    adding = false;
-  }}
-  onCreated={created}
-/>
+<Modal open={panel !== null} title={panel === 'invite' ? 'Enroll another device' : 'Add device'} preset="md" dismissible onClose={close}>
+  {#if panel === 'invite'}
+    <div class="choices">
+      <InviteMaker api={link} now={clock.current} />
+      <FormButton tone="ghost" onclick={() => (panel = 'choose')}>Back</FormButton>
+    </div>
+  {:else if panel === 'choose'}
+    <div class="choices">
+      {#if canEnrolHere}
+        <FormButton tone="primary" {busy} onclick={() => void enroll()}>{selfLabel}</FormButton>
+      {:else}
+        <p>Open the Anima app on the device you want to enroll.</p>
+      {/if}
+      <FormButton aria-disabled={busy} onclick={() => (panel = 'invite')}>Enroll another device</FormButton>
+      {#if result === 'added'}<p role="status">Added to Devices.</p>
+      {:else if result === 'already-added'}<p role="status">This device is already in Devices.</p>
+      {:else if result === 'not-linked'}<p role="alert">Connect this device to this hub before enrolling it.</p>
+      {:else if result === 'failed'}<p role="alert">Couldn’t enroll this device. Try again.</p>
+      {/if}
+    </div>
+  {/if}
+</Modal>
 
 <style>
-  section {
-    min-inline-size: 0;
-  }
-
-  .notice {
-    margin: 0 0 var(--space-4);
-    color: var(--text);
-  }
+  section { min-inline-size: 0; }
+  .choices { display: grid; gap: var(--space-3); justify-items: start; }
+  .choices p { margin: 0; }
 </style>

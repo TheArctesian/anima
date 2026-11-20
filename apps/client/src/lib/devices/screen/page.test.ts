@@ -2,7 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import Page from '../../../routes/devices/+page.svelte';
-import { button, type } from '../form/form/form.fixture';
+import { button } from '../form/form/form.fixture';
 import { fakeHub } from '../hub.fixture';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { device, devicesAnswer, url } from './screen.fixture.svelte';
@@ -98,129 +98,34 @@ async function openAddDevice(): Promise<void> {
   flushSync();
 }
 
-it('WP-13 H-1, DEV-010: Add device opens the form in a modal over the list, not a new route', async () => {
+it('WP-13 H-1, DEV-010: Add device opens enrollment over the list', async () => {
   await show();
   await openAddDevice();
   expect(dialog()?.textContent).toContain('Add device');
   expect(current.goto).toEqual([]);
 });
 
-it('WP-13 H-1: a device created in the modal opens its detail page', async () => {
-  const detail = { id: 'new 1', name: 'nas', host: 'nas.lan' };
-  const fake = await show([device('a')], { CreateDevice: { createDevice: detail } });
+it('Add device gives the other device a one-use QR without making an inventory entry', async () => {
+  const invite = 'anima-invite.1.ZGV2aWNl.anima-link.1.example';
+  const fake = await show([device('a')], { CreateLinkInvite: { createLinkInvite: { invite, expiresAt: '2100-01-01T00:00:00Z' } } });
   await openAddDevice();
-  type('name', 'nas');
-  type('host', 'nas.lan');
-  [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find((node) => node.textContent.trim() === 'Save')?.click();
-  for (let round = 0; round < 10; round += 1) await Promise.resolve();
+  expect(dialog()?.querySelector('input')).toBeNull();
+  button('Enroll another device').click();
   flushSync();
-  expect(fake.requests.find((request) => request.operation === 'CreateDevice')?.variables).toMatchObject({
-    input: { siteId: 's1', name: 'nas', host: 'nas.lan', addDefaultCheck: true },
+  const name = dialog()?.querySelector('input');
+  expect(name).toBeDefined();
+  if (name === null || name === undefined) throw new Error('Missing device name');
+  name.value = 'Kitchen tablet';
+  name.dispatchEvent(new Event('input', { bubbles: true }));
+  button('Make invite').click();
+  await vi.waitFor(() => {
+    flushSync();
+    expect(dialog()?.querySelector('[role="img"][aria-label="Invite for Kitchen tablet"]')).not.toBeNull();
   });
-  expect(current.goto.map(([href]) => href)).toEqual(['/devices/new%201']);
-});
-
-const DETAIL = { id: 'd9', name: 'nas', host: 'nas.lan' };
-
-async function settleAll(): Promise<void> {
-  for (let round = 0; round < 10; round += 1) await Promise.resolve();
-  flushSync();
-}
-
-/** Opens the modal, fills a device with SSH on and a typed password, and presses Save. */
-async function addWithPassword(answers: Record<string, unknown>): Promise<ReturnType<typeof fakeHub>> {
-  const fake = await show([device('a')], { CreateDevice: { createDevice: DETAIL }, ...answers });
-  await openAddDevice();
-  type('name', 'nas');
-  type('host', 'nas.lan');
-  document.querySelector<HTMLInputElement>('[role="dialog"] input[type="checkbox"]')?.click();
-  flushSync();
-  type('ssh-username', 'root');
-  type('credential-password', 'hunter2');
-  return fake;
-}
-
-it('DEV-011: Save with a typed SSH password stores it for the new device ID', async () => {
-  const fake = await addWithPassword({ SetSshCredential: { setSshCredential: { credentialStored: true } } });
-  button('Save').click();
-  await settleAll();
-  expect(fake.requests.find((request) => request.operation === 'SetSshCredential')?.variables).toEqual({
-    deviceId: 'd9',
-    credential: { password: 'hunter2' },
-  });
-  expect(current.goto).toEqual([['/devices/d9', { state: {} }]]);
-});
-
-it('Predictable: a credential the hub did not store still opens the device, carrying only the hub message in page state', async () => {
-  await addWithPassword({ SetSshCredential: { code: 'UNAVAILABLE', message: 'The vault is locked.' } });
-  button('Save').click();
-  await settleAll();
-  expect(current.goto).toEqual([['/devices/d9', { state: { credentialError: 'The vault is locked.' } }]]);
-  expect(JSON.stringify(current.goto)).not.toContain('hunter2');
-});
-
-/** Opens a section of the modal's form and turns its protocol on. */
-function enable(protocol: 'rdp' | 'vnc'): void {
-  document.querySelector<HTMLButtonElement>(`[role="dialog"] [data-section="${protocol}"] button`)?.click();
-  flushSync();
-  document.querySelector<HTMLInputElement>(`[role="dialog"] [data-section="${protocol}"] input[type="checkbox"]`)?.click();
-  flushSync();
-}
-
-it('DEV-011, LOG-007: Save with typed RDP and VNC passwords stores each for the new device ID', async () => {
-  const fake = await show([device('a')], {
-    CreateDevice: { createDevice: DETAIL },
-    SetRdpCredential: { setRdpCredential: { credentialStored: true } },
-    SetVncCredential: { setVncCredential: { credentialStored: true } },
-  });
-  await openAddDevice();
-  type('name', 'nas');
-  type('host', 'nas.lan');
-  enable('rdp');
-  type('rdp-username', 'admin');
-  type('rdp-password', 'rdp-hunter2');
-  enable('vnc');
-  type('vnc-password', 'vnc-hunter2');
-  button('Save').click();
-  // The default check and two passwords make more hub round trips than the SSH case.
-  await settleAll();
-  await settleAll();
-  const stored = fake.requests.filter((request) => request.operation.startsWith('Set'));
-  expect(stored).toEqual([
-    { operation: 'SetRdpCredential', variables: { deviceId: 'd9', credential: { password: 'rdp-hunter2' } } },
-    { operation: 'SetVncCredential', variables: { deviceId: 'd9', credential: { password: 'vnc-hunter2' } } },
+  expect(fake.requests.filter(({ operation }) => operation === 'CreateLinkInvite')).toEqual([
+    { operation: 'CreateLinkInvite', variables: { name: 'Kitchen tablet' } },
   ]);
-  expect(current.goto).toEqual([['/devices/d9', { state: {} }]]);
-});
-
-it('DEV-011, LOG-007: an RDP password the hub did not store still opens the device, and the message never quotes it', async () => {
-  await show([device('a')], { CreateDevice: { createDevice: DETAIL }, SetRdpCredential: { code: 'INTERNAL', message: 'refused rdp-hunter2' } });
-  await openAddDevice();
-  type('name', 'nas');
-  type('host', 'nas.lan');
-  enable('rdp');
-  type('rdp-username', 'admin');
-  type('rdp-password', 'rdp-hunter2');
-  button('Save').click();
-  await settleAll();
-  expect(current.goto).toEqual([['/devices/d9', { state: { credentialError: 'The hub did not store the password.' } }]]);
-});
-
-it('DEV-013: Test connection in the modal sends the unsaved form values to the hub', async () => {
-  const result = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
-  const fake = await addWithPassword({ TestConnection: { testConnection: result } });
-  button('Test connection').click();
-  await settleAll();
-  const sent = fake.requests.find((request) => request.operation === 'TestConnection')?.variables as { input: Record<string, unknown> };
-  expect(sent.input).toMatchObject({ host: 'nas.lan', ssh: { enabled: true, username: 'root' }, credential: { password: 'hunter2' } });
-  expect(sent.input).not.toHaveProperty('deviceId');
-});
-
-it('WP-13 H-1: when the sites cannot be read the modal stays closed and the page says why', async () => {
-  await show([device('a')], { Sites: { code: 'unreachable', message: 'The hub did not answer.' } });
-  await openAddDevice();
-  expect(dialog()).toBeNull();
-  expect(document.querySelector('section > [role="alert"]')?.textContent).toBe('Could not open Add device: The hub did not answer.');
+  expect(fake.requests.some(({ operation }) => operation === 'CreateDevice')).toBe(false);
 });
 
 it('WP-13 H-1: Escape inside the modal closes the modal only; an open toolbar menu stays open', async () => {
@@ -230,7 +135,7 @@ it('WP-13 H-1: Escape inside the modal closes the modal only; an open toolbar me
   flushSync();
   expect(status?.getAttribute('aria-expanded')).toBe('true');
   await openAddDevice();
-  const field = document.querySelector<HTMLElement>('[role="dialog"] input');
+  const field = document.querySelector<HTMLElement>('[role="dialog"] button');
   field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   flushSync();
   await vi.waitFor(() => {

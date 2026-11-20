@@ -53,6 +53,8 @@ pub struct LinkStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    public_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     latency_ms: Option<f64>,
@@ -124,6 +126,8 @@ impl PhoneLink {
             joined: self.joined(),
             state: if running.up { "up" } else { "stopped" },
             port,
+            public_key: (running.up && !running.public_key.is_empty())
+                .then_some(running.public_key),
             path: running.path.filter(|_| running.up),
             latency_ms: running.latency_ms.filter(|_| running.up),
         }

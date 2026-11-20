@@ -21,20 +21,8 @@ async function openMenu(page: Page, name: string): Promise<void> {
 
 async function openAddDevice(page: Page): Promise<void> {
   await openDevices(page);
-  await toolbar(page).getByRole('button', { name: 'Add device' }).click();
+  await page.getByRole('button', { name: 'Add device', exact: true }).click();
   await openedDialog(page, 'Add device');
-}
-
-/** Add device with the form section `name` opened, shot as the whole dialog because the section is taller than the window. */
-function addDeviceSection(name: string, slug: string): Screen {
-  return {
-    name: `add-device-${slug}`,
-    open: async (page) => {
-      await openAddDevice(page);
-      await page.getByRole('button', { name, exact: true }).click();
-    },
-    target: (page) => page.getByRole('dialog', { name: 'Add device' }),
-  };
 }
 
 export const DEVICE_LIST_SCREENS: readonly Screen[] = [
@@ -127,17 +115,12 @@ export const DEVICE_LIST_SCREENS: readonly Screen[] = [
   },
   { name: 'add-device', open: openAddDevice, windowOnly: true },
   {
-    name: 'add-device-invalid',
+    name: 'enroll-another-device',
     open: async (page) => {
       await openAddDevice(page);
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await page.getByRole('button', { name: 'Enroll another device' }).click();
+      await openedDialog(page, 'Enroll another device');
     },
     windowOnly: true,
   },
-  addDeviceSection('General', 'general-closed'),
-  addDeviceSection('SSH', 'ssh-closed'),
-  addDeviceSection('Remote Desktop (RDP)', 'rdp-open'),
-  addDeviceSection('VNC', 'vnc-open'),
-  addDeviceSection('Sessions', 'sessions-open'),
-  addDeviceSection('Files and clipboard', 'files-open'),
 ];

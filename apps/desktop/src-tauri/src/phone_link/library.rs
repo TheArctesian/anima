@@ -40,6 +40,8 @@ pub struct Running {
     #[serde(default)]
     pub device_key: String,
     #[serde(default)]
+    pub public_key: String,
+    #[serde(default)]
     pub path: Option<String>,
     #[serde(default)]
     pub latency_ms: Option<f64>,
