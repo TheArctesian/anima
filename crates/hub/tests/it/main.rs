@@ -32,6 +32,7 @@ mod places;
 mod projects;
 mod reminders;
 mod retention;
+mod sealed_records;
 mod sessions;
 mod sources;
 mod start;

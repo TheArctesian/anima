@@ -1,0 +1,12 @@
+query SealedRecordShow($owner: String!) {
+  sealedRecord(owner: $owner) {
+    id
+    owner
+    extension
+    sealed
+    sealedIndex
+    keyId
+    createdAt
+    updatedAt
+  }
+}

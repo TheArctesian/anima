@@ -153,6 +153,9 @@
       "extensions",
       "sources"
     ],
+    "sealed_records": [
+      "events"
+    ],
     "jobs": [
       "events"
     ]
@@ -236,6 +239,9 @@
       "access"
     ],
     "reminders": [
+      "access"
+    ],
+    "sealed_records": [
       "access"
     ]
   }

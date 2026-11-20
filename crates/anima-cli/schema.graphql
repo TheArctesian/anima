@@ -3216,6 +3216,36 @@ enum ReminderFiringState {
   ACKNOWLEDGED
 }
 
+"A record that a client sealed with the vault key of Class A (K-E5 Section 3). The hub stores the bytes and cannot open them."
+type SealedRecord {
+  id: ID!
+  "The record that the bytes belong to, as `kind:id`. One owner has one sealed record."
+  owner: String!
+  "The key of the extension that owns the record."
+  extension: String!
+  "What the client sealed with the vault key, as base64. The hub cannot open it."
+  sealed: String!
+  "The search index that the client sealed, as base64, or null."
+  sealedIndex: String
+  "The SHA-256 of the vault key that sealed the record, as base64."
+  keyId: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input SealedRecordInput {
+  "The record that the bytes belong to, as `kind:id`."
+  owner: String!
+  "The key of the extension that owns the record."
+  extension: String!
+  "The sealed bytes as base64: 1 byte to 1 MiB."
+  sealed: String!
+  "The sealed search index as base64, at most 1 MiB."
+  sealedIndex: String
+  "The SHA-256 of the vault key as base64: 32 bytes. It is not the key."
+  keyId: String!
+}
+
 "One firing of a rule. A rule fires at most one time for one subject."
 type ReminderFiring {
   id: ID!
@@ -3401,6 +3431,10 @@ type Query {
   reminderRule(id: ID!): ReminderRule
   "The firings of a rule (or of every rule) in a state (or any), newest first, at most first (1 to 200; 200 when not given)."
   reminderFirings(rule: ID, state: ReminderFiringState, first: Int): [ReminderFiring!]!
+  "The sealed record of `owner` (`kind:id`), or null. The bytes are as the client sealed them; the hub cannot open them."
+  sealedRecord(owner: String!): SealedRecord
+  "The sealed bytes of a vault key offer, as base64, one time: the read deletes the offer. Null for an offer that was read, that is older than 5 minutes, or that never was."
+  vaultKeyOffer(id: ID!): String
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "The places that are not merged, by name."
@@ -3673,6 +3707,12 @@ type Mutation {
   snoozeReminder(firing: ID!, minutes: Int!): ReminderFiring!
   "Acknowledges a firing that was sent: the hub does not send it again (REM-007). NOT_FOUND; CONFLICT."
   acknowledgeReminder(firing: ID!): ReminderFiring!
+  "Stores the bytes that a client sealed for one owner record. A second call for the same owner replaces the bytes. `VALIDATION` names each field to fix."
+  storeSealedRecord(input: SealedRecordInput!): SealedRecord!
+  "Deletes the sealed record of `owner`. `true` when there was one."
+  deleteSealedRecord(owner: String!): Boolean!
+  "Keeps a vault key that one client sealed to its key exchange with a new client, as base64 of at most 4096 bytes, and gives the ID of the offer. The offer is read one time in the next 5 minutes. The hub cannot open it."
+  offerVaultKey(sealed: String!): ID!
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."

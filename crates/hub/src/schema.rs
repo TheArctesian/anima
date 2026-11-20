@@ -13,7 +13,9 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, files, links, locations, places, reminders, sources, timeline},
+    engine::{
+        extensions, files, links, locations, places, reminders, sealed_records, sources, timeline,
+    },
     fleet::{
         access, agent_usage, builds, checks,
         credentials::{self, Vault},
@@ -59,6 +61,7 @@ pub struct Query(
     files::graphql::ProposalQuery,
     locations::graphql::Query,
     reminders::graphql::Query,
+    sealed_records::graphql::Query,
 );
 
 #[derive(MergedObject, Default)]
@@ -92,6 +95,7 @@ pub struct Mutation(
     files::graphql::ProposalMutation,
     locations::graphql::Mutation,
     reminders::graphql::Mutation,
+    sealed_records::graphql::Mutation,
 );
 
 #[derive(MergedSubscription, Default)]
