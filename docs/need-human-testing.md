@@ -91,7 +91,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
-| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
@@ -1123,7 +1123,9 @@ the hosted hub; for step 5, this Mac with the unit that an earlier application m
    Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
    the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
 
-Result: Open.
+Result: Open. Steps 1 to 4 passed (operator, 2026-11-20: "all reporting now", with a picture of Devices), with
+the 0.0.4 AppImage of `main` (`19dc3510`) on `pop-os`: the row `pop-os` showed CPU, Memory, Disk and VRAM.
+Step 5 is not done.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -2421,7 +2423,7 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
-### HT-NEW-nocapitals: labels in sentence case in the whole application (R-NEW-nocapitals)
+### HT-073: labels in sentence case in the whole application (R-279)
 
 Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
 `apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
@@ -2439,7 +2441,7 @@ Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text
 
 Result: Open.
 
-### HT-NEW-listlayout: the layout of the Devices list (R-NEW-listlayout)
+### HT-071: the layout of the Devices list (R-278)
 
 Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
 `apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
@@ -2473,7 +2475,7 @@ window with real devices.
 Result: Open.
 
 
-### HT-NEW-motionlist: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
 `apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,

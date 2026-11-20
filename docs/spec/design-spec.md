@@ -858,7 +858,7 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl`, `text-display` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5, 2.25 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
-| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (a one-time code; no label uses it: a label is in sentence case with `tracking-small`, R-NEW-nocapitals) |
+| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (a one-time code; no label uses it: a label is in sentence case with `tracking-small`, R-279) |
 | Weight | `weight-light`, `weight-regular`, `weight-medium` | 200, 400, 500 (UR-7; OpenDyslexic has 400 and 700 only, so it shows 200 and 500 as 400) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 2, 4, 4, 999 px (UR-7: the website's near-square corners) |
