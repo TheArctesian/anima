@@ -1951,8 +1951,8 @@ daemon, on a hosted hub, at other widths or while it loads.
    Expected: the session or the web tab opens as it does from the button at the top of the page. On the hosted hub,
    write down what a web interface does: the client offers the button on every hub.
 4. Look at "About" for a device with a daemon and for one with none.
-   Expected: "Daemon" gives the version and "sending metrics", or "not sending now" when the daemon is silent for 30
-   seconds, or "Not installed". "Sessions" gives the limit or "No limit".
+   Expected: "Daemon" gives the version and "sending metrics", or "not sending now" when the hub marks the daemon as silent, or
+   "Not installed". "Sessions" gives the limit or "No limit".
 5. Look at "Metrics" for a device that sends metrics, and select "24 hours" and "7 days".
    Expected: each chart of one line has "peak" with the highest value of the range and then the newest value on its
    title line; the charts change with the range and nothing else moves.
@@ -1961,8 +1961,9 @@ daemon, on a hosted hub, at other widths or while it loads.
    and read, write and busy. The drive with no mount says "Not mounted" and has no bar and no read and write. A drive
    with two mounts has one line for each mount under its name.
 7. Open a device with no metrics.
-   Expected: "Metrics" is one line, "Metrics are off. Install the daemon or turn on SSH metrics in Settings.", with
-   "Open Settings" at its end; there is no Storage card.
+   Expected: "Metrics" is one line with "Open Settings" at its end. On a hub that Anima.ing hosts the line is "Metrics
+   are off. They appear when the daemon is installed on this device."; on a different hub it is "Metrics are off.
+   Install the daemon or turn on SSH metrics in Settings.". There is no Storage card.
 8. Make the window narrow (about 900 px), then reload the page, in the light and the dark appearance.
    Expected: "Connect", "SSH host key" and "About" are above the facts as one column; while the page loads, grey shapes
    are where the cards then are.
