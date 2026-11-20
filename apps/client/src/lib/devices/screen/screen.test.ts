@@ -250,8 +250,8 @@ it('DEV-001: the cards are a list, and the table has column headers', async () =
   url.query = { ...CARDS, view: 'table' };
   await settle();
   expect([...document.querySelectorAll('thead th')].map((node) => node.textContent)).toEqual([
-    'Status',
     'Name',
+    'Status',
     '24 h',
     'Last 50 checks',
     'Usage',

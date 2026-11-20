@@ -38,14 +38,13 @@
     <button
       type="button"
       class="device-action"
-      class:icon-only={compact}
+      class:quiet={compact}
       tabindex="0"
       aria-label={connectLabel(protocol, device.name)}
-      title={compact ? protocol : undefined}
       onclick={(event) => {
         onConnect(device, protocol, event.currentTarget);
       }}
-      {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} />{:else}{protocol}{/if}</button
+      {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} size="sm" />{/if}{protocol}</button
     >
   {/each}
   {#if screenSharing !== undefined && offersScreenSharing(device)}

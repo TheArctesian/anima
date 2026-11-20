@@ -71,6 +71,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
+| HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1673,3 +1674,27 @@ Result: Passed. On 2026-11-19 the operator reported that the Linux preview worke
 signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
+
+### HT-047: the Devices page after the interface review (R-224)
+
+Built on the branch `ui/v2-devices` (`132e03b3`): in `apps/client/src/lib/devices/card/DeviceTable.svelte` the name is the
+first column and the status the second; the connect buttons of the list show the name of their protocol
+(`lib/devices/actions/DeviceActions.svelte`); the logs panel of the Devices page starts as one line
+(`lib/devices/screen/DeviceScreen.svelte`); the foot of the bar names the hub (`lib/nav/status/HubStatus.svelte`).
+The tests cover the order of the columns, the name of the hub and the start of the panel. The page was looked at only
+in pictures of the gallery tool, at 1280 px, in the dark and the light appearance, with sample devices. No person saw it
+in the desktop application, with real devices, at a narrow window or with a device that is down.
+
+1. Open the application and look at Devices in the list view.
+   Expected: each row starts with the name and the address, then the status. A device that needs a look has its reason
+   beside the status.
+2. Look at the column "Connect".
+   Expected: each way in is a button with an icon and a word (SSH, RDP, VNC, Web). Two buttons fit on one line.
+3. Look at the foot of the page.
+   Expected: the logs are one line with the newest event. A click on the line opens the panel; a second click closes it.
+4. Look at the foot of the bar.
+   Expected: on a hosted hub the line above "Connected" reads "Hosted by Anima.ing"; on a different hub it is the host name.
+5. Make the window narrow (below 1100 px) and look again, in the light and the dark appearance.
+   Expected: no text is cut in a way that hides its meaning, and no button lies over another part.
+
+Result: Open.

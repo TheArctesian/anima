@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
+  import { COLLAPSED } from '$lib/events/resize/resize';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import '$lib/events/resize/geometry.css';
   import { useHub } from '$lib/hub/context';
@@ -165,7 +166,8 @@
 <!-- In the phone layout the logs are a page of the bar, not a panel over the list (MOB-013). -->
 {#if !phoneLayout()}
   <div class="clearance" aria-hidden="true"></div>
-  <LogsPanel devices={list?.devices ?? []} />
+  <!-- The panel starts as its one line, with the newest event on it, so the list has the page (R-224). -->
+  <LogsPanel devices={list?.devices ?? []} start={COLLAPSED} />
 {/if}
 
 <style>
