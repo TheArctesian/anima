@@ -14,6 +14,7 @@ Version: 7. Date: 2026-11-18. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 12 (2026-11-20) has the new text of HMD-073 in two forms and Section 6.12, for one answer of the operator.
 Version 11 (2026-11-20) records the approval of HMD-052 to HMD-072 and HMD-074 (R-NEW-hostedtexts) and the decision of HM-D19 (R-NEW-hubusage); HMD-073 is to be written again.
 Version 10 (2026-11-20) adds Section 6.11 (the row `Hub`: its metrics and its use; HMD-071 to HMD-074, proposed), the open decision HM-D19 and tasks HM-T34 to HM-T36.
 Version 9 records R-239 (a hosted hub in a browser at `hub.anima.ing`; HM-D17 decided) and R-240 (HM-D18 decided: the link runs as a unit too), the proposed requirements HMD-058 to HMD-070 (Sections 6.8 and 6.9), the list for one approval (Section 6.10) and tasks HM-T24 to HM-T33.
@@ -375,7 +376,10 @@ Proposed requirements. They change how HMD-046 is met, not what it asks for, exc
 
 - **HMD-071.** The daemon in the container of a hosted hub must report only figures of that container. Memory: the use of the container against its own limit. Processor: the processor time of the container against the count of processors that the container may use, and against a hard limit where the container has one. It must not send a figure of the server: no memory or processor count of the server, no load average, no list of drives, no network count of an interface of the server. Approved (R-NEW-hostedtexts).
 - **HMD-072.** For the disk, the hub must report the bytes of its own data (its database and its files), which it measures itself. It must not report the total or the free space of the file system: they are those of the pool, and the free space shows what other hubs do. Approved (R-NEW-hostedtexts).
-- **HMD-073.** The row `Hub` and the page of that device must show: memory as used of its limit; the processor as a share of the processors that the hub may use; the disk as "used by the data of your hub", with no total and no percentage. The plan, its disk limit, the hours awake and asleep and the amount are on the page of the account, from the account site. The hub must not be told its plan and must ask the pool nothing. Not approved: R-NEW-hubusage decides that the page of the hub also shows the hours and the amount, and the size of the data against the limit of the plan; the new text is to come, after the sessions of the pool and of the site answer how the figures reach the page.
+- **HMD-073.** Proposed again after R-NEW-hubusage; not approved. The text has one part that is the same in each form, and one part with two forms, A and B, between which the operator chooses (Section 6.12).
+  - Each form. The row `Hub` must show memory as used of its limit and the processor as a share of the processors that the hub may use. The page of the hub must show, besides those: the size of the data of the hub (HMD-072); what the hub keeps (the count of devices, the count of checks, the days of history); and, for the account and the month of now: the name of the plan, the disk that the plan counts as used against the limit of the plan, the hours awake and asleep, and the amount so far. The figures of the account are for the account and the month, not for one hub; an account has one hub today. Beside the amount the page must say: "So far this month, before tax. This is an estimate, not a bill. Your invoice arrives after the month ends." On a plan that is not charged the page must show the hours and "Nothing is charged on this plan" in the place of an amount. For an account that owes, the page must point to the account page and must not show what is owed as part of this month. When the figures of the account cannot be read, the page must say "Not available just now" in their place, and the rest of the page must show. The figures must be those of the account of the hub only, read-only; nothing of another account or of the server. A fault of the hub must not be able to change what the account is charged: the amount to pay comes from the usage record of the pool, which no hub reads.
+  - Form A, the hub is told. The pool must give the hub the figures of its account with the key of the cloud, when the hub is made, when it wakes, and every 15 minutes while it runs. The hub must keep the last figures in memory only, must show the time of those figures, and must show "Not available just now" when it has none. The hub must never ask the pool for them. Each client reads them from the hub.
+  - Form B, the hub is told nothing. The page must take the figures of the account from the account, not from the hub: in the desktop application through a route of the account site, with the sign-in of the account that the application holds; in a browser at `hub.anima.ing` through a path of the gateway on the same origin, for the account of its session. Both must give the answer of the pool with no change and in one form, which the contract defines once. The hub holds no figure of the plan, of the hours or of an amount.
 - **HMD-074.** A hosted hub must learn nothing about another hub or about the server through its metrics. A test must give the daemon the files of a server beside those of a container and show that no figure of the server is in a batch. Approved (R-NEW-hostedtexts).
 
 What "use" of the hub can mean, for the question HM-D19:
@@ -386,6 +390,35 @@ What "use" of the hub can mean, for the question HM-D19:
 | The hours awake and asleep (R-164: a free hub sleeps), and the amount for the month | The pool has the sums for each account and month; whether the account page shows them is for the session of the site | The account page |
 | The use of the AI agent programs on his computers | The page Agent usage | Agent usage; the page of the hub could link to it |
 | What the hub keeps: the count of devices and checks, the days of history | In the hub, not shown as one figure | The page of the hub, if he wants it |
+
+### 6.12 HMD-073: the two forms, for one answer of the operator (2026-11-20)
+
+R-NEW-hubusage: he selected "Hours and amount on the hub's page", on a card that said "The hub must be told billing figures". The orchestrating session asked for the design with the least exposure and for the alternative in which the hub is told nothing. The sessions of the pool and of the site answered on 2026-11-20; nothing of this is built in any repository.
+
+Facts from those two sessions:
+
+- The pool computes the amount: it meters, prices and makes the invoice. It already has, for an account and a month, the seconds awake and asleep and the amount before tax. The site holds none of these figures and does not call that answer yet.
+- The pool knows the disk limit of a hub. The bytes that the quota counts as used are probably in a listing that the pool already reads; that was never read on a server with the quota, so it is not verified.
+- In form A the pool can push to each running hub at make, at wake and on a timer; a sleeping hub gets figures at its wake. The person is the administrator inside the container of the hub, so "in memory only" is a rule for the program, not something that can be enforced there; that is acceptable because the figures are their own.
+- In form B the gateway can answer a path on the same origin for the account of its session, and the site can add one route for the application, in the pattern of its two existing routes. The request names no account and no hub, so nothing of another account can be asked for.
+- In both forms the charge is safe: it comes from the usage record of the pool.
+
+| | Form A: the hub is told | Form B: the hub is told nothing |
+| --- | --- | --- |
+| What he selected | This one | The alternative |
+| Where a figure of money is | In the pool, and a copy in the memory of each running hub | In the pool only |
+| A faulty or changed hub | Can show a wrong amount under the name of the business; the person cannot tell | Cannot: the figure comes from where the invoice comes from |
+| How old the figures are | Up to 15 minutes; none after a restart until the next push; the page shows their time | Read when the page opens; a short cache |
+| A hub that sleeps | Has no figures until it wakes | The account can still be shown what it used |
+| The command line and an MCP tool | Can read the figures from the hub, as each other figure | Cannot, unless they sign in to the account, which they do not do today (OD-25) |
+| What is new | A call of the pool to the hub (K1, the hosted contract), a timer in the pool | A route of the site for the application, a path of the gateway for the browser, one answer form for both, one more read for the token of the gateway |
+| A client with no sign-in of the account | Sees the figures | Sees none, which is right for a hub that is not hosted |
+
+The disk: HMD-072 (approved) says that the hub reports the bytes of its own data with no total. With the limit of the plan on the page, two figures are shown and must not be mixed: "data of your hub" (what the hub measures: its database and its files) and "disk used of the plan" (what the quota counts, the system of the hub included, against the limit). The second comes from the pool in each form. So HMD-072 stays as it is for the first figure, and the row `Hub` still shows no percentage of a file system. A percentage of the plan is shown only on the page, from the figure of the pool. This is true only if the pool can read the used bytes; if it cannot, the page shows the limit and the data of the hub, and no percentage.
+
+Recommendation of the session that wrote this, with the sessions of the pool and of the site: form B for all the figures of the account, the disk of the plan too. The pool session's point: the disk figures can travel by B as well, so nothing forces a figure into the hub. Form A is buildable and safe for the charge; what it buys is one source for each client, the command line too, and a hub that could warn near its disk limit with no page open. A mixed form (B for the hours and the amount, A for the two disk figures only) gives that warning and keeps money out of the hub; it costs both sets of new parts.
+
+The one question for him: "HMD-073 in form A, as you selected (the hub is told), in form B (the page asks the account, the hub is told nothing), or mixed (the hub is told only its two disk figures)?"
 
 ## 7. Open decisions
 
