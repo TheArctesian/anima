@@ -47,3 +47,13 @@ pub struct GithubConnectCancel;
     response_derives = "Debug, Serialize"
 )]
 pub struct GithubConnectChanged;
+
+/// The variables hold the API key, so they derive no `Debug`; the caller wipes them after the
+/// request (CMD-014, LOG-007).
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/sources/connect/dawarich.graphql",
+    response_derives = "Debug, Serialize"
+)]
+pub struct SourceConnectDawarich;

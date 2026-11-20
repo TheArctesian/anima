@@ -27,10 +27,10 @@ use crate::{
     sources::{Kit, kit},
 };
 
-const PAGE: &str = "https://hub.anima.ing/connect/github";
+pub(super) const PAGE: &str = "https://hub.anima.ing/connect/github";
 
 /// The audit entries of the flow before an account exists: `(action, actor kind, change)`.
-async fn audited(pool: &PgPool) -> Vec<(String, Option<String>, Value)> {
+pub(super) async fn audited(pool: &PgPool) -> Vec<(String, Option<String>, Value)> {
     sqlx::query_as(
         "SELECT action, actor_kind, change FROM events.audit_log \
          WHERE target_type = 'setting' AND target_id = 'sources.github.connect' ORDER BY at, action",

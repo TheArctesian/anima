@@ -6,12 +6,12 @@
 import { appendFileSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { undoMerge } from "../src/merge/commit.ts";
+import { carry, changed } from "../src/merge/carry.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { isDocument } from "../src/gates/tier.ts";
 import { parseMergeRule } from "../src/merge/rules.ts";
-import { members, stack, type LeftOut } from "../src/merge/stack.ts";
-import { batch, firstHalf, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
+import { members, stack } from "../src/merge/stack.ts";
+import { batch, firstHalf, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";
@@ -71,37 +71,16 @@ function inDev(sha: string): boolean {
   return run(["git", "merge-base", "--is-ancestor", sha, `origin/${INTO}`]).ok;
 }
 
-/** Merges the tips on the local `dev`, each with the steps of one merge into `dev`. */
-function merge(wanted: Tip[]): { merged: Tip[]; leftOut: LeftOut[] } {
-  return stack(REPO_ROOT, wanted, (tip) => {
-    const finished = finishMerge(REPO_ROOT, `origin/${tip.branch}`, INTO);
-    return "failure" in finished ? finished.failure : undefined;
-  });
-}
-
-function changed(from: string, to: string): string[] {
-  return must(["git", "diff", "--name-only", from, to]).split("\n").filter((path) => path !== "");
+/** Ends one merge into the local `dev` with the steps of the merge script. */
+function finish(tip: Tip): string | undefined {
+  const finished = finishMerge(REPO_ROOT, `origin/${tip.branch}`, INTO);
+  return "failure" in finished ? finished.failure : undefined;
 }
 
 /** If the rule permits it: `dev` moved from `base` only in documents, by the rule of the fast tier. */
 function movedOnlyInDocuments(base: string): boolean {
   const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));
-  return typeof rule !== "string" && rule.carryDocuments && changed(base, `origin/${INTO}`).every(isDocument);
-}
-
-/**
- * Makes the train again on the `dev` that moved in documents, with the document gates on each
- * merge commit and no second run of the full list, and pushes it to `dev`. It pushes only when
- * each branch merged again and each file that is not a document is the same as in the commit
- * that the gates tested. "again": `dev` moved once more in that moment, the next step tries again.
- */
-function carry(train: Tip, held: Tip[]): "landed" | "again" | "different" {
-  const start = must(["git", "rev-parse", "HEAD"]);
-  const made = merge(held);
-  const same = made.leftOut.length === 0 && changed(train.sha, "HEAD").every(isDocument);
-  if (same && run(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${INTO}`]).ok) return "landed";
-  undoMerge(REPO_ROOT, start);
-  return same ? "again" : "different";
+  return typeof rule !== "string" && rule.carryDocuments && changed(REPO_ROOT, base, `origin/${INTO}`).every(isDocument);
 }
 
 /**
@@ -112,14 +91,17 @@ function land(train: Tip, base: string): boolean {
   const held = members(REPO_ROOT, base, train.sha);
   const names = held.map((tip) => tip.branch).join(", ");
   const moved = base !== must(["git", "rev-parse", `origin/${INTO}`]);
-  const carried = moved && movedOnlyInDocuments(base) ? carry(train, held) : undefined;
-  if (carried === "again") return false;
+  const carried = moved && movedOnlyInDocuments(base) ? carry(REPO_ROOT, { into: INTO, tested: train.sha, held }, { finish, isDocument }) : undefined;
+  if (carried?.outcome === "again") return false;
   if (!moved && run(["git", "push", "--quiet", "origin", `${train.sha}:refs/heads/${INTO}`]).ok) {
     must(["git", "merge", "--quiet", "--ff-only", train.sha]);
     say(`landed ${held.length} branch(es) in one step, ${INTO} is ${train.sha.slice(0, 8)}: ${names}`);
-  } else if (carried === "landed") {
+  } else if (carried?.outcome === "landed") {
     say(`landed ${held.length} branch(es); ${INTO} had moved only in documents, and each other file is the one that the gates tested: ${names}`);
-  } else say(`${INTO} moved after the train was made; the gates of the train do not count. The branches go into the next train: ${names}`);
+  } else {
+    if (carried !== undefined) say(`the carry-over is refused, these are not as the gates tested them: ${carried.refused.join("; ")}`);
+    say(`${INTO} moved after the train was made; the gates of the train do not count. The branches go into the next train: ${names}`);
+  }
   remove(train);
   return true;
 }
@@ -150,11 +132,26 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
   return firstHalf(held);
 }
 
+/** Says, for each branch that is not in `dev` and not ready, why the next train does not take it. */
+function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
+  for (const each of standing(tips(), runs, refused(), inDev)) {
+    // An old branch that nobody pushed since the gates exist has no run; only the plan names those.
+    const quiet = also === "with-a-run" && each.reason === "its gates did not run for its tip";
+    if (each.reason !== undefined && !quiet) say(`${each.tip.branch} is not taken: ${each.reason}`);
+  }
+}
+
+/** The paths in which the branch has a conflict with `dev` as it is now; no merge is made. */
+function conflictWithDev(tip: Tip): string[] {
+  const tried = run(["git", "merge-tree", "--write-tree", "--name-only", "--no-messages", `origin/${INTO}`, tip.sha]);
+  return tried.ok ? [] : tried.out.split("\n").slice(1).filter((path) => path !== "");
+}
+
 /** Builds a train of `wanted` on the local `dev`, pushes it as a train branch and starts its gates. */
 function build(wanted: Tip[], now: Date): void {
-  if (wanted.length === 0) return say("no branch waits: each is in dev, or its own gates did not pass yet");
+  if (wanted.length === 0) return say("no branch is ready: each is in dev, or has a reason above");
   const base = must(["git", "rev-parse", "HEAD"]);
-  const made = merge(wanted);
+  const made = stack(REPO_ROOT, wanted, finish);
   for (const each of made.leftOut) say(`${each.branch} is left out: ${each.reason}. Merge origin/${INTO} into the branch and solve it there.`);
   if (made.merged.length === 0) return say("no branch of the batch merges with dev: no train");
   const name = trainName(base, now);
@@ -169,7 +166,11 @@ if (process.argv.includes("--plan")) {
   must(["git", "fetch", "--quiet", "--prune", "origin"]);
   const listed = gatesRuns();
   for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) say(`${train.branch}: ${verdict(train.sha, listed)}`);
-  say(`the next train would hold: ${batch(tips(), listed, refused(), inDev).map((tip) => tip.branch).join(", ") || "nothing"}`);
+  sayWhoWaits(listed, "each");
+  for (const tip of batch(tips(), listed, refused(), inDev)) {
+    const conflict = conflictWithDev(tip);
+    say(conflict.length === 0 ? `${tip.branch} is ready for the next train` : `${tip.branch} would be left out: a conflict with ${INTO} in ${conflict.join(", ")}`);
+  }
   process.exit(0);
 }
 if (must(["git", "rev-parse", "--abbrev-ref", "HEAD"]) !== INTO) must(["git", "switch", "--quiet", INTO]);
@@ -190,5 +191,6 @@ for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) {
   next ??= settled;
 }
 const current = new Map(tips().map((tip) => [tip.branch, tip.sha]));
+sayWhoWaits(runs, "with-a-run");
 const still = next?.filter((tip) => current.get(tip.branch) === tip.sha && !inDev(tip.sha));
 build(still !== undefined && still.length > 0 ? still : batch(tips(), runs, refused(), inDev), now);

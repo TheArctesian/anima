@@ -16,15 +16,24 @@ use axum::{
     routing::Route,
 };
 use std::convert::Infallible;
+
+use super::PublicOrigin;
 use tower::{Layer, Service};
 
 /// axum middleware for the link mode: refuses with a bare 403 a request whose host is not
 /// `127.0.0.1`, `[::1]` or `localhost` (any port), or whose `Origin` is not one of `origins`.
 /// The host is the `Host` header, or the URI's authority when there is none (HTTP/2); a
 /// request with neither is refused.
+///
+/// With `gateway`, the public origin of a hosted hub (HMD-061), a request may also name the
+/// host of that origin and come from that origin: the gateway of the pool passes a browser's
+/// request with the name and the origin that the browser used. Only a hosted hub gives one: its
+/// loopback port is reached only by the pool, never by a browser on the same computer, so the
+/// rebinding that this guard stops cannot occur there.
 #[must_use]
 pub fn loopback_names_layer(
     origins: &'static [&'static str],
+    gateway: Option<PublicOrigin>,
 ) -> impl Layer<
     Route,
     Service: Service<Request, Response = Response, Error = Infallible, Future: Send + 'static>
@@ -36,26 +45,48 @@ pub fn loopback_names_layer(
 + Send
 + Sync
 + 'static {
-    middleware::from_fn(move |request: Request, next: Next| async move {
-        let host = request.headers().get(HOST).map_or_else(
-            || request.uri().authority().map(|a| a.as_str().to_owned()),
-            |value| value.to_str().ok().map(str::to_owned),
-        );
-        let named = host.as_deref().is_some_and(is_loopback_host);
-        if named && origin_permitted(request.headers(), origins) {
-            next.run(request).await
-        } else {
-            StatusCode::FORBIDDEN.into_response()
+    middleware::from_fn(move |request: Request, next: Next| {
+        let gateway = gateway.clone();
+        async move {
+            let host = request.headers().get(HOST).map_or_else(
+                || request.uri().authority().map(|a| a.as_str().to_owned()),
+                |value| value.to_str().ok().map(str::to_owned),
+            );
+            let gateway = gateway.as_ref().map(PublicOrigin::as_str);
+            let named = host
+                .as_deref()
+                .is_some_and(|host| is_loopback_host(host) || is_host_of(host, gateway));
+            if named && origin_permitted(request.headers(), origins, gateway) {
+                next.run(request).await
+            } else {
+                StatusCode::FORBIDDEN.into_response()
+            }
         }
     })
 }
 
-/// Whether every `Origin` header of the request is one of `origins`; true when there is none.
-pub(super) fn origin_permitted(headers: &HeaderMap, origins: &[&str]) -> bool {
-    headers
-        .get_all(ORIGIN)
-        .iter()
-        .all(|value| value.to_str().is_ok_and(|origin| origins.contains(&origin)))
+/// Whether every `Origin` header of the request is one of `origins` or `gateway`; true when
+/// there is none.
+pub(super) fn origin_permitted(
+    headers: &HeaderMap,
+    origins: &[&str],
+    gateway: Option<&str>,
+) -> bool {
+    headers.get_all(ORIGIN).iter().all(|value| {
+        value
+            .to_str()
+            .is_ok_and(|origin| origins.contains(&origin) || gateway == Some(origin))
+    })
+}
+
+/// Whether `authority` is the host of the `https` origin `gateway`, with no port or with 443,
+/// in any case of letters. False for no gateway and for an origin that is not `https`.
+pub(super) fn is_host_of(authority: &str, gateway: Option<&str>) -> bool {
+    let Some(host) = gateway.and_then(|origin| origin.strip_prefix("https://")) else {
+        return false;
+    };
+    let named = authority.strip_suffix(":443").unwrap_or(authority);
+    !host.is_empty() && named.eq_ignore_ascii_case(host)
 }
 
 /// Whether `authority` is `127.0.0.1`, `[::1]` or `localhost` (any case), with or without a

@@ -12,7 +12,7 @@ Task W2 asks for a design with measured results for four subjects: the container
 ## 2. Method
 
 - The computer: a Mac with Apple Silicon, 18 processor cores, 48 GiB of memory, macOS 27.3, Docker Desktop 29.9.3 (a Linux virtual machine with the kernel 7.0.14-linuxkit).
-- The scripts are in this folder: `seatbelt.sh`, `job-keychain.sh`, `container-job.sh`, `docker-in-job.sh`. They are throwaway code of a prototype, not code of the product; nothing of the product calls them. Their logs are in [results/](results/). In the logs, the home folder of the user is written as `<home>`.
+- The scripts are in this folder: `seatbelt.sh`, `job-keychain.sh`, `container-job.sh`, `docker-in-job.sh`. A fifth script, `linux-job.sh`, is for the Linux computer of the operator and has no log yet (Section 5). They are throwaway code of a prototype, not code of the product; nothing of the product calls them. Their logs are in [results/](results/). In the logs, the home folder of the user is written as `<home>`.
 - The computer did other work at the same time: the load average was between 18 and 45 for Sections 3.1 to 3.3, and 7 for Section 3.4. Each time below was taken under that load. Read a time as an upper value, not as the time of a quiet machine.
 - No administrator right was used. Thus no user was made, no system unit was installed and no system setting was changed. No certificate of Apple and no key of the operator was read: the signing test made its own throwaway certificate.
 
@@ -132,7 +132,7 @@ The contract K10 thus has no purpose `signing_identity` in its version 0.2. If t
 
 | Not shown | Needs |
 | --- | --- |
-| Each measurement of Section 4.1 and 4.2 on Linux | One of the operator's own Linux machines (R-188, 2026-11-18: "B: my own Linux box"; not the server of the pool, not a new server), on which an agent can install a container runtime without root and run the scripts. He has not named the machine (OD-W39) |
+| Each measurement of Section 4.1 and 4.2 on Linux | One of the operator's own Linux machines (R-188, 2026-11-18: "B: my own Linux box"; not the server of the pool, not a new server), The machine is `pop-os` (R-264, 2026-11-19: "yes popos"). No session reaches it: he installs Podman, runs `linux-job.sh` of this folder and sends its log (HT-065). The script was not run on a Linux computer when it was written: only its syntax was checked. It measures the start time and the memory of a rootless container, the limits, what a job reaches on the network with no rule added, what stays after `kill -9` of the program that holds a job, and a rootless Docker service in a rootless container. It does not measure a virtual machine for each job, and it adds no network rule |
 | The build user (Section 4.3) | An administrator on a Mac, one time: make the user and the starter program. Then an agent can measure |
 | A virtual machine for each job, on Linux and on a Mac | The same two computers |
 | A Developer ID signature and a notarization by the recipe of Section 4.4 | The operator: the identity and the notary profile are in his keychain. An agent does not read them |

@@ -36,6 +36,11 @@ fn host_001_the_list_gives_name_image_state_status_ports_and_compose_project() {
         created_at: Some(Utc.with_ymd_and_hms(2026, 11, 18, 18, 0, 0).unwrap()),
         compose_project: Some("dawarich".to_owned()),
         compose_service: Some("app".to_owned()),
+        compose_working_dir: Some("/srv/dawarich".to_owned()),
+        compose_files: vec![
+            "/srv/dawarich/compose.yaml".to_owned(),
+            "/srv/dawarich/override.yaml".to_owned(),
+        ],
         project_state: Some(ProjectState::Running),
     };
     assert_eq!(containers[0], app);
@@ -47,6 +52,11 @@ fn host_001_the_list_gives_name_image_state_status_ports_and_compose_project() {
         (ContainerState::Exited, Health::None, None)
     );
     assert_eq!((&db.ports, &db.compose_project), (&vec![], &None));
+    // A container of no project, in the answer of a list that has no such label.
+    assert_eq!(
+        (&db.compose_working_dir, &db.compose_files),
+        (&None, &vec![])
+    );
     assert_eq!(containers.len(), 2);
 }
 

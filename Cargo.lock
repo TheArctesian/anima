@@ -159,6 +159,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tauri-plugin-process",
+ "tauri-plugin-runner",
  "tauri-plugin-updater",
  "tempfile",
  "thiserror 2.0.21",
@@ -325,6 +326,7 @@ dependencies = [
  "minisign",
  "nix 0.31.3",
  "proptest",
+ "provider-dawarich",
  "provider-github",
  "rand 0.10.3",
  "rcgen",
@@ -5924,6 +5926,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "provider-dawarich"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "source-exchange",
+]
+
+[[package]]
 name = "provider-github"
 version = "0.1.0"
 dependencies = [
@@ -8335,6 +8347,15 @@ version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74ae3d8549ae564c0397377373e262f340908eb23a5b9fbe03f2a00007dc0038"
 dependencies = [
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
+name = "tauri-plugin-runner"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
  "tauri",
  "tauri-plugin",
 ]

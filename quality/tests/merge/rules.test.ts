@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { conflictsForAHand, gatesRefusal, mergeMessage, parseMergeRule, rowsTwice } from "../../src/merge/rules.ts";
+import { conflictsForAHand, findingKey, gatesRefusal, headingsTwice, mergeMessage, ownerKey, parseMergeRule, rowsTwice, twiceInOneTable } from "../../src/merge/rules.ts";
 
 describe("the merge of a branch into dev", () => {
   test("PLN-020 a conflict in a generated file needs no hand; each other conflict does", () => {
@@ -71,5 +71,12 @@ describe("a table that merges by union", () => {
     expect(rowsTwice(table)).toEqual(["OD-W39"]);
     expect(rowsTwice("no table")).toEqual([]);
   });
-});
 
+  test("a union merge of the findings list or the owners table that kept two versions of an entry is found", () => {
+    const findings = "| SF-001 | a | Open |\n| SF-002 | b | Open |\n| SF-001 | a | Accepted |\n\ntext\n\n| SF-002 | b, in a second table | Open |\n\n### SF-001: a\n\n### SF-002: b\n\n### SF-001: a\n";
+    expect(twiceInOneTable(findings, findingKey)).toEqual(["SF-001"]);
+    expect(headingsTwice(findings)).toEqual(["SF-001"]);
+    const owners = "| Subject | Owner | Identifiers |\n| --- | --- | --- |\n| Jobs | [jobs.md](a) | JOB-001 to JOB-027 |\n| Ideas | [x](b) | None yet |\n| Other | [y](c) | None yet |\n| Jobs and routing | [jobs.md](a) | JOB-001 to JOB-027 |\n";
+    expect(twiceInOneTable(owners, ownerKey)).toEqual(["JOB-001 to JOB-027"]);
+  });
+});

@@ -182,7 +182,7 @@ pub async fn establish(
 
 /// Starts the account's first run in its own task; the outcome reaches the account row and
 /// `sourceAccountChanged`.
-fn first_run(scheduling: Scheduling, id: SourceAccountId) {
+pub(super) fn first_run(scheduling: Scheduling, id: SourceAccountId) {
     tokio::spawn(async move {
         if let Err(error) = run::run(&scheduling, id, Trigger::Connect).await {
             // Fixed words only (LOG-007).
