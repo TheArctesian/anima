@@ -1,0 +1,37 @@
+{
+  "image_sha256": "40825ede35a7f372aac17920de28823fb5600dc8332265631dc12252315f85bb",
+  "results": [
+    {
+      "case": "initrd-hang",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "initrd-hang",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "initrd-hang",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "initrd-hang/1/serial.log",
+      "sha256": "9a749b383ae538041f94aeb741b20d4ae1635df051af935a494737a79e6b503d"
+    },
+    {
+      "path": "initrd-hang/2/serial.log",
+      "sha256": "59f5d481ccd5c9d9c0c8b51414e9d6ea173d000f5db03274ba4073eee7153aa4"
+    },
+    {
+      "path": "initrd-hang/3/serial.log",
+      "sha256": "2ecebbcd1084ee98108ae2c4702cb040dc0457345e01f4a7caa4b2100eb22e66"
+    }
+  ]
+}

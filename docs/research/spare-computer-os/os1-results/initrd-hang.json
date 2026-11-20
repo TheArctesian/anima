@@ -1,0 +1,18 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "initrd-hang",
+      "result": "Failed",
+      "harness_reset": false,
+      "reason": "No 'ANIMA_READY revision=A' after 180s; see serial.log",
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "initrd-hang/1/serial.log",
+      "sha256": "b660faa26f381375f98e5e6a073daa989528878ba2d04c949b5507ce7f90d837"
+    }
+  ]
+}
