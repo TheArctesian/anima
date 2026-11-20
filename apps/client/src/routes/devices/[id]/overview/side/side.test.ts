@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { metricsOffText } from '../overview';
 import { aboutFacts, daemonText, waysIn, webDetail, type SideDevice } from './side';
 
 const DEVICE: SideDevice = {
@@ -61,4 +62,9 @@ it('R-224, MET-018: the daemon line says the version and whether it sends, or wh
 it('R-224, RA-036: the card About gives the system, the kind, the daemon and the session limit', () => {
   expect(aboutFacts(DEVICE).map((fact) => fact.text)).toEqual(['Pop!_OS', 'Workstation', '0.8.14, sending metrics', 'At most 4 at once']);
   expect(aboutFacts({ ...DEVICE, sessionLimit: null }).at(-1)?.text).toBe('No limit');
+});
+
+it('R-222, HMD-049: with no metrics a hosted hub names the daemon only, and a different hub also SSH metrics', () => {
+  expect(metricsOffText(true)).toBe('Metrics are off. They appear when the daemon is installed on this device.');
+  expect(metricsOffText(false)).toBe('Metrics are off. Install the daemon or turn on SSH metrics in Settings.');
 });

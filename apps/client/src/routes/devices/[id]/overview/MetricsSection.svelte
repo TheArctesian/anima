@@ -1,5 +1,6 @@
 <script lang="ts">
   import LineChart from '$lib/charts/LineChart.svelte';
+  import { contextHubIsHosted } from '$lib/hosted/context';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import Icon from '$lib/icons/Icon.svelte';
   import { hasMetrics } from '$lib/metrics/source/has-metrics';
@@ -14,6 +15,7 @@
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
+  import { metricsOffText } from './overview';
 
   interface Props {
     source: MetricsSource;
@@ -27,6 +29,8 @@
   }
 
   const { source, metrics, range, now, clock, onRange, onRetry, onSettings }: Props = $props();
+  // A hosted hub reads no metrics over SSH (HMD-049 is not built), so its sentence names the daemon only (R-222).
+  const hosted = contextHubIsHosted();
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
   // The old chart stays while a switch is on its way, so its label and gap follow the data on screen, not the button.
   const drawn = $derived(metrics.shownRange ?? range);
@@ -54,7 +58,7 @@
     <!-- D-7: an empty state with its icon, the sentence and the way to turn metrics on. -->
     <div class="metrics-off">
       <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
-      <p>Metrics are off. Install the daemon or turn on SSH metrics in Settings.</p>
+      <p>{metricsOffText(hosted)}</p>
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
