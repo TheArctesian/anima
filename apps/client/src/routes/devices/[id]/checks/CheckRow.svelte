@@ -34,7 +34,8 @@
   }
 </script>
 
-<li class="row" class:paused={check.paused}>
+<!-- The list item is the panel's, so the row fades in and out where it stands (5.7.3, Reorder). -->
+<div class="row" class:paused={check.paused}>
   <button type="button" class="name" title={check.name} aria-expanded={open} onclick={onHistory} {@attach press()}>
     <span>{check.name}</span>
   </button>
@@ -64,7 +65,7 @@
     <button type="button" aria-label="Delete {check.name}" title="Delete" onclick={onDelete} {@attach press()}><Icon name="carbon:trash-can" size="sm" /></button>
   </span>
   {#if failure !== null}<p class="failure" role="alert">{failure.message}</p>{/if}
-</li>
+</div>
 
 <style>
   .row {
