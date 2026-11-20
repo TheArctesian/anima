@@ -22,7 +22,7 @@ Repository validation before the final hostname change: all 21 required gates pa
 
 Battery screenshots use an explicitly simulated Linux battery in disposable VMs; laptop charge, unplug/replug, thermal behavior and touch remain hardware checks. The operator has reported that Wi-Fi works on the latest physical install. Real hosted sign-in and self-hosted enrollment still require account/network acceptance. The remote sign-in page retains its provider-managed theme.
 
-Updates currently transfer a full closure, do not automatically drain workloads, and do not retire old EFI assets or garbage-collect old store paths. Low-space updates are refused while retaining recovery. Existing images without the updater require the requested bootstrap installation. The hardware entry HT-NEW-aospreview remains Open.
+Updates currently transfer a full closure, do not automatically drain workloads, and do not retire old EFI assets or garbage-collect old store paths. Low-space updates are refused while retaining recovery. Existing images without the updater require the requested bootstrap installation. The hardware entry HT-069 remains Open.
 
 ## Final ISO lifecycle
 
