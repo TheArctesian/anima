@@ -1,0 +1,4 @@
+# Made by the build of the plugin (tauri-plugin copies its Swift API here).
+/.tauri
+/ios/.build
+/ios/Package.resolved

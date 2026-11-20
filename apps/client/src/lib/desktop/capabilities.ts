@@ -2,14 +2,15 @@ import { isTauri } from '@tauri-apps/api/core';
 import { browserCapabilities } from '$lib/platform/browser';
 import type { Capabilities } from '$lib/platform/capabilities';
 import { isMac } from '$lib/platform/mac';
-import { isMobile, type Agent } from '$lib/platform/mobile';
+import { isApple, isMobile, type Agent } from '$lib/platform/mobile';
 
 /**
- * What the mobile shell can do (MOB-002, MOB-004): it keeps the access token and runs the device link inside the app
- * (MOB-031, mobile plan M3-1), and it has no desktop-only feature. A phone has no updater (UPD-001), runs no hub and no
- * build, reads no computer and has no cloud commands yet. Its copy of recent data is the mobile plan's (IOS-003), so it keeps none here.
+ * What the mobile shell can do (MOB-002, MOB-004): it keeps the access token, runs the device link inside the app
+ * (MOB-031, mobile plan M3-1) and signs in to the Anima.ing account (mobile plan M3-4), and it has no desktop-only
+ * feature. A phone has no updater (UPD-001), runs no hub and no build, and reads no computer. Its copy of recent data is
+ * the mobile plan's (IOS-003), so it keeps none here.
  */
-const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true };
+const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true, cloudAccount: true };
 
 /**
  * What the shell can do, or `null` outside it (WP-42 D-4). On a phone or a tablet the answers are the mobile shell's.
@@ -21,7 +22,8 @@ const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, dev
  */
 export function shellCapabilities(agent: Agent = navigator): Capabilities | null {
   if (!isTauri()) return null;
-  if (isMobile(agent)) return MOBILE_SHELL;
+  // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5).
+  if (isMobile(agent)) return { ...MOBILE_SHELL, accountSession: isApple(agent) };
   const { userAgent } = agent;
   return {
     keyStore: true,
@@ -38,6 +40,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
   localHub: true,
     deviceLink: true,
     cloudAccount: true,
+    accountSession: false,
     overlayTitleBar: isMac(userAgent),
     recentCopy: true,
   };

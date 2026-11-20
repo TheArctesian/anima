@@ -35,9 +35,15 @@ export interface Capabilities {
   readonly deviceLink: boolean;
   /**
    * The shell signs in to the Anima.ing account with `cloud_sign_in_start` and the other cloud commands (HM-T1 to
-   * HM-T7): the hosted sign-in needs it with `deviceLink`. The mobile shell has no cloud commands yet.
+   * HM-T7): the hosted sign-in needs it with `deviceLink`. The mobile shell has these commands too (mobile plan M3-4),
+   * but not `cloud_device`: that one reads a computer, so it goes with `thisMachine`.
    */
   readonly cloudAccount: boolean;
+  /**
+   * The shell shows the sign-in page of the account inside the app, with `cloud_sign_in_session`: no browser to go
+   * to and no code to compare (mobile plan M3-5). Only the iPhone app has it; the other shells use the code.
+   */
+  readonly accountSession: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
   /** The app keeps a read-only copy of recent hub answers on this computer and shows it when the hub does not answer (FND-007). */
