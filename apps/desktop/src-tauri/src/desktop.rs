@@ -88,6 +88,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         link::link_join,
         link::link_status,
         link::link_leave,
+        link::open_ports::link_ports,
         hub_listener::hub_listener_check,
         command_line::command_line_read,
         command_line::command_line_install,
