@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 2 (2026-11-20). The direction and the build of stage 1 before the launch are R-NEW-t3native (operator, relayed). R-NEW-agentreach, R-NEW-threadstree, R-NEW-threadsservers and R-NEW-threadsenhance (operator, relayed) add the principle of reach, orchestration, sub agents on other machines and models, and servers inside the subscription. The requirements THR-001 to THR-084 are not approved. Parity with the inventory of T3 Code: 100 functions; 14 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied; of the 36 marked must, 8 are built. Only tasks TH1 to TH5 and TH8, which read and start no program, may be built and merged. Each task that starts or drives an agent waits for the approval of this proposal and of its security points (Section 8, OD-THR1 to OD-THR30). A separate reviewer read version 1 (28 findings, 8 High); the read of the new parts of version 2 is in Section 9.
+evidence: Version 2 (2026-11-20). The direction and the build of stage 1 before the launch are R-NEW-t3native (operator, relayed). R-NEW-agentreach, R-NEW-threadstree, R-NEW-threadsservers and R-NEW-threadsenhance (operator, relayed) add the principle of reach, orchestration, sub agents on other machines and models, and servers inside the subscription. The requirements THR-001 to THR-084 are not approved. Parity with the inventory of T3 Code: 100 functions; 15 built on a branch, 3 partly built, 76 not started, 5 owned by a different document, 1 not copied; of the 36 marked must, 9 are built. Only tasks TH1 to TH5 and TH8, which read and start no program, may be built and merged. Each task that starts or drives an agent waits for the approval of this proposal and of its security points (Section 8, OD-THR1 to OD-THR30). A separate reviewer read version 1 (28 findings, 8 High); the read of the new parts of version 2 is in Section 9.
 ---
 
 # Proposal: agent threads (the behaviour of T3 Code, as a native part of Anima)
@@ -34,10 +34,10 @@ The table of Section 6.9 has one row for each function of the inventory, with it
 
 | | All functions | Marked must |
 | --- | --- | --- |
-| Built on a branch (read side; not merged) | 14 | 8 |
+| Built on a branch (read side; not merged) | 15 | 9 |
 | Partly built | 3 | 2 |
 | Held (built, waits for the approval) | 0 | 0 |
-| Not started | 77 | 26 |
+| Not started | 76 | 25 |
 | Owned by a different document of Anima | 5 | 0 |
 | Not copied (the telemetry of T3 Code; export, which T3 Code does not have) | 1 | 0 |
 | Total | 100 | 36 |
@@ -354,7 +354,7 @@ CMD-030 order: there is no hub API in stage 1a, and the plan gives the reason th
 | TH3 | The MCP tool `anima_agents_threads` (THR-018, THR-029) | TH2 | The catalogue tests (MCP-009, MCP-011) | Built on `threads/read-side` |
 | TH4 | The desktop shell commands `agent_threads_list` and `agent_thread_read` (main web view only, WEB-007), and the page Threads (THR-013 to THR-017) | TH2; the mockup approved | Client tests; HT-NEW-threadview | Built on `threads/read-side`. No person saw it in a window; not compared with the mockup; no separate reviewer read the page |
 | TH5 | The state that a session file tells (THR-055), the order and the marks of the list with the held order (THR-056), the count on the bar (THR-057), the read at an interval (THR-058) | TH4; R-NEW-threadsorder | Tests on made session lines and made rows, not on the files of a computer; HT-NEW-threadview steps 8 and 9 | Built on `threads/needs-you` |
-| TH8 | Replies and prompts as Markdown with code blocks, built from parsed text and never as markup of the session (THR-019) | TH4 | Client tests: a tag in a reply shows as text; a code block keeps its lines | Not started |
+| TH8 | Replies and prompts as Markdown with code blocks, built from parsed text and never as markup of the session (THR-019) | TH4 | Client tests: a tag in a reply shows as text; a code block keeps its lines | Built on `threads/needs-you`; no colours for the words of a programming language |
 | TH6 | The system notification of the desktop application (THR-059 to THR-061): a notification part in the shell, the permission of the operating system, the click that opens the thread, the settings | TH5; a decision to add the part to the shell | A human check on a Mac and on Linux | Not started |
 | TH7 | A watcher of the folders of session files in the shell, in place of the read at an interval (THR-058) | TH5 | A test with a made folder; a human check | Not started |
 
@@ -530,7 +530,7 @@ Each task starts or drives an agent, or starts a machine: none is built for the 
 | 2.2 | Send a prompt | must | 1b | TH14 | Not started |
 | 2.2 | Chips and the history of prompts | should | 4 | TH48 | Not started |
 | 2.3 | Replies as text | must | 1a | TH4 | Built on a branch |
-| 2.3 | Replies as Markdown with code blocks | must | 1a | TH8 | Not started |
+| 2.3 | Replies as Markdown with code blocks | must | 1a | TH8 | Built on a branch |
 | 2.3 | Replies streamed by paragraph; live output of a command | must | 1b | TH14 | Not started |
 | 2.4 | Reasoning, folded | should | 1a | TH4 | Built on a branch |
 | 2.5 | Tool calls by kind, with input and output | must | 1a | TH1, TH4 | Built on a branch |
