@@ -35,6 +35,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Product direction: appliance experience | Decided direction (relayed) | Purpose-built appliance with sensible defaults and limited supported host configuration. Prioritize install-and-work simplicity; accept reduced configuration freedom. General-purpose development environments can use OmniXY, Omarchy or other distributions. Caddy, SteamOS and Ubuntu are experience analogies, not selected architectures or a request for a desktop. Existing decisions and optional administrator access remain in force. |
 | Decision 14: root behavior | Decided | C: read-only system root during normal operation, with designated writable state for settings, device identity, logs, application data and job workspaces. Updates and repairs use a controlled maintenance path. Keep optional administrator access for diagnostics and recovery. This does not make workload storage read-only or select a separate physical disk. Exact NixOS implementation, writable mounts and compatibility need validation. Reset-on-every-boot root is not selected. |
 | Decision 15: automatic OS-update recovery | Decided | A: attempt the previous known-good system when the new OS fails boot or required local health checks. Bound retries and enter recovery if both versions fail. Hub unreachability alone does not trigger rollback. Check the daemon and local network configuration; report reconnection failure through available channels and retain manual rollback. Do not silently revert workload data. Bootloader support, watchdog behavior, health criteria and retry limits require implementation and tests. |
+| Decision 16: workload and host dependencies | Decided | A + B + C: separate workload environments by default; curated host integrations; supported custom host packages and services through a controlled configuration mechanism. This expands the supported customization scope beyond curated profiles. Keep the normal system root read-only; do not infer unrestricted imperative host writes or blanket agent authority. Custom configuration must participate in update, validation and recovery design. Exact accepted configuration surface and authorization remain open. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -71,7 +72,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 16: how should workload dependencies be separated from the managed host? Options: isolated workload environments by default; also approved host-integrated workload profiles; arbitrary host dependency installation as a supported mode. Recommendation: isolated environments by default, with narrowly approved host profiles only where device or kernel integration requires them. This is a product boundary, not selection of Docker, Podman, a VM runtime or a second scheduler. Existing HOST, JOB, AGN and AXT owners retain runtime, grant and execution rules. No answer yet. The broader arbitrary host-customization support boundary also remains open.
+2. Decision 17: who can authorize custom host configuration changes? Alternatives/combinations: owners approve each proposed change; owners grant bounded standing permission for specified host changes; an explicitly enabled administrator agent role has broad host-configuration authority. Recommendation: per-change approval by default plus optional bounded grants, subject to existing execution/approval owners. Support for custom packages/services does not itself authorize agents to change the host. No answer yet. Exact configuration surface remains open; arbitrary writable host drift is not implied.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -146,6 +147,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: With the appliance context, the operator selected C for the original Decision 14: read-only system root and separate writable state. The earlier persistent-root recommendation is superseded. This does not answer the alternative host-customization support question. Next: automatic OS-update recovery policy.
 
 - 2026-11-19: Decision 15 accepted A: bounded automatic rollback on local boot/core-service failures, not hub unreachability alone. Next: workload dependency boundary on the appliance host.
+
+- 2026-11-19: Decision 16 accepted A + B + C, explicitly including supported custom host dependencies. This supersedes the narrower recommendation to support only curated host changes. Preserve read-only normal operation through controlled configuration; host-change authorization is still undecided. Next: owner approval and agent grants.
 
 ## Source text
 
@@ -234,3 +237,7 @@ After the revised Decision 14 recommendation (C, read-only system root):
 In response to Decision 15:
 
 > go with A
+
+In response to Decision 16:
+
+> Yeah I think A B & C
