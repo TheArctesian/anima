@@ -9,7 +9,8 @@ evidence: Direction decided: R-239 (operator, 2026-11-19, relayed) holds his eig
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 From: the session that recorded the defects of the first use of a hosted hub (DEF-002 to DEF-005), on the word of the orchestrating session, 2026-11-19.
-Version: 3. Date: 2026-11-19. Version 3 records R-239: Section 7 has his answers, Section 6 the task lists for the other repositories and what comes off the old hub before the name moves. Version 2 added his agreement to the shape and Section 4, the flow.
+Version: 4. Date: 2026-11-20. Version 4 adds Section 6.0, the first slice of the gateway (Connect GitHub only).
+Version 3, 2026-11-19: Version 3 records R-239: Section 7 has his answers, Section 6 the task lists for the other repositories and what comes off the old hub before the name moves. Version 2 added his agreement to the shape and Section 4, the flow.
 Status: the header of this document holds the state (PLN-020). History: Draft; Direction decided (R-239). It is a proposal: build only a task of [hosted-mode.md](hosted-mode.md) Section 8 whose requirement is approved (PLN-007).
 Map: [work-plan.md](../work-plan.md), row 4.17 (the hosted mode and the shared pool). Parent: [hosted-mode.md](hosted-mode.md). It adds no requirement identifier: the requirements are HMD-059 to HMD-070 of the parent (its Section 6.9), and the tasks of this repository are HM-T25 to HM-T32 there.
 
@@ -144,6 +145,25 @@ Signing out: "Sign out" in the web client ends the session of the hub and of the
 ## 6. The task lists for the other repositories
 
 For their owners. Nothing there is changed by this proposal; the orchestrating session hands the lists on. The requirement numbers are those of [hosted-mode.md](hosted-mode.md) Section 6.9.
+
+### 6.0 The first slice: Connect GitHub only (2026-11-20)
+
+The operator named Projects as vital on a hosted hub (2026-11-19, first-hand to the orchestrating session: "the agent usage like t3 code and projects are vital"), and Projects need GitHub. The smallest part of the gateway that makes "Connect GitHub" work, with no browser session of a hub and no web client:
+
+In `anima-cloud`:
+
+1. The gateway at `https://hub.anima.ing` with the sign-in by the account (items 1 and 2 of Section 6.1), and for a signed-in account only these four paths, each a GET, passed to the hub of that account: `/connect/github`, `/connect/github/start`, `/connect/github/created`, `/connect/github/installed`. Each other path gets a plain page.
+2. Each passed request names a loopback host in `Host` (the hub in the link mode refuses any other host, `crates/hub/src/fleet/access/rebinding.rs`) and has no `Origin`.
+3. The cookie `__Host-anima-connect` passes in both directions with no change; the query of an address passes with no change and is never logged (it holds the one-time ticket, then the code of GitHub).
+4. `anima-local-hub run --public-origin https://hub.anima.ing` in the unit of each hub (the option is built in this repository, branch `hosted/github-on-hosted-hub`), and a new image of the hub.
+
+In this repository, after that:
+
+5. The application offers "Connect GitHub" again on a hosted hub. Today it does not (DEF-003): it cannot tell a hub whose public origin is the gateway from a hub that has only the default. The clean signal is the refusal of HMD-070 in the hub: a hub in the link mode with no public origin of its own refuses the flow, and the application then needs no rule of its own. HMD-070 waits for the approval of the operator ([hosted-mode.md](hosted-mode.md) Section 6.10).
+
+Not in the slice: `POST /connect/github/open` (the path with no ticket, for a flow that an agent started; it needs the browser session of the hub), the web client, and each other item of Section 6.1.
+
+Until the slice exists, the key file is the way: [github-key-file.md](../procedures/setup/github-key-file.md).
 
 ### 6.1 `anima-cloud` (the pool and the gateway)
 

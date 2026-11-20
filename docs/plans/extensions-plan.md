@@ -239,7 +239,7 @@ Map, Wardrobe, Library and Reminders use places. The places domain owns them. Th
 
 ### 2.8 Extension switches
 
-- **EXT-001.** The operator must be able to set each extension on or off in Settings. The default is off.
+- **EXT-001.** The operator must be able to set each extension on or off on the page Extensions, which the navigation bar shows directly above Settings (R-255). The default is off.
 - **EXT-002.** When an extension is off, the hub must not poll its sources. The navigation bar must not show its page.
 - **EXT-003.** When the operator sets an extension off, the hub must keep its data. A separate "Delete data" action removes the data, after a confirmation.
 - **EXT-004.** Each extension must state its data class in its section of this plan.

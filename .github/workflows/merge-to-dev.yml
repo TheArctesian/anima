@@ -1,26 +1,30 @@
-# Merges a branch into `dev` when its gates passed on GitHub, with no person and no session
-# (R-252). `quality/merge-rule.json` on `dev` is the switch: `"mergeWithoutCheck": true`.
+# The merge train of `dev` (R-252): branches whose gates passed land in `dev` with no person and
+# no session. `quality/merge-rule.json` on `dev` is the switch: `"mergeWithoutCheck": true`.
 # Nothing here touches `main`: `main` stays a deliberate step (R-198).
 #
 # GitHub has a merge queue that does this work, but only for a repository that an
 # organization owns. This repository belongs to a personal account, so this file does it.
 #
-# It starts when a run of the workflow `gates` ends. GitHub takes this file from the default
-# branch, so a branch cannot change what runs here; thus it works only when it is on `main`.
-# The run of the gates tested the branch as merged with one commit of `dev` (artifact
-# `tested-base`). If `dev` is still at that commit, the merge script of `dev` merges the branch
-# and pushes. If `dev` moved, the gates run again, with the new `dev`, and this file starts
-# again when they end. After a merge it starts the gates for `dev`, because a push by a
-# workflow starts no workflow.
+# Each start does one step of the conductor (`quality/bin/train.ts` of `dev`). It takes each
+# branch whose own gates passed, merges them in a fixed order on the `dev` of the moment in a
+# branch `train/<name>`, and starts the gates one time for that commit. When they pass and `dev`
+# did not move, `dev` moves to that commit: the tree that was tested is the tree of `dev`. When
+# they fail, the next train holds the first half; a branch that fails alone stays out. A branch
+# never runs again only because `dev` moved, and the gates never run for a `dev` that a train moved.
 #
-# This file was never run on GitHub when it was written: see the entry of
-# docs/need-human-testing.md for the first trial.
+# It starts when a run of `gates` ends for a push of a branch (a branch can be ready), when the
+# gates of a train end (land it or split it), and each 20 minutes (a start that was lost). GitHub
+# takes this file from the default branch, so it works only when it is on `main`; the checkout
+# is `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`.
 name: merge-to-dev
 
 on:
   workflow_run:
     workflows: [gates]
     types: [completed]
+  schedule:
+    - cron: "7,27,47 * * * *"
+  workflow_dispatch:
 
 concurrency:
   group: merge-to-dev
@@ -33,13 +37,18 @@ env:
 
 jobs:
   merge:
-    # Only a push of a branch of this repository whose gates passed; never `dev` or `main`, never a fork.
+    # A push of a branch of this repository whose gates passed (never `dev` or `main`, never a
+    # fork), or the end of the gates of a train, or the clock.
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      github.event_name != 'workflow_run' || (
       github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch != 'main' && (
+      (github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch != 'dev' &&
-      github.event.workflow_run.head_branch != 'main'
+      !startsWith(github.event.workflow_run.head_branch, 'train/')) ||
+      (github.event.workflow_run.event == 'workflow_dispatch' &&
+      startsWith(github.event.workflow_run.head_branch, 'train/'))))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -55,10 +64,7 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
-      - name: Merge the branch into dev
+      - name: One step of the merge train
         env:
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
           GH_TOKEN: ${{ github.token }}
         run: /bin/sh .github/workflows/merge-to-dev.sh

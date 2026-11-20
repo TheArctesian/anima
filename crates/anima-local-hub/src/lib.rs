@@ -24,5 +24,5 @@ mod vault_key;
 pub use child::{ChildError, Stop};
 pub use folders::Folders;
 pub use link_member::Backoff;
-pub use members::Carried;
+pub use members::{Carried, Pool};
 pub use vault_key::KeyError;

@@ -22,18 +22,17 @@ export interface ChoicePlace {
 
 /**
  * The one choice of the first run's first screen: sign in with the Anima.ing account (HMD-022). It needs a shell that
- * joins over the link, the desktop app's or a phone's (R-129); `inApp` is true in an app of Anima.ing (its key store).
- * The other ways are behind "Join a hub" (operator, 2026-11-17: "sign in with SSO and then one link at the bottom to
+ * joins over the link and has the cloud commands: the desktop app's or a phone's (R-129, mobile plan M3-4). A browser
+ * has neither. The other ways are behind "Join a hub" (operator, 2026-11-17: "sign in with SSO and then one link at the bottom to
  * join a hub").
  */
-export function signInChoice(place: ChoicePlace, inApp: boolean): Choice {
+export function signInChoice(place: ChoicePlace): Choice {
   return {
     id: 'sign-in',
     title: 'Sign in',
     line: 'With your Anima.ing account.',
     href: '/welcome/hosted',
-    // The phone app is the app; it signs in once it has the link and the cloud commands (mobile plan M3-1).
-    off: place.deviceLink && place.cloudAccount ? null : inApp ? 'Coming soon on phones.' : 'Needs the Anima.ing app.',
+    off: place.deviceLink && place.cloudAccount ? null : 'Needs the Anima.ing app.',
   };
 }
 

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anima_database::{LayoutError, Platform, UserFolders};
 use anima_local_hub::account::Name;
-use anima_local_hub::{Carried, Folders};
+use anima_local_hub::{Carried, Folders, Pool};
 use clap::{Args, Parser, Subcommand};
 
 use crate::LISTEN;
@@ -140,9 +140,26 @@ pub(crate) struct RunFiles {
     /// hosted mode (R-129). The hub refuses a path that is not absolute
     #[arg(long)]
     pub(crate) hosted_cloud_key_file: Option<PathBuf>,
+    /// The address at which a browser reaches this hub through the gateway, on a hub of the
+    /// pool only: `https://` and the host of the gateway. The hub refuses an address that is
+    /// not an origin
+    #[arg(long)]
+    pub(crate) public_origin: Option<String>,
+    /// The folder of the web client that the hub serves, on a hub of the pool only
+    #[arg(long)]
+    pub(crate) web_root: Option<PathBuf>,
 }
 
 impl RunFiles {
+    /// What only a hub of the pool is told.
+    pub(crate) fn pool(&self) -> Pool {
+        Pool {
+            cloud_key_file: self.hosted_cloud_key_file.clone(),
+            public_origin: self.public_origin.clone(),
+            web_root: self.web_root.clone(),
+        }
+    }
+
     pub(crate) fn carried(self) -> Result<Carried, crate::Failure> {
         if let (Some(programs), Some(tree)) = (self.programs, self.tree) {
             return Ok(Carried::new(programs, tree));

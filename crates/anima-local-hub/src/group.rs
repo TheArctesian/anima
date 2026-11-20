@@ -68,9 +68,9 @@ pub struct Plan {
     pub limits: Limits,
     /// The time of the link's state changes.
     pub clock: fn() -> SystemTime,
-    /// The file of the Anima.ing cloud's key: set only by `run --hosted-cloud-key-file` on a hub
-    /// of the pool (R-129). `None` on the desktop.
-    pub hosted_cloud_key_file: Option<PathBuf>,
+    /// What only a hub of the pool is told, by options of `run` (R-129, R-239). Empty on the
+    /// desktop.
+    pub pool: members::Pool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -186,7 +186,7 @@ impl Group {
 
         let hub = members::hosted(
             members::hub(carried, folders, plan.listen, gateway_address),
-            plan.hosted_cloud_key_file.as_deref(),
+            &plan.pool,
         );
         let hub = self.launch(&hub, plan, limits.hub_stop)?;
         let ready = hub.line_where(limits.hub_ready, members::hub_address);

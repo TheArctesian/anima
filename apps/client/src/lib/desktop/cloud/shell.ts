@@ -42,15 +42,20 @@ const HUB_STATES: readonly unknown[] = ['ready', 'making', 'waking'] satisfies H
  * The Anima.ing cloud through the shell (HMD-043): the WorkOS device sign-in, the hub of the account and this device's
  * access to it. The shell does the calls, so the WorkOS tokens stay in the shell and its key store (HMD-034); this side
  * sees the short code, the page, the hub state, and the invite and the claim, which go straight to the join.
+ *
+ * With `inApp` (the iPhone app, mobile plan M3-5) a new sign-in has no code: the shell shows the sign-in page inside
+ * the app and answers when the person signed in or closed it.
  */
-export function cloudAccount(): HostedAccount {
+export function cloudAccount(inApp = false): HostedAccount {
   return {
     start: async () => {
       // A session that still holds needs no browser step: the account signs in again silently.
       const resumed = await command('cloud_sign_in_resume', (value) => (typeof value === 'boolean' ? value : undefined));
       if (resumed.ok && resumed.value) return answer('signed-in');
       if (!resumed.ok && resumed.problem === 'unconfigured') return resumed;
-      return command('cloud_sign_in_start', signInCodeOf);
+      if (!inApp) return command('cloud_sign_in_start', signInCodeOf);
+      const signedIn = await command('cloud_sign_in_session', (value) => (value === true ? value : undefined));
+      return signedIn.ok ? answer('signed-in') : signedIn;
     },
     openPage: async (page) => {
       try {

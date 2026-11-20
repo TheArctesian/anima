@@ -1,9 +1,9 @@
 <script lang="ts">
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
-  import ExtensionsSection from '$lib/extensions/ExtensionsSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
+  import { resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
@@ -59,7 +59,7 @@
 <PageIndex entries={index} label="Settings sections" />
 <div class="page">
 
-  <!-- One section per subject, in the order of WP-50 F-10; each later section adds one element here. -->
+  <!-- One section per subject, in three groups: the hub and the account, this computer, connections (WP-50 F-10, R-224). -->
   <SettingsSection {...SECTIONS.account}>
     {#if phone}<PhoneAccount />{:else}<SignOutRow />{/if}
   </SettingsSection>
@@ -75,6 +75,21 @@
     </SettingsSection>
   {/if}
 
+  <LinkDevicesSection section={SECTIONS.linkDevices} />
+
+  <SettingsSection {...SECTIONS.notifications}>
+    <NotificationsSection />
+  </SettingsSection>
+
+  <SettingsSection {...SECTIONS.checkDefaults}>
+    <DefaultsSection />
+  </SettingsSection>
+
+  <SettingsSection {...SECTIONS.retention}>
+    <RetentionSection />
+  </SettingsSection>
+
+  <!-- This computer (R-224). -->
   {#if hubState !== null}
     <LocalHubSection section={SECTIONS.localHub} {hubState} />
   {/if}
@@ -93,42 +108,33 @@
     <TypefaceRows />
   </SettingsSection>
 
-  <SettingsSection {...SECTIONS.notifications}>
-    <NotificationsSection />
-  </SettingsSection>
-
-  <SettingsSection {...SECTIONS.checkDefaults}>
-    <DefaultsSection />
-  </SettingsSection>
-
-  <SettingsSection {...SECTIONS.retention}>
-    <RetentionSection />
-  </SettingsSection>
-
   {#if desktopRows}
     <SettingsSection {...SECTIONS.updates}>
       <DesktopRows />
     </SettingsSection>
   {/if}
 
-  <LinkDevicesSection section={SECTIONS.linkDevices} />
+  <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
+  {#if mcpPermissions}
+    <SettingsSection {...SECTIONS.mcp}>
+      <McpSection />
+    </SettingsSection>
+  {/if}
+
+  <!-- Connections (R-224). -->
+  <SettingsSection {...SECTIONS.integrations}>
+    <SourcesSection />
+  </SettingsSection>
 
   <SettingsSection {...SECTIONS.apiKeys}>
     <ApiKeysSection />
   </SettingsSection>
 
-  <SettingsSection {...SECTIONS.extensions}>
-    <ExtensionsSection />
-  </SettingsSection>
-
-  <SettingsSection {...SECTIONS.integrations}>
-    <SourcesSection />
-  </SettingsSection>
-
-  <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
-  {#if mcpPermissions}
-    <SettingsSection {...SECTIONS.mcp}>
-      <McpSection />
+  <!-- The extensions have a page of their own, beside Settings in the bar. The phone bar has no place for it
+       (MOB-010), so on a phone this section is the way to that page (EXT-001). -->
+  {#if phone}
+    <SettingsSection {...SECTIONS.extensions}>
+      <a class="to-extensions" href={resolve('/extensions')}>Open Extensions</a>
     </SettingsSection>
   {/if}
 
@@ -158,6 +164,13 @@
     grid-template-columns: calc(var(--space-16) * 3 + var(--space-4)) minmax(0, calc(var(--space-16) * 11));
     gap: var(--space-12);
     align-items: start;
+  }
+
+  .to-extensions {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min-touch);
+    color: var(--accent);
   }
 
   .page {

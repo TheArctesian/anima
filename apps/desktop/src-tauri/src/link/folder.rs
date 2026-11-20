@@ -15,6 +15,8 @@ use std::{
 };
 
 const PORT_FILE: &str = "anima-port";
+/// Its presence says that a unit of the user must keep the link of this folder (HMD-058).
+const UNIT_FILE: &str = "anima-unit";
 /// More than a port number and a line end.
 const MOST_PORT_FILE: u64 = 16;
 
@@ -147,4 +149,22 @@ pub fn write_port(folder: &Path, port: u16) -> io::Result<()> {
         .open(folder.join(PORT_FILE))?;
     writeln!(file, "{port}")?;
     file.sync_all()
+}
+
+/// Marks `folder`: a unit of the user must keep its link. A mark that is there is not an error.
+pub fn want_unit(folder: &Path) -> io::Result<()> {
+    let made = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(folder.join(UNIT_FILE));
+    match made {
+        Err(error) if error.kind() != io::ErrorKind::AlreadyExists => Err(error),
+        _ => Ok(()),
+    }
+}
+
+/// Whether `folder` is marked for a unit of the user. A link at the place of the mark is no mark.
+pub fn wants_unit(folder: &Path) -> bool {
+    fs::symlink_metadata(folder.join(UNIT_FILE)).is_ok_and(|mark| mark.is_file())
 }
