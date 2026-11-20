@@ -48,6 +48,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.19 | 3 | The watchdog | See, Use | Proposal, direction decided (R-162). After jobs (row 4.7). | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | 3 | The terminal screen (`anima tui`) | See, Reach | Direction decided (R-168). The requirements are not approved. Starts after R8a to R8d (row 4.6); the measurement TU1 may run before. | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | 3 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Reach, Use | Direction decided (R-196). The requirements are not approved. Tier 3, after row 4.7 (OD-AXT11); AX0 to AX2 may run earlier than the tier. | Operator: the approval of AXT-001 to AXT-045 (task AX1) in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md). Agent: task AX0 in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10 (a record only); AX2 to AX16 wait for AX1 |
+| 4.23 | 3 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | See, Reach | Direction decided (R-241, 2026-11-19, first-hand). The requirements OBS-001 to OBS-066 are not approved (task OB1). R-144 holds them until WP-53 (OD-OBS13). | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in [extensions-plan.md](../plans/extensions-plan.md) Section 4.17. Agent: nothing; no ruling names a task |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
@@ -139,7 +140,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Use
 - Work: Jobs, with the build as the first job type. Then AI agent runs. Anima has two build models: its own builds, and owned machines as runners of GitHub Actions (PRO-010, PRO-027, OD-W13).
 - Work items: [C7](../work-items/compute/C7.md), [C3](../work-items/compute/C3.md). No work item yet for the proposals
-- State: [C7](../work-items/compute/C7.md) is planned. R-160 (operator, 2026-11-18: "A: on everywhere") is the ruling that changes R-115: the hub can send work to the daemon, on by default on each hub, a hosted hub included. Task W1 no longer waits for a ruling; the contract and the security review come before code. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (2026-11-16). Their order is W, then B, then A (OD-W21).
+- State: [C7](../work-items/compute/C7.md) is planned. R-160 (operator, 2026-11-18: "A: on everywhere") is the ruling that changes R-115: the hub can send work to the daemon, on by default on each hub, a hosted hub included. Task W1 no longer waits for a ruling; the contract and the security review come before code. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (2026-11-16). Their order is W, then B, then A (OD-W21). R-243 (operator, 2026-11-19, first-hand) adds automatic routing of work to the right machine for all work (ROU-001 to ROU-016 and tasks RT0 to RT8 in [jobs.md](../proposals/jobs.md); not approved; after W3). R-244 decides OD-ROU1 to OD-ROU6: routing also opens sessions and command lines, the most free memory wins, work waits in a queue; OD-ROU7 to OD-ROU9 are open.
 
 ### 4.8 The other extensions
 
@@ -227,7 +228,15 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Reach, Use
 - Work: a host that opens tools of other vendors, which run on the operator's machines, in a pane of the client: Hermes Agent, Herdr and T3 Code first (AXT-001 to AXT-045). The goal (operator, first-hand, 2026-11-18): support the open-source projects and gain their users
 - Work items: No work item yet. The tasks AX0 to AX16 are in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10
-- State: Direction decided (R-196, operator, 2026-11-18, first-hand). OD-AXT1 to OD-AXT18 are decided: the native agent panes (AIS-009 to AIS-017) and the native bot runtime are withdrawn, and the host may start before the 15 extensions with manifests of Anima.ing only (EXT-009). The requirements AXT-001 to AXT-045 are not approved; that is task AX1. Only AX0 (a record) may start now.
+- State: Direction decided (R-196, operator, 2026-11-18, first-hand). OD-AXT1 to OD-AXT18 are decided: the native agent panes (AIS-009 to AIS-017) and the native bot runtime are withdrawn, and the host may start before the 15 extensions with manifests of Anima.ing only (EXT-009). The requirements AXT-001 to AXT-045 are not approved; that is task AX1. Only AX0 (a record) may start now. R-243 (2026-11-19, first-hand) adds the view of all agents on all devices (AXT-046 to AXT-053, tasks AX17 to AX19; not approved; R-244: a tab beside PNL-002, an alert through the needs-you inbox) and keeps Herdr hosted as it is.
+
+### 4.23 The observability suite
+
+- Tier: 3 (R-241, OD-OBS5: "OD-OBS5: new row 4.23 at tier 3."). It is not under row 4.8. R-144 still holds it until the acceptance run WP-53 (OD-OBS13: "OD-OBS13: yes, R-144 holds these extensions until WP-53."). In the order of XP-005 it comes right after XP-02 (OD-OBS12).
+- Category: See, Reach
+- Work: four extensions, off by default, built together (OD-OBS3): status pages served on one public path of the hub, error tracking and product analytics on a self-hosted PostHog that the hub places on a machine with room or a VM, and short links. Uptime checks stay in the design specification.
+- Work items: No work item yet. The tasks OB0 to OB18 are in [extensions-plan.md](../plans/extensions-plan.md) Section 4.17.9
+- State: Direction decided (R-241, operator, 2026-11-19, first-hand). OD-OBS1 to OD-OBS14 are decided (OD-OBS9 withdrawn); R-242 (2026-11-19, first-hand) decides OD-OBS7 and OD-OBS15 to OD-OBS20: Dub for short links, automatic image updates, OD-E6 reversed when the extension works. OD-OBS21 to OD-OBS25 are open (the stacks against R-226 to R-238). The requirements are not approved; no task may start.
 
 ### Notes on the order
 
@@ -240,6 +249,7 @@ Notes:
 - Row 4.20 is tier 3, after R8a to R8d of row 4.6. It is a new row, so it follows 4.19. The operator chose a row of its own for the terminal screen (R-168). It is not a category: the command line and the MCP server stay a way to use each category.
 - Row 4.21 is tier 3, after row 4.7 (R-196, OD-AXT11). It is a new row, so it follows 4.20. The operator confirmed a row of its own first-hand (R-196, OD-AXT1).
 - Row 4.22 is tier 1, after row 4.3 (R-207, OD-UD4). Its number follows 4.21 because it is a new row; a published number does not change.
+- Row 4.23 is tier 3 (R-241, OD-OBS5). It is a new row, so it follows 4.22. R-144 holds it until WP-53 (OD-OBS13).
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
