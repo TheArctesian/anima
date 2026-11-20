@@ -38,10 +38,14 @@ def case(image, directory, scenario):
         elif scenario == 'rejected-entry':
             machine.command("sed -i 's@linux .*@linux /EFI/anima/missing-kernel@' /boot/loader/entries/anima-b.conf; mv /boot/loader/entries/anima-b.conf /boot/loader/entries/anima-b+2.conf; printf 'default anima-*.conf\\ntimeout 1\\n' > /boot/loader/loader.conf; sync")
             machine.reboot('A')
+        elif scenario == 'reboot-deadline-idle':
+            machine.command('cat /proc/sys/kernel/random/boot_id > /run/idle-boot; sleep 65; cmp /proc/sys/kernel/random/boot_id /run/idle-boot', timeout=75)
         elif scenario == 'shutdown-hang':
             machine.command("systemd-run --unit=anima-stuck-stop --property=TimeoutStopSec=infinity --property=KillSignal=SIGCONT --property=SendSIGKILL=no sleep infinity")
+            started = time.monotonic()
             machine.send('systemctl reboot')
             machine.ready('A')
+            outcome['recovery_seconds'] = time.monotonic() - started
         elif scenario in ('initrd-hang', 'initrd-emergency-policy'):
             if scenario == 'initrd-emergency-policy':
                 machine.command("sed -i '/^options /s/$/ boot.panic_on_fail/' /boot/loader/entries/anima-b.conf")
@@ -79,9 +83,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('image', type=Path)
     parser.add_argument('output', type=Path)
-    parser.add_argument('--scenario', choices=['staging-cut', 'publication-cut', 'rejected-entry', 'initrd-hang', 'capacity', 'pre-health-cut', 'both-health-fail', 'shutdown-hang', 'initrd-emergency-policy'], required=True)
+    parser.add_argument('--scenario', choices=['staging-cut', 'publication-cut', 'rejected-entry', 'initrd-hang', 'capacity', 'pre-health-cut', 'both-health-fail', 'shutdown-hang', 'initrd-emergency-policy', 'reboot-deadline-idle'], required=True)
     parser.add_argument('--iterations', type=int, default=3)
     args = parser.parse_args()
+    if args.iterations < 1:
+        parser.error('--iterations must be positive')
     args.output.mkdir(parents=True, exist_ok=False)
     results = []
     for iteration in range(args.iterations):

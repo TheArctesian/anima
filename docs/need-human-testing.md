@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-aospreview | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -96,6 +97,23 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-NEW-aospreview: Anima OS preview hardware and enrollment
+
+Built: [preview source](../experiments/anima-os/README.md), under R-NEW-aosisopreview.
+VM tests cover only emulated hardware. No physical disk was written and no real account was enrolled.
+
+1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: Anima live text console; no installation starts by itself.
+3. Run `nmtui`, connect Ethernet or Wi-Fi, then run `ip address`. Expected: an address on the intended network. Record missing drivers.
+4. Run `anima-install`, select the intended installation disk, enter the local admin password, and cancel the erase confirmation. Expected: cancellation with no disk change.
+5. Run it again and confirm only the intended disk. Expected: installation completion. Remove the USB and reboot. Log in as `admin`; run `anima-status`. Expected: read-only Btrfs root, network controls available and daemon inactive until enrolled.
+6. If the owner has a compatible self-hosted hub, connect the computer to its private network (for Tailscale, `sudo tailscale up` and complete its sign-in). Create a device enrollment code in Anima, then run `sudo anima-enroll` and enter the hub origin and code at the hidden prompt. Expected: the device appears and reports monitoring. Do not put the code in logs. Hosted enrollment remains dependent on HM-D16; record any refusal rather than changing trust rules.
+7. Reboot and run `anima-status`. Expected: local account and network state persist; an enrolled daemon resumes. Test loss of hub connectivity separately; the local console must remain usable.
+
+This does not qualify managed apps/jobs/agents, BIOS/ARM, encryption, backups or updates on hardware.
+
+Result: Open.
 
 ### HT-001: `anima snapshot` against GitHub
 

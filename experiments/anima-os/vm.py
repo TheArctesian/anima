@@ -25,7 +25,9 @@ def digest(path):
 
 
 class Machine:
-    def __init__(self, directory, image):
+    def __init__(self, directory, image, boot_iso=None):
+        if any(',' in str(path) or '\n' in str(path) for path in (directory, image)):
+            raise ValueError('VM disk paths cannot contain commas or newlines')
         self.directory = directory
         self.buffer = ''
         self.offset = 0
@@ -41,6 +43,8 @@ class Machine:
             '-drive', f'file={directory / "sentinel.raw"},format=raw,if=virtio',
             '-nic', 'none',
         ]
+        if boot_iso is not None:
+            args.extend(["-cdrom", str(boot_iso), "-boot", "once=d"])
         self.process = subprocess.Popen(args, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
 
@@ -91,7 +95,26 @@ class Machine:
         self.send('systemctl reboot')
         self.ready(revision)
 
+    def wait_exit(self, timeout=90):
+        # Continue draining serial output: a full PTY can block QEMU shutdown.
+        deadline = time.monotonic() + timeout
+        while self.process.poll() is None:
+            if time.monotonic() >= deadline:
+                raise TimeoutError('VM did not exit after shutdown')
+            if select.select([self.master], [], [], 1)[0]:
+                try:
+                    chunk = os.read(self.master, 65536).decode(errors='replace')
+                except OSError:
+                    continue
+                self.buffer += chunk
+                self.log.write(chunk)
+                self.log.flush()
+        if self.process.returncode != 0:
+            raise RuntimeError(f'VM exited {self.process.returncode}')
+
     def close(self):
+        if self.log.closed:
+            return
         if self.process.poll() is None:
             self.process.terminate()
             try:
@@ -170,7 +193,7 @@ def run(image, output):
             results.append({'case': f'health-fallback-{number+1}', 'result': 'Passed'})
             machine.command("rm /persist/fail-health; mv /boot/loader/entries/anima-b+0-2.conf /boot/loader/entries/anima-b.conf; printf 'default anima-a.conf\\ntimeout 1\\n' > /boot/loader/loader.conf; sync")
         machine.send('systemctl poweroff')
-        machine.process.wait(timeout=60)
+        machine.wait_exit(timeout=60)
     except Exception as error:
         results.append({'case': 'run', 'result': 'Failed', 'reason': str(error)})
         raise
@@ -179,6 +202,8 @@ def run(image, output):
         after = digest(sentinel)
         results.append({'case': 'unselected-disk', 'result': 'Passed' if before == after else 'Failed', 'before': before, 'after': after})
         (output / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
+    if any(result['result'] != 'Passed' for result in results):
+        raise RuntimeError('VM checks failed; see results.json')
 
 
 def interactive(image, output):

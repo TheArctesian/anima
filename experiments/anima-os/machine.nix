@@ -6,7 +6,14 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = false;
   boot.initrd.availableKernelModules = [ "virtio_pci" "virtio_blk" "virtio_net" "ahci" ];
-  boot.kernelParams = [ "console=ttyS0,115200" "panic=10" ];
+  boot.kernelParams = [ "console=ttyS0,115200" "panic=10" ]
+    ++ lib.optional (config.anima.revision == "B") "boot.panic_on_fail";
+  # Bound the stop-job phase only after reboot is requested. This is not a
+  # workload-drain deadline or permission to initiate maintenance.
+  systemd.targets.reboot.unitConfig = {
+    JobTimeoutSec = "60s";
+    JobTimeoutAction = "reboot-force";
+  };
   fileSystems = {
     "/" = { device = "/dev/disk/by-label/ANIMA"; fsType = "btrfs"; options = [ "subvol=@root" ]; };
     "/nix" = { device = "/dev/disk/by-label/ANIMA"; fsType = "btrfs"; options = [ "subvol=@nix" ]; };

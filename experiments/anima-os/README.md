@@ -1,5 +1,7 @@
 # Anima OS F1 / UEFI F2 prototype
 
+For the installable experimental ISO, see [ISO.md](ISO.md). The fixture below remains a separate recovery experiment.
+
 Authorized scope: OS1, Section 13 of [the proposal](../../docs/proposals/spare-computer-os.md).
 This is a disposable x86-64 VM experiment, not an installer or release. It has a
 root autologin on the serial console, synthetic identity and no SSH or Anima
@@ -89,7 +91,21 @@ directory after retaining its evidence. Removing the `/tmp/anima-os-image`
 symlink releases that result reference; Nix store garbage collection is a
 separate owner operation. Do not run global cleanup or delete unrelated images.
 
-The `initrd-emergency-policy` follow-up adds `boot.panic_on_fail` only to the
+The recovery revision includes `boot.panic_on_fail` for candidate B; fallback A
+keeps its emergency console policy to avoid an unlimited reboot loop. Boot
+entries use each NixOS configuration’s kernel parameters instead of a duplicate
+list in the image builder.
+
+A requested reboot has a 60-second job deadline covering the service-stop phase.
+On expiry, `reboot-force` terminates remaining processes and attempts filesystem
+teardown. The late-shutdown watchdog remains a separate 60-second backstop.
+This is a disposable recovery policy: the real maintenance coordinator must
+finish workload draining before requesting reboot. It is not permission to
+force a deadline on active work; application consistency is not established by
+sentinel preservation. `reboot-deadline-idle` checks that ordinary operation
+continues past this deadline when no reboot is requested.
+
+The historical `initrd-emergency-policy` follow-up adds `boot.panic_on_fail` only to the
 candidate entry on its disposable copy, then deliberately selects an initrd
 emergency target. NixOS has a built-in panic-on-fail unit; `panic=10` restarts the
 guest and the counter can select A. This tests a proposed candidate policy, not
@@ -100,3 +116,5 @@ a change to the base artifact or proof of recovery before the initrd starts.
 - [NixOS stable release](https://nixos.org/download/)
 - [Pinned disk-image helper](https://github.com/NixOS/nixpkgs/blob/3457b69ac4aba6d9ea9a743370af160fb502db29/nixos/lib/make-disk-image.nix)
 - [systemd boot blessing](https://www.freedesktop.org/software/systemd/man/latest/systemd-bless-boot.service.html)
+
+Harness regression checks: `python3 -m unittest discover -s experiments/anima-os -p "test_*.py"`. A changed unrelated disk fails the command as well as the result record; fault runs require at least one iteration.

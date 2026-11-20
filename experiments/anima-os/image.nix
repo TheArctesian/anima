@@ -1,4 +1,4 @@
-{ pkgs, systemA, systemB }:
+{ pkgs, systemA, systemB, paramsA, paramsB }:
 let
   closure = pkgs.closureInfo { rootPaths = [ systemA systemB ]; };
   vm = pkgs.vmTools.override { rootModules = [ "virtio_pci" "virtio_blk" "virtiofs" "btrfs" "vfat" "nls_cp437" "nls_iso8859_1" ]; };
@@ -38,14 +38,20 @@ in vm.runInLinuxVM (pkgs.runCommand "anima-prototype-disk" {
   mkdir -p /mnt/boot/EFI/BOOT /mnt/boot/loader/entries /mnt/boot/EFI/anima
   cp ${pkgs.systemd}/lib/systemd/boot/efi/systemd-bootx64.efi /mnt/boot/EFI/BOOT/BOOTX64.EFI
   for revision in a b; do
-    if test "$revision" = a; then system=${systemA}; else system=${systemB}; fi
+    if test "$revision" = a; then
+      system=${systemA}
+      params=${pkgs.lib.escapeShellArg (pkgs.lib.concatStringsSep " " paramsA)}
+    else
+      system=${systemB}
+      params=${pkgs.lib.escapeShellArg (pkgs.lib.concatStringsSep " " paramsB)}
+    fi
     cp "$system/kernel" /mnt/boot/EFI/anima/$revision-kernel
     cp "$system/initrd" /mnt/boot/EFI/anima/$revision-initrd
     cat > /mnt/boot/loader/entries/anima-$revision.conf <<ENTRY
   title Anima prototype $revision
   linux /EFI/anima/$revision-kernel
   initrd /EFI/anima/$revision-initrd
-  options init=$system/init console=ttyS0,115200 panic=10
+  options init=$system/init $params
   ENTRY
   done
   printf 'default anima-a.conf\ntimeout 1\n' > /mnt/boot/loader/loader.conf

@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.4 (2026-11-20). The operator authorized the bounded OS1 prototype; implementation and VM evidence are in the OS1 record. Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. A disposable x86-64 UEFI prototype is implemented under R-NEW-aosprototype; no physical hardware support or production integration is validated. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
+evidence: Version 0.5 (2026-11-20). An experimental UEFI installer ISO is built and VM-tested; see the ISO continuation record. The operator authorized the bounded OS1 prototype; implementation and VM evidence are in the OS1 record. Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. A disposable x86-64 UEFI prototype is implemented under R-NEW-aosprototype; no physical hardware support or production integration is validated. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
 ---
 
 # Proposal: Anima OS for spare computers
@@ -135,9 +135,9 @@ Only the bounded OS1 F1/UEFI-F2 experiment in Section 13 is authorized by R-NEW-
 | Task | Work | Depends on | State | Completion evidence |
 | --- | --- | --- | --- | --- |
 | OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Planning complete | Section 13 is the OS0 acceptance record: dependency snapshot, proposed contract deltas, bounded experiment protocol and handoff; no implementation approval or runtime evidence |
-| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Bounded run implemented; qualification findings recorded, F2 not passed | [OS1 evidence](../research/spare-computer-os/os1-prototype-2026-11-20.md), implementation `29a875a2`; F1 fixture proof only, shutdown/initrd policy limits remain; F3/F4 unapproved |
-| OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Not started | M1 record |
-| OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Not started | M2 record |
+| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Recovery follow-up built; tested UEFI cases passed, full F2 unqualified | [Initial OS1 evidence](../research/spare-computer-os/os1-prototype-2026-11-20.md) and [recovery/ISO continuation](../research/spare-computer-os/iso-preview-2026-11-20.md); pre-initrd deadlock and hardware recovery remain unqualified |
+| OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Experimental preview built under R-NEW-aosisopreview | [ISO evidence](../research/spare-computer-os/iso-preview-2026-11-20.md); runtime packaged and installed state tested; full M1 qualification remains open |
+| OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Experimental local UEFI installer built under R-NEW-aosisopreview | [Offline ISO install test](../research/spare-computer-os/iso-preview-results.json); graphical/hub-driven setup remains open |
 | OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
 | OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Not started | M4 record |
 | OS6 | Build backup/restore and bounded cleanup | OS4, OS5 recovery interfaces | Not started | M5 record |
@@ -487,3 +487,9 @@ Process request:
 Final enrollment choice (Decision 26): "A". Update policy (Decision 27): "agreeded". Release readiness (Decision 28): "Yeah A and and C just mention is might not be possible".
 
 The operator requested this implementation proposal with: "okay lets do that".
+
+## Overnight ISO continuation (2026-11-20)
+
+R-NEW-aosisopreview authorizes the next experimental slice: package existing runtime components, build a guided offline UEFI installer ISO and validate installation on disposable VM disks. Review recovery, runtime packaging, installer safeguards and final image in that order. The existing daemon provides enrollment/monitoring; app/job/agent execution integration is not implied by packaging it. Named hardware, BIOS/ARM, encryption, backups, hub-driven installation and production workload integration remain explicit qualification gaps until implemented and tested. Keep earlier failure records and publish a separate continuation report.
+
+Continuation result: [experimental ISO delivery](../research/spare-computer-os/iso-preview-2026-11-20.md) and [reviews after each stage](../research/spare-computer-os/overnight-reviews-2026-11-20.md). The ISO installs offline and runs local isolated container workloads. It does not complete managed job/agent execution, production update/backup policy or physical qualification.
