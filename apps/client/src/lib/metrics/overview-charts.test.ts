@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartsOf } from './overview-charts';
+import { chartsOf, tileFigures } from './overview-charts';
 import { APPLE, CPU_ONLY, INTEGRATED, NVIDIA, point, TWO_GPUS, series } from './metrics.fixture';
 
 const keys = (charts: ReturnType<typeof chartsOf>) => charts.map((chart) => chart.key);
@@ -151,5 +151,21 @@ describe('chartsOf shared GPU memory', () => {
     const charts = chartsOf([series('GPU_MEMORY_BYTES', 'GPU 1', [point(at, 2048)], 1), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 1024)], 0)], [APPLE, second]);
     expect(keys(charts)).toEqual(['gpu:0:memory', 'gpu:1:memory']);
     expect(charts.map((chart) => chart.series[0]?.points[0]?.value)).toEqual([1024, 2048]);
+  });
+});
+
+describe('tileFigures', () => {
+  it('R-224: a chart of one line gives its newest value and its highest value, as the chart writes them', () => {
+    const cpu = series('CPU_PERCENT', '', [point('2026-11-19T10:00:00Z', 30), point('2026-11-19T10:01:00Z', 12)]);
+    const [chart] = chartsOf([cpu], []);
+    expect(chart === undefined ? null : tileFigures(chart)).toEqual({ now: '12 %', peak: '33 %' });
+  });
+
+  it('R-224: a chart with no point, or with several lines, has no figures', () => {
+    const [empty] = chartsOf([series('CPU_PERCENT', '')], []);
+    expect(empty === undefined ? 'none' : tileFigures(empty)).toBeNull();
+    const at = '2026-11-19T10:00:00Z';
+    const network = chartsOf([series('NETWORK_IN_BPS', 'eth0', [point(at, 5)]), series('NETWORK_OUT_BPS', 'eth0', [point(at, 6)])], []);
+    expect(network.map(tileFigures)).toEqual([null]);
   });
 });

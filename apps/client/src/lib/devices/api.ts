@@ -146,6 +146,9 @@ void graphql(`
     }
     macAddress
     metricsSource
+    metricsStale
+    daemonVersion
+    sessionLimit
     accessWarnings
     rdp {
       enabled

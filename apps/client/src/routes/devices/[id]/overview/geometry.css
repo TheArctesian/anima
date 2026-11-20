@@ -10,8 +10,38 @@
 
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 6)), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 5)), 1fr));
   gap: var(--space-4);
+}
+
+/*
+ * The Overview in two columns from a panel of 56rem: the main column, and a column of fixed width for the cards
+ * "Connect" and "About". The widths are fixed, so a card that arrives moves nothing (R-224, MOT-007).
+ */
+.overview-fit {
+  container-type: inline-size;
+  min-inline-size: 0;
+}
+
+.overview-columns,
+.overview-main,
+.overview-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.overview-columns {
+  flex-direction: column-reverse;
+}
+
+@container (min-inline-size: 56rem) {
+  .overview-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) calc(var(--space-16) * 4.5);
+    align-items: start;
+  }
 }
 
 /* One Overview card: the facts cards and the Metrics card share it, loaded and as skeleton (D-9, MOT-007). */
@@ -52,7 +82,7 @@
 .overview-facts-fit {
   container-type: inline-size;
   min-inline-size: 0;
-  margin: 0 0 var(--space-4);
+  margin: 0;
 }
 
 .overview-facts {
@@ -71,6 +101,23 @@
 @container (min-inline-size: 56rem) {
   .overview-facts {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.9fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
+  }
+}
+
+/* Without the host key card, which then stands beside the Overview: three facts in one row from 36rem (R-224). */
+@container (min-inline-size: 36rem) {
+  .overview-facts.three {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 0.8fr);
+  }
+
+  .overview-facts.three .overview-figures {
+    flex-wrap: nowrap;
+    gap: var(--space-4);
+  }
+
+  .overview-facts.three .overview-figure dd {
+    font-size: var(--text-lg);
+    white-space: nowrap;
   }
 }
 
@@ -133,14 +180,26 @@
   line-height: var(--leading-normal);
 }
 
-/* The "metrics are off" state, centred in a block of fixed size; the section and its skeleton share it (MOT-007). */
+/*
+ * The "metrics are off" state: one calm line, the sentence and then the way to turn them on, with no large mark
+ * (R-224). The section and its skeleton share it (MOT-007).
+ */
 .metrics-off {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(var(--space-16) * 2.5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  min-block-size: var(--target-min-touch);
   margin: 0;
   color: var(--text-secondary);
-  text-align: center;
+}
+
+.metrics-off > p {
+  flex: 1;
+  min-inline-size: min(100%, calc(var(--space-16) * 4));
+  margin: 0;
+}
+
+.metrics-off > .off-icon {
+  display: none;
 }

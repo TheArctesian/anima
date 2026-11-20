@@ -100,6 +100,17 @@ function gpuCharts(all: readonly MetricSeries[], gpus: readonly DeviceGpu[]): Ch
     });
 }
 
+/** The newest value and the highest value of a chart of one line, as text; `null` for a chart of several lines or with no point. */
+export function tileFigures(chart: Chart): { readonly now: string; readonly peak: string } | null {
+  const [only, ...more] = chart.series;
+  if (only === undefined || more.length > 0) return null;
+  // A gap in the line is a point with no value: it is neither the newest value nor a peak.
+  const values = only.points.flatMap((point) => (point.value === null ? [] : [{ value: point.value, high: point.max ?? point.value }]));
+  const last = values.at(-1);
+  if (last === undefined) return null;
+  return { now: chart.format(last.value), peak: chart.format(Math.max(...values.map((each) => each.high))) };
+}
+
 /**
  * The charts the Overview draws, in a fixed order: CPU, memory, each disk mount (by mount point), each drive's
  * read and write (by drive name, MET-028), each network interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).

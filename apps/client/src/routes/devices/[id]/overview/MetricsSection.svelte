@@ -3,7 +3,7 @@
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import Icon from '$lib/icons/Icon.svelte';
   import { hasMetrics } from '$lib/metrics/source/has-metrics';
-  import { chartsOf } from '$lib/metrics/overview-charts';
+  import { chartsOf, tileFigures } from '$lib/metrics/overview-charts';
   import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
@@ -78,8 +78,13 @@
           {:else}
             <div class="chart-grid">
               {#each charts as chart (chart.key)}
+                {@const figures = tileFigures(chart)}
                 <div class="cell">
-                  <h3 class="chart-title">{chart.title}</h3>
+                  <!-- A tile: the name, the highest value of the range and the newest value on the title line (R-224). -->
+                  <div class="tile-title">
+                    <h3 class="chart-title tile-name">{chart.title}</h3>
+                    {#if figures !== null}<span class="tile-peak">peak {figures.peak}</span><span class="tile-now">{figures.now}</span>{/if}
+                  </div>
                   <LineChart
                     title={`${chart.title}, ${phrase}`}
                     gap={rangeGap(drawn)}
@@ -136,6 +141,34 @@
   p {
     margin: 0;
     color: var(--text);
+  }
+
+  /* One line of fixed height, as the title alone has: the figures move nothing (MOT-007). */
+  .tile-title {
+    display: flex;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    align-items: baseline;
+    gap: var(--space-3);
+    white-space: nowrap;
+  }
+
+  .tile-name {
+    flex: 1;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tile-peak {
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tile-now {
+    color: var(--text);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
   }
 
   .waiting,
