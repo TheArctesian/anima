@@ -96,6 +96,7 @@ Rules:
 
 | Identifier | Title | Kind | State | Tier (work plan Section 4) | Owner | Was issue |
 | --- | --- | --- | --- | --- | --- | --- |
+| [PAL-1](device-manager/PAL-1.md) | The command palette (NAV-011) and its field "Search or jump to" in the navigation bar | Work item | Not started (2026-11-19). The four open decisions OD-PAL1 to OD-PAL4 wait for the operator; no part of NAV-011 is in the client | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) Section 5.3 (NAV-011) | — |
 | [GH-2](device-manager/GH-2.md) | Tamper-evident audit log: a hash chain so a change to an old entry shows | Work item | Built (L0-T1 to L0-T4; commits `33295a96`, `468d9eed`, `9113ee8d`, merge `30423554`, 2026-11-17). Not Done: the check HT-023 waits for the operator | 4 (hash chain for the audit log) | [design-spec.md](../spec/design-spec.md) Section 3.8 (LOG-005, LOG-006) | #2 |
 | [GH-55](device-manager/GH-55.md) | Defer Phase 6 site operations and optional traffic metadata | Work item | Not started (deferred by design: design spec Section 9, phase 6). Compared with `main` at `b1e7946c` (2026-11-18): no site runner and no traffic collection in `crates/`. Wake-on-LAN still goes through the hub (RA-031, VPN-006) | 4 (Phase 6) | [design-spec.md](../spec/design-spec.md) Section 9 (Phase 6) | #55 |
 | [GH-56](device-manager/GH-56.md) | Audit log: record who did it — User, Agent or Hub | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.8.1 (LOG-012 to LOG-020) | #56 |
