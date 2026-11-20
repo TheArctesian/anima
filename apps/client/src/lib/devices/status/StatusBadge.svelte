@@ -12,18 +12,21 @@
     deviceId: string;
     /** The reasons the status applied, for a HelpTip: it sits beside the badge, so the badge's own text stays the word alone. */
     reasons?: Snippet;
+    /** No fill for any status: the list, where the edge of the row and the group title carry the weight. */
+    plain?: boolean;
   }
 
-  const { status, deviceId, reasons }: Props = $props();
+  const { status, deviceId, reasons, plain = false }: Props = $props();
   const word = $derived(status === 'WARNING' ? 'Warning' : statusLabel(status));
   /** Up and Unknown are the quiet states: a dot and the word, no fill (UI-003 keeps the word). */
-  const quiet = $derived(status === 'UP' || status === 'UNKNOWN');
+  const calm = $derived(status === 'UP' || status === 'UNKNOWN');
+  const quiet = $derived(calm || plain);
 </script>
 
 <!-- A new status cross-fades over the old one in the same place (5.7.3, Status change); the same in reduced motion. -->
 <span class="slot" data-device-id={deviceId} {@attach sharedItem(`device-status:${deviceId}`)}>
   {#key status}
-    <span class="pill {status.toLowerCase()}" class:quiet transition:crossFade>
+    <span class="pill {status.toLowerCase()}" class:quiet class:strong={plain && !calm} transition:crossFade>
       <span class="dot" aria-hidden="true"></span>{word}
     </span>
   {/key}
@@ -64,6 +67,11 @@
     background: none;
     font-size: var(--text-sm);
     font-weight: var(--weight-regular);
+  }
+
+  /* A problem in the plain form keeps the weight of its word. */
+  .quiet.strong {
+    font-weight: var(--weight-medium);
   }
 
   .quiet.unknown {

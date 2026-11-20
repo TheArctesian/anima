@@ -86,12 +86,11 @@
   margin: 0;
   padding-block-end: var(--space-2);
   border-block-end: var(--border-thin) solid var(--border-subtle);
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
+  color: var(--text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: var(--tracking-small);
 }
 
 .phone-devices .group .count {

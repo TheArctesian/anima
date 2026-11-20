@@ -65,6 +65,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
+| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -92,7 +93,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
-| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
@@ -118,7 +119,7 @@ Operator report (2026-11-20): installed and rebooted on physical hardware to a t
 VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
 
 1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
-2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation. Keep settings open while changing between portrait and landscape: the panel must recenter within the screen, its body must scroll on a short display, and Done must remain visible and clickable. The operator reported this failure on 2026-11-20; the rotation-panel follow-up needs physical retesting.
 3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
 4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
 5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
@@ -1124,7 +1125,9 @@ the hosted hub; for step 5, this Mac with the unit that an earlier application m
    Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
    the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
 
-Result: Open.
+Result: Open. Steps 1 to 4 passed (operator, 2026-11-20: "all reporting now", with a picture of Devices), with
+the 0.0.4 AppImage of `main` (`19dc3510`) on `pop-os`: the row `pop-os` showed CPU, Memory, Disk and VRAM.
+Step 5 is not done.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1675,6 +1678,17 @@ checks the screen, those check the values. Sign in to the application with a log
     layout has no special form yet.
 12. Sign in with a browser session of an API key, if the hub permits one, and select "Details".
     Expected: the sentence of the hub that it refuses, and the table stays.
+
+Result: Open.
+
+### HT-069: install and update Anima from F-Droid (M5-7)
+
+The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
+
+1. Install the signed release APK from the Anima release server. Open Anima and sign in. Expected: the app starts and reads the device list.
+2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
+3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
+4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
 
 Result: Open.
 
@@ -2522,3 +2536,84 @@ The entry HT-NEW-windows remains Open. These checks extend that entry; they are 
    shows the expected verified publisher and its timestamp is valid. Test a private update
    from the previous signed version and check the link, daemon and hub after restart.
    Certificate provisioning and this signed trial remain Open.
+### HT-073: labels in sentence case in the whole application (R-279)
+
+Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
+`apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
+1280 px, in the dark and the light appearance. No person saw the other screens, a desktop window or a phone.
+
+1. Open "Devices" in a desktop window, in the dark and the light appearance.
+   Expected: the column heads read "Name", "Status", "24 h", "Last 50 checks", "Usage", "Connect", and a group head
+   reads for example "Needs a look 1". No word is in capitals. A group head is easy to tell from a device row.
+2. Select the grid view.
+   Expected: the group heads are the same as in the list.
+3. Open the logs panel, a project's commits, "Agent usage", "Projects" and "Settings".
+   Expected: each head of a day, a column or a group is in sentence case, and is still seen as a head.
+4. Open "Devices" and "Settings" on a phone.
+   Expected: the group heads and the section labels are in sentence case.
+
+Result: Open.
+
+### HT-071: the layout of the Devices list (R-278)
+
+Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
+`apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
+a device that is down shows no usage, and in a browser at 1280 px that three rows have one height. The list was looked
+at only in pictures of the web client with sample devices, at 800, 1280 and 1600 px. No person saw it in a desktop
+window with real devices.
+
+1. Open "Devices" as a list, in a window about 1280 px wide, with a device that is down and a device with metrics.
+   Expected: each row has the same height. The column heads are "Name", "Status", "24 h", "Last 50 checks", "CPU",
+   "Memory", "Disk" and "Connect", each on one line and on the edge of its cells.
+2. Look at the device that is down.
+   Expected: "Down" with a red dot and no fill, then how long, for example "over 15 min". Under it the reason; a click
+   on the reason opens the checks of the device. The usage is a dash. The row has no "+ VNC".
+3. Look at a device with metrics and at a device with none.
+   Expected: three values with a thin bar under each, under the words of the column head; "No metrics" for the other.
+4. Look at a device with a long name and an IPv6 address.
+   Expected: the name is whole where the window has room. The address shows its first two and its last two groups; the
+   pointer on it shows the whole address.
+5. Look at a device that is up and has a MAC address, and at one with no screen sharing.
+   Expected: no "Wake" in the row. "+ VNC" has no dashed border and opens the setup as before.
+6. Make the window narrow (below 1100 px) and select the grid view.
+   Expected: no part lies over another. In a narrow list the reason of a problem stands where the usage was.
+7. Stop a device that has two ways in and a MAC address (for example VNC and Web), and wait until the list says Down.
+   Expected: its row has the same height as before and the rows below do not jump. Its buttons are three icons on one
+   line; the pointer on each shows its name ("VNC", "Web", "Wake").
+8. Load the page again and look at the line under "Devices" before the list comes.
+   Expected: a quiet block, never "0 devices". When the counts come, nothing below them moves.
+9. Wait until the page stands still, then open "Tags", "Site" and the sort menu with the pointer.
+   Expected: the page does not scroll and the toolbar does not move.
+
+Result: Open.
+
+
+### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
+`apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,
+`apps/client/src/lib/devices/screen/DeviceScreen.svelte` and `Skeleton.svelte`, `apps/client/src/lib/devices/list/Meters.svelte`.
+The tests prove which element plays a fade and the order of the rows. The motion was measured frame by frame in
+headless WebKit with sample devices. No person saw it in a desktop window, at the frame rate of a real screen, or on a phone.
+
+1. Open "Devices" as a list in a desktop window. Set a device of a group to a different status (for example, stop the
+   link of a computer that is up), and keep the pointer away from the list.
+   Expected: the rows slide to their new places. A group title that appears ("Needs a look") fades in where it stands;
+   a group title that empties fades out, then the rows under it close the gap.
+2. Do step 1 again with the pointer on a row of the list.
+   Expected: no row moves while the pointer is on the list; the status word of the device changes in its place. When
+   the pointer leaves the list, the rows slide to their new places.
+3. Select "Grid", then "List".
+   Expected: the two views cross-fade in place. Nothing slides and nothing flashes.
+4. Filter with a count of the count line (for example "1 down"), then clear it.
+   Expected: the rows that go fade out where they stand; the rows that come fade in.
+5. Open "Devices" on a slow connection to the hub (or right after the hub starts), as a list and as a grid.
+   Expected: if the skeleton shows, its column heads, first group title and rows are where the data comes; the data
+   fades in over it with no jump.
+6. Watch the CPU value of a device with metrics for a minute.
+   Expected: a new value cross-fades over the old one; it does not count. Set Settings, Appearance, "Reduce motion":
+   the bar under the value is at its new length at once.
+7. Do steps 1 to 4 with "Reduce motion" on.
+   Expected: no row slides; rows and views fade only.
+
+Result: Open.

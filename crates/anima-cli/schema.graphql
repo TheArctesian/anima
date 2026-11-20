@@ -1149,6 +1149,135 @@ type ContainerImageUpdate {
   registryDigest: String
 }
 
+"""
+What is wrong in a Compose file, as a fixed code (HOST-022; R-150). Errors: TOO_LARGE (the text is larger than 256 KiB),
+NOT_YAML, TOO_DEEP (deeper than 64 levels), TOO_MANY_NODES (more than the check reads), MORE_THAN_ONE_DOCUMENT,
+TOP_LEVEL_NOT_MAPPING, KEY_NOT_TEXT, DUPLICATE_KEY, NO_SERVICES (and no `include`), SERVICES_NOT_MAPPING, SERVICES_EMPTY,
+SERVICE_NOT_MAPPING, NO_IMAGE_OR_BUILD (a service with no `image`, `build`, `extends`, `provider` or merge key),
+WRONG_TYPE (the value of a known key of a service has a form that Compose does not accept), RESTART_NOT_KNOWN (the
+value of `restart` is not a restart policy). Warnings: UNKNOWN_TOP_LEVEL_KEY, UNKNOWN_SERVICE_KEY (Compose does not
+know the key; a key that starts with `x-` is not a problem), VERSION_OBSOLETE (Compose ignores `version`).
+"""
+enum ComposeFileProblemCode {
+  TOO_LARGE
+  NOT_YAML
+  TOO_DEEP
+  TOO_MANY_NODES
+  MORE_THAN_ONE_DOCUMENT
+  TOP_LEVEL_NOT_MAPPING
+  KEY_NOT_TEXT
+  DUPLICATE_KEY
+  NO_SERVICES
+  SERVICES_NOT_MAPPING
+  SERVICES_EMPTY
+  SERVICE_NOT_MAPPING
+  NO_IMAGE_OR_BUILD
+  WRONG_TYPE
+  RESTART_NOT_KNOWN
+  UNKNOWN_TOP_LEVEL_KEY
+  UNKNOWN_SERVICE_KEY
+  VERSION_OBSOLETE
+}
+
+"ERROR: Compose refuses the file. WARNING: Compose reads the file and ignores the part (HOST-022)."
+enum ComposeFileProblemSeverity {
+  ERROR
+  WARNING
+}
+
+"One problem of a Compose file (HOST-022). It holds no text that the operator wrote, because a value, and also a name in the wrong place, can be a secret (LOG-007): a service has its number, and a key its name only when Compose defines that name."
+type ComposeFileProblem {
+  code: ComposeFileProblemCode!
+  severity: ComposeFileProblemSeverity!
+  "The line of the problem in the file, from 1."
+  line: Int!
+  "The column of the problem in its line, from 1."
+  column: Int!
+  "The number of the service in the order of `services`, from 1, when the problem is in one."
+  serviceNumber: Int
+  "The name of the key, when the problem is about a key that Compose defines (such as `ports`). Null for an unknown key, an extension and the name of a service."
+  key: String
+}
+
+"The result of the syntax check of a Compose file (HOST-022). It is a check of the syntax only: it does not say that a machine accepts the file (the rules of HOST-028 are a different check)."
+type ComposeFileCheck {
+  "True when the check found no error. A warning does not make it false."
+  syntaxValid: Boolean!
+  "The problems in the order of the file, errors and warnings. At most 100."
+  problems: [ComposeFileProblem!]!
+  "True when the file has more problems than the 100 that are given."
+  cut: Boolean!
+}
+
+"""
+Why a `docker run` command was not changed into a Compose file, as a fixed code (HOST-022; R-150). TOO_LARGE: the
+command is larger than 64 KiB. NO_COMMAND: the text is empty. NOT_DOCKER_RUN: the command is not `docker run` or
+`docker container run` (an optional `sudo` first). COMMAND_SUBSTITUTION: `$(` or a backtick. PIPE. MORE_THAN_ONE_COMMAND:
+`;`, `&&`, `||`, `&`, or a line break with no backslash before it. REDIRECTION: `<` or `>`. SHELL_SYNTAX: a group in
+round brackets or a comment. VARIABLE_NOT_KEPT: a variable that cannot stay as text in a Compose file (`$1`, `$?`,
+`${NAME%x}`, a quote in `${...}`); `$NAME`, `${NAME}` and `${NAME:-text}` stay. ARITHMETIC_EXPANSION: `$[`.
+BRACE_EXPANSION: a list or a range in braces out of quotes, such as `{80,443}`. TILDE_EXPANSION: a `~` out of quotes at the
+start of a word or after `=` or `:`. PATTERN: `*`, `?` or `[` out of quotes. UNCLOSED_QUOTE. CONTROL_CHARACTER (also a
+carriage return that is not part of a line end). OPTION_WITHOUT_VALUE: the last option needs a value. NO_IMAGE: the
+command names no image. TOO_MANY_NETWORKS: more than 32 networks or more than 32 network aliases. FILE_TOO_LARGE: the
+Compose file would be larger than 256 KiB, the most that composeFileCheck reads.
+"""
+enum ComposeRunRefusal {
+  TOO_LARGE
+  NO_COMMAND
+  NOT_DOCKER_RUN
+  COMMAND_SUBSTITUTION
+  PIPE
+  MORE_THAN_ONE_COMMAND
+  REDIRECTION
+  SHELL_SYNTAX
+  VARIABLE_NOT_KEPT
+  ARITHMETIC_EXPANSION
+  BRACE_EXPANSION
+  TILDE_EXPANSION
+  PATTERN
+  UNCLOSED_QUOTE
+  CONTROL_CHARACTER
+  OPTION_WITHOUT_VALUE
+  NO_IMAGE
+  TOO_MANY_NETWORKS
+  FILE_TOO_LARGE
+}
+
+"""
+What the caller must know about the Compose file of a `docker run` command (HOST-022). DETACH_NOT_NEEDED: `-d` changes
+nothing, Compose starts a service in the background. REMOVE_NOT_KEPT: `--rm` has no key in a Compose file.
+VARIABLES_KEPT: a `$NAME` or `${NAME}` stays as text, and Compose fills it when it starts the project. DOLLAR_WRITTEN: a
+`$` that is a character is written `$$`. EXTERNAL_NETWORK: a network of the command is `external`, it must exist before
+the project starts. VOLUME_NAME_KEPT: a volume keeps its name of Docker, so the project uses the same volume.
+UNKNOWN_OPTION_READ_AS_FLAG: an option that Docker does not have was read as an option with no value; make sure that
+the image is the right word.
+"""
+enum ComposeRunNote {
+  DETACH_NOT_NEEDED
+  REMOVE_NOT_KEPT
+  VARIABLES_KEPT
+  DOLLAR_WRITTEN
+  EXTERNAL_NETWORK
+  VOLUME_NAME_KEPT
+  UNKNOWN_OPTION_READ_AS_FLAG
+}
+
+"The Compose file of one `docker run` command, or why there is none (HOST-022). The file has one service."
+type ComposeFromDockerRun {
+  "The text of the Compose file. Null when refusal is not null. It holds the values of the command, also a secret that the command holds."
+  composeFile: String
+  "The name of the one service: from `--name`, or from the last part of the name of the image."
+  service: String
+  "Not null when the command was not converted."
+  refusal: ComposeRunRefusal
+  "The position in the command where the converter stopped, in characters from 1. Null when refusal is null."
+  refusedAt: Int
+  notes: [ComposeRunNote!]!
+  "The options of Docker in the command that are not in the file, by name only (never a value), each one time; an option that Docker does not have is `(an unknown option)`. An option is not an error."
+  notConverted: [String!]!
+}
+
 "One line of the log of a container: what it wrote to either output stream."
 type ContainerLogLine {
   "When Docker took the line; null when the line has no time."
@@ -3218,6 +3347,36 @@ enum ReminderFiringState {
   ACKNOWLEDGED
 }
 
+"A record that a client sealed with the vault key of Class A (K-E5 Section 3). The hub stores the bytes and cannot open them."
+type SealedRecord {
+  id: ID!
+  "The record that the bytes belong to, as `kind:id`. One owner has one sealed record."
+  owner: String!
+  "The key of the extension that owns the record."
+  extension: String!
+  "What the client sealed with the vault key, as base64. The hub cannot open it."
+  sealed: String!
+  "The search index that the client sealed, as base64, or null."
+  sealedIndex: String
+  "The SHA-256 of the vault key that sealed the record, as base64."
+  keyId: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input SealedRecordInput {
+  "The record that the bytes belong to, as `kind:id`."
+  owner: String!
+  "The key of the extension that owns the record."
+  extension: String!
+  "The sealed bytes as base64: 1 byte to 1 MiB."
+  sealed: String!
+  "The sealed search index as base64, at most 1 MiB."
+  sealedIndex: String
+  "The SHA-256 of the vault key as base64: 32 bytes. It is not the key."
+  keyId: String!
+}
+
 "One firing of a rule. A rule fires at most one time for one subject."
 type ReminderFiring {
   id: ID!
@@ -3376,6 +3535,10 @@ type Query {
   containerNetworks(deviceId: ID!): [ContainerNetwork!]!
   "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. Each read asks the registries again: the hub keeps no answer. The errors of containers apply. Open to a read key."
   containerImageUpdates(deviceId: ID!): [ContainerImageUpdate!]!
+  "The check of the syntax of a Compose file before an install (HOST-022): is the text YAML, and does it have the form of a Compose file. It is a check of the syntax only: it does not say that a machine accepts the file. The hub reaches no device, runs nothing and keeps nothing; it writes the text to no log, no event and no error (LOG-007), and a problem holds no text of the file. A text of more than 256 KiB has the one problem TOO_LARGE. Complexity 100: one request holds at most four. Open to a read key."
+  composeFileCheck(file: String!): ComposeFileCheck!
+  "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
+  composeFromDockerRun(command: String!): ComposeFromDockerRun!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
@@ -3403,6 +3566,10 @@ type Query {
   reminderRule(id: ID!): ReminderRule
   "The firings of a rule (or of every rule) in a state (or any), newest first, at most first (1 to 200; 200 when not given)."
   reminderFirings(rule: ID, state: ReminderFiringState, first: Int): [ReminderFiring!]!
+  "The sealed record of `owner` (`kind:id`), or null. The bytes are as the client sealed them; the hub cannot open them."
+  sealedRecord(owner: String!): SealedRecord
+  "The sealed bytes of a vault key offer, as base64, one time: the read deletes the offer. Null for an offer that was read, that is older than 5 minutes, or that never was."
+  vaultKeyOffer(id: ID!): String
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "The places that are not merged, by name."
@@ -3675,6 +3842,12 @@ type Mutation {
   snoozeReminder(firing: ID!, minutes: Int!): ReminderFiring!
   "Acknowledges a firing that was sent: the hub does not send it again (REM-007). NOT_FOUND; CONFLICT."
   acknowledgeReminder(firing: ID!): ReminderFiring!
+  "Stores the bytes that a client sealed for one owner record. A second call for the same owner replaces the bytes. `VALIDATION` names each field to fix."
+  storeSealedRecord(input: SealedRecordInput!): SealedRecord!
+  "Deletes the sealed record of `owner`. `true` when there was one."
+  deleteSealedRecord(owner: String!): Boolean!
+  "Keeps a vault key that one client sealed to its key exchange with a new client, as base64 of at most 4096 bytes, and gives the ID of the offer. The offer is read one time in the next 5 minutes. The hub cannot open it."
+  offerVaultKey(sealed: String!): ID!
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."

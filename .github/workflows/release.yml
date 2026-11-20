@@ -1121,7 +1121,7 @@ jobs:
   ios:
     needs: commit
     if: needs.commit.outputs.release_ios == 'true'
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 120
     environment: release-ios
     permissions:

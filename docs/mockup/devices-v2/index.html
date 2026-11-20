@@ -177,7 +177,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 
 /* ---------- Type roles ---------- */
 .v2 .display { font-size: var(--t-display); font-weight: 200; line-height: 1.2; letter-spacing: -0.03em; }
-.v2 .label { font-size: var(--t-xs); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-secondary); }
+.v2 .label { font-size: var(--t-sm); font-weight: 500; letter-spacing: 0.01em; color: var(--text-secondary); }
 .v2 .title { font-size: var(--t-xl); font-weight: 500; line-height: 1.2; }
 
 /* ---------- Navigation bar ---------- */
@@ -246,7 +246,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 /* ---------- Table: one pattern for every list ---------- */
 .v2 .table { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); overflow: hidden; }
 .v2 .tr { display: grid; align-items: center; column-gap: var(--space-4); padding: 0 var(--space-4); min-height: var(--space-12); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
-.v2 .tr.th { min-height: var(--control-md); border-top: 0; color: var(--text-secondary); font-size: var(--t-xs); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.v2 .tr.th { min-height: var(--control-md); border-top: 0; color: var(--text-secondary); font-size: var(--t-sm); font-weight: 500; letter-spacing: 0.01em; }
 .v2 .tr.group { min-height: var(--control-md); background: var(--surface-base); color: var(--text-secondary); font-weight: 500; display: flex; gap: var(--space-3); }
 .v2 .tr.sel { background: var(--surface-selected); }
 .v2 .tr.dense { min-height: var(--control-lg); }
@@ -259,6 +259,10 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .r { text-align: right; }
 .v2 .name { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .v2 .name .ic { color: var(--text-secondary); }
+/* A problem: its status and how long on one line, the reason under it as the way to its checks. The usage keeps its three columns in every row. */
+.v2 .why2 { display: grid; gap: 0; min-width: 0; }
+.v2 .why2 .top { display: flex; gap: var(--space-2); align-items: baseline; }
+.v2 .why2 a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
 .v2 .why { display: flex; gap: var(--space-2); align-items: baseline; min-width: 0; }
 .v2 .why span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -382,22 +386,22 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <li class="tr group"><span>Needs a look</span><span class="num">4</span></li>
       <li class="tr need" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>pi-garage</b><span class="mono sec">192.168.1.40</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st down">Down</span><span class="sec">HTTP check on :8123 refused the connection, 12 min</span><a class="link" href="#">Open checks</a></span>
+  <span class="why2"><span class="top"><span class="st down">Down</span><span class="sec">12 min</span></span><a class="link" href="#" title="Open checks">HTTP check on :8123 refused the connection</a></span><span class="num r sec">—</span><span class="num r sec">—</span><span class="num r sec">—</span>
   <span class="num r">92.4%</span><span class="beats" role="img" aria-label="Last 50 checks: 4 failed"><i style="left: 68px"></i><i style="left: 188px"></i><i style="left: 192px"></i><i style="left: 196px"></i></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>SSH</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr need w" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>nas</b><span class="mono sec">nas.lan</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st warn">Warning</span><span class="sec">Host key changed since the last session, 2 h</span><a class="link" href="#">Review key</a></span>
+  <span class="why2"><span class="top"><span class="st warn">Warning</span><span class="sec">2 h</span></span><a class="link" href="#" title="Review key">Host key changed since the last session</a></span><span class="num r">18%</span><span class="num r">46%</span><span class="num r">61%</span>
   <span class="num r">100%</span><span class="beats" role="img" aria-label="Last 50 checks: 0 failed"><i class="g" style="left: 68px"></i></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>SSH</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr need w" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1"/><path d="M1.5 12.5h13"/></svg><span class="cell2"><b>pop-os</b><span class="mono sec">pop-os.lan</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st warn">Warning</span><span class="sec">Grafana's TLS certificate expires in 9 days, today</span><a class="link" href="#">Review</a></span>
+  <span class="why2"><span class="top"><span class="st warn">Warning</span><span class="sec">today</span></span><a class="link" href="#" title="Review">Grafana's TLS certificate expires in 9 days</a></span><span class="num r">18%</span><span class="num r">46%</span><span class="num r">61%</span>
   <span class="num r">100%</span><span class="beats" role="img" aria-label="Last 50 checks: 0 failed"><i class="g" style="left: 68px"></i></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>SSH</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr need w" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg><span class="cell2"><b>win-gaming</b><span class="mono sec">win.lan</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st unk">Unknown</span><span class="sec">Every check is paused, since yesterday</span><a class="link" href="#">Resume checks</a></span>
+  <span class="why2"><span class="top"><span class="st unk">Unknown</span><span class="sec">since yesterday</span></span><a class="link" href="#" title="Resume checks">Every check is paused</a></span><span class="num r sec">—</span><span class="num r sec">—</span><span class="num r sec">—</span>
   <span class="num r">n/a</span><span class="beats unk" role="img" aria-label="Last 50 checks: 0 failed"></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>RDP</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr group"><span>Up</span><span class="num">8</span></li>
@@ -485,22 +489,22 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <li class="tr group"><span>Needs a look</span><span class="num">4</span></li>
       <li class="tr need" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>pi-garage</b><span class="mono sec">192.168.1.40</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st down">Down</span><span class="sec">HTTP check on :8123 refused the connection, 12 min</span><a class="link" href="#">Open checks</a></span>
+  <span class="why2"><span class="top"><span class="st down">Down</span><span class="sec">12 min</span></span><a class="link" href="#" title="Open checks">HTTP check on :8123 refused the connection</a></span><span class="num r sec">—</span><span class="num r sec">—</span><span class="num r sec">—</span>
   <span class="num r">92.4%</span><span class="beats" role="img" aria-label="Last 50 checks: 4 failed"><i style="left: 68px"></i><i style="left: 188px"></i><i style="left: 192px"></i><i style="left: 196px"></i></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>SSH</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr need w" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>nas</b><span class="mono sec">nas.lan</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st warn">Warning</span><span class="sec">Host key changed since the last session, 2 h</span><a class="link" href="#">Review key</a></span>
+  <span class="why2"><span class="top"><span class="st warn">Warning</span><span class="sec">2 h</span></span><a class="link" href="#" title="Review key">Host key changed since the last session</a></span><span class="num r">18%</span><span class="num r">46%</span><span class="num r">61%</span>
   <span class="num r">100%</span><span class="beats" role="img" aria-label="Last 50 checks: 0 failed"><i class="g" style="left: 68px"></i></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>SSH</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr need w" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1"/><path d="M1.5 12.5h13"/></svg><span class="cell2"><b>pop-os</b><span class="mono sec">pop-os.lan</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st warn">Warning</span><span class="sec">Grafana's TLS certificate expires in 9 days, today</span><a class="link" href="#">Review</a></span>
+  <span class="why2"><span class="top"><span class="st warn">Warning</span><span class="sec">today</span></span><a class="link" href="#" title="Review">Grafana's TLS certificate expires in 9 days</a></span><span class="num r">18%</span><span class="num r">46%</span><span class="num r">61%</span>
   <span class="num r">100%</span><span class="beats" role="img" aria-label="Last 50 checks: 0 failed"><i class="g" style="left: 68px"></i></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>SSH</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr need w" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg><span class="cell2"><b>win-gaming</b><span class="mono sec">win.lan</span></span></span>
-  <span class="why" style="grid-column: span 4"><span class="st unk">Unknown</span><span class="sec">Every check is paused, since yesterday</span><a class="link" href="#">Resume checks</a></span>
+  <span class="why2"><span class="top"><span class="st unk">Unknown</span><span class="sec">since yesterday</span></span><a class="link" href="#" title="Resume checks">Every check is paused</a></span><span class="num r sec">—</span><span class="num r sec">—</span><span class="num r sec">—</span>
   <span class="num r">n/a</span><span class="beats unk" role="img" aria-label="Last 50 checks: 0 failed"></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>RDP</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
       <li class="tr group"><span>Up</span><span class="num">8</span></li>
