@@ -229,6 +229,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Work: a host that opens tools of other vendors, which run on the operator's machines, in a pane of the client: Hermes Agent, Herdr and T3 Code first (AXT-001 to AXT-045). The goal (operator, first-hand, 2026-11-18): support the open-source projects and gain their users
 - Work items: No work item yet. The tasks AX0 to AX16 are in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10
 - State: Direction decided (R-196, operator, 2026-11-18, first-hand). OD-AXT1 to OD-AXT18 are decided: the native agent panes (AIS-009 to AIS-017) and the native bot runtime are withdrawn, and the host may start before the 15 extensions with manifests of Anima.ing only (EXT-009). The requirements AXT-001 to AXT-045 are not approved; that is task AX1. Only AX0 (a record) may start now. R-243 (2026-11-19, first-hand) adds the view of all agents on all devices (AXT-046 to AXT-053, tasks AX17 to AX19; not approved; R-244: a tab beside PNL-002, an alert through the needs-you inbox) and keeps Herdr hosted as it is.
+- Beside it (R-NEW-agentlayer, 2026-11-20, relayed twice): the agent layer of Anima, [agent-layer.md](../proposals/agent-layer.md). Direction decided; AGL-001 to AGL-034 are not approved; no code before the approval and before the launch path. It uses AXT-046 to AXT-053 and names three texts of them that a ruling must change. Operator: OD-AGL1 to OD-AGL20, which hold the ten findings of its security read that need him
 
 ### 4.23 The observability suite
 

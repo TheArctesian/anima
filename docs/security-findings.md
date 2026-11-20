@@ -124,6 +124,24 @@ that owns the area.
 | SF-NEW-rcl22 | The texts that Section 2 missed | A command line or a session for an agent (proposal, no code) | Open |
 | SF-NEW-rcl23 | The gate of Section 9 is weaker than ROU-014 | A command line or a session for an agent (proposal, no code) | Open |
 | SF-NEW-rcl24 | "No shell" and "`startSession` stays closed" are true and protect nothing | A command line or a session for an agent (proposal, no code) | Open |
+| SF-NEW-agl01 | A kept session on a hub of Anima.ing can be reached only if that hub gets a login, and then it is a shell of the vendor | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl02 | Nothing at the machine proves that a start comes from the operator | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl03 | The interface from the daemon to the unit with no sandbox is not written | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl04 | "No AI agent starts, stops or types into a kept session" has no mechanism | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl05 | "By its name" is a lookup in the search path, and the configuration of a repository runs at the start | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl06 | A setting "that the hub cannot set" is kept by a daemon of the user, so each program of that user can write it | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl07 | A signal does more than change a state: it makes rows, causes a push and sends an alert | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl08 | The signal drops the folder, so the exclusion of a repository is known too late | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl09 | A hub of Anima.ing gets a timeline of the work of a person, joined to the usage counts | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl10 | The installer: one `notify` program of Codex, the path of the entry, a link, the mode of the copy | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl11 | No rule that the hook prints nothing, logs nothing and leaves no crash report | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl12 | The alert gives a third party the name of the machine, the address of the hub and the times of work; it conflicts with NOT-003, NOT-005 and NOT-007 | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl13 | The alphabet of a branch name stops an injection, not a disclosure | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl14 | The signal file has no size limit and no rule for a link, a pipe or a truncation | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl15 | `Notification` is not only "waiting", nothing ends Waiting, and "Unknown, active" is a seventh state | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl16 | The version of a program and "hooks installed" leave the device but are not in the list of fields | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl17 | The gate covers the kept sessions and High findings only | The agent layer of Anima (proposal, no code) | Open |
+| SF-NEW-agl18 | A unit of a user ends at logout unless linger is set | The agent layer of Anima (proposal, no code) | Open |
 | SF-070 | Sections 6.4.1 and 6.4.2: "the administrator" has two meanings. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-071 | Section 6.4.1: the write check names "a real file", and the socket is one. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-072 | Sections 6.4.2 and 6.4.7: who writes the adoption record on an engine of a user. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
@@ -1478,6 +1496,150 @@ Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Seve
 What it is, where, the effect and who can cause it, and the mitigation now: finding F24 of the record [command-lines-review-2026-11-19.md](research/work-route/command-lines-review-2026-11-19.md).
 
 State: Open. It is a correction of the text.
+### SF-NEW-agl01: A kept session on a hub of Anima.ing can be reached only if that hub gets a login, and then it is a shell of the vendor
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-026, OD-AGL7). Severity: High.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F1 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl02: Nothing at the machine proves that a start comes from the operator
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-025, AGL-028). Severity: High.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F2 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl03: The interface from the daemon to the unit with no sandbox is not written
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-023). Severity: High.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F3 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl04: "No AI agent starts, stops or types into a kept session" has no mechanism
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-027, AGL-003). Severity: High.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F4 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl05: "By its name" is a lookup in the search path, and the configuration of a repository runs at the start
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-024). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F5 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl06: A setting "that the hub cannot set" is kept by a daemon of the user, so each program of that user can write it
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-011, AGL-025). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F6 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl07: A signal does more than change a state: it makes rows, causes a push and sends an alert
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-010, AGL-018, AGL-020). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F7 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl08: The signal drops the folder, so the exclusion of a repository is known too late
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-008 against AGL-015, AGL-019). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F8 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl09: A hub of Anima.ing gets a timeline of the work of a person, joined to the usage counts
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-015 to AGL-018, OD-AGL9). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F9 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl10: The installer: one `notify` program of Codex, the path of the entry, a link, the mode of the copy
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-012, AGL-013). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F10 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl11: No rule that the hook prints nothing, logs nothing and leaves no crash report
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-008, AGL-009). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F11 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl12: The alert gives a third party the name of the machine, the address of the hub and the times of work; it conflicts with NOT-003, NOT-005 and NOT-007
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-020, AGL-021). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F12 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl13: The alphabet of a branch name stops an injection, not a disclosure
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-017). Severity: Medium.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F13 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl14: The signal file has no size limit and no rule for a link, a pipe or a truncation
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-009). Severity: Low.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F14 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl15: `Notification` is not only "waiting", nothing ends Waiting, and "Unknown, active" is a seventh state
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-005 to AGL-007). Severity: Low.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F15 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl16: The version of a program and "hooks installed" leave the device but are not in the list of fields
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-014 against AGL-015). Severity: Low.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F16 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
+### SF-NEW-agl17: The gate covers the kept sessions and High findings only
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (Section 7, Section 10). Severity: Low.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F17 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It needs the operator.
+
+### SF-NEW-agl18: A unit of a user ends at logout unless linger is set
+
+Requirements: [agent-layer.md](proposals/agent-layer.md) (AGL-023). Severity: Low.
+
+What it is, where, the effect and who can cause it, and the mitigation now: finding F18 of the record [agent-layer-review-2026-11-20.md](research/work-route/agent-layer-review-2026-11-20.md).
+
+State: Open. It is a correction of the text; version 2 of the proposal says what it changed.
+
 ## The fourth read of the container work types (task H14, 2026-11-19)
 
 The third read was of the form before its own 21 changes and before nine changes that the owner of the contract file asked for. Thus no security reviewer had read the text of version 0.4 as it is in `contracts/work-route.md`. A fourth separate reviewer agent read it on `dev`: Section 6.4 and each sentence that version 0.4 added elsewhere. It did not read the proposal. Nothing was run; the behaviour of Docker and Compose in these entries is from the knowledge of the reviewer, marked "not verified" where it carries a finding.
