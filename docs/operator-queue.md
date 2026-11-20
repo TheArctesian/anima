@@ -282,8 +282,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (91)
-## 4. Checks that only the operator can do (92)
+## 4. Checks that only the operator can do (93)
 
 | Check | What |
 | --- | --- |
