@@ -77,6 +77,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-NEW-containersv2 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
+| HT-NEW-phoneaccount | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-NEW-iosarchive | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
+| HT-NEW-iphonesignin | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 
 ### What a check on the hosted hub needs
 
@@ -977,6 +980,102 @@ sign-in to the hosted hub.
 4. Open the settings of the device (the panel "Daemon"), and press "Add device" on the Devices page
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
+
+### HT-NEW-phoneaccount: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+
+Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
+phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
+on the first screen are on. The steps are those of the desktop app: a code, the page of the account in the browser of
+the phone (`phone_browser.rs`), "Your hub is starting", then the link in the app joins the hub (M3-1) and the device
+list opens. The phone gives the cloud a name that it makes one time and keeps, `iphone-` or `android-` with six
+hexadecimal digits.
+
+The tests cover the answers of WorkOS and of the cloud, the name of the phone, the refresh token in memory, the check
+of the address that the browser gets, and the choices and the words of the screens. The shell compiles for the iPhone
+simulator and for Android with the stable Rust toolchain of this Mac. The steps of the sign-in were seen in a desktop
+browser at 390 by 844 px with a stand-in cloud. Not covered: no build ran on a simulator, an emulator or a phone; no
+phone called WorkOS or the cloud; the browser of a phone was not opened; no phone joined a hosted hub. The join
+through the link in the app is also not proven (HT-025).
+
+This build keeps the refresh token and the hub token in memory (OD-M7): after the app is closed and opened again, the
+person signs in again. That is correct for this check and not for a release (MOB-006, task M5-1).
+
+Steps 1 to 4 need no real phone. Use the Android emulator with a route to the internet, or the iPhone simulator.
+
+1. Build this branch for the simulator or the emulator (`link/build-phone.sh`, then the Tauri build). Open the app.
+   Expected: the first screen, with "Sign in" and "Sign up" on, and no line "Not on phones yet.".
+2. Tap "Sign in". Expected: "Starting", then "Continue in your browser" with a code of eight letters, and the browser
+   of the phone opens the page of the account with the same code. If the browser does not open, the line says so, and
+   "Open the page" opens it.
+3. In the browser, sign in with the Anima.ing account and confirm the code. Go back to the app. Expected: within some
+   seconds "Your hub is starting", then "Connecting" with the words "this device", then the device list of the
+   hosted hub. No step asks for an invite, an address or a password.
+4. On the hub, in Settings, look at the devices of the link. Expected: one device with the name `iphone-…` or
+   `android-…`. Close the app, open it, and sign in again. Expected: the device list again, and still one such device
+   of this phone on the link, with the same name.
+5. Do steps 1 to 4 on a real iPhone and on a real Android phone, on mobile data and on Wi-Fi. Expected: as above.
+6. On a real phone, at step 2, do not sign in: tap "Back". Expected: the first screen. Tap "Sign in" again, and in the
+   browser refuse the sign-in. Expected: "Sign-in cancelled" with "Try again".
+7. On a real phone, look at the steps: "Back" and the button are easy to tap, and no text is smaller than the text of
+   the invite steps (HT-025, step 6).
+
+Result: Open.
+
+### HT-NEW-iosarchive: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
+
+Built: on the branch `mobile/account-sign-in`: `apps/desktop/src-tauri/ios-archive.sh` and
+`deploy/bin/phone-build-number` ([mobile-build.md](procedures/setup/mobile-build.md)). The tests cover the rule of the
+build number and what the script refuses before a build. On 2026-11-19 the script made an archive with no signature on
+this Mac, with the version and the build number that were asked for. Not covered: the mode with a signature (no agent
+uses a signing identity), the export of the IPA, the upload, and the application on a phone.
+
+Before step 3 the application must keep its tokens in the key store (task M5-1) if the build is for a person other than
+the operator (MOB-006).
+
+1. In Keychain Access, find the name of the Apple Distribution identity (it starts with "Apple Distribution:"). Have the
+   App Store profile of `ing.anima.mobile` as a file; it must be made after 2026-11-18 (the mobile plan, "M5-2 pending
+   prerequisite").
+2. In the repository run `IOS_SIGN_IDENTITY="<that name>" IOS_PROFILE=<that file> sh apps/desktop/src-tauri/ios-archive.sh`.
+   Expected: no question about a new certificate or a new profile; the last lines are `version=`, `build=`,
+   `signed=yes`, `archive=` and `ipa=`, and the IPA file exists. If the keychain asks to let `codesign` use the key,
+   allow it.
+3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
+   shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
+   about the icons or the export question).
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-NEW-phoneaccount, step 5.
+5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
+   higher.
+
+Result: Open.
+
+### HT-NEW-iphonesignin: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
+
+Built: on the branch `mobile/native-sign-in`. On an iPhone "Sign in" shows the page of the Anima.ing account over the
+application (the web authentication session of iOS) and comes back by itself; there is no code and no browser to go
+to. The shell uses the authorization code flow of WorkOS with PKCE and listens for the return at
+`http://127.0.0.1:47113/sign-in`.
+
+The tests cover the code challenge (the example of RFC 7636), the address of the page, the listener with a real
+connection, the check of the state, a stopped sign-in, and the fields of the trade of the code. Not covered: the Swift
+part, the page on a screen, a real answer of WorkOS, the refresh after this flow, and the rest of the sign-in
+(HT-NEW-phoneaccount). No build of this branch ran on a simulator or a phone.
+
+1. In the WorkOS dashboard, in the production environment: Applications, the application of Anima.ing, the tab
+   Redirects. Add `http://127.0.0.1:47113/sign-in`. Do not make it the default. Expected: the dashboard takes it. If it
+   refuses the address, write the words of the refusal here and stop.
+2. Open a build of this branch on the iPhone simulator or an iPhone. Tap "Sign in". Expected: iOS asks once to let
+   "Anima.ing" use a website to sign in; after "Continue" the page of the account shows over the application, with
+   the methods of the account (Apple, Google, GitHub, password).
+3. Sign in. Expected: the page goes away by itself, with no code shown; "Your hub is starting", then "Connecting",
+   then the device list of the hosted hub.
+4. Sign out, tap "Sign in" again, and tap "Cancel" on the page of the account. Expected: "Sign-in cancelled" with the
+   line "The sign-in was closed." and "Try again".
+5. Leave the application open for more than one hour on the device list, then open a device. Expected: no new
+   sign-in. (This is the refresh of the session with no secret.)
+6. If Safari on the phone is signed in to the account, do step 2 again after a sign-out. Expected: the page signs in
+   with no password.
+
+Result: Open.
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 

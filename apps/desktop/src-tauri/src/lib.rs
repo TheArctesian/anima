@@ -7,7 +7,6 @@
 mod builder;
 #[cfg(desktop)]
 mod carried;
-#[cfg(desktop)]
 mod cloud;
 #[cfg(desktop)]
 mod command_line;
@@ -38,6 +37,8 @@ mod memory_tokens;
 mod mobile;
 #[cfg(desktop)]
 mod os_program;
+#[cfg(any(mobile, test))]
+mod phone_browser;
 #[cfg(mobile)]
 mod phone_link;
 #[cfg(desktop)]

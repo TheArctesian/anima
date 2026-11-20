@@ -32,6 +32,13 @@ pub enum CloudError {
     #[error("the hub is not ready")]
     NotReady,
     /// The key store refused to keep or give the refresh token.
+    #[cfg_attr(
+        mobile,
+        expect(
+            dead_code,
+            reason = "a phone development build keeps the refresh token in memory, which cannot refuse (mobile plan M5-1)"
+        )
+    )]
     #[error("the key store refused")]
     Keystore,
 }
