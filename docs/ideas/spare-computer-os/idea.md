@@ -29,6 +29,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 8: hub disconnection | Decided | A + B + D: approved applications keep running and may restart under their existing policy; already-running jobs and agents may continue within existing permissions and limits; authorized local administration remains available without a reachable hub. Do not start new queued or scheduled jobs while disconnected in the first version. Grant expiry, reconnect reconciliation and local authentication still need design. External-service dependencies can still prevent a workload from working. |
 | Decision 9: recovery operations | Decided | A + B + C + D: OS rollback without deliberately reverting workload data; OS repair/reinstallation preserving designated persistent data; selected app/dataset restore from available snapshots or backups; explicit factory reset removing ownership, credentials and workload data. These are separate operations. Application compatibility, preserved-state inventory, backup policy, automated recovery triggers and secure drive sanitization remain to be designed and tested. |
 | Decision 10: disk encryption | Decided | C: optional, explicit opt-in at installation, off by default. The operator prioritizes remote access and unattended restart after a crash; a default setup must not wait for someone to enter a disk password locally. Explain the at-rest protection tradeoff and reboot behavior when encryption is selected. No hardware or remote unlock mechanism has been selected. |
+| Decision 11: encrypted-storage unlock | Decided | A + B: local passphrase and hardware-backed automatic unlock on validated hardware. Include a recovery key stored outside the machine, as recommended in the accepted choice. Encryption stays opt-in/off by default. Owner-initiated remote unlock, network-assisted automatic unlock and removable-token unlock are deferred. TPM boot policy, key custody and update/rollback validation remain open. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -65,7 +66,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 11: which unlock methods should optional encryption support? Options can be combined: local passphrase; hardware-backed automatic unlock on validated machines; owner-initiated remote unlock before the main system starts; automatic network-assisted unlock; removable key/security token. Recommendation: local passphrase and validated hardware-backed unlock first, with a recovery key stored outside the machine. Remote unlock is a separate implementation and trust decision, not ordinary post-boot Anima access. No selection yet.
+2. Decision 12: which filesystem should be the default for installed OS and persistent data? Practical candidates: Btrfs, ext4, XFS, ZFS or a split OS/data design. Recommendation: Btrfs for both, with separate subvolumes and deliberate snapshot boundaries; boot partitions use firmware-appropriate formats. No selection yet. NixOS generations handle system configuration rollback independently of filesystem snapshots. Workload consistency, space exhaustion and storage-runtime compatibility need tests.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -122,6 +123,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: The operator accepted all recovery operations in Decision 9. Recorded A + B + C + D. Next: encryption policy, then unlock/restart behavior and storage layout.
 
 - 2026-11-19: Decision 10 selected C, encryption opt-in and off by default. Recorded the operator's reason: avoid physical attendance for disk unlock after a crash/reboot of a remotely managed server. Hardware-assisted or remote unlock can avoid that in some designs but is not assumed. Next: unlock methods for owners who opt in.
+
+- 2026-11-19: Decision 11 accepted A + B: local passphrase and hardware-backed automatic unlock, with an external recovery key. Remote and network-assisted unlock are deferred. Next: filesystem choice, then partition and subvolume layout.
 
 ## Source text
 
@@ -186,3 +189,7 @@ In response to Decision 9 (recommendation A + B + C + D):
 In response to Decision 10:
 
 > I think make it optional so opt in, cuz it can also be an issue for remote accsess if a server crashes you have to wait for someone to physiclly be there to unencrypt it
+
+In response to Decision 11:
+
+> A + Bagreed
