@@ -29,7 +29,7 @@ mod tests;
 
 pub use final_form::{FinalForm, Frame};
 pub use inventory::{Container, Image, Installed, Inventory, Network, Pulled, Records, Volume};
-pub use pair::{Pair, PairDecision, PairRecord, decided as pair_decided};
+pub use pair::{Pair, PairDecision, PairFile, PairRecord, decided as pair_decided};
 pub use plan::{Command, Folders, Paths, Plan, Step};
 pub use refusal::Refusal;
 pub use request::{Action, AdoptedAction, Apply, Pruned, Removal, Request, Work};

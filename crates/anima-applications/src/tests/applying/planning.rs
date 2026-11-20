@@ -67,17 +67,21 @@ fn k10_6_4_5_the_plan_writes_the_files_below_files_and_makes_each_folder_of_bind
             _ => None,
         })
     };
+    // The records of the new version are written under staged names before the start.
     assert_eq!(
-        written("compose-as-it-came.yaml").as_deref(),
+        written("new-compose-as-it-came.yaml").as_deref(),
         Some(COMPOSE.as_bytes())
     );
     assert_eq!(
-        written("environment-of-the-application").as_deref(),
+        written("new-environment-of-the-application").as_deref(),
         Some(ENVIRONMENT.as_bytes())
     );
+    assert_eq!(written("compose-as-it-came.yaml"), None);
     let form = written("final-form.json").expect("the final form");
     assert_eq!(planned.final_form_sha256, sha256(&form));
-    assert!(written("digests.json").is_some_and(|text| text.starts_with(b"[{\"service\":\"app\"")));
+    assert!(
+        written("new-digests.json").is_some_and(|text| text.starts_with(b"[{\"service\":\"app\""))
+    );
     let pulled =
         String::from_utf8(written("pulled.json").expect("the pulled images")).expect("text");
     assert_eq!(
@@ -130,10 +134,17 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
             .iter()
             .any(|argument| argument.contains("environment"))
     );
-    assert_eq!(up.environment.len(), 1);
+    let names: Vec<&str> = up
+        .environment
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect();
+    assert_eq!(names, ["DOCKER_HOST", "DOCKER_CONFIG"]);
     // Directly before the start: `files/` holds no `.env`, and each folder of `binds/` is real.
-    let last = steps.len() - 1;
-    assert!(matches!(&steps[last], Step::Run(_)));
+    let last = steps
+        .iter()
+        .position(|step| matches!(step, Step::Run(_)))
+        .expect("a start");
     let binds = FILES.replace("/files", "/binds");
     assert_eq!(
         steps[last - 1],
@@ -149,6 +160,56 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
             path: format!("{FILES}/.env")
         }
     );
+}
+
+#[test]
+fn k10_6_4_6_the_records_say_the_new_version_runs_only_after_its_start() {
+    let world = World::new();
+    let planned = plan(&world, true);
+    let steps = &planned.plan.steps;
+    let start = steps
+        .iter()
+        .position(|step| matches!(step, Step::Run(_)))
+        .expect("a start");
+    let moved: Vec<(&str, &str)> = steps[start..]
+        .iter()
+        .filter_map(|step| match step {
+            Step::Move { from, to } => Some((from.as_str(), to.as_str())),
+            _ => None,
+        })
+        .collect();
+    let file = |name: &str| format!("{FILES}/{name}");
+    let names = [
+        "compose-as-it-came.yaml",
+        "environment-of-the-application",
+        "digests.json",
+    ];
+    // First the current version becomes the kept one, then the staged one the current one.
+    let mut expected: Vec<(String, String)> = names
+        .iter()
+        .map(|name| (file(name), file(&format!("kept-{name}"))))
+        .collect();
+    expected.extend(
+        names
+            .iter()
+            .map(|name| (file(&format!("new-{name}")), file(name))),
+    );
+    let expected: Vec<(&str, &str)> = expected
+        .iter()
+        .map(|(from, to)| (from.as_str(), to.as_str()))
+        .collect();
+    assert_eq!(moved, expected);
+    // No step before the start writes or moves a record of the current or the kept version.
+    for step in &steps[..start] {
+        if let Step::Write { path, .. } | Step::Move { to: path, .. } = step {
+            assert!(
+                names
+                    .iter()
+                    .all(|name| !path.ends_with(&format!("/{name}"))),
+                "{path}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -170,23 +231,60 @@ fn k10_6_4_6_keep_1_keeps_the_version_before_this_apply_and_keep_0_keeps_none() 
     };
     let kept = plan(&world, true);
     assert_eq!((moves(&kept), deletes(&kept)), (3, 0));
-    // The moves are before the first write of the new version.
+    // The kept version is replaced only after the start: a failed start keeps it.
+    let start = kept
+        .plan
+        .steps
+        .iter()
+        .position(|step| matches!(step, Step::Run(_)));
     let first_move = kept
         .plan
         .steps
         .iter()
         .position(|step| matches!(step, Step::Move { .. }));
-    let first_write = kept
+    assert!(start < first_move);
+    let none = plan(&world, false);
+    let start = none
         .plan
         .steps
         .iter()
-        .position(|step| matches!(step, Step::Write { .. }));
-    assert!(first_move < first_write);
-    let none = plan(&world, false);
+        .position(|step| matches!(step, Step::Run(_)));
+    let first_delete = none
+        .plan
+        .steps
+        .iter()
+        .position(|step| matches!(step, Step::Delete { .. }));
+    assert!(start < first_delete);
     assert_eq!((moves(&none), deletes(&none)), (0, 3));
     // The first install has no version to keep.
     world.records.applications.clear();
     world.inventory.containers.remove(0);
     let first = plan(&world, true);
     assert_eq!((moves(&first), deletes(&first)), (0, 3));
+}
+
+#[test]
+fn k10_6_4_6_the_plan_checks_the_project_again_after_the_pulls() {
+    let mut world = World::new();
+    let prepared = prepare(&world, COMPOSE).expect("the files pass");
+    world.settings.protected = vec![PROJECT.to_owned()];
+    assert_eq!(
+        planned(&prepared, &digests(), &world.facts()).err(),
+        Some(Refusal::Protected)
+    );
+    world.settings.protected.clear();
+    world.inventory.containers[0].folder = Some("/srv/elsewhere".to_owned());
+    assert_eq!(
+        planned(&prepared, &digests(), &world.facts()).err(),
+        Some(Refusal::NameTaken)
+    );
+    world.inventory.containers[0].folder = Some(FILES.to_owned());
+    // `busy` means a different item runs; the item itself does not count.
+    world.busy = true;
+    assert_eq!(
+        planned(&prepared, &digests(), &world.facts()).err(),
+        Some(Refusal::Busy)
+    );
+    world.busy = false;
+    assert!(planned(&prepared, &digests(), &world.facts()).is_ok());
 }

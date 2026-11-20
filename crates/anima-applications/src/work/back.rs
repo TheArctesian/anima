@@ -5,17 +5,29 @@ use compose_rules::Rule;
 
 use super::{
     Facts,
-    apply::{Planned, Prepared, accepted as apply_accepted, folder_steps, sha256, version_steps},
+    apply::{
+        Planned, Prepared, folder_steps, in_place_steps, project_checked, sha256, version_steps,
+    },
     managed,
 };
-use crate::{Apply, Refusal, Step};
+use crate::{Refusal, Step};
 
 /// The kept Compose file and the kept environment file, as the program reads them from
-/// `files/` of the application.
-#[derive(Clone, Copy, Debug)]
+/// `files/` of the application. `{:?}` shows only their lengths.
+#[derive(Clone, Copy)]
 pub struct Kept<'a> {
     pub compose: &'a [u8],
     pub environment: &'a [u8],
+}
+
+impl std::fmt::Debug for Kept<'_> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Kept")
+            .field("compose_bytes", &self.compose.len())
+            .field("environment_bytes", &self.environment.len())
+            .finish()
+    }
 }
 
 /// The check of `application_back` before the program reads the kept files.
@@ -32,24 +44,13 @@ pub fn accepted(application: &str, facts: &Facts<'_>) -> Result<(), Refusal> {
     {
         return Err(Refusal::NothingKept);
     }
-    apply_accepted(&as_an_apply(application), facts)
-}
-
-/// The parts of an apply that the check of the project needs.
-fn as_an_apply(application: &str) -> Apply {
-    Apply {
-        application: application.to_owned(),
-        file_sha256: String::new(),
-        environment_sha256: None,
-        pull: false,
-        keep: false,
-    }
+    project_checked(application, facts)
 }
 
 /// The plan of `application_back`: the final form made again from the kept files by the
 /// rules of today, started with the kept digests. It sets no tag on an image. When the
-/// start is done, the kept version is deleted, so that a second `application_back` is
-/// refused until the next `application_apply`.
+/// start did not fail, the kept version is deleted, so that a second `application_back` is
+/// refused until the next `application_apply`, and the kept records become the current ones.
 ///
 /// # Errors
 /// Each refusal of [`accepted`]; `file_not_permitted` and `not_at_machine` when a kept file
@@ -78,6 +79,7 @@ pub fn prepared(application: &str, kept: &Kept<'_>, facts: &Facts<'_>) -> Result
     let mut steps = folder_steps(&folders, &form.binds);
     steps.extend(started);
     steps.extend(folders.kept().into_iter().map(|path| Step::Delete { path }));
+    steps.extend(in_place_steps(&folders));
     Ok(Planned {
         plan: crate::Plan { steps },
         final_form_sha256: sha256(form.text.as_bytes()),

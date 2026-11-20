@@ -18,8 +18,8 @@ mod settings;
 mod starting;
 
 use crate::{
-    Command, Container, EngineKind, Installed, Inventory, Pair, PairRecord, Paths, Plan, Pulled,
-    Records, Settings, Step,
+    Command, Container, EngineKind, Installed, Inventory, Pair, PairFile, PairRecord, Paths, Plan,
+    Pulled, Records, Settings, Step,
     settings::{Machine, Managed},
     work::Facts,
 };
@@ -137,7 +137,7 @@ impl World {
             paths: &self.paths,
             inventory: &self.inventory,
             records: &self.records,
-            pair: self.pair.as_ref(),
+            pair: self.pair.as_ref().map_or(PairFile::Missing, PairFile::Read),
             machine: self.machine,
             busy: self.busy,
         }

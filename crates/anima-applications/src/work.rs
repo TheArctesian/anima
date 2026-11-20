@@ -15,8 +15,8 @@ pub mod prune;
 pub mod removal;
 
 use crate::{
-    Inventory, Pair, PairDecision, PairRecord, Paths, Plan, Records, Refusal, Request, Settings,
-    Work, pair,
+    Inventory, Pair, PairDecision, PairFile, PairRecord, Paths, Plan, Records, Refusal, Request,
+    Settings, Work, pair,
     settings::{Machine, Managed},
 };
 
@@ -32,11 +32,12 @@ pub struct Facts<'a> {
     pub inventory: &'a Inventory,
     /// The applications that Anima installed, from the folders of the program.
     pub records: &'a Records,
-    /// The record of the first pair of a hub, when the program has one.
-    pub pair: Option<&'a PairRecord>,
+    /// The file of the record of the first pair of a hub.
+    pub pair: PairFile<'a>,
     /// The memory, the processors and the free disk of the machine.
     pub machine: Machine,
-    /// True while the program runs an item that changes Docker.
+    /// True while the program runs a different item that changes Docker. The item that is
+    /// checked does not count, also between its own parts.
     pub busy: bool,
 }
 

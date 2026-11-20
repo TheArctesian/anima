@@ -72,22 +72,40 @@ pub(crate) fn is_path(text: &str) -> bool {
             .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
-/// The host of an origin: a name or an IPv4 address in lower case, or an IPv6 address in
-/// brackets.
+/// The host of an origin, in one text for each address: a name in lower case, an IPv4
+/// address in its usual form, or an IPv6 address in brackets in its canonical short form
+/// (RFC 5952). An IPv4 address written as an IPv6 address is refused, so that one address
+/// never has two texts.
 fn is_host(text: &str) -> bool {
     if let Some(inner) = text
         .strip_prefix('[')
         .and_then(|rest| rest.strip_suffix(']'))
     {
-        return inner.parse::<std::net::Ipv6Addr>().is_ok()
-            && !inner.bytes().any(|byte| byte.is_ascii_uppercase());
+        return inner.parse::<std::net::Ipv6Addr>().is_ok_and(|address| {
+            address.to_ipv4_mapped().is_none() && address.to_string() == inner
+        });
     }
-    let sound =
-        |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b".-".contains(&byte);
-    (1..=253).contains(&text.len())
-        && text.bytes().all(sound)
-        && !text.starts_with(['.', '-'])
-        && !text.ends_with(['.', '-'])
+    if text
+        .bytes()
+        .all(|byte| byte.is_ascii_digit() || byte == b'.')
+    {
+        return text
+            .parse::<std::net::Ipv4Addr>()
+            .is_ok_and(|address| address.to_string() == text);
+    }
+    let label_sound = |label: &str| {
+        (1..=63).contains(&label.len())
+            && label
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+    };
+    let last_is_a_name = text
+        .rsplit('.')
+        .next()
+        .is_some_and(|last| !last.bytes().all(|byte| byte.is_ascii_digit()));
+    text.len() <= 253 && text.split('.').all(label_sound) && last_is_a_name
 }
 
 /// The origin of a hub: the scheme, the host in lower case and the port, always written

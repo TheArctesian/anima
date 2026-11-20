@@ -137,10 +137,16 @@ fn k10_6_4_1_a_command_is_a_program_with_arguments_and_only_the_environment_of_t
     assert_eq!(command.program, "/usr/bin/docker");
     assert_eq!(
         command.environment,
-        [(
-            "DOCKER_CONFIG".to_owned(),
-            "/var/lib/anima/docker-configuration".to_owned()
-        )]
+        [
+            (
+                "DOCKER_HOST".to_owned(),
+                "unix:///run/docker.sock".to_owned()
+            ),
+            (
+                "DOCKER_CONFIG".to_owned(),
+                "/var/lib/anima/docker-configuration".to_owned()
+            )
+        ]
     );
     assert_eq!(command.folder, None);
     // The socket path and the configuration folder are arguments, and no argument is a line

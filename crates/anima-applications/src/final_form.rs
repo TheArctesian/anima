@@ -30,8 +30,9 @@ pub struct Frame<'a> {
     pub digests: &'a [Pulled],
 }
 
-/// The final form of one project.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The final form of one project. Its text holds values of the environment file: `{:?}`
+/// shows only its length.
+#[derive(Clone, PartialEq, Eq)]
 pub struct FinalForm {
     /// The text of the file.
     pub text: String,
@@ -40,6 +41,17 @@ pub struct FinalForm {
     /// True when the project has a volume or a bind mount: data that `application_back` does
     /// not bring back.
     pub holds_volumes: bool,
+}
+
+impl std::fmt::Debug for FinalForm {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("FinalForm")
+            .field("text_bytes", &self.text.len())
+            .field("binds", &self.binds)
+            .field("holds_volumes", &self.holds_volumes)
+            .finish()
+    }
 }
 
 const fn refused(rule: Rule, service: Option<usize>) -> Refusal {

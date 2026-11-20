@@ -36,7 +36,10 @@ pub struct Command {
 /// One step of a plan. The caller does the steps in their order. A step that fails stops the
 /// plan: after it, the caller does only each [`Step::DeleteFolderInEachCase`]. A failed
 /// [`Step::Attempt`] does not stop the plan.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// The content of [`Step::Write`] can hold values of the environment file: `{:?}` shows only
+/// its length.
+#[derive(Clone, PartialEq, Eq)]
 pub enum Step {
     /// Makes a folder that only the user of the program can reach, when it is not there.
     Folder { path: String },
@@ -63,6 +66,41 @@ pub enum Step {
     Attempt(Command),
 }
 
+fn one_path(formatter: &mut std::fmt::Formatter<'_>, name: &str, path: &str) -> std::fmt::Result {
+    formatter.debug_struct(name).field("path", &path).finish()
+}
+
+impl std::fmt::Debug for Step {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Folder { path } => one_path(formatter, "Folder", path),
+            Self::Write { path, content } => formatter
+                .debug_struct("Write")
+                .field("path", path)
+                .field("content_bytes", &content.len())
+                .finish(),
+            Self::Move { from, to } => formatter
+                .debug_struct("Move")
+                .field("from", from)
+                .field("to", to)
+                .finish(),
+            Self::Delete { path } => one_path(formatter, "Delete", path),
+            Self::DeleteFolder { path } => one_path(formatter, "DeleteFolder", path),
+            Self::DeleteFolderInEachCase { path } => {
+                one_path(formatter, "DeleteFolderInEachCase", path)
+            }
+            Self::Absent { path } => one_path(formatter, "Absent", path),
+            Self::RealFolder { path, below } => formatter
+                .debug_struct("RealFolder")
+                .field("path", path)
+                .field("below", below)
+                .finish(),
+            Self::Run(command) => formatter.debug_tuple("Run").field(command).finish(),
+            Self::Attempt(command) => formatter.debug_tuple("Attempt").field(command).finish(),
+        }
+    }
+}
+
 /// The steps of one item.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Plan {
@@ -79,13 +117,21 @@ pub(crate) struct Project<'a> {
 
 impl Paths {
     /// The environment of each command: only what the program sets (SF-041, SF-042). The
-    /// variable names the configuration folder a second time, for a program that does not
-    /// read the argument.
+    /// two variables name the checked socket and the configuration folder a second time, for
+    /// a program that does not read the argument.
     fn environment(&self) -> Vec<(String, String)> {
-        vec![("DOCKER_CONFIG".to_owned(), self.configuration.clone())]
+        vec![
+            ("DOCKER_HOST".to_owned(), format!("unix://{}", self.socket)),
+            ("DOCKER_CONFIG".to_owned(), self.configuration.clone()),
+        ]
     }
 
     /// The first arguments of each command: the socket and the configuration folder.
+    ///
+    /// Not proven: that each version of the Compose program from the lowest that the program
+    /// knows takes `--config` and obeys `--host` before its verb. Part 2 of task H31 proves the
+    /// exact list of arguments with a real Compose program, the lowest and the current version,
+    /// before it does a plan.
     fn first_arguments(&self) -> Vec<String> {
         vec![
             "--host".to_owned(),
@@ -192,6 +238,25 @@ impl Folders {
     #[must_use]
     pub fn pulled(&self) -> String {
         self.file("pulled.json")
+    }
+
+    /// The Compose file as it came, the environment file and the digests of the version that
+    /// runs: the records of the current version.
+    #[must_use]
+    pub fn current(&self) -> [String; 3] {
+        [self.compose(), self.environment(), self.digests()]
+    }
+
+    /// The same three files of a new version before its start. A plan moves them in place of
+    /// [`Self::current`] only after the start did not fail, so that a failed start leaves the
+    /// records of the version before it and the kept version as they were.
+    #[must_use]
+    pub fn staged(&self) -> [String; 3] {
+        [
+            self.file("new-compose-as-it-came.yaml"),
+            self.file("new-environment-of-the-application"),
+            self.file("new-digests.json"),
+        ]
     }
 
     /// The Compose file, the environment file and the digests of the kept version.

@@ -18,12 +18,22 @@ use crate::{
     plan::Project,
 };
 
-/// The two files of an item, as the daemon gave them.
-#[derive(Clone, Copy, Debug)]
+/// The two files of an item, as the daemon gave them. `{:?}` shows only their lengths.
+#[derive(Clone, Copy)]
 pub struct Files<'a> {
     pub compose: &'a [u8],
     /// `None` when `environmentSha256` of the item is null.
     pub environment: Option<&'a [u8]>,
+}
+
+impl std::fmt::Debug for Files<'_> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Files")
+            .field("compose_bytes", &self.compose.len())
+            .field("environment_bytes", &self.environment.map(<[u8]>::len))
+            .finish()
+    }
 }
 
 /// The pull of the image of one service, and the read of the digest that the pull gave.
@@ -37,7 +47,8 @@ pub struct Pull {
 }
 
 /// One version of an application whose files passed each rule: what [`planned`] starts.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// `{:?}` shows no byte of the two files and no value of the checked file.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Prepared {
     pub(crate) application: String,
     pub(crate) keep: bool,
@@ -49,6 +60,20 @@ pub struct Prepared {
     pub(crate) known: Vec<Pulled>,
     /// The pulls that the caller does before [`planned`]; none when `pull` is false.
     pub pulls: Vec<Pull>,
+}
+
+impl std::fmt::Debug for Prepared {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Prepared")
+            .field("application", &self.application)
+            .field("keep", &self.keep)
+            .field("compose_bytes", &self.compose.len())
+            .field("environment_bytes", &self.environment.len())
+            .field("known", &self.known)
+            .field("pulls", &self.pulls)
+            .finish_non_exhaustive()
+    }
 }
 
 /// The plan of one version, and what the result and the log of the machine say of it.
@@ -78,12 +103,21 @@ pub(crate) fn sha256(bytes: &[u8]) -> String {
 /// containers; `name_taken` when a project of the name exists with a different folder
 /// (SF-028); `busy`.
 pub fn accepted(apply: &Apply, facts: &Facts<'_>) -> Result<(), Refusal> {
+    project_checked(&apply.application, facts)
+}
+
+/// The checks of the project of `application` that an apply and a back do before the files
+/// and again before the plan, with the facts of that moment.
+///
+/// # Errors
+/// As [`accepted`].
+pub(crate) fn project_checked(application: &str, facts: &Facts<'_>) -> Result<(), Refusal> {
     managed(facts)?;
-    let project = project_of(&apply.application);
+    let project = project_of(application);
     if project_is_protected(&project, facts.settings, facts.inventory) {
         return Err(Refusal::Protected);
     }
-    let folder = facts.paths.application(&apply.application).files();
+    let folder = facts.paths.application(application).files();
     let of_the_project = |container: &&crate::Container| container.is_of(&project);
     if facts
         .inventory
@@ -199,9 +233,15 @@ fn digests_written(digests: &[Pulled]) -> Vec<u8> {
     json::written(&Json::List(digests.iter().map(one).collect())).into_bytes()
 }
 
-/// The steps that write one version and start it: the three files, the digests, the check
-/// that `files/` holds no `.env`, the check of each folder of `binds/` directly before the
-/// start (SF-016), and the start from the final form only (SF-017).
+/// The steps that write one version and start it: the Compose file, the environment file and
+/// the digests under their staged names, the final form, the check that `files/` holds no
+/// `.env`, the check of each folder of `binds/` directly before the start (SF-016), and the
+/// start from the final form only (SF-017). The records of the version are moved in place
+/// only after the start, by [`in_place_steps`].
+///
+/// The final form is written in place before the start, because it is the file that Compose
+/// reads. After a failed start it is the final form of the new version, and the records are
+/// those of the version before it.
 pub(crate) fn version_steps(
     prepared: &Prepared,
     digests: &[Pulled],
@@ -213,11 +253,12 @@ pub(crate) fn version_steps(
         path,
         content: content.to_vec(),
     };
+    let [compose, environment, digests_file] = folders.staged();
     let mut steps = vec![
-        write(folders.compose(), &prepared.compose),
-        write(folders.environment(), &prepared.environment),
+        write(compose, &prepared.compose),
+        write(environment, &prepared.environment),
         write(folders.final_form(), form.text.as_bytes()),
-        write(folders.digests(), &digests_written(digests)),
+        write(digests_file, &digests_written(digests)),
         Step::Absent {
             path: folders.dot_env(),
         },
@@ -247,6 +288,17 @@ pub(crate) fn version_steps(
     ];
     steps.push(Step::Run(facts.paths.compose(&named, &up)));
     Ok((steps, form))
+}
+
+/// The steps after a start that did not fail: the staged records of the new version are moved
+/// in place of the records of the current version.
+pub(crate) fn in_place_steps(folders: &Folders) -> Vec<Step> {
+    folders
+        .staged()
+        .into_iter()
+        .zip(folders.current())
+        .map(|(from, to)| Step::Move { from, to })
+        .collect()
 }
 
 /// The folders of an application and of each bind mount, which the program makes itself.
@@ -284,15 +336,18 @@ fn pulled_written(prepared: &Prepared, digests: &[Pulled], facts: &Facts<'_>) ->
 }
 
 /// The plan of `application_apply`, with `pulled`, the digests of the pulls of `prepared`.
+/// `facts` are those of the moment after the pulls: the checks of [`accepted`] are done
+/// again with them.
 ///
 /// # Errors
-/// `no_digest` for a service that has no digest; `file_not_permitted` for a value that the
-/// final form cannot hold.
+/// Each refusal of [`accepted`]; `no_digest` for a service that has no digest;
+/// `file_not_permitted` for a value that the final form cannot hold.
 pub fn planned(
     prepared: &Prepared,
     pulled: &[Pulled],
     facts: &Facts<'_>,
 ) -> Result<Planned, Refusal> {
+    project_checked(&prepared.application, facts)?;
     let digests = if prepared.pulls.is_empty() {
         &prepared.known
     } else {
@@ -301,23 +356,25 @@ pub fn planned(
     let (version, form) = version_steps(prepared, digests, facts)?;
     let folders = facts.paths.application(&prepared.application);
     let mut steps = folder_steps(&folders, &form.binds);
+    // The images are on the machine after the pulls, whether the start fails or not.
+    steps.push(Step::Write {
+        path: folders.pulled(),
+        content: pulled_written(prepared, digests, facts),
+    });
+    steps.extend(version);
     let has_files = facts
         .records
         .installed(&prepared.application)
         .is_some_and(|installed| installed.has_files);
-    let current = [folders.compose(), folders.environment(), folders.digests()];
-    for (from, to) in current.into_iter().zip(folders.kept()) {
+    // After the start only: a failed start never replaces the last kept version.
+    for (from, to) in folders.current().into_iter().zip(folders.kept()) {
         // `keep` 0 keeps no version, so an `application_back` after it has nothing.
         steps.push(match (prepared.keep, has_files) {
             (true, true) => Step::Move { from, to },
             _ => Step::Delete { path: to },
         });
     }
-    steps.push(Step::Write {
-        path: folders.pulled(),
-        content: pulled_written(prepared, digests, facts),
-    });
-    steps.extend(version);
+    steps.extend(in_place_steps(&folders));
     Ok(Planned {
         plan: Plan { steps },
         final_form_sha256: sha256(form.text.as_bytes()),

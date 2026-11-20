@@ -1,6 +1,7 @@
 //! `application_apply` (K10 Sections 6.4.4 to 6.4.6): the check before the files here, the
 //! check of the two files in `files`, and the plan in `planning`.
 
+mod debug_text;
 mod files;
 mod planning;
 

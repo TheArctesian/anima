@@ -39,6 +39,20 @@ pub struct PairRecord {
     pub different_seen: bool,
 }
 
+/// The file of the record of the pair, as the caller found it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PairFile<'a> {
+    /// The program has no such file.
+    Missing,
+    /// The file is there, but the caller cannot read it, or [`PairRecord::read`] does not
+    /// accept its text. Each container item is then refused (`applications_off`): a file that
+    /// cannot be read is never taken as no record, which would accept a different hub. The
+    /// file must be deleted when the administrator sets "Manage applications" on again.
+    Unreadable,
+    /// The record in the file.
+    Read(&'a PairRecord),
+}
+
 /// What the pair of one request means.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PairDecision {
@@ -52,10 +66,15 @@ pub enum PairDecision {
     Different(Option<PairRecord>),
 }
 
-/// Decides what `sent` means with the record that the program has, for the time `set_on_at`
-/// of "Manage applications".
+/// Decides what `sent` means with the file of the record that the program has, for the time
+/// `set_on_at` of "Manage applications".
 #[must_use]
-pub fn decided(record: Option<&PairRecord>, set_on_at: u64, sent: &Pair) -> PairDecision {
+pub fn decided(file: PairFile<'_>, set_on_at: u64, sent: &Pair) -> PairDecision {
+    let record = match file {
+        PairFile::Missing => None,
+        PairFile::Unreadable => return PairDecision::Different(None),
+        PairFile::Read(record) => Some(record),
+    };
     match record.filter(|record| record.set_on_at == set_on_at) {
         None => PairDecision::First(PairRecord {
             set_on_at,
