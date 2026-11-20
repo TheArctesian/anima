@@ -118,7 +118,7 @@ describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
   const merge = (Bun.YAML.parse(raw) as Workflow).jobs["merge"];
   const script = readFileSync(join(ROOT, ".github", "workflows", "merge-to-dev.sh"), "utf8");
 
-  test("it takes only a push of a branch of this repository whose gates passed, and never dev or main", () => {
+  test("for a push it takes only a branch of this repository whose gates passed, and never dev, main or a fork", () => {
     for (const part of [
       "github.event.workflow_run.conclusion == 'success'",
       "github.event.workflow_run.event == 'push'",
@@ -134,14 +134,18 @@ describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
     expect(script).not.toContain("main");
   });
 
-  test("it reads the rule of dev first, and merges only when dev is the commit that the gates tested", () => {
+  test("the end of the gates of a train starts it too, with each conclusion, so that a failed train is split", () => {
+    expect(merge?.if).toContain("(github.event.workflow_run.event == 'workflow_dispatch' && startsWith(github.event.workflow_run.head_branch, 'train/'))");
+    expect(merge?.if).toContain("!startsWith(github.event.workflow_run.head_branch, 'train/')");
+  });
+
+  test("it reads the rule of dev first, then runs one step of the train; it starts no gates of a branch and none of dev", () => {
     const rule = script.indexOf("quality/merge-rule.json");
-    const tested = script.indexOf('if [ "$tested" != "$dev_now" ]');
-    const merged = script.indexOf("bun quality/bin/merge.ts");
+    const train = script.indexOf("bun quality/bin/train.ts");
     expect(rule).toBeGreaterThan(-1);
-    expect(tested).toBeGreaterThan(rule);
-    expect(merged).toBeGreaterThan(tested);
-    expect(script).toContain('gh run rerun "$RUN_ID"');
+    expect(train).toBeGreaterThan(rule);
+    expect(script).not.toContain("gh run rerun");
+    expect(script).not.toContain("gh workflow run");
   });
 
   test("each action is pinned to a commit, and no run script holds an expression", () => {
