@@ -5,6 +5,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { ownCondition } from "./release-waits.ts";
+
 interface Step {
   id?: string;
   name?: string;
@@ -35,7 +37,7 @@ const BOTH_SWITCHES = "github.event_name == 'push' && github.ref == 'refs/heads/
 describe("the switches of `anima` alone", () => {
   test("each job that makes it public runs only for a push to main with both switches on", () => {
     for (const name of ["cli-publish", "tap", "crate"]) {
-      expect(job(name).if).toBe(BOTH_SWITCHES);
+      expect(ownCondition(job(name).if, needs(name))).toBe(BOTH_SWITCHES);
       expect(needs(name)).toContain("cli");
     }
   });

@@ -20,7 +20,14 @@
 #   release-crate     the token of crates.io                                    job `crate`
 #   release-ios       the iOS distribution certificate and the profile          job `ios`
 #   release-testflight  the key of App Store Connect                            job `ios-upload`
-# The jobs `commit`, `gates`, `tool`, `linux`, `cli` and `trial` have no secret.
+# The jobs `commit`, `gates-linux`, `gates-macos`, `gates`, `tool`, `linux`, `cli` and `trial`
+# have no secret.
+#
+# The gates (BLD-042, R-190). The 21 gates run on Linux in the workflow `gates`
+# (.github/workflows/gates.yml), which this workflow calls for the release commit. When that
+# workflow already passed on `dev` for the same content (the same tree), it is not called a
+# second time: deploy/bin/gated-run decides, from the list of runs that GitHub keeps. The
+# tests that only a Mac runs (deploy/bin/macos-tests) run in each release.
 #
 # `anima` alone (Homebrew, crates.io) has a switch of its own, ANIMA_PUBLIC_CLI: its three
 # jobs that publish run only while both variables are `on`.
@@ -42,6 +49,14 @@ on:
         description: "Trial only: the version to build. Use 0.0.1, never the version of a release. Nothing is published."
         required: true
         type: string
+      gates:
+        description: "Trial only: `run` runs the Linux gates also when this content passed them on dev."
+        required: false
+        type: choice
+        default: reuse
+        options:
+          - reuse
+          - run
 
 # One release at a time, in the order of the pushes. GitHub keeps one run that waits and
 # cancels an older one that waits; the run that comes next compares with the published
@@ -65,8 +80,11 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # To read the list of the runs of the workflow `gates` (the step `gated`).
+      actions: read
     outputs:
       release: ${{ steps.read.outputs.release }}
+      gated: ${{ steps.gated.outputs.gated }}
       release_cli: ${{ steps.read.outputs.release_cli }}
       release_ios: ${{ steps.read.outputs.release_ios }}
       version: ${{ steps.read.outputs.version }}
@@ -194,14 +212,65 @@ jobs:
             echo "time=$(git show -s --format=%ct "$sha")"
             echo "updater_public_key=$key"
           } >> "$GITHUB_OUTPUT"
+      # Did the workflow `gates` pass on `dev` for the content of this commit? Then the Linux
+      # gates are not run again (deploy/bin/gated-run has the rules). The token of the run
+      # only reads the list of runs. Any fault here means "no": the gates then run.
+      - id: gated
+        name: Look for a run of the gates that passed on dev for the same content
+        if: steps.read.outputs.release == 'true' || steps.read.outputs.release_ios == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ steps.read.outputs.sha }}
+          TRIAL_GATES: ${{ inputs.gates }}
+        run: |
+          set -eu
+          gated=false
+          read_api() {
+            curl -sS --fail --max-time 30 --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" -o "$2" "$API/repos/$REPOSITORY/$1"
+          }
+          if [ "$TRIAL_GATES" = run ]; then
+            say="The Linux gates run: the trial asked for them."
+          elif ! read_api "actions/workflows/gates.yml/runs?branch=dev&status=success&per_page=100" runs.json; then
+            say="The Linux gates run: the list of the runs of the gates could not be read."
+          else
+            found=$(sh deploy/bin/gated-run "$REPOSITORY" "$SHA" < runs.json) || found=""
+            run=${found%% *}
+            if [ -z "$found" ]; then
+              say="The Linux gates run: no run of the gates passed on dev for this content."
+            elif read_api "actions/runs/$run/jobs?per_page=100" jobs.json && sh deploy/bin/gated-run --passed < jobs.json; then
+              gated=true
+              say="The Linux gates are not run again: run $run of the gates passed on dev for the same content (commit ${found##* }). The tests that only a Mac runs do run."
+            else
+              say="The Linux gates run: the job \`passed\` of run $run could not be read as passed."
+            fi
+          fi
+          echo "$say"
+          { echo "### The gates"; echo "$say"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "gated=$gated" >> "$GITHUB_OUTPUT"
 
   # The gates of the repository on the release commit (BLD-042). R-190: the release workflow
   # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
-  gates:
+  # The 21 gates, on Linux, in the jobs of the workflow `gates`. Not run when that workflow
+  # passed on `dev` for the same content (the output `gated` of the job `commit`).
+  gates-linux:
+    needs: commit
+    if: (needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')) && needs.commit.outputs.gated != 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/gates.yml
+    with:
+      ref: ${{ needs.commit.outputs.sha }}
+
+  # The tests that only a Mac runs: on Linux they are skipped or not compiled. They run in
+  # each release, also when the Linux gates are not run again.
+  gates-macos:
     needs: commit
     if: needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')
     runs-on: macos-15
-    timeout-minutes: 150
+    timeout-minutes: 90
     permissions:
       contents: read
     steps:
@@ -209,9 +278,6 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ needs.commit.outputs.sha }}
-          # The documents gate compares screens with the commit of their mockup (PLN-019),
-          # so it needs the history. A shallow clone fails it.
-          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
@@ -220,16 +286,13 @@ jobs:
         with:
           go-version-file: link/go.mod
           cache: false
-      # shellcheck: three tests of deploy/headscale fail when it is not on PATH. The image of
-      # GitHub for macOS does not have it; the trial of 2026-11-18 stopped there.
-      # sccache: the gates runner uses it when it is on PATH (quality/src/gates/cache.ts), as on
-      # the computer of the operator. It keeps compiler outputs by their inputs, so it changes
-      # no result of a gate.
-      - name: Install PostgreSQL 17, cargo-nextest, shellcheck and sccache
+      # sccache: the wrapper of .cargo/config.toml uses it when it is on PATH, as on the
+      # computer of the operator. It keeps compiler outputs by their inputs, so it changes no
+      # result of a test.
+      - name: Install PostgreSQL 17, cargo-nextest and sccache
         run: |
           set -eu
-          brew install postgresql@17 cargo-nextest shellcheck sccache
-          shellcheck --version
+          brew install postgresql@17 cargo-nextest sccache
       # The compiler outputs of the last run of this job. Only this job has a cache: it holds
       # no secret and nothing that it builds is shipped. The jobs that build the application
       # or the tool compile from nothing. A run of `main` writes the cache that the next run
@@ -237,20 +300,43 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/Library/Caches/Mozilla.sccache
-          key: gates-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ needs.commit.outputs.sha }}
+          key: macos-tests-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ needs.commit.outputs.sha }}
           restore-keys: |
-            gates-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
-      - name: Run the gates
+            macos-tests-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
+      - name: Run the tests that only a Mac runs
         env:
-          BASE_REF: ${{ needs.commit.outputs.sha }}
           SCCACHE_CACHE_SIZE: 4G
-        run: |
-          set -eu
-          unset DATABASE_URL
-          bun run gates
+          CARGO_INCREMENTAL: "0"
+        run: sh deploy/bin/macos-tests
       - name: Say how much of the compile came from the cache
         if: always()
         run: sccache --show-stats || true
+
+  # One name for the jobs that wait for the gates. It passes when the Mac tests passed and
+  # the Linux gates passed in this run, or were not run because the same content passed them
+  # on `dev`. Each job after it names the result of each job that it waits for: GitHub skips
+  # a job when a job before it in the chain was skipped, and the Linux gates can be skipped.
+  gates:
+    needs: [commit, gates-linux, gates-macos]
+    if: always() && (needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: The gates passed for this content
+        env:
+          GATED: ${{ needs.commit.outputs.gated }}
+          LINUX: ${{ needs.gates-linux.result }}
+          MACOS: ${{ needs.gates-macos.result }}
+        run: |
+          set -eu
+          echo "the Linux gates: $LINUX; passed on dev for this content: ${GATED:-false}; the Mac tests: $MACOS"
+          [ "$MACOS" = success ] || { echo "::error::The tests that only a Mac runs did not pass."; exit 1; }
+          case "$LINUX:$GATED" in
+            success:*) ;;
+            skipped:true) ;;
+            *) echo "::error::The gates did not pass."; exit 1 ;;
+          esac
 
   # The program that signs and publishes: `anima-hub release` of the release commit. The jobs
   # that hold a key run this file and compile nothing.
@@ -489,6 +575,7 @@ jobs:
   # the one that its build job gave as a job output (BLD-045, BLD-046).
   sign:
     needs: [commit, gates, tool, macos, linux]
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.gates.result == 'success' && needs.tool.result == 'success' && needs.macos.result == 'success' && needs.linux.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release-sign
@@ -581,7 +668,7 @@ jobs:
   # on. The checks that the hub makes for a queued job (BLD-002, BLD-064 to
   # BLD-069), by the same code: `anima-hub release publish`. It writes each feed last.
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.bucket.result == 'success' && needs.tool.result == 'success' && needs.macos.result == 'success' && needs.linux.result == 'success' && needs.sign.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' }}
     needs: [commit, bucket, tool, macos, linux, sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -732,7 +819,7 @@ jobs:
   # not; `anima/latest.json` is written last.
   cli-publish:
     needs: [commit, cli, publish]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.cli.result == 'success' && needs.publish.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release-publish
@@ -792,7 +879,7 @@ jobs:
   # that repository. No code of this repository: the formula is the file of the job `cli`.
   tap:
     needs: [commit, cli, cli-publish]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.cli.result == 'success' && needs.cli-publish.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: release-tap
@@ -838,7 +925,7 @@ jobs:
   # built in the step before, with no token.
   crate:
     needs: [commit, cli, cli-publish]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.cli.result == 'success' && needs.cli-publish.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: release-crate
@@ -995,7 +1082,7 @@ jobs:
   # Store Connect, in an environment of its own, and reads no repository.
   ios-upload:
     needs: [commit, gates, ios]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.gates.result == 'success' && needs.ios.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on' }}
     runs-on: macos-15
     timeout-minutes: 45
     environment: release-testflight
@@ -1029,7 +1116,7 @@ jobs:
   # `ios/latest.json` in the bucket. TestFlight has no feed that a job with no key can read.
   ios-record:
     needs: [commit, ios-upload]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.ios-upload.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: release-publish
@@ -1058,7 +1145,7 @@ jobs:
   # Only for a run by hand. Each check of `publish` that needs no bucket; no token, and
   # nothing is published.
   trial:
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ !cancelled() && !failure() && needs.commit.result == 'success' && needs.tool.result == 'success' && needs.macos.result == 'success' && needs.linux.result == 'success' && needs.sign.result == 'success' && github.event_name == 'workflow_dispatch' }}
     needs: [commit, tool, macos, linux, sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
