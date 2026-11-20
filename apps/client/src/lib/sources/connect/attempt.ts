@@ -71,7 +71,7 @@ function cancelledLine(attempt: ConnectAttempt): string {
 
 function connectedLine(attempt: ConnectAttempt): string {
   if (attempt.account?.pausedBy === 'EXTENSION_OFF') {
-    return 'GitHub is connected. Set Projects on in Settings > Extensions to read it.';
+    return 'GitHub is connected. Set Projects on in Extensions to read it.';
   }
   return 'GitHub is connected. The first sync has started.';
 }

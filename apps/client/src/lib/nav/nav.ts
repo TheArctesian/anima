@@ -4,7 +4,7 @@ import type { IconName } from '$lib/icons/icons';
 
 /** One destination of the navigation bar. */
 export interface NavDestination {
-  readonly href: '/devices' | '/agents/usage' | '/projects' | '/builds' | '/logs' | '/settings';
+  readonly href: '/devices' | '/agents/usage' | '/projects' | '/builds' | '/logs' | '/extensions' | '/settings';
   readonly label: string;
   readonly icon: IconName;
 }
@@ -17,6 +17,8 @@ export const PROJECTS: NavDestination = { href: '/projects', label: 'Projects', 
 export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'carbon:tool-kit' };
 /** A page in the phone layout only; a computer has the logs panel on each page (MOB-013). */
 export const LOGS: NavDestination = { href: '/logs', label: 'Logs', icon: 'carbon:catalog' };
+/** The switches of the extensions: its own page, directly above Settings in the bar; a phone reaches it from Settings (EXT-001). */
+export const EXTENSIONS: NavDestination = { href: '/extensions', label: 'Extensions', icon: 'carbon:grid' };
 export const SETTINGS: NavDestination = { href: '/settings', label: 'Settings', icon: 'carbon:settings' };
 
 /**
