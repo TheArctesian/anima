@@ -10,10 +10,12 @@
 use std::net::IpAddr;
 
 use axum::{
+    Router,
     body::Body,
-    extract::Request,
+    extract::{Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse as _, Response},
+    routing::post,
 };
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{Claim, RefusalCode, SecretRequest, WorkReport};
@@ -24,7 +26,7 @@ use super::{
     admission::{Admitted, Stop, admit},
     credential, refusals,
     refusals::Route,
-    routes::{DaemonState, busy, client_of, read_body, unmounted},
+    routes::{DaemonState, busy, client_of, read_body, unmounted, within},
     turns::Turn,
 };
 use crate::{
@@ -89,19 +91,39 @@ macro_rules! served {
     }};
 }
 
+/// The three routes of K10, each answering within the deadline of a daemon route.
+pub(super) fn routes() -> Router<DaemonState> {
+    Router::new()
+        .route("/work/v1/claim", post(claim))
+        .route("/work/v1/report", post(report))
+        .route("/work/v1/secret", post(secret_of_job))
+}
+
 /// Answers a claim: `200` with a job, `204` with none, or the first refusal.
-pub(super) async fn serve_claim(state: DaemonState, request: Request) -> Response {
-    served!(state, request, Route::WorkClaim, claimed)
+async fn claim(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, async move {
+        served!(state, request, Route::WorkClaim, claimed)
+    })
+    .await
 }
 
 /// Answers a report: `200` with the new lease, or the first refusal.
-pub(super) async fn serve_report(state: DaemonState, request: Request) -> Response {
-    served!(state, request, Route::WorkReport, reported)
+async fn report(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, async move {
+        served!(state, request, Route::WorkReport, reported)
+    })
+    .await
 }
 
 /// Answers a request for a secret of a job: a refusal (see the head of this file).
-pub(super) async fn serve_secret(state: DaemonState, request: Request) -> Response {
-    served!(state, request, Route::WorkSecret, secret)
+async fn secret_of_job(State(state): State<DaemonState>, request: Request) -> Response {
+    let limit = state.deadlines.answer;
+    within(limit, async move {
+        served!(state, request, Route::WorkSecret, secret)
+    })
+    .await
 }
 
 fn failed(error: jobs::Error) -> Stop {

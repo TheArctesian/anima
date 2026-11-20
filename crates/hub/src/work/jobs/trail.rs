@@ -29,8 +29,7 @@ async fn audit(
     conn: &mut PgConnection,
     job: &Job,
     (action, change): (AuditAction, serde_json::Value),
-    (operator, client): Asker,
-    now: DateTime<Utc>,
+    ((operator, client), now): (Asker, DateTime<Utc>),
 ) -> Result<(), Error> {
     let entry = NewAudit {
         operator,
@@ -61,7 +60,13 @@ pub(super) async fn queued(
     asker: Asker,
     now: DateTime<Utc>,
 ) -> Result<(), Error> {
-    audit(conn, job, (AuditAction::Create, described(job)), asker, now).await
+    audit(
+        conn,
+        job,
+        (AuditAction::Create, described(job)),
+        (asker, now),
+    )
+    .await
 }
 
 /// A machine got the job: one attempt started.
@@ -73,7 +78,7 @@ pub(super) async fn attempt_started(
 ) -> Result<(), Error> {
     let change = json!({ "attempt": job.attempt, "device": device });
     let asker = (Operator::hub(), client);
-    audit(conn, job, (AuditAction::Start, change), asker, now).await
+    audit(conn, job, (AuditAction::Start, change), (asker, now)).await
 }
 
 /// An attempt ended: `how` is the state that the machine reported or the fixed word of the hub.
@@ -92,7 +97,7 @@ pub(super) async fn attempt_ended(
         "lost": job.lost,
     });
     let asker = (Operator::hub(), client);
-    audit(conn, job, (AuditAction::End, change), asker, now).await
+    audit(conn, job, (AuditAction::End, change), (asker, now)).await
 }
 
 /// A stop was asked for.
@@ -100,11 +105,10 @@ pub(super) async fn stop_asked(
     conn: &mut PgConnection,
     job: &Job,
     reason: StopReason,
-    asker: Asker,
-    now: DateTime<Utc>,
+    (asker, now): (Asker, DateTime<Utc>),
 ) -> Result<(), Error> {
     let change = json!({ "stop": reason.as_str(), "state": job.state.as_str() });
-    audit(conn, job, (AuditAction::Cancel, change), asker, now).await
+    audit(conn, job, (AuditAction::Cancel, change), (asker, now)).await
 }
 
 async fn event(

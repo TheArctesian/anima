@@ -78,7 +78,7 @@ pub(super) struct DaemonState {
     pub(super) vault: Vault,
     pub(super) turns: Turns,
     recorder: Recorder,
-    deadlines: Deadlines,
+    pub(super) deadlines: Deadlines,
 }
 
 /// `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` and
@@ -133,9 +133,7 @@ fn routes(state: DaemonState) -> Router {
         .route("/daemon/v1/push", post(push))
         .route("/daemon/v1/renew", post(renew))
         .route("/daemon/v1/keys/fetch", post(fetch_key))
-        .route("/work/v1/claim", post(work_claim))
-        .route("/work/v1/report", post(work_report))
-        .route("/work/v1/secret", post(work_secret))
+        .merge(work::routes())
         .with_state(state)
 }
 
@@ -159,24 +157,9 @@ async fn fetch_key(State(state): State<DaemonState>, request: Request) -> Respon
     within(limit, keys::serve_fetch(state, request)).await
 }
 
-async fn work_claim(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, work::serve_claim(state, request)).await
-}
-
-async fn work_report(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, work::serve_report(state, request)).await
-}
-
-async fn work_secret(State(state): State<DaemonState>, request: Request) -> Response {
-    let limit = state.deadlines.answer;
-    within(limit, work::serve_secret(state, request)).await
-}
-
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back
 /// its open transaction; a code it already redeemed stays used (MET-012).
-async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Response {
+pub(super) async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Response {
     tokio::time::timeout(limit, answer)
         .await
         .unwrap_or_else(|_| {

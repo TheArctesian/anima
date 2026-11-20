@@ -79,9 +79,9 @@ impl Work {
         }
     }
 
-    async fn enqueue(&self, asked: NewJob) -> Job {
+    async fn enqueue(&self, wanted: NewJob) -> Job {
         let asker = (Operator::hub(), ClientAddr(PERMITTED.parse().unwrap()));
-        jobs::enqueue(self.queue(), asked, asker, self.now())
+        jobs::enqueue(self.queue(), wanted, asker, self.now())
             .await
             .unwrap()
     }

@@ -6,8 +6,8 @@ use daemon_core::wire::{MAX_LOG_PART_BYTES, StopReason, WorkReport, WorkState, W
 
 use super::model::{Job, State};
 use crate::{
+    clock::lease::{self, Lost},
     ids::DeviceId,
-    lease::{self, Lost},
 };
 
 /// The reason of a `build` whose lease ended three times (K10 Section 7).

@@ -8,8 +8,8 @@ use super::{
     model::{Arch, BuildJob, Builder, JobState, Os, Platform, Report, Target},
 };
 use crate::{
+    clock::lease::{self, Lost},
     ids::BuilderId,
-    lease::{self, Lost},
 };
 
 /// A builder that reported within this time is online (BLD-007).

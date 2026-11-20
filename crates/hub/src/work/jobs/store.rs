@@ -1,20 +1,23 @@
 //! All SQL on schema `jobs`: I/O only (CQ-032). Ids and time come in as parameters. Writes take
 //! the caller's connection, so a change commits with its audit entry or event.
 
+mod logs;
+mod machines;
+
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{
-    Limits, StopReason, Switch, WorkArchitecture, WorkKind, WorkOs, WorkRepository, WorkType,
+    Limits, StopReason, WorkArchitecture, WorkKind, WorkOs, WorkRepository, WorkType,
 };
 use sqlx::PgConnection;
 
+pub(super) use logs::{append_log, log_of};
+pub(super) use machines::{add_fault, machine_locked, save_machine, set_off_until};
+
 use super::{
     Error,
-    model::{Fault, Job, Machine, NewJob, State},
+    model::{Job, NewJob, State},
 };
 use crate::ids::{DeviceId, JobId, ProjectId};
-
-/// The most bytes of the log of one job that the hub keeps (K10 Section 7).
-const MAX_LOG_BYTES: i64 = 2 * 1024 * 1024;
 
 /// How many queued jobs one claim looks at, oldest first.
 const CLAIM_LOOKS_AT: i64 = 50;
@@ -61,14 +64,14 @@ struct JobRow {
 }
 
 /// A word of the contract as the database holds it: the JSON string of its type.
-fn word<T: serde::Serialize>(value: &T) -> Result<String, Error> {
+pub(super) fn word<T: serde::Serialize>(value: &T) -> Result<String, Error> {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::String(text)) => Ok(text),
         _ => Err(Error::Unreadable),
     }
 }
 
-fn read_word<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, Error> {
+pub(super) fn read_word<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, Error> {
     serde_json::from_value(serde_json::Value::String(text.to_owned()))
         .map_err(|_| Error::Unreadable)
 }
@@ -77,7 +80,7 @@ fn count(value: i64) -> Result<u64, Error> {
     u64::try_from(value).map_err(|_| Error::Unreadable)
 }
 
-fn stored(value: u64) -> Result<i64, Error> {
+pub(super) fn stored(value: u64) -> Result<i64, Error> {
     i64::try_from(value).map_err(|_| Error::Unreadable)
 }
 
@@ -269,140 +272,5 @@ pub(super) async fn save(conn: &mut PgConnection, job: &Job) -> Result<(), Error
     .bind(job.ended_at)
     .execute(conn)
     .await?;
-    Ok(())
-}
-
-/// Adds one part to the log of the job and drops the oldest parts over 2 MiB.
-pub(super) async fn append_log(
-    conn: &mut PgConnection,
-    job: JobId,
-    from: u64,
-    text: &str,
-) -> Result<(), Error> {
-    sqlx::query("INSERT INTO jobs.log_parts (job_id, from_byte, text) VALUES ($1, $2, $3)")
-        .bind(job)
-        .bind(stored(from)?)
-        .bind(text)
-        .execute(&mut *conn)
-        .await?;
-    sqlx::query(
-        "DELETE FROM jobs.log_parts p USING ( \
-           SELECT from_byte, sum(octet_length(text)) OVER (ORDER BY from_byte DESC) AS newer \
-           FROM jobs.log_parts WHERE job_id = $1 \
-         ) kept WHERE p.job_id = $1 AND p.from_byte = kept.from_byte \
-           AND kept.newer - octet_length(p.text) >= $2",
-    )
-    .bind(job)
-    .bind(MAX_LOG_BYTES)
-    .execute(conn)
-    .await?;
-    Ok(())
-}
-
-/// The log of the job that the hub holds, oldest part first.
-pub(super) async fn log_of(conn: &mut PgConnection, job: JobId) -> Result<String, Error> {
-    let parts: Vec<(String,)> =
-        sqlx::query_as("SELECT text FROM jobs.log_parts WHERE job_id = $1 ORDER BY from_byte")
-            .bind(job)
-            .fetch_all(conn)
-            .await?;
-    Ok(parts.into_iter().map(|(text,)| text).collect())
-}
-
-type MachineRow = (
-    String,
-    bool,
-    bool,
-    Option<DateTime<Utc>>,
-    Option<DateTime<Utc>>,
-);
-
-/// What the hub knows of the machine, locked; `None` before its first claim.
-pub(super) async fn machine_locked(
-    conn: &mut PgConnection,
-    device: DeviceId,
-) -> Result<Option<Machine>, Error> {
-    let row: Option<MachineRow> = sqlx::query_as(
-        "SELECT switch, unclean, off_by_operator, off_until, first_on_at FROM jobs.machines \
-         WHERE device_id = $1 FOR UPDATE",
-    )
-    .bind(device)
-    .fetch_optional(conn)
-    .await?;
-    row.map(
-        |(switch, unclean, off_by_operator, off_until, first_on_at)| {
-            Ok(Machine {
-                device,
-                switch: read_word::<Switch>(&switch)?,
-                unclean,
-                off_by_operator,
-                off_until,
-                first_on_at,
-            })
-        },
-    )
-    .transpose()
-}
-
-/// Writes what the machine said in its claim at `now`.
-pub(super) async fn save_machine(
-    conn: &mut PgConnection,
-    machine: &Machine,
-    now: DateTime<Utc>,
-) -> Result<(), Error> {
-    sqlx::query(
-        "INSERT INTO jobs.machines (device_id, switch, unclean, off_by_operator, off_until, \
-         first_on_at, last_claim_at) VALUES ($1, $2, $3, $4, $5, $6, $7) \
-         ON CONFLICT (device_id) DO UPDATE SET switch = $2, unclean = $3, off_by_operator = $4, \
-         off_until = $5, first_on_at = $6, last_claim_at = $7",
-    )
-    .bind(machine.device)
-    .bind(word(&machine.switch)?)
-    .bind(machine.unclean)
-    .bind(machine.off_by_operator)
-    .bind(machine.off_until)
-    .bind(machine.first_on_at)
-    .bind(now)
-    .execute(conn)
-    .await?;
-    Ok(())
-}
-
-/// Records that the machine refused or lost a job at `at`, and returns how many it refused or
-/// lost since `since`. A machine with no row of its own (a device that was removed) counts 0.
-pub(super) async fn add_fault(
-    conn: &mut PgConnection,
-    (device, fault): (DeviceId, Fault),
-    at: DateTime<Utc>,
-    since: DateTime<Utc>,
-) -> Result<usize, Error> {
-    let known: Option<(i64,)> = sqlx::query_as(
-        "WITH added AS ( \
-           INSERT INTO jobs.faults (device_id, at, kind) \
-           SELECT $1, $2, $3 WHERE EXISTS (SELECT FROM devices.devices WHERE id = $1) \
-           RETURNING 1 \
-         ) SELECT (SELECT count(*) FROM added) + \
-                  (SELECT count(*) FROM jobs.faults WHERE device_id = $1 AND at > $4)",
-    )
-    .bind(device)
-    .bind(at)
-    .bind(fault.as_str())
-    .bind(since)
-    .fetch_optional(conn)
-    .await?;
-    Ok(usize::try_from(known.map_or(0, |(faults,)| faults)).unwrap_or(usize::MAX))
-}
-
-/// Sets the end of the hour with no work of the machine.
-pub(super) async fn set_off_until(
-    conn: &mut PgConnection,
-    device: DeviceId,
-    until: DateTime<Utc>,
-) -> Result<(), Error> {
-    sqlx::query("UPDATE jobs.machines SET off_until = $2 WHERE device_id = $1")
-        .bind(device)
-        .bind(until)
-        .execute(conn)
-        .await?;
     Ok(())
 }
