@@ -70,6 +70,8 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: The task breakdowns hold the tasks: [s1-link-tasks.md](../plans/one-click/s1-link-tasks.md), [s2-vnc-tasks.md](../plans/one-click/s2-vnc-tasks.md), [s2-rdp-tasks.md](../plans/one-click/s2-rdp-tasks.md), [s3-database-tasks.md](../plans/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../plans/one-click/s4-local-hub-tasks.md), [s5-access-tasks.md](../plans/one-click/s5-access-tasks.md), [s6-first-run-tasks.md](../plans/one-click/s6-first-run-tasks.md), [s8-stay-awake-tasks.md](../plans/one-click/s8-stay-awake-tasks.md), [s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md)
 - State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. Most tasks have commits on `main`. The live checks of each breakdown wait for the operator. [register.md](register.md) holds the state of each breakdown.
 
+The draft [spare-computer OS proposal](../proposals/spare-computer-os.md) also serves row 4.16 as a dedicated-machine installation path. Its OS0 to OS8 tasks are not approved or started. This reference changes no tier or active task order; proposal adoption and feasibility authorization remain open.
+
 ### 4.17 The hosted mode and the shared pool
 
 - Tier: 1
