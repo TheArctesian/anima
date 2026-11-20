@@ -987,6 +987,8 @@ Where to look, with no change of the system: the daemon and the link write their
 
 What the log says when it works (`~/Library/Logs/ing.anima.desktop/Anima.log`), in this order: "this hub is a hosted one: a unit of the user will keep the device link"; about 45 seconds later "the device link goes to a unit of the user" and "a unit of the user keeps the device link"; lines "the daemon of this computer: try N of 5: ...", the last of them "installed"; and "the daemon was installed on this computer".
 
+A cleaning tool can delete a launch agent that it does not know (seen on the Mac of the operator, 2026-11-20: after a clean-up of the disk, `ing.anima.link.plist` was gone and no `anima-link` ran; the log of the application has no line of a removal, so the application did not do it; which tool did it is not known). If numbers stop and `ls ~/Library/LaunchAgents/ | grep anima` does not show both files: an application that holds task HM-T37 puts the unit of the link back after about 30 seconds and writes "the device link of the unit did not answer: the unit was installed and started again"; an older one does it at its next start. The unit of the daemon is not put back while the application runs: start the application again.
+
 If step 1 shows no numbers after 3 minutes: quit the application, open it again and wait 3 minutes
 more (a start of the application tries once). If there are still none, write here what
 `tail -20 ~/Library/Logs/ing.anima.desktop/*.log` says about the device link and the daemon, and the
@@ -1028,6 +1030,8 @@ double quotes in a command, because the path has a space.
 7. Only if you want to leave the hub on this Mac: leave it in the application (Settings). Run
    `~/.local/bin/anima-link unit show`. Expected: the file is gone ("No such file"), and
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
+The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
+
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 

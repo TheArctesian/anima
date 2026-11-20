@@ -12,12 +12,16 @@ use std::{
     time::Duration,
 };
 
-use std::{sync::Arc, thread, time::Instant};
+use std::{
+    sync::{Arc, Mutex, PoisonError},
+    thread,
+    time::Instant,
+};
 
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
-use super::{LinkError, device::DeviceLink, folder, folders, launch, printed};
+use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 use crate::daemon::{placement, this_user};
 
@@ -156,10 +160,46 @@ impl Kept {
         }
     }
 
-    /// Has the app watch the running link.
+    /// Installs and starts the unit again. The copy of the link program is made again from
+    /// `carried` when it is gone. False when the folder of the link is not marked for a unit,
+    /// when there is no program to run, or when the link program refuses the unit.
+    pub fn put_back(&self, carried: Option<&Path>, home: Option<&Path>) -> bool {
+        if !folder::wants_unit(&self.folder) {
+            return false;
+        }
+        let placed = self.program.is_file()
+            || carried
+                .zip(home)
+                .is_some_and(|(carried, home)| place(carried, home).is_ok());
+        placed && self.install().is_ok()
+    }
+
+    /// Has the app watch the running link, and put the unit back when the link stays down
+    /// (something outside the app removed the unit or ended its link).
     pub fn watch(self, device: &DeviceLink) {
         let port = self.port;
-        device.watch(port, move || self.serving());
+        let repair = Mutex::new(Repair::default());
+        device.watch(port, move || {
+            let serving = self.serving();
+            let due = repair
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .due(serving.is_some());
+            if due {
+                let carried = crate::carried::program(super::PROGRAM);
+                let home = crate::user_folders::home();
+                if self.put_back(carried.as_deref(), home.as_deref()) {
+                    log::warn!(
+                        "the device link of the unit did not answer: the unit was installed and started again"
+                    );
+                } else {
+                    log::warn!(
+                        "the device link of the unit did not answer, and the unit could not be put back"
+                    );
+                }
+            }
+            serving
+        });
     }
 }
 

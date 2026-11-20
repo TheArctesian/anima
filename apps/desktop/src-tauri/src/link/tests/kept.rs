@@ -31,7 +31,7 @@ case "$1 $2" in
 esac
 "#;
 
-fn kept_in(folder: &std::path::Path, port: u16) -> Kept {
+pub fn kept_in(folder: &std::path::Path, port: u16) -> Kept {
     Kept {
         program: stand_in(folder, UNIT_LINK),
         folder: folder.to_path_buf(),
