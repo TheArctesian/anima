@@ -419,9 +419,12 @@ updates nothing. `anima_compose_check` and `anima_compose_from_run` (read, tool 
 H29) give the syntax check of a Compose file and the Compose file of one `docker run` command
 (`anima containers check-file` and `anima containers from-run`). The hub reads only the text that
 the agent gives: it reaches no device, runs nothing and keeps nothing. A problem of the check holds
-a fixed code, a position and at most the name of a service and of a key, never a value of the file.
-The converted file holds only the values of the command that the agent gave; the key `composeFile`
-is cut at 4,000 characters as `body` is. No tool returns the details of a container
+a fixed code, a position, the number of its service and the name of a key that Compose defines,
+never a text that the operator wrote. The converted file holds only the values of the command that
+the agent gave. Only the field `composeFile` of `anima_compose_from_run` keeps its lines in the
+cleaning of results (`mcp/untrusted.rs`); the tool gives the file only when that cleaning does not
+change it (at most 4,000 characters, no control or invisible character), and else gives why and the
+length of the whole file. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a
 secret as the environment can (MCP-004), so the root is closed to every API key and only
 `anima containers inspect` reads it.
