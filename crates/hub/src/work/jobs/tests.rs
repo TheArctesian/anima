@@ -2,6 +2,7 @@
 
 mod lifecycle;
 mod placement;
+mod reasons;
 
 use chrono::{DateTime, TimeZone as _, Utc};
 use daemon_core::wire::{
@@ -45,6 +46,7 @@ fn asked(work_type: WorkType) -> NewJob {
             disk_bytes: 1 << 30,
             orphan_seconds: 600,
         },
+        machine: None,
     }
 }
 

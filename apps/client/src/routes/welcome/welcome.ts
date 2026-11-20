@@ -3,7 +3,7 @@ export interface Choice {
   readonly id: 'sign-in' | 'join' | 'address' | 'create';
   readonly title: string;
   readonly line: string;
-  readonly href: '/welcome/hosted' | '/welcome/join' | '/sign-in' | '/welcome/create';
+  readonly href: '/welcome/hosted' | '/welcome/join' | '/welcome/address' | '/sign-in' | '/welcome/create';
   /** Why the choice is off, or `null` when it is on. */
   readonly off: string | null;
 }
@@ -49,9 +49,9 @@ export function hubChoices(place: ChoicePlace): readonly Choice[] {
     },
     {
       id: 'address',
-      title: 'Use a hub address',
-      line: 'Sign in to a hub on a server of your own.',
-      href: '/sign-in',
+      title: place.deviceLink ? 'Use a hub address' : 'Sign in to this hub',
+      line: place.deviceLink ? 'Enter the address of a hub your team runs.' : 'For a different hub, open its address in your browser.',
+      href: place.deviceLink ? '/welcome/address' : '/sign-in',
       off: null,
     },
     {

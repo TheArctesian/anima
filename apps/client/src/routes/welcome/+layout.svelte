@@ -5,13 +5,14 @@
 
   const { children }: { children: Snippet } = $props();
   // The invite steps start with Back, as frame 2 of docs/mockup/mobile/index.html draws them: no name above it.
-  const bare = $derived(page.route.id === '/welcome/join');
+  const landing = $derived(page.route.id === '/welcome');
+  const bare = $derived(page.route.id === '/welcome/join' || page.route.id === '/welcome/address');
 </script>
 
 <!-- The first run in the sign-in page's language (UR-7): one column on the bare ground, no bar (NAV-009, FRN-001). -->
-<div class="screen" class:bare>
+<div class="screen" class:bare class:landing>
   <div class="panel">
-    {#if !bare}<p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima.ing</p>{/if}
+    {#if !bare && !landing}<p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima.ing</p>{/if}
     {@render children()}
   </div>
 </div>
@@ -31,8 +32,23 @@
   }
 
   @media (max-width: 767.98px) {
+    .screen {
+      padding: var(--space-6) var(--space-5);
+    }
+
     .screen.bare {
       padding-block-start: var(--space-2);
+    }
+
+    .landing .panel {
+      min-block-size: calc(100svh - var(--safe-block-start) - var(--safe-block-end) - var(--space-12));
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+  }
+
+  @media (max-height: 42rem) {
+    .screen:is(.bare, .landing) {
+      padding-block: var(--space-3);
     }
   }
 
@@ -71,5 +87,32 @@
     font-weight: var(--weight-light);
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-tight);
+  }
+  :global(:root[data-apple-mobile]) .panel :global(h1) {
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 767.99px), (min-width: 36rem) and (max-height: 36rem) {
+    :global(:root:is([data-apple-mobile], [data-os='android'])) .screen.landing {
+      min-block-size: calc(100svh - var(--safe-block-start) - var(--safe-block-end));
+      align-items: center;
+      padding: var(--space-6) var(--space-5);
+    }
+
+    :global(:root:is([data-apple-mobile], [data-os='android'])) .landing .panel {
+      grid-template: auto / minmax(0, 1fr) minmax(0, 1.2fr);
+      align-items: center;
+      gap: var(--space-6);
+      inline-size: min(100%, calc(var(--space-16) * 11));
+      min-block-size: 0;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .panel :global(h1) {
+      font-weight: var(--weight-medium);
+      overflow-wrap: anywhere;
+    }
   }
 </style>

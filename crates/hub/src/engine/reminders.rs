@@ -3,12 +3,14 @@
 //! (ENG-001). `notice` evaluates the rules that wait for occurrences in the transaction that
 //! stores them, `sweep` evaluates the time rules and the place rules, and `send_waiting` sends each
 //! firing through the outbox of `notifications` after the check at send time (REM-002, REM-005,
-//! REM-006, REM-010). The other things that the sweep reads and the K1 fields are not built yet.
+//! REM-006, REM-010). A firing goes to the applications that have `Subscription.reminderFirings`
+//! open, and to a channel only when none is open (`Live`).
 
 mod codec;
 mod delivery;
 mod evaluation;
 pub mod graphql;
+mod live;
 mod model;
 mod occurrences;
 mod place_state;
@@ -26,6 +28,7 @@ pub use delivery::{
     NO_CHANNEL, Sending, TOPIC_NOT_RANDOM, lock_screen, send_waiting, spawn_minute,
 };
 pub use evaluation::{day_start, evaluate};
+pub use live::{Live, for_a_device};
 pub use model::{
     Class, Comparison, Crossing, Due, Firing, FiringState, History, Known, Limits, Moment,
     Occurrence, PlaceChange, Rule, Stop, TimeTrigger, Trigger, Unless,

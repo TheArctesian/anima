@@ -1,7 +1,7 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { hasStoredHubAddress, storedHubAddress } from '$lib/desktop/address';
-import { hubIsHosted } from '$lib/hosted/mark';
+import { holdsMovedAddressHere, hubIsHosted } from '$lib/hosted/mark';
 import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { accessApi } from './api';
@@ -22,6 +22,8 @@ function failed(): void {
 export function goToSignIn(): void {
   // The desktop app with no saved address has no hub to sign in to: it shows the first-run choices (R-225).
   if (capabilities().keyStore && !hasStoredHubAddress(localStorage)) return goToWelcome();
+  // The address of before is the hosted service now: the first-run choices lead to the account or to a hub address (HM-T31).
+  if (capabilities().keyStore && holdsMovedAddressHere(storedHubAddress(localStorage).origin)) return goToWelcome();
   const hosted = hubIsHosted(storedHubAddress(localStorage).origin);
   goto(resolve(signInPathFor(hosted))).catch(failed);
 }

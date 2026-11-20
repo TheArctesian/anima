@@ -48,12 +48,12 @@
     }}
   >
     {#if editing}
-      <TextField id="hub-address" name="hubAddress" label="Hub address" autocomplete="off" bind:value={text} bind:input={field} error={problem} onkeydown={keyed} />
+      <TextField id="hub-address" name="hubAddress" label="Hub address" type="url" autocomplete="off" bind:value={text} bind:input={field} error={problem} onkeydown={keyed} />
     {:else}
       <p class="line">
         <Icon name="carbon:network-3" size="sm" />Hub: <code>{host}</code>
         <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
-        <button type="button" tabindex="0" bind:this={change} onclick={() => { editing = true; }} {@attach press()}>Change</button>
+        <button type="button" tabindex="0" bind:this={change} onclick={() => { editing = true; }} {@attach press()}>Change hub address</button>
       </p>
     {/if}
   </form>
@@ -67,6 +67,7 @@
   .line {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     justify-content: center;
     gap: var(--space-2);
     margin: 0;
@@ -76,11 +77,12 @@
 
   code {
     font-family: var(--font-mono);
+    overflow-wrap: anywhere;
     color: var(--text-secondary);
   }
 
   button {
-    min-block-size: var(--control-sm);
+    min-block-size: var(--target-min-touch);
     padding: 0 var(--space-2);
     border: 0;
     border-radius: var(--radius-md);
