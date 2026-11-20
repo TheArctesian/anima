@@ -20,6 +20,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | NixOS foundation | Provisional | The operator proposed NixOS as a good fit. Confirm its selection during the design review; no release or package choices are made. |
 | Decision 1: first-version workloads | Decided | Hosted applications, queued jobs and agent execution are all in scope. An agent runner executes agents on the machine; it is not only a machine that an external agent can control. |
 | Decision 2: maintenance | Decided | A + B + C: automatic approved routine upkeep and problem reporting; owner-defined maintenance windows and control over disruptive actions; optional SSH or local administrative access. Fully manual maintenance mode is out of the first version. Exact update, reboot, access and configuration policies remain to be designed. |
+| Decision 3: hardware families | Decided in part | A + B + C: 64-bit Intel/AMD PCs, Intel Macs and selected ARM64 boards or mini PCs. Exact supported models need selection and testing. Apple Silicon is under investigation at the operator's request, not rejected or approved. Older 32-bit PCs were not selected. Firmware and resource minimums remain open. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -55,7 +56,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Decision 3: which hardware families should the first version support? Allow combined choices: ordinary 64-bit Intel/AMD PCs; Intel Macs; selected ARM boards or mini PCs; Apple Silicon Macs; older 32-bit PCs. Suggested starting scope: ordinary 64-bit Intel/AMD PCs. Other families need explicit targets and validation.
+1. Decision 3 follow-up: should selected Apple Silicon Macs be a supported first-release target, an experimental target that does not block release, or a later target? Research below establishes a NixOS installation route, not validation of this product. Recommendation: an experimental target on named hardware, subject to installation, workload and recovery tests.
 2. Which boot firmware and installation targets should the first version support? Discuss UEFI, legacy boot and the installation experience after hardware families. No choice is made yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
@@ -79,10 +80,20 @@ These are discussion topics, not selected requirements or a task breakdown:
 - Sleep, laptop lids, battery and thermal health, power loss and wake-on-LAN.
 - Hardware validation, image distribution, support and security maintenance.
 
+## Apple Silicon research
+
+Read 2026-11-19 at the operator's request:
+
+- [nixos-apple-silicon](https://github.com/nix-community/nixos-apple-silicon) provides modules and packages for bare-metal NixOS using Asahi Linux support. This is an existing implementation route, not merely Nix packages running on macOS.
+- Its [installation guide](https://github.com/nix-community/nixos-apple-silicon/blob/main/docs/uefi-standalone.md) documents a customized NixOS ISO and preparation from macOS through the Asahi installer. Apple boot and recovery partitions need special handling. A generic PC whole-disk erase flow cannot be assumed suitable.
+- [Asahi feature support](https://asahilinux.org/docs/platform/feature-support/overview/) is listed by chip generation and device features. Support must be checked for each selected model; the existence of a page does not prove that model works.
+- Proposed integration: share the ARM64 application configuration where possible, with Apple-specific boot, kernel, firmware and installation modules. This is a design recommendation, not a tested result. No claim is made about GPU inference, all agent packages or automatic recovery on these Macs.
+
 ## Reviews
 
 - 2026-11-19: First record. Captured the fresh-project direction and corrected Decision 1 to include applications, jobs and agents. No filesystem, partition layout or software stack is selected. The next discussion is the maintenance model, with combined answers allowed.
 - 2026-11-19: The operator accepted the recommendation for Decision 2 (A + B + C). Recorded routine automation, owner control over disruption and optional advanced access. Fully manual mode is not in the first version. Next: hardware families, with combined answers allowed.
+- 2026-11-19: The operator selected A + B + C for hardware and requested Apple Silicon research. Recorded the existing NixOS/Asahi route and left the Apple Silicon release commitment open.
 
 ## Source text
 
@@ -103,3 +114,7 @@ Selected direct operator messages, unchanged:
 In response to the Decision 2 recommendation A + B + C:
 
 > ueah agreed
+
+In response to Decision 3:
+
+> yeah ABC silicon mac's might be able to be supported by nix though might be worth search it up
