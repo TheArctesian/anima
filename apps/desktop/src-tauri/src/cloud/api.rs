@@ -32,6 +32,7 @@ pub struct HubAccess {
     claim: String,
 }
 
+#[cfg(desktop)]
 impl HubAccess {
     /// Whether this device is on the link of the hub already: the cloud then gives no invite.
     pub fn is_joined(&self) -> bool {
