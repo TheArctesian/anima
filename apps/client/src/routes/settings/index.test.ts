@@ -10,7 +10,7 @@ it('R-222: the index has VPN for a hub with a VPN, and leaves it out for a hub t
 
 it('R-224: the index is in three groups, and each entry names its group', () => {
   const entries = indexOf({ ...DESKTOP, vpn: true });
-  expect(entries.map((entry) => entry.title)).toEqual(['Account', 'Hub', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'Updates', 'MCP', 'Integrations', 'API keys', 'Extensions', 'VPN']);
+  expect(entries.map((entry) => entry.title)).toEqual(['Account', 'Hub', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'Updates', 'MCP', 'Integrations', 'API keys', 'VPN']);
   expect([...new Set(entries.map((entry) => entry.group))]).toEqual(['Hub and account', 'This computer', 'Connections']);
   expect(entries.find((entry) => entry.title === 'Appearance')?.group).toBe('This computer');
 });

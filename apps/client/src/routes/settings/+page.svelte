@@ -1,9 +1,9 @@
 <script lang="ts">
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
-  import ExtensionsSection from '$lib/extensions/ExtensionsSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
+  import { resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
@@ -130,9 +130,13 @@
     <ApiKeysSection />
   </SettingsSection>
 
-  <SettingsSection {...SECTIONS.extensions}>
-    <ExtensionsSection />
-  </SettingsSection>
+  <!-- The extensions have a page of their own, beside Settings in the bar. The phone bar has no place for it
+       (MOB-010), so on a phone this section is the way to that page (EXT-001). -->
+  {#if phone}
+    <SettingsSection {...SECTIONS.extensions}>
+      <a class="to-extensions" href={resolve('/extensions')}>Open Extensions</a>
+    </SettingsSection>
+  {/if}
 
   <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
   {#if vpnShown}
@@ -160,6 +164,13 @@
     grid-template-columns: calc(var(--space-16) * 3 + var(--space-4)) minmax(0, calc(var(--space-16) * 11));
     gap: var(--space-12);
     align-items: start;
+  }
+
+  .to-extensions {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min-touch);
+    color: var(--accent);
   }
 
   .page {

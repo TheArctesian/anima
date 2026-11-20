@@ -25,7 +25,8 @@ export const SECTIONS = {
   retention: { id: 'settings-retention', title: 'Data retention', icon: 'carbon:data-backup', description: 'How long the hub keeps records.' },
   updates: { id: 'settings-updates', title: 'Updates', icon: 'carbon:update-now', description: "Version, command line tool, log and release builds." },
   apiKeys: { id: 'settings-api-keys', title: 'API keys', icon: 'carbon:api-key', description: "Keys for programs that call the hub's GraphQL API." },
-  extensions: { id: 'settings-extensions', title: 'Extensions', icon: 'carbon:grid', description: 'Features beyond devices. Off by default; changes save at once.' },
+  // On a phone only: the way to the Extensions page, which a computer has in the bar (EXT-001, MOB-010).
+  extensions: { id: 'settings-extensions', title: 'Extensions', icon: 'carbon:grid', description: 'Features beyond devices.' },
   integrations: { id: 'settings-integrations', title: 'Integrations', icon: 'carbon:link', description: 'Where Anima.ing reads records from. Keys stay in the hub.' },
   mcp: { id: 'settings-mcp', title: 'MCP', icon: 'carbon:security', description: 'What coding agents may do through anima mcp on this computer.' },
   vpn: { id: 'settings-vpn', title: 'VPN', icon: 'carbon:connect', description: 'How the hub reaches each site, and when each VPN key expires.' },
@@ -36,11 +37,11 @@ export const GROUPS = { hub: 'Hub and account', computer: 'This computer', conne
 
 /** The index of the sections the page shows, in the page's order and in its groups (WP-50 F-10, R-224). */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, stayAwake, appearance, notifications, checkDefaults, retention, updates, apiKeys, extensions, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, stayAwake, appearance, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
     [GROUPS.hub, [account, shown.keyStore && hub, notifications, checkDefaults, retention]],
     [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
-    [GROUPS.connections, [integrations, apiKeys, extensions, shown.vpn && vpn]],
+    [GROUPS.connections, [integrations, apiKeys, shown.vpn && vpn]],
   ];
   return groups.flatMap(([group, entries]) => entries.filter((entry) => entry !== false).map((entry) => ({ ...entry, group })));
 }

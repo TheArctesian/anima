@@ -95,12 +95,23 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-it('NAV-001: Devices comes first, then the divider, then the status, then Settings last', () => {
+it('NAV-001: Devices comes first, then the divider, then the status, then Extensions, then Settings last', () => {
   const nav = show();
   const destinations = [...nav.querySelectorAll('a, hr, .status')];
   expect(destinations.map((node) => node.getAttribute('href') ?? node.textContent?.trim())).toEqual([
-    '/devices', '/agents/usage', '', 'Connected', '/settings',
+    '/devices', '/agents/usage', '', 'Connected', '/extensions', '/settings',
   ]);
+});
+
+it('NAV-001: Live sessions is at the foot of the bar, after the divider and directly above the hub status', () => {
+  const nav = show();
+  const children = [...nav.children];
+  const live = children.findIndex((child) => child.classList.contains('live'));
+  expect(live).toBeGreaterThan(children.findIndex((child) => child.tagName === 'HR'));
+  // Between it and the status there is only the name of the hub: no other destination.
+  const status = children.findIndex((child) => child.classList.contains('status'));
+  expect(status).toBeGreaterThan(live);
+  expect(children.slice(live + 1, status).some((child) => child.tagName === 'A')).toBe(false);
 });
 
 it('NAV-002: only the active item has aria-current="page"', () => {
@@ -114,17 +125,18 @@ it.each([
   ['connected', 'Connected'],
   ['connecting', 'Disconnected'],
   ['unreachable', 'Disconnected'],
-] as const)('NAV-003: status %s shows %s directly above Settings', (connection, label) => {
+] as const)('NAV-003: status %s shows %s directly above Extensions and Settings', (connection, label) => {
   const nav = show('/devices', { connection, lastContactAt: null });
-  expect(nav.querySelector('a[href="/settings"]')?.previousElementSibling?.textContent).toBe(label);
+  expect(nav.querySelector('a[href="/extensions"]')?.previousElementSibling?.textContent).toBe(label);
+  expect(nav.querySelector('a[href="/settings"]')?.previousElementSibling?.getAttribute('href')).toBe('/extensions');
 });
 
 it('NAV-005: the items are real links to their pages, with the server and cog icons', () => {
   const nav = show();
   const links = [...nav.querySelectorAll('a')];
-  expect(links.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/settings']);
+  expect(links.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
   const firstShape = (name: IconName) => iconShape(name).parts.find(([tag]) => tag === 'path')?.[1]['d'];
-  expect(links.map((link) => link.querySelector('.icon path')?.getAttribute('d'))).toEqual([firstShape('carbon:bare-metal-server'), firstShape('carbon:chart-line'), firstShape('carbon:settings')]);
+  expect(links.map((link) => link.querySelector('.icon path')?.getAttribute('d'))).toEqual([firstShape('carbon:bare-metal-server'), firstShape('carbon:chart-line'), firstShape('carbon:grid'), firstShape('carbon:settings')]);
 });
 
 it('UI-015: each item keeps its words as its name; the tooltip is set only when the bar shows icons', () => {
@@ -132,6 +144,7 @@ it('UI-015: each item keeps its words as its name; the tooltip is set only when 
   expect([...wide.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
     ['Devices', null],
     ['Agent usage', null],
+    ['Extensions', null],
     ['Settings', null],
   ]);
 });
@@ -161,7 +174,7 @@ it('NET-004: when unreachable the banner has an icon besides its text, so the st
 
 it('NAV-005: every link is focusable by Tab (tabindex 0 for WebKit)', () => {
   const links = [...show().querySelectorAll('a')];
-  expect(links.map((link) => link.getAttribute('tabindex'))).toEqual(['0', '0', '0']);
+  expect(links.map((link) => link.getAttribute('tabindex'))).toEqual(['0', '0', '0', '0']);
 });
 
 it('NET-004: when unreachable the banner shows the problem, the hub, the advice and the data age', () => {
@@ -197,7 +210,7 @@ it('MOT-007: the banner sits before the divider, so the divider, label and Setti
   const notice = children.findIndex((child) => child.getAttribute('role') === 'status');
   expect(notice).toBeGreaterThan(0);
   expect(notice).toBeLessThan(children.findIndex((child) => child.tagName === 'HR'));
-  expect(children.at(-2)?.textContent).toBe('Disconnected');
+  expect(children.at(-3)?.textContent).toBe('Disconnected');
 });
 
 it('MOT-001: a nav item presses on pointerdown', () => {
