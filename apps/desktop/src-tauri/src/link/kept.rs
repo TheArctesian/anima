@@ -22,9 +22,9 @@ use std::{
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
+use super::copy::{current_copy, destination, earlier_copy, place, same, unplace};
 use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
-use crate::daemon::{placement, this_user};
 
 /// `unit install` runs up to three steps of 30 s each, one of them twice.
 const UNIT_LIMIT: Duration = Duration::from_secs(150);
@@ -77,31 +77,6 @@ pub fn private_socket(folder: &Path) -> Option<PathBuf> {
         && found.mode() % 0o100 == 0;
     let socket = folder.join(DAEMON_SOCKET);
     (private && socket.as_os_str().len() <= LONGEST_SOCKET).then_some(socket)
-}
-
-/// Where the copy of the link program is: `<application>/link/program/anima-link`. The app
-/// makes `link` with mode 0700, so the link's own check of the program's folder passes on any
-/// system, also where the person's `~/.local/bin` can be written by their group (DEF-NEW-linkfolder).
-pub fn destination(application: &Path) -> PathBuf {
-    application.join("link/program").join(super::PROGRAM)
-}
-
-/// Where an app before DEF-NEW-linkfolder put the copy. A unit made then runs it until the app
-/// moves the unit to [`destination`].
-pub fn earlier_copy(home: &Path) -> PathBuf {
-    home.join(".local/bin").join(super::PROGRAM)
-}
-
-/// The copy that a unit of this user runs now: the copy at [`destination`], else an earlier
-/// copy that is there, else [`destination`].
-pub fn current_copy(application: &Path, home: &Path) -> PathBuf {
-    let copy = destination(application);
-    let earlier = earlier_copy(home);
-    if !copy.is_file() && earlier.is_file() {
-        earlier
-    } else {
-        copy
-    }
 }
 
 /// What `anima-link unit` may see of the app's environment: the home folder, and on Linux the
@@ -272,29 +247,6 @@ impl Kept {
             serving
         });
     }
-}
-
-/// Whether two files hold the same bytes; false when one cannot be read.
-fn same(one: &Path, other: &Path) -> bool {
-    match (fs::read(one), fs::read(other)) {
-        (Ok(one), Ok(other)) => one == other,
-        _ => false,
-    }
-}
-
-/// Copies the carried link program to its place in `application`, unless the copy there
-/// already holds the same bytes. Returns the path that the unit runs.
-pub fn place(carried: &Path, application: &Path) -> Result<PathBuf, LinkError> {
-    let destination = destination(application);
-    if same(carried, &destination) {
-        return Ok(destination);
-    }
-    placement::place(carried, &destination, this_user()).map_err(|_| LinkError::Folder)
-}
-
-/// Deletes the copy of the link program. A copy that is not there is not an error.
-pub fn unplace(program: &Path) {
-    let _ = fs::remove_file(program);
 }
 
 /// The link of `folder` as a unit of the user keeps it, with the copy of the program that a

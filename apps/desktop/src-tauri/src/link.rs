@@ -7,6 +7,7 @@
 //! web view; its form is checked first, it reaches `anima-link` on standard input only and it
 //! is never logged (LOG-007).
 
+mod copy;
 mod device;
 mod error;
 mod folder;
@@ -288,7 +289,7 @@ pub async fn link_leave<R: Runtime>(
         device.stop();
         if let Some(link) = kept::now(&folders.device, 0) {
             link.remove_because("this device leaves its hub")?;
-            kept::unplace(&link.program);
+            copy::unplace(&link.program);
         }
         folders.remove().map_err(|_| LinkError::Folder)
     })

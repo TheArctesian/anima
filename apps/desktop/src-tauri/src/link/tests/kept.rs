@@ -10,6 +10,7 @@ use std::{
 };
 
 use super::super::{
+    copy,
     device::DeviceLink,
     kept::{self, Kept},
     printed,
@@ -221,23 +222,27 @@ fn the_unit_commands_get_the_home_and_the_session_of_the_user_and_nothing_else()
 fn the_copy_of_the_link_is_in_the_folder_of_the_app_and_a_unit_of_an_earlier_app_is_found() {
     let root = tempfile::tempdir().unwrap();
     let (application, home) = (root.path().join("app"), root.path().join("home"));
-    let copy = application.join("link/program/anima-link");
+    let new_copy = application.join("link/program/anima-link");
     let earlier = home.join(".local/bin/anima-link");
-    assert_eq!(kept::destination(&application), copy);
-    assert_eq!(kept::earlier_copy(&home), earlier);
-    assert_eq!(kept::current_copy(&application, &home), copy, "no copy yet");
+    assert_eq!(copy::destination(&application), new_copy);
+    assert_eq!(copy::earlier_copy(&home), earlier);
+    assert_eq!(
+        copy::current_copy(&application, &home),
+        new_copy,
+        "no copy yet"
+    );
 
     fs::create_dir_all(earlier.parent().unwrap()).unwrap();
     fs::write(&earlier, b"link").unwrap();
     assert_eq!(
-        kept::current_copy(&application, &home),
+        copy::current_copy(&application, &home),
         earlier,
         "a unit of an earlier app runs ~/.local/bin/anima-link"
     );
 
-    fs::create_dir_all(copy.parent().unwrap()).unwrap();
-    fs::write(&copy, b"link").unwrap();
-    assert_eq!(kept::current_copy(&application, &home), copy);
+    fs::create_dir_all(new_copy.parent().unwrap()).unwrap();
+    fs::write(&new_copy, b"link").unwrap();
+    assert_eq!(copy::current_copy(&application, &home), new_copy);
 }
 
 #[test]
