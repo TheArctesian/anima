@@ -14,6 +14,7 @@ pub mod maintenance;
 pub mod metrics;
 pub mod notifications;
 pub mod retention;
+pub mod rollout;
 pub mod sessions;
 pub mod ssh;
 pub mod targets;

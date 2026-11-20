@@ -36,7 +36,7 @@
 
 /*
  * The name takes the free width; each other column has its own width, so a long name and its address are whole where
- * the window has room (R-NEW-listlayout).
+ * the window has room (row H of the site language plan).
  */
 /* The status widens with the table, so the reason of a problem and how long it has lasted are whole on a wide window. */
 .device-rows .c-status {
