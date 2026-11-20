@@ -20,6 +20,7 @@ pub fn linux_reading() -> Reading {
         interfaces: linux::interfaces(PROC_NET_DEV),
         drives: drives::drives(LSBLK_POP_OS),
         drive_counters: linux::drive_counters(PROC_DISKSTATS),
+        data: None,
     }
 }
 
@@ -238,6 +239,7 @@ fn met_002_a_wholly_unreadable_device_gives_no_samples() {
         interfaces: linux::interfaces(b"nothing here"),
         drives: drives::drives(b"{"),
         drive_counters: linux::drive_counters(b"8 0 sda x\n"),
+        data: None,
     };
     assert_eq!(reading, Reading::default());
     assert_eq!(samples(Some(&reading), &reading, THIRTY).len(), 0);
