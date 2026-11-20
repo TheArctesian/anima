@@ -15,10 +15,9 @@ Section 9 (operational keys), the `keys` member of Section 4 and of `Accepted`, 
 `NO_KEY` were added by R-147 and R-148 (operator, 2026-11-18; K-E5 Section 2.1). They are optional members, so
 they need no new version of this contract (Section 1).
 The socket of the hub for its own daemon (Section 1, task HM-T35) and the batch of the daemon in the container of a hosted hub (Section 4; HMD-071, HMD-072, HMD-074 of
-[hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) is proposed and waits for the approval of the
-operator (CON-001). It uses only kinds and members that exist, so it needs no new version of this contract.
-The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-NEW-battery) are proposed with
-it, for one approval. They are optional, so they need no new version of this contract.
+[hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) were approved by R-NEW-k8hosted (operator, 2026-11-20; CON-001). They use only kinds and members that exist, so they need no new version of this contract.
+The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-NEW-battery) were approved
+with them by the same ruling. They are optional, so they need no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 

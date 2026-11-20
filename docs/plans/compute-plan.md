@@ -163,9 +163,9 @@ Facts of 2026-11-18 that this section depends on:
 
   | Task | What | State | Commit |
   | --- | --- | --- | --- |
-  | BT1 | K8: the kind `battery_percent` and the member `batteries` (Section 4), with the batch of a hosted hub of HM-T34 of [hosted-mode.md](../proposals/hosted-mode.md), for one approval (CON-001) | Written on the branch `hosted/hm-t34-container-metrics`; waits for the approval of the operator | — |
-  | BT2 | The daemon: the Linux reader of `/sys/class/power_supply` with the rules of `experiments/anima-os/telemetry/readings.py`, the macOS reader of its power sources, the series and the member | Not started; waits for BT1 | — |
-  | BT3 | The hub: keep the last `batteries` of a device, the series `battery_percent`, and give them in the query of a device | Not started; waits for BT1 | — |
+  | BT1 | K8: the kind `battery_percent` and the member `batteries` (Section 4), with the batch of a hosted hub of HM-T34 of [hosted-mode.md](../proposals/hosted-mode.md), for one approval (CON-001) | Written on the branch `hosted/hm-t34-container-metrics`; approved by R-NEW-k8hosted | R-NEW-k8hosted |
+  | BT2 | The daemon: the Linux reader of `/sys/class/power_supply` with the rules of `experiments/anima-os/telemetry/readings.py`, the macOS reader of its power sources, the series and the member | Not started | — |
+  | BT3 | The hub: keep the last `batteries` of a device, the series `battery_percent`, and give them in the query of a device | Not started | — |
   | BT4 | `anima device show` prints the battery; the MCP tool of the device gives it (CMD-030) | Not started; waits for BT3 | — |
   | BT5 | The client: the battery beside the meters of the Devices list and its grid, the Overview of a device and the device rows of Agent usage; the mockups and their records (PLN-019) | Not started; waits for BT3 | — |
   | BT6 | The apps of a phone and a tablet (iPhone, iPad, Android) send `batteries` and `battery_percent` with their batch (MOB-044). For the mobile stream, not for this plan | Not started | — |
