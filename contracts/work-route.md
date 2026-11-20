@@ -200,7 +200,7 @@ as for a job. A cause that the machine finds after `preparing`, when it has the 
 (`file_not_permitted`, `program_mismatch`, `limit_disk`), is reported with the state `failed` and
 that cause; the diagram of Section 7 does not change. The hub does not put a container item back
 in the queue: the item is final, with the state `failed` and the cause as its reason. An
-application has one machine, and a container identifier has meaning on one machine.
+application has one machine, and a container identifier has meaning on one machine. `container_action` with `stop` is never refused for `policy` or for `unclean`.
 
 ## 6. Work types
 
