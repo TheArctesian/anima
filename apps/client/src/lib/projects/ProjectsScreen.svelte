@@ -13,7 +13,16 @@
   import type { ProjectsStore } from './store.svelte';
   import { GROUP_ORDER, GROUP_TITLES, groupOf, type TileGroup } from './tile';
 
-  const { store }: { store: ProjectsStore } = $props();
+  interface Props {
+    store: ProjectsStore;
+    /**
+     * True for a hub that the application reaches at a port of this computer (a hosted hub through the link, or a hub
+     * on this computer): GitHub cannot open such a hub in a browser, so only the key file of a GitHub App connects it.
+     */
+    keyFileOnly?: boolean;
+  }
+
+  const { store, keyFileOnly = false }: Props = $props();
   let showing = $state<'main' | 'leftOut'>('main');
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
   /** The one group the operator chose to see, or all of them (R-224). */
@@ -62,7 +71,7 @@
   {:else if projects.length === 0 && store.filtered}
     <EmptyState title="No matching projects" line="Change the language or size filter." />
   {:else if projects.length === 0 && showing === 'main'}
-    <EmptyState title="No projects yet" line="Connect GitHub.">
+    <EmptyState title="No projects yet" line={keyFileOnly ? 'Connect GitHub with the key file of a GitHub App.' : 'Connect GitHub.'}>
       {#snippet action()}
         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the section anchor is added -->
         <a href={`${resolve('/settings')}#settings-integrations`}>Settings > Integrations</a>

@@ -109,6 +109,15 @@ it('PRO-001: with no projects the empty state links to the Integrations section'
   expect(document.querySelector('select')).toBeNull();
 });
 
+it('PRO-001: for a hub reached on this computer the empty state names the key file, which is the way that connects it', async () => {
+  store = new ProjectsStore(projectsApi(fakeHub([])));
+  await store.load();
+  app = mount(ProjectsScreen, { target: document.body, props: { store, keyFileOnly: true } });
+  flushSync();
+  expect(text()).toContain('Connect GitHub with the key file of a GitHub App.');
+  expect(document.querySelector('a')?.getAttribute('href')).toBe('/settings#settings-integrations');
+});
+
 it('PRO-004: a proposal says Found in the repository with its sign until confirmed, then says Confirmed', async () => {
   await openDetail('acme-site');
   expect(text()).toContain('Found in the repository');
