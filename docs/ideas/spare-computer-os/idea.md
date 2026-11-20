@@ -27,6 +27,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 6: distribution | Decided | Standard downloadable ISO written to USB with dd or a graphical flasher. No custom flasher is required by this choice. It does not settle prepared-media settings, enrollment or automatic disk erasure. Selected ARM boards may need board-specific image formats; do not assume one ISO boots every target. |
 | Decision 7: local interface | Provisional | A + B: graphical setup and installed status/recovery screen, plus text setup and recovery menus as a fallback. Setup through Anima remains in scope. The operator is discussing this in a side chat and asked to log the choice for now and revisit later. No interface framework or full desktop is selected. |
 | Decision 8: hub disconnection | Decided | A + B + D: approved applications keep running and may restart under their existing policy; already-running jobs and agents may continue within existing permissions and limits; authorized local administration remains available without a reachable hub. Do not start new queued or scheduled jobs while disconnected in the first version. Grant expiry, reconnect reconciliation and local authentication still need design. External-service dependencies can still prevent a workload from working. |
+| Decision 9: recovery operations | Decided | A + B + C + D: OS rollback without deliberately reverting workload data; OS repair/reinstallation preserving designated persistent data; selected app/dataset restore from available snapshots or backups; explicit factory reset removing ownership, credentials and workload data. These are separate operations. Application compatibility, preserved-state inventory, backup policy, automated recovery triggers and secure drive sanitization remain to be designed and tested. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -63,7 +64,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 9: what recovery operations should the first version provide? Options can be combined: roll back OS configuration/software without intentionally reverting workload data; repair or reinstall the OS while preserving designated data; restore selected workload data from snapshots/backups; explicitly erase and reset the machine. Recommendation: all four as separate operations, with backup destination and automation decided later. No selection yet. These are proposed outcomes, not guarantees about filesystem or application compatibility.
+2. Decision 10: what is the installation policy for disk encryption? Alternatives: mandatory encryption on every installation; encryption recommended with explicit opt-out; optional encryption defaulting off; hardware-dependent default with an explicit owner choice when unattended encrypted unlock is unavailable. Recommendation: encryption recommended with explicit opt-out, explaining unattended restart consequences. Unlock mechanisms and key custody follow separately; no choice yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -116,6 +117,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: The operator clarified that the walkthrough should continue. Decision 7 stays provisional for later review; the discussion is not paused. Next: behavior when disconnected from the Anima hub.
 
 - 2026-11-19: Decision 8 accepted as A + B + D. Recorded offline continuity for approved apps and running work, plus authorized local administration; new queued/scheduled jobs do not start offline. Next: recovery outcomes before filesystem and partition design.
+
+- 2026-11-19: The operator accepted all recovery operations in Decision 9. Recorded A + B + C + D. Next: encryption policy, then unlock/restart behavior and storage layout.
 
 ## Source text
 
@@ -172,3 +175,7 @@ After the pause interpretation:
 In response to Decision 8:
 
 > lets do ABD
+
+In response to Decision 9 (recommendation A + B + C + D):
+
+> agreed
