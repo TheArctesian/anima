@@ -97,6 +97,28 @@ The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testi
 
 **The switch.** While the repository variable `ANIMA_PUBLIC_RELEASES` is not `on`, a push to `main` builds nothing and publishes nothing; the summary of the run says what it would release. The variable does not exist today, so public releases are off. "To switch public releases on" below has the steps.
 
+### The gates of a release (BLD-042, R-190)
+
+A release signs only after the gates passed for its content. Three jobs do this, and none holds a secret.
+
+| Job | Machine | What it does |
+| --- | --- | --- |
+| `gates-linux` | Linux, four jobs at the same time | Calls the workflow `gates` (`.github/workflows/gates.yml`, the one that tests each branch before its merge into `dev`) for the release commit: each of the 21 gates |
+| `gates-macos` | `macos-15` | Runs `deploy/bin/macos-tests`: the tests that Linux skips or does not compile. They are the Mach-O check, the refusal of a release build with no signing identity, the access lists of `link/statedir`, the Rust tests of each package with code for macOS only (the desktop shell, the daemon, `anima`, the database tree, and the link tests of the hub), and the pinning test of the desktop shell |
+| `gates` | Linux | Passes when the Mac tests passed, and the Linux gates passed or were not needed. The jobs `sign` and `ios-upload` wait for it |
+
+**One content is not gated two times.** The work reaches `main` as a merge of `dev`, and the gates passed on `dev` for that content. The first job of a release asks GitHub for the runs of the workflow `gates` and looks for one that passed for the same content. If it finds one, `gates-linux` does not run; the summary of the run names the run that it found. `gates-macos` runs in each release.
+
+The rule of `deploy/bin/gated-run`, in full. A run counts only when: it is a run of the file `.github/workflows/gates.yml` of this repository; for the branch `dev` of this repository; started by a push or by hand; complete with the result success, and its job `passed` has the result success; and the tree of its commit is the tree of the release commit. The tree holds each file, the gates and the workflows too, so the same gates ran on the same files. A run for a different branch never counts: it tests that branch as merged with `dev`, which is not the tree of its commit.
+
+Why a branch cannot fake it: the list comes from GitHub, not from a file of the repository. Only a push to `dev` or a run by hand on `dev` adds a run that counts, and such a run tests the commit of `dev` with the workflow file of `dev`. A person who can push to `dev` can also push to `main`, so this adds no new power. If the list cannot be read, or anything in it is not as expected, the gates run.
+
+When `main` gets a commit whose content was never on `dev`, no run counts and `gates-linux` runs. It then has no compile cache: the caches of the workflow `gates` are written by runs of `dev`, and a run of `main` cannot read them. Expect more than the 31 minutes of a run on `dev`.
+
+To run the Mac tests on a Mac: `sh deploy/bin/macos-tests`, with PostgreSQL 17, cargo-nextest and Go on `PATH`.
+
+Do not start a trial for the commit of a release that is still running, and the other way round: the workflow `gates` cancels an older run of itself for the same commit, so the first of the two would lose its gates and fail. Nothing is published in that case; start the failed run again.
+
 ### The version of a release (R-183, R-201)
 
 The version of a commit of `main` is `0.<N div 100>.<N mod 100>`, where N is the number of commits on the first line of its history (the own line of `main`; a branch that is merged adds one commit, its merge). This command prints it:
@@ -186,7 +208,7 @@ If a second account gets write access: add "Require a pull request before mergin
 
 ### A trial that publishes nothing
 
-1. Actions > release > "Run workflow". Branch: `main`. Version: `0.0.1`. Do not give the version of a release: the trial makes a real signed and notarized application and a real updater signature for the version that you give, and a person who is signed in to GitHub can download the files of a run of a public repository for 7 days.
+1. Actions > release > "Run workflow". Branch: `main`. Version: `0.0.1`. Gates: `reuse` does what a release does (the Linux gates do not run when this content passed them on `dev`); `run` runs them in each case, to measure them or to prove the call. Do not give the version of a release: the trial makes a real signed and notarized application and a real updater signature for the version that you give, and a person who is signed in to GitHub can download the files of a run of a public repository for 7 days.
 2. The run asks for no approval. It passes when the job `trial` passes. The job `publish` is skipped. Nothing is in the bucket and no feed changed. The application of a trial run is the application that a release makes: it has the updater. So when you start it, it reads the public feed and offers the published version, which is higher than `0.0.1`; that is correct, and it shows that the updater is on. Settings > Updates must not say "This is a local build".
 3. From the page of the run, download the artifacts `macos` and `linux`. On a Mac:
 
@@ -228,7 +250,7 @@ This was read on 2026-11-19 from the three feeds and from `deploy/bin/release-de
 | --- | --- |
 | The decision | The feeds give 0.2.1 for `darwin-aarch64` and `darwin-x86_64`, and `linux-x86_64` answers 404. A feed that does not exist releases, so the first push to `main` after the switch is a release, also when it changes only a document. The decision for the tip of that day was `release 0.8.14` |
 | The first minute | The job `bucket` reads `darwin-aarch64/latest.json` from the bucket with the token. A wrong token, endpoint or environment rule stops the run here, before the builds end |
-| About 60 to 80 minutes | `gates`, `tool`, `macos` and `linux` at the same time, then `sign` |
+| About 60 to 70 minutes | `gates-macos`, `tool`, `macos` and `linux` at the same time, and `gates-linux` when this content did not pass the gates on `dev`; then `gates` and `sign`. The macOS build (62 minutes in the second trial) is now the slowest part |
 | `publish`, Linux first | `linux-x86_64/<version>/Anima_<version>_amd64.AppImage`, `…/SHA256SUMS` and `…/Anima_<version>_amd64.AppImage.sig`; the copy `Anima-x86_64.AppImage` at the root; then the new feed `linux-x86_64/latest.json` |
 | `publish`, macOS second | `darwin-universal/<version>/Anima.app.tar.gz`, `…/Anima_<version>_universal.dmg`, `…/SHA256SUMS` and `…/Anima.app.tar.gz.sig`; the copy `Anima.dmg` at the root, which replaces the DMG of 0.2.1; then `darwin-aarch64/latest.json` and `darwin-x86_64/latest.json`, which replace the feeds of 0.2.1 |
 | The end | The job reads the three feeds at `https://releases.anima.ing`; each must give the version |

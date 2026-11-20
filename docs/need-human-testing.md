@@ -1163,6 +1163,16 @@ compiler outputs between runs, and a release starts with the job `bucket`, which
 with the token. Expected in step 4: `bucket` passes in the first minute. Expected in the second trial after the
 merge: the job `gates` is shorter than 82 minutes, and its last step shows cache hits.
 
+Changed on 2026-11-19, on the branch `release/call-gates`, and not run on GitHub: the release calls the workflow
+`gates` on Linux (job `gates-linux`), runs the tests that only a Mac runs in the job `gates-macos`, and does not
+call the Linux gates for a content that passed them on `dev` ([releases.md](procedures/releases.md), "The gates
+of a release"). The line above about the job `gates` and its cache no longer holds. Expected in the next trial
+from `main`, started with Gates `reuse`: the summary says "The Linux gates are not run again" and names a run of
+`dev`; `gates-linux` is skipped; `gates-macos`, `gates`, `sign` and `trial` pass. Expected in a trial with Gates
+`run`: the five jobs of `gates-linux` pass. A fault to look for in both: a job after `gates` that is skipped
+when it must run. Not proven before that trial: the time of `gates-macos`, and the test filter of
+`deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
+
 Result: Open.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
