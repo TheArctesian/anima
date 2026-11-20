@@ -184,6 +184,8 @@ No ruling names these requirements. They are not built (PLN-007).
 
 ## Reference: Arcane
 
+R-245 (2026-11-19) decides that Anima.ing also hosts Arcane as it is, as an optional extension ([extensions-plan.md](extensions-plan.md) Section 4.18). Stage 1 stays Anima.ing's own view of containers, and stage 2 is built as planned now. This section stays a reference for the screens of stage 1 and 2.
+
 The operator named Arcane (`https://github.com/getarcaneapp/arcane`) on 2026-11-18 as a product to
 learn from for this plan, and asked on the same day for a wider comparison. This section is a
 reference. It adds no requirement. The comparison read the commit `40e65a7` (2026-11-18).

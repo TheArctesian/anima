@@ -37,7 +37,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (147)
+## 2. Open decisions (150)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -71,6 +71,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-OBS23 | Automatic updates and R-233 (digests in the catalogue): what moves? | Open. Recommendation: Anima.ing moves the digest of the catalogue entry after a test install, and each machine applies the new digest automatically. No machine… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-OBS24 | Dub names hosted services (PlanetScale, Upstash Redis, QStash, Tinybird). Does Anima.ing run Dub only with local replacements? | Open. Recommendation: yes, only local replacements on the same machine, no account at a third party; OB0 proves it, and if it fails the question comes back. Str… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-OBS25 | An automatic update is a request that no person made. HOST-021 and ETH-004 say that Anima updates nothing by itself, and Section 4.14 of the stage 2 proposal na… | Open. Recommendation: yes, as a new actor "the hub schedule" for `application_apply` of the PostHog and Dub entries only, with OBS-050 to OBS-055. Strength: R-2… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-ARC1 | Does the Arcane extension count toward the extensions of EXT-009 (as OD-OBS11)? (yes/no) | Open (skipped on 2026-11-19). Recommendation: yes, the count becomes 20. Strength: one rule for each new extension. Weakness: community extensions wait longer. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-ARC2 | The Arcane manager and agent mount the socket of Docker. R-226 says that only the applications program talks to Docker, and R-228 has no profile `full`. How do… | Open. Recommendation: the owner starts them at the machine and adopts them, and the grant says what the agent can do (ARC-009). Strength: no change of R-226 or… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-ARC3 | Which document owns the OIDC provider (ARC-010)? (one choice: the design specification, sign-in of the hub (OD-2); a new proposal; this section) | Open. Recommendation: the design specification, next to OD-2, with the tasks OI1 to OI3 of this section until it moves. Strength: the sign-in of the hub has one… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-5 | Do you accept the work route contract, and how do the container work types join it? | Contract K10 version 0.3 is accepted; Section 4 of the proposal goes to a security review and becomes version 0.4 after it (R-209). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |

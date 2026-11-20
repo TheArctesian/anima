@@ -1220,6 +1220,39 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - The effort of the four parts.
 - What the Coolify product will be.
 
+### 4.18 Arcane, hosted as it is (R-245)
+
+**Direction.** R-245 (operator, first-hand, 2026-11-19, 17:08 to 17:12 PT) decides Arcane Q1 to Q4; Q5 is open (OD-ARC1). The requirements ARC-001 to ARC-012 are not approved: that is task AR1. The research is the vault gap report "Arcane" (Arcane `getarcaneapp/arcane`, commit `b154ae6`, read 2026-11-19). Arcane is BSD 3-Clause, a Go server with a SvelteKit client and SQLite, on port 3552; it talks to one Docker API for each environment, and it reaches other machines through its own agents, which dial out to the manager over one gRPC stream (fallback WebSocket). This follows the principle of the operator: "the whole goal of everything is to be able to support other open source applications".
+
+- **ARC-001.** Arcane is an optional extension, off by default (EXT-001). Anima.ing hosts it as it is: no fork, no private patch, the name and the version as the project writes them (AXT-028 to AXT-035). Stage 1 of [hosted-applications-plan.md](hosted-applications-plan.md) stays Anima.ing's own view of containers (R-245, Q1).
+- **ARC-002.** Stage 2 of hosted applications (container control) is built as planned now (R-245, Q4). Arcane does not replace it; the two are two ways to manage containers, and the operator selects.
+- **ARC-003.** The Arcane manager is an entry of the tested catalogue (OD-HOST-11, R-215), its image named by a digest (R-233), installed through the container work types and the applications program (R-226) on a machine that the operator confirms. Its port is on `127.0.0.1` (R-229). [NEEDS CLARIFICATION: its file mounts the Docker socket, which the profile `contained` refuses (R-228); OD-ARC2.]
+- **ARC-004.** The client opens the Arcane manager in a web pane of the agent tools (AXT-008 to AXT-011, AXT-015): a child web view through the tunnel of the hub, not an iframe. Only the operator opens it (AXT-012).
+- **ARC-005.** Sign-in in the pane is through an Anima.ing OIDC provider (ARC-010). The pane does not ship before that provider ships (R-245, Q3). Arcane's own OIDC client is set to the provider; the local admin of Arcane is turned off after the first sign-in (`ARCANE_DEFAULT_ADMIN_DISABLED`) [NEEDS CLARIFICATION: not verified on a real install; task AR0].
+- **ARC-006.** Other machines are reached through Arcane's own agents (R-245, Q2). An agent is a catalogue entry on each machine that the operator grants. The agent's connection to the manager goes over the network of Anima.ing (an SSH `direct-tcpip` channel of the hub, as AXT-009, or the Anima.ing network address of the manager), never over the public internet. The hub carries the bytes and keeps nothing (AXT-015).
+- **ARC-007.** The agent token and the encryption key of Arcane are secrets of the operator: sealed by the hub, never in a log (LOG-007), never returned by MCP.
+- **ARC-008.** Anima.ing never proxies the raw Docker API through the hub or the daemon. A raw Docker API is the administrator of the machine; it would reverse R-226, SF-003 and SF-018.
+- **ARC-009.** The grant screen of the agent says in a plain sentence: "Arcane's agent controls Docker on this machine, and so can do all on this machine."
+- **ARC-010.** Anima.ing gets an OIDC provider in the hub: discovery, authorization code with PKCE, ID tokens signed by a key of the hub, one client for each hosted tool, the operator's login as the only user source (design specification OD-2). [NEEDS CLARIFICATION: OD-ARC3, the owner of the provider.]
+- **ARC-011.** Arcane actions are not in the `anima` command or in MCP (CMD-030 covers only Anima.ing's own functions). An MCP tool may read the state of the Arcane entry (installed, running), as AXT-019.
+- **ARC-012.** No Arcane agent ships before the security review of task AR6 passes with no open finding of severity high.
+
+| Task | Wave | Content | Needs | State | Commits |
+| --- | --- | --- | --- | --- | --- |
+| AR0 | 0 | A record in `docs/research/`: Arcane manager and one agent on test machines, the agent link through the hub, the OIDC setting, the socket mount against the profile `contained` | — | Not started | — |
+| AR1 | 1 | The operator approves ARC-001 to ARC-012 and decides OD-ARC1 to OD-ARC3 | The operator | Not started | — |
+| AR2 | 2 | The catalogue entries of the Arcane manager and agent by digest (ARC-003, ARC-006) | AR1; the container work types as version 0.4 of K10 and task H30 (R-237) | Not started | — |
+| AR3 | 2 | The agent link over the network of Anima.ing (ARC-006), with the grant of ARC-009 | AR2 | Not started | — |
+| AR4 | 3 | The web pane of the manager (ARC-004), after OI3 | AR2; AX5, AX8; OI3 | Not started | — |
+| AR5 | 3 | The extension switch, the state read for MCP (ARC-011), the attribution | AR2 | Not started | — |
+| AR6 | 4 | The security review: the agent with the socket of Docker (OD-ARC2), the token, the link, the pane; entries in `need-human-testing.md` | AR3, AR4 | Not started | — |
+| AR7 | 5 | Human check: the operator signs in to Arcane with Anima.ing and manages a container on a second machine through an agent | AR6 | Not started | — |
+| OI1 | 1 | The design of the OIDC provider (ARC-010): keys, clients, consent, logout, the hosted hub | AR1; OD-ARC3 | Not started | — |
+| OI2 | 2 | Hub: the provider endpoints and the client records | OI1 | Not started | — |
+| OI3 | 3 | The security review of the provider; client: the list of OIDC clients in Settings | OI2 | Not started | — |
+
+Check commands: AR0, AR1 and OI1 are documents (`bun run quality:register`, `bun run quality:documents`); AR2 to AR5 and OI2 run `cargo nextest run -p anima-hub` and `bun run gates`; AR6 and OI3 pass with no open finding of severity high. Always: a worktree from `origin/dev`, a claim (PLN-022), CMD-030 order for Anima.ing's own functions. Ask first: a public port; a change of the profile `contained`. Never: a fork of Arcane; a raw Docker API through the hub; a secret in a log.
+
 ## 5. Build order: engine first, then one workflow per extension
 
 The extensions start only when the current device manager build is finished: Phase 1 is accepted, `phase-1` is merged into `main`, and the macOS and Linux desktop applications are built.
@@ -1482,6 +1515,9 @@ crates/
 | OD-OBS23 | Automatic updates and R-233 (digests in the catalogue): what moves? | Open. Recommendation: Anima.ing moves the digest of the catalogue entry after a test install, and each machine applies the new digest automatically. No machine follows a tag. Strength: R-233 holds; a broken upstream build stops at the test. Weakness: an update reaches machines only after Anima.ing tests it. |
 | OD-OBS24 | Dub names hosted services (PlanetScale, Upstash Redis, QStash, Tinybird). Does Anima.ing run Dub only with local replacements? | Open. Recommendation: yes, only local replacements on the same machine, no account at a third party; OB0 proves it, and if it fails the question comes back. Strength: no data leaves the operator's machines. Weakness: Dub may not support it; not verified. |
 | OD-OBS25 | An automatic update is a request that no person made. HOST-021 and ETH-004 say that Anima updates nothing by itself, and Section 4.14 of the stage 2 proposal names the actors. May the hub schedule update these two catalogue entries? | Open. Recommendation: yes, as a new actor "the hub schedule" for `application_apply` of the PostHog and Dub entries only, with OBS-050 to OBS-055. Strength: R-242 needs it. Weakness: one more exception to ETH-004. |
+| OD-ARC1 | Does the Arcane extension count toward the extensions of EXT-009 (as OD-OBS11)? (yes/no) | Open (skipped on 2026-11-19). Recommendation: yes, the count becomes 20. Strength: one rule for each new extension. Weakness: community extensions wait longer. |
+| OD-ARC2 | The Arcane manager and agent mount the socket of Docker. R-226 says that only the applications program talks to Docker, and R-228 has no profile `full`. How do they run? (one choice: the owner starts them at the machine and adopts them (R-211, R-228); a profile for Arcane only, after a ruling; no agent) | Open. Recommendation: the owner starts them at the machine and adopts them, and the grant says what the agent can do (ARC-009). Strength: no change of R-226 or R-228; the owner of each machine decides at the machine. Weakness: no install by one click; an adopted stack updates as R-232 says. |
+| OD-ARC3 | Which document owns the OIDC provider (ARC-010)? (one choice: the design specification, sign-in of the hub (OD-2); a new proposal; this section) | Open. Recommendation: the design specification, next to OD-2, with the tasks OI1 to OI3 of this section until it moves. Strength: the sign-in of the hub has one owner. Weakness: one move later. |
 
 ## 8. Ideas taken from Auracle and HQ
 

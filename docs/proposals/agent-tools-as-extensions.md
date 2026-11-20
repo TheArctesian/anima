@@ -66,7 +66,7 @@ Files read: [plan/ownership.md](../plan/ownership.md), [plan/register.md](../pla
 | The terminal screen `anima tui` | cli-mcp-plan.md Section 11 (TUI) | No overlap. `anima tui` gives the terminal to `anima ssh`; it does not open tools. |
 | Ideas folder | [ideas/](../ideas/README.md): `agent-state-hooks` (the open status protocol of Herdr), `needs-you-inbox`, `agent-execution-on-managed-machine` | Neighbours, not overlaps. OD-AXT10 points to `agent-state-hooks`. |
 | A chat workspace (Open WebUI) | [compute-plan.md](../plans/compute-plan.md) Section 8 (CHAT-001 to CHAT-007) | A rival (R-196, OD-AXT18): the Chat page becomes a full chat page. |
-| Container management (Arcane, Portainer) | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (R-149, R-150) | Rivals. The operator asked about them; no decision was made (R-196). |
+| Container management (Arcane, Portainer) | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (R-149, R-150); [extensions-plan.md](../plans/extensions-plan.md) Section 4.18 | Arcane: hosted as it is, as an optional extension with a web pane (R-245). Portainer: no decision. |
 | Deferred list | deferred.md | No item before version 5 (searched Herdr, T3 Code, Hermes, extension host, third-party). Version 5 adds the list "R-196: agent tools as extensions". |
 
 Decision on the owner. PLN-004 says to change the owning plan. No plan owns "a tool of another vendor in a pane". The extensions plan owns community extensions, but its Section 3.4.4 asks for a separate design, and its text there is a draft for review. bots.md owns the install, and this proposal changes it only through two catalogue entries. So this is a new proposal with one new concern row in ownership.md. R-196 decided OD-AXT2 and OD-AXT3. The commit of R-196 makes the changes of Section 7 that the decisions permit, in extensions-plan.md (4.12.1, EXT-009), bots.md, ai-direction.md and compute-plan.md.
@@ -175,7 +175,7 @@ The facts below (licences and technical notes) come from the competitor notes of
 | --- | --- | --- | --- |
 | Ollama | 1 | It does the job of the Level 1 model service of the compute plan, which the operator approved (R-165). | A rival of the model service. |
 | Open WebUI | 1 (since R-196) | The operator decided that the Chat page of the compute plan becomes a full chat page (R-196, OD-AXT18: "no, build a full chat page; Open WebUI is a rival."). | A rival of the Chat page. Before R-196 it was in wave A. |
-| Arcane, Portainer | 1 | The hosted-applications plan builds container management (R-149, R-150). The operator asked to add them; the Planner found that they are rivals, and no decision was made (R-196). | Rivals. |
+| Portainer | 1 | The hosted-applications plan builds container management (R-149, R-150). The operator asked to add it; no decision was made (R-196). Arcane left this list by R-245 (extensions-plan.md Section 4.18). | Rival. |
 | OpenHands | 1 | It is now a control plane that runs many coding agents on local, remote and cloud machines. That is the job of the agent panes and of agent runs. | On hold. |
 | Goose | 2 | A person starts it for each task; it is not kept running. | A candidate install recipe of bots.md (BOT-019, BOT-037: an ACP agent), not an extension. |
 | code-server | 1 in part, and 3 | Its terminal and browser access to a machine overlap Reach (the terminal and the web interfaces). Coder, its maker, sells hosted remote development. | On hold. Ask Coder before a listing. |
