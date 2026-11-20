@@ -70,6 +70,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
+| HT-051 | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
@@ -1419,6 +1420,34 @@ built or signed the application, and nothing was sent to App Store Connect.
    published <version>", and no iOS job runs.
 
 Result: Open.
+
+### HT-051: the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252)
+
+Built: on the branch `quality/faster-gates`. `.github/workflows/gates.yml` runs the 21 gates on Linux
+machines of GitHub for each pushed branch, as merged with `dev`. `.github/workflows/merge-to-dev.yml`
+merges a branch whose run passed into `dev`.
+
+The tests cover the rules of the two files (no secret, pinned actions, no pull request, the order of the
+steps), the choice of the gates and the merge script, which was run in a clone with an origin of its own.
+Not covered: no run on GitHub. Nobody saw the packages install on `ubuntu-24.04`, the Rust tests pass on
+Linux with 4 processors, the time of a run, the cache, or a push by the workflow to `dev`. Expect that the
+first runs fail for a reason of the machine; each such fault is a correction of the workflow, not of the code.
+
+Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-gates` (not a result of this entry: only the operator sets it): the sixth run, 44652644005 on commit `152773ff`, passed each job in 31.5 minutes (`go` 2, `bun` 6, `rust-lint` 12, `rust-test` 31). The five runs before it failed for the reasons that [quality/README.md](../quality/README.md), "The gates on GitHub", lists; two of them were the step "Merge the dev of this run into the checkout" refusing a branch that did not merge with `dev`, as step 5 expects. Steps 3 and 4 were not run: `merge-to-dev.yml` is not on `main`.
+
+1. Push a branch that changes one document. Open the run `gates` of that branch on GitHub. Expected: the
+   job `base` prints "tested with dev at:" and a commit; the five other jobs pass; write the time of each job here.
+2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is
+   faster than the first (the cache).
+3. When `merge-to-dev.yml` is on `main` and the settings are made: push a branch with one changed document and
+   one placeholder of a number. Expected: after the gates, the run `merge-to-dev` merges it; `dev` has a merge
+   commit that names the number; the placeholder is gone; a run `gates` for `dev` starts.
+4. Push two such branches at the same time. Expected: the first merges; the gates of the second run again
+   with the new `dev`, and then it merges. `main` did not move.
+5. Push a branch that has a conflict with `dev` in a document. Expected: its gates fail in the step "Merge
+   the dev of this run into the checkout", and nothing is merged.
+
+State: Open.
 
 ## Not built yet
 
