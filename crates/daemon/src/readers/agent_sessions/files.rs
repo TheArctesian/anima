@@ -48,9 +48,14 @@ pub(super) struct Stamp {
 /// # Errors
 /// The error of the open, or `InvalidInput` when the path is not a regular file.
 pub(super) fn open_no_link(path: &Path) -> io::Result<File> {
+    #[cfg(unix)]
     use rustix::fs::{Mode, OFlags};
+    #[cfg(unix)]
     let flags = OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC;
+    #[cfg(unix)]
     let file = File::from(rustix::fs::open(path, flags, Mode::empty())?);
+    #[cfg(windows)]
+    let file = anima_windows::files::read(path, false)?;
     if !file.metadata()?.is_file() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,

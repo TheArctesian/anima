@@ -135,6 +135,7 @@ fn gw_015_without_a_stored_password_guacd_gets_none_and_may_ask() {
         let sources = Sources {
             device: &device,
             target: TARGET,
+            port: desktop.port(&device),
             password: None,
             certificate: None,
             drive_root: DRIVE_ROOT,

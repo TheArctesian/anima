@@ -1,6 +1,7 @@
 //! `anima containers list`, `anima containers logs` and the MCP tool `anima_container_list`
 //! against the scripted hub (HOST-001, HOST-019, CMD-020, CMD-030, MCP-004).
 
+mod compose_file;
 mod details;
 
 use serde_json::{Value, json};

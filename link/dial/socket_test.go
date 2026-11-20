@@ -3,6 +3,7 @@ package dial_test
 import (
 	"bufio"
 	"context"
+	"github.com/TheArctesian/anima/link/testpath"
 	"io"
 	"net"
 	"net/netip"
@@ -19,7 +20,7 @@ import (
 func dialSocket(t *testing.T, open dial.Opener) string {
 	t.Helper()
 	// A socket's path is short, so the folder is not under t.TempDir().
-	folder, err := os.MkdirTemp("/tmp", "dial")
+	folder, err := testpath.MkdirTemp("dial")
 	if err != nil {
 		t.Fatal(err)
 	}

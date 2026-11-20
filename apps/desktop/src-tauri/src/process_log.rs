@@ -6,7 +6,7 @@ mod error;
 mod folder;
 mod line;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 pub use error::ProcessLogError;

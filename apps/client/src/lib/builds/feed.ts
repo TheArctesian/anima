@@ -11,6 +11,7 @@ export interface UpdateFile {
 export interface BuiltPlatforms {
   readonly macos?: UpdateFile | undefined;
   readonly linux?: UpdateFile | undefined;
+  readonly windows?: UpdateFile | undefined;
 }
 
 export interface Feed {
@@ -31,11 +32,13 @@ export class NoPlatformsError extends Error {
 const FEED_KEYS = {
   macos: ['darwin-aarch64', 'darwin-x86_64'],
   linux: ['linux-x86_64'],
+  windows: ['windows-x86_64'],
 } as const;
 
 /** A stable name for people, chosen by the file's extension. */
 const STABLE_NAMES: readonly (readonly [suffix: string, name: string])[] = [
   ['.dmg', 'Anima.dmg'],
+  ['-setup.exe', 'Anima-x86_64-setup.exe'],
   ['.AppImage', 'Anima-x86_64.AppImage'],
 ];
 
@@ -45,7 +48,7 @@ function usable(update: UpdateFile | undefined): update is UpdateFile {
 
 export function buildFeed(input: { version: string; baseUrl: string; date: Date; built: BuiltPlatforms }): Feed {
   const platforms: Feed['platforms'] = {};
-  for (const platform of ['macos', 'linux'] as const) {
+  for (const platform of ['macos', 'linux', 'windows'] as const) {
     const update = input.built[platform];
     if (!usable(update)) continue;
     const entry = { url: `${input.baseUrl}/${encodeURIComponent(update.file)}` };

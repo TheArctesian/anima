@@ -16,7 +16,7 @@ pub(super) fn computer_name(os: OperatingSystem) -> String {
     let named = match os {
         OperatingSystem::Macos => output_of(SCUTIL, &["--get", "ComputerName"], PATIENCE)
             .and_then(|output| first_line(&output)),
-        OperatingSystem::Linux => None,
+        OperatingSystem::Linux | OperatingSystem::Windows => None,
     };
     named
         .or_else(|| {

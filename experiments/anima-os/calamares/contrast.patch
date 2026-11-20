@@ -1,0 +1,38 @@
+--- a/src/modules/partition/gui/PartitionLabelsView.cpp
++++ b/src/modules/partition/gui/PartitionLabelsView.cpp
+@@ -282,7 +282,7 @@
+             labelRect.adjust( 0, -LAYOUT_MARGIN, 0, -2 * LAYOUT_MARGIN );
+             painter->translate( 0.5, 0.5 );
+             QRect hoverRect = labelRect.adjusted( 0, 0, -1, -1 );
+-            painter->setBrush( QPalette().window().color().lighter( 102 ) );
++            painter->setBrush( QColor( "#3B4252" ) );
+             painter->setPen( Qt::NoPen );
+             painter->drawRoundedRect( hoverRect, CORNER_RADIUS, CORNER_RADIUS );
+ 
+@@ -373,7 +373,7 @@
+                                 const QPoint& pos,
+                                 bool selected )
+ {
+-    painter->setPen( Qt::black );
++    painter->setPen( QColor( "#ECEFF4" ) );
+     int vertOffset = 0;
+     int width = 0;
+     for ( const QString& textLine : text )
+@@ -382,7 +382,7 @@
+         painter->drawText(
+             pos.x() + LABEL_PARTITION_SQUARE_MARGIN, pos.y() + vertOffset + textSize.height() / 2, textLine );
+         vertOffset += textSize.height();
+-        painter->setPen( Qt::gray );
++        painter->setPen( QColor( "#D8DEE9" ) );
+         width = qMax( width, textSize.width() );
+     }
+ 
+@@ -395,7 +395,7 @@
+         drawSelectionSquare( painter, partitionSquareRect.adjusted( 2, 2, -2, -2 ), color );
+     }
+ 
+-    painter->setPen( Qt::black );
++    painter->setPen( QColor( "#ECEFF4" ) );
+ }
+ 
+ QModelIndex

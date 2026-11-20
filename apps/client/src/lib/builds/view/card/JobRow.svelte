@@ -3,7 +3,7 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import type { JobView } from '../api';
-  import { canCancel, stateAge, stateLabel, targetLabel, waitingText } from '../release';
+  import { TARGET_ICONS, canCancel, stateAge, stateLabel, targetLabel, waitingText } from '../release';
   import { jobStages, stateTone } from './progress';
   import StageTrack from './StageTrack.svelte';
   import StatePill from './StatePill.svelte';
@@ -30,7 +30,7 @@
 
 <li class="job" class:selected>
   <button class="pick" type="button" tabindex="0" aria-pressed={selected} aria-label="Show log of {target} job of {version}" onclick={onselect}>
-    <span class="platform" aria-hidden="true"><Icon name={job.target === 'DARWIN_UNIVERSAL' ? 'simple-icons:apple' : 'simple-icons:linux'} /></span>
+    <span class="platform" aria-hidden="true"><Icon name={TARGET_ICONS[job.target]} /></span>
     <strong class="target">{target}</strong>
     <StatePill word={stateLabel(job.state)} tone={stateTone(job.state)} />
     <span class="facts">

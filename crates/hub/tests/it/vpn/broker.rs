@@ -3,6 +3,7 @@
 //! The fake broker accepts one connection at a time and closes a second at once, as systemd's
 //! `MaxConnections=1` does.
 
+use crate::local_socket::{Listener as UnixListener, Stream as UnixStream};
 use std::{
     path::PathBuf,
     sync::{
@@ -17,7 +18,6 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
-    net::{UnixListener, UnixStream},
     sync::watch,
 };
 
@@ -87,13 +87,14 @@ pub fn start(
         received: Arc::new(watch::Sender::new(Vec::new())),
         refused: Arc::default(),
     };
-    let listener = UnixListener::bind(fake.path()).unwrap();
+    crate::local_socket::protect(fake.folder.path());
+    let listener = UnixListener::bind(fake.path().as_path()).unwrap();
     let (seen, refused) = (fake.seen.clone(), fake.refused.clone());
     let received = fake.received.clone();
     let answer = Arc::new(answer);
     let busy = Arc::new(AtomicBool::new(false));
     tokio::spawn(async move {
-        while let Ok((stream, _)) = listener.accept().await {
+        while let Ok(stream) = crate::local_socket::accept(&listener).await {
             if busy.swap(true, Ordering::SeqCst) {
                 refused.fetch_add(1, Ordering::SeqCst);
                 continue;

@@ -51,9 +51,10 @@ function memoryStorage(refuse = false): Storage {
 }
 
 describe('readThisMachine', () => {
-  it("R-060, ADR-005: asks the shell with the hub's login server and keeps only the machine fields", async () => {
-    shell.invoke.mockResolvedValue({ ...MAC, extra: 'dropped' });
-    expect(await readThisMachine(hub())).toEqual(MAC);
+  it.each(['MACOS', 'LINUX', 'WINDOWS'] as const)("R-060, ADR-005, WIN1: reads %s with the hub's login server and keeps only machine fields", async (os) => {
+    const machine = { ...MAC, os };
+    shell.invoke.mockResolvedValue({ ...machine, extra: 'dropped' });
+    expect(await readThisMachine(hub())).toEqual(machine);
     expect(shell.invoke).toHaveBeenCalledWith('this_machine_read', { loginServer: LOGIN_SERVER });
   });
 
@@ -79,7 +80,7 @@ describe('readThisMachine', () => {
   it.each([
     ['null', null],
     ['a string', 'Studio'],
-    ['an unsupported OS', { ...MAC, os: 'WINDOWS' }],
+    ['an unsupported OS', { ...MAC, os: 'ANDROID' }],
     ['a non-string name', { ...MAC, name: 7 }],
     ['a missing user', { ...MAC, user: undefined }],
     ['a non-boolean SSH flag', { ...MAC, sshListening: 'yes' }],

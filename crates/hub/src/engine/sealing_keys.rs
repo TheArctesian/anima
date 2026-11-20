@@ -6,15 +6,16 @@
 //! that are equal. No error text and no `Debug` output holds a key or a plain value (LOG-007).
 
 use std::{
-    fmt,
-    fs::{DirBuilder, OpenOptions},
-    io::{self, Write as _},
-    os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _},
+    fmt, io,
     path::{Path, PathBuf},
 };
 
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+#[cfg(unix)]
+use std::{fs::DirBuilder, os::unix::fs::DirBuilderExt as _};
+
+mod key_files;
 use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce, aead::AeadInOut};
+use key_files::{key_names, make_key, read_key};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
@@ -82,11 +83,20 @@ impl SealingKeys {
         let Some(folder) = folder else {
             return Ok(Self { folder: None });
         };
+        #[cfg(unix)]
         DirBuilder::new()
             .recursive(true)
             .mode(0o700)
             .create(folder)
             .map_err(|error| SealingKeyError::Folder(error.kind()))?;
+        #[cfg(windows)]
+        {
+            let absolute = std::path::absolute(folder)
+                .map_err(|error| SealingKeyError::Folder(error.kind()))?;
+            anima_windows::files::directory(&absolute)
+                .and_then(|()| anima_windows::files::protect(&absolute))
+                .map_err(|error| SealingKeyError::Folder(error.kind()))?;
+        }
         let mut seen: Vec<(String, String)> = Vec::new();
         for name in key_names(folder)? {
             let key = read_key(folder, &name)?;
@@ -250,85 +260,6 @@ pub fn is_name(name: &str) -> bool {
 }
 
 /// The names of the key files in `folder`, sorted. Other files are not keys and are left.
-fn key_names(folder: &Path) -> Result<Vec<String>, SealingKeyError> {
-    let entries =
-        std::fs::read_dir(folder).map_err(|error| SealingKeyError::Folder(error.kind()))?;
-    let mut names = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|error| SealingKeyError::Folder(error.kind()))?;
-        let file = entry.file_name();
-        let name = file.to_str().and_then(|file| file.strip_suffix(KEY_SUFFIX));
-        if let Some(name) = name.filter(|name| is_name(name)) {
-            names.push(name.to_owned());
-        }
-    }
-    names.sort();
-    Ok(names)
-}
-
-fn key_path(folder: &Path, name: &str) -> PathBuf {
-    folder.join(format!("{name}{KEY_SUFFIX}"))
-}
-
-fn read_key(folder: &Path, name: &str) -> Result<SealingKey, SealingKeyError> {
-    let unreadable = |error: io::Error| SealingKeyError::KeyFile {
-        name: name.to_owned(),
-        kind: error.kind(),
-    };
-    let text = Zeroizing::new(std::fs::read(key_path(folder, name)).map_err(unreadable)?);
-    let mut key = Zeroizing::new([0_u8; KEY_LEN]);
-    // The decode error is dropped unread: it can quote a byte of the key.
-    let decoded = STANDARD.decode_slice(text.trim_ascii(), key.as_mut_slice());
-    if decoded.ok() != Some(KEY_LEN) {
-        return Err(SealingKeyError::KeyFormat {
-            name: name.to_owned(),
-        });
-    }
-    let id = key_id(&key);
-    Ok(SealingKey {
-        name: name.to_owned(),
-        key,
-        id,
-    })
-}
-
-/// Writes a new key file that only the hub user can read: first under a temporary name, then
-/// linked to its name, so that no reader sees a file that is half written. A file that another
-/// request made first is kept: the caller reads it.
-fn make_key(folder: &Path, name: &str) -> Result<(), SealingKeyError> {
-    let failed = |error: io::Error| SealingKeyError::KeyFile {
-        name: name.to_owned(),
-        kind: error.kind(),
-    };
-    let mut random = Zeroizing::new([0_u8; KEY_LEN + 8]);
-    getrandom::fill(random.as_mut_slice()).map_err(|_| SealingKeyError::KeyFile {
-        name: name.to_owned(),
-        kind: io::ErrorKind::Other,
-    })?;
-    let (key, marker) = random.split_at(KEY_LEN);
-    let text = Zeroizing::new(format!("{}\n", STANDARD.encode(key)));
-    let temporary = folder.join(format!(".{name}.{}.tmp", hex(marker)));
-    let written = write_private(&temporary, text.as_bytes())
-        .and_then(|()| std::fs::hard_link(&temporary, key_path(folder, name)));
-    let removed = std::fs::remove_file(&temporary);
-    match written {
-        Ok(()) => removed.map_err(failed),
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(()),
-        Err(error) => Err(failed(error)),
-    }
-}
-
-/// A new file with mode 0600 that holds `bytes`, flushed to the disk.
-fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(path)?;
-    file.write_all(bytes)?;
-    file.sync_all()
-}
-
 /// Names a key without showing it: the first 8 bytes of SHA-256(domain ‖ key), in hexadecimal,
 /// as the credential vault names its key.
 fn key_id(key: &[u8; KEY_LEN]) -> String {

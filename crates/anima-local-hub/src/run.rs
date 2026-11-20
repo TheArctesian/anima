@@ -13,7 +13,7 @@ use crate::log_file::{LOG_LIMIT, LogFile};
 use crate::state::{self, State};
 use crate::stop_marker;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 #[derive(Debug, thiserror::Error)]
@@ -86,9 +86,18 @@ enum Kept {
 ///
 /// # Errors
 /// [`RunError::AnotherCopy`], or when the hub's folders or the state cannot be written.
-pub async fn run(plan: &Plan, mut stop: Stop, ready: impl FnOnce()) -> Result<Ended, RunError> {
+pub async fn run(plan: &Plan, stop: Stop, ready: impl FnOnce()) -> Result<Ended, RunError> {
     let folders = &plan.folders;
+    #[cfg(unix)]
+    let mut stop = stop;
     let _lock = lock(folders)?;
+    #[cfg(windows)]
+    let mut stop = stop
+        .with_control(&folders.root().join("stop.sock"))
+        .map_err(io_error("bind the private stop socket"))?;
+    #[cfg(windows)]
+    owner_only::folder(folders.database().socket_folder())
+        .map_err(io_error("make the private link socket folder"))?;
     // The hub starts now: an operator's stop is over.
     stop_marker::clear(folders).map_err(io_error("take away the stop mark"))?;
     owner_only::folder(&folders.logs()).map_err(io_error("make the log folder"))?;

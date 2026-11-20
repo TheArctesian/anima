@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
@@ -15,7 +16,7 @@ afterEach(removeScratchFolders);
 
 const TOOLS = ["dirname", "mkdir", "mktemp", "chmod", "chown", "mv", "rm", "cat", "ls", "find", "id", "stty", "cut"];
 
-describe("make-secrets producers (DB-002, SEC-004)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets producers (DB-002, SEC-004)", () => {
   test("SEC-004: without openssl it fails, stores nothing, and a later run makes correct files", async () => {
     const folder = newSecretsPath();
     const result = await makeSecrets(folder, { path: toolsOnly(TOOLS) });
@@ -47,7 +48,7 @@ describe("make-secrets producers (DB-002, SEC-004)", () => {
   });
 });
 
-describe("make-secrets folder trust (SEC-004)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets folder trust (SEC-004)", () => {
   test("SEC-004: a folder that the current user does not own is refused", async () => {
     const folder = newSecretsPath();
     const result = await makeSecrets(folder, { shimDirectories: [shimFolder({ find: "exit 0" })] });
@@ -77,7 +78,7 @@ describe("make-secrets folder trust (SEC-004)", () => {
   });
 });
 
-describe("make-secrets owners (DB-002)", () => {
+describe.skipIf(process.platform === "win32")("make-secrets owners (DB-002)", () => {
   test("DB-002: every file gets its owner, and chown runs before chmod", async () => {
     const folder = newSecretsPath();
     const log = join(scratchFolder(), "calls.log");

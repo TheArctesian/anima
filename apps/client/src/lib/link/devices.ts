@@ -75,7 +75,9 @@ export function deviceLinkText(status: DeviceLinkStatus): string {
         ? `Down: another program holds port ${String(status.port ?? '')}.`
         : status.reason === 'not-carried'
           ? 'Down: this build does not carry the link program.'
-          : 'Down: the link ended. Restarting in 10 seconds.';
+          : status.reason === 'repeated-failure'
+            ? 'Down: the link kept stopping. Check the application log and system security notifications, then restart Anima.'
+            : 'Down: the link ended. Restarting in 10 seconds.';
   }
 }
 

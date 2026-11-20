@@ -37,6 +37,7 @@ async fn no_content_stored(bench: &Bench) {
     assert!(!stored.contains("QZXJ"), "{stored}");
 }
 
+#[cfg(unix)] // The test SSH server creates a POSIX symlink on its host.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))

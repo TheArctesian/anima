@@ -236,7 +236,8 @@ async fn d_4_a_refused_connection_to_the_proxy_is_down() {
     drop(proxy);
     env.localapi = Some("127.0.0.1:1".to_owned());
 
-    let result = run(&ping(Some("100.64.0.7"), 2000), "x", &env).await;
+    // Leave room for Windows' refused-connection retries, rather than testing the deadline.
+    let result = run(&ping(Some("100.64.0.7"), 5000), "x", &env).await;
 
     assert_eq!(down(&result), "the request failed");
 }

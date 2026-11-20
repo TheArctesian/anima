@@ -42,7 +42,9 @@ const PROXY_VARIABLES = new Set(["http_proxy", "https_proxy", "all_proxy"]);
  * CONNECT, and on loopback http it would see the key (S-S2).
  */
 export function proxyConfigured(env: Readonly<Record<string, string | undefined>>): boolean {
-  return Object.entries(env).some(([name, value]) => PROXY_VARIABLES.has(name.toLowerCase()) && (value ?? "") !== "");
+  // Windows runtimes can expose different casing when enumerating and reading environment keys.
+  const named = [...PROXY_VARIABLES].some((name) => (env[name] ?? "") !== "" || (env[name.toUpperCase()] ?? "") !== "");
+  return named || Object.entries(env).some(([name, value]) => PROXY_VARIABLES.has(name.toLowerCase()) && (value ?? "") !== "");
 }
 
 /** Verification on, always: stated here so `NODE_TLS_REJECT_UNAUTHORIZED=0` cannot turn it off (S-M1). */

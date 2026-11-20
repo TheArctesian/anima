@@ -1,0 +1,37 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "publication-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "publication-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "publication-cut",
+      "result": "Passed",
+      "harness_reset": true,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "publication-cut/1/serial.log",
+      "sha256": "290647fafa2796f0fcf93b0a419ef4f584f40844a00600928fb44ab206517e4c"
+    },
+    {
+      "path": "publication-cut/2/serial.log",
+      "sha256": "2b6e07e04c566c604181f7358b968b769e7fc377fc5b4b03e609f019c83e7078"
+    },
+    {
+      "path": "publication-cut/3/serial.log",
+      "sha256": "cebe069279cd4c8e40ef47ead854e361ca1b7823c05a8af2996127a9e87f786d"
+    }
+  ]
+}

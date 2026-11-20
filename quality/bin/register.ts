@@ -1,5 +1,6 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { MOCKUPS, mockupTable, withMockupTable } from "../src/documents/mockup-records.ts";
 import { QUEUE, queueRows, withQueue } from "../src/documents/queue.ts";
 import { REGISTER, registerRows, withRows } from "../src/documents/register.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
@@ -33,3 +34,12 @@ if (queue === undefined) {
 }
 writeFileSync(join(REPO_ROOT, QUEUE), queue);
 console.log(`register: wrote ${QUEUE}`);
+
+// The index of the mockups is written from the record of each mockup (PLN-019).
+const mockups = withMockupTable(existing(MOCKUPS), mockupTable(documents));
+if (mockups === undefined) {
+  console.error(`register: ${MOCKUPS} has no generated table`);
+  process.exit(1);
+}
+writeFileSync(join(REPO_ROOT, MOCKUPS), mockups);
+console.log(`register: wrote ${MOCKUPS}`);

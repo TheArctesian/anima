@@ -58,6 +58,7 @@ pub(super) const fn can_build(platform: Platform, target: Target) -> bool {
         (target, platform.os, platform.arch),
         (Target::LinuxX86_64, Os::Linux, Arch::X86_64)
             | (Target::DarwinUniversal, Os::Macos, Arch::Aarch64)
+            | (Target::WindowsX86_64, Os::Windows, Arch::X86_64)
     )
 }
 

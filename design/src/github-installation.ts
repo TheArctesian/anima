@@ -6,6 +6,8 @@ const INSTALLED_TOKENS = new Set([
   'surface-sunken', 'text', 'text-secondary', 'accent', 'font-ui',
   'space-4', 'space-6', 'space-8', 'space-12', 'space-16', 'text-md', 'text-2xl', 'text-display',
   'weight-light', 'leading-tight', 'leading-normal', 'tracking-tight',
+  // The one button of the confirm page and of the page that opens GitHub.
+  'on-accent', 'radius-md', 'weight-medium', 'space-2', 'control-lg',
 ]);
 
 /** The hub's standalone page follows the default palette and the browser's appearance (TOK-001). */

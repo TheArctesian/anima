@@ -22,6 +22,8 @@ describe('the device link answers', () => {
   it('LNK-006: the status keeps the path and latency it was sent, and refuses unknown values', () => {
     const up = { joined: true, state: 'up', port: 41_000, path: 'relayed', latencyMs: 42.5 };
     expect(linkStatusOf(up)).toEqual(up);
+    const stopped = { joined: true, state: 'down', reason: 'repeated-failure' };
+    expect(linkStatusOf(stopped)).toEqual(stopped);
     expect(linkStatusOf({ joined: true, state: 'down', reason: 'port-taken', path: null })).toEqual({ joined: true, state: 'down', reason: 'port-taken' });
     for (const wrong of [{ ...up, state: 'sideways' }, { ...up, path: 'tunnel' }, { ...up, reason: 'other' }, { state: 'up' }]) expect(linkStatusOf(wrong)).toBeUndefined();
   });

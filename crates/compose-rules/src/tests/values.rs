@@ -179,3 +179,28 @@ fn host_028_names_and_counts_of_the_top_level_have_their_limits() {
     assert_eq!(refusal("services: {}\n"), top(Rule::ValueNotPermitted));
     assert_eq!(refusal("volumes:\n  data:\n"), top(Rule::ValueNotPermitted));
 }
+
+#[test]
+fn host_028_the_readers_of_the_final_form_read_a_value_as_the_check_reads_it() {
+    use crate::forms::{bind_name, bytes, processor_billionths, seconds};
+    assert_eq!(processor_billionths("2"), Some(2_000_000_000));
+    assert_eq!(processor_billionths("0.5"), Some(500_000_000));
+    assert_eq!(processor_billionths("1.0000000019"), Some(1_000_000_001));
+    for wrong in ["", ".5", "1.", "-1", "1e3", "0x1", "1.5.2"] {
+        assert_eq!(processor_billionths(wrong), None, "{wrong}");
+    }
+    assert_eq!(bind_name("binds/config"), Some("config"));
+    assert_eq!(bind_name("./binds/config"), Some("config"));
+    for wrong in [
+        "binds/",
+        "binds/a/b",
+        "binds/..",
+        "/binds/a",
+        "files",
+        "binds/A",
+    ] {
+        assert_eq!(bind_name(wrong), None, "{wrong}");
+    }
+    assert_eq!(seconds("1m30s"), Some(90));
+    assert_eq!(bytes("512m"), Some(512 << 20));
+}

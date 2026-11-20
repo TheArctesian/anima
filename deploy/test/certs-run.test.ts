@@ -1,3 +1,4 @@
+// Unix certificate-container scripts are exercised by the Linux/macOS gates.
 // deploy/certs/run.sh with a fake lego and a fake sleep (DNS-002, DNS-003). No network.
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -88,7 +89,7 @@ async function runScript(options: { chain?: string; env?: Record<string, string>
   };
 }
 
-describe("run.sh", () => {
+describe.skipIf(process.platform === "win32")("run.sh", () => {
   test("DNS-002 orders the first certificate when lego state holds none, with the e-mail and accept-tos", async () => {
     const outcome = await runScript();
     const first = outcome.lego[0] ?? "";
