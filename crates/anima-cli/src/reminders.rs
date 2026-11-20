@@ -5,6 +5,7 @@ pub mod documents;
 pub mod firings;
 pub mod rules;
 mod shown;
+mod watch;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -33,6 +34,9 @@ pub enum ReminderCommand {
     Snooze(firings::SnoozeArgs),
     /// Acknowledge a reminder that was sent: it is not sent again.
     Ack(firings::AckArgs),
+    /// Print one line for each reminder when it is sent. While this runs, the hub sends no
+    /// reminder to a notification channel.
+    Watch,
 }
 
 impl ReminderCommand {
@@ -54,6 +58,7 @@ impl ReminderCommand {
             Self::Firings(args) => args.run(invocation).await,
             Self::Snooze(args) => args.run(invocation).await,
             Self::Ack(args) => args.run(invocation).await,
+            Self::Watch => watch::run(invocation).await,
         }
     }
 }

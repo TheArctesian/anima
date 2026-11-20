@@ -1,9 +1,10 @@
 <script lang="ts">
   import LineChart from '$lib/charts/LineChart.svelte';
+  import { contextHubIsHosted } from '$lib/hosted/context';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import Icon from '$lib/icons/Icon.svelte';
   import { hasMetrics } from '$lib/metrics/source/has-metrics';
-  import { chartsOf } from '$lib/metrics/overview-charts';
+  import { chartsOf, tileFigures } from '$lib/metrics/overview-charts';
   import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
@@ -14,6 +15,7 @@
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
+  import { metricsOffText } from './overview';
 
   interface Props {
     source: MetricsSource;
@@ -27,6 +29,8 @@
   }
 
   const { source, metrics, range, now, clock, onRange, onRetry, onSettings }: Props = $props();
+  // A hosted hub reads no metrics over SSH (HMD-049 is not built), so its sentence names the daemon only (R-222).
+  const hosted = contextHubIsHosted();
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
   // The old chart stays while a switch is on its way, so its label and gap follow the data on screen, not the button.
   const drawn = $derived(metrics.shownRange ?? range);
@@ -54,7 +58,7 @@
     <!-- D-7: an empty state with its icon, the sentence and the way to turn metrics on. -->
     <div class="metrics-off">
       <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
-      <p>Metrics are off. Install the daemon or turn on SSH metrics in Settings.</p>
+      <p>{metricsOffText(hosted)}</p>
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
@@ -78,8 +82,13 @@
           {:else}
             <div class="chart-grid">
               {#each charts as chart (chart.key)}
+                {@const figures = tileFigures(chart)}
                 <div class="cell">
-                  <h3 class="chart-title">{chart.title}</h3>
+                  <!-- A tile: the name, the highest value of the range and the newest value on the title line (R-224). -->
+                  <div class="tile-title">
+                    <h3 class="chart-title tile-name">{chart.title}</h3>
+                    {#if figures !== null}<span class="tile-peak">peak {figures.peak}</span><span class="tile-now">{figures.now}</span>{/if}
+                  </div>
                   <LineChart
                     title={`${chart.title}, ${phrase}`}
                     gap={rangeGap(drawn)}
@@ -136,6 +145,34 @@
   p {
     margin: 0;
     color: var(--text);
+  }
+
+  /* One line of fixed height, as the title alone has: the figures move nothing (MOT-007). */
+  .tile-title {
+    display: flex;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    align-items: baseline;
+    gap: var(--space-3);
+    white-space: nowrap;
+  }
+
+  .tile-name {
+    flex: 1;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tile-peak {
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tile-now {
+    color: var(--text);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
   }
 
   .waiting,

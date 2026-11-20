@@ -2,6 +2,7 @@
 //! claims a job with its token, reports it, and the hub ends what a machine lost.
 
 mod flow;
+mod placement;
 mod refusals;
 
 use anima_hub::{
@@ -51,6 +52,7 @@ fn build() -> NewJob {
             disk_bytes: 1 << 30,
             orphan_seconds: 600,
         },
+        machine: None,
     }
 }
 

@@ -7,6 +7,11 @@
 //! web view; its form is checked first, it reaches `anima-link` on standard input only and it
 //! is never logged (LOG-007).
 
+#[cfg(unix)]
+mod copy;
+#[cfg(windows)]
+#[path = "link/copy/windows.rs"]
+mod copy;
 mod device;
 mod error;
 mod folder;
@@ -151,10 +156,13 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
         return;
     };
     if let Some(link) = kept::now(&folders.device, port) {
-        // The unit runs the copy of an earlier app: it gets the program of this app (HMD-055).
-        if let Some(carried) = &program {
-            link.refresh(carried);
-        }
+        // The unit runs the copy of an earlier app, or a copy at its earlier place: it gets the
+        // program of this app at its place (HMD-055).
+        let application = crate::user_folders::of_this_user();
+        let link = match (&program, application) {
+            (Some(carried), Some(application)) => link.refresh(carried, &application),
+            _ => link,
+        };
         link.watch(device);
         return;
     }
@@ -175,10 +183,8 @@ fn replace(
 ) -> Result<(), LinkError> {
     device.stop();
     // A unit of the join before must not run while its folder is swapped.
-    if let Some(before) = kept::now(&folders.device, port)
-        && before.remove().is_err()
-    {
-        log::warn!("the unit of the device link before the join was not removed");
+    if let Some(before) = kept::now(&folders.device, port) {
+        let _ = before.remove_because("this device joins a hub again");
     }
     if folders.take_next().is_err() {
         resume(device, Some(program), folders);
@@ -296,8 +302,8 @@ pub async fn link_leave<R: Runtime>(
         let folders = folders()?;
         device.stop();
         if let Some(link) = kept::now(&folders.device, 0) {
-            link.remove()?;
-            kept::unplace(&link.program);
+            link.remove_because("this device leaves its hub")?;
+            copy::unplace(&link.program);
         }
         folders.remove().map_err(|_| LinkError::Folder)
     })

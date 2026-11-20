@@ -1,5 +1,6 @@
 //! The device link kept by a unit of the user (HMD-058, R-240): the link program is copied out
-//! of the application to `~/.local/bin`, `anima-link unit install` writes and starts the unit,
+//! of the application to a folder that the app makes in its own folder (not `~/.local/bin`,
+//! whose mode the person sets), `anima-link unit install` writes and starts the unit,
 //! and the app watches the running link in place of a child of its own. The link then runs
 //! while the person is logged in, with the app closed. No rule of the unit is here: the link
 //! program has them (`link/unit`).
@@ -20,6 +21,7 @@ use std::{
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
+use super::copy::{current_copy, destination, earlier_copy, place, same, unplace};
 use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 #[cfg(unix)]
@@ -28,12 +30,12 @@ use std::os::unix::fs::FileTypeExt;
 #[path = "kept/windows.rs"]
 mod windows;
 #[cfg(windows)]
-use windows::{destination, environment, place};
+use windows::environment;
 #[cfg(unix)]
 #[path = "kept/unix.rs"]
 mod unix;
 #[cfg(unix)]
-pub use unix::{daemon_folder, destination, environment, place, private_socket};
+pub use unix::{daemon_folder, environment, private_socket};
 
 /// `unit install` runs up to three steps of 30 s each, one of them twice.
 const UNIT_LIMIT: Duration = Duration::from_secs(150);
@@ -81,9 +83,27 @@ impl Kept {
         if let Some(socket) = self.daemon_socket.as_deref().and_then(Path::to_str) {
             args.extend(["-daemon-socket", socket]);
         }
-        ask(self, &args, UNIT_LIMIT)
-            .map(drop)
-            .ok_or(LinkError::Failed)
+        let args: Vec<OsString> = args.iter().map(OsString::from).collect();
+        let args: Vec<&OsString> = args.iter().collect();
+        let invocation = Invocation {
+            program: &self.program,
+            args: &args,
+            env: &self.env,
+            limit: UNIT_LIMIT,
+        };
+        run(&invocation).map(drop).map_err(|cause| {
+            // The first line of the link's refusal names a folder or a value, never a secret.
+            log::warn!("`anima-link unit install` did not install the unit: {cause}");
+            LinkError::Failed
+        })
+    }
+
+    /// This link with the copy of the program at `program`.
+    fn with_program(&self, program: PathBuf) -> Self {
+        Self {
+            program,
+            ..self.clone()
+        }
     }
 
     /// Stops the unit and deletes its file. A unit that is not there is not an error.
@@ -93,9 +113,27 @@ impl Kept {
             .ok_or(LinkError::Failed)
     }
 
-    /// Whether the unit of the user is installed.
-    pub fn installed(&self) -> bool {
-        ask(self, &["unit", "show"], ASK_LIMIT).is_some_and(|shown| printed::unit_installed(&shown))
+    /// Whether the installed unit runs the link of this folder. The file and the label of the
+    /// unit are the same for each copy of the app, so a unit that is there can be the unit of a
+    /// different folder: that one is never changed or removed from here.
+    pub fn keeps_this_folder(&self) -> bool {
+        let Some(folder) = self.folder.to_str() else {
+            return false;
+        };
+        ask(self, &["unit", "show"], ASK_LIMIT)
+            .and_then(|shown| printed::unit_file(&shown))
+            .and_then(|file| fs::read_to_string(file).ok())
+            .is_some_and(|unit| printed::unit_runs_folder(&unit, folder))
+    }
+
+    /// Removes the unit and writes why to the log: each removal by the app has its line.
+    pub fn remove_because(&self, reason: &'static str) -> Result<(), LinkError> {
+        let result = self.remove();
+        match &result {
+            Ok(()) => log::warn!("the unit of the device link was removed: {reason}"),
+            Err(_) => log::warn!("the unit of the device link was not removed ({reason})"),
+        }
+        result
     }
 
     /// The port that the running link listens on; none while no link runs on this folder.
@@ -119,49 +157,56 @@ impl Kept {
         })
     }
 
-    /// Gives the unit the link program of this app when its copy holds different bytes, and
-    /// starts the unit again when the program changed or when the unit was made before the
-    /// socket of the daemon (HMD-054). A copy that cannot be written stays, and the unit runs on.
-    pub fn refresh(&self, carried: &Path) {
-        let changed = !same(carried, &self.program);
-        if !changed && (self.daemon_socket.is_none() || self.has_daemon_socket()) {
-            return;
+    /// Gives the unit the link program of this app when its copy holds different bytes or is
+    /// not at [`destination`] of `application`, and starts the unit again when the program
+    /// changed or when the unit was made before the socket of the daemon (HMD-054). An earlier
+    /// copy is deleted once the unit runs the new one. A copy that cannot be written stays, and
+    /// the unit runs on. Returns the link to watch.
+    pub fn refresh(self, carried: &Path, application: &Path) -> Self {
+        let copy = destination(application);
+        let changed = self.program != copy || !same(carried, &self.program);
+        if !changed {
+            if self.daemon_socket.is_some() && !self.has_daemon_socket() {
+                let _ = self.install();
+            }
+            return self;
         }
-        let Some(home) = crate::user_folders::home() else {
-            return;
-        };
         #[cfg(windows)]
-        if changed {
-            if self.remove().is_err() {
-                return;
-            }
-            if place(carried, &home).is_err() {
-                log::warn!(
-                    "the updated persistent link could not be placed; restarting the previous copy"
-                );
-            }
-            if self.install().is_err() {
-                log::warn!("the persistent link could not be restarted");
-            }
-            return;
+        if self.remove().is_err() {
+            return self;
         }
-        if !changed || place(carried, &home).is_ok() {
+        let Ok(placed) = place(carried, application) else {
+            #[cfg(windows)]
             let _ = self.install();
+            return self;
+        };
+        let moved = self.with_program(placed);
+        if moved.install().is_err() {
+            #[cfg(windows)]
+            let _ = self.install();
+            return self;
         }
+        if self.program != moved.program {
+            unplace(&self.program);
+        }
+        moved
     }
 
     /// Installs and starts the unit again. The copy of the link program is made again from
-    /// `carried` when it is gone. False when the folder of the link is not marked for a unit,
-    /// when there is no program to run, or when the link program refuses the unit.
-    pub fn put_back(&self, carried: Option<&Path>, home: Option<&Path>) -> bool {
+    /// `carried` in `application` when it is gone. False when the folder of the link is not
+    /// marked for a unit, when there is no program to run, or when the link program refuses the
+    /// unit.
+    pub fn put_back(&self, carried: Option<&Path>, application: Option<&Path>) -> bool {
         if !folder::wants_unit(&self.folder) {
             return false;
         }
-        let placed = self.program.is_file()
-            || carried
-                .zip(home)
-                .is_some_and(|(carried, home)| place(carried, home).is_ok());
-        placed && self.install().is_ok()
+        if self.program.is_file() {
+            return self.install().is_ok();
+        }
+        carried
+            .zip(application)
+            .and_then(|(carried, application)| place(carried, application).ok())
+            .is_some_and(|placed| self.with_program(placed).install().is_ok())
     }
 
     /// Has the app watch the running link, and put the unit back when the link stays down
@@ -177,8 +222,8 @@ impl Kept {
                 .due(serving.is_some());
             if due {
                 let carried = crate::carried::program(super::PROGRAM);
-                let home = crate::user_folders::home();
-                if self.put_back(carried.as_deref(), home.as_deref()) {
+                let application = crate::user_folders::of_this_user();
+                if self.put_back(carried.as_deref(), application.as_deref()) {
                     log::warn!(
                         "the device link of the unit did not answer: the unit was installed and started again"
                     );
@@ -193,23 +238,11 @@ impl Kept {
     }
 }
 
-/// Whether two files hold the same bytes; false when one cannot be read.
-fn same(one: &Path, other: &Path) -> bool {
-    match (fs::read(one), fs::read(other)) {
-        (Ok(one), Ok(other)) => one == other,
-        _ => false,
-    }
-}
-
-/// Deletes the copy of the link program. A copy that is not there is not an error.
-pub fn unplace(program: &Path) {
-    let _ = fs::remove_file(program);
-}
-
-/// The link of `folder` as a unit of the user keeps it, with the copy of the program in the
-/// home folder.
+/// The link of `folder` as a unit of the user keeps it, with the copy of the program that a
+/// unit runs now ([`current_copy`]).
 fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
+    let application = crate::user_folders::of_this_user().ok_or(LinkError::NoHome)?;
     #[cfg(unix)]
     let daemon_socket = {
         let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
@@ -222,7 +255,7 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     #[cfg(windows)]
     let daemon_socket = windows::private_socket();
     Ok(Kept {
-        program: destination(&home),
+        program: current_copy(&application, &home),
         folder: folder.to_path_buf(),
         port,
         daemon_socket,
@@ -230,11 +263,12 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     })
 }
 
-/// The link of `folder` when a unit of the user keeps it now.
+/// The link of `folder` when a unit of the user keeps it now: a unit for a different folder
+/// is not it.
 pub fn now(folder: &Path, port: u16) -> Option<Kept> {
     at(folder, port)
         .ok()
-        .filter(|link| link.program.is_file() && link.installed())
+        .filter(|link| link.program.is_file() && link.keeps_this_folder())
 }
 
 /// The socket for the daemon of the link that a unit keeps on `port`, when that link made it.
@@ -272,8 +306,9 @@ fn answers(link: &Kept, limit: Duration) -> bool {
 /// The step that stopped it, in fixed words for the log.
 fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result<(), &'static str> {
     let home = crate::user_folders::home().ok_or("no home folder")?;
-    let placed = place(program, &home)
-        .map_err(|_| "the link program was not copied to its persistent folder")?;
+    let application = crate::user_folders::of_this_user().ok_or("no home folder")?;
+    let placed = place(program, &application)
+        .map_err(|_| "the link program was not copied to the folder of the link")?;
     let link = Kept {
         program: placed,
         ..at(folder, port).map_err(|_| "no home folder")?
@@ -284,12 +319,17 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
     }
     device.stop();
     if link.install().is_err() {
-        let _ = link.remove();
+        let _ = link.remove_because("`anima-link unit install` failed");
         return Err("`anima-link unit install` failed");
     }
     if !answers(&link, READY_LIMIT) {
-        let _ = link.remove();
+        let _ = link.remove_because("its link did not answer on its port");
         return Err("the link of the unit did not answer on its port");
+    }
+    // A copy of an earlier app is no longer run by the unit.
+    let earlier = earlier_copy(&home);
+    if earlier != link.program {
+        unplace(&earlier);
     }
     link.watch(device);
     Ok(())
@@ -356,10 +396,10 @@ pub fn hosted_hub_opened<R: Runtime>(webview: &Webview<R>, joined: bool) {
 /// Whether a Windows listener belongs to this user's protected persistent link executable.
 #[cfg(windows)]
 pub fn owns_background(pid: u32) -> bool {
-    let Some(home) = crate::user_folders::home() else {
+    let Some(application) = crate::user_folders::of_this_user() else {
         return false;
     };
-    let program = destination(&home);
+    let program = destination(&application);
     anima_cli::mcp::install::setup::check_command(&program, 0).is_ok()
         && anima_windows::process::matches(pid, &program).unwrap_or(false)
 }

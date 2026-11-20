@@ -1,9 +1,5 @@
 //! Unix file placement for the persistent device link.
-use super::{DAEMON_SOCKET, LONGEST_SOCKET, same};
-use crate::{
-    daemon::{placement, this_user},
-    link::LinkError,
-};
+use super::{DAEMON_SOCKET, LONGEST_SOCKET};
 use std::{
     ffi::OsString,
     fs::{self, DirBuilder},
@@ -39,11 +35,6 @@ pub fn private_socket(folder: &Path) -> Option<PathBuf> {
     (private && socket.as_os_str().len() <= LONGEST_SOCKET).then_some(socket)
 }
 
-/// Where the copy of the link program is: `~/.local/bin/anima-link` under `home`.
-pub fn destination(home: &Path) -> PathBuf {
-    home.join(".local/bin").join(super::super::PROGRAM)
-}
-
 /// What `anima-link unit` may see of the app's environment: the home folder, and on Linux the
 /// folders that name the configuration and the session of the user.
 pub fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str, OsString)> {
@@ -51,14 +42,4 @@ pub fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str
         .into_iter()
         .filter_map(|name| Some((name, read(name).filter(|value| !value.is_empty())?)))
         .collect()
-}
-
-/// Copies the carried link program to its place under `home`, unless the copy there already
-/// holds the same bytes. Returns the path that the unit runs.
-pub fn place(carried: &Path, home: &Path) -> Result<PathBuf, LinkError> {
-    let destination = destination(home);
-    if same(carried, &destination) {
-        return Ok(destination);
-    }
-    placement::place(carried, &destination, this_user()).map_err(|_| LinkError::Folder)
 }

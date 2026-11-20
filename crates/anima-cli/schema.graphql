@@ -3722,6 +3722,8 @@ type Subscription {
   sourceAccountChanged(id: ID): SourceAccount!
   "Each change of the open attempt to connect GitHub. Open to a read key (operator, 2026-11-14; ruling number to be assigned; K-E1 Section 7a)."
   githubConnectChanged: GithubConnectAttempt!
+  "Each firing when it is sent. While one subscription is open, the hub queues no reminder to a channel: the application shows it. For a firing about a private record the text is `You have a reminder.` and the subject is empty; `reminderFirings` of the query gives the firing itself."
+  reminderFirings: ReminderFiring!
 }
 
 type DeviceStatusChange {

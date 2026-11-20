@@ -12,8 +12,10 @@
 # they fail, the next train holds the first half; a branch that fails alone stays out. A branch
 # never runs again only because `dev` moved, and the gates never run for a `dev` that a train moved.
 #
-# It starts when a run of `gates` ends for a push of a branch (a branch can be ready), when the
-# gates of a train end (land it or split it), and each 20 minutes (a start that was lost). GitHub
+# It starts when a run of `gates` ends for a push of a branch (a branch can be ready). GitHub
+# sends no event when the gates of a train end, because the token of this workflow started them:
+# so while a train is on the way, `merge-to-dev.sh` stays, does a step each minute, and starts
+# this workflow again before the time of its job ends. The clock is for a start that was lost. GitHub
 # takes this file from the default branch, so it works only when it is on `main`; the checkout
 # is `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`.
 name: merge-to-dev

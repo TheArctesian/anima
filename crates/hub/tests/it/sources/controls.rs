@@ -35,19 +35,18 @@ async fn actions(pool: &PgPool) -> Vec<String> {
     .unwrap()
 }
 
-/// Waits for the run a mutation started to end.
+/// Waits for the run a mutation started to end. One query reads both facts, a run exists and
+/// none is open, from one snapshot: with two queries a run that starts between them looks ended.
 async fn ended(pool: &PgPool) {
     for _ in 0..200 {
-        let open: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM sources.sync_runs WHERE ended_at IS NULL")
-                .fetch_one(pool)
-                .await
-                .unwrap();
-        let any: i64 = sqlx::query_scalar("SELECT count(*) FROM sources.sync_runs")
-            .fetch_one(pool)
-            .await
-            .unwrap();
-        if any > 0 && open == 0 {
+        let ended: bool = sqlx::query_scalar(
+            "SELECT count(*) > 0 AND count(*) FILTER (WHERE ended_at IS NULL) = 0 \
+             FROM sources.sync_runs",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if ended {
             return;
         }
         tokio::time::sleep(Duration::from_millis(25)).await;

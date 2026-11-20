@@ -42,3 +42,11 @@ export function hostKeyText(ssh: OverviewDevice['ssh']): string {
   if (ssh.hostKey != null) return `${ssh.hostKey.algorithm} ${ssh.hostKey.fingerprintSha256}`;
   return ssh.enabled ? 'No host key accepted yet' : 'SSH is off';
 }
+
+/**
+ * What the Metrics card says of a device with no metrics. A hub that Anima.ing hosts reads none over SSH (HMD-049 is
+ * not built), so its sentence names the daemon only (R-222).
+ */
+export function metricsOffText(hosted: boolean): string {
+  return hosted ? 'Metrics are off. They appear when the daemon is installed on this device.' : 'Metrics are off. Install the daemon or turn on SSH metrics in Settings.';
+}

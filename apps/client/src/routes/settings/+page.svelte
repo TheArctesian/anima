@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MediaQuery } from 'svelte/reactivity';
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
@@ -25,6 +26,7 @@
   import VpnSection from '$lib/vpn/VpnSection.svelte';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
+  import Icon from '$lib/icons/Icon.svelte';
   import PageIndex from '$lib/page/contents/PageIndex.svelte';
   import { SECTIONS, indexOf } from './index';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
@@ -47,6 +49,7 @@
   const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions, runnerReport, vpn: vpnShown });
   // The phone layout has the rows of mockup 7 for Account and Hub, and Leave hub at the end.
   const phone = $derived(phoneLayout());
+  const compactIndex = typeof window.matchMedia === 'function' ? new MediaQuery('(max-width: 1100.98px)') : undefined;
 </script>
 
 <div data-settings-page>
@@ -54,10 +57,15 @@
   <PageHeader title="Settings" eyebrow={{ text: 'This computer and the hub', icon: 'carbon:settings' }} />
 </div>
 
-<!-- The index of the sections beside one readable column of them (UR-7, SET-001); on a narrow window the index is a
-     row of links above. -->
 <div class="settings">
-<PageIndex entries={index} label="Settings sections" />
+{#if compactIndex?.current}
+  <details class="section-index">
+    <summary>Jump to section <Icon name="carbon:chevron-down" size="sm" /></summary>
+    <PageIndex entries={index} label="Settings sections" narrow="stacked" />
+  </details>
+{:else}
+  <PageIndex entries={index} label="Settings sections" />
+{/if}
 <div class="page">
 
   <!-- One section per subject, in three groups: the hub and the account, this computer, connections (WP-50 F-10, R-224). -->
@@ -171,6 +179,32 @@
     grid-template-columns: calc(var(--space-16) * 3 + var(--space-4)) minmax(0, calc(var(--space-16) * 11));
     gap: var(--space-12);
     align-items: start;
+  }
+
+  .section-index {
+    min-inline-size: 0;
+  }
+
+  .section-index summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-block-size: var(--target-min-touch);
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .section-index[open] summary :global(.icon) {
+    transform: rotate(180deg);
+  }
+
+  .section-index summary:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--border-focus);
   }
 
   .to-extensions {

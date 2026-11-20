@@ -21,6 +21,8 @@
 
 <!-- Behind "Join a hub" on the first screen: the ways to reach a hub of one's own (FRN-001, HMD-022). Mockup:
      docs/mockup/first-run/index.html, row 1. -->
+<svelte:head><title>Join a hub – Anima.ing</title></svelte:head>
+
 <h1 tabindex="-1" bind:this={title}>Join a hub</h1>
 
 <ul class="choices" {@attach entrance()}>

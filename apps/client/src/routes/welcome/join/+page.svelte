@@ -95,26 +95,31 @@
   }
 </script>
 
+<svelte:head><title>{device === null ? 'Paste invite' : 'Joining the hub'} – Anima.ing</title></svelte:head>
+
 <!-- Frame 2 of docs/mockup/mobile/index.html: "Paste invite", then "Joining" with one mark for each step (MOB-033). -->
 <div class="stack" data-join>
 {#if device === null}
   <form onsubmit={join} novalidate transition:crossFade>
     <a class="back" href={resolve('/welcome/hub')}><Icon name="carbon:chevron-left" size="lg" />Back</a>
     <h1 tabindex="-1" bind:this={title}>Paste invite</h1>
-    <label for="invite">Invite</label>
+    <div class="invite-label">
+      <label for="invite">Invite</label>
+      {#if canPaste}<FormButton icon="carbon:paste" onclick={() => void pasteInvite()}>Paste</FormButton>{/if}
+    </div>
+    <p class="fine" id="invite-help">Ask the person who runs your hub for an invite, then paste the full invite here.</p>
     <textarea
       id="invite"
       rows="4"
       autocomplete="off"
       autocapitalize="off"
       spellcheck="false"
-      aria-describedby="invite-problem"
+      aria-describedby="invite-help invite-problem"
       aria-invalid={problem === null ? undefined : 'true'}
       bind:value={invite}
       bind:this={field}
     ></textarea>
     <p id="invite-problem" class="problem" role="alert">{problem ?? ''}</p>
-    {#if canPaste}<FormButton size="lg" icon="carbon:paste" onclick={() => void pasteInvite()}>Paste</FormButton>{/if}
     <FormButton type="submit" tone="primary" size="lg" {busy}>Join hub</FormButton>
     <p class="fine">Works once. Not kept.</p>
   </form>
@@ -169,6 +174,18 @@
     text-decoration: none;
   }
 
+  .invite-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .invite-label :global(button) {
+    min-block-size: var(--target-min-touch);
+  }
+
   label {
     color: var(--text-secondary);
     font-size: var(--text-sm);
@@ -207,6 +224,10 @@
     font-size: var(--text-sm);
   }
 
+  form .problem:empty {
+    position: absolute;
+  }
+
   .problem:not(:empty) {
     padding-inline-start: var(--space-2);
     border-inline-start: var(--border-focus) solid var(--status-down);
@@ -214,6 +235,21 @@
 
   .end {
     display: grid;
+  }
+
+  @media (max-height: 30rem) {
+    form {
+      gap: var(--space-2);
+    }
+
+    form h1 {
+      margin-block: 0;
+    }
+
+    textarea {
+      block-size: clamp(var(--space-12), 17svh, calc(var(--space-16) + var(--space-4)));
+      resize: none;
+    }
   }
 
   /* On a phone the button of the joining view sits low, under the thumb (frame 2). */

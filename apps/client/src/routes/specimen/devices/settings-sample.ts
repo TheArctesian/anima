@@ -27,6 +27,9 @@ export const SAMPLE_DEVICE: DeviceDetail = {
   webInterfaces: [],
   webInterfaceSuggestions: [],
   metricsSource: 'SSH',
+  metricsStale: false,
+  daemonVersion: null,
+  sessionLimit: null,
   accessWarnings: ['UNENCRYPTED_VNC'],
   rdp: {
     enabled: false,
