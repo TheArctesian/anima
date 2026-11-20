@@ -43,6 +43,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 21: backup coverage | Decided | A + D: after destination/policy approval, cover managed persistent data and configuration by default, with optional owner-selected extra paths. Include persistent agent/job workspaces and retained outputs; exclude regenerable OS packages/caches and explicitly disposable work. Show exclusions and workloads without a reliable backup method. Define app-consistent capture and restore handling, including custom services. Credential/identity recovery and backup encryption remain open. Whole-disk imaging is not selected as the default. |
 | Decision 22: backup encryption and recovery keys | Decided | A + B: encrypt backups before transfer, provide exportable owner-held recovery material, and optionally keep a copy on another explicitly authorized trusted device. A backup destination does not automatically receive decryption authority. Scheduled backups run without repeated password entry after setup. Recovery must not rely solely on the source machine; account/service-assisted recovery and unencrypted backup mode are not selected. Key storage, rotation, revocation and recovery testing remain to be designed. Disk encryption remains opt-in/off by default. |
 | Decision 23: server power behavior | Decided | A + C + D: stay available on external power, including supported closed-lid laptop use; protect laptops on battery loss; recover availability after power returns where hardware supports it. No automatic idle sleep in the first version. Keep thermal safeguards and deliberate shutdown/reboot/recovery available. Critical-battery protective action is distinct from ordinary idle sleep; exact shutdown/suspend choice remains engineering work. Resume approved services, not blindly interrupted jobs. The operator names Proxmox as the server-operation reference; this does not select its virtualization stack or change NixOS/Btrfs choices. |
+| Decision 24: app access and internet use | Decided | A default, with B and C available per app: private Anima-network access by default; explicit LAN publication; explicit public publication through supported hosting paths. Keep host administration and recovery separate. These are inbound exposure choices, not a ban on outbound internet use. The operator explicitly requires agentic software to be able to use the internet. Support outbound access for workloads within their permissions; exact egress policy remains open. Installing a workload must not implicitly publish it. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -79,7 +80,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 24: how should access to hosted apps be exposed by default? Options: private Anima-network access; explicit LAN publication; explicit public-internet publication. Recommendation: private by default, with LAN/public exposure only through deliberate per-app actions consistent with existing hosting and network requirements. No selection yet. Do not automatically publish administrative, recovery or pre-boot unlock interfaces. This is an appliance integration policy, not a replacement for existing HOST/network owners.
+2. Decision 25: what default outbound-network policy should apply to workloads? Alternatives: ordinary outbound internet allowed within existing grants; network access requested/approved per workload; destination allowlists; optional offline/restricted profiles. Recommendation: ordinary outbound internet for network-enabled workloads, plus explicit restricted/offline profiles. Inbound publication stays separate. No answer yet; do not infer permission to access arbitrary LAN services, host control sockets, secrets or other workload data. Reuse existing network/execution grant owners.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -170,6 +171,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 22 accepted A + B: encrypted backups with owner recovery material and optional explicitly trusted second-device key storage. Next: power behavior and laptop use.
 
 - 2026-11-19: Decision 23 accepted A + C + D, with explicit server-first direction and no ordinary idle sleep. Proxmox is an operational reference. Its official feature overview (https://www.proxmox.com/en/products/proxmox-virtual-environment/features, read 2026-11-19) describes centralized server/workload administration; this check did not establish exact host suspend defaults. No Proxmox implementation or architecture was selected. Next: app network exposure.
+
+- 2026-11-19: Decision 24 accepted A + B + C with private access as default. The operator noted agents need internet use; explicitly separated inbound publication from outbound workload connectivity. Next: default outbound policy.
 
 ## Source text
 
@@ -290,3 +293,7 @@ In response to Decision 22 (recommendation A + B):
 In response to Decision 23:
 
 > agreed these are meant to be servers so sleep and idle are not really avalable right it's just whatever lets it be the best server copy proxmox
+
+In response to Decision 24:
+
+> A and B Adn C is fine reminder that some agentic software also need to use the internet
