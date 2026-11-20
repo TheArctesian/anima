@@ -1,0 +1,3 @@
+mutation ProjectsGroupSet($projects: [ID!]!, $group: ID) {
+  setProjectsGroup(projects: $projects, group: $group)
+}

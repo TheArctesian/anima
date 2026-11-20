@@ -1,0 +1,8 @@
+mutation ProjectGroupRename($id: ID!, $name: String!) {
+  renameProjectGroup(id: $id, name: $name) {
+    id
+    name
+    projectCount
+    createdAt
+  }
+}

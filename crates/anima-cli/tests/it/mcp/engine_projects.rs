@@ -197,3 +197,83 @@ async fn mcp_008_a_repository_description_comes_back_cleaned_and_cut() {
     assert!(shown.chars().count() < 600, "{}", shown.chars().count());
     session.finish().await;
 }
+
+const GROUP: &str = "0190a000-0000-7000-9003-000000000001";
+
+fn groups_answer(hub: &FakeHub) {
+    hub.answer(
+        "ProjectGroups",
+        data(
+            json!({ "projectGroups": [{ "id": GROUP, "name": "Work", "projectCount": 1,
+                                          "createdAt": "2026-11-20T10:00:00Z" }] }),
+        ),
+    );
+}
+
+#[tokio::test]
+async fn pro_060_a_new_group_takes_the_ids_of_the_named_projects() {
+    let hub = hub().await;
+    hub.answer(
+        "ProjectIdBySlug",
+        data(json!({ "project": { "id": "p-1" } })),
+    );
+    hub.answer(
+        "ProjectGroupCreate",
+        data(
+            json!({ "createProjectGroup": { "id": GROUP, "name": "Work", "projectCount": 1,
+                                              "createdAt": "2026-11-20T10:00:00Z" } }),
+        ),
+    );
+    let mut session = writing(&hub, &Desk::new()).await;
+    let answer = session
+        .call(
+            "anima_project_group_create",
+            json!({ "name": "Work", "projects": ["anima"] }),
+        )
+        .await;
+    assert_eq!(structured(&answer)["group"]["name"], "Work");
+    assert_eq!(sent(&hub, "ProjectIdBySlug")[0]["slug"], "anima");
+    assert_eq!(
+        sent(&hub, "ProjectGroupCreate")[0],
+        json!({ "name": "Work", "projects": ["p-1"] })
+    );
+    session.finish().await;
+}
+
+#[tokio::test]
+async fn pro_063_set_group_finds_a_group_by_name_and_with_none_takes_projects_out() {
+    let hub = hub().await;
+    groups_answer(&hub);
+    hub.answer(
+        "ProjectIdBySlug",
+        data(json!({ "project": { "id": "p-1" } })),
+    );
+    hub.answer(
+        "ProjectsGroupSet",
+        data(json!({ "setProjectsGroup": ["p-1"] })),
+    );
+    let mut session = writing(&hub, &Desk::new()).await;
+    let answer = session
+        .call(
+            "anima_projects_set_group",
+            json!({ "projects": ["anima"], "group": "work" }),
+        )
+        .await;
+    assert_eq!(structured(&answer)["moved"], json!(["p-1"]));
+    let answer = session
+        .call("anima_projects_set_group", json!({ "projects": ["anima"] }))
+        .await;
+    assert_eq!(structured(&answer)["moved"], json!(["p-1"]));
+    let asked = sent(&hub, "ProjectsGroupSet");
+    assert_eq!(asked[0]["group"], GROUP);
+    assert_eq!(asked[1].get("group"), Some(&Value::Null));
+
+    let missing = session
+        .call(
+            "anima_projects_set_group",
+            json!({ "projects": ["anima"], "group": "Home" }),
+        )
+        .await;
+    assert_eq!(missing["isError"], true, "{missing}");
+    session.finish().await;
+}

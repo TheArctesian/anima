@@ -29,5 +29,9 @@ query ProjectGet($slug: String!) {
       confirmedAt
     }
     syncedAt
+    group {
+      id
+      name
+    }
   }
 }

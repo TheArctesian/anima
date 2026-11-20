@@ -3,6 +3,7 @@
 
 pub mod documents;
 pub mod get;
+pub mod group;
 pub mod left_out;
 pub mod list;
 pub mod render;
@@ -27,6 +28,11 @@ pub enum ProjectCommand {
         #[command(subcommand)]
         command: resource::ResourceCommand,
     },
+    /// Your own groups of projects (PRO-059).
+    Group {
+        #[command(subcommand)]
+        command: group::GroupCommand,
+    },
 }
 
 impl ProjectCommand {
@@ -41,6 +47,7 @@ impl ProjectCommand {
             Self::LeaveOut(args) => args.run(invocation).await,
             Self::Restore(args) => args.run(invocation).await,
             Self::Resource { command } => command.run(invocation).await,
+            Self::Group { command } => command.run(invocation).await,
         }
     }
 }
