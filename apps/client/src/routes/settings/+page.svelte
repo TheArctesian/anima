@@ -59,7 +59,7 @@
 <PageIndex entries={index} label="Settings sections" />
 <div class="page">
 
-  <!-- One section per subject, in the order of WP-50 F-10; each later section adds one element here. -->
+  <!-- One section per subject, in three groups: the hub and the account, this computer, connections (WP-50 F-10, R-224). -->
   <SettingsSection {...SECTIONS.account}>
     {#if phone}<PhoneAccount />{:else}<SignOutRow />{/if}
   </SettingsSection>
@@ -75,6 +75,21 @@
     </SettingsSection>
   {/if}
 
+  <LinkDevicesSection section={SECTIONS.linkDevices} />
+
+  <SettingsSection {...SECTIONS.notifications}>
+    <NotificationsSection />
+  </SettingsSection>
+
+  <SettingsSection {...SECTIONS.checkDefaults}>
+    <DefaultsSection />
+  </SettingsSection>
+
+  <SettingsSection {...SECTIONS.retention}>
+    <RetentionSection />
+  </SettingsSection>
+
+  <!-- This computer (R-224). -->
   {#if hubState !== null}
     <LocalHubSection section={SECTIONS.localHub} {hubState} />
   {/if}
@@ -93,25 +108,23 @@
     <TypefaceRows />
   </SettingsSection>
 
-  <SettingsSection {...SECTIONS.notifications}>
-    <NotificationsSection />
-  </SettingsSection>
-
-  <SettingsSection {...SECTIONS.checkDefaults}>
-    <DefaultsSection />
-  </SettingsSection>
-
-  <SettingsSection {...SECTIONS.retention}>
-    <RetentionSection />
-  </SettingsSection>
-
   {#if desktopRows}
     <SettingsSection {...SECTIONS.updates}>
       <DesktopRows />
     </SettingsSection>
   {/if}
 
-  <LinkDevicesSection section={SECTIONS.linkDevices} />
+  <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
+  {#if mcpPermissions}
+    <SettingsSection {...SECTIONS.mcp}>
+      <McpSection />
+    </SettingsSection>
+  {/if}
+
+  <!-- Connections (R-224). -->
+  <SettingsSection {...SECTIONS.integrations}>
+    <SourcesSection />
+  </SettingsSection>
 
   <SettingsSection {...SECTIONS.apiKeys}>
     <ApiKeysSection />
@@ -120,17 +133,6 @@
   <SettingsSection {...SECTIONS.extensions}>
     <ExtensionsSection />
   </SettingsSection>
-
-  <SettingsSection {...SECTIONS.integrations}>
-    <SourcesSection />
-  </SettingsSection>
-
-  <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
-  {#if mcpPermissions}
-    <SettingsSection {...SECTIONS.mcp}>
-      <McpSection />
-    </SettingsSection>
-  {/if}
 
   <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
   {#if vpnShown}

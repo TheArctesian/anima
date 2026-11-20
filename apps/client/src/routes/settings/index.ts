@@ -31,23 +31,16 @@ export const SECTIONS = {
   vpn: { id: 'settings-vpn', title: 'VPN', icon: 'carbon:connect', description: 'How the hub reaches each site, and when each VPN key expires.' },
 } as const satisfies Record<string, IndexEntry & { readonly description: string }>;
 
-/** The index of the sections the page shows, in the page's order (WP-50 F-10). */
+/** The three groups of the page, in its order: the hub and the account, this computer, what the hub is connected to (R-224). */
+export const GROUPS = { hub: 'Hub and account', computer: 'This computer', connections: 'Connections' } as const;
+
+/** The index of the sections the page shows, in the page's order and in its groups (WP-50 F-10, R-224). */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
   const { account, hub, stayAwake, appearance, notifications, checkDefaults, retention, updates, apiKeys, extensions, integrations, mcp, vpn } = SECTIONS;
-  const entries: (IndexEntry | false)[] = [
-    account,
-    shown.keyStore && hub,
-    shown.stayAwake && stayAwake,
-    appearance,
-    notifications,
-    checkDefaults,
-    retention,
-    shown.desktopRows && updates,
-    apiKeys,
-    extensions,
-    integrations,
-    shown.mcpPermissions && mcp,
-    shown.vpn && vpn,
+  const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
+    [GROUPS.hub, [account, shown.keyStore && hub, notifications, checkDefaults, retention]],
+    [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
+    [GROUPS.connections, [integrations, apiKeys, extensions, shown.vpn && vpn]],
   ];
-  return entries.filter((entry) => entry !== false);
+  return groups.flatMap(([group, entries]) => entries.filter((entry) => entry !== false).map((entry) => ({ ...entry, group })));
 }
