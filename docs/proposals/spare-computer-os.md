@@ -1,14 +1,14 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.5 (2026-11-20). An experimental UEFI installer ISO is built and VM-tested; see the ISO continuation record. The operator authorized the bounded OS1 prototype; implementation and VM evidence are in the OS1 record. Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. A disposable x86-64 UEFI prototype is implemented under R-NEW-aosprototype; no physical hardware support or production integration is validated. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
+evidence: Version 0.6 (2026-11-20). Section 14 records the approved installed-console direction and motion engineering programme; implementation and measured motion qualification remain pending. An experimental UEFI installer ISO is built and VM-tested; see the ISO continuation record. The operator authorized the bounded OS1 prototype; implementation and VM evidence are in the OS1 record. Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. A disposable x86-64 UEFI prototype is implemented under R-NEW-aosprototype; no physical hardware support or production integration is validated. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
 ---
 
 # Proposal: Anima OS for spare computers
 
 | Item | Value |
 | --- | --- |
-| Version | 0.4 |
+| Version | 0.6 |
 | Date | 2026-11-20 |
 | Status | Draft outside the explicitly authorized OS1 F1/UEFI-F2 experiment. The header holds the state. No release is authorized. |
 | Serves | [Priority 4.16](../plan/priorities.md): a dedicated-machine installation path. This mapping adds no new tier and does not delay existing install work. Workload dependencies remain in rows 4.7 and 4.9; updates in 4.18. |
@@ -137,7 +137,7 @@ Only the bounded OS1 F1/UEFI-F2 experiment in Section 13 is authorized by R-NEW-
 | OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Planning complete | Section 13 is the OS0 acceptance record: dependency snapshot, proposed contract deltas, bounded experiment protocol and handoff; no implementation approval or runtime evidence |
 | OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Recovery follow-up built; tested UEFI cases passed, full F2 unqualified | [Initial OS1 evidence](../research/spare-computer-os/os1-prototype-2026-11-20.md) and [recovery/ISO continuation](../research/spare-computer-os/iso-preview-2026-11-20.md); pre-initrd deadlock and hardware recovery remain unqualified |
 | OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Experimental preview built under R-NEW-aosisopreview | [ISO evidence](../research/spare-computer-os/iso-preview-2026-11-20.md); runtime packaged and installed state tested; full M1 qualification remains open |
-| OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Experimental local UEFI installer built under R-NEW-aosisopreview | [Offline ISO install test](../research/spare-computer-os/iso-preview-results.json); [Calamares preview](../research/spare-computer-os/gui-preview-2026-11-20.md) built under R-NEW-aosgui; fullscreen, network/display controls and separate data drives built under R-NEW-aosfullscreen; [combined-image graphical/CLI install and reboot checks passed](../research/spare-computer-os/fullscreen-preview-results.json); physical qualification and hub-driven setup remain open |
+| OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Experimental local UEFI installer built under R-NEW-aosisopreview | [Offline ISO install test](../research/spare-computer-os/iso-preview-results.json); [Calamares preview](../research/spare-computer-os/gui-preview-2026-11-20.md) built under R-NEW-aosgui; fullscreen, network/display controls and separate data drives built under R-NEW-aosfullscreen; [combined-image graphical/CLI install and reboot checks passed](../research/spare-computer-os/fullscreen-preview-results.json); physical qualification and hub-driven setup remain open; installed-console and motion work is sequenced in Section 14 |
 | OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
 | OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Not started | M4 record |
 | OS6 | Build backup/restore and bounded cleanup | OS4, OS5 recovery interfaces | Not started | M5 record |
@@ -306,6 +306,60 @@ Morning deliverables:
 Commit source/docs and leave large VM artifacts outside git. Push only the authorized implementation branch through normal gates; publishing an image or merging to `main` requires separate release authorization. Update OS1 with evidence for the slice actually attempted, never mark all F1-F4 complete from this run.
 
 OS0 is complete as planning work through this record. The operator authorized this OS1 slice on 2026-11-20 (R-NEW-aosprototype). The build environment is the local `framework` host with disposable QEMU disks; preparation and claim are recorded on the implementation branch. The broader product decisions need not be reopened for the VM experiment.
+
+## 14. Installed console and motion engineering
+
+The operator approved the installed-console mockup, browser-based WorkOS sign-in direction, local lock and power controls, and consistent icons. They then requested the motion-audit skill and asked that the premium feel be engineered into this plan (R-NEW-aosmotion). This section is part of OS3, not a separate product plan. It does not claim that the installed GUI or its authentication integration is built.
+
+### 14.1 Design baseline and evidence
+
+The approved local design sources are `/home/okita/.local/share/anima-os-designs/local-console/anima-local-console.html` and its standalone `anima-local-console-preview.html`. Preserve their spacing, proportions, Graphite surfaces, light IBM Plex headings, white text, frost accent, coloured wordmark and Carbon icons. Lock, restart and shutdown use icon controls with accessible names and tooltips; primary actions retain useful text. Bring the approved sources into the repository's mockup inventory with the implementation so that the baseline is reviewable on other machines.
+
+The console covers Overview, Network, Anima, Storage, Display and Recovery. WorkOS sign-in returns from the browser, then the owner explicitly adds the computer. Reuse existing identity contracts; animation must not imply enrollment before the backend confirms it. Local recovery and authenticated unlock work without the hub. Lock protects the local session while the node, authorized remote access and workloads continue; restart and shutdown remain separate confirmed actions.
+
+Static source inspection on 2026-11-20 found that `draw()` replaces the main content with `innerHTML`, while dialogs appear and disappear by replacing markup and setting `hidden`. These are motion opportunities, not measured runtime defects. All mockup hardware, authentication and operation results are synthetic. No frame-rate, physical-device or production sign-in success is established by this design.
+
+Use the operator-selected skill at `/home/okita/Scripts/Personal/skills/motion-audit/SKILL.md`, including its measurement and build references. The baseline vocabulary is [Anima's motion tokens](../../design/tokens/motion.tokens.json) and design-spec Sections 5.5/5.7: press 100 ms, fast/exit 150 ms, crossfade 200 ms; critically damped default/snappy/move springs with response values 0.35/0.25/0.4 seconds. Spring response is not a fixed completion deadline. Reuse the web motion helpers where applicable; for Qt, map the same roles explicitly and verify perceptual parity. Do not copy approximate constants into each screen or introduce a second token owner. These are starting values to validate, not evidence that the finished interface feels right.
+
+### 14.2 Motion storyboard
+
+Motion communicates state, continuity and response. It must preserve the approved layout rather than compensate for cramped spacing. Proposals below are implementation candidates; the measured audit can amend or drop them.
+
+| Surface and meaning | Proposed behaviour | Interruption and reduced motion |
+| --- | --- | --- |
+| Navigation and first arrival | Keep the shell fixed; crossfade outgoing/incoming content using the base role. Use a snappy selection indicator only where it clarifies the destination. Avoid repeated whole-page slides or staggered forms. | Latest navigation wins; cancel stale arrivals. Reduced motion uses an immediate content swap with stable layout and focus. |
+| Buttons and icon controls | Press feedback uses the press role; hover colour uses fast. Reserve space for pending indicators and preserve the action label. Focus indication is immediate. | Release/cancel restores the current state. Disable duplicate submissions while preserving cancellation where supported. Reduced motion removes transforms and animated feedback. |
+| Dialogs, confirmation and dismissal | Coordinated backdrop and restrained panel arrival; retain the outgoing panel through its fast exit. Keep typography and controls aligned with the app. | Escape and repeated dismissal leave no orphan overlay; restore focus and make background content inert. Reduced motion opens/closes immediately. |
+| WorkOS browser handoff and enrollment | Show truthful waiting, return, add-computer and confirmed-connected states within a stable content region. Crossfade only after each real state change. | Cancellation, stale callbacks and network loss cannot produce a false success. No artificial success delay or animation-dependent authentication. Reduced motion retains every status. |
+| Wi-Fi scan, connect and diagnostics | Preserve adapter/network identity and stable rows. Show scan, authentication, address and connectivity stages separately; update only the affected status. | Rapid selection and late results cannot overwrite the chosen adapter. Reduced motion updates text/icons immediately; never rely on a pulsing colour alone. |
+| Disclosures, storage and async results | Preserve scroll position and stable row identity. Reserve realistic loading space; use the move role for meaningful rearrangement and base crossfade for replacement. | Retarget from the current visual position; no snap-back on repeated input. Reduced motion keeps the same geometry guarantees without travel. |
+| Display orientation and recovery | Keep the confirmation readable after rotation. Show a real deadline for automatic reversion; use stable numerals and immediate error states. | Reversion and recovery continue even if rendering is interrupted. Reduced motion changes neither deadline nor outcome. |
+| Lock, restart and shutdown | Lock conceals sensitive content immediately; an optional surface fade must occur only after concealment. Power confirmation communicates affected workloads and then actual backend state. | No animation may delay locking, unlock authorization or shutdown dispatch. Reduced motion is immediate; locking never sleeps the node. |
+| Door artwork | Optional restrained motion on welcome/completion only, subordinate to content and contingent on measured cost. Forms remain still. | Stop when hidden or locked; use a static image with reduced motion. Drop the effect if it competes with workloads or readability. |
+
+Do not animate health readings, security decisions or progress into invented intermediate values. No fake percentages, celebratory effects, bouncing controls, continuous decorative activity on status screens, or motion-dependent waits. Loading perception thresholds are distinct from animation durations; reduced motion must not collapse them into flashing loaders or delay completed operations.
+
+### 14.3 OS3 execution sequence
+
+| Step | Deliverable and acceptance | State |
+| --- | --- | --- |
+| OS3-M1: baseline and storyboard | Inventory console and installer routes, shared tokens/helpers, exits, async states and reduced-motion gaps. Record static versus measured evidence. Check concurrent motion branches and assign one shared-foundation owner. Rank opportunities by frequency × visibility × meaning divided by cost, with explicit scores and unknowns. | Static starting observations recorded above; measured audit not started |
+| OS3-M2: motion reel | Build a synthetic looping reel of up to 8–12 useful proposals using the approved product layout. Specify each beat, inspect a frame from every beat, and reconcile it with the report before full rendering. Demonstrate normal and reduced-motion behaviour. Store exported media outside git and record its artifact location. | Not started |
+| OS3-M3: shared foundation | Define arrival, exit retention, async-action feedback and cancellation APIs using existing tokens. Map any native equivalents. Preserve keyboard/focus semantics and dynamic reduced-motion changes. Review the foundation before screen integration. | Not started |
+| OS3-M4: screen integration | Implement the storyboard against real console operations, preserving the approved spacing and icon treatment. Re-measure each proposal first; document amendments or dropped effects. Review code and behaviour after each implementation step. | Not started |
+| OS3-M5: measured qualification | Publish a ranked audit report with route inventory, durations, sampled properties, interruption results, reduced-motion results, device/build details and unresolved limits. Compare running installer and installed console against the approved design. | Not started |
+
+Audit outputs belong under `docs/research/spare-computer-os/`; the final report must distinguish static inspection, synthetic local runtime, and physical hardware evidence. Each retained proposal specifies property/from/to, motion role, mechanism, choreography, cancellation, reduced variant, performance risk and verification. The reel illustrates proposals; it is not proof that production code implements them.
+
+### 14.4 Completion gates
+
+- Exercise first paint, navigation in both directions, slow/fast/failed operations, empty states, dialogs, disclosures, power confirmation and lock/unlock at compact, medium and wide sizes, including portrait orientation.
+- Interrupt transitions with rapid navigation, Escape, back and repeated activation. Delay responses and count requests: one confirmed action must not submit twice. Verify retained exits do not block input or leave hidden originals, stale overlays or misplaced focus.
+- Sample both position axes after input and under delayed results; a layout-shift score alone can miss interaction-induced movement. Inspect intermediate frames for overlapping text and doubled elements. Verify final screenshots against the approved proportions.
+- Exercise reduced motion at startup and while a transition is active, covering CSS, JavaScript, pseudo-elements and native effects. All functions remain available; no operation or deadline depends on animation completion. Confirm keyboard focus, accessible icon names and non-colour status feedback.
+- Measure frame pacing, long tasks, paint activity and idle cost on the selected physical spare hardware with representative workloads running. Target the device refresh budget (about 16.7 ms per frame at 60 Hz); publish measured results and limitations rather than treating headless rAF rate as hardware performance. Remove or simplify effects that impair management responsiveness. Hidden/locked decorative surfaces must stop painting.
+- Validate real backend states separately from appearance: browser return/cancel, enrollment failure, offline recovery, Wi-Fi failure, authentication rejection, display rollback and power actions. Synthetic success in a reel or mockup is not acceptance evidence.
+- Run relevant existing gates and behavioural regression checks after implementation, then conduct a visual review of the running build. Passing code tests alone does not establish premium motion. Human hardware checks stay pending until the operator records their results.
 
 ## Appendix A. Recorded direction
 
