@@ -910,7 +910,7 @@ Result: Open.
 
 Built: on the branches `hosted/hm-t17-daemon-socket` (the unit of the link makes the socket of the
 daemon; the shell enrols the daemon at that socket) and `hosted/hm-t19-daemon-at-sign-in` (the
-application enrols and installs the daemon when the Devices page of a hosted hub opens). They need
+application enrols and installs the daemon when it opens a hosted hub). They need
 the branch `hosted/hm-t24b-shell-link-unit` (the link as a unit that the application watches).
 
 The tests cover: the folder and the socket of the daemon, the arguments of the unit, the origin

@@ -38,8 +38,9 @@ export interface DaemonHereParts {
 }
 
 /**
- * The shell says `origin` while the link of this computer has no socket for the daemon yet: the unit of the link is
- * made a short time after the sign-in (HMD-058). The install then waits and tries again, this many times in all.
+ * The install can start before it can work: the person is not signed in yet, this computer is not a device of the hub
+ * yet (HMD-044), or the link has no socket for the daemon yet, which the shell answers with `origin` (the unit of the
+ * link is made a short time after the sign-in, HMD-058). The install then waits and tries again, this many times in all.
  */
 const TRIES = 5;
 const WAIT_MS = 30_000;
@@ -69,19 +70,31 @@ async function deviceHere(parts: DaemonHereParts): Promise<HubDevice | null> {
   return devices.value.find((device) => comparable(device.host) === mine) ?? null;
 }
 
+/** One turn: what it did, and whether a later turn of this start can do better. */
+interface Turn {
+  readonly did: DaemonHere;
+  readonly again: boolean;
+}
+
+async function turn(parts: DaemonHereParts): Promise<Turn> {
+  // Not signed in yet, or this computer is not a device of the hub yet: a later turn finds it. No code is made.
+  const device = await deviceHere(parts);
+  if (device === null) return { did: { kind: 'not-ready' }, again: true };
+  if (device.metricsSource === 'DAEMON') return { did: { kind: 'present' }, again: false };
+  // The code lives in this turn only: it goes to the shell and nowhere else (LOG-007). The shell checks the address
+  // before it uses the code, so a code of a turn that waits for the socket is never used and expires at the hub.
+  const made = await parts.enrol(device.id);
+  if (!made.ok) return { did: { kind: 'failed', step: 'enrol' }, again: false };
+  const done = await parts.install(made.value.code, parts.origin);
+  if (done.ok) return { did: { kind: 'installed' }, again: false };
+  return { did: { kind: 'failed', step: done.problem }, again: done.problem === 'origin' };
+}
+
 async function install(parts: DaemonHereParts): Promise<DaemonHere> {
   if (!(await parts.bundled())) return { kind: 'not-ready' };
-  const device = await deviceHere(parts);
-  if (device === null) return { kind: 'not-ready' };
-  if (device.metricsSource === 'DAEMON') return { kind: 'present' };
   for (let attempt = 1; ; attempt += 1) {
-    // The code lives in this turn only: it goes to the shell and nowhere else (LOG-007). The shell checks the
-    // address before it uses the code, so a code of a turn that waits is never used and expires at the hub.
-    const made = await parts.enrol(device.id);
-    if (!made.ok) return { kind: 'failed', step: 'enrol' };
-    const done = await parts.install(made.value.code, parts.origin);
-    if (done.ok) return { kind: 'installed' };
-    if (done.problem !== 'origin' || attempt >= TRIES) return { kind: 'failed', step: done.problem };
+    const { did, again } = await turn(parts);
+    if (!again || attempt >= TRIES) return did;
     await (parts.wait ?? timer)(WAIT_MS);
   }
 }
@@ -94,8 +107,8 @@ let tried = false;
 /**
  * Installs the daemon on the computer the app runs on, enrolled at the hosted hub, with no question (HMD-053, R-240):
  * the daemon that the app carries, as a unit of the user. It does nothing when the device of this computer has the
- * daemon as its metrics source. It runs once for each start of the app; a failure is quiet, and the next start tries
- * again. The enrolment code is never shown, stored or logged.
+ * daemon as its metrics source. It runs once for each start of the app and waits for what it needs (see `TRIES`); a
+ * failure is quiet, and the next start tries again. The enrolment code is never shown, stored or logged.
  */
 export function installDaemonHere(parts: DaemonHereParts): Promise<DaemonHere> {
   if (tried && running === null) return Promise.resolve({ kind: 'not-ready' });

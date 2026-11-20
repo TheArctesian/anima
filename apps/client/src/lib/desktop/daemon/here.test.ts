@@ -32,6 +32,7 @@ function parts(answers: Answers = {}) {
     enrol: vi.fn<DaemonHereParts['enrol']>(() => Promise.resolve(answers.enrol ?? ok({ code: CODE }))),
     install: vi.fn<DaemonHereParts['install']>(() => Promise.resolve(answers.install ?? { ok: true })),
     origin: ORIGIN,
+    wait: vi.fn(() => Promise.resolve()),
   };
 }
 
@@ -69,6 +70,14 @@ describe('installDaemonHere (HMD-053, R-240)', () => {
     expect(hub.install).not.toHaveBeenCalled();
   });
 
+  it('waits for the sign-in and for the device of this computer: it looks again, and installs when the device is there', async () => {
+    const hub = parts();
+    hub.devices.mockResolvedValueOnce(denied).mockResolvedValueOnce(ok([HUB_DEVICES[0] as HubDevice]));
+    expect(await installDaemonHere(hub)).toEqual({ kind: 'installed' });
+    expect(hub.wait).toHaveBeenCalledTimes(2);
+    expect(hub.enrol).toHaveBeenCalledExactlyOnceWith('mac');
+  });
+
   it('names the step that failed: the code of the hub, or the problem of the shell', async () => {
     const refused = parts({ enrol: denied });
     expect(await installDaemonHere(refused)).toEqual({ kind: 'failed', step: 'enrol' });
@@ -98,19 +107,14 @@ describe('installDaemonHere (HMD-053, R-240)', () => {
 
 describe('installDaemonHere while the link has no socket yet (HMD-054)', () => {
   it('waits for the socket of the link: while the shell says origin it tries again, five times in all, each with a new code', async () => {
-    const waits: number[] = [];
-    const wait = (milliseconds: number): Promise<void> => {
-      waits.push(milliseconds);
-      return Promise.resolve();
-    };
-    const late = { ...parts(), wait };
+    const late = parts();
     late.install.mockResolvedValueOnce({ ok: false, problem: 'origin', message: 'x' }).mockResolvedValueOnce({ ok: false, problem: 'origin', message: 'x' });
     expect(await installDaemonHere(late)).toEqual({ kind: 'installed' });
     expect(late.enrol).toHaveBeenCalledTimes(3);
-    expect(waits).toEqual([30_000, 30_000]);
+    expect(late.wait.mock.calls).toEqual([[30_000], [30_000]]);
 
     forgetDaemonHere();
-    const never = { ...parts({ install: { ok: false, problem: 'origin', message: 'x' } }), wait };
+    const never = parts({ install: { ok: false, problem: 'origin', message: 'x' } });
     expect(await installDaemonHere(never)).toEqual({ kind: 'failed', step: 'origin' });
     expect(never.install).toHaveBeenCalledTimes(5);
   });
