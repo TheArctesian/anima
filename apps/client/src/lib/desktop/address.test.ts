@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HUB_ADDRESS } from '$lib/hub/hub';
+import { NO_HUB_ADDRESS } from '$lib/hub/hub';
 import { storedHubAddress, storeHubAddress } from './address';
 
 function memoryStorage(initial: Record<string, string> = {}): Storage {
@@ -24,7 +24,7 @@ function memoryStorage(initial: Record<string, string> = {}): Storage {
 
 describe('hub address setting', () => {
   it('CLI-002: is the default hub when nothing is stored', () => {
-    expect(storedHubAddress(memoryStorage())).toEqual(DEFAULT_HUB_ADDRESS);
+    expect(storedHubAddress(memoryStorage())).toEqual(NO_HUB_ADDRESS);
   });
 
   it('CLI-002: a stored valid address is used', () => {
@@ -37,7 +37,7 @@ describe('hub address setting', () => {
     const storage = memoryStorage({
       'anima.hubAddress': 'http://insecure.example',
     });
-    expect(storedHubAddress(storage)).toEqual(DEFAULT_HUB_ADDRESS);
+    expect(storedHubAddress(storage)).toEqual(NO_HUB_ADDRESS);
   });
 
   it('CLI-002: the canonical origin is stored, not the typed text', () => {
@@ -51,7 +51,7 @@ describe('hub address setting', () => {
     storage.getItem = () => {
       throw new DOMException('denied', 'SecurityError');
     };
-    expect(storedHubAddress(storage)).toEqual(DEFAULT_HUB_ADDRESS);
+    expect(storedHubAddress(storage)).toEqual(NO_HUB_ADDRESS);
   });
 
   it('CLI-002: a refused address is returned as the error and the old address stays', () => {

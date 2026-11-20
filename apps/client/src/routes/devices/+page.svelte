@@ -13,9 +13,9 @@
   import AddDeviceModal from '$lib/devices/add/AddDeviceModal.svelte';
   import type { SitePlacement } from '$lib/devices/form/site';
   import type { DeviceFormValues, SiteOption } from '$lib/devices/form/values';
-  import { browserStorage, machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
+  import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
   import { readCloudDevice } from '$lib/desktop/cloud/device';
-  import { isHostedHub } from '$lib/hosted/mark';
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { addThisComputer } from '$lib/hosted/this-computer';
   import { linkApi } from '$lib/link/api';
   import { useHub } from '$lib/hub/context';
@@ -115,8 +115,7 @@
    * the VPN, so there is nothing to ask about.
    */
   async function meetThisMachine(): Promise<void> {
-    const storage = browserStorage();
-    if (storage === null || !isHostedHub(storage, hub.address.origin)) return askAboutThisMachine();
+    if (!hubIsHosted(hub.address.origin)) return askAboutThisMachine();
     // A phone is not a computer of the hub, and its shell has no `cloud_device` (MOB-005, mobile plan M3-4).
     if (!capabilities().thisMachine) return;
     const added = await addThisComputer({

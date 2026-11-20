@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { contextHubIsHosted } from '$lib/hosted/context';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
@@ -16,6 +17,7 @@
 
   const { deviceId, api, disabled = false }: Props = $props();
 
+  const hosted = contextHubIsHosted();
   let busy = $state(false);
   let text = $state('');
 
@@ -23,7 +25,7 @@
     if (busy) return;
     busy = true;
     try {
-      text = wakeText(await api.wakeDevice(deviceId));
+      text = wakeText(await api.wakeDevice(deviceId), hosted);
     } finally {
       busy = false;
     }

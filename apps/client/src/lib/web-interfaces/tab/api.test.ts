@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
+import { createHub, NO_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
 import { FAKE_WEBSOCKET } from '$lib/hub/socket/fake';
 import { webTabApi } from './api';
 
@@ -21,7 +21,7 @@ function hubAnswering(body: unknown) {
     sent.push(JSON.parse(String(init?.body)) as Sent);
     return Promise.resolve(new Response(JSON.stringify(body)));
   };
-  const hub = createHub({ address: DEFAULT_HUB_ADDRESS, token: () => Promise.resolve('operator-token'), fetch: fakeFetch, WebSocket: FAKE_WEBSOCKET });
+  const hub = createHub({ address: NO_HUB_ADDRESS, token: () => Promise.resolve('operator-token'), fetch: fakeFetch, WebSocket: FAKE_WEBSOCKET });
   hubs.push(hub);
   return { api: webTabApi(hub), sent };
 }

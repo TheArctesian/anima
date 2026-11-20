@@ -12,13 +12,17 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/TheArctesian/anima/link/unit"
 )
 
 const usage = `usage: anima-link hub -state DIR -target SOCKET-PATH|127.0.0.1:PORT [-relay HOST[:PORT] [-replace-relay]] [-stop-with-stdin]
        anima-link device -state DIR [-listen 127.0.0.1:PORT] [-daemon-socket SOCKET-PATH] [-stop-with-stdin]
        anima-link join -state DIR [-hub-name NAME]   (the invite is read from standard input)
        anima-link ports -state DIR [on|off PORT]   (the local ports that the hub may reach: 22, 5900)
-       anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`
+       anima-link ctl -state DIR VERB [JSON-ARGUMENTS]
+       anima-link unit install -state DIR -listen 127.0.0.1:PORT [-daemon-socket SOCKET-PATH]   (the device link as a unit of this user)
+       anima-link unit remove|show`
 
 // stdio is the three streams of the process. Tests give their own.
 type stdio struct {
@@ -42,6 +46,9 @@ func run(ctx context.Context, args []string, streams stdio) int {
 		"join":   runJoin,
 		"ports":  runPorts,
 		"ctl":    runCtl,
+		"unit": func(ctx context.Context, args []string, streams stdio) error {
+			return unit.Command(ctx, args, streams.out)
+		},
 	}
 	if len(args) == 0 || commands[args[0]] == nil {
 		fmt.Fprintln(streams.err, usage)

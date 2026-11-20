@@ -13,16 +13,18 @@
   import LogList from './LogList.svelte';
   import { PanelPlacement } from '../resize/placement.svelte';
   import '../resize/geometry.css';
-  import { snapsOf } from '../resize/resize';
+  import { snapsOf, THIRD, type Stop } from '../resize/resize';
 
   interface Props {
     /** The devices the page already has, for the device filter. */
     devices: readonly { id: string; name: string }[];
     /** The time of a load and of each live event; tests pass their own. */
     now?: () => Date;
+    /** The stop the panel rests at before the operator moves it: the 33 % stop unless the page says otherwise. */
+    start?: Stop;
   }
 
-  const { devices, now = () => new Date() }: Props = $props();
+  const { devices, now = () => new Date(), start = THIRD }: Props = $props();
   const id = $props.id();
   const preference = motionPreference();
   const feed = new LogFeed(useHub(), () => now());
@@ -33,7 +35,7 @@
   let edge = $state<HTMLElement>();
   let content = $state<HTMLElement>();
   const snaps = $derived(snapsOf(headerHeight, pageHeight));
-  const placement = new PanelPlacement({ snaps: () => snaps, panel: () => panel, preference });
+  const placement = new PanelPlacement({ snaps: () => snaps, panel: () => panel, preference }, untrack(() => start));
   let fadedIn: boolean | undefined;
   let scroller = $state<HTMLElement>();
   /** The operator's Live and Paused switch, and whether the list is at its newest rows (LOG-011). */

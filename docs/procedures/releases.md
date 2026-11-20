@@ -145,7 +145,7 @@ Read from GitHub on 2026-11-19 with `gh`. The operator, or the orchestrating ses
 | Variable `ANIMA_PUBLIC_RELEASES` | Does not exist: public releases are off |
 | Environment `release` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-sign` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
-| Environment `release-publish` | Permits tags `v*` only; a run of `main` cannot publish until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
+| Environment `release-publish` | Permits tags `v*` only (rule id 67371066); the jobs `bucket` and `publish` of a run of `main` are refused until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
 
 The secrets and variables. GitHub lists names and times, never values. A run must prove that each value is usable.
 
@@ -155,7 +155,7 @@ The secrets and variables. GitHub lists names and times, never values. A run mus
 | `release` | Not read by the workflow | `APPLE_SIGNING_IDENTITY` |
 | `release` | iOS app signing and App Store Connect upload; the iOS job is not built | `IOS_DISTRIBUTION_P12_BASE64`, `IOS_DISTRIBUTION_P12_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `ASC_API_PRIVATE_KEY`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID` |
 | `release-sign` | The updater key (job `sign`) | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` |
-| `release-publish` | The token of the bucket `anima-releases` (job `publish`) | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and the variable `RELEASES_ENDPOINT` |
+| `release-publish` | The token of the bucket `anima-releases` (jobs `bucket` and `publish`) | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and the variable `RELEASES_ENDPOINT` |
 | `release-publish` | Not read by the workflow | `ACCOUNT_ID`, `S3_API`, `TOKEN_VALUE` |
 
 The operator deleted `TAURI_SIGNING_PRIVATE_KEY` from `release`, so the macOS build does not have the updater key. The orchestrating session set the two `R2_…` secrets from a file of the operator, on his instruction, and printed no value (R-195). The three names that the workflow does not read in `release-publish`, and `APPLE_SIGNING_IDENTITY`, can be deleted; a job gets each secret of its environment in memory, also one that no step names. The iOS secrets are in the environment of the macOS build for the same reason: when the iOS job is built, give them an environment of their own.
@@ -199,14 +199,16 @@ If a second account gets write access: add "Require a pull request before mergin
 
 ### To switch public releases on
 
-Do this only when the trial has passed and the AppImage of the trial has started on a Linux computer (R-192). Two steps, both by the operator; an agent does neither (R-180, R-195).
+Do this only when the trial has passed and the AppImage of the trial has started on a Linux computer (R-192). The trial passed on 2026-11-19 (run 44479803653, HT-036). Two steps. The operator does them, or the orchestrating session on his instruction (R-195); each was checked against `.github/workflows/release.yml` on 2026-11-19.
 
-1. Let the environment `release-publish` take a run of `main` (it permits only tags `v*` today): Settings > Environments > `release-publish` > "Deployment branches and tags" > "Add deployment branch or tag rule" > branch `main`. Or:
+1. Let the environment `release-publish` take a run of `main`. Today it permits only tags `v*` (one rule, id 67371066), and the jobs `bucket` and `publish` of a run of `main` name that environment: GitHub refuses them until `main` is added. The rule `v*` can stay; no tag starts the workflow.
 
    ```sh
    gh api --method POST repos/TheArctesian/anima.ing/environments/release-publish/deployment-branch-policies -f name=main -f type=branch
    ```
-2. Set the switch:
+
+   To check: `gh api repos/TheArctesian/anima.ing/environments/release-publish/deployment-branch-policies --jq '[.branch_policies[]|{name,type}]'` gives `main` (branch) and `v*` (tag). The environments `release` and `release-sign` already permit `main`.
+2. Set the switch. The first job of a run and the jobs `bucket` and `publish` read it:
 
    ```sh
    gh variable set ANIMA_PUBLIC_RELEASES --body on --repo TheArctesian/anima.ing
@@ -216,7 +218,37 @@ To switch them off again: `gh variable delete ANIMA_PUBLIC_RELEASES --repo TheAr
 
 ### The first public release
 
-It waits for the two conditions above, and nothing makes it urgent before the LLC exists. It carries macOS and Linux. Its version is the version of its commit (R-183, R-201).
+It carries macOS and Linux. Its version is the version of its commit (R-183, R-201): on 2026-11-19 `main` was at 0.8.14, so the first release is 0.8.15 or more.
+
+#### What the first push with the switch on does
+
+This was read on 2026-11-19 from the three feeds and from `deploy/bin/release-decision` for the tip of `main`; nothing was published for it.
+
+| Step | What happens |
+| --- | --- |
+| The decision | The feeds give 0.2.1 for `darwin-aarch64` and `darwin-x86_64`, and `linux-x86_64` answers 404. A feed that does not exist releases, so the first push to `main` after the switch is a release, also when it changes only a document. The decision for the tip of that day was `release 0.8.14` |
+| The first minute | The job `bucket` reads `darwin-aarch64/latest.json` from the bucket with the token. A wrong token, endpoint or environment rule stops the run here, before the builds end |
+| About 60 to 80 minutes | `gates`, `tool`, `macos` and `linux` at the same time, then `sign` |
+| `publish`, Linux first | `linux-x86_64/<version>/Anima_<version>_amd64.AppImage`, `…/SHA256SUMS` and `…/Anima_<version>_amd64.AppImage.sig`; the copy `Anima-x86_64.AppImage` at the root; then the new feed `linux-x86_64/latest.json` |
+| `publish`, macOS second | `darwin-universal/<version>/Anima.app.tar.gz`, `…/Anima_<version>_universal.dmg`, `…/SHA256SUMS` and `…/Anima.app.tar.gz.sig`; the copy `Anima.dmg` at the root, which replaces the DMG of 0.2.1; then `darwin-aarch64/latest.json` and `darwin-x86_64/latest.json`, which replace the feeds of 0.2.1 |
+| The end | The job reads the three feeds at `https://releases.anima.ing`; each must give the version |
+
+Each file is read back from the bucket and compared, and each feed is written last. The files of 0.2.1 under `darwin-universal/0.2.1/` stay.
+
+A Mac with 0.2.1 from the DMG: the application reads its feed at start and each 4 hours (UPD-001). It then shows the update to the new version in Settings > Updates and in the banner, and "Restart to update" installs it. It trusts the update: the public key in `tauri.conf.json` is the same text as at the commit of 0.2.1 (`b361eb5f`), and the trial proved that the key of `release-sign` signs for that public key. 0.2.1 carries the command line under its old name `anima-agent`; the new version carries `anima`. An application that a computer built does not update itself (DEF-001).
+
+#### What can fail at the first real release that a trial does not show
+
+| What | Why a trial does not show it | What is done, and what to do |
+| --- | --- | --- |
+| The environment `release-publish` refuses a run of `main` | A trial never uses that environment | Step 1 of "To switch public releases on". If it is not done, the job `bucket` fails in the first minute |
+| The bucket token is wrong, has no right for `anima-releases`, or is of a different account than `RELEASES_ENDPOINT` | A trial has no token. The orchestrating session set the two secrets from a file of the operator (R-195); no run used them | The job `bucket` reads one object with them in the first minute. The variable has the right form (`https://<32 hex characters>.r2.cloudflarestorage.com`, read on 2026-11-19) |
+| The token can read but cannot write | The job `bucket` only reads | The first write is a file of Linux under a new version folder; the feeds are not changed when it fails. Make a token with "Object Read & Write" for that bucket, set the two secrets, and select "Re-run failed jobs" |
+| The public address does not give a new file | No trial puts a file | `publish` reads each file at `https://releases.anima.ing` before it writes a feed. The address did not keep an answer in its cache on 2026-11-19 (`cf-cache-status: DYNAMIC` for a feed, for the DMG and for the 404 of Linux) |
+| `publish` stops between Linux and macOS | — | The Linux feed is new and the macOS feeds still give 0.2.1. "Re-run failed jobs" writes the same files again and goes on. If you do not, the next push that is a release publishes both |
+| The AppImage does not start on a Linux computer | No machine of GitHub starts it | The check of the operator (R-192, HT-036 step 2). It is the reason that the switch is off |
+
+#### The steps
 
 1. Keep the three feeds of today, for a rollback:
 
@@ -224,12 +256,136 @@ It waits for the two conditions above, and nothing makes it urgent before the LL
    for feed in darwin-aarch64 darwin-x86_64 linux-x86_64; do curl -fsS -o "feed-$feed.json" "https://releases.anima.ing/$feed/latest.json" || echo "$feed has no feed"; done
    ```
 2. Switch public releases on. The switch alone releases nothing: a run starts only from a push.
-3. Push to `main` (the merge of `dev`, above). The Linux feed does not exist, so the first push after the switch is a release, also when it changes only documents.
+3. Push to `main` (the merge of `dev`, above).
 4. Check, after the job `publish` passed:
    - Each feed gives the version (the job also reads them): `curl -fsS https://releases.anima.ing/darwin-aarch64/latest.json`, and the same for `darwin-x86_64` and `linux-x86_64`.
    - Download `https://releases.anima.ing/Anima.dmg` and run the two commands of the trial on it and on the application in it.
-   - On a Mac with 0.2.1 installed from its DMG: Settings > Updates offers the version, and "Restart to update" starts it. An application that a computer built does not update itself (DEF-001).
-5. Set the row of the version in the release record at the top of this document, and the result of HT-036.
+   - On a Mac with 0.2.1 installed from its DMG: Settings > Updates offers the version, and "Restart to update" starts it.
+5. Set the release record at the top of this document, and the result of HT-036. The text for the two rows, with the version, the day and the commit of the run:
+
+   - macOS, "Newest version": `<version> (<day>, commit <commit>), the first release of the release workflow. 0.2.1 was the last release of the Builds path (2026-11-17, commit b361eb5f)`. "Evidence": `Run <number> of the workflow release; the three feeds answered 200 with <version> on <day> (curl)`.
+   - Linux, "Newest version": `<version> (<day>, commit <commit>), the first Linux release`. "State": `Published`. "Evidence": the same run.
+
+#### The notes of the first release
+
+For the page of the download and for a message to the persons who have 0.2.1. They describe `main` at 0.8.14 (`7c8ece8d`); read them again against the commit that is released.
+
+- **Linux.** The first release for Linux: an AppImage for `x86_64`.
+- **Sign in with an Anima.ing account.** The first run is "Sign in": the application signs in to the Anima.ing account and joins a hosted hub with no other step. The computer that signs in is a device of its hub.
+- **Containers.** The page of a device has a tab Containers: the containers of the device, their details and logs, the state of a Compose project, images, volumes and networks, and a mark when a newer image exists.
+- **Agent usage.** A page with the use of coding agents (Claude Code, Codex) for each device, model and day, with an estimate of the cost.
+- **Logs.** The event log has a search by text.
+- **When the hub does not answer.** The application shows a read-only copy of the last answers of the hub, with its age.
+- **The command line.** The program is `anima` (it was `anima-agent` in 0.2.1). New commands: `anima containers`, `anima agents usage`, `anima audit verify`, `anima location`, `anima reminder`, each with its MCP tool.
+- **Versions.** The version is now the number of the release commit, for example 0.8.15. The numbers are higher than 0.2.1 and have gaps; each is one commit of `main`.
+- **Updates.** From this version, the application gets each change of `main` that changes it, with no step of a person. Settings > Updates shows the version and the check.
+
+### `anima` alone: Homebrew and crates.io (R-217 to R-219)
+
+Built, and never run with a switch on. A release of the desktop application can also release `anima` alone, in three jobs after the job `publish`:
+
+| Job | What it makes public | Secret, environment |
+| --- | --- | --- |
+| `cli-publish` | `anima/<version>/anima-darwin-universal.tar.gz`, `anima/<version>/anima-linux-x86_64.tar.gz`, `anima/<version>/SHA256SUMS`, then `anima/latest.json`, at `https://releases.anima.ing` | The bucket token, `release-publish` |
+| `tap` | `Formula/anima.rb` in `TheArctesian/homebrew-anima`: `brew install thearctesian/anima/anima` | `HOMEBREW_TAP_DEPLOY_KEY`, `release-tap` |
+| `crate` | The crate `anima-cli` on crates.io, with the version of the release | `CARGO_REGISTRY_TOKEN`, `release-crate` |
+
+The job `cli`, with no secret, makes the files first: each `anima` is the program inside the application that the same run built (the macOS one has its Developer ID signature), and the job starts the Linux program to see that it runs alone. A trial runs `cli` and none of the three jobs above.
+
+**The switch of its own.** The three jobs run only while `ANIMA_PUBLIC_RELEASES` and a second variable, `ANIMA_PUBLIC_CLI`, are both `on`. The second does not exist today. So the first release of the desktop application does not depend on these jobs, and the desktop jobs never wait for them.
+
+**A version on crates.io is permanent (R-219).** It cannot be deleted, only marked as withdrawn (`cargo yank`). With the switch on, each push to `main` that changes `crates/anima-cli`, the lock file or the release files becomes a version there for good. The name `anima-cli` was free on 2026-11-19; the first publish takes it for the account of the token.
+
+Before `ANIMA_PUBLIC_CLI` is set, the operator does these steps. No agent does them (R-180, R-195): each makes a credential.
+
+1. **The key of the tap.** A deploy key can write to one repository only. On your Mac:
+
+   ```sh
+   ssh-keygen -t ed25519 -N "" -C "anima release workflow" -f ~/.config/anima/tap-key
+   gh repo deploy-key add ~/.config/anima/tap-key.pub --repo TheArctesian/homebrew-anima --allow-write --title "anima release workflow"
+   ```
+2. **The environment `release-tap`**, which permits only `main`, with the key as its secret:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-tap --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-tap/deployment-branch-policies -f name=main -f type=branch
+   gh secret set HOMEBREW_TAP_DEPLOY_KEY --env release-tap --repo TheArctesian/anima.ing < ~/.config/anima/tap-key
+   rm ~/.config/anima/tap-key
+   ```
+3. **The token of crates.io.** Sign in at crates.io with your GitHub account and confirm your email address there (crates.io refuses a publish without it). Account Settings > API Tokens > New Token: name `anima release workflow`; scopes "publish-new" and "publish-update"; crates `anima-cli`; an end date that you select. It shows the token one time.
+4. **The environment `release-crate`**, the same way, then the token. The command asks for the value and does not show it:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-crate --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-crate/deployment-branch-policies -f name=main -f type=branch
+   gh secret set CARGO_REGISTRY_TOKEN --env release-crate --repo TheArctesian/anima.ing
+   ```
+
+   After the first publish, a token for only "publish-update" of `anima-cli` is enough: make it, set the secret again, and revoke the first.
+5. **The switch**, only after a release of the desktop application is public and a trial has passed with the job `cli`:
+
+   ```sh
+   gh variable set ANIMA_PUBLIC_CLI --body on --repo TheArctesian/anima.ing
+   ```
+
+If a job names an environment that does not exist, GitHub makes it with no rule; so make the two environments before the switch. To stop: `gh variable delete ANIMA_PUBLIC_CLI --repo TheArctesian/anima.ing`. A version that is on crates.io stays; `cargo yank --version <version> anima-cli` marks it as withdrawn.
+
+What is not known until the first run: if the Linux program starts on a computer with no `libdbus-1` (it uses the key store of the desktop through that library), if R2 takes the `put-object` of the `aws` program of the machine, and what `brew audit` says of the formula in the tap. HT-041 has the checks.
+
+### The iOS application: TestFlight (R-203; task B8i)
+
+Built as three jobs of the release workflow, and never run: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` calls `apps/desktop/src-tauri/ios-archive.sh`, which is task M5-4 of the [mobile plan](../plans/mobile-plan.md) and does not exist yet.
+
+**Two switches of its own.** `ANIMA_IOS_BUILD` lets the job `ios` run, in a trial and for a push to `main`: it builds and signs, and uploads nothing. While it is not `on`, no iOS job runs, and a trial is not red for it. `ANIMA_PUBLIC_TESTFLIGHT`, which only the operator sets, lets a push to `main` also send that build to TestFlight. Neither exists today, and they do not depend on `ANIMA_PUBLIC_RELEASES`.
+
+If a build goes to the operator alone before the sign-in of the phone works is not decided. Asked, he said (2026-11-19, relayed): "sign in does kinda work rn but i get that there are some bugs. Sign in on I phone should also be native tho". So the workflow makes both possible and decides neither: with the TestFlight switch off nothing leaves GitHub. With it on, the upload gives the build to App Store Connect, where it is for internal testers only: the workflow never adds a build to a group of outside testers, and never sends one to the review of Apple. The first public TestFlight build waits for R-158; to give a build to outside testers is an act of the operator in App Store Connect.
+
+**The build number** is the count of the first line of `main`: version 0.8.15 has the build number 815 (R-201). It only goes up on `main`, as App Store Connect asks. The archive script sets it from the version (`deploy/bin/phone-build-number`, task M5-3 of the mobile plan).
+
+**The script.** The job calls `sh apps/desktop/src-tauri/ios-archive.sh <version>` with `IOS_SIGN_IDENTITY` (the name of the Apple Distribution identity in the keychain of the job) and `IOS_PROFILE` (the path of the profile file). The script gets no certificate, no password and no key of App Store Connect, and it uploads nothing. Its last lines say `version=`, `build=`, `signed=` and `ipa=`; the job takes the file only when they say the version of the release and `signed=yes`. This interface is the proposal of the mobile session of 2026-11-19, on its branch `mobile/account-sign-in`; that session says that its signed mode is not tested.
+
+Before `ANIMA_IOS_BUILD` is set, the operator does these steps. No agent does them (R-180, R-195). The six iOS secrets are in the environment `release` today (R-204); GitHub cannot copy a secret, so each is set again from its file. Until then the job `ios` fails with the words "The three iOS signing secrets are not set in the environment release-ios"; it does not read them from `release`.
+
+1. **In App Store Connect:** an app record with the bundle ID `ing.anima.mobile` (My Apps > "+" > New App); in its TestFlight tab, one internal group (Internal Testing > "+") with only your own account as tester, and no external group; an API key (Users and Access > Integrations > App Store Connect API) with the role "App Manager" or "Developer". The Apple Distribution certificate and the App Store profile of `ing.anima.mobile` exist already (the secrets of 2026-11-19).
+2. **The environment `release-ios`** (the certificate and the profile; the job that builds), for `main` only:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-ios --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-ios/deployment-branch-policies -f name=main -f type=branch
+   base64 -i <the .p12 file> | tr -d '\n' | gh secret set IOS_DISTRIBUTION_P12_BASE64 --env release-ios --repo TheArctesian/anima.ing
+   gh secret set IOS_DISTRIBUTION_P12_PASSWORD --env release-ios --repo TheArctesian/anima.ing
+   base64 -i <the .mobileprovision file> | tr -d '\n' | gh secret set IOS_PROVISIONING_PROFILE_BASE64 --env release-ios --repo TheArctesian/anima.ing
+   ```
+
+   The second command asks for the password and does not show it.
+3. **The environment `release-testflight`** (the key of App Store Connect; the job that uploads), the same way:
+
+   ```sh
+   gh api --method PUT repos/TheArctesian/anima.ing/environments/release-testflight --input - <<'JSON'
+   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+   JSON
+   gh api --method POST repos/TheArctesian/anima.ing/environments/release-testflight/deployment-branch-policies -f name=main -f type=branch
+   gh secret set ASC_API_PRIVATE_KEY --env release-testflight --repo TheArctesian/anima.ing < <the AuthKey_….p8 file>
+   gh secret set ASC_API_KEY_ID --env release-testflight --repo TheArctesian/anima.ing
+   gh secret set ASC_API_ISSUER_ID --env release-testflight --repo TheArctesian/anima.ing
+   ```
+4. **After a run has used them:** delete the six iOS secrets from `release`, where the macOS build has them in its memory: `gh secret delete <name> --env release --repo TheArctesian/anima.ing` for each. R-204 left them there; this step is yours to take or not.
+5. **The switches**, the first when the archive script is on `main`, the second when a trial has built and signed:
+
+   ```sh
+   gh variable set ANIMA_IOS_BUILD --body on --repo TheArctesian/anima.ing
+   gh variable set ANIMA_PUBLIC_TESTFLIGHT --body on --repo TheArctesian/anima.ing
+   ```
+
+Two environments and not one: the job that builds runs the code of the commit, and the key that can upload to your App Store Connect account does not need to be there.
+
+Not proven, each until a real run: that the phone shell builds on a machine of GitHub; that the script signs from a keychain and an installed profile, with no window; that `xcrun altool --upload-app` of the machine takes the file with the API key; the time of the job; what App Store Connect answers for the first build of a new app (it can ask for export compliance and for a review of the beta). HT-046 has the checks.
 
 ### To stop or undo a release
 
@@ -256,11 +412,13 @@ It waits for the two conditions above, and nothing makes it urgent before the LL
 
 The bundle step of a builder builds, from the job's commit, every program that "Create a hub
 on this computer" needs, and puts them into the application (plan item S12,
-[s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md)):
+[s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md)). Since task HM-T16 it also
+builds `anima-daemon`, the daemon that the application installs on the computer it runs on
+(HMD-052 of [hosted-mode.md](../proposals/hosted-mode.md), R-206):
 
 | File | macOS | Linux AppImage |
 | --- | --- | --- |
-| `anima`, `anima-local-hub`, `anima-hub`, `anima-database`, `anima-gateway`, `anima-link` | `Anima.ing.app/Contents/MacOS/` | `usr/bin/` |
+| `anima`, `anima-local-hub`, `anima-hub`, `anima-database`, `anima-gateway`, `anima-daemon`, `anima-link` | `Anima.ing.app/Contents/MacOS/` | `usr/bin/` |
 | The PostgreSQL tree | `Anima.ing.app/Contents/Resources/database/` | `usr/lib/Anima.ing/database/` |
 
 - The Rust programs come from one `cargo build`. `anima-link` comes from `link/build.sh`, the

@@ -40,6 +40,13 @@
   color: var(--text-secondary);
 }
 
+/* The list's protocol button: its icon and its name, so the way in is read and not guessed (R-224). */
+.device-action.quiet {
+  min-block-size: var(--control-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
 .device-action.icon-only:hover {
   background: var(--surface-hover);
   color: var(--text);

@@ -1,5 +1,7 @@
 //! The hub's only source of the current time (CQ-021).
 
+pub mod lease;
+
 use chrono::{DateTime, Utc};
 
 pub trait Clock: Send + Sync {

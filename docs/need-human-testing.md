@@ -65,14 +65,19 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
-| HT-041 | The first crate version and the first formula of `anima` alone (task R8d) | A crates.io account of the operator, the tap repository, a published release with the standalone `anima` file | Open |
+| HT-041 | The first formula and the first crate version of `anima` alone, from the release workflow (tasks B8h, R8d) | A crates.io account of the operator, the key of the tap, a public release, a Mac and a Linux computer with no Anima | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
-| HT-048 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
-| HT-046 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
-| HT-047 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
+| HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
+| HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
+| HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
+| HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-051 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-052 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
+| HT-053 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 
 ### What a check on the hosted hub needs
 
@@ -897,6 +902,59 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
+### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
+
+Built: on the branch `hosted/hm-t24-link-unit` (task HM-T24 of
+[hosted-mode.md](proposals/hosted-mode.md), part a; R-240). `anima-link unit install` writes a
+`LaunchAgent` (macOS) or a systemd user unit (Linux) that runs `anima-link device`, and starts it;
+`unit remove` stops it and deletes the file; `unit show` says whether it is there (`link/unit`). The
+application does not use the command yet.
+
+The tests cover: the text of the two unit files, the commands and their order, the refusal of a value
+that could break out of a unit file, of a program inside an application, and of a program that other
+users can replace; the writing and the removal of the file with commands that are not run. Not
+covered: `launchctl` and `systemctl` themselves, a login, and a link that runs from the unit.
+
+It needs: a computer with a device link that joined a hub (Section 3 of
+[link.md](procedures/setup/link.md)); `<DIR>` is its state directory and `<PORT>` a free port, for
+example 41001. Stop each `anima-link device` and the Anima.ing application first.
+
+1. Copy the program to a folder that stays: `mkdir -p ~/.local/bin && install -m 0755 <anima-link of
+   this build> ~/.local/bin/anima-link`.
+2. Run `~/.local/bin/anima-link unit install -state <DIR> -listen 127.0.0.1:<PORT>`. Expected: no
+   output and exit code 0. No password is asked.
+3. Run `~/.local/bin/anima-link unit show`. Expected: `{"installed":true,"file":"..."}`.
+4. Run `~/.local/bin/anima-link ctl -state <DIR> status`. Expected: a JSON answer with
+   `"role":"device"` and `"local":"127.0.0.1:<PORT>"`.
+5. Log out and log in again (or start the computer again). Do not open the application. Run step 4
+   again. Expected: the same answer. On the hub, the device shows as connected.
+6. Run the command of step 2 from the application: `/Applications/Anima.ing.app/Contents/MacOS/anima-link
+   unit install -state <DIR> -listen 127.0.0.1:<PORT>`. Expected: a refusal that says that the program
+   is inside an application.
+7. Run `~/.local/bin/anima-link unit remove`, then steps 3 and 4. Expected: `"installed":false`, and
+   step 4 fails because no link runs.
+
+### HT-049: the application carries `anima-daemon` (HMD-052, task HM-T16)
+
+Built: on the branch `hosted/hm-t16-daemon-in-bundle` (task HM-T16 of
+[hosted-mode.md](proposals/hosted-mode.md); R-206). `apps/desktop/src-tauri/trial-bundle.sh` and the
+bundle step of the builder (`apps/desktop/src-tauri/src/builder/carried/rust_programs.rs`) build
+`anima-daemon` and name it in `bundle.externalBin`; `check-mach-o.sh` and the check of the AppImage in
+the release workflow expect it.
+
+The tests cover: the lists of programs of the builder and of the Mach-O check. Not covered: a real
+bundle. No bundle was made with this change, so nothing shows that Tauri takes the seventh program,
+that the signature and the notary service accept it, or that the shell finds it.
+
+1. Run `apps/desktop/src-tauri/trial-bundle.sh`. Expected: it ends with the place of the
+   application, with no error.
+2. Run `ls <place>/Anima.ing.app/Contents/MacOS`. Expected: eight files, and `anima-daemon` is one.
+3. Run `<place>/Anima.ing.app/Contents/MacOS/anima-daemon --help` (or with no argument). Expected:
+   the usage text of the daemon, not an error of the system.
+4. After the next release from `main`: the jobs `macos` and `linux` of the release workflow pass
+   their checks of the carried programs, and the notary step accepts the application. Expected: the
+   release is published. If a check fails, write its message here.
+
 ### HT-044: the application does not start Tailscale on a hosted hub (DEF-005)
 
 Built: on the branch `fix/install-daemon-link` ([DEF-005](work-items/defects/DEF-005.md)). For a hub at a
@@ -921,7 +979,7 @@ sign-in to the hosted hub.
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
-### HT-048: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+### HT-051: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
 
 Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
 phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
@@ -961,7 +1019,7 @@ Steps 1 to 4 need no real phone. Use the Android emulator with a route to the in
 
 Result: Open.
 
-### HT-046: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
+### HT-052: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
 
 Built: on the branch `mobile/account-sign-in`: `apps/desktop/src-tauri/ios-archive.sh` and
 `deploy/bin/phone-build-number` ([mobile-build.md](procedures/setup/mobile-build.md)). The tests cover the rule of the
@@ -982,13 +1040,13 @@ the operator (MOB-006).
 3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
    shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
    about the icons or the export question).
-4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-048, step 5.
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-051, step 5.
 5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
    higher.
 
 Result: Open.
 
-### HT-047: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
+### HT-053: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
 
 Built: on the branch `mobile/native-sign-in`. On an iPhone "Sign in" shows the page of the Anima.ing account over the
 application (the web authentication session of iOS) and comes back by itself; there is no code and no browser to go
@@ -998,7 +1056,7 @@ to. The shell uses the authorization code flow of WorkOS with PKCE and listens f
 The tests cover the code challenge (the example of RFC 7636), the address of the page, the listener with a real
 connection, the check of the state, a stopped sign-in, and the fields of the trade of the code. Not covered: the Swift
 part, the page on a screen, a real answer of WorkOS, the refresh after this flow, and the rest of the sign-in
-(HT-048). No build of this branch ran on a simulator or a phone.
+(HT-051). No build of this branch ran on a simulator or a phone.
 
 1. In the WorkOS dashboard, in the production environment: Applications, the application of Anima.ing, the tab
    Redirects. Add `http://127.0.0.1:47113/sign-in`. Do not make it the default. Expected: the dashboard takes it. If it
@@ -1197,6 +1255,11 @@ and public releases are off (the variable ANIMA_PUBLIC_RELEASES is not `on`)". T
 macOS and none for Linux. This is the expected result of step 3, seen for a merge commit and not for a change
 of a document; the check that the tip of `main` before the push is on the first line passed for a merge with
 `--no-ff`.
+
+Changed on 2026-11-19, on the branch `release/first-public`, and not run on GitHub: the job `gates` keeps
+compiler outputs between runs, and a release starts with the job `bucket`, which reads one object of the bucket
+with the token. Expected in step 4: `bucket` passes in the first minute. Expected in the second trial after the
+merge: the job `gates` is shorter than 82 minutes, and its last step shows cache hits.
 
 Result: Open.
 
@@ -1408,24 +1471,51 @@ State: Open.
 
 ### HT-041: the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d)
 
-Built: on the branch `release/cli-homebrew`, the first part only (task R8a): the package `anima-cli` holds a copy
-of the schema of K1, lists no test file, and builds from its own files. `cargo publish --dry-run -p anima-cli
---locked` ended with no error on 2026-11-19; it uploads nothing.
+Built: on the branch `release/cli-job` (task B8h; R-217 to R-219). The release workflow makes a standalone `anima`
+for macOS and for Linux from the applications of the same run, puts them below `anima/<version>/` of the bucket,
+pushes the formula to the tap `TheArctesian/homebrew-anima`, and publishes the crate `anima-cli` with the version
+of the release. The steps of the operator are in [releases.md](procedures/releases.md), "`anima` alone".
 
-Not built, so this check cannot start: the standalone `anima` file of a release (task R8b, OD-24), the formula
-and the tap (task R8c, OD-26), and the version of the crate (OD-W47 of [decisions.md](plan/decisions.md)): the
-crate says 0.1.0 today. The tests did not build the package on a clean Linux computer, so it is not known if
-that build needs the packages of the system for the key store (libdbus, pkg-config). No agent publishes a crate
-or pushes a tap.
+The tests read the rules of the jobs and run the two commands that write the formula and the version of the crate.
+`cargo publish --dry-run` passed on 2026-11-19. No test runs a job: no file was put in the bucket, nothing was
+pushed to the tap, nothing was sent to crates.io, and no `brew install` ran. It is not known if the Linux program
+starts on a computer with no `libdbus-1`, and if the build of the crate needs the packages `libdbus-1-dev` and
+`pkg-config` on each Linux (the job installs them).
 
-1. After the tasks R8b and R8c and the ruling of OD-W47: publish the crate, `cargo publish -p anima-cli --locked`.
-   Expected: crates.io shows `anima-cli` with the version of the release.
-2. On a computer with no Anima: `cargo install anima-cli --locked`, then `anima --version`. Expected: the version
-   of the release. On Linux, note each package of the system that the build asked for.
-3. `brew install thearctesian/anima/anima`, then `anima --version`. Expected: the same version, and no desktop
-   application and no daemon is installed.
-4. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
-   version (INS-012).
+1. Start a trial after the merge. Expected: the job `cli` passes; its log shows `ldd` of the Linux program and no
+   "not found"; the artifact `cli` holds two `.tar.gz` files, `SHA256SUMS`, `anima.rb` and `latest.json`.
+2. Do the steps of "`anima` alone" (the key of the tap, the token, the two environments), then set
+   `ANIMA_PUBLIC_CLI`, and release. Expected: the jobs `cli-publish`, `tap` and `crate` pass after `publish`.
+3. On a Mac with no Anima: `brew install thearctesian/anima/anima`, then `anima --version`. Expected: the version
+   of the release; no desktop application and no daemon is installed. `brew audit --strict --online anima` and
+   `brew test anima` pass.
+4. On a Linux computer with `x86_64`: the same with Homebrew, and `cargo install anima-cli --locked`. Expected:
+   the same version from both. Note each package of the system that the build or the program asked for.
+5. Compare with `anima --version` of the program inside the disk image of the same release. Expected: the same
+   version (INS-012). crates.io shows `anima-cli` with that version.
+
+Result: Open.
+
+### HT-046: the iOS application from the release workflow to TestFlight (R-203; task B8i)
+
+Built: on the branch `release/ios-job`. The release workflow has the jobs `ios` (build and sign), `ios-upload`
+(send to App Store Connect) and `ios-record`, behind the variables `ANIMA_IOS_BUILD` and `ANIMA_PUBLIC_TESTFLIGHT`.
+The steps of the operator are in [releases.md](procedures/releases.md), "The iOS application: TestFlight".
+
+The tests read the rules of the jobs: the switches, which job holds which key, the build number. No job ran. The
+archive script `apps/desktop/src-tauri/ios-archive.sh` (task M5-4 of the mobile plan) does not exist, so no test
+built or signed the application, and nothing was sent to App Store Connect.
+
+1. Do steps 1 to 3 of "The iOS application: TestFlight". Expected: two environments for `main`, each with its
+   three secrets.
+2. When the archive script is on `main`: set `ANIMA_IOS_BUILD` and start a trial. Expected: the job `ios` passes
+   and the artifact `ios` holds `Anima.ipa`; no upload job runs.
+3. Set `ANIMA_PUBLIC_TESTFLIGHT` and push a change of the application to `main`. Expected: `ios-upload` passes;
+   App Store Connect shows a build with the version of the commit and the build number of its count (0.8.15
+   gives 815); `ios-record` passes.
+4. Install the build from TestFlight on an iPhone. Expected: the application starts and shows the same version.
+5. Push a change of a document only. Expected: the summary of the run says "nothing: no change of ios after the
+   published <version>", and no iOS job runs.
 
 Result: Open.
 
@@ -1739,3 +1829,41 @@ Result: Passed. On 2026-11-19 the operator reported that the Linux preview worke
 signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
+
+### HT-047: the Devices page after the interface review (R-224)
+
+Built on the branch `ui/v2-devices` (`132e03b3`): in `apps/client/src/lib/devices/card/DeviceTable.svelte` the name is the
+first column and the status the second; the connect buttons of the list show the name of their protocol
+(`lib/devices/actions/DeviceActions.svelte`); the logs panel of the Devices page starts as one line
+(`lib/devices/screen/DeviceScreen.svelte`); the foot of the bar names the hub (`lib/nav/status/HubStatus.svelte`).
+The tests cover the order of the columns, the name of the hub and the start of the panel. The page was looked at only
+in pictures of the gallery tool, at 1280 px, in the dark and the light appearance, with sample devices. No person saw it
+in the desktop application, with real devices, at a narrow window or with a device that is down.
+
+1. Open the application and look at Devices in the list view.
+   Expected: each row starts with the name and the address, then the status. A device that needs a look has its reason
+   beside the status.
+2. Look at the column "Connect".
+   Expected: each way in is a button with an icon and a word (SSH, RDP, VNC, Web). Two buttons fit on one line.
+3. Look at the foot of the page.
+   Expected: the logs are one line with the newest event. A click on the line opens the panel; a second click closes it.
+4. Look at the foot of the bar.
+   Expected: on a hosted hub the line above "Connected" reads "Hosted by Anima.ing"; on a different hub it is the host name.
+5. Make the window narrow (below 1100 px) and look again, in the light and the dark appearance.
+   Expected: no text is cut in a way that hides its meaning, and no button lies over another part.
+### HT-048: the tab Overview of a device after the interface review (R-224)
+
+Built on the branch `ui/v2-device-overview` (`f3d25339`): `apps/client/src/routes/devices/[id]/overview/geometry.css` draws
+the four facts cards (Status, Uptime, Checks, SSH host key) in one row from a panel width of 56rem, and a card has no
+border. No test reads a layout. The page was looked at only in pictures of the gallery tool, at 1280 px, in the dark and
+the light appearance, with one sample device. No person saw it in the desktop application, at other widths, with a long
+host key, with many check states or while it loads.
+
+1. Open a device in the application, in a window about 1280 px wide.
+   Expected: Status, Uptime, Checks and SSH host key are one row. The three uptime figures are on one line. No card has a border.
+2. Make the window narrow, then wide, in the light and the dark appearance.
+   Expected: the cards go to two columns and then to one, and back; no text lies over another part; the whole host key shows.
+3. Reload the page and watch the first second.
+   Expected: the loading shapes are where the cards then are; nothing moves when the values arrive.
+
+Result: Open.
