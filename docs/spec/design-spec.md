@@ -577,7 +577,7 @@ The devices are at more than one site. Example: office 1, home and office 2. A m
 - **NET-002.** The hub must refuse each API request, tunnel request and login from an address that is not in a permitted network. The hub must write the refusal to the event log.
 - **NET-003.** The hub must listen only on its VPN interface and its private network interfaces. Do not bind the hub to a public interface.
 - **NET-004.** If the client cannot connect to the hub, the navigation bar must show "Not on the network" and the hub address. For a hub that Anima.ing hosts, the message must tell the operator to check the network of the computer ("Check this computer's network") and must not name a VPN. For each other hub, the message must tell the operator to check the VPN client. Data on the screen must show its age. (R-222)
-- **NET-005.** The client must find the hub by its DNS name `hub.anima.ing` (DNS-001). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address in the desktop client.
+- **NET-005.** The client has no default hub address. It uses the address that the sign-in to Anima.ing gave, the address of an invite, or the address that the operator typed in the desktop client. mDNS does not cross sites, so use mDNS only as a fallback on the local network. (R-225)
 - **NET-006.** A later version can let the hub find new devices on each site with mDNS and an ARP scan. The operator must accept each found device before Anima adds it.
 
 ### 4.2 Sites and VPN
@@ -658,7 +658,7 @@ The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
 | `releases.anima.ing` | R2 custom domain (proxied) | Bucket `anima-releases` | Update feeds and downloads (Sections 3.9 and 3.10) |
 | `<device>.net.anima.ing` | None | Headscale DNS only | VPN names of hosts (Headscale `dns.base_domain` = `net.anima.ing`) |
 
-- **DNS-001.** The client must use `hub.anima.ing` as the default hub address (NET-005).
+- **DNS-001.** The client must not use a default hub address (NET-005). With no saved address it shows the first-run choices. (R-225)
 - **DNS-002.** The hub must use a Let's Encrypt certificate for `hub.anima.ing`. Get it with the DNS-01 challenge through the Cloudflare API, because the hub has no public port. Renew it automatically. This satisfies SEC-001 with a certificate that the client trusts without a pinned exception.
 - **DNS-003.** The Cloudflare API token for DNS-01 must have only the permission "Zone DNS Edit" for `anima.ing`. Keep it in a Docker secret (SEC-004 rules apply). Do not log it.
 - **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.

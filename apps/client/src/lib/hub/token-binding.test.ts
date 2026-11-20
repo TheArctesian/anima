@@ -1,6 +1,6 @@
 import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, parseHubAddress, type HubAddress, type TokenProvider } from './hub';
+import { createHub, NO_HUB_ADDRESS, parseHubAddress, type HubAddress, type TokenProvider } from './hub';
 import { FAKE_WEBSOCKET, FakeSocket, recordingSink, settle, STATUS_CHANGED } from './socket/fake';
 
 const ME = parse('query { me { username } }') as never;
@@ -16,7 +16,7 @@ function keyStore(): { read: TokenProvider; reads: HubAddress[] } {
   const reads: HubAddress[] = [];
   const read: TokenProvider = (address) => {
     reads.push(address);
-    return Promise.resolve(address.origin === DEFAULT_HUB_ADDRESS.origin ? 'real-token' : null);
+    return Promise.resolve(address.origin === NO_HUB_ADDRESS.origin ? 'real-token' : null);
   };
   return { read, reads };
 }
@@ -61,7 +61,7 @@ describe('a hub reads the token for its own address only', () => {
     const { read, reads } = keyStore();
     const { fetch, sent } = answering();
     const hub = createHub({ address: mine, token: read, fetch, WebSocket: FAKE_WEBSOCKET });
-    Object.assign(mine, DEFAULT_HUB_ADDRESS);
+    Object.assign(mine, NO_HUB_ADDRESS);
     await hub.request(ME, {});
     hub.subscribe(STATUS_CHANGED, { deviceId: 'd1' }, recordingSink().sink);
     await settle();
