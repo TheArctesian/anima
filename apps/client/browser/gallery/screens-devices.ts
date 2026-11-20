@@ -1,8 +1,26 @@
 import { expect, type Page } from '@playwright/test';
 import type { Screen } from './shots';
+import type { Fixtures } from '../synthetic/fixtures';
 import { openDevices, openedDialog } from './steps';
 
 // The device list: its two views, each filter, the logs panel, the live sessions popover and Add device.
+
+/**
+ * A list with a device that is down and a device with a long name and an IPv6 address, so the pictures show the rows
+ * that are not the plain ones.
+ */
+function withProblems(loaded: Fixtures): Fixtures {
+  const down = loaded.devices.find((device) => device.name === 'mac-mini');
+  const long = loaded.devices.find((device) => device.name === 'amd-box');
+  // The real hub gives the devices by status, problems first; the synthetic hub keeps the order of its fixtures.
+  const devices = [...loaded.devices.filter((device) => device === down), ...loaded.devices.filter((device) => device !== down)].map((device) => {
+    if (device === down) return { ...device, status: 'DOWN', uptime: 0.9896 };
+    if (device === long) return { ...device, name: "Stephen's MacBook Pro 16", host: 'fd41:4e49:4d41:1e00:8c2f:11ff:fe6a:90b3' };
+    return device;
+  });
+  const checks = loaded.checks.map((check) => (check.deviceId === down?.id ? { ...check, status: 'DOWN', message: 'no route to host' } : check));
+  return { ...loaded, devices, checks };
+}
 
 const toolbar = (page: Page) => page.getByRole('search', { name: 'Filter devices' });
 
@@ -48,11 +66,22 @@ export const DEVICE_LIST_SCREENS: readonly Screen[] = [
     windowOnly: true,
   },
   {
-    name: 'devices-table',
+    name: 'devices-tiles',
     open: async (page) => {
       await openDevices(page);
-      await toolbar(page).getByRole('button', { name: 'Table', exact: true }).click();
-      await expect(page.getByRole('table')).toBeVisible();
+      await toolbar(page).getByRole('button', { name: 'Grid', exact: true }).click();
+      await expect(page.getByRole('table')).toBeHidden();
+    },
+    windowOnly: true,
+  },
+  { name: 'devices-list-problems', fixtures: withProblems, open: openDevices, windowOnly: true },
+  {
+    name: 'devices-tiles-problems',
+    fixtures: withProblems,
+    open: async (page) => {
+      await openDevices(page);
+      await toolbar(page).getByRole('button', { name: 'Grid', exact: true }).click();
+      await expect(page.getByRole('table')).toBeHidden();
     },
     windowOnly: true,
   },

@@ -1,0 +1,28 @@
+--- a/src/modules/partition/gui/ChoicePage.cpp
++++ b/src/modules/partition/gui/ChoicePage.cpp
+@@ -696,6 +696,7 @@
+     const QString storedLuksPassphrase
+         = useLuksPassphrase ? Calamares::String::obscure( m_encryptWidget->passphrase() ) : QString();
+     gs->insert( "luksPassphrase", storedLuksPassphrase );
++    gs->insert( "animaSelectedDisk", selectedDevice() ? selectedDevice()->deviceNode() : QString() );
+ 
+     if ( m_config->installChoice() == InstallChoice::Alongside )
+     {
+@@ -1399,7 +1400,7 @@
+ #endif
+ #endif
+ 
+-    if ( atLeastOneCanBeReplaced )
++    if ( atLeastOneCanBeReplaced && false )
+     {
+         m_replaceButton->show();
+     }
+@@ -1409,7 +1410,7 @@
+         force_uncheck( m_grp, m_replaceButton );
+     }
+ 
+-    if ( atLeastOneCanBeResized )
++    if ( atLeastOneCanBeResized && false )
+     {
+         m_alongsideButton->show();
+     }

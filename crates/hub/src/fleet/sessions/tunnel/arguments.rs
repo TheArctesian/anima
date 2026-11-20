@@ -69,6 +69,9 @@ pub(super) struct Sources<'a> {
     /// as `hostname`, so it never resolves the name again or reaches an address the hub
     /// refused.
     pub(super) target: IpAddr,
+    /// The port that guacd connects to: the port of the protocol in the settings of the
+    /// device, or the port of the hub that carries to it through the link (HMD-048).
+    pub(super) port: u16,
     /// The stored password; without one guacd asks the client (GW-015).
     pub(super) password: Option<&'a Secret>,
     /// The accepted RDP server certificate, if any (SEC-007).
@@ -88,7 +91,7 @@ pub(super) fn connect_values(
     let device = sources.device;
     let mut values = ArgValues::new();
     values.set("hostname", sources.target.to_string());
-    values.set("port", desktop.port(device).to_string());
+    values.set("port", sources.port.to_string());
     if let Some(password) = sources.password {
         values.set("password", text("password", password)?);
     }

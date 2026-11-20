@@ -100,6 +100,7 @@ pub struct Subscription(
     checks::graphql::Subscription,
     events::graphql::Subscription,
     metrics::graphql::Subscription,
+    reminders::graphql::Subscription,
     sessions::graphql::Subscription,
     sources::graphql::Subscription,
     sources::graphql::GithubConnectSubscription,
@@ -143,6 +144,9 @@ pub struct Dependencies {
     /// The file store and its data keys (K-E4 Section 9): the `/files/v1` routes get a clone of
     /// this same value. [`files::Store::off`] when `ANIMA_FILES_DIR` is not set.
     pub files: files::Store,
+    /// The hub's one way to the open applications (K-E6 Section 5): the sender of the reminders
+    /// gets a clone of this same value, so it counts the open `reminderFirings`.
+    pub reminders: reminders::Live,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -169,6 +173,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         vpn_broker,
         sources,
         files,
+        reminders,
     } = dependencies;
     let builder = harden(
         Schema::build(
@@ -192,7 +197,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(link::Claims::default())
     .data(access::BrowserTickets::default());
     // One block per domain: its loaders (R-014) and its state.
-    with_devices_loaders(builder, &pool, &clock)
+    let builder = with_devices_loaders(builder, &pool, &clock)
         // checks
         .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
@@ -219,18 +224,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         // sources
         .data(sources)
         // projects: the changes each API key made this minute (K-E1 Section 13.1)
-        .data(projects::KeyChanges::default())
-        // timeline: one adapter for each domain that has records to show (K-E3)
-        .data(timeline::Adapters::new(vec![timeline::event_log()]))
-        // locations: the sealing keys of the positions (K-E4 Section 11)
-        .data(locations::Seal::new(files.sealing_keys().clone()))
-        // files: the pieces, the data keys and the domains that derive records (K-E4 Section 9)
-        .data(files)
-        // links: the title of each kind of record that a domain owns (K-E4 Section 4)
-        .data(links::TitleSources::new(vec![places::record_titles()]))
-        // places: the later domains that hold a PlaceId (none yet)
-        .data(places::Holders::default())
-        .finish()
+        .data(projects::KeyChanges::default());
+    with_shared_records(builder, files, reminders).finish()
 }
 
 /// The engine's routes beside `/graphql`, logged by their templates only, so that an owner,
@@ -245,6 +240,27 @@ pub fn engine_routes(parts: &Dependencies) -> Router {
 }
 
 type Builder = SchemaBuilder<Query, Mutation, Subscription>;
+
+/// The state of the shared records of the engine (K-E3, K-E4, K-E6).
+fn with_shared_records(
+    builder: Builder,
+    files: files::Store,
+    reminders: reminders::Live,
+) -> Builder {
+    builder
+        // timeline: one adapter for each domain that has records to show (K-E3)
+        .data(timeline::Adapters::new(vec![timeline::event_log()]))
+        // locations: the sealing keys of the positions (K-E4 Section 11)
+        .data(locations::Seal::new(files.sealing_keys().clone()))
+        // files: the pieces, the data keys and the domains that derive records (K-E4 Section 9)
+        .data(files)
+        // links: the title of each kind of record that a domain owns (K-E4 Section 4)
+        .data(links::TitleSources::new(vec![places::record_titles()]))
+        // places: the later domains that hold a PlaceId (none yet)
+        .data(places::Holders::default())
+        // reminders: the open applications (K-E6 Section 5)
+        .data(reminders)
+}
 
 /// The devices loaders (R-014), with the devices fields that join checks and metrics
 /// (API-005).

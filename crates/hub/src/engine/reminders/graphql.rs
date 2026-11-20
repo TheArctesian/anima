@@ -1,5 +1,5 @@
 //! The reminders GraphQL part (K1; K-E6 Section 6): the rules, their firings, a test, and the
-//! answers of the operator to a firing (REM-007). The subscription is not built yet.
+//! answers of the operator to a firing (REM-007), and the subscription of an open application.
 //!
 //! Each change of a rule writes its row, one audit entry and one event in one transaction.
 #![expect(
@@ -7,6 +7,7 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
+mod live;
 mod views;
 
 use std::sync::Arc;
@@ -16,6 +17,7 @@ use async_graphql::{
 };
 use chrono::{DateTime, Utc};
 
+pub use live::Subscription;
 use views::{FiringStateView, FiringView, RuleInput, RuleView};
 
 use super::{

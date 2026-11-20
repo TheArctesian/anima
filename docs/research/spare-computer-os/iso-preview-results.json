@@ -1,0 +1,41 @@
+{
+  "iso_sha256": "3cb19d776edab956579b4f44c25429a9a3c448c70ef5fff76dba62aac5fa9aff",
+  "results": [
+    {
+      "case": "mounted-child-excluded",
+      "result": "Passed"
+    },
+    {
+      "case": "iso-uefi-live",
+      "result": "Passed"
+    },
+    {
+      "case": "cancel-before-erase",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-install",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-login-readonly-runtime",
+      "result": "Passed"
+    },
+    {
+      "case": "rootless-isolated-app-and-job",
+      "result": "Passed",
+      "limitation": "Local Podman only, not Anima orchestration or an agent run"
+    },
+    {
+      "case": "installed-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ],
+  "serial_log_sha256": "5e99b61ff3e4ff0d249aa304edc4e4b9994407b1ebd31db0f737c51df79a9425",
+  "test_directory": "iso-test-008",
+  "installed_closure": "/nix/store/0q3ywzpcsjzrhi9l6q7xy2a0qiflps5b-nixos-system-anima-26.05.20261118.3457b69"
+}

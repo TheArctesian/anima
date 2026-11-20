@@ -2,6 +2,7 @@
 //! and the drive root, answered to guacd 1.6.0's recorded `args` (K4 Section 3, GW-012,
 //! GW-013, RA-021, RA-033, SEC-007).
 
+mod drive;
 mod switches;
 
 use std::{
@@ -53,6 +54,7 @@ fn values_for(desktop: Desktop, device: &Device) -> guac_protocol::ArgValues {
     let sources = Sources {
         device,
         target: TARGET,
+        port: desktop.port(device),
         password: Some(&password),
         certificate: Some(&certificate),
         drive_root: DRIVE_ROOT,
@@ -180,19 +182,6 @@ fn gw_013_paths_recordings_sftp_wake_and_trust_on_first_use_stay_empty() {
     }
 }
 
-#[test]
-fn ra_021_each_device_gets_its_own_folder_under_the_drive_root() {
-    let mut other = device("desk.example.net");
-    other.id = "0190a000-0000-7000-8002-0000000000bb".parse().unwrap();
-    for device in [device("desk.example.net"), other] {
-        let values = connect_for(Desktop::Rdp, &device);
-        assert_eq!(
-            values["drive-path"],
-            format!("/var/lib/guacd/drives/{}", device.id)
-        );
-    }
-}
-
 /// The `connect` values the handshake sends for `values` over `desktop`.
 fn connect_by_name_of(
     desktop: Desktop,
@@ -208,23 +197,6 @@ fn connect_by_name_of(
     };
     let (names, sent) = reply(desktop, asked);
     connect_by_name(&names, &sent)
-}
-
-#[test]
-fn ra_021_a_root_with_a_trailing_slash_gets_no_double_slash() {
-    let device = device("desk");
-    let password = Secret::from(PASSWORD.to_owned());
-    let sources = Sources {
-        device: &device,
-        target: TARGET,
-        password: Some(&password),
-        certificate: None,
-        drive_root: "/srv/drives/",
-    };
-    let values = connect_values(Desktop::Rdp, &sources).unwrap();
-    let values = connect_by_name_of(Desktop::Rdp, &device, values);
-    assert_eq!(values["drive-path"], format!("/srv/drives/{}", device.id));
-    assert_eq!(values["cert-fingerprints"], "", "no certificate, no pin");
 }
 
 #[test]
@@ -321,6 +293,7 @@ fn log_007_a_password_that_is_not_text_is_refused_without_its_bytes() {
     let sources = Sources {
         device: &device,
         target: TARGET,
+        port: Desktop::Vnc.port(&device),
         password: Some(&password),
         certificate: None,
         drive_root: DRIVE_ROOT,

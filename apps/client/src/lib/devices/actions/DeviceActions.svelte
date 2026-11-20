@@ -25,33 +25,48 @@
     screenSharing?: CardScreenSharing;
     /** Icon buttons named by their tooltip and label, for the list's fixed connect column (UR-7, D18). */
     compact?: boolean;
+    /** A row of the list: no action that cannot work now, so each row keeps one line (row H of the site language plan). */
+    row?: boolean;
   }
 
-  const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false }: Props = $props();
+  const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false, row = false }: Props = $props();
   const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
   const web = $derived(webInterfacesOf(device));
+  const protocols = $derived(connectProtocols(device));
+  // The setup needs the device: a row of the list does not offer it for a device that is down (row H of the site language plan).
+  const offersSetup = $derived(screenSharing !== undefined && offersScreenSharing(device) && !(row && device.status === 'DOWN'));
+  const offersWeb = $derived(onOpenWeb !== undefined && web.length > 0);
+  /**
+   * A row of the list has one line: with more than two buttons, each way in shows its icon alone and its name in its
+   * tooltip, so a device that goes down and gains "Wake" does not make its row taller (MOT-007).
+   */
+  const offersWake = $derived(wake !== undefined && canWake(device) && !(row && device.status === 'UP'));
+  const tight = $derived(row && protocols.length + (offersSetup ? 1 : 0) + (offersWeb ? 1 : 0) + (offersWake ? 1 : 0) > 2);
 </script>
 
-<span class="actions" class:compact>
-  {#each connectProtocols(device) as protocol (protocol)}
+<span class="actions" class:compact class:row>
+  {#each protocols as protocol (protocol)}
     <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
     <button
       type="button"
       class="device-action"
-      class:quiet={compact}
+      class:quiet={compact && !tight}
+      class:icon-only={tight}
+      title={tight ? protocol : undefined}
       tabindex="0"
       aria-label={connectLabel(protocol, device.name)}
       onclick={(event) => {
         onConnect(device, protocol, event.currentTarget);
       }}
-      {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} size="sm" />{/if}{protocol}</button
+      {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} size="sm" />{/if}{#if !tight}{protocol}{/if}</button
     >
   {/each}
-  {#if screenSharing !== undefined && offersScreenSharing(device)}
+  {#if screenSharing !== undefined && offersSetup}
     <ScreenSharingButton {device} calls={screenSharing.calls} onReady={screenSharing.onReady} compact />
   {/if}
-  {#if onOpenWeb !== undefined && web.length > 0}
+  {#if onOpenWeb !== undefined && offersWeb}
     <WebMenu
+      iconOnly={tight}
       deviceName={device.name}
       interfaces={web}
       onOpen={(webInterface, button) => {
@@ -59,9 +74,9 @@
       }}
     />
   {/if}
-  {#if wake !== undefined && canWake(device)}
-    <!-- Up needs no wake. The slot is one button tall, and the button's status line floats above it: it moves nothing (MOT-007). -->
-    <span class="wake-slot"><WakeButton deviceId={device.id} api={wake} disabled={device.status === 'UP'} /></span>
+  {#if wake !== undefined && offersWake}
+    <!-- Up needs no wake: a row of the list leaves the button out, each other place shows it disabled. The slot is one button tall, and the button's status line floats above it: it moves nothing (MOT-007). -->
+    <span class="wake-slot"><WakeButton deviceId={device.id} api={wake} disabled={device.status === 'UP'} small={row} /></span>
   {/if}
 </span>
 
@@ -74,6 +89,10 @@
 
   .compact {
     gap: var(--space-1);
+  }
+
+  .actions.row {
+    flex-wrap: nowrap;
   }
 
   .wake-slot {
