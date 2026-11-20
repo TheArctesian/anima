@@ -79,6 +79,27 @@ that owns the area.
 | SF-046 | Section 4.14: "where the table says 'User only', the settings at the machine are the second control" | Container work types (proposed text for contract K10, not built) | Open |
 | SF-047 | Contradictions with K10 0.3 that Section 4.3 does not change | Container work types (proposed text for contract K10, not built) | Open |
 | SF-048 | Points that an implementer must guess | Container work types (proposed text for contract K10, not built) | Open |
+| SF-049 | Section 4.1, how the kind of engine is decided. High on a Mac, Low elsewhere | Container work types (proposed text for contract K10, not built) | Open |
+| SF-050 | Section 4.1, engine of a user: the accepted user need not be the owner of the engine. Medium | Container work types (proposed text for contract K10, not built) | Open |
+| SF-051 | Section 4.2, "The owner sets the settings off when he moves a machine to a different hub". Medium | Container work types (proposed text for contract K10, not built) | Open |
+| SF-052 | Section 4.5 steps 1 and 5, the reader and the writer of YAML have no rules. Medium (not verified) | Container work types (proposed text for contract K10, not built) | Open |
+| SF-053 | Section 4.5 step 3, the filling of variables is not fully said. Medium to Low | Container work types (proposed text for contract K10, not built) | Open |
+| SF-054 | Section 4.5, `image`: "the characters that a registry permits". Low | Container work types (proposed text for contract K10, not built) | Open |
+| SF-055 | Section 4.5, value rules that are missing for permitted keys | Container work types (proposed text for contract K10, not built) | Open |
+| SF-056 | Section 4.5, "the lower of the value of the file and its own limit". Medium (not verified) | Container work types (proposed text for contract K10, not built) | Open |
+| SF-057 | Section 4.5, `content` of a top-level secret. Low (not verified) | Container work types (proposed text for contract K10, not built) | Open |
+| SF-058 | Sections 4.6, 4.7, 4.10: `application_back` checks the final form with a list that refuses a final form. Medium | Container work types (proposed text for contract K10, not built) | Open |
+| SF-059 | Section 4.8, "It runs Compose in the recorded folder, as the owner would". Medium | Container work types (proposed text for contract K10, not built) | Open |
+| SF-060 | Sections 4.3 and 4.7, the queue. Medium to Low | Container work types (proposed text for contract K10, not built) | Open |
+| SF-061 | Section 4.3, contradictions with K10 0.3 that remain. Medium for the first, Low for the others | Container work types (proposed text for contract K10, not built) | Open |
+| SF-062 | Section 4.13, what the key gives to a catalogue install. Medium to Low | Container work types (proposed text for contract K10, not built) | Open |
+| SF-063 | Sections 4.1, 4.2 and 4.3 (Section 9), sentences that are false on an engine of a user. Low | Container work types (proposed text for contract K10, not built) | Open |
+| SF-064 | Section 4.1, the path-write rule and the plug-in. Low (not verified) | Container work types (proposed text for contract K10, not built) | Open |
+| SF-065 | Section 4.3, the paragraph of K10 Section 3 does not name each power. Low | Container work types (proposed text for contract K10, not built) | Open |
+| SF-066 | The table of actors gave an API key the stop and the restart of an adopted project, which R-234 does not list | Container work types (proposed text for contract K10, not built) | Open |
+| SF-067 | The table of actors gave an API key the update of a catalogue application, which R-234 does not list | Container work types (proposed text for contract K10, not built) | Open |
+| SF-068 | The text said the risk of R-235 more softly and more narrowly than the ruling | Container work types (proposed text for contract K10, not built) | Open |
+| SF-069 | The text said the risk of R-231 without the words "on each machine" | Container work types (proposed text for contract K10, not built) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -944,6 +965,279 @@ Requirements: task H14; the text of the container work types, version 3 of the p
 - The numbers 6.4.7 and 6.4.8 do not exist.
 
 State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+## The third read of the container work types (task H14, 2026-11-19)
+
+After R-234 to R-238 and R-246 the text was written a third time (version 4 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4). A third separate reviewer agent read it against SF-015 to SF-048, the rulings R-209 to R-246 and the record of task H30. It did not read the proposal. Nothing was run; the behaviour of Docker and Compose in these entries is from the knowledge of the reviewer, marked "not verified" where it carries a finding.
+
+The last line of the reviewer, in its words: "No finding remains that the owner has not decided; the open points are changes of the text." It gave one condition, in its words:
+
+None, on the condition that the changes of SF-051, SF-066 and SF-067 are taken. If the writer keeps the text of one of them, that point needs him:
+- SF-051: accept that settings made for one hub serve a different hub (I recommend the change).
+- SF-066: give the stop and restart of an adopted project to an API key (I recommend "No").
+- SF-067: give the update of a catalogue application to an API key (I recommend "No" until he says yes).
+
+No finding remains that the owner has not decided; the open points are changes of the text.
+
+The writer took the three changes (SF-051, SF-066, SF-067), so no point goes to the operator from this read. The open points are 17 weaknesses of the text (SF-049 to SF-065) and four places where the text was wider or softer than a ruling (SF-066 to SF-069). The fourth form of the text (version 5 of the proposal) has the change that each entry proposes. No reviewer has read the fourth form; the owner of `contracts/work-route.md` reviews the text when it is put in that file.
+
+How the reviewer judged the 34 earlier findings:
+
+| Finding | Result | Sentence of the third form, or what is missing |
+| --- | --- | --- |
+| SF-015 | Corrected (R-228 removes `full`) | "A key, at any level, that is not here is refused (`file_not_permitted`)." Value rules that are still missing are SF-053 to SF-057. |
+| SF-016 | Corrected | "No mount can name `files/`." and "A bind mount names exactly `binds/<name>` … it checks, without following a link, that it is a real folder below a real `binds/`." |
+| SF-017 | Corrected | "It starts the project from the final form only, with the project name and the path of the file as arguments. It never gives the environment file to Compose". Residue: SF-052, SF-055. |
+| SF-018 | Decided by R-226, R-241, R-236 | The reset of the settings at a new enrolment, which the finding proposed, is replaced by a duty of the owner (SF-051). |
+| SF-019 | Decided by R-232 (`pull`) and R-235 (ways a, d); way (b) corrected | "`adopted_apply` uses the recorded paths, never the labels at the time of the item." and "`up` never builds an image." |
+| SF-020 | Corrected (R-227); actors decided by R-234 | "Each other container is refused (`not_adopted`)." The table of 4.13 is wider than R-234 in two cells (SF-066, SF-067). |
+| SF-021 | Corrected (R-227, R-230) | "`containers`: the stopped containers that have the project label of an application that Anima installed." and "refuses it unless 'The hub may delete volumes' is on". |
+| SF-022 | Corrected (R-227, R-234) | "`tail` is 0 to 1,000." and, in the table, "No. No MCP tool returns a log". |
+| SF-023 | Corrected | "It opens no file and no address, and shows no text of an error of a reader". |
+| SF-024 | Corrected | "It holds no output of the Docker program and no text of a file." and "No file of the machine other than the two files of the item is opened for this." |
+| SF-025 | Corrected in part | Present: "It sets no tag on an image." and the one step back. Missing: "applies the rules of Section 4.5 of today to the kept file", but the kept file is the final form, which has `name`, real bind paths and added members that the list refuses (SF-058). |
+| SF-026 | Corrected in the text; the part before W7 decided by R-231 | "the applications program keeps the two files in the folder of the application (Section 4.6) for the life of the application, and `application_remove` deletes them." Not changed: the K10 Section 8 rule "asks for a secret only after the isolation exists" (SF-061). |
+| SF-027 | Corrected (R-229) | "With 'Open to the network' off, `host_ip` is `127.0.0.1`; a different address, or none, is refused". |
+| SF-028 | Corrected | "The project name is `anima-` and the 32 hexadecimal digits of that UUID. The item is refused when a project of that name exists with a different folder". |
+| SF-029 | Corrected in part | Present: "`free.slots` counts jobs only." and the disk check. Missing: zero and negative limits (SF-056); the place of the health wait has no mechanism (SF-060); the machine still "claims no item" when `unclean` (SF-061). |
+| SF-030 | Corrected | "To set 'Manage applications' off does not stop a container. The applications program then shows each application that Anima installed and asks if it stops them". |
+| SF-031 | Corrected (R-233) | "The applications program starts only an image that it pulled for this application, by the digest of that pull." |
+| SF-032 | Corrected in part | The members are listed. Missing: "writes this log where the daemon and the hub cannot change it" is false on an engine of a user, where the daemon is the same user (SF-063). |
+| SF-033 | Corrected in part | Each point has a sentence except one: what the machine does with a container item when it cannot reach the hub (K10 Section 7, the SF-005 paragraph, has `build` and `runner` only; `limits.orphanSeconds` has no meaning for the kind `host`). |
+| SF-034 | Corrected | "A key that is not in the list is refused at any level: thus `include`, `extends`, `env_file`, `profiles`, `build` and `name` are refused before a variable is filled." |
+| SF-035 | Decided by R-241 | The text has both rules. The way the kind is decided is open (SF-049). |
+| SF-036 | Corrected in part | The reader is named and the members below each key are listed. Missing: the short forms, the kept final form (SF-058), and the YAML rules of the reader and the writer (SF-052, SF-053). |
+| SF-037 | Corrected | "A top-level volume: No member" and "A top-level network: `driver` with the value `bridge`; `internal`". |
+| SF-038 | Corrected | "A top-level secret or config: `content` only" and "`source`, `target`, `mode`, with a source of this file". See SF-057 for `content` of a secret. |
+| SF-039 | Decided by R-236 | "No request on the socket changes a setting of Section 4.2." The binding is dropped (SF-051). |
+| SF-040 | Decided by R-235 | The third point of the finding (which environment and login Compose gets) is not corrected (SF-059). |
+| SF-041 | Corrected | "a configuration folder of its own that holds no login of a registry". |
+| SF-042 | Corrected | "each `$` written `$$`" and "the file has a name that Compose does not read" and "Each path that `docker` needs is an argument." |
+| SF-043 | Corrected | "After the install no prefix is named, so no label is permitted". |
+| SF-044 | Corrected in part | Missing: a value of zero or below is "the lower" and means no limit (SF-056); `cpus` and `healthcheck.interval` have no limit; no count limit for networks and volumes. |
+| SF-045 | Corrected | "In each case it never removes an image that `keep` holds, and nothing of the list 'Protected'." |
+| SF-046 | Corrected | "No setting of the machine is for logs: a person who controls the hub, and a program of the user of the daemon, can read the logs". |
+| SF-047 | Corrected in part | Corrected: the switch row, the Section 6 lines, `types`, `free.slots`, the end in the middle of an `up`. Missing: three contradictions with K10 0.3 (SF-061). |
+| SF-048 | Corrected | "The list holds names of containers and names of projects." and "A project whose name starts with `anima-` cannot be adopted." and "a depth of more than 32, and more than 32 services". Residue: a 256 KiB file in a JSON string can exceed the 1 MiB answer when it has many escaped characters (Low). |
+
+### SF-049: Section 4.1, how the kind of engine is decided. High on a Mac, Low elsewhere
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Way: "The socket of the engine belongs to the administrator" has no rule for a link. On the measured Mac `/var/run/docker.sock` and `/usr/local/bin/docker` are links that root owns, to a socket and a program that the user owns.
+- An implementation that reads the owner of the path itself decides "system engine" and runs as the administrator. If the write check is also made on the link, it starts a program that the user can replace. That is SF-035 again and breaks R-241 point 2.
+- Who: each program of the user of the Mac.
+- The text also does not say when the kind is decided, or what happens when the owner of the socket changes later.
+- Change: "The administrator records the kind when he sets 'Manage applications' on. The kind is that of the owner of the real socket, after each link is resolved. At each start the applications program resolves each link of the socket path and of the two program paths. It refuses to start when the owner of the real socket is not the user that it runs as, or when the kind is different from the recorded one. When it runs as the administrator it also refuses when a link, the real file, or a folder above one of them can be written by a user who is not an administrator."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-050: Section 4.1, engine of a user: the accepted user need not be the owner of the engine. Medium
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Way: a computer has daemons for two accounts (R-206, R-208). The socket belongs to A; the administrator names B. The program runs as A and takes requests of B, so B gets A's engine through Anima. The sentence of R-241, "to which Anima gives nothing that it did not have", is then false for B.
+- Who: a program of account B.
+- Change: "On an engine of a user the accepted user is the owner of the socket of the engine. The applications program refuses to start when the two are different."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-051: Section 4.2, "The owner sets the settings off when he moves a machine to a different hub". Medium
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Way: the owner moves a machine and does not set them off. "All containers", "The hub may delete volumes", the adopted projects and the label prefixes then serve the new hub.
+- R-236 accepts requests with no hub; no ruling says that settings made for one hub serve a different one.
+- Who: a person who controls the new hub.
+- Change: "The daemon sends the origin of its hub and its device identifier with each request. The applications program records the first pair in a file of its own. When a request has a different pair, it refuses each container item (`applications_off`) until the administrator sets 'Manage applications' on again. This protects an owner who forgets. It does not limit a program of the user of the daemon, which can send the old pair (R-236)."
+- With this change the rest of the risk is the one R-236 accepts.
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-052: Section 4.5 steps 1 and 5, the reader and the writer of YAML have no rules. Medium (not verified)
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Way: the program's writer and the reader of Compose can read one scalar differently: `no`, `yes`, `on`, `0444`, `1e3`, `~`, a string that starts with `!`, `&`, `*`, `{` or `[`, or a value with a line end (`content` of a config always has them). A writer that does not quote every string lets a value become structure in what Compose reads, after the check.
+- Who: a person who controls the hub; an operator file.
+- Change, step 1: "It also refuses a second document, a tag, a key that is not a string, a key that is there two times, and the merge key."
+- Change, step 5: "It writes the final form as JSON: each string in quotes with each control character escaped, each number and each truth value from its own typed value. `mode` is written as a string of octal digits."
+- Add to 4.1: "It refuses to start when the Compose program is older than the lowest version that it knows."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-053: Section 4.5 step 3, the filling of variables is not fully said. Medium to Low
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Not said: whether the filling is on the text or on a scalar after the read; what `$NAME`, `$$`, `${NAME-x}`, `${NAME:?x}` and a nested variable in the file are; what a name that the environment file does not have gives; whether a filled value is filled again; whether quotes in `NAME="a b"` are part of the value; a name that is there two times.
+- Step 4 checks the result again, so the effect is a difference between the hub and the machine, or structure through a filled value if the filling is on the text.
+- Change: "The variables are filled in a scalar value after the YAML is read. The result is one scalar of text; it is never read again as YAML, and it is not filled a second time. `$$` is one `$`. Each other `$` that is not one of the two forms is refused. A name that the environment file does not have and that has no `:-text` is refused. In the environment file the value is the text after the first `=`, with no quote rule; a name that is there two times is refused."
+- Add: "A name of a service, a volume, a network, a secret or a config has 1 to 63 characters of `a-z`, `0-9`, `-`, `_`, and starts with a letter or a digit."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-054: Section 4.5, `image`: "the characters that a registry permits". Low
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Way (a): a value that starts with `-` is an option to `docker pull` (not verified what it can do there).
+- Way (b): the registry host can be `localhost:5000`, an address of the local network or of the network of Anima. The engine then makes requests there. This is not in the paragraph of K10 Section 3.
+- Who: a person who controls the hub; an operator file.
+- Change: "`image` starts with `a-z` or `0-9` and has the form of a reference; the program gives it after `--`." Add to the Section 3 paragraph: "The engine gets an image from each address that the file names, also an address of the local network."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-055: Section 4.5, value rules that are missing for permitted keys
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- `environment`, Low (not verified): an entry with a name and no value is filled by Compose from its own process. Change: "Each entry of `environment` has a value; the form with a name only is refused."
+- `tmpfs`, Low: the short form takes options (`/run:exec,suid,dev,size=…`). Change: "`tmpfs` is an absolute path with no `:` and no `,`; the program sets each option."
+- `ports`, `volumes`, `secrets`, `configs`, Low: the short forms (`"8080:80"`, `"data:/data"`, a name only) are not said. Change: "Only the long form is permitted" for these four keys. For `ports`: "`published` and `target` are one whole number, not a range; `protocol` is `tcp` or `udp`."
+- Volume `target`, secret and config `target`, Low: `/`, `/proc`, `/sys`, `/dev`, or a path over a different mount only harm the same container (not verified that the engine refuses `/`). Change: "A `target` is an absolute path with no `..`; it is not `/`; two mounts of one service have different targets."
+- A volume mount with no `source` makes a volume with no name, which `application_remove` does not count. Change: "`source` is always present."
+- `user`, `entrypoint`, `command`, `hostname`, `expose`, `restart`, `stop_signal`, `aliases`, and a named volume in two services of one file: I found nothing that reaches outside the application. One sentence with the form of each value is enough.
+- `labels`, Low: the administrator can name a prefix that covers the labels of Compose. Change: "A prefix that starts with `com.docker.` cannot be named."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-056: Section 4.5, "the lower of the value of the file and its own limit". Medium (not verified)
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Way: `mem_limit: 0`, `pids_limit: 0` or `-1` is the lower number and means no limit in the engine. `cpus` has no limit of the program. Thousands of top-level networks use all the address ranges of the engine, and no other project can then make a network.
+- Who: a person who controls the hub; the author of a recipe.
+- Change: "A value of `mem_limit`, `pids_limit`, `cpus` or `stop_grace_period` that is zero or below is refused. `cpus` has the same rule as `mem_limit`. A file has at most 16 networks and 64 volumes. `healthcheck.interval` is at least 5 seconds."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-057: Section 4.5, `content` of a top-level secret. Low (not verified)
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- As far as I know Compose has `content` for a config and not for a secret. An implementer who finds that it fails will write the value to `files/` and use `file`, which is a mount that names `files/` (SF-038, SF-016 b).
+- Change: remove `secrets` from the top level and from the service row, or add: "If Compose does not take `content` for a secret, the program refuses the file; it never writes a `file` member."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-058: Sections 4.6, 4.7, 4.10: `application_back` checks the final form with a list that refuses a final form. Medium
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- The kept things are "the final form, the environment file and the image digests". The file as it came is not kept. The final form has `name`, real bind paths, `cap_drop`, the limits and the log options.
+- Read exactly, each `application_back` is refused; else the implementer writes a second list by guess. A rule of today on a variable also cannot be applied to a form in which the variables are filled.
+- Change in 4.6 and 4.7: "With `keep` 1 the machine keeps the Compose file as it came, the environment file and the image digests of the version before." Change in 4.10: "It makes the final form again from the kept Compose file and the kept environment file by the six steps of Section 4.5 of today, with the kept digests and no pull."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-059: Section 4.8, "It runs Compose in the recorded folder, as the owner would". Medium
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- It contradicts Section 4.1 ("an environment that holds only what the program sets", "a configuration folder … that holds no login").
+- With the environment of 4.1 a file with `${BIND:-0.0.0.0}` or `${TAG:-latest}` gives a different stack than the owner started: a port open to the network, a different image. A private image fails at `pull`. No ruling accepts this; R-235 is about a changed file.
+- Not said: that each recorded file is given with `-f`, the project folder and the project name as arguments; that `.env` of the folder is read; the flags of `up`.
+- On a system engine Compose runs as the administrator and reads `.env`, `env_file`, `include` and `extends` files with that right; the sentence of R-235 in the text names only "such a file" (see SF-068).
+- Change: "It gives each recorded file, the recorded folder as the project folder, and the project name as arguments, with the environment and the configuration folder of Section 4.1. Compose reads the `.env` file of the recorded folder. A variable that the owner had in his shell is not there. At the adoption the applications program makes the form of the project in this way and refuses the adoption when its services have a different image, port or mount than the containers that run. The adoption screen says: 'Anima starts this stack with no variable of your shell and with no registry login of yours.' `up` is `up -d --no-build`, with `--pull always` when `pull` is true. It runs as the user that the applications program runs as."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-060: Sections 4.3 and 4.7, the queue. Medium to Low
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Order of choice: only "the container item first" is said. A `stop` waits behind an `application_apply` in its pull or its `up` (up to 1,800 seconds), and behind each older container item. An API key may make `container_action`, so it can keep each job of a machine waiting.
+- "The wait for health does not hold the place" has no mechanism: the hub counts leases, and no state of K10 means "waits for health". If the place is free, a second `application_apply`, `application_back` or `application_remove` of the same application runs while the first waits, and the first reports the health of containers that the second made.
+- Change: "The hub gives, in this order: `container_action` with `stop`; each other container item, the oldest first; a job. The state `finishing` of a container item is the wait for health; the hub counts an item that changes Docker only in `claimed`, `preparing` and `running`. While an item of an application or of a project is not final, the hub gives no other item of it, apart from `container_action` with `stop`. The hub gives one machine at most 6 `container_action` items in a minute for one API key."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-061: Section 4.3, contradictions with K10 0.3 that remain. Medium for the first, Low for the others
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- `refused` after `preparing`. K10 permits `refused` only from `claimed`, and gives a file of Section 8 only in `preparing` or `running`. `file_not_permitted`, `program_mismatch` and `limit_disk` are found after the files are got. A report `refused` then gets `409 NOT_HOLDER`, the code is lost and the item shows "Waiting for the machine" until it expires. Change: "A cause that the machine finds after `preparing` is reported with the state `failed` and that cause; the diagram does not change."
+- K10 Section 4: "while its switch is on and it has a free slot". A machine whose one slot holds a job (a `runner`, up to 6 hours) sends no claim, so no `stop` reaches it. Change: "The daemon also asks when it has no free slot and `applications` is `on`; the hub gives no job to a claim whose `free.slots` is 0."
+- K10 Section 9: an unclean machine "claims no item". Change: "A machine that is `unclean` still claims while `applications` is `on`, and no container item is refused for `unclean`."
+- K10 Section 11: `403 WORK_OFF` is the answer to a claim, and the daemon then "ends each item that it holds; claims again in 1 hour". The hub cannot then give a `stop`. `WORK_OFF` to a report of a container item is not in the new list. Change: "To a claim whose `applications` is `on` the hub does not answer `WORK_OFF`: it answers 204, or the one item that this rule permits. `403 WORK_OFF` to a report of a container item is as `409 NOT_HOLDER`."
+- K10 Section 7, `result`: `health`, the rule code, the position of the service, the counts and `data_not_restored` have no member. Change: name them as members of `result` for the kind `host`, each a fixed code or a number, and say that `cleanup` is `none`.
+- K10 Section 8: "asks for a secret only after the isolation exists" and "An MCP tool, a command and a query never return a value of this route". The second forbids showing the Compose file in the editor. Change: "For the kind `host` the first rule does not apply. The second applies to `environment_file` only."
+- A stop and `expired`: the text does not say that the machine reports `stopped` after the one command ends.
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-062: Section 4.13, what the key gives to a catalogue install. Medium to Low
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- "the key or the tool gives no file" does not say that it gives no environment file and no value of a variable. A recipe with a variable in `command`, a port or a volume then takes a value of the agent.
+- Who: an API key; an AI agent led by text that is not trusted.
+- Change: "The key or the tool gives no Compose file, no environment file and no value of a variable, apart from a value that the recipe names as a choice with a fixed list."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-063: Sections 4.1, 4.2 and 4.3 (Section 9), sentences that are false on an engine of a user. Low
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- "writes this log where the daemon and the hub cannot change it": the daemon is the same user.
+- "The hub cannot set one, the daemon cannot": true for the file; but a fault of the daemon that the hub can reach uses the engine with no setting. The record of H30 names this under option A; the text does not.
+- The folder of the socket and the program file have no rule for who installs them.
+- Change: "On an engine of a user the log is in a file of that user; a program of that user, also the daemon, can change it. A fault of the daemon that the hub can reach is not limited there by the settings. On each kind of engine the administrator installs the program file and the unit of the applications program, and the user cannot write them."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-064: Section 4.1, the path-write rule and the plug-in. Low (not verified)
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- "can be written by a user other than the user that it runs as": on a Mac `/Applications` can be written by the group `admin` (not measured in the record), and root can write each path. Read exactly, the program refuses to start on each Mac. Change: "… by a user who is neither an administrator nor the user that it runs as."
+- With a configuration folder of its own, `docker` does not find the plug-in in `~/.docker/cli-plugins`; the measured Mac has no system plug-in folder. Change: "It starts the Compose program directly at its recorded path, not through `docker`."
+- The applications program has no update rule. Change: "An update through the hub (K8 Section 8) replaces `anima-daemon` only. It does not replace the applications program and changes no setting."
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-065: Section 4.3, the paragraph of K10 Section 3 does not name each power. Low
+
+Requirements: task H14; the text of the container work types, third form (version 4 of the proposal, Section 4).
+
+- Missing: remove an application and its kept files; bring an application back; remove stopped containers and images; fill the disk with the volumes of an application; and what each setting adds when on.
+- Change: add these to the list in one sentence.
+
+State: Open. The text is a proposal and no code exists. Found by the third read of 2026-11-19. The fourth form of the text (version 5 of the proposal) has the change that this entry proposes.
+
+### SF-066: The table of actors gave an API key the stop and the restart of an adopted project, which R-234 does not list
+
+Requirements: task H14; the text of the container work types, third form.
+
+What it is, in the words of the reviewer: R-234, Section 4.13, `adopted_apply`.** The table gives an API key or an MCP tool "`stop` and `restart` only". R-234 lists the start, stop and restart "of a container", the way back and the install of a catalogue entry. A stop or restart of a whole adopted project is not in the set. The effect equals `container_action` on each container, but it is wider than the ruling. Change: "No" in that cell, or a ruling.
+
+State: Open. A contradiction of the text with a ruling, found by the third read of 2026-11-19. The fourth form of the text has the change that the reviewer proposes; the ruling is not changed.
+
+### SF-067: The table of actors gave an API key the update of a catalogue application, which R-234 does not list
+
+Requirements: task H14; the text of the container work types, third form.
+
+What it is, in the words of the reviewer: R-234, Section 4.13, `application_apply`.** "Only for an entry of the tested catalogue" covers an update of a catalogue application (a new recipe, `pull` true). R-234 gives "the install of an entry". Change: "Only the first install of an entry of the tested catalogue … Not an update."
+
+State: Open. A contradiction of the text with a ruling, found by the third read of 2026-11-19. The fourth form of the text has the change that the reviewer proposes; the ruling is not changed.
+
+### SF-068: The text said the risk of R-235 more softly and more narrowly than the ruling
+
+Requirements: task H14; the text of the container work types, third form.
+
+What it is, in the words of the reviewer: R-235, Section 4.8, narrower and softer than the ruling.** The text: "A user of the machine who can write such a file … can thus get the rights that the file asks for." The card of R-235: such a user "can become administrator through Anima". The text also names only the recorded Compose files; the same holds for `.env`, an `env_file`, and a file that `include` or `extends` names. Change: "A user who is not the administrator and who can write a file of the project, a file that it names or its folder, can thus become the administrator of the machine on a system engine, and get the rights of the owner of the engine on an engine of a user."
+
+State: Open. A contradiction of the text with a ruling, found by the third read of 2026-11-19. The fourth form of the text has the change that the reviewer proposes; the ruling is not changed.
+
+### SF-069: The text said the risk of R-231 without the words "on each machine"
+
+Requirements: task H14; the text of the container work types, third form.
+
+What it is, in the words of the reviewer: R-231, Section 4.3 (Section 8), slightly narrower.** The ruling says "on each machine, also on one that he does not own alone". Change: add those words.
+
+State: Open. A contradiction of the text with a ruling, found by the third read of 2026-11-19. The fourth form of the text has the change that the reviewer proposes; the ruling is not changed.
 
 ## Closed
 

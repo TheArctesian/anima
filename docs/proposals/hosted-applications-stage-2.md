@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. No reviewer other than its writer has read the third form yet, so this header does not say that the condition of R-209 is met. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 4 (2026-11-19).
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19).
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -97,9 +97,10 @@ This is the text for version 0.4 of [work-route.md](../../contracts/work-route.m
 form. A first review read the first form (SF-015 to SF-033 of
 [security-findings.md](../security-findings.md)); the operator decided eight points (R-226 to
 R-233). A second read of the second form found it corrected only in part (SF-034 to SF-048); he
-decided five points (R-234 to R-238) and the design for a Mac (R-246). This form is written to
-correct each finding and to hold each ruling. It is the contract only when
-`contracts/work-route.md` has it; a reviewer who did not write it must read it first. The earlier
+decided five points (R-234 to R-238) and the design for a Mac (R-246). A third read by a separate
+reviewer (2026-11-19) of the third form says: no finding remains that the owner has not decided,
+and the open points are changes of the text (SF-049 to SF-069). This fourth form has those
+changes. It is the contract only when `contracts/work-route.md` has it. The earlier
 forms are in the history of this file (commits `1c274d68` and `aa364653`).
 
 The owner of `contracts/work-route.md` is the session of
@@ -118,19 +119,30 @@ connection to a network and never talks to the hub.
 
 | Kind of engine | How the program knows | The applications program runs as | What the Docker right is there |
 | --- | --- | --- | --- |
-| A system engine | The socket of the engine belongs to the administrator | The administrator of the machine. The daemon has no right to use Docker and is in no group that has it (R-226) | The right of the administrator of the machine |
-| An engine of a user (Docker Desktop on a Mac, a rootless Docker) | The socket of the engine belongs to a user | That user, as a second unit beside the daemon. It never runs as the administrator there (R-246) | The right of that user over the engine and over what the engine can reach. Each program of that user holds it with no Anima |
+| A system engine | The real socket of the engine, after each link is resolved, belongs to the administrator | The administrator of the machine. The daemon has no right to use Docker and is in no group that has it (R-226) | The right of the administrator of the machine |
+| An engine of a user (Docker Desktop on a Mac, a rootless Docker) | The real socket of the engine, after each link is resolved, belongs to a user | That user, as a second unit beside the daemon. It never runs as the administrator there (R-246) | The right of that user over the engine and over what the engine can reach. Each program of that user holds it with no Anima |
 
 - On a machine with an engine of a user, the daemon can reach Docker, because it runs as that
   user. The rules of this text there protect against the hub, an API key and an AI agent, whose
   requests reach Docker only through the applications program. They do not protect against a
-  different program of that user, to which Anima gives nothing that it did not have (R-246).
-- The applications program talks to one engine: the socket at one path that the administrator set
-  when he set "Manage applications" on. It gives that path to each `docker` command as an
-  argument.
-- It runs the `docker` program and the Compose plug-in only at paths that it recorded at the same
-  time. It refuses to start when one of them, or a folder above one, can be written by a user
-  other than the user that it runs as (SF-035).
+  different program of that user, to which Anima gives nothing that it did not have (R-246). A
+  fault of the daemon that the hub can reach is not limited there by the settings.
+- The administrator records the kind of the engine when he sets "Manage applications" on, with the
+  path of its socket and the paths of the `docker` program and of the Compose program. The socket
+  is a Unix socket of the machine; an address of a different machine is refused.
+- At each start the applications program resolves each link of the socket path and of the two
+  program paths. It refuses to start when the owner of the real socket is not the user that it
+  runs as, or when the kind is different from the recorded one. It also refuses to start when a
+  link, a real file or a folder above one of them can be written by a user who is neither an
+  administrator nor the user that it runs as; when it runs as the administrator, when one can be
+  written by a user who is not an administrator (SF-035).
+- It gives the socket path to each command as an argument. It starts the Compose program directly
+  at its recorded path, not through `docker`, and refuses to start when the Compose program is
+  older than the lowest version that it knows.
+- On each kind of engine the administrator installs the program file and the unit of the
+  applications program, and the user cannot write them. An update through the hub (K8 Section 8)
+  replaces `anima-daemon` only: it does not replace the applications program and changes no
+  setting.
 - It starts `docker` with a list of arguments, never through a shell. It gives `docker` an
   environment that holds only what the program sets, and a configuration folder of its own that
   holds no login of a registry (SF-041, SF-042). Each path that `docker` needs is an argument.
@@ -141,6 +153,9 @@ connection to a network and never talks to the hub.
   write. It accepts a connection only from one user: the user that the administrator named when he
   set "Manage applications" on. A computer can have a daemon for each of two accounts (R-206,
   R-208); only the named one is accepted. It reads the user of the peer from the operating system.
+  On an engine of a user the accepted user is the owner of the socket of the engine; the
+  applications program refuses to start when the two are different, so that Anima gives no account
+  the engine of a different account.
 - The daemon checks that the socket belongs to the user that the applications program runs as,
   before it sends a file.
 - No request on the socket changes a setting of Section 4.2.
@@ -179,11 +194,13 @@ the daemon cannot, and a request on the socket cannot (SF-007, SF-018).
   for an engine of a user, the sentence of Section 4.1.
 - To set "Manage applications" off does not stop a container. The applications program then shows
   each application that Anima installed and asks if it stops them (SF-030).
-- The settings are made for one hub. This version has no way by which the applications program
-  learns, in a form that the user of the daemon cannot forge, that the daemon was enrolled at a
-  different hub: the file of the enrolment belongs to that user. The owner sets the settings off
-  when he moves a machine to a different hub. The key of the device (task W7) is the correction
-  (SF-039).
+- The settings are made for one hub. The daemon sends the origin of its hub and its device
+  identifier with each request. The applications program records the first pair in a file of its
+  own. When a request has a different pair, it refuses each container item (`applications_off`)
+  until the administrator sets "Manage applications" on again. This protects an owner who moves a
+  machine to a different hub and forgets the settings. It does not limit a program of the user of
+  the daemon, which can send the old pair (R-236). The key of the device (task W7) is the
+  correction (SF-039).
 
 ### 4.3 Changes to the sections of K10 that exist
 
@@ -216,11 +233,15 @@ container types there is no isolation. On a machine whose setting 'Manage applic
 person who controls the hub can: start, stop and restart the containers that the types reach, and
 read their logs; start the containers of a Compose file of their choice that passes the rules of a
 file, with a command of their choice in each, and with the volumes of that application, so that
-they can read and empty its data; make an adopted project start its files as they are at that
+they can read and empty its data, and fill the disk with them; make the engine get an image from
+each address that such a file names, also an address of the local network; bring an application
+back to its earlier version; remove an application with its kept files; remove stopped containers
+and images that Section 4.11 names; make an adopted project start its files as they are at that
 moment, and get its images again. An adopted project has no rule of a file: it runs the file of
 the owner (R-232, R-235). The containers of an application can reach each address that the machine
-can reach, on the local network and on the network of Anima (R-229). Each program of the user of
-the daemon can ask for the same with no hub (R-236)."
+can reach, on the local network and on the network of Anima (R-229). Each setting of the machine
+that is on adds what its row says. Each program of the user of the daemon can ask for the same
+with no hub (R-236)."
 
 **Section 4, Claim.**
 
@@ -229,12 +250,19 @@ the daemon can ask for the same with no hub (R-236)."
 - The hub gives a `build` or a `runner` item only when `switch` is `on`. It gives a container item
   only when `applications` is `on`. When the two are `off`, the answer is always 204.
 - The event of the first claim (USE-008) stays with `switch`.
-- The daemon asks each 10 seconds while `switch` is `on` or `applications` is `on`.
+- The daemon asks each 10 seconds while `switch` is `on` or `applications` is `on`. It also asks
+  when it has no free slot and `applications` is `on`; the hub gives no job to a claim whose
+  `free.slots` is 0.
+- A machine that is `unclean` still claims while `applications` is `on`.
 - `types` names the container types when `applications` is `on`; `kinds` then has `host`.
 - `free.slots` counts jobs only. For container items the hub counts its own leases: it gives one
   machine at most one item that changes Docker and at most two `container_follow` items at a time.
-  One claim gets at most one item. When a job and a container item both fit, the hub gives the
-  container item first.
+  One claim gets at most one item. The hub gives, in this order: `container_action` with `stop`;
+  each other container item, the oldest first; a job. The state `finishing` of a container item is
+  its wait for health; the hub counts an item that changes Docker only in the states `claimed`,
+  `preparing` and `running`. While an item of an application or of a project is not final, the hub
+  gives no other item of that application or project, apart from `container_action` with `stop`.
+  The hub gives one machine at most 6 `container_action` items in a minute for one API key.
 - `unclean` is of jobs: the hub gives a container item to a machine that is `unclean`.
 - An item of a container type has no member `repository`, `project` is null, and `secrets` names
   only the two purposes of Section 8 below. The machine refuses one that breaks this
@@ -249,10 +277,12 @@ the daemon can ask for the same with no hub (R-236)."
 | `not_adopted` | The item names a container or a project that Section 4.4 does not let it reach |
 | `not_at_machine` | The item needs a setting that is off at the machine |
 
-The daemon reports a refusal of a container item with the state `refused`, as for a job. The hub
-does not put such an item back in the queue: the item is final, with the state `failed` and the
-cause of the refusal as its reason. An application has one machine, and a container identifier
-has meaning on one machine.
+The daemon reports a refusal that it finds before the state `preparing` with the state `refused`,
+as for a job. A cause that the machine finds after `preparing`, when it has the two files
+(`file_not_permitted`, `program_mismatch`, `limit_disk`), is reported with the state `failed` and
+that cause; the diagram of Section 7 does not change. The hub does not put a container item back
+in the queue: the item is final, with the state `failed` and the cause as its reason. An
+application has one machine, and a container identifier has meaning on one machine.
 
 **Section 6, the first lines.** "The list is fixed in the daemon program and, for the container
 types, in the applications program. There is no type that takes a command line from the hub. For
@@ -274,12 +304,20 @@ holds no output of the Docker program and no text of a file."
 - When a claim of the machine does not name the item in `holds`, the hub ends the attempt and the
   item is final, `failed`, with the cause `orphan`. It does not go back to the queue.
 - `409 NOT_HOLDER`, `401 TOKEN_REFUSED`, `403 WRONG_DEVICE`, a stop and `expired`: the applications
-  program finishes the one `docker` command that runs, starts no later step, and writes what it
-  did to the log of the machine. It does not undo a start. `container_follow` ends at once.
-- `403 WORK_OFF` by the switch of the operator in the hub: the hub gives the machine no job and no
-  container item other than `container_action` with `stop`. The count of 5 refused or lost items
-  counts jobs only.
-- `container_action` with `stop` is never refused for `policy`.
+  program finishes the one command that runs, starts no later step, and writes what it did to the
+  log of the machine. It does not undo a start. After a stop the machine reports `stopped` when
+  that command has ended. `container_follow` ends at once.
+- When the machine cannot reach the hub, a container item finishes the step that it started and
+  reports when the hub answers again; `limits.orphanSeconds` has no meaning for the kind `host`.
+- The switch of the operator in the hub (`WORK_OFF`): the hub gives the machine no job and no
+  container item other than `container_action` with `stop`. To a claim whose `applications` is
+  `on` the hub does not answer `403 WORK_OFF`: it answers 204, or that one item. `403 WORK_OFF` to
+  a report of a container item is as `409 NOT_HOLDER`. The count of 5 refused or lost items counts
+  jobs only.
+- `result` of an item of the kind `host` has `cleanup` `none` and these members, each a fixed code
+  or a number: `health`; the code of the rule and the position of the service of a refusal; the
+  counts and the bytes of a removal; `data_not_restored`.
+- `container_action` with `stop` is never refused for `policy` or for `unclean`.
 
 **Section 8, two new purposes.**
 
@@ -294,8 +332,12 @@ named the device for the project' is, for them, 'the device is the one machine o
 application'. The rules 'no file outside the isolation' and 'deletes the value when the step has
 it' do not apply to them: the applications program keeps the two files in the folder of the
 application (Section 4.6) for the life of the application, and `application_remove` deletes them.
-Until the key of the device exists (task W7), a person with the daemon token of that machine can
-claim its items and get its environment file; the operator accepts this (R-231). The values of an
+The rule 'asks for a secret only after the isolation exists' does not apply to the kind `host`.
+The rule that no MCP tool, command or query returns a value of this route applies to
+`environment_file` only: the editor shows the Compose file. Until the key of the device exists
+(task W7), a person with the daemon token of a machine can claim its items and get its environment
+file, on each machine, also on one that the operator does not own alone; the operator accepts this
+(R-231). The values of an
 environment file can also be read by each user of the machine who can use the engine."
 
 **Section 9.** "The machine deletes each secret at the end of an item, except the two purposes of
@@ -304,8 +346,9 @@ makes a machine `unclean`. For a container type the entry of the log of the mach
 the container identifier and the action; the application or the project; `fileSha256`,
 `environmentSha256` and the SHA-256 of the final form; `pull`, `keep`, `volumes`, `images`, `what`;
 the code of a refusal; the digest of each image that was started; the counts of what was removed.
-For `container_follow`: the container and the time, never a line. The applications program writes
-this log where the daemon and the hub cannot change it."
+For `container_follow`: the container and the time, never a line. On a system engine the
+applications program writes this log where the daemon and the hub cannot change it. On an engine
+of a user the log is a file of that user: a program of that user, also the daemon, can change it."
 
 **Section 13.** Point W1-P6 is decided (R-226, R-246): the applications program.
 
@@ -324,18 +367,27 @@ this log where the daemon and the hub cannot change it."
 **How the file is read (SF-034, SF-036, SF-042).** The applications program reads the file with
 its own code, not with the reader of Compose.
 
-1. It refuses a file of more than 256 KiB, a YAML alias or anchor, a depth of more than 32, and
-   more than 32 services.
+1. It refuses a file of more than 256 KiB, a YAML alias or anchor, a tag, the merge key, a second
+   document, a key that is not a string, a key that is there two times, a depth of more than 32,
+   more than 32 services, more than 16 networks and more than 64 volumes. A name of a service, a
+   volume, a network, a secret or a config has 1 to 63 characters of `a-z`, `0-9`, `-` and `_`, and
+   starts with a letter or a digit.
 2. It applies the list of keys below to the file as it came. A key that is not in the list is
    refused at any level: thus `include`, `extends`, `env_file`, `profiles`, `build` and `name` are
    refused before a variable is filled.
-3. It fills the variables itself. A variable is `${NAME}` or `${NAME:-text}`, in a value only,
-   never in a key. Its one source is the environment file of the item. The environment file holds
-   lines `NAME=value`; a name has the characters `A-Z`, `0-9` and `_`.
+3. It fills the variables itself, in a scalar value after the YAML is read, never in a key. A
+   variable is `${NAME}` or `${NAME:-text}`. The result is one scalar of text: it is never read
+   again as YAML, and it is not filled a second time. `$$` is one `$`. Each other `$` is refused.
+   A name that the environment file does not have, and that has no `:-text`, is refused. The one
+   source is the environment file of the item, which holds lines `NAME=value`: a name has the
+   characters `A-Z`, `0-9` and `_`, the value is the text after the first `=` with no rule for
+   quotes, and a name that is there two times is refused.
 4. It applies the list of keys and the rules of values to the result.
-5. It writes the final form itself, as a plain Compose file: each service with the image by the
-   digest that it pulled, each `$` written `$$`, the top-level `name` equal to the project name,
-   and each path of the machine as the real path. Compose reads only this file.
+5. It writes the final form itself, as JSON, which Compose reads as a Compose file: each string in
+   quotes with each control character escaped, each number and each truth value from its own typed
+   value, `mode` as a string of octal digits, each service with the image by the digest that it
+   pulled, each `$` written `$$`, the top-level `name` equal to the project name, and each path of
+   the machine as the real path. Compose reads only this file.
 6. It starts the project from the final form only, with the project name and the path of the file
    as arguments. It never gives the environment file to Compose, and the file has a name that
    Compose does not read. Thus the check and the start read one input (SF-017).
@@ -347,26 +399,30 @@ No file of the machine other than the two files of the item is opened for this.
 
 | Where | Keys, and the rule of each |
 | --- | --- |
-| The top level | `services`; `volumes`; `networks`; `secrets`; `configs` |
+| The top level | `services`; `volumes`; `networks`; `configs`. There is no `secrets`: a secret of an application is a variable of the environment file |
 | A top-level volume | No member |
 | A top-level network | `driver` with the value `bridge`; `internal` |
-| A top-level secret or config | `content` only |
-| A service | `image`; `command`; `entrypoint`; `environment`; `restart`; `depends_on`; `healthcheck`; `user`; `working_dir`; `hostname`; `stop_signal`; `stop_grace_period`; `read_only`; `tmpfs`; `init`; `cap_drop`; `expose`; `mem_limit`; `cpus`; `pids_limit`; `labels`; `logging`; `security_opt`; `ports`; `volumes`; `networks`; `secrets`; `configs` |
-| `image` | A name with the characters that a registry permits, and a tag or a digest. The applications program starts only an image that it pulled for this application, by the digest of that pull. It never starts an image that was on the machine for a different reason (SF-041) |
+| A top-level config | `content` only |
+| A service | `image`; `command`; `entrypoint`; `environment`; `restart`; `depends_on`; `healthcheck`; `user`; `working_dir`; `hostname`; `stop_signal`; `stop_grace_period`; `read_only`; `tmpfs`; `init`; `cap_drop`; `expose`; `mem_limit`; `cpus`; `pids_limit`; `labels`; `logging`; `security_opt`; `ports`; `volumes`; `networks`; `configs` |
+| `image` | A reference that starts with `a-z` or `0-9`: a name with the characters that a registry permits, and a tag or a digest. The program gives it to a command after `--`. The applications program starts only an image that it pulled for this application, by the digest of that pull. It never starts an image that was on the machine for a different reason (SF-041) |
 | `healthcheck` | `test`, `interval`, `timeout`, `retries`, `start_period`, `start_interval`, `disable` |
 | `depends_on` | Names of services of this file; or, for each, `condition`, `restart`, `required` |
-| `tmpfs` | A path in the container. The program sets the size |
-| `labels` | A key whose prefix is in "Label prefixes" of the machine. After the install no prefix is named, so no label is permitted (SF-043) |
+| `environment` | Each entry has a name and a value; the form with a name only is refused |
+| `user`, `hostname`, `stop_signal`, `restart`, `expose`, `command`, `entrypoint` | A text or a list of texts in the form that Compose gives each; `restart` is `no`, `always`, `unless-stopped` or `on-failure` with a count; `expose` is whole numbers |
+| `tmpfs` | An absolute path in the container with no `:` and no `,`. The program sets each option |
+| `labels` | A key whose prefix is in "Label prefixes" of the machine. After the install no prefix is named, so no label is permitted (SF-043). A prefix that starts with `com.docker.` cannot be named |
 | `logging` | `driver` with the value `json-file` or `local`. The program sets the size and the count of the files |
 | `security_opt` | Only `no-new-privileges:true` |
-| `ports` | `target`, `published`, `host_ip`, `protocol`. `published` is a port from 1024 to 65535. With "Open to the network" off, `host_ip` is `127.0.0.1`; a different address, or none, is refused (`not_at_machine`) |
-| `volumes` of a service | `type`, `source`, `target`, `read_only`. The type `volume` with a volume of this file; or the type `bind` whose source is exactly `binds/<name>` of the application (Section 4.6). No other type and no other member |
+| `ports` | Only the long form: `target`, `published`, `host_ip`, `protocol`. `published` and `target` are one whole number each, not a range; `protocol` is `tcp` or `udp`. `published` is a port from 1024 to 65535. With "Open to the network" off, `host_ip` is `127.0.0.1`; a different address, or none, is refused (`not_at_machine`) |
+| `volumes` of a service | Only the long form: `type`, `source`, `target`, `read_only`. `source` is always present. The type `volume` with a volume of this file; or the type `bind` whose source is exactly `binds/<name>` of the application (Section 4.6). No other type and no other member. A `target` is an absolute path with no `..`; it is not `/`; two mounts of one service have different targets |
 | `networks` of a service | Names of networks of this file; or, for each, `aliases` |
-| `secrets` and `configs` of a service | `source`, `target`, `mode`, with a source of this file |
+| `configs` of a service | Only the long form: `source`, `target`, `mode`, with a source of this file and the rule of a `target` above |
 
 **What the program adds, and the limits (SF-029, SF-044).** It adds to each service
-`cap_drop: [NET_RAW]`. For `mem_limit`, `pids_limit` and `stop_grace_period` it uses the lower of
-the value of the file and its own limit, and its own value when the file has none. Before a pull
+`cap_drop: [NET_RAW]`. For `mem_limit`, `pids_limit`, `cpus` and `stop_grace_period` it uses the
+lower of the value of the file and its own limit, and its own value when the file has none. A
+value of one of them that is zero or below is refused. `healthcheck.interval` is at least 5
+seconds. Before a pull
 it refuses the item when the free disk is below its own limit (`limit_disk`).
 
 **The check of the hub.** The hub applies the same list to the text of the file before it makes an
@@ -378,7 +434,8 @@ text of an error of a reader (SF-023). The check of the machine is the control.
 The applications program keeps the applications that Anima installed below one folder that only
 the user that it runs as can reach. Each application has one folder, named by its UUID.
 
-- `files/` holds the final form, the environment file, and the kept files of the earlier version.
+- `files/` holds the Compose file as it came, the final form, the environment file, and the same
+  three of the earlier version when `keep` is 1.
   The final form holds values of the environment file, so only the user that the program runs as
   can read `files/`. No mount can name `files/`.
 - `binds/` holds one folder for each bind mount. A bind mount names exactly `binds/<name>`, where
@@ -418,8 +475,8 @@ the user that it runs as can reach. Each application has one folder, named by it
   apply of this application, and is refused for a service that has none. A pull uses no login,
   unless the owner named the registry at the machine.
 - The start removes the containers of the project that the new file no longer names.
-- `keep` is 0 or 1: with 1, the machine keeps the final form, the environment file and the image
-  digests of the version before this apply.
+- `keep` is 0 or 1: with 1, the machine keeps the Compose file as it came, the environment file and
+  the image digests of the version before this apply.
 - The result has `health`: `healthy`, `unhealthy`, `no_check` or `not_waited`.
 - A recipe of the catalogue of Anima names each image by a digest (R-233). A file of the operator
   can name a tag.
@@ -438,14 +495,24 @@ Brings to its files a Compose project that Anima did not install and that the ow
   and update this stack. Anima starts this file as it is at that moment, and does not check if it
   changed. An update gets the newest images that the stack names and starts them. Anima does not
   check what those images do, and this stack runs with the rights that its file gives it."
-- `adopted_apply` uses the recorded paths, never the labels at the time of the item. It runs
-  Compose in the recorded folder, as the owner would.
+- `adopted_apply` uses the recorded paths, never the labels at the time of the item. It gives each
+  recorded file, the recorded folder as the project folder and the project name as arguments, with
+  the environment and the configuration folder of Section 4.1. Compose reads the `.env` file of
+  the recorded folder. A variable that the owner had in his shell is not there. It runs as the
+  user that the applications program runs as.
+- At the adoption the applications program makes the form of the project in this way, and refuses
+  the adoption when a service of it has a different image, port or mount than the container that
+  runs. The adoption screen also says: "Anima starts this stack with no variable of your shell and
+  with no registry login of yours."
+- `up` is `up -d --no-build`, with `--pull always` when `pull` is true.
 - `action` is `up`, `stop` or `restart`. There is no `down`. `pull` true is permitted only with
-  `up`. `up` never builds an image.
+  `up`.
 - The applications program never changes a file of an adopted project (R-211).
 - Anima does not check if a file of the project changed after the adoption: `up` starts the files
-  as they are at that moment. A user of the machine who can write such a file, and who is not its
-  administrator, can thus get the rights that the file asks for. The operator accepts this
+  as they are at that moment. A user who is not the administrator and who can write a file of the
+  project, a file that it names (its `.env`, an `env_file`, a file of `include` or `extends`) or
+  its folder, can thus become the administrator of the machine through Anima on a system engine,
+  and get the rights of the owner of the engine on an engine of a user. The operator accepts this
   (R-235).
 - The rules of Section 4.5 do not apply to an adopted project. The hub can make it get and start
   new images, and for a project that holds the socket of the engine the publisher of such an image
@@ -474,9 +541,9 @@ Brings to its files a Compose project that Anima did not install and that the ow
 { "application": "0192f6b0-7c1e-7a3b-9d2f-4e5a6b7c8d9e" }
 ```
 
-- It brings the application back to the kept version: the kept final form with the kept image
-  digests. It sets no tag on an image.
-- The applications program applies the rules of Section 4.5 of today to the kept file.
+- It brings the application back to the kept version. The applications program makes the final
+  form again from the kept Compose file and the kept environment file, by the six steps of
+  Section 4.5 of today, with the kept image digests and no pull. It sets no tag on an image.
 - It goes back one step. A second `application_back` is refused until the next
   `application_apply`.
 - It does not bring back data; the result says so with `data_not_restored` when the project has a
@@ -519,9 +586,9 @@ The hub applies this table (R-234). The machine cannot see the actor.
 | --- | --- | --- |
 | `container_action` | Yes | Yes |
 | `application_back` | Yes | Yes |
-| `application_apply` | Yes | Only for an entry of the tested catalogue of Anima: the hub makes the file from the recipe, and the key or the tool gives no file. Not for an update from a file of its own |
+| `application_apply` | Yes | Only the first install of an entry of the tested catalogue of Anima. The hub makes the file from the recipe. The key or the tool gives no Compose file, no environment file and no value of a variable, apart from a value that the recipe names as a choice with a fixed list. Not an update |
 | `application_remove` | Yes; with `volumes` true only with the setting at the machine | No |
-| `adopted_apply` | Yes | `stop` and `restart` only. Not `up`, with or without `pull` |
+| `adopted_apply` | Yes | No. A key or a tool starts, stops and restarts one container with `container_action` |
 | `docker_prune` | Yes | No |
 | `container_follow` | Yes | No. No MCP tool returns a log (MCP-004) |
 
