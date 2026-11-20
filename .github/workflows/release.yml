@@ -596,6 +596,7 @@ jobs:
       updater_sha256: ${{ steps.digest.outputs.updater_sha256 }}
       cli_sha256: ${{ steps.digest.outputs.cli_sha256 }}
     env:
+      BASE_REF: origin/phase-2
       VERSION: ${{ needs.commit.outputs.version }}
       RUSTC_WRAPPER: ""
       CARGO_BUILD_JOBS: "2"

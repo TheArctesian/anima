@@ -579,3 +579,8 @@ Both the Task Scheduler XML-folder regression and Windows packaging release-map 
 failed before their fixes and passed afterward. The dev merge train now calls the native
 Windows build workflow and blocks landing on its failure; its artifacts are the trial installer
 and CLI archive. GitHub execution of this new workflow and the signed trial remain pending.
+
+After the next dev integration (50783480), all 21 Linux gates passed together, including
+6,611 Rust tests. The only conflict combined new link-port tests with the existing Windows
+socket fixture. The Windows release job explicitly uses the fetched remote quality baseline
+so it does not depend on a local branch that exists only on a developer machine.

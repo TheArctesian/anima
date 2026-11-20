@@ -41,7 +41,7 @@ test("a downloadable trial must pass native gates and installation checks with u
   expect(steps[artifact]?.with?.["if-no-files-found"]).toBe("error");
 });
 
-interface Gates { jobs: Record<string, { if?: string; with?: Record<string, string>; steps?: Step[] }> }
+interface Gates { jobs: Record<string, { env?: Record<string, string>; if?: string; with?: Record<string, string>; steps?: Step[] }> }
 const gates = Bun.YAML.parse(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8")) as Gates;
 
 test("merge trains build Windows from the same dev base and provide its trial artifacts", () => {
@@ -59,4 +59,9 @@ test.skipIf(process.platform === "win32")("the gates reject failed Windows build
     const ran = Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" });
     expect(ran.exitCode === 0).toBe(success);
   }
+});
+
+test("the Windows release uses the remote baseline present in a fresh checkout", () => {
+  const release = Bun.YAML.parse(readFileSync(join(root, ".github/workflows/release.yml"), "utf8")) as Gates;
+  expect(release.jobs["windows"]?.env?.["BASE_REF"]).toBe("origin/phase-2");
 });
