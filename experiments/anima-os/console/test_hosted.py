@@ -48,6 +48,20 @@ class Enrollment(unittest.TestCase):
         self.assertEqual(self.commands[-1][0], ['systemctl', 'restart', 'anima-daemon'])
         self.assertIsNone(self.account.access)
 
+    def test_new_device_uses_the_hostname_without_shortening_link_identity(self):
+        from types import SimpleNamespace
+        def graph(query, variables=None, token=None):
+            if 'linkDevices' in query:
+                return {'linkDevices':[{'name':'anima-123456789abc','address':'fd41:4e49:4d41::2'}]}
+            if 'sites{' in query:
+                return {'sites':[{'id':'site','subnet':'fd41:4e49:4d41::/48'}]}
+            if 'devices(' in query:
+                return {'devices':{'edges':[],'pageInfo':{'hasNextPage':False}}}
+            self.assertEqual(variables['input']['name'],'anima-node-7c4a')
+            return {'createDevice':{'id':'new-device'}}
+        with patch.object(hosted,'graph',graph),patch.object(hosted.os,'uname',return_value=SimpleNamespace(nodename='anima-node-7c4a')):
+            self.assertEqual(self.account.device('fixture-token','anima-123456789abc'),'new-device')
+
     def test_browser_confirmation_exposes_only_the_public_code(self):
         with patch.object(hosted, 'request', return_value={
             'device_code': 'private-polling-secret', 'user_code': 'ABCD-EFGH',

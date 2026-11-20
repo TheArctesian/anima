@@ -8,6 +8,7 @@ import sys
 import threading
 from commands import connect, networks, run, status
 from hosted import Account
+from selfhost import enroll as enroll_selfhost
 from orientation import outputs, rotate, save_rotation
 
 
@@ -42,6 +43,14 @@ class Session:
             return {'revertSeconds': 15}
 
     def dispatch(self, op, args):
+        if op in ('update-status', 'update-check', 'update-download', 'update-activate', 'update-rollback'):
+            if op in ('update-activate', 'update-rollback') and args.get('confirmed') is not True:
+                raise ValueError('Confirm the update restart first.')
+            result = subprocess.run(['anima-os-update', op.removeprefix('update-')], capture_output=True, text=True, timeout=3600)
+            reply = json.loads(result.stdout)
+            if not reply['ok']:
+                raise ValueError(reply['error'])
+            return reply['value']
         if op == 'status':
             return status()
         if op == 'radio-on':
@@ -73,13 +82,13 @@ class Session:
         if op == 'cancel-sign-in':
             self.account = Account()
             return {}
-        if op == 'enroll':
+        if op in ('enroll', 'enroll-selfhost'):
             with open('/run/anima-console-enrollment.lock', 'w') as lease:
                 try:
                     fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except BlockingIOError:
                     raise ValueError('Enrollment is already running. Wait for it to finish.') from None
-                return self.account.enroll()
+                return enroll_selfhost(args) if op == 'enroll-selfhost' else self.account.enroll()
         if op in ('restart', 'shutdown'):
             if args.get('confirmed') is not True:
                 raise ValueError('Confirm the power action first.')

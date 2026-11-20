@@ -111,9 +111,17 @@ The steps for a hub with a user name and a password (the self-host path) stay in
 
 ### HT-069: Anima OS preview hardware and enrollment
 
-Latest operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+Check that the installed name follows `anima-node-xxxx`, matches the console and newly enrolled hub device, and remains unchanged after reboot and an OS update.
 
-Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. Wi-Fi connection on this machine remains unverified.
+Latest operator report (2026-11-20): “wifi works”. Installed Wi-Fi is confirmed working on the same physical device. The operator also reports absent disk/storage telemetry on the hub and an oversized sign-in browser header. Full hardware/enrollment acceptance remains Open.
+
+Combined follow-up retest: boot the next ISO, check the battery icon at the top-right (charge, charging/discharging and unplug/replug), rotate the display while settings are open, then complete installation with either Restart or Shut down. Unlock the installed console: battery status must remain visible while locked and readings must update after unlock. Check CPU, memory and storage locally and disk inventory/usage on the hub. Sign in to Anima without provider-name copy or a tall browser header; alternatively connect through the visible self-hosted hub form using an existing reachable private HTTPS hub and a fresh enrollment code. Verify the self-hosted daemon continues reporting after reboot.
+
+For OS updates: check the hosted preview channel, download an available signed update, finish running work and choose Restart to update. Expected: new system boots with the same identity, network settings, orientation and persistent data; the previous system remains selectable. Test owner-requested rollback on disposable data. Actual battery hardware, live account sign-in, physical boot recovery and the public update transport are not established by synthetic VM fixtures alone.
+
+Earlier operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+
+Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. This earlier failure is retained as history; see the later operator report below.
 
 Built: [preview source](../experiments/anima-os/README.md), under R-274.
 
