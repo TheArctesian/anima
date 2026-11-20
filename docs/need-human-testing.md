@@ -1959,8 +1959,8 @@ Result: Open.
 Built on the branch `mcp/install`, in `crates/anima-cli/src/mcp/install`. The tests prove each way against a temporary
 home folder and a stand-in program: the bytes that stay, the copy, the refusal of a symbolic link, the dry run of the
 library. No test starts a real agent and none reads a real configuration. The place and the form of each entry are from
-the documentation of each product on 2026-11-19 and were not tried. Not built: the part "Coding agents" of Settings
-(task MI4).
+the documentation of each product on 2026-11-19 and were not tried. The part "Coding agents" of Settings (task MI4)
+is built and was not seen: no desktop build was made.
 
 1. Run `anima mcp agents`.
    Expected: one row for each of the eight agents. An agent that you have says "not set up"; one that you do not have
@@ -2009,5 +2009,13 @@ its switches, or the phone.
 6. Open the application on a phone, then Settings.
    Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
    "Open Extensions", which opens the page.
+8. In the desktop application, open Settings, then MCP, with the command line tool not installed (Settings, Updates).
+   Expected: the part "Coding agents" says to install the command line tool first and shows no agent.
+9. Install the command line tool, then open Settings, MCP again.
+   Expected: one row for each agent that you have, with its state in words, and "Set up all". Select "Set up" on one
+   row: a box lists the file that is written with its copy, or the whole command line, and "Set up" and "Cancel".
+   "Cancel" changes nothing. "Set up" changes the row to "Set up" with a button "Remove".
+10. Select "Set up all", confirm, then select "Remove" on one row and confirm.
+   Expected: the same results as steps 3 and 6 for those agents. A row that was refused says why under it.
 
 Result: Open.
