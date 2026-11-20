@@ -4,11 +4,13 @@
   import ProjectsScreen from '$lib/projects/ProjectsScreen.svelte';
   import { ProjectsStore } from '$lib/projects/store.svelte';
   import { useHub } from '$lib/hub/context';
+  import { isOnThisComputer } from '$lib/hub/hub';
 
-  const store = new ProjectsStore(projectsApi(useHub()));
+  const hub = useHub();
+  const store = new ProjectsStore(projectsApi(hub));
   onMount(() => {
     void store.load();
   });
 </script>
 
-<ProjectsScreen {store} />
+<ProjectsScreen {store} keyFileOnly={isOnThisComputer(hub.address)} />

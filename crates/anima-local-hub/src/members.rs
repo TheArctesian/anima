@@ -168,15 +168,36 @@ pub fn link(carried: &Carried, folders: &Folders) -> Result<Spec, LongSocketPath
     })
 }
 
-/// The hub of `spec` in the hosted mode, when the pool gives the file of the cloud's key: the
-/// hub then makes device invites and claims for the Anima.ing cloud and refuses every password
-/// sign-in (R-129, HMD-038, HMD-039). Without a file the hub stays a local hub.
+/// The hub of `spec` as the pool runs it. With the file of the cloud's key the hub is in the
+/// hosted mode: it makes device invites and claims for the Anima.ing cloud and refuses every
+/// password sign-in (R-129, HMD-038, HMD-039). With a public origin and a web root it names
+/// the address of the gateway and serves the web client (R-239). With none of them the hub
+/// stays a local hub.
 #[must_use]
-pub fn hosted(mut spec: Spec, cloud_key_file: Option<&Path>) -> Spec {
-    if let Some(file) = cloud_key_file {
+pub fn hosted(mut spec: Spec, pool: &Pool) -> Spec {
+    if let Some(file) = &pool.cloud_key_file {
         spec.env.push(("ANIMA_HOSTED_CLOUD_KEY_FILE", file.into()));
     }
+    if let Some(origin) = &pool.public_origin {
+        spec.env.push(("ANIMA_PUBLIC_ORIGIN", origin.into()));
+    }
+    if let Some(root) = &pool.web_root {
+        spec.env.push(("ANIMA_WEB_ROOT", root.into()));
+    }
     spec
+}
+
+/// What only a hub of the pool is told, each by an option of `run`; all absent on the desktop,
+/// where the hub keeps its defaults.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Pool {
+    /// The file of the Anima.ing cloud's key (R-129): the hub runs in the hosted mode.
+    pub cloud_key_file: Option<PathBuf>,
+    /// The address at which a browser reaches the hub through the gateway (HMD-069). The hub
+    /// checks its form and builds the address of Connect GitHub from it.
+    pub public_origin: Option<String>,
+    /// The folder of the web client that the hub serves (HMD-059).
+    pub web_root: Option<PathBuf>,
 }
 
 /// Everything the hub is told. A setting that is not here has the hub's default (K7).

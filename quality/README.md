@@ -123,8 +123,14 @@ each train with its state and the branches of the next one.
   it one time, on the commit as it is.
 - **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
-  so no run of the gates follows for `dev`. If `dev` moved (a claim, a merge by hand), the gates of the
-  train do not count: its run is cancelled and the next train holds the same branches on the new `dev`.
+  so no run of the gates follows for `dev`.
+- **A move of `dev` while the gates of a train run.** The run is never stopped. Off today
+  (OD-W52): with `"carryDocuments": true` in `quality/merge-rule.json`, a train that passed
+  still lands when `dev` moved only in documents (the rule of the fast tier, `src/gates/tier.ts`): the
+  conductor merges the same branches again on the new `dev`, with the document gates on each merge commit,
+  proves that each file that is not a document is the one that the gates tested, and lands that. When `dev`
+  moved in code, or the rule is off, the train is made again on the new `dev` and its gates run one more
+  time. Not covered by a test: the calls to git and GitHub of this step.
 - **A failure.** The next train holds the first half of the failed one, in the same order. A branch that
   fails alone is refused: a note on its tip (`refs/notes/train`) keeps it out until the branch moves or its
   own gates pass again (`gh run rerun`). A cancelled run is no verdict: the train is built again.
@@ -144,7 +150,9 @@ such start, so the last train of a quiet hour waits. The new file also starts at
 train and each 20 minutes. GitHub has a merge queue for this work only for a repository of an organization;
 this repository belongs to a personal account.
 
-Not run on GitHub when it was written (2026-11-20): the conductor. The tests cover the rules and the
+Seen on GitHub on 2026-11-20, after this was in `dev`: the conductor made three trains (the third with nine
+branches and three left out for a conflict in a document), and gave up the first two because pushes of ideas
+moved `dev`; no train landed yet when this was written. The tests cover the rules and the
 merges of a train in a real repository; the calls to GitHub are not covered.
 
 The limit of GitHub (https://docs.github.com/en/actions/reference/limits, read 2026-11-20): an account

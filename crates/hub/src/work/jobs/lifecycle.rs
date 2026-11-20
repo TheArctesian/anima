@@ -4,7 +4,10 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::wire::{MAX_LOG_PART_BYTES, StopReason, WorkReport, WorkState, WorkType};
 
-use super::model::{Job, State};
+use super::{
+    model::{Job, State},
+    results,
+};
 use crate::{
     clock::lease::{self, Lost},
     ids::DeviceId,
@@ -84,6 +87,11 @@ pub(super) fn reported(
     if report.state.is_final() != report.result.is_some() {
         return Err(Refusal::Malformed);
     }
+    // Only codes of the fixed lists are kept: a result is never text of the machine.
+    let result = match &report.result {
+        Some(sent) => Some(results::checked(sent).ok_or(Refusal::Malformed)?),
+        None => None,
+    };
     let Some(state) = State::reported(report.state) else {
         return Ok(refused(job, device, now));
     };
@@ -94,11 +102,8 @@ pub(super) fn reported(
     };
     if state.is_final() {
         release(&mut next);
-        next.reason = report
-            .result
-            .as_ref()
-            .and_then(|result| result.cause.clone());
-        next.result.clone_from(&report.result);
+        next.reason = result.as_ref().and_then(|result| result.cause.clone());
+        next.result = result;
         next.ended_at = Some(now);
     } else {
         next.lease_ends_at = Some(lease::end(now));
