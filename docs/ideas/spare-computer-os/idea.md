@@ -46,6 +46,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 24: app access and internet use | Decided | A default, with B and C available per app: private Anima-network access by default; explicit LAN publication; explicit public publication through supported hosting paths. Keep host administration and recovery separate. These are inbound exposure choices, not a ban on outbound internet use. The operator explicitly requires agentic software to be able to use the internet. Support outbound access for workloads within their permissions; exact egress policy remains open. Installing a workload must not implicitly publish it. |
 | Decision 25: outbound networking | Decided | A default, optional C + D: ordinary outbound internet within existing workload permissions, with optional destination-restricted and offline profiles. No extra per-workload internet approval step is selected beyond existing grants. Outbound access does not grant credentials, host control, other workload data or arbitrary private-network access. Inbound publication remains separate. Enforcement and supported allowlist semantics must be reconciled with existing Anima permission/network owners. |
 | Decision 26: installation enrollment | Decided | A only for the first version: standard live installer presents short-lived pairing code/QR; owner approves in a signed-in Anima session, verifies the machine and explicitly confirms its installation disk before installation proceeds. Prepared unattended enrollment B and install-locally/enroll-later C are not selected. This narrows the earlier unattended setup direction. Local setup/recovery interfaces remain in scope; they do not imply an offline unenrolled installation path. Reuse existing identity rules and explicitly handle ownership transfer. |
+| Decision 27: update timing and channels | Decided | A default, B and D available; C deferred. Automatically download/validate stable releases; disruptive activation requires an owner-authorized window or per-update approval. Stop admitting work, allow safe drain/checkpoint where supported, and gracefully stop approved restartable services. Defer/report if work cannot safely drain; no deadline-forced termination. Offer explicit preview-channel enrollment. Preserve agreed local-failure rollback and do not revert workload data automatically. No live migration is implied. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -82,7 +83,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Two product discussion groups remain after Decision 26: update channels/timing and workload interruption; first-release hardware examples and acceptance scope. Then consolidate the proposal and recommend engineering defaults together instead of continuing an unbounded component questionnaire. Existing provisional local-interface choice can be reviewed during consolidation. Exact protocol, package, partition, retention and test choices can remain explicit proposed defaults or validation tasks.
+2. One product discussion group remains after Decision 27: first-release hardware examples and acceptance scope. Then consolidate the proposal and recommend engineering defaults together instead of continuing an unbounded component questionnaire. Existing provisional local-interface choice can be reviewed during consolidation. Exact protocol, package, partition, retention and test choices can remain explicit proposed defaults or validation tasks.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -181,6 +182,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: The operator asked for Proxmox or VMware precedent in the remaining decisions. Include sourced precedent, distinguish it from recommendations and retain the three remaining discussion groups.
 
 - 2026-11-19: Decision 26 selected A only: pair in Anima and confirm the disk before installation. Prepared unattended and install-first/enroll-later paths are not first-version selections. Next: Decision 27, update policy (second of the final three groups).
+
+- 2026-11-19: Decision 27 accepted A default with B and D available, C deferred. Next is the final product-decision group: release readiness and hardware evidence, then consolidation.
 
 ## Source text
 
@@ -329,9 +332,19 @@ In response to Decision 26:
 
 ## Decision 27 preparation: updates and interruption
 
-Not selected yet. Recommend stable releases by default, optional preview enrollment, automatic download/validation, and disruptive activation only inside an owner-authorized maintenance window. Stop admitting new work and let active work drain; if it cannot safely finish/checkpoint or a service cannot stop gracefully, defer and report. Do not infer live migration or silently kill non-restartable work. Offer explicit per-update approval as an alternative. Existing maintenance authorization and automatic rollback decisions stay in force.
+Selected in Decision 27: stable releases by default, optional preview enrollment, automatic download/validation, and disruptive activation only inside an owner-authorized maintenance window. Stop admitting new work and let active work drain; if it cannot safely finish/checkpoint or a service cannot stop gracefully, defer and report. Do not infer live migration or silently kill non-restartable work. Offer explicit per-update approval as an alternative. Existing maintenance authorization and automatic rollback decisions stay in force.
 
 Precedent read 2026-11-19:
 
 - [Proxmox repository documentation](https://github.com/proxmox/pve-docs/blob/master/pve-package-repos.adoc): checks for updates daily and exposes installation through GUI/APT; distinguishes production-oriented and test repositories. This is not evidence of unconditional unattended reboot.
 - [VMware ESXi maintenance guidance](https://knowledge.broadcom.com/external/article/434515): host remediation requires maintenance mode; standalone hosts need workload downtime because they lack automated DRS evacuation. Apply the planned-interruption principle, not an assumption that Anima already supports VM migration.
+
+In response to Decision 27:
+
+> agreeded
+
+## Decision 28 preparation: release readiness
+
+Not yet selected. Recommend named tested reference hardware across the agreed PC, Intel Mac and selected ARM64 families, with public evidence and limitations; allow other compatible hardware as unverified, not certified. Test all selected boot paths. Require installation/enrollment, app/job/agent execution, mixed-load management access, reboot/update failure recovery, offline behavior and backup restoration to replacement storage. Include optional-encryption recovery on validated hardware. Exact models, resource minimums and test results remain open.
+
+Precedent checked 2026-11-19: [Proxmox hardware requirements](https://proxmox.com/en/products/proxmox-virtual-environment/requirements) distinguish evaluation and recommended deployment requirements. [Broadcom hardware compatibility guidance](https://knowledge.broadcom.com/external/article/313743/confirming-esxesxi-host-hardware-system.html) directs users to certified system, storage and I/O compatibility lists. Anima should define its own evidence standard without claiming either vendor's certification or borrowing their hardware minimums.
