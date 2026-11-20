@@ -13,6 +13,8 @@ const SYSTEMCTL: &str = "/usr/bin/systemctl";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Step {
+    #[cfg(windows)]
+    pub(super) stop_folders: Option<crate::Folders>,
     pub program: &'static str,
     pub args: Vec<String>,
     /// A failure is not an error: the unit may not be loaded.
@@ -25,6 +27,8 @@ pub struct Step {
 impl Step {
     fn new(program: &'static str, args: &[&str]) -> Self {
         Self {
+            #[cfg(windows)]
+            stop_folders: None,
             program,
             args: args.iter().map(|&arg| arg.to_owned()).collect(),
             may_fail: false,
@@ -69,9 +73,26 @@ pub fn run_step(step: &Step, env: &[(&'static str, String)], limit: Duration) ->
 }
 
 fn run_once(step: &Step, env: &[(&'static str, String)], limit: Duration) -> io::Result<bool> {
-    let mut child = Command::new(step.program)
+    #[cfg(windows)]
+    if let Some(folders) = &step.stop_folders {
+        super::windows::stop(folders, limit)?;
+    }
+    let mut command = Command::new(step.program);
+    #[cfg(windows)]
+    if step.program == "schtasks.exe" {
+        command = Command::new(super::windows::task_program()?);
+    }
+    command.env_clear();
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+        if let Some(root) = std::env::var_os("SystemRoot") {
+            command.env("SystemRoot", root);
+        }
+    }
+    let mut child = command
         .args(&step.args)
-        .env_clear()
         .env("PATH", "/usr/sbin:/usr/bin:/sbin:/bin")
         .envs(env.iter().map(|(name, value)| (name, value)))
         .stdin(Stdio::null())
@@ -92,7 +113,7 @@ fn run_once(step: &Step, env: &[(&'static str, String)], limit: Duration) -> io:
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use std::time::Duration;
 
@@ -140,5 +161,16 @@ mod tests {
         let error = run_step(&step, &[], Duration::from_millis(200)).unwrap_err();
 
         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+    }
+}
+
+#[cfg(windows)]
+impl Step {
+    pub(super) fn task(args: &[&str]) -> Self {
+        Self::new("schtasks.exe", args)
+    }
+    pub(super) fn stopping(mut self, folders: crate::Folders) -> Self {
+        self.stop_folders = Some(folders);
+        self
     }
 }

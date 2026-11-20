@@ -2135,6 +2135,7 @@ enum BuildTarget {
   LINUX_X86_64
   "An app and a DMG, built on macOS on aarch64."
   DARWIN_UNIVERSAL
+  WINDOWS_X86_64
 }
 
 "Section 3.10.1 says which changes are permitted (BLD-010)."
@@ -2151,6 +2152,7 @@ enum BuildJobState {
 enum BuilderOs {
   LINUX
   MACOS
+  WINDOWS
 }
 
 "As Tauri names it."

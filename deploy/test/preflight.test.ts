@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
@@ -5,7 +6,7 @@ import { join } from "node:path";
 import { finish } from "./finished-process.ts";
 import { SCRIPT, names, preflight, secrets, withFolder, write } from "./preflight-fixture.ts";
 
-describe("preflight address", () => {
+describe.skipIf(process.platform === "win32")("preflight address", () => {
   test.each(["100.64.0.1", "100.100.1.2", "100.127.255.255"])("NET-003 accepts the VPN address %s", async (ip) => {
     expect((await preflight("address", ip)).ok).toBe(true);
   });
@@ -33,7 +34,7 @@ describe("preflight address", () => {
   );
 });
 
-describe("preflight public", () => {
+describe.skipIf(process.platform === "win32")("preflight public", () => {
   test.each(["31.220.53.226", "8.8.8.8", "100.128.0.1", "172.32.0.1"])("NET-003 accepts the public address %s", async (ip) => {
     expect((await preflight("public", ip)).ok).toBe(true);
   });
@@ -52,7 +53,7 @@ describe("preflight public", () => {
   });
 });
 
-describe("preflight docker", () => {
+describe.skipIf(process.platform === "win32")("preflight docker", () => {
   test.each(["28.0.0", "29.9.2", "100.1"])("NET-003 accepts Docker %s", async (version) => {
     expect((await preflight("docker", version)).ok).toBe(true);
   });
@@ -62,7 +63,7 @@ describe("preflight docker", () => {
   });
 });
 
-describe("preflight secrets", () => {
+describe.skipIf(process.platform === "win32")("preflight secrets", () => {
   test("DB-002 accepts a folder with every secret file and names the one that is missing", async () => {
     await withFolder(async (folder) => {
       for (const name of names.slice(1)) write(folder, name);
@@ -109,7 +110,7 @@ async function networks(env: Record<string, string>): Promise<{ ok: boolean; mes
   return { ok: result.exitCode === 0, message: result.stderr };
 }
 
-describe("preflight networks (VP-13)", () => {
+describe.skipIf(process.platform === "win32")("preflight networks (VP-13)", () => {
   test("VP-13 accepts the compose defaults and other subnets inside 172.30.0.0/16", async () => {
     expect(await networks({})).toEqual({ ok: true, message: "" });
     expect((await networks({ ANIMA_DATABASE_SUBNET: "172.30.9.0/24", ANIMA_ACME_SUBNET: "172.30.200.0/28" })).ok).toBe(true);
@@ -149,7 +150,7 @@ describe("preflight networks (VP-13)", () => {
   });
 });
 
-describe("preflight host (C-8)", () => {
+describe.skipIf(process.platform === "win32")("preflight host (C-8)", () => {
   test("C-8 host checks the .env settings as the operator, with no Docker and no secrets folder", async () => {
     await withFolder(async (bin) => {
       writeFileSync(join(bin, "docker"), "#!/bin/sh\necho docker was asked >&2\nexit 1\n");
@@ -168,7 +169,7 @@ describe("preflight host (C-8)", () => {
   });
 });
 
-describe("preflight all", () => {
+describe.skipIf(process.platform === "win32")("preflight all", () => {
   test("NET-003 refuses a private VPS public address before it looks at Docker", async () => {
     const result = await finish(["sh", SCRIPT, "all"], {
       env: { PATH: process.env["PATH"] ?? "", ANIMA_HUB_ADDRESS: "100.64.0.5", ANIMA_VPS_PUBLIC_ADDRESS: "10.0.0.1" },
@@ -178,7 +179,7 @@ describe("preflight all", () => {
   });
 });
 
-describe("preflight R2 token files (R-108)", () => {
+describe.skipIf(process.platform === "win32")("preflight R2 token files (R-108)", () => {
   test.each(["r2_access_key_id", "r2_secret_access_key"])("R-108 names a missing %s and points at the README, not make-secrets", async (name) => {
     await withFolder(async (folder) => {
       for (const other of names.filter((n) => n !== name)) write(folder, other);

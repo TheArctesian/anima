@@ -1,8 +1,6 @@
 //! `anima vpn` against the scripted hub: the picture, and the pre-auth keys that are shown once
 //! and stay out of everything else (VPN-001, VPN-003, CMD-014, LOG-007).
 
-use std::os::unix::fs::PermissionsExt as _;
-
 use serde_json::{Value, json};
 
 use crate::kit::Anima;
@@ -151,11 +149,7 @@ async fn cmd_014_a_key_written_with_to_file_is_0600_and_never_on_stdout_or_stder
     assert_eq!(run.stdout, "", "nothing secret on stdout");
     assert!(run.stderr.contains(path_text), "{}", run.stderr);
     assert_eq!(std::fs::read_to_string(&path).expect("the key file"), KEY);
-    let mode = std::fs::metadata(&path)
-        .expect("metadata")
-        .permissions()
-        .mode();
-    assert_eq!(mode & 0o777, 0o600);
+    crate::kit::file_access::assert_private(&path);
 
     let json_path = dir.path().join("json.key");
     let run = signed_in()

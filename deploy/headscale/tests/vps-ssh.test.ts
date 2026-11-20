@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
@@ -10,10 +11,11 @@ const DROP_IN = "etc/ssh/sshd_config.d/00-anima.conf";
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("harden.sh ssh", () => {
+describe.skipIf(process.platform === "win32")("harden.sh ssh", () => {
   test.each([
     ["no authorized_keys", { ANIMA_ADMIN_USER: "nokeys" }],
     ["root", { ANIMA_ADMIN_USER: "root" }],
@@ -58,7 +60,7 @@ describe("harden.sh ssh", () => {
   // Red Hat's defaults (50-redhat.conf, X11Forwarding yes) and cloud-init's.
 });
 
-describe("harden.sh ssh against other drop-ins", () => {
+describe.skipIf(process.platform === "win32")("harden.sh ssh against other drop-ins", () => {
   test.each([
     ["01-permitrootlogin.conf", "PermitRootLogin yes\n"],
     ["25-permitrootlogin.conf", "PermitRootLogin yes\n"],
@@ -100,7 +102,7 @@ describe("harden.sh ssh against other drop-ins", () => {
 const PROVIDER_MATCH = "Match Address *\n  PasswordAuthentication yes\n  PermitRootLogin yes\n  AllowUsers root\n";
 const PUBLIC_ROOT = "sshd -T -C user=root,host=x,addr=198.51.100.7";
 
-describe("harden.sh ssh and check (Match blocks)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh ssh and check (Match blocks)", () => {
   test.each([
     ["a drop-in", "etc/ssh/sshd_config.d/90-provider.conf", "Match Address *"],
     ["sshd_config itself", "etc/ssh/sshd_config", "Match All"],
@@ -131,7 +133,7 @@ describe("harden.sh ssh and check (Match blocks)", () => {
   });
 });
 
-describe("harden.sh ssh and check (Include forms)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh ssh and check (Include forms)", () => {
   test.each([
     ["Include=/etc/ssh/provider.conf"],
     ['"Include" /etc/ssh/provider.conf'],
@@ -170,7 +172,7 @@ describe("harden.sh ssh and check (Include forms)", () => {
   });
 });
 
-describe("harden.sh ssh and check (sshd -T -C and include limits)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh ssh and check (sshd -T -C and include limits)", () => {
   test("VPS-001: check compares sshd -T -C for root and the admin user on the public and VPN addresses", () => {
     host.harden();
     const run = host.run(["check"], { VPS_PUBLIC_IPV4: "203.0.113.9" });
@@ -213,7 +215,7 @@ describe("harden.sh ssh and check (sshd -T -C and include limits)", () => {
   });
 });
 
-describe("harden.sh check (admin and sshd)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check (admin and sshd)", () => {
   test("VPS-001: check reports sshd values that are not in force", () => {
     const run = host.run(["check"]);
     expect(run.code).toBe(1);

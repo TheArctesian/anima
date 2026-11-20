@@ -7,7 +7,7 @@
 
 pub mod run;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::path::{Path, PathBuf};
@@ -51,7 +51,11 @@ pub fn programs_folder(executable: &Path, release: bool, dev: &DevFolders) -> Op
 
 /// The carried program `name` of this build, when it is there.
 pub fn program(name: &str) -> Option<PathBuf> {
-    if !cfg!(any(target_os = "macos", target_os = "linux")) {
+    if !cfg!(any(
+        target_os = "macos",
+        target_os = "linux",
+        target_os = "windows"
+    )) {
         return None;
     }
     let executable = std::env::current_exe().ok()?;
@@ -60,5 +64,10 @@ pub fn program(name: &str) -> Option<PathBuf> {
         !cfg!(debug_assertions),
         &DevFolders::of_this_run(),
     )?;
+    let name = if cfg!(windows) {
+        format!("{name}.exe")
+    } else {
+        name.to_owned()
+    };
     Some(folder.join(name)).filter(|program| program.is_file())
 }

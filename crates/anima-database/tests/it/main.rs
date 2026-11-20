@@ -3,13 +3,20 @@
 use std::fs;
 use std::io::{BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdout, Command, Output, Stdio};
+use std::process::{Command, Output, Stdio};
 
-use nix::sys::signal::{Signal, kill};
-use nix::unistd::Pid;
+mod serving;
+use serving::{Serving, Stop};
 use sqlx::Connection as _;
 use sqlx::postgres::PgConnection;
 use tempfile::TempDir;
+
+fn program() -> PathBuf {
+    std::env::var_os("ANIMA_DATABASE_EXE").map_or_else(
+        || PathBuf::from(env!("CARGO_BIN_EXE_anima-database")),
+        PathBuf::from,
+    )
+}
 
 /// The PostgreSQL 17 the gates already need. A test never skips for lack of it (CQ-024).
 fn tree() -> PathBuf {
@@ -23,7 +30,7 @@ fn tree() -> PathBuf {
     named
         .into_iter()
         .chain(known)
-        .find(|folder| folder.join("bin/postgres").is_file())
+        .find(|folder| anima_database::Tree::at(folder).is_ok())
         .expect("no PostgreSQL 17 found: install it or set ANIMA_POSTGRES_TREE")
 }
 
@@ -33,9 +40,10 @@ struct Place {
 
 impl Place {
     fn new() -> Self {
-        Self {
-            folder: tempfile::tempdir().unwrap(),
-        }
+        let folder = tempfile::tempdir().unwrap();
+        #[cfg(windows)]
+        anima_windows::files::protect(folder.path()).unwrap();
+        Self { folder }
     }
 
     fn root(&self) -> PathBuf {
@@ -43,7 +51,7 @@ impl Place {
     }
 
     fn command(&self, name: &str) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_anima-database"));
+        let mut command = Command::new(program());
         command
             .arg(name)
             .arg("--tree")
@@ -59,6 +67,7 @@ impl Place {
     fn serve(&self) -> Serving {
         let mut child = self
             .command("serve")
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -67,10 +76,7 @@ impl Place {
         let mut line = String::new();
         output.read_line(&mut line).unwrap();
         assert_eq!(line, "ready\n", "serve did not get ready");
-        Serving {
-            child: Some(child),
-            _output: output,
-        }
+        Serving::new(child, output)
     }
 
     fn hub_url(&self) -> String {
@@ -105,41 +111,17 @@ impl Place {
 impl Drop for Place {
     fn drop(&mut self) {
         if self.server_runs() {
-            Command::new(tree().join("bin/pg_ctl"))
-                .arg("stop")
-                .arg("--pgdata")
-                .arg(self.root().join("cluster"))
-                .args(["--mode", "immediate", "--silent"])
-                .status()
-                .ok();
-        }
-    }
-}
-
-/// A running `serve`. Dropping it asks it to stop, so a failed test leaves no server.
-struct Serving {
-    child: Option<Child>,
-    _output: BufReader<ChildStdout>,
-}
-
-impl Serving {
-    fn signal(&self, signal: Signal) {
-        let id = self.child.as_ref().unwrap().id();
-        kill(Pid::from_raw(i32::try_from(id).unwrap()), signal).unwrap();
-    }
-
-    fn finish(mut self, signal: Signal) -> Output {
-        self.signal(signal);
-        self.child.take().unwrap().wait_with_output().unwrap()
-    }
-}
-
-impl Drop for Serving {
-    fn drop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            let id = i32::try_from(child.id()).unwrap();
-            kill(Pid::from_raw(id), Signal::SIGTERM).ok();
-            child.wait().ok();
+            Command::new(tree().join(if cfg!(windows) {
+                "bin/pg_ctl.exe"
+            } else {
+                "bin/pg_ctl"
+            }))
+            .arg("stop")
+            .arg("--pgdata")
+            .arg(self.root().join("cluster"))
+            .args(["--mode", "immediate", "--silent"])
+            .status()
+            .ok();
         }
     }
 }
@@ -153,14 +135,14 @@ fn everything_printed(output: &Output) -> String {
 }
 
 #[test]
-fn db_002_the_hub_signs_in_from_its_url_file_and_sigterm_stops_the_server() {
+fn db_002_the_hub_signs_in_from_its_url_file_and_shutdown_stops_the_server() {
     let place = Place::new();
     let serving = place.serve();
 
     place.as_hub("select 1").unwrap();
     assert!(place.server_runs());
 
-    let output = serving.finish(Signal::SIGTERM);
+    let output = serving.finish(Stop::Terminate);
     assert!(output.status.success(), "{}", text(&output.stderr));
     assert!(!place.server_runs());
     assert!(place.as_hub("select 1").is_err());
@@ -171,7 +153,7 @@ fn a_second_serve_keeps_the_cluster_and_the_logins() {
     let place = Place::new();
     let first = place.serve();
     let url = place.hub_url();
-    assert!(first.finish(Signal::SIGINT).status.success());
+    assert!(first.finish(Stop::Interrupt).status.success());
 
     let _second = place.serve();
 
@@ -192,11 +174,12 @@ fn a_second_copy_ends_with_its_own_exit_code_and_the_first_serves_on() {
 }
 
 #[test]
+#[cfg(unix)]
 fn a_killed_program_leaves_a_server_that_the_next_start_takes_over() {
     let place = Place::new();
     let killed = place.serve();
     let old_server = fs::read_to_string(place.root().join("cluster/postmaster.pid")).unwrap();
-    drop(killed.finish(Signal::SIGKILL));
+    drop(killed.finish(Stop::Kill));
     assert!(
         place.server_runs(),
         "the server outlives its killed program"
@@ -207,6 +190,26 @@ fn a_killed_program_leaves_a_server_that_the_next_start_takes_over() {
 
     let new_server = fs::read_to_string(place.root().join("cluster/postmaster.pid")).unwrap();
     assert_ne!(new_server.lines().next(), old_server.lines().next());
+    place.as_hub("select 1").unwrap();
+}
+
+#[test]
+#[cfg(windows)]
+fn a_killed_supervisor_ends_its_server_tree_and_the_next_start_recovers() {
+    let place = Place::new();
+    let killed = place.serve();
+    let text = fs::read_to_string(place.root().join("cluster/postmaster.pid")).unwrap();
+    let pid = text.lines().next().unwrap().parse().unwrap();
+    drop(killed.finish(Stop::Kill));
+    let limit = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while anima_windows::process::running(pid).unwrap() {
+        assert!(
+            std::time::Instant::now() < limit,
+            "server outlived its supervisor's job"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    let _next = place.serve();
     place.as_hub("select 1").unwrap();
 }
 
@@ -225,7 +228,7 @@ fn log_007_status_tells_the_versions_and_no_secret() {
         text(&during.stdout),
         "tree: PostgreSQL 17\ncluster: PostgreSQL 17\nserver: accepts connections\n"
     );
-    let served = serving.finish(Signal::SIGTERM);
+    let served = serving.finish(Stop::Terminate);
 
     let password = place.hub_url();
     let password = password
@@ -248,7 +251,7 @@ fn a_folder_that_is_not_a_tree_is_refused_before_anything_is_made() {
     let place = Place::new();
     let empty = tempfile::tempdir().unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_anima-database"))
+    let output = Command::new(program())
         .args(["serve", "--tree"])
         .arg(empty.path())
         .arg("--root")
@@ -266,7 +269,7 @@ fn a_folder_that_is_not_a_tree_is_refused_before_anything_is_made() {
 #[test]
 fn a_cluster_of_another_major_version_is_refused_and_not_touched() {
     let place = Place::new();
-    assert!(place.serve().finish(Signal::SIGTERM).status.success());
+    assert!(place.serve().finish(Stop::Terminate).status.success());
     let version_file = place.root().join("cluster/PG_VERSION");
 
     for (version, told) in [("18", "newer Anima"), ("16", "upgrades the database")] {

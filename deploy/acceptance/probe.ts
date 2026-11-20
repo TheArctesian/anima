@@ -151,7 +151,7 @@ async function readSmallFile(path: string, what: "key file" | "CA file", limit: 
       if (!stat.isFile()) {
         throw new ProbeError(unreadable);
       }
-      if (what === "key file" && (stat.mode & 0o077) !== 0) {
+      if (what === "key file" && process.platform !== "win32" && (stat.mode & 0o077) !== 0) {
         process.stderr.write("probe: warning: the key file can be read by group or other users; chmod 600 it\n");
       }
       const text = await boundedText(handle, limit);
@@ -234,6 +234,7 @@ async function main(args: string[]): Promise<number> {
     }
     const groups = [signedOutChecks(request.target, health)];
     if (key !== undefined) {
+      if (process.platform === "win32") process.stderr.write("probe: warning: verify the key file's Windows access permissions\n");
       groups.push(keyChecks(request.target, key));
     }
     const { total, failed } = await report(groups);

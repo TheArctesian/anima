@@ -129,11 +129,20 @@ pub fn exchange(
 }
 
 fn start(invocation: &Invocation<'_>, stdin: Stdio) -> Result<Child, ()> {
-    Command::new(invocation.program)
+    let mut command = Command::new(invocation.program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    #[cfg(unix)]
+    command.current_dir("/");
+    #[cfg(windows)]
+    command.current_dir(invocation.program.parent().ok_or(())?);
+    command
         .args(invocation.args)
         .env_clear()
         .envs(invocation.env.iter().map(|(name, value)| (name, value)))
-        .current_dir("/")
         .stdin(stdin)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

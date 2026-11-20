@@ -3,13 +3,14 @@
 
 use std::{
     io,
-    os::unix::fs::DirBuilderExt as _,
     path::{Path, PathBuf},
 };
 
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{StreamExt as _, stream};
+#[cfg(unix)]
+use std::os::unix::fs::DirBuilderExt as _;
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt as _, AsyncWriteExt as _},
@@ -93,13 +94,39 @@ impl FolderPieces {
 pub(super) async fn private_folder(folder: &Path) -> io::Result<()> {
     let folder = folder.to_path_buf();
     tokio::task::spawn_blocking(move || {
-        std::fs::DirBuilder::new()
+        #[cfg(unix)]
+        return std::fs::DirBuilder::new()
             .recursive(true)
             .mode(0o700)
-            .create(folder)
+            .create(folder);
+        #[cfg(windows)]
+        {
+            let folder = std::path::absolute(folder)?;
+            anima_windows::files::directory(&folder)?;
+            anima_windows::files::protect(&folder)
+        }
     })
     .await
     .map_err(io::Error::other)?
+}
+
+/// A new file with the platform's private permissions before bytes are written.
+pub(super) async fn new_file(path: &Path) -> io::Result<File> {
+    #[cfg(unix)]
+    return fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+        .await;
+    #[cfg(windows)]
+    {
+        let path = path.to_owned();
+        tokio::task::spawn_blocking(move || anima_windows::files::create_new(&path))
+            .await
+            .map_err(io::Error::other)?
+            .map(File::from_std)
+    }
 }
 
 /// A name in `folder` that no other write uses.
@@ -126,12 +153,7 @@ pub(super) fn file_stream(file: File) -> SealedStream {
 /// write fails.
 pub(super) async fn write_new(path: &Path, mut sealed: SealedStream) -> io::Result<u64> {
     let written = async {
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(path)
-            .await?;
+        let mut file = new_file(path).await?;
         let mut size = 0_u64;
         while let Some(chunk) = sealed.next().await {
             let chunk = chunk?;
