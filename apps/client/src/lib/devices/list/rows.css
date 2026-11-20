@@ -191,6 +191,20 @@
   overflow: hidden;
 }
 
+/*
+ * On a wide list the usage column keeps one width and the name takes the free width, so a long name and its address are
+ * whole where the window has room. Below this width the name keeps its 20%.
+ */
+@container (min-inline-size: 72rem) {
+  .device-rows thead .c-name {
+    inline-size: auto;
+  }
+
+  .device-rows thead .c-detail {
+    inline-size: calc(var(--space-16) * 5);
+  }
+}
+
 /* Below 1100 px: two lines a device, the name, then its host and uptime; the meters or the reason on the right. */
 @media (max-width: 1100.98px) {
   .device-rows thead,
