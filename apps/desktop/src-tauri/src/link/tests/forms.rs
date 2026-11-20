@@ -104,7 +104,10 @@ fn the_ready_line_gives_the_loopback_port_and_a_taken_port_is_seen() {
 fn the_link_path_comes_from_a_device_status_only() {
     let status =
         br#"{"role":"device","local":"127.0.0.1:43123","path":"relayed","latencyMs":41.5}"#;
-    assert_eq!(printed::link_path(status), Some(("relayed".into(), 41.5)));
+    assert_eq!(
+        printed::link_path(status),
+        Some(("relayed".into(), 41.5, None))
+    );
     for bad in [
         &br#"{"role":"hub","path":"direct","latencyMs":1}"#[..],
         br#"{"role":"device","path":"<script>","latencyMs":1}"#,
@@ -176,6 +179,7 @@ fn the_status_names_its_fields_for_the_client() {
         joined: true,
         state: Phase::Down,
         port: Some(43123),
+        public_key: None,
         reason: Some(Reason::PortTaken),
         path: None,
         latency_ms: None,

@@ -31,7 +31,7 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-it('FRN-001, NAV-009, HMD-022: the first screen has Sign in, then Sign up and Join a hub', () => {
+it('FRN-001, NAV-009, HMD-022: the first screen offers sign-in and joining with an enrollment QR', () => {
   const target = open();
   expect(target.querySelector('h1')?.textContent).toBe('Welcome to Anima.ing');
   expect(document.activeElement).toBe(target.querySelector('h1'));
@@ -40,6 +40,7 @@ it('FRN-001, NAV-009, HMD-022: the first screen has Sign in, then Sign up and Jo
     ['Sign in', '/welcome/hosted'],
     ['Sign up', '/welcome/hosted'],
     ['Join a hub', '/welcome/hub'],
+    ['Scan enrollment QR', '/welcome/join'],
   ]);
 });
 

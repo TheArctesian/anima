@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { asset } from '$app/paths';
+  import { asset, resolve } from '$app/paths';
   import { accessApi } from '$lib/access/api';
   import { loopbackProblem, tokenFor } from '$lib/access/listener/check';
   import { needsListenerCheck, type ListenerProblem } from '$lib/access/listener/listener';
@@ -30,7 +30,7 @@
   const hub = useHub();
   const clock = createClock(DATA_AGE_REFRESH_MS);
   // Read once: the platform never changes in a page, so the hub line below never comes or goes (CLI-002).
-  const desktop = capabilities().keyStore;
+  const { keyStore: desktop, deviceLink, cloudAccount } = capabilities();
   // The phone layout has no doors, and its hub slot under the button holds the unreachable notice (mockup 3).
   const phone = $derived(phoneLayout());
 
@@ -228,6 +228,13 @@
       {/if}
     </form>
 
+    {#if deviceLink && step === 'credentials'}
+      <div class="alternative">
+        <a href={resolve('/welcome/join')}>Scan enrollment QR or enter a key</a>
+        {#if cloudAccount}<a href={resolve('/welcome/hosted')}>Sign in with an Anima.ing account</a>{/if}
+      </div>
+    {/if}
+
     {#if phone && desktop && !editingAddress}
       <HubSlot host={hubHost(hub.address.origin)} unreachable={unreachable !== null} onchange={() => { editingAddress = true; }} onretry={reloadClient} />
     {:else}
@@ -238,6 +245,18 @@
 </div>
 
 <style>
+  .alternative {
+    display: grid;
+  }
+
+  .alternative a {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min-touch);
+    color: var(--text-secondary);
+  }
+
   .screen {
     position: relative;
     box-sizing: border-box;
