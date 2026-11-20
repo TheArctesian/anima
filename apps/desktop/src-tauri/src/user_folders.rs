@@ -19,11 +19,22 @@ pub fn application(macos: bool, home: &Path, xdg_data_home: Option<&Path>) -> Pa
 
 /// The home folder of the user of this app; none without an absolute `HOME`.
 pub fn home() -> Option<PathBuf> {
-    Some(PathBuf::from(std::env::var_os("HOME")?)).filter(|home| home.is_absolute())
+    Some(PathBuf::from(std::env::var_os(if cfg!(windows) {
+        "USERPROFILE"
+    } else {
+        "HOME"
+    })?))
+    .filter(|home| home.is_absolute())
 }
 
 /// The application's folder for the user of this app; none without an absolute `HOME`.
 pub fn of_this_user() -> Option<PathBuf> {
+    if cfg!(windows) {
+        return std::env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute())
+            .map(|path| path.join("Anima"));
+    }
     let home = home()?;
     let xdg_data_home = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from);
     Some(application(
@@ -34,11 +45,12 @@ pub fn of_this_user() -> Option<PathBuf> {
 }
 
 /// The hub root of the hub on this computer.
+#[cfg(unix)]
 pub fn hub_root(application: &Path) -> PathBuf {
     application.join("hub")
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use std::path::Path;
 

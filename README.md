@@ -33,7 +33,7 @@
 <!-- TODO: Insert a product screenshot here once one exists.
      Suggested file: docs/images/devices.png (about 1280×800, Devices view on macOS). -->
 
-Anima.ing is a self-hosted device manager for the computers and servers you already have — including the ones AI agents run on. It combines a native macOS and Linux client, a Rust hub, and a gateway for remote sessions. A command-line tool and an MCP server let you and your coding agents use the same hub.
+Anima.ing is a self-hosted device manager for the computers and servers you already have — including the ones AI agents run on. It combines a native macOS, Linux and Windows client, a Rust hub, and a gateway for remote sessions. A command-line tool and an MCP server let you and your coding agents use the same hub.
 
 A signed, notarised release of the macOS client is published at [releases.anima.ing](https://releases.anima.ing); [docs/procedures/releases.md](docs/procedures/releases.md) gives the newest version. A signed Linux build is still to come; until then, you can build from this repository.
 
@@ -77,7 +77,7 @@ Self-hosting is free. The hosted mode is planned to be the default first run: yo
 | | Today | Planned |
 | --- | --- | --- |
 | Self-host the hub and client | Yes, build from source | Signed Linux downloads |
-| Desktop client | macOS 14.2+ (Apple Silicon and Intel), Linux AppImage (x86-64). Linux ARM64 support. | Windows |
+| Desktop client | macOS 14.2+ (Apple Silicon and Intel), Linux AppImage (x86-64). Linux ARM64 support. Windows 11 x86-64 local trial. | — |
 | Web client | Served by the hub to browsers on the VPN ([guide](docs/procedures/setup/web-client.md)) | iOS |
 | Remote desktops | VNC and RDP through `guacd`; native VNC via `anima-gateway` | Native RDP |
 | Private network | Headscale / WireGuard; `anima-link` by hand | An Anima.ing-operated Tailcat relay; app-started `anima-link` |
@@ -108,7 +108,7 @@ bun run --cwd apps/client build
 bun run --cwd apps/desktop tauri build
 ```
 
-That produces a macOS `.app` / `.dmg`, or a Linux AppImage for the architecture of the machine you build on (x86-64 or ARM64). Official signed releases and the updater currently target Linux x86-64 only; the official builder has no ARM64 target yet. The bundle targets are `app`, `dmg`, and `appimage`. There is no Windows target.
+That produces a macOS `.app` / `.dmg`, or a Linux AppImage for the architecture of the machine you build on (x86-64 or ARM64). Official signed releases and the updater currently target Linux x86-64 only; the official builder has no ARM64 target yet. The bundle targets are `app`, `dmg`, and `appimage`. For the Windows x86-64 NSIS installer, use the [Windows build procedure](docs/procedures/setup/windows.md). This local trial has no signed release or automatic updater.
 
 A "no private key" message about the updater after the bundles are made is expected when you build locally: official updates are signed by the hub, not by a local `tauri build`.
 
@@ -198,7 +198,7 @@ link/build.sh    # writes link/bin/anima-link-<os>-<arch>
 ## Architecture
 
 ```text
-  Desktop client (Tauri, macOS and Linux)
+  Desktop client (Tauri, macOS, Linux and Windows)
   Web client (served by the hub, VPN only)
   anima / anima mcp
            |
@@ -287,7 +287,7 @@ Planned, not available today:
 - A signed Linux release
 - The hosted mode: sign in, and a hub is made for your account. Free below a usage line, with Solo hosting at $19 / month or $199 / year (waitlist only)
 - A native RDP gateway
-- A Windows client
+- A signed Windows release and Windows host services
 - An Anima.ing-operated Tailcat relay
 - Jobs across machines, and running models on hardware you already have
 - A local copy of data that third-party services hold about you

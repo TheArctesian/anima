@@ -52,7 +52,7 @@ base64.workspace = true
 # builds none of them (MOB-002, MOB-003).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 # The Settings panel for `anima mcp` reads and saves permissions through the command line's own library (MCP-018).
-anima-cli = { path = "../../../crates/anima-cli" }
+
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -88,6 +88,7 @@ tauri-plugin-dialog = "2"
 # user ID the daemon's install folder must belong to (MET-019). `fs`: whether this user may write a
 # folder for the command line tool (INS-009).
 [target.'cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))'.dependencies]
+anima-cli = { path = "../../../crates/anima-cli" }
 nix = { version = "0.31", default-features = false, features = ["signal", "process", "user", "fs"] }
 
 # pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither. `fs`: the POSIX
@@ -138,3 +139,7 @@ excessive_nesting = "deny"
 allow_attributes = "deny"
 allow_attributes_without_reason = "deny"
 
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { workspace = true, features = ["windows-native"] }
+open = "5"

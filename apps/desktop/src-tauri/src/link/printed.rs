@@ -81,6 +81,7 @@ pub fn device_line(line: &str) -> Option<DeviceLine> {
 
 /// The loopback port in `ctl status`'s answer of a running device link: `{ role: "device",
 /// local: "127.0.0.1:<port>" }`.
+#[cfg(unix)]
 pub fn link_local(printed: &[u8]) -> Option<u16> {
     let status: serde_json::Value = serde_json::from_slice(printed).ok()?;
     if status.get("role")?.as_str()? != "device" {
@@ -91,6 +92,7 @@ pub fn link_local(printed: &[u8]) -> Option<u16> {
 }
 
 /// Whether `unit show` says that the unit of the user is installed: `{ installed: true }`.
+#[cfg(unix)]
 pub fn unit_installed(printed: &[u8]) -> bool {
     serde_json::from_slice::<serde_json::Value>(printed)
         .ok()

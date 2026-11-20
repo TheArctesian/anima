@@ -32,6 +32,13 @@ describe('shellCapabilities (WP-42 D-4)', () => {
     expect(shellCapabilities(computer(LINUX))).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false });
   });
 
+  it('WIN1: Windows exposes the client and link, but no Unix host installation or release controls', () => {
+    expect(shellCapabilities(computer('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'))).toEqual({
+      ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false, updates: false,
+      builds: false, mcpPermissions: false, commandLine: false, stayAwake: false, localHub: false,
+    });
+  });
+
   it('RA-002: the shell has no pop-out window command, so pop-out is no on every desktop', () => {
     expect(shellCapabilities(computer(MAC))?.popOut).toBe(false);
     expect(shellCapabilities(computer(LINUX))?.popOut).toBe(false);

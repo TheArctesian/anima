@@ -25,19 +25,20 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
   // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5).
   if (isMobile(agent)) return { ...MOBILE_SHELL, accountSession: isApple(agent) };
   const { userAgent } = agent;
+  const windows = /Windows NT/.test(userAgent);
   return {
     keyStore: true,
     webViewTabs: true,
     popOut: false,
-    updates: true,
+    updates: !windows,
     processLog: true,
     thisMachine: true,
     systemSettings: isMac(userAgent),
-    builds: true,
-    mcpPermissions: true,
-    commandLine: true,
-    stayAwake: true,
-  localHub: true,
+    builds: !windows,
+    mcpPermissions: !windows,
+    commandLine: !windows,
+    stayAwake: !windows,
+    localHub: !windows,
     deviceLink: true,
     cloudAccount: true,
     accountSession: false,

@@ -1,0 +1,30 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "windows",
+  "description": "Windows client commands, main webview only (WIN1). No Unix host installation, builder, MCP, or updater commands.",
+  "webviews": [
+    "main"
+  ],
+  "platforms": [
+    "windows"
+  ],
+  "permissions": [
+    "log:allow-log",
+    "allow-process-log-folder-open",
+    "allow-this-machine-read",
+    "allow-link-join",
+    "allow-link-status",
+    "allow-link-leave",
+    "allow-hub-listener-check",
+    "allow-system-browser-open",
+    "allow-web-view-pinning",
+    "allow-web-view-open",
+    "allow-web-view-place",
+    "allow-web-view-show",
+    "allow-web-view-go",
+    "allow-web-view-pin",
+    "allow-web-view-pop-out",
+    "allow-web-view-close",
+    "allow-web-certificate-read"
+  ]
+}

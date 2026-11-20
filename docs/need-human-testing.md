@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-windows | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2144,5 +2145,31 @@ extensions of a real hub, at other widths or on a phone.
    Expected: the view that you chose last is shown.
 5. Make the window narrow (about 800 px), in the light and the dark appearance, and look at both views.
    Expected: no part lies over another; the tiles go to fewer columns.
+
+Result: Open.
+
+
+### HT-NEW-windows: the native Windows desktop client (WIN1)
+
+Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
+state with protected ACLs, platform capability controls and a per-user NSIS installer.
+The build procedure is [windows.md](procedures/setup/windows.md). Automated Windows tests
+cover shared shell logic and link file security. The installer and welcome window were
+started in the Windows 11 VM. Real account sign-in and remote sessions need this check.
+
+1. Run the local installer and start Anima.ing from Start.
+   Expected: the welcome screen appears with Sign in, Sign up and Join hub.
+2. Sign in to your Anima account, or use Join hub with an existing hub invitation.
+   Expected: the device link connects and the hub's devices appear. No token is logged.
+3. Close Anima and open it again.
+   Expected: the saved credential is read from Windows Credential Manager; the link reconnects.
+4. Open an SSH or remote desktop session to a device you control.
+   Expected: keyboard input and screen updates work; closing the session returns to the hub.
+5. Open a device's HTTPS web interface.
+   Expected: the system browser opens it. Windows does not offer native certificate pinning.
+6. Inspect Settings and close the app.
+   Expected: unsupported host controls and the updater are absent; the link child stops.
+7. Uninstall through Windows Settings, then install again.
+   Expected: the application and shortcut are removed and installed without administrator rights.
 
 Result: Open.

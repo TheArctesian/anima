@@ -55,17 +55,18 @@ Anima uses `guacd` from Guacamole as a separate process. Anima does not copy sou
 | --- | --- | --- |
 | macOS | Tauri desktop application | 1 |
 | Linux | Tauri desktop application | 1 |
+| Windows 11 x86_64 | Tauri desktop client, local NSIS installer (WIN1) | Local trial |
 | Web | Static web application that the hub serves | 3 |
 | iOS | Tauri mobile application | 5 |
 | Android | Tauri mobile application | 5 |
 
 The desktop applications are the first priority. Do not start the web, iOS and Android work until Phase 2 is complete. [mobile-plan.md](../plans/mobile-plan.md) is the plan for iOS and Android (operator, 2026-11-16).
 
-The desktop package also carries the command line (Section 6.10). Section 3.11 gives the installation rules. A public website gives the install links (Section 3.12).
+The macOS and Linux desktop packages also carry the command line (Section 6.10). Section 3.11 gives the installation rules. A public website gives the install links (Section 3.12).
 
 ### 1.4 Out of scope for this version
 
-- Windows desktop package. Tauri supports Windows, so a later version can add it.
+- Windows host services and a signed public Windows release. The local Windows client is authorized by WIN1 (operator, 2026-11-20). It uses Windows Credential Manager, connects to existing hubs, and runs its device link only while open. The local hub, daemon, builder, CLI installation, MCP setup, stay-awake controls and updater remain unavailable.
 - Multiple operators with different permissions.
 - File transfer between the client and a device.
 - Access from outside the private network. Each client must be on the same network as the hub and the devices (Section 4.1).
@@ -136,7 +137,7 @@ The command line and the MCP server (Section 6.10) use the same GraphQL API as t
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
 | Remote display | `guacamole-common-js` |
-| Secret storage | The operating system key store: macOS Keychain, Linux Secret Service |
+| Secret storage | The operating system key store: macOS Keychain, Linux Secret Service, Windows Credential Manager |
 
 - **CLI-001.** The client must use the same user interface code on all platforms.
 - **CLI-002.** The client must keep the hub address in local settings. The web client has no hub address field. It talks only to the hub that served it. (D-5, R-081)
@@ -503,7 +504,7 @@ The macOS application is `Anima.ing.app`: Tauri makes the name from `productName
 
 Built state: the release record in [releases.md](../procedures/releases.md) holds what is published. INS-002 to INS-007 are built (merge `a6ba6b19`, 2026-11-13). The builder puts the `anima` program in both artefacts, and Settings > Updates > Command line tool puts it on the `PATH`. The check of the signature, the notarization and the update on a real release is row REL-1 of [need-human-testing.md](../need-human-testing.md) (OD-16 to OD-18).
 
-- **INS-001.** The operator must install Anima from the disk image on macOS or from the AppImage on Linux. There is no other installation path for the desktop application. The command line alone is the one exception: it can also be installed with Homebrew or with Cargo (INS-010, INS-011). The command line from the desktop application stays as INS-002 to INS-007 say. (operator, 2026-11-13; the exception: operator, 2026-11-18, R-151)
+- **INS-001.** The operator must install Anima from the disk image on macOS or from the AppImage on Linux. The Windows local trial installs with a per-user NSIS installer (WIN1, operator, 2026-11-20). There is no other installation path for the desktop application. The command line alone is the one exception: it can also be installed with Homebrew or with Cargo (INS-010, INS-011). The command line from the desktop application stays as INS-002 to INS-007 say. (operator, 2026-11-13; the exception: operator, 2026-11-18, R-151)
 - **INS-002.** Each artefact must contain the `anima` program beside the desktop application. The two must come from the same commit and must have the same version. Thus there is one download for the desktop application. The formula and the crate hold the same program at the same version (INS-012). (Built: the bundle step of the builder builds `anima` from the job commit, puts it in `apps/desktop/src-tauri/binaries/` and gives `bundle.externalBin: ["binaries/anima"]` to `tauri build` and `tauri bundle`. A missing file fails the build. `src/builder/sidecar.rs`.)
 - **INS-003.** `anima --version` must print the version of the desktop application that contains it. (Built; Section 11, OD-17.)
 - **INS-004.** On macOS, the Settings page of the desktop application must offer "Install the command line tool". The application must propose a directory that is on the operator's `PATH`. The operator must confirm the directory. Then the application must make a link named `anima` in that directory. The link must point to the `anima` program inside the installed application. (Built: `apps/desktop/src-tauri/src/command_line/`. The application refuses to make the link when it runs from the disk image or from a translocated path, and tells the operator to move it to Applications first.)
