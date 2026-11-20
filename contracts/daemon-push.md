@@ -14,7 +14,7 @@ not built: no hub and no daemon has them yet.
 Section 9 (operational keys), the `keys` member of Section 4 and of `Accepted`, the fetch route and the refusal
 `NO_KEY` were added by R-147 and R-148 (operator, 2026-11-18; K-E5 Section 2.1). They are optional members, so
 they need no new version of this contract (Section 1).
-The batch of the daemon in the container of a hosted hub (Section 4; HMD-071, HMD-072, HMD-074 of
+The socket of the hub for its own daemon (Section 1, task HM-T35) and the batch of the daemon in the container of a hosted hub (Section 4; HMD-071, HMD-072, HMD-074 of
 [hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) is proposed and waits for the approval of the
 operator (CON-001). It uses only kinds and members that exist, so it needs no new version of this contract.
 The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-NEW-battery) are proposed with
@@ -58,6 +58,14 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
     to the port. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
     it does, a push fails and the daemon keeps its samples (Section 7).
   - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
+- In the container of a hosted hub (HMD-046; tasks HM-T35 and HM-T10 of
+  [hosted-mode.md](../docs/proposals/hosted-mode.md)) the hub's own daemon reaches the hub through a Unix socket
+  that the hub makes for it (`ANIMA_OWN_DAEMON_SOCKET`), with the origin `unix:<path>` as in the link mode. The
+  hub makes the socket as it makes the socket of the link: mode 0600, in a folder that only the hub's user can
+  reach, and it takes a connection only from a process of that user. The daemon runs as the hub's user and
+  checks the folder by the same rule. On that socket the hub serves only the routes of this contract, and it
+  takes each request as from its own device (HMD-045) at `127.0.0.1`; no request on it names a different
+  device. `anima-local-hub` starts that daemon only when the program is in the folder of its programs.
 - The daemon sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
   (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), and listens on no port.
 - Every route below sits behind the NET-002 layer like any other route, and is logged by its template only.
