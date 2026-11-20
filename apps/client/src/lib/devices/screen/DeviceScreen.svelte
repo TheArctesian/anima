@@ -4,7 +4,9 @@
   import { COLLAPSED } from '$lib/events/resize/resize';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import '$lib/events/resize/geometry.css';
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
+  import { capabilities } from '$lib/platform/platform';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
   import DeviceGrid from '../card/DeviceGrid.svelte';
@@ -48,6 +50,8 @@
 
   const { query, onQueryChange, onAddDevice, onConnect, onOpenWeb, wake, screenSharing, clock = browserClock }: Props = $props();
   const hub = useHub();
+  // A hosted hub in a browser: the application adds a computer, so the empty list says so (HMD-066).
+  const offersApplication = !capabilities().keyStore && hubIsHosted(hub.address.origin);
   // The clock is fixed for the life of the screen.
   // svelte-ignore state_referenced_locally
   const listing = new Listing(hub, clock);
@@ -135,6 +139,10 @@
             >
           {:else}
             <p>No devices yet</p>
+            {#if offersApplication}
+              <!-- HMD-066: a browser may be the first sign-in of an account, and a hosted hub gets its computers from the application. -->
+              <p class="how">Install the Anima.ing application on a computer and sign in there. The computer then shows here.</p>
+            {/if}
             <button type="button" tabindex="0" onclick={onAddDevice} {@attach press()}>Add device</button>
           {/if}
         </div>
@@ -224,6 +232,12 @@
     padding: var(--space-12);
     color: var(--text-secondary);
     font-size: var(--text-lg);
+  }
+
+  .empty .how {
+    max-inline-size: calc(var(--space-16) * 6);
+    font-size: var(--text-md);
+    text-align: center;
   }
 
   .more {

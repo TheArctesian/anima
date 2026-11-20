@@ -58,6 +58,19 @@ function graphQLAnswer(body: unknown, status = 200): () => Promise<Response> {
 }
 
 describe('Hub.request', () => {
+  it('HMD-059: an answer of the gateway with no session is UNAUTHENTICATED, so each page sends the browser to the sign-in', async () => {
+    const gateway = { error: { code: 'sign_in_needed', message: 'words of the gateway' } };
+    const { hub } = hubAnswering(graphQLAnswer(gateway, 401));
+    const result = await hub.request(ME, {});
+    expect(result).toEqual({ ok: false, error: { code: 'UNAUTHENTICATED', message: 'This browser is signed out. Sign in again.' } });
+  });
+
+  it('HMD-063: a hub that starts behind the gateway is UNAVAILABLE with plain words, never an answer that cannot be read', async () => {
+    const { hub } = hubAnswering(graphQLAnswer({ error: { code: 'hub_not_ready', message: 'x' } }, 503));
+    const result = await hub.request(ME, {});
+    expect(result).toEqual({ ok: false, error: { code: 'UNAVAILABLE', message: 'Your hub is starting. Try again in a few seconds.' } });
+  });
+
   it('CQ-045: posts the document and variables to /graphql with the bearer token', async () => {
     const { hub, sent } = hubAnswering(graphQLAnswer({ data: { me: { username: 'op' } } }));
     const result = await hub.request(ME, { first: 3 });
