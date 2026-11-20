@@ -81,6 +81,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-NEW-barfoot | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-NEW-barfoot) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1949,5 +1950,32 @@ names, with many containers or at a narrow width.
 4. Make the window narrow (about 900 px) and look again, in the light and the dark appearance.
    Expected: the status text is cut with an ellipsis and its full text is the tooltip; the state word is whole; the tools
    of the log go to a second line and none lies over another.
+
+Result: Open.
+
+### HT-NEW-barfoot: the bar with Live sessions at the foot and Extensions beside Settings (R-NEW-barfoot)
+
+Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
+name of the hub, and Extensions is an entry directly above Settings that opens the new page
+`apps/client/src/routes/extensions`. The Settings page has no section Extensions on a computer. The tests prove the
+order of the entries. The bar was looked at only in pictures of the web client at 1280 px; the page Extensions was
+pictured with no extension. No person saw the narrow bar, the panel of Live sessions at its new place, the page with
+its switches, or the phone.
+
+1. Open the application in a window about 1280 px wide.
+   Expected: the top of the bar has Devices, Agent usage, and Projects while that extension is on. At the foot, from the
+   top: Live sessions with its count, the name of the hub with "Connected", Extensions, Settings.
+2. Select "Live sessions" while a session is open.
+   Expected: its panel opens beside the bar and is whole inside the window; "Stop" ends the session.
+3. Select "Extensions".
+   Expected: a page "Extensions" opens with each extension and its switch. Set Projects on: "Projects" comes into the
+   top of the bar at once. Set it off again.
+4. Open Settings.
+   Expected: there is no section Extensions, and the index does not list it.
+5. Make the bar narrow with the control at its top.
+   Expected: the same order as icons; each icon has its name as a tooltip; Live sessions keeps its count.
+6. Open the application on a phone, then Settings.
+   Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
+   "Open Extensions", which opens the page.
 
 Result: Open.
