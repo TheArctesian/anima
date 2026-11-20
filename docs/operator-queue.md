@@ -29,14 +29,14 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.4 | The engine (E0) | Agent: the rest of E0-7 T3 (`Subscription.reminderFirings`) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E24 (the Dawarich pull of E0-5 T3), OD-E25 (one event for each stored fix), HT-034, HT-035, HT-040 and HT-043. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the acceptance of the contract of the work route (task W1 in projects-and-builds-plan.md: the contract K10, version 0.3, is written as a proposal and its security review is recorded, SF-003 to SF-014; he decided the four findings that needed him: R-172, R-185, R-186, R-187), the name of his own Linux machine for the measurements of task W2 (R-188, OD-W39), an administrator step on a Mac, the acceptance of the design (W2), and the steps of task B1 on his GitHub account. Agent: nothing; task W0 (the Unix socket between the daemon and the link, R-172) is built and waits for the check HT-037, and no code of W3 or W4 comes before the two acceptances |
-| 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker. Agent: nothing now; stage 2 (H5) waits for task W1 of row 4.7 |
+| 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-045 on a machine that runs Docker. Agent: nothing now; stage 2 (H5) waits for task W1 of row 4.7 |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (116)
+## 2. Open decisions (113)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -45,7 +45,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
-| OD-W47 | Which version does the crate `anima-cli` on crates.io have, now that the version of a release is the count of the first line of `main` and no file holds it (R-1… | Open. Recommendation: (C) for now, then (A). The Homebrew formula takes the version from the release with no file to change, and a version on crates.io can neve… | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -152,9 +151,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-23 | Does `anima-daemon` also ship by Homebrew or Cargo (INS-008, INS-010, INS-011; R-151) | Proposed, not ruled. The operator ruled for the command line because it "can operate alone" (R-151). The daemon is a separate program with its own install path… | [spec/design-spec.md](spec/design-spec.md) |
-| OD-24 | Which file does the Homebrew formula install, and does the release publish it with its SHA-256 (INS-010, INS-012) | Proposed, not ruled. The release would publish a standalone `anima` file for each target, with its SHA-256 in the release record (ROL-003). The formula would in… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
-| OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
 ## 3. Documents that wait for an approval (28)
@@ -190,7 +187,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (75)
+## 4. Checks that only the operator can do (76)
 
 | Check | What |
 | --- | --- |
@@ -229,10 +226,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-036 | the release workflow of GitHub Actions (tasks B8b to B8d and B8g, R-179, R-180, R-182 to R-184, R-190 to R-192, R-198 to R-201) |
 | HT-038 | the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8) |
 | HT-039 | a newer image for a container, with real public registries (HOST-021; task H13) |
-| HT-042 | the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, H… |
+| HT-045 | the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, H… |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
 | HT-037 | the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004) |
 | HT-041 | the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d) |
+| HT-045 | the iOS application from the release workflow to TestFlight (R-203; task B8i) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |
