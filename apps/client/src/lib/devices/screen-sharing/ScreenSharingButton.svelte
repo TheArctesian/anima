@@ -141,7 +141,7 @@
     padding-inline: var(--space-2);
   }
 
-  /* In a list row or a tile the setup is a quiet action: no border, the secondary colour (R-NEW-listlayout). */
+  /* In a list row or a tile the setup is a quiet action: no border, the secondary colour (row H of the site language plan). */
   .setup .quiet-setup {
     min-block-size: var(--control-sm);
     border-color: transparent;

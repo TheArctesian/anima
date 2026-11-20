@@ -113,7 +113,7 @@
     gap: var(--space-4);
   }
 
-  /* The column heads of the Devices list: small, medium weight, secondary, sentence case (R-NEW-nocapitals). */
+  /* The column heads of the Devices list: small, medium weight, secondary, sentence case (row G of the site language plan). */
   .heads {
     display: grid;
     grid-template-columns: var(--check-columns);
