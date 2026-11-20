@@ -41,3 +41,9 @@ The [automatic-recovery test](installed-operation-recovery.json) passed: an actu
 Public delivery rejected urllib's default client identity with Cloudflare HTTP 403 / code 1010. The feed was not published. An explicit `AnimaOS-Updater/1` User-Agent returned HTTP 200; the production fetch function then downloaded and verified the complete public archive. The image was rebuilt with this transport correction before delivery. Signature, redirect and size restrictions remain unchanged.
 
 The transport-corrected final ISO (source `31257587`) repeated all five lifecycle checks successfully. Automatic fallback was verified on the preceding image with identical boot/recovery code; the transport correction only adds the public HTTP client identity.
+
+## Published preview update
+
+Published version `20261120221704` to `https://releases.anima.ing/os/preview/x86_64-linux/latest.json`. The publisher downloaded the complete public archive and verified SHA-256 `610595fe8ba10908033c25d3a14b1ac8a8e0c18d17ce01def79dca7f12a2c734` before changing the signed feed. A transient TLS connection failure was retried without relaxing TLS or signature checks. The final ISO's packaged fetch/verifier independently read the live feed and matched its appliance closure.
+
+After resolving the latest dev Windows-platform guard with the NixOS command path, daemon validation passed 160 unit and 94 integration tests. This preserves the Linux behavior tested in the delivered ISO while retaining dev's Windows handling.
