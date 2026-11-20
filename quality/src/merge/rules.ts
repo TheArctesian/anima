@@ -13,6 +13,22 @@ export const GENERATED = ["docs/plan/register.md", "docs/operator-queue.md"] as 
 export interface MergeRule {
   fullGates: "mac" | "github";
   mergeWithoutCheck: boolean;
+  /**
+   * If a train still lands when `dev` moved under it only in records (`RECORDS`). Off when the
+   * file does not say `true`: then each move of `dev` makes the train run its gates again.
+   */
+  carryRecords: boolean;
+}
+
+/**
+ * The paths that a session pushes to `dev` with the document gates alone (AGENTS.md, "Gates"):
+ * claims and ideas, and the two generated files that follow them.
+ */
+export const RECORDS = ["docs/claims/", "docs/ideas/", "docs/plan/register.md", "docs/operator-queue.md"] as const;
+
+/** If each path is a record: a move of `dev` in only these paths changes nothing that the full gates test. */
+export function onlyRecords(paths: string[]): boolean {
+  return paths.every((path) => RECORDS.some((record) => path.startsWith(record)));
 }
 
 /** The rule in `text`, or the reason that it is not a rule. An unknown value is never read as "on". */
@@ -28,7 +44,7 @@ export function parseMergeRule(text: string): MergeRule | string {
   if (rule.fullGates !== "mac" && rule.fullGates !== "github") return "fullGates must be \"mac\" or \"github\"";
   if (typeof rule.mergeWithoutCheck !== "boolean") return "mergeWithoutCheck must be true or false";
   if (rule.mergeWithoutCheck && rule.fullGates !== "github") return "mergeWithoutCheck needs fullGates \"github\"";
-  return { fullGates: rule.fullGates, mergeWithoutCheck: rule.mergeWithoutCheck };
+  return { fullGates: rule.fullGates, mergeWithoutCheck: rule.mergeWithoutCheck, carryRecords: rule.carryRecords === true };
 }
 
 /** The paths with a conflict that a person or a session must solve: each one that is not a generated file. */

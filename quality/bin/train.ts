@@ -4,8 +4,12 @@
 // it), and if no train is on the way it builds the next one and starts its gates. It moves `dev`
 // only forward, to a commit whose gates passed, and never touches `main`.
 import { appendFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { undoMerge } from "../src/merge/commit.ts";
 import { finishMerge } from "../src/merge/finish.ts";
-import { members, stack } from "../src/merge/stack.ts";
+import { onlyRecords, parseMergeRule, RECORDS } from "../src/merge/rules.ts";
+import { members, stack, type LeftOut } from "../src/merge/stack.ts";
 import { batch, firstHalf, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
@@ -66,14 +70,46 @@ function inDev(sha: string): boolean {
   return run(["git", "merge-base", "--is-ancestor", sha, `origin/${INTO}`]).ok;
 }
 
+/** Merges the tips on the local `dev`, each with the steps of one merge into `dev`. */
+function merge(wanted: Tip[]): { merged: Tip[]; leftOut: LeftOut[] } {
+  return stack(REPO_ROOT, wanted, (tip) => {
+    const finished = finishMerge(REPO_ROOT, `origin/${tip.branch}`, INTO);
+    return "failure" in finished ? finished.failure : undefined;
+  });
+}
+
+/** If the rule permits it: `dev` moved from `base` only in records, so the gates of a train on `base` still count. */
+function movedOnlyInRecords(base: string): boolean {
+  const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));
+  if (typeof rule === "string" || !rule.carryRecords) return false;
+  return onlyRecords(must(["git", "diff", "--name-only", base, `origin/${INTO}`]).split("\n").filter((path) => path !== ""));
+}
+
+/**
+ * Makes the train again on the `dev` that moved in records, with no run of the gates, and pushes
+ * it to `dev`. It does so only when each file that is not a record is the same as in the commit
+ * that the gates tested; if one is different, nothing is pushed.
+ */
+function carry(train: Tip, held: Tip[]): boolean {
+  const start = must(["git", "rev-parse", "HEAD"]);
+  const made = merge(held);
+  const same = run(["git", "diff", "--quiet", train.sha, "HEAD", "--", ".", ...RECORDS.map((record) => `:(exclude)${record}`)]).ok;
+  if (made.leftOut.length === 0 && same && run(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${INTO}`]).ok) return true;
+  undoMerge(REPO_ROOT, start);
+  return false;
+}
+
 /** Moves `dev` to the commit of the train when `dev` is still the commit that the train stands on. */
 function land(train: Tip, base: string): void {
-  const held = members(REPO_ROOT, base, train.sha).map((tip) => tip.branch);
+  const held = members(REPO_ROOT, base, train.sha);
+  const names = held.map((tip) => tip.branch).join(", ");
   const moved = base !== must(["git", "rev-parse", `origin/${INTO}`]);
   if (!moved && run(["git", "push", "--quiet", "origin", `${train.sha}:refs/heads/${INTO}`]).ok) {
     must(["git", "merge", "--quiet", "--ff-only", train.sha]);
-    say(`landed ${held.length} branch(es) in one step, ${INTO} is ${train.sha.slice(0, 8)}: ${held.join(", ")}`);
-  } else say(`${INTO} moved after the train was made; the gates of the train do not count. The branches go into the next train: ${held.join(", ")}`);
+    say(`landed ${held.length} branch(es) in one step, ${INTO} is ${train.sha.slice(0, 8)}: ${names}`);
+  } else if (moved && movedOnlyInRecords(base) && carry(train, held)) {
+    say(`landed ${held.length} branch(es); ${INTO} had moved only in records, and each other file is the one that the gates tested: ${names}`);
+  } else say(`${INTO} moved after the train was made; the gates of the train do not count. The branches go into the next train: ${names}`);
   remove(train);
 }
 
@@ -83,7 +119,7 @@ function land(train: Tip, base: string): void {
  */
 function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undefined {
   const base = must(["git", "merge-base", train.sha, `origin/${INTO}`]);
-  const stale = base !== must(["git", "rev-parse", `origin/${INTO}`]);
+  const stale = base !== must(["git", "rev-parse", `origin/${INTO}`]) && !movedOnlyInRecords(base);
   const what = verdict(train.sha, runs);
   if (what === "land") return void land(train, base);
   if (what === "wait" && !stale) return "wait";
@@ -106,10 +142,7 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
 function build(wanted: Tip[], now: Date): void {
   if (wanted.length === 0) return say("no branch waits: each is in dev, or its own gates did not pass yet");
   const base = must(["git", "rev-parse", "HEAD"]);
-  const made = stack(REPO_ROOT, wanted, (tip) => {
-    const finished = finishMerge(REPO_ROOT, `origin/${tip.branch}`, INTO);
-    return "failure" in finished ? finished.failure : undefined;
-  });
+  const made = merge(wanted);
   for (const each of made.leftOut) say(`${each.branch} is left out: ${each.reason}. Merge origin/${INTO} into the branch and solve it there.`);
   if (made.merged.length === 0) return say("no branch of the batch merges with dev: no train");
   const name = trainName(base, now);
