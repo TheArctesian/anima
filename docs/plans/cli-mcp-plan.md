@@ -8,6 +8,10 @@ evidence: The command line and the MCP server are on `main`. The test against a 
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
+Version 0.4 (2026-11-19): Section 12 adds `anima mcp install`, which puts the entry `anima` into the
+configuration of each coding agent on this computer, and its control in the Settings section "MCP"
+(MCP-027 to MCP-040, tasks MI1 to MI6). The operator asked for it (R-257).
+
 Version 0.3 (2026-11-18): Section 11 adds `anima tui`, a read-only full-screen view of the
 hub in a terminal (TUI-001 to TUI-083, tasks TU1 to TU10). The operator decided the direction in
 R-168 (first-hand, 2026-11-18). The requirements are not approved. The idea folder
@@ -972,3 +976,163 @@ Waves: TU4 and TU5 can run at the same time, because they need only TU3 and touc
 - Always: take the next free `HT-` number on `main` at that time. Ask: before the state Done (the check must be Passed, PLN-009). Never: set Done before the operator sets the entry to Passed.
 - Done: the commit that merges these changes. The task is Done after the operator sets the entry to Passed.
 - Prompt: "Follow AGENTS.md 'Start of a session'. Claim and build task TU10 of docs/plans/cli-mcp-plan.md (TUI-083). Write the help of anima tui and the ? screen, check the completion, add the next free HT entry for real terminals to docs/need-human-testing.md, compare the screen with docs/mockup/terminal-ui/index.html and write the commit in docs/mockup/README.md, and update the state of Section 11."
+
+
+## 12. Install into coding agents: `anima mcp install`
+
+The operator, 2026-11-19, of the Settings section "MCP": "also would like an MCP install here that
+install to every coding agent" (R-257). Today a person adds `anima mcp` to each agent by
+hand. This section adds one command that does it, and one control in Settings that calls the same
+library (CMD-030: the command line first).
+
+### 12.1 Requirements
+
+- **MCP-027.** `anima mcp agents` must list each coding agent that it knows, with one state:
+  `not_installed` (the agent is not on this computer), `not_set_up`, `set_up` (an entry `anima` starts
+  the `anima` of MCP-033), `different` (an entry `anima` is there and starts a different program or has
+  different arguments) or `unreadable` (its file cannot be read as its format). An agent is on this
+  computer when its program is on `PATH` or its configuration folder exists (12.2). The command reads
+  only; it changes no file and starts no program of an agent that 12.2 sets up through a file.
+- **MCP-028.** `anima mcp install` must set up each agent that is on this computer and is `not_set_up`
+  or `different`. `--agent <id>` (repeatable) limits it to the agents named. `anima mcp uninstall`
+  takes the entry out again, with the same `--agent`.
+- **MCP-029.** `--dry-run` must print, for each agent, each file that the command would write with the
+  backup it would make, or each command line it would run, and must change nothing. Without `--dry-run`
+  and without `--yes` the command prints the same list and asks once before it does anything
+  (CMD-024). With `--json` the list and the result are JSON.
+- **MCP-030.** Where an agent is set up through a file, the command changes only the member `anima` of
+  the servers object. Each other byte of the file stays as it was: comments, the order of the members,
+  trailing commas, line ends and white space. A file that is not there is made with only the objects
+  that the entry needs. The command never formats or sorts the file.
+- **MCP-031.** A file is written through a temporary file in the same folder, which is then renamed
+  over it, so a reader never sees half of it. The new file keeps the permission bits of the old one; a
+  new file is `0600`.
+- **MCP-032.** Before the first change of a file, the command keeps one copy of the file as it was,
+  beside it, named `<file>.before-anima`. A copy that is already there is not replaced: it is the file
+  as it was before Anima first changed it. `uninstall` leaves the copy.
+- **MCP-033.** The entry starts `anima` by an absolute path with the one argument `mcp`. The path is
+  the program that runs the command, or the value of `--command`. The command refuses a path that is
+  not absolute, that is not a regular file that can be run, or whose file or folder a different user
+  can write. The entry holds no environment variable, no token, no key and no hub address: `anima mcp`
+  uses the context and the sign-in that the `anima` command already holds (MCP-002).
+- **MCP-034.** The command must refuse a configuration file, and change nothing of it, when: the file
+  or a folder of its path below the home folder is a symbolic link; the file is not a regular file; a
+  different user owns it or can write it or its folder; it is larger than 1 MiB; or it cannot be read
+  as its format (MCP-030). It says which agent and why, goes on with the other agents, and ends with a
+  failure. It never follows a path that the file itself names.
+- **MCP-035.** Where an agent has its own command to add and remove a server at user scope (12.2), the
+  command runs that program with a fixed list of arguments and no shell. It runs the program that
+  `PATH` gives, by its absolute path, and prints that path in the list of MCP-029. It passes no
+  secret. It does not read or parse the agent's file.
+- **MCP-036.** `uninstall` removes only an entry that is `set_up`: one that starts the `anima` of
+  MCP-033. An entry `anima` that is `different` was not made by this program, or was changed by a
+  person: `uninstall` leaves it and says so, unless `--force` is given. The objects that held the
+  entry stay, also when they are then empty.
+- **MCP-037.** The command changes no permission of a tool. The states of `anima mcp permissions`
+  (MCP-012) already apply to each agent that starts `anima mcp` for the hub.
+- **MCP-038.** An agent that starts `anima mcp` while the command line is not signed in gets no tool:
+  the program ends before any protocol output with the failure of CMD-013 ("You are not signed in to
+  ...") on standard error, as it does today (MCP-003). The install does not sign in and does not need
+  a sign-in. On a hub that Anima.ing hosts, the sign-in of the standalone command line waits for
+  OD-25; until then `anima mcp` works there with an API key in the token store, which the install
+  never copies.
+- **MCP-039.** The Settings section "MCP" of the desktop application must have a part "Coding agents"
+  above the tool groups: one row for each agent that is on this computer, with its state in words, a
+  button "Set up" or "Remove" for the row, and one button "Set up all". Before a change it shows the
+  list of MCP-029 and a button that confirms. It reads and changes through shell commands that call
+  the library of MCP-027 and MCP-028, as the permissions do (MCP-018); it starts no `anima` program.
+  One sentence says: "This changes no permission: the tool groups below apply to every agent." When
+  the command line tool is not installed (INS-002), the part says so and offers that step first
+  (Settings, Updates), because the entry needs the path of the installed `anima`.
+- **MCP-040.** Each way of 12.2 has a test that proves it against a temporary home folder: the bytes
+  that stay, the copy, the refusal of a symbolic link, the dry run. No test and no gate reads or
+  writes a real configuration of an agent. What only a real agent can show is one entry of
+  [need-human-testing.md](../need-human-testing.md) (HT-062).
+
+### 12.2 The agents and the way for each
+
+Read from the documentation of each product on 2026-11-19. "File" means MCP-030 to MCP-034; "own
+command" means MCP-035. A path is below the home folder.
+
+| Id | Agent | On this computer when | Way | Place | Entry | Documentation |
+| --- | --- | --- | --- | --- | --- | --- |
+| `claude-code` | Claude Code | `claude` is on `PATH` | Own command: `claude mcp add --transport stdio --scope user anima -- <anima> mcp`; `claude mcp remove anima`; state from `claude mcp get anima` | `~/.claude.json` (the program's own file, which also holds account state: not written by Anima) | | https://code.claude.com/docs/en/mcp |
+| `claude-desktop` | Claude Desktop | its folder exists | File | macOS `Library/Application Support/Claude/claude_desktop_config.json`, Linux `.config/Claude/claude_desktop_config.json`; key `mcpServers` | `{"command": <anima>, "args": ["mcp"]}` | https://modelcontextprotocol.io/docs/develop/connect-local-servers |
+| `codex` | Codex CLI | `codex` is on `PATH` | Own command: `codex mcp add anima -- <anima> mcp`; `codex mcp remove anima`; state from `codex mcp get anima --json` | `~/.codex/config.toml` (TOML: not written by Anima) | | https://learn.chatgpt.com/docs/extend/mcp?surface=cli |
+| `cursor` | Cursor | `.cursor` exists | File | `.cursor/mcp.json`; key `mcpServers` | `{"type": "stdio", "command": <anima>, "args": ["mcp"]}` | https://cursor.com/docs/context/mcp |
+| `vscode` | VS Code, agent mode | `code` is on `PATH` or `.copilot` exists | File | `.copilot/mcp-config.json`; key `mcpServers` | `{"type": "stdio", "command": <anima>, "args": ["mcp"]}` | https://code.visualstudio.com/docs/agents/reference/mcp-configuration |
+| `gemini` | Gemini CLI | `gemini` is on `PATH` | Own command: `gemini mcp add -s user anima <anima> mcp`; `gemini mcp remove -s user anima`; state from `gemini mcp list` | `~/.gemini/settings.json` | | https://geminicli.com/docs/tools/mcp-server/ |
+| `opencode` | opencode | `opencode` is on `PATH` or `.config/opencode` exists | File (it has no command that removes) | `.config/opencode/opencode.jsonc` when it exists, else `opencode.json`; keys `mcp`, `servers` | `{"type": "local", "command": [<anima>, "mcp"]}` | https://opencode.ai/docs/mcp-servers/ |
+| `zed` | Zed | `.config/zed` exists | File | `.config/zed/settings.json`; key `context_servers` | `{"command": <anima>, "args": ["mcp"], "env": {}}` | https://zed.dev/docs/ai/mcp |
+
+Not in the first build, with the reason: Devin Desktop (formerly Windsurf) and Cline have their own
+commands and can follow as rows; Amp documents no command that removes and uses the literal key
+`amp.mcpServers`; Goose is YAML with no command for a script. What the documentation does not state:
+how to know that an application is installed other than by its folder; the exact place of the user
+scope in `~/.claude.json`; the path of the profile file of VS Code (so the file of Copilot is used);
+whether the settings file of Zed is at that path on each system; whether opencode still reads the
+earlier place `mcp.<name>`. Each is a line of the check HT-062.
+
+### 12.3 Security
+
+The command writes the configuration of other programs, and its entry makes those programs start
+`anima`. The review of 12.5 (task MI5) must answer, with the code:
+
+1. A hostile file that is already there: can it make the writer change bytes outside the member
+   `anima`, write outside the file, or use more than a bounded amount of memory or stack? (MCP-030,
+   MCP-034: a size limit, a depth limit, no path taken from the file.)
+2. Symbolic links: a file or a folder of the path that points elsewhere (MCP-034), and the window
+   between the check and the rename (MCP-031: the rename replaces the name and follows no link).
+3. A configuration in a shared folder: a folder or a file that a different user can write (MCP-034).
+4. The `anima` of the entry: a fixed absolute path that no different user can replace (MCP-033); what
+   an agent starts when that file is later removed or replaced by an update.
+5. The own command of an agent (MCP-035): which program runs, with which arguments, and what a
+   hostile `PATH` could do; no shell.
+
+### 12.4 Open decisions
+
+| Id | Question | Recommendation | State |
+| --- | --- | --- | --- |
+| OD-MI1 | Does "Set up all" also replace an entry `anima` that a person wrote and that starts a different program (state `different`)? | Yes, after the list shows it as "replaces your entry", with the copy of MCP-032. `uninstall` leaves such an entry unless `--force`. | Open. |
+| OD-MI2 | Which agents are in the first build: the eight of 12.2? | Yes. Devin Desktop and Cline follow when a person asks. | Open. |
+| OD-MI3 | May the command run the own program of an agent (`claude`, `codex`, `gemini`) to set it up, or must it only write files? | Run the own program: it is what the documentation of each names, and Anima then never writes a file that holds account state. | Open. |
+| OD-MI4 | Does the application set up the agents by itself at the first sign-in? | No. It writes the files of other programs: it happens only after a person selects the button and sees the list. | Open. |
+
+### 12.5 Tasks (MI1 to MI6)
+
+R-257 names MI1 to MI6. The builds follow the recommendations of 12.4 until the operator
+decides differently.
+
+| Task | Content | State | Commits |
+| --- | --- | --- | --- |
+| MI1 | The member editor for JSON with comments (MCP-030) and the safe file write with the copy (MCP-031, MCP-032, MCP-034), with their tests | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested; reviewed (12.6) |
+| MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-062); reviewed (12.6) |
+| MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
+| MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | In progress | `3ed276d2` on the branch `mcp/install`: built, with tests of the client part and of the answer of the shell. Not seen: the part is in the desktop application only, and no desktop build was made. The shell commands were not in the review of 12.6 |
+| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The Settings part (MI4) is built and is not reviewed yet: the shell adds the caller check and takes the installed `anima` and the login `PATH` |
+| MI6 | The entry HT-062: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
+
+### 12.6 The security review of the command line part (2026-11-19)
+
+A reviewer that did not write the code read it and tried it in a temporary folder: break attempts
+and three million made-up inputs to the member editor. It changed no file of the repository and read
+no real configuration. It found no panic, no read past the end, no unbounded stack or time, no path
+taken from the content of a file, no secret written or printed, and that the rename follows no link.
+Its findings and what was done (`5b10f6a6`):
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | Taking out the member could join the next member of the same line to a comment of the line before: that member was then lost | Corrected, with a test |
+| 2 | The number for `O_NOFOLLOW` was right for macOS and Linux x86_64 only | Corrected: the value of each system, from `rustix` |
+| 3 | For an agent with its own command, the entry of a person was removed before the add, and the list did not show the removal | Corrected: the removal runs only for the state `different` and is a line of the list. Open: `claude mcp remove anima` names no scope (the documentation shows none); OD-MI1 decides if a replacement happens at all |
+| 4 | The program of an agent ran in the folder of the caller and could read the project configuration there | Corrected: it runs in the home folder. Open: no time limit on that program |
+| 5 | The check of the `anima` path looked at one folder only, not at the folders above it or at what a link points at, and took the owner of the home folder as the user | Corrected: each folder above the path and above the real file; the user is the user of the process; a home folder of a different user is refused. Open: a program that root owns passes, which is intended for a system install |
+| 6 | Each file with a group write bit was refused, as the usual mask of Ubuntu and Fedora gives | Corrected: a group write bit is refused only when the group is not the private group of the user; a new folder is `0700` |
+| 7 | The state of an agent with its own command was read by a search for the path as a part of the text | Partly: the path must be a whole word. Open: the other arguments of that entry are not read; the output of `claude mcp get` and `gemini mcp list` has no documented form |
+| 8 | A key that is there twice: this program changed the first, a reader takes the last | Corrected: refused |
+| 9 | Comments inside an empty object or beside the member were dropped; Windows line ends became mixed; a missing comma was accepted | Corrected, with tests. An object that held only space comes back as an empty object with no space |
+| 10 | A link at the name of the copy made the write go on with no copy; a failed write left half a copy | Corrected: a link there is refused; the copy appears whole or not at all |
+| 11 | The library took any path of `anima` unchecked | Corrected: it takes only a path that the check returned |
+| 12 | A path with `$` or braces is a variable in the files of some agents | Corrected: refused, as is a path that is not text |
+| 13 | A file that an agent saved between the read and the write was overwritten; under `sudo` the files became root's | Corrected: the file is read again before the rename and a change is refused |
+| 14 | Notes | Open: a file that starts with a byte order mark is refused; the home folder itself is not checked; access lists are not read; the path of the running program differs by system (the Settings part must pass the installed path, MCP-039); the copy keeps the other entries of the file for as long as it stays |

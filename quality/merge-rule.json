@@ -1,4 +1,5 @@
 {
   "fullGates": "github",
-  "mergeWithoutCheck": true
+  "mergeWithoutCheck": true,
+  "carryDocuments": true
 }
