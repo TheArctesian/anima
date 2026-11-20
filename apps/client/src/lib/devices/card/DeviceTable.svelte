@@ -38,15 +38,15 @@
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
-<!-- The list view (UR-7, D18): hairline rows, problems first under their own group title, each problem with its
-     reason where an up device shows its meters. Below 1100 px each device takes two lines. -->
+<!-- The list view (UR-7, D18; R-224): hairline rows with the name first, problems first under their own group title, each
+     problem with its reason where an up device shows its meters. Below 1100 px each device takes two lines. -->
 <div class="device-list">
   <table class="device-rows">
     <caption class="caption">Devices</caption>
     <thead>
       <tr>
-        <th scope="col" class="c-status">Status</th>
         <th scope="col" class="c-name">Name</th>
+        <th scope="col" class="c-status">Status</th>
         <th scope="col" class="c-uptime">24 h</th>
         <th scope="col" class="c-beats">Last 50 checks</th>
         <th scope="col" class="c-detail">Usage</th>
@@ -64,12 +64,6 @@
           {@const line = hostLine(device)}
           {@const deviceBeats = beats.get(device.id)}
           <tr class="device" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()} transition:listRow={{ index }} {@attach track(item.key)}>
-            <td class="c-status">
-              <span class="marks">
-                <StatusBadge status={device.status} deviceId={device.id} />
-                <WarningBadge warnings={device.accessWarnings} />
-              </span>
-            </td>
             <th scope="row" class="c-name">
               <div class="device-label">
                 <OsIcon os={device.os} distribution={device.distribution} />
@@ -80,6 +74,12 @@
                 {#if line.ip !== null}<span class="host ip" title={line.ip}>{line.ip}</span>{/if}
               </div>
             </th>
+            <td class="c-status">
+              <span class="marks">
+                <StatusBadge status={device.status} deviceId={device.id} />
+                <WarningBadge warnings={device.accessWarnings} />
+              </span>
+            </td>
             <td class="c-uptime">{uptimeText(device.uptime)}</td>
             <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
             <td class="c-detail">

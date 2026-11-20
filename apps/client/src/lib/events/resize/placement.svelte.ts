@@ -30,8 +30,10 @@ export class PanelPlacement {
   #dragging = false;
   readonly #around: Surroundings;
 
-  constructor(around: Surroundings) {
+  /** `start` is the stop the panel rests at before the operator moves it. */
+  constructor(around: Surroundings, start: Stop = THIRD) {
     this.#around = around;
+    this.stop = start;
   }
 
   /** Whether any of the content shows. */

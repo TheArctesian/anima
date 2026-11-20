@@ -37,6 +37,15 @@ export function statusLabel(status: HubStatus): string {
   return status.connection === 'connected' ? 'Connected' : 'Disconnected';
 }
 
+/**
+ * The name of the hub at the foot of the bar (R-224): a hub that Anima.ing hosts is reached at a port of this computer,
+ * which says nothing, so it is named by who hosts it; each other hub is named by its host.
+ */
+export function hubName(origin: string, hosted: boolean): string {
+  if (hosted) return 'Hosted by Anima.ing';
+  return URL.canParse(origin) ? new URL(origin).host : origin;
+}
+
 /** What the operator reads when the hub cannot be reached (NET-004). */
 export interface UnreachableBanner {
   readonly title: string;

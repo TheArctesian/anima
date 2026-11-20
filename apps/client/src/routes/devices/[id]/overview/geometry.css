@@ -23,9 +23,9 @@
   min-inline-size: 0;
   margin: 0;
   padding: var(--space-4);
-  border: var(--border-thin) solid var(--border-strong);
+  /* A card steps from the page by its surface, with no border: the strong border is for inputs (R-221, R-224). */
   border-radius: var(--radius-lg);
-  background: var(--surface-overlay);
+  background: var(--surface-raised);
 }
 
 /* A card's heading: an icon and the words, on one line of fixed block size, so a font swap moves nothing (MOT-007). */
@@ -67,9 +67,10 @@
   }
 }
 
-@container (min-inline-size: 64rem) {
+/* All four in one row from 56rem, so the facts are one strip at a 1280 px window and the metrics start higher (R-224). */
+@container (min-inline-size: 56rem) {
   .overview-facts {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.9fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
   }
 }
 
@@ -106,6 +107,19 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-display);
   line-height: var(--leading-tight);
+}
+
+/* In the one-row strip the figures are one size down and closer, so the three uptimes stay on one line (R-224). */
+@container (min-inline-size: 56rem) {
+  .overview-facts .overview-figures {
+    flex-wrap: nowrap;
+    gap: var(--space-4);
+  }
+
+  .overview-facts .overview-figure dd {
+    font-size: var(--text-lg);
+    white-space: nowrap;
+  }
 }
 
 /* The host key fingerprint: monospace, wrapped at any character, so the whole key shows on every width (D-10). */

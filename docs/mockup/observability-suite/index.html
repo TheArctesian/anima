@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Observability suite mockups (status pages and errors)</title>
 <style>
-/* Layout: a review board for extensions-plan.md Section 4.17 (direction decided, R-226; not approved).
+/* Layout: a review board for extensions-plan.md Section 4.17 (direction decided, R-241; not approved).
    Frame 1 is the public status page, served on the public path of the hub (OBS-010 to OBS-016, OBS-061).
    Frame 2 is the Status pages screen of the client and the public path setting (OBS-010, OBS-012, OBS-015, OBS-060).
    Frame 3 is the Errors page of the client, read from the self-hosted PostHog (OBS-020 to OBS-025).
@@ -81,7 +81,7 @@ code { font-family: var(--font-mono); font-size: 0.8125rem; }
 </head>
 <body>
 <h1 class="board">Observability suite</h1>
-<p class="about">Mockups for <a href="../../plans/extensions-plan.md" style="color:inherit">extensions-plan.md</a> Section 4.17 (direction decided, R-226). The requirements are not approved. All names and numbers are examples. The public page shows only the display names that the operator writes: no address, host name or device name (OBS-012).</p>
+<p class="about">Mockups for <a href="../../plans/extensions-plan.md" style="color:inherit">extensions-plan.md</a> Section 4.17 (direction decided, R-241). The requirements are not approved. All names and numbers are examples. The public page shows only the display names that the operator writes: no address, host name or device name (OBS-012).</p>
 <div class="frames">
 
 <figure>
@@ -145,11 +145,11 @@ code { font-family: var(--font-mono); font-size: 0.8125rem; }
       <tr><td><code>/l/talk-nov</code></td><td class="muted">https://example.com/slides</td><td>41</td><td><span class="chip">Ends 30 Nov</span></td></tr>
       <tr><td><code>/l/nas</code></td><td class="muted">http://192.168.1.20</td><td>—</td><td class="warn">Refused: a private address (OBS-046)</td></tr>
     </table>
-    <div class="banner"><span class="dot up" aria-hidden="true"></span><span>PostHog stack: on Shelf (8 vCPU, 32 GB, 410 GB free). All 10 containers Up. Image pinned; <span class="btn">Update</span> (OBS-032 to OBS-034)</span></div>
+    <div class="banner"><span class="dot up" aria-hidden="true"></span><span>PostHog stack: on Shelf (8 vCPU, 32 GB, 410 GB free). All 10 containers Up. Updates: automatic, last 2026-11-19 03:10, passed; copy kept. <span class="btn">Stop automatic updates</span> (OBS-032 to OBS-034, OBS-050 to OBS-055)</span></div>
     <p class="muted">No machine with room? Anima.ing can make a VM for the stack (OBS-032, CVM, a draft). Clicks go to PostHog only when Product analytics is on (OBS-043).</p>
   </div>
 </div></div>
-<figcaption>Frame 4, the Links page and the placement of the PostHog stack (dark). OBS-032 to OBS-034, OBS-040 to OBS-046. The engine of the links is open (OD-OBS17).</figcaption>
+<figcaption>Frame 4, the Links page and the placement of the PostHog stack (dark). OBS-032 to OBS-034, OBS-040 to OBS-046. The links run on Dub (R-243, OBS-045).</figcaption>
 </figure>
 </div>
 <script>

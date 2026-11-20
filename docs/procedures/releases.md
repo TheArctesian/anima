@@ -412,11 +412,13 @@ Not proven, each until a real run: that the phone shell builds on a machine of G
 
 The bundle step of a builder builds, from the job's commit, every program that "Create a hub
 on this computer" needs, and puts them into the application (plan item S12,
-[s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md)):
+[s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md)). Since task HM-T16 it also
+builds `anima-daemon`, the daemon that the application installs on the computer it runs on
+(HMD-052 of [hosted-mode.md](../proposals/hosted-mode.md), R-206):
 
 | File | macOS | Linux AppImage |
 | --- | --- | --- |
-| `anima`, `anima-local-hub`, `anima-hub`, `anima-database`, `anima-gateway`, `anima-link` | `Anima.ing.app/Contents/MacOS/` | `usr/bin/` |
+| `anima`, `anima-local-hub`, `anima-hub`, `anima-database`, `anima-gateway`, `anima-daemon`, `anima-link` | `Anima.ing.app/Contents/MacOS/` | `usr/bin/` |
 | The PostgreSQL tree | `Anima.ing.app/Contents/Resources/database/` | `usr/lib/Anima.ing/database/` |
 
 - The Rust programs come from one `cargo build`. `anima-link` comes from `link/build.sh`, the
