@@ -45,10 +45,14 @@ pub const fn action<T>(answer: &Answer<T>) -> Action {
             RefusalCode::Malformed | RefusalCode::OutOfRange => Action::Drop(*code),
             RefusalCode::TooLarge => Action::Shrink,
             RefusalCode::TokenRefused | RefusalCode::WrongDevice => Action::Stop(*code),
-            // `ENROLMENT_REFUSED` and `NO_KEY` are not push answers; treat any such as a wait.
-            RefusalCode::EnrolmentRefused | RefusalCode::NoKey | RefusalCode::Unavailable => {
-                Action::Wait
-            }
+            // `ENROLMENT_REFUSED`, `NO_KEY` and the three codes of the work route (K10) are not
+            // push answers; treat any such as a wait.
+            RefusalCode::EnrolmentRefused
+            | RefusalCode::NoKey
+            | RefusalCode::NotHolder
+            | RefusalCode::WorkOff
+            | RefusalCode::SecretRefused
+            | RefusalCode::Unavailable => Action::Wait,
         },
         Answer::Failed(_) => Action::Wait,
     }
