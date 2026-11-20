@@ -34,6 +34,7 @@ def run(iso, output):
     try:
         machine.expect(r'root@anima-live:[^\r\n]*#', timeout=240)
         machine.send('stty -echo')
+        machine.command('systemctl stop display-manager; pkill -TERM -x calamares || true; sleep 1')
         machine.command('test -d /sys/firmware/efi; test ! -e /var/lib/anima-daemon/token')
         machine.command('parted -s /dev/vda mklabel gpt mkpart primary ext4 1MiB 65MiB; udevadm settle; mkfs.ext4 -F /dev/vda1; mkdir /mnt/blocked-target; mount -t ext4 /dev/vda1 /mnt/blocked-target', timeout=60)
         start = machine.offset

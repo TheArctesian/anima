@@ -101,6 +101,8 @@ The steps for a hub with a user name and a password (the self-host path) stay in
 ### HT-NEW-aospreview: Anima OS preview hardware and enrollment
 
 Built: [preview source](../experiments/anima-os/README.md), under R-NEW-aosisopreview.
+
+Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-NEW-aosgui adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the panel network menu, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
 VM tests cover only emulated hardware. No physical disk was written and no real account was enrolled.
 
 1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.

@@ -1,0 +1,34 @@
+componentName: anima
+welcomeStyleCalamares: false
+welcomeExpandingLogo: false
+windowSize: 900px,650px
+windowPlacement: center
+strings:
+  productName: Anima.ing
+  shortProductName: Anima.ing
+  version: Preview
+  shortVersion: Preview
+  versionedName: Anima.ing Preview
+  shortVersionedName: Anima.ing Preview
+  bootloaderEntryName: Anima.ing
+  productUrl: https://anima.ing
+  supportUrl: ""
+  knownIssuesUrl: ""
+  releaseNotesUrl: ""
+  donateUrl: ""
+images:
+  productIcon: logo.png
+  productLogo: logo.png
+  productWelcome: welcome.png
+style:
+  SidebarBackground: "#2E3440"
+  SidebarText: "#ECEFF4"
+  SidebarTextCurrent: "#ECEFF4"
+  SidebarBackgroundCurrent: "#5E81AC"
+uploadServer:
+  type: none
+slideshow: show.qml
+slideshowAPI: 1
+windowExpanding: normal
+sidebar: widget
+navigation: widget

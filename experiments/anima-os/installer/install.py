@@ -1,6 +1,7 @@
 """Explicitly confirmed, single-disk offline installation for the preview ISO."""
 import getpass
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -45,6 +46,16 @@ def write_password(path, hashed):
         output.write(hashed+'\n')
 
 
+def copy_network_profiles(destination, source=Path("/etc/NetworkManager/system-connections")):
+    # Only system-owned regular keyfiles; preserve secrets without logging them.
+    for profile in source.glob("*.nmconnection"):
+        if profile.is_symlink() or not profile.is_file() or profile.stat().st_uid != 0:
+            continue
+        target = destination / profile.name
+        with profile.open("rb") as incoming, open(target, "xb", opener=lambda name, flags: os.open(name, flags, 0o600)) as outgoing:
+            shutil.copyfileobj(incoming, outgoing)
+
+
 def partitions(disk):
     # Discover by parent after the kernel has accepted the new GPT.
     for _ in range(20):
@@ -69,8 +80,26 @@ def install(system):
     phrase = f"ERASE {selected['path']}"
     if input(f'\nTo erase this disk, type exactly {phrase}: ') != phrase:
         raise ValueError('Cancelled; no disk changed.')
+    install_selected(system, selected, hashed)
+
+
+def install_selected(system, selected, hashed, keymap='include "us"\n'):
+    if not keymap or len(keymap) > 1024 * 1024:
+        raise ValueError("Invalid keyboard map; no disk changed.")
+    if os.geteuid() != 0 or not Path("/sys/firmware/efi").exists():
+        raise ValueError("Installation requires root and UEFI boot.")
+    if ROOT.exists() or not Path(system, "bin/switch-to-configuration").is_file():
+        raise ValueError("Mount directory is busy or offline system is missing.")
     disk = validate(selected, inventory())
-    # No mutation takes place before this point. Revalidate after all prompts.
+    # Calamares keeps its own files private; Nix needs public system directories.
+    previous_mask = os.umask(0o022)
+    try:
+        install_validated(system, disk, hashed, keymap)
+    finally:
+        os.umask(previous_mask)
+
+
+def install_validated(system, disk, hashed, keymap):
     ROOT.mkdir(parents=True)
     mounted = False
     try:
@@ -94,7 +123,9 @@ def install(system):
         (ROOT / 'persist/home').mkdir(mode=0o755)
         secret = ROOT / 'persist/owner-password'
         write_password(secret, hashed)
+        (ROOT / "persist/console.map").write_text(keymap)
         run('nixos-install', '--root', str(ROOT), '--system', system, '--no-root-passwd', '--no-channel-copy', '--option', 'substituters', '')
+        copy_network_profiles(ROOT / "persist/network-connections")
         run('sync')
     finally:
         if mounted:

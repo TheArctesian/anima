@@ -17,10 +17,15 @@ The image is `/tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso`. Runtim
 ## Try and install
 
 1. Write the ISO to an explicitly selected USB with a suitable flasher. Boot the spare machine in UEFI mode with Secure Boot disabled.
-2. The live console starts without changing internal disks. Use `nmtui` for networking if desired. Installation itself works offline.
-3. Run `anima-install`. Select a writable, unused disk of at least 32 GiB. The selected disk is erased; same-disk dual boot and repair preserving its data are not supported.
-4. Set the local admin password, then type the exact disk-specific erase phrase. Empty or incorrect confirmation cancels. Disk identity and mount state are checked again after the prompts.
-5. After completion, remove the USB and reboot. Log in as `admin`. Use `anima-status` and `nmtui`. Installed root login is locked; local administrative commands require `sudo` and the chosen password.
+2. The live desktop opens Calamares. Use the network icon in the top-right panel to select Wi-Fi and enter its password. Installation itself works offline. The desktop uses the anima-site hero and Anima's dark theme with white text.
+3. Choose your keyboard layout and set the local `admin` password. Select a writable, unused disk of at least 32 GiB and choose **Erase disk**. The selected disk is erased; same-disk dual boot and repair preserving its data are not supported.
+4. Review the disk summary and select **Install**, then **Install Now**. **Go Back** cancels the confirmation without erasing. Disk identity and mount state are checked again after confirmation, before writing.
+5. After completion, close the installer, shut down, remove the USB and start the machine. The installed server uses a branded console, not the live desktop. Log in as `admin`. Use `anima-status` and `nmtui`. Root login is locked; administrative commands require `sudo` and the chosen password.
+
+For the text fallback, close Calamares first, open a terminal and run `sudo anima-install`.
+It uses the same installation backend, with a typed disk-specific erase phrase.
+
+System NetworkManager profiles are copied privately to persistent storage. Secrets held only in a user's keyring are not copied; such connections can require setup again after installation. The console keyboard map is retained. Firmware and `lspci`, `lsusb`, `iw` and `rfkill` diagnostics are available. A graphical menu cannot make an unsupported Wi-Fi adapter appear; unknown hardware still needs validation.
 
 The preview uses fixed filesystem labels and refuses installation while another disk carries those labels. Do not connect two Anima installations to the same machine. Disk encryption is not implemented in this installer. The live ISO intentionally has a local root console and no SSH; keep the USB under your control.
 
@@ -32,11 +37,15 @@ The service starts only after enrollment exists. It provides the existing device
 
 Podman is available for local containers. Managed app publication, Anima-scheduled jobs/agents, owner grant UI, automatic updates, backup/restore, encryption and hub-driven installation are not implemented by this preview. The separate recovery prototype proves specific failure scenarios; that evidence is not a claim that the installed preview has a production update coordinator.
 
-## Automated VM installation test
+## Automated VM installation tests
 
 Requires `qemu-img` as well as `qemu-system-x86_64` on PATH and the Arch OVMF paths used in `vm.py`:
 
 ```sh
+python3 experiments/anima-os/gui_test.py \
+  /tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso \
+  "$HOME/.local/share/anima-os-prototype/gui-test-new"
+
 python3 experiments/anima-os/iso_test.py \
   /tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso \
   "$HOME/.local/share/anima-os-prototype/iso-test-new"
@@ -52,3 +61,5 @@ python3 -m unittest discover -s experiments/anima-os/installer
 ```
 
 Physical hardware and real enrollment checks are tracked in HT-NEW-aospreview in `docs/need-human-testing.md`.
+
+Brand sources and the hero render command are in [branding/README.md](branding/README.md).

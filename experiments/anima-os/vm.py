@@ -36,6 +36,7 @@ class Machine:
         args = [
             'qemu-system-x86_64', '-enable-kvm', '-machine', 'q35',
             '-m', '4096', '-smp', '2', '-display', 'none', '-monitor', 'none',
+            '-qmp', f'unix:{directory / "qmp.sock"},server=on,wait=off',
             '-serial', 'stdio', '-device', 'i6300esb', '-watchdog-action', 'reset',
             '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd',
             '-drive', f'if=pflash,format=raw,file={directory / "vars.fd"}',

@@ -1,5 +1,6 @@
 { config, lib, pkgs, daemonPackage, ... }:
 {
+  imports = [ ./branding.nix ];
   system.stateVersion = "26.05";
   networking.hostName = "anima";
   boot.loader.systemd-boot.enable = true;
@@ -38,6 +39,15 @@
   systemd.targets.sleep.enable = false;
   systemd.targets.suspend.enable = false;
   systemd.targets.hibernate.enable = false;
+  systemd.services.anima-keymap = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" "systemd-vconsole-setup.service" ];
+    before = [ "getty.target" ];
+    unitConfig.ConditionPathExists = "/persist/console.map";
+    serviceConfig.Type = "oneshot";
+    path = [ pkgs.kbd pkgs.coreutils ];
+    script = "loadkeys /persist/console.map";
+  };
   systemd.services.anima-root-lock = {
     wantedBy = [ "multi-user.target" ];
     after = [ "systemd-tmpfiles-setup.service" ];
