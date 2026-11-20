@@ -76,7 +76,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
-| HT-051 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-NEW-linkunitapp | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -901,7 +901,7 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
-### HT-051: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
+### HT-NEW-linkunitapp: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
 
 Built: on the branch `hosted/hm-t24b-shell-link-unit` (task HM-T24 of
 [hosted-mode.md](proposals/hosted-mode.md), parts b and c; R-240). After a hosted hub gives this
