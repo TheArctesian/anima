@@ -100,6 +100,21 @@ that owns the area.
 | SF-067 | The table of actors gave an API key the update of a catalogue application, which R-234 does not list | Container work types (proposed text for contract K10, not built) | Open |
 | SF-068 | The text said the risk of R-235 more softly and more narrowly than the ruling | Container work types (proposed text for contract K10, not built) | Open |
 | SF-069 | The text said the risk of R-231 without the words "on each machine" | Container work types (proposed text for contract K10, not built) | Open |
+| SF-090 | The exception is tied to the image, and the hub still writes the file | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-091 | A prepared volume, or a later ordinary file on the same application | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-092 | An account with a known password at the first start, on a port that each local user reaches | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-093 | "Open to the network" would publish the administrator of the machine | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-094 | The setting withdrawn or the list changed, and the program can be started again | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-095 | `container_follow` on the excepted program | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-096 | The text does not say whom the exception makes administrator, nor which rules stop holding | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-097 | The source of the mount on an engine in a virtual machine | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-098 | The list goes old, and the applications program is not updated through the hub | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-099 | "One digest" does not say of what | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-100 | "Unless the owner named the entry" does not say who | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-101 | The agent of Arcane is not the manager with a different image | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-102 | With the entry named, a person who controls the hub is the administrator of the machine | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-103 | On a system engine, the user of the daemon reaches the administrator through the entry | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
+| SF-104 | Each local user of the machine reaches the port of the program on `127.0.0.1` | Excepted entries (proposed text for contract K10 Section 6.4.4, R-247; not built) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -1238,6 +1253,149 @@ Requirements: task H14; the text of the container work types, third form.
 What it is, in the words of the reviewer: R-231, Section 4.3 (Section 8), slightly narrower.** The ruling says "on each machine, also on one that he does not own alone". Change: add those words.
 
 State: Open. A contradiction of the text with a ruling, found by the third read of 2026-11-19. The fourth form of the text has the change that the reviewer proposes; the ruling is not changed.
+
+### The read of the proposed exception for Arcane (R-247), 2026-11-19
+
+A separate reviewer read the first form of the proposed text "Excepted entries" (Section 10.1 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), as it was at commit `2cf0d35c`) against contract K10 version 0.4, the rulings R-226 to R-238, R-246 and R-247, and Section 4.18 of [extensions-plan.md](plans/extensions-plan.md). The reviewer did not read the proposal, which holds the view of the writer. The reviewer ran no container and no Arcane: each point about the behaviour of Arcane or of Docker is marked "not verified". The numbers SF-070 to SF-089 are used by the fourth read of the container text, which is on the branch `contracts/k10-0.4-read4`.
+
+The last line of the reviewer: "The text gives more than R-247: any Compose file of the hub's choice (command, entrypoint, environment, configs, a second service, a prepared volume) that names the listed image gets the socket, so a person who controls the hub, and each program of the user of the daemon, becomes the administrator directly with no Arcane; it also lets the port be published to the network, and keeps the program startable after the setting is withdrawn."
+
+Twelve findings are changes of the text (SF-090 to SF-101); the second form of the text (version 7 of the proposal) has each change, and no reviewer has read the second form. Three findings need the operator (SF-102 to SF-104), and the reviewer gave a view on the open question OD-HOST-28: option B, and the same for `application_back` of such an entry. What the reviewer found sound: a list fixed in the program that the hub cannot write; a digest and no tag; the setting in the file that only the administrator can write, empty after the install; the refusal `not_at_machine`; the fixed target of the mount; and that on an engine of a user the exception gives the right of that user, not of the administrator.
+
+### SF-090: The exception is tied to the image, and the hub still writes the file. High
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F1 of the reviewer.
+
+- What it is: An `application_apply` with a file of the choice of the hub whose service has the listed digest gets the socket. With an `entrypoint` or `command` of its choice, a `configs` entry over a file of the image, an `environment` of its choice (a known key, authentication off, a different Docker host; names of variables not verified), a second service that shares the volume or the network, or one more mount over a folder of the image, "install Arcane" is "run anything as administrator". Who: a person who controls the hub, a login session, and each program of the user of the daemon (R-236). R-247 gives an entry of the tested catalogue, not the image of Arcane in any file.
+- Change: An entry of the list is one whole Compose file by its SHA-256, the digest of each image, and a list of variables with the form of each value; a file with a different SHA-256 gets no exception; the file has one service, no `command`, `entrypoint`, `user`, `configs`, `tmpfs` or `labels`, and no mount apart from one volume and the socket.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-091: A prepared volume, or a later ordinary file on the same application. High
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F2 of the reviewer.
+
+- What it is: An ordinary file is installed first under the same application with a volume of the name that the entry uses, and a database with an administrator of the attacker is written to it; then the excepted file is applied. Or, after the program runs, an ordinary file on the same application mounts the volume and reads or changes keys and users. Who: as SF-090.
+- Change: An excepted entry is installed only as the first apply of an application with no volume, no `binds/` and no kept version; such an application takes no other file; a machine has at most one application for each entry.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-092: An account with a known password at the first start, on a port that each local user reaches. High (not verified)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F3 of the reviewer.
+
+- What it is: The port is on `127.0.0.1`, which each user and program of the machine can open. If the program starts with a default administrator and a known password (ARC-005 marks the switch-off as not verified), any local user, and the user of the daemon who started the install, signs in first and is the administrator of the machine. No hub is needed.
+- Change: An entry is in the list only when the test by hand (task AR0) shows that its fixed file leaves no account with a known password and no open first-run page at any time after the start; the applications program makes each secret of the entry at the machine, at random, and the hub does not send it and cannot read it.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-093: "Open to the network" would publish the administrator of the machine. High
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F4 of the reviewer.
+
+- What it is: With the setting on for a different application, "each other rule applies with no change" lets the port of the excepted program be published on each address. ARC-003 says `127.0.0.1`.
+- Change: The port of an excepted entry is always on `127.0.0.1`; "Open to the network" does not apply to it.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-094: The setting withdrawn or the list changed, and the program can be started again. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F5 of the reviewer.
+
+- What it is: The text refuses only the mount at an apply. After the administrator removes the name, `container_action` with `start` or `restart`, which an API key may ask for, still starts the container with the socket.
+- Change: When the setting does not name the entry, or the list of today does not hold the file and digest of the running version, the applications program refuses `application_apply`, `application_back` and the `start` and `restart` of `container_action` for it, and asks the administrator at the machine if it stops the container; when the hub and device pair of Section 6.4.2 changes, the setting is empty again.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-095: `container_follow` on the excepted program. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F6 of the reviewer.
+
+- What it is: A login at the hub, or a program of the user of the daemon, reads the log. If the program prints a first password, a token of an agent or a session link (not verified), that is a way to the administrator for a person who is not one.
+- Change: `container_follow` refuses a container of an excepted entry; its log is read at the machine.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-096: The text does not say whom the exception makes administrator, nor which rules stop holding. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F7 of the reviewer.
+
+- What it is: Not said, and true also after the other changes: on a system engine a program with the socket can write the settings file of Section 6.4.2 and replace the applications program, so "only the administrator of the machine can set them" is no longer true there; "Protected", "All containers", "The hub may delete volumes", the limits, the rule of adoption and the project label do not hold against it; it can get and start any image, also a new version of itself; `application_remove` does not remove what it started or changed; and on a system engine the user of the daemon can start it with no hub (R-236), so R-226 no longer limits a fault of the daemon on that machine.
+- Change: The longer sentence of the screen, the longer sentence of Section 3, and a row for the setting in Section 6.4.2, as Section 10.1 of the proposal now has them.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-097: The source of the mount on an engine in a virtual machine. Medium (not verified)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F8 of the reviewer.
+
+- What it is: "The real path of the socket of the engine" is a path of the host. An engine in a virtual machine (Docker Desktop) resolves the source of a bind mount in its own machine: the path of the socket of the user may not mount, or may mount a different thing. A `read_only` mount of a socket stops no request on it.
+- Change: The applications program writes the path that the administrator recorded for this purpose: on a system engine and a rootless engine the real path after each link is resolved, on an engine in a virtual machine the path in that machine; it refuses the mount when none is recorded; the text makes no claim for `read_only`.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-098: The list goes old, and the applications program is not updated through the hub. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F9 of the reviewer.
+
+- What it is: A listed version with a known fault stays the only one that installs, on each machine, until the administrator installs a new applications program by hand. The text has no way to withdraw an entry.
+- Change: A release can mark an entry as withdrawn, and the program then refuses it as SF-094 says; the settings screen shows the version and the date of each entry; the hub shows a machine whose list is older than the list that the hub knows and offers no install of the entry there.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-099: "One digest" does not say of what. Low
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F10 of the reviewer.
+
+- What it is: An image has a digest of its index, which holds each architecture, and one for each architecture.
+- Change: The list holds the digest of the image index, or one digest for each architecture; the reference is `repository@sha256:…` with the registry host and no tag, compared after the filling of variables and again in the final form; after the pull the program checks the identifier of the image.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-100: "Unless the owner named the entry" does not say who. Low
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F11 of the reviewer.
+
+- What it is: The contract defines "the administrator of the machine"; "the owner" is a different word.
+- Change: "The administrator of the machine, in the settings file of Section 6.4.2". The hub learns the state from the refusal only.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-101: The agent of Arcane is not the manager with a different image. Medium
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point F12 of the reviewer.
+
+- What it is: The agent has no web port. Its manager address and token come from the hub, and whoever names the manager is the administrator of the machine with no login at all; the applications program can check only the form. Whoever is an administrator in the manager is the administrator of each machine with an agent. ARC-012 says: no agent before the review of task AR6.
+- Change: The agent is a second entry with its own name in the setting, not in the list before the review of task AR6 has no open finding of severity high; its file publishes no port; the address of its manager has the form `127.0.0.1` with a port or an address of the network of Anima; the screen says who then controls the machine.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19. The second form of the text (version 7 of the proposal) has the change that this entry proposes.
+
+### SF-102: With the entry named, a person who controls the hub is the administrator of the machine. High; needs the operator (OD-HOST-31)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point N2 of the reviewer.
+
+- What it is: R-247 told him that such a person "can install a program that is the administrator". It did not say that the hub is also the sign-in of that program (ARC-005, ARC-010), the tunnel to it (ARC-004), and the source of the manager address of an agent. So a hub that is taken over is root on those machines, where Section 3 of K10 until now gave it containers under `contained` only. No change of the text removes this while the hub is the sign-in.
+- Change: None; a decision. Options and recommendation are in OD-HOST-31.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
+
+### SF-103: On a system engine, the user of the daemon reaches the administrator through the entry. High; needs the operator (OD-HOST-32)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point N3 of the reviewer.
+
+- What it is: R-236 accepted that a program of the user of the daemon gets "what the rules of the machine permit". When he accepted it, no rule of the machine permitted the socket. With the setting on, a program of that user, or a fault of the daemon, can install the entry with no hub.
+- Change: None; a decision. Options and recommendation are in OD-HOST-32.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
+
+### SF-104: Each local user of the machine reaches the port of the program on `127.0.0.1`. Medium; needs the operator (OD-HOST-33)
+
+Requirements: task H34; the proposed text "Excepted entries", first form (Section 10.1 of the proposal as it was at commit `2cf0d35c`). Point N4 of the reviewer.
+
+- What it is: After SF-092 this is the login page only, but each fault of the program before a sign-in is then a way to the administrator for a local user.
+- Change: None; a decision. Options and recommendation are in OD-HOST-33.
+
+State: Open. The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
 
 ## Closed
 
