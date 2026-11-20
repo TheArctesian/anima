@@ -2614,6 +2614,31 @@ window with real devices.
 Result: Open.
 
 
+### HT-NEW-owndaemon: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
+
+Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,
+`crates/hub/src/fleet/access/listen/serve/own_daemon.rs`, `crates/hub/src/upkeep/hub_device.rs`,
+`crates/anima-local-hub/src/group/own_daemon.rs`, `crates/anima-local-hub/src/members/own_daemon.rs` and
+`crates/daemon/src/readers/container.rs`. The tests prove the socket, its routes, the settings, the specs of the member
+and the reader against files that a test lays out. No test ran the programs in a container of the pool, with its
+control group, its user and its folders.
+
+1. Make an image of the pool from a commit that holds this work, with `anima-daemon` built and copied into
+   `/opt/anima/bin`. Put it in a hub of the pool and start the hub.
+   Expected: `/var/lib/anima/hub/log/anima-daemon.log` exists and shows no error. `/run/anima/own-daemon.code` does
+   not exist. `/var/lib/anima/hub/daemon/token` exists, mode 0600.
+2. Open the hub in the client, go to "Devices" and open the row of the hub.
+   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The memory total is that of the container
+   (1.5 GiB on the plan of the read of 2026-11-20), not that of the server. The disk shows the bytes of the hub's data
+   with no total and no percent.
+3. Restart the hub.
+   Expected: the daemon starts again with no new enrolment: the event log shows no second "enrolled" entry, and the
+   figures continue.
+4. Make an image with no `anima-daemon` and start a hub with it.
+   Expected: the hub starts and serves as before; there is no `anima-daemon.log` and no file `own-daemon.code`.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,

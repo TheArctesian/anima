@@ -45,7 +45,6 @@ pub(super) fn own_daemon(
 mod tests {
     use super::super::{
         Error, from_env,
-        link::{HOSTED_CLOUD_KEY_FILE, LINK_CONTROL, LINK_SOCKET},
         tests::{env, host_path},
     };
     use super::*;
@@ -55,9 +54,9 @@ mod tests {
         let control = host_path("/run/anima/link-control.sock");
         let key = host_path("/etc/anima/cloud.key");
         let mut all = vec![
-            (LINK_SOCKET, socket.as_str()),
-            (LINK_CONTROL, control.as_str()),
-            (HOSTED_CLOUD_KEY_FILE, key.as_str()),
+            ("ANIMA_LINK_SOCKET", socket.as_str()),
+            ("ANIMA_LINK_CONTROL", control.as_str()),
+            ("ANIMA_HOSTED_CLOUD_KEY_FILE", key.as_str()),
         ];
         all.extend_from_slice(more);
         env(&all)
