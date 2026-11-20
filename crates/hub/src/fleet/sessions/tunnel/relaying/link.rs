@@ -39,7 +39,12 @@ pub(super) async fn relay(
     tunnel: &mut Tunnel,
     timing: Timing,
 ) -> End {
-    let Opened { connected, policy } = opened;
+    // The port that carries guacd to a computer on the link stays open until the relay ends.
+    let Opened {
+        connected,
+        policy,
+        carried: _carried,
+    } = opened;
     let now = Instant::now();
     let mut link = Link {
         client,
