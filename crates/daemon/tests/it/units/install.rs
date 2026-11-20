@@ -123,7 +123,14 @@ fn met_019_a_failing_command_is_an_error_naming_it_and_a_missing_one_is_too() {
     let error = result.expect_err("failed");
     assert!(matches!(&error, InstallError::Step { .. }));
     assert!(error.to_string().contains("daemon-reload"));
-    assert_eq!(ran.len(), 1, "the later command never ran");
+    // The two commands that retire the unit of the old program may fail (R-126); the reload is
+    // the first that must not, and no command runs after it.
+    assert!(
+        ran.last()
+            .is_some_and(|last| last.contains("daemon-reload")),
+        "the later command never ran: {ran:?}"
+    );
+    assert_eq!(ran.len(), 3, "{ran:?}");
     let missing = install(Target::User, &rig.host(), rig.env(), |_| {
         Err(io::Error::from(io::ErrorKind::NotFound))
     });
