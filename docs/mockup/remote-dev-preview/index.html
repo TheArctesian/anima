@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev server preview and port forward mockups</title>
+<style>
+/* Layout: a review board for the preview of a dev server and the forward of its port (agent-tools-as-extensions.md
+   Section 6.10, AXT-079 to AXT-088). Frame 1 is the list Servers on the device page (dark). Frame 2 is a preview pane
+   at the real localhost origin (light). Frame 3 is the forward sheet and the errors (dark). Frame 4 is ASCII.
+   Not approved. No font, script or image comes from a third party. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). Maintenance uses aurora-15 (#B48EAD) in both; the light text value is not checked. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.pad { padding: var(--space-8); display: grid; gap: var(--space-6); }
+h2 { margin: 0; font-weight: var(--weight-light); font-size: var(--text-display); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); }
+h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.muted { color: var(--text-secondary); font-size: var(--text-sm); }
+.banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); }
+.dot { inline-size: 0.75rem; block-size: 0.75rem; border-radius: 50%; flex: none; }
+.sq { border-radius: 2px; }
+.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; }
+.up { background: var(--status-up); } .down { background: var(--status-down); } .deg { background: var(--status-degraded); }
+.mnt { background: var(--status-maintenance); } .nod { background: var(--status-unknown); }
+.comp { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.bars { display: grid; grid-template-columns: repeat(90, 1fr); gap: 2px; block-size: 1.75rem; }
+.bars i { display: block; border-radius: 1px; }
+.legend { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.inc { padding: var(--space-4); border-inline-start: 3px solid var(--status-degraded); background: var(--surface-raised); display: grid; gap: var(--space-1); }
+.app { display: grid; grid-template-columns: 13rem 1fr; min-block-size: 30rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-2); align-content: start; }
+.nav { color: var(--text-secondary); } .nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+table { border-collapse: collapse; inline-size: 100%; }
+th, td { text-align: start; padding: var(--space-2) var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); vertical-align: top; }
+th { font-weight: var(--weight-medium); color: var(--text-secondary); font-size: var(--text-sm); }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.btn.pri { background: var(--accent); color: var(--surface-base); border-color: var(--accent); }
+.chip { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: 0.75rem; color: var(--text-secondary); }
+.warn { color: var(--status-down); font-size: var(--text-sm); }
+code { font-family: var(--font-mono); font-size: 0.8125rem; }
+</style>
+<body>
+<h1 class="board">Dev server preview and port forward</h1>
+<p class="about">Mockups for <a href="../../proposals/agent-tools-as-extensions.md" style="color:inherit">agent-tools-as-extensions.md</a> Section 6.10 (AXT-079 to AXT-088). Proposed, not approved: the direction is relayed (OD-AXT31), and OD-AXT32 to OD-AXT34 are open. All names and numbers are examples. Only you open a preview or a forward; an agent, an API key or an MCP tool cannot (AXT-087).</p>
+<div class="frames">
+
+<figure>
+<div class="frame gd"><div class="app">
+  <div class="side"><div class="group">Fleet</div><span class="nav on">Devices</span><span class="nav">Agents</span><span class="nav">Folders</span><span class="nav">Projects</span></div>
+  <div class="pad">
+    <div class="row"><h2>Mac mini</h2><span><span class="chip">SSH on</span> <span class="chip">Port preview on</span></span></div>
+    <h3>Servers</h3>
+    <table>
+      <tr><th>Port</th><th>Process</th><th>Started by</th><th>Since</th><th></th></tr>
+      <tr><td><code>3000</code></td><td><code>node</code></td><td>Claude Code, Herdr pane 2</td><td>12:41</td><td><span class="btn pri">Open</span> <span class="btn">Forward</span></td></tr>
+      <tr><td><code>5173</code></td><td><code>vite</code></td><td>Codex, run <span class="chip">Routed</span></td><td>12:30</td><td><span class="btn pri">Open</span> <span class="btn">Forward</span></td></tr>
+      <tr><td><code>5432</code></td><td><code>postgres</code></td><td>Not known [NEEDS CLARIFICATION: AXT-082]</td><td>Nov 18</td><td><span class="btn">Forward</span></td></tr>
+      <tr><td><code>8384</code></td><td><code>syncthing</code></td><td>Anima.ing (folder sync)</td><td>Nov 20</td><td><span class="muted">Not offered (AXT-081)</span></td></tr>
+    </table>
+    <p class="muted">The daemon reports the ports that listen on this device's loopback address. Anima.ing's own ports and the ports of catalogue tools are not offered; a tool opens as a tool pane (AXT-009, AXT-081).</p>
+  </div>
+</div></div>
+<figcaption>Frame 1, the list "Servers" on the device page (dark). AXT-082. "Started by" shows only when the daemon can tie the process to an agent session.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl"><div class="pad">
+  <div class="banner"><span class="dot up"></span><span><strong>Mac mini · localhost:3000</strong> · node · <code>http://localhost:3000</code></span><span class="muted">This page goes through your hub as it is. Your hub does not keep it.</span><span><span class="btn">Reload</span> <span class="btn">Forward</span> <span class="btn">Close</span></span></div>
+  <div class="inc"><span>The page of the dev server, at its real origin. Cookies, CORS and WebSocket work as on the device (AXT-083).</span><span class="muted">If the tunnel stops, this pane shows an error. It never opens <code>localhost:3000</code> of this computer.</span></div>
+</div></div>
+<figcaption>Frame 2, a preview pane (light). AXT-083, AXT-087. The header names the device, the port and the process; the notice is the text of AXT-015.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd"><div class="pad">
+  <div class="row"><h3>Forward port 3000 of Mac mini</h3><span class="chip">This computer: 127.0.0.1 only</span></div>
+  <table>
+    <tr><th>Local port</th><td><code>3000</code> is free on this computer. <span class="muted">If it is not free, type a different port.</span></td></tr>
+    <tr><th>Who can use it</th><td>Each program on this computer, as with an SSH tunnel. Nothing on your network can reach it.</td></tr>
+    <tr><th>Ends</th><td>When you stop it, sign out, set "Port preview" off, or quit the app (AXT-084).</td></tr>
+  </table>
+  <div class="row"><span class="muted">Mac mini is not this computer (checked).</span><span><span class="btn">Cancel</span> <span class="btn pri">Forward</span></span></div>
+  <table>
+    <tr><th>Error</th><th>Text</th></tr>
+    <tr><td><span class="dot nod" style="display:inline-block"></span> 502</td><td>Nothing listens on port 3000 on Mac mini.</td></tr>
+    <tr><td><span class="dot down sq" style="display:inline-block"></span> 403</td><td>Port 8384 is a port of Anima.ing. It cannot be previewed.</td></tr>
+    <tr><td><span class="dot deg tri" style="display:inline-block"></span> SSH off</td><td>Turn on SSH in Anima.ing for Mac mini to preview its ports.</td></tr>
+    <tr><td><span class="dot nod" style="display:inline-block"></span> Unreachable</td><td>Mac mini is not connected. Its last contact was 12:02.</td></tr>
+  </table>
+</div></div>
+<figcaption>Frame 3, the forward sheet and the errors (dark). AXT-084, AXT-085. Each error has its own text and reason code.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl"><div class="pad">
+<h3>ASCII: the path</h3>
+<pre><code>
+ Laptop (client)                         Hub (VPN, or hosted)                Mac mini (device)
+ +--------------------+  WebSocket +    +------------------------+  SSH     +----------------------+
+ | pane: localhost:3000|  ticket   ---&gt; | one direct-tcpip for   |  port 22 | sshd -&gt; 127.0.0.1:3000|
+ | forward: 127.0.0.1  |                | each TCP connection;   |  (link:  |  node (agent started) |
+ |   :3000 (local only)|  &lt;---          | no record, no log      |  HMD-048)|                       |
+ +--------------------+                 +------------------------+          +----------------------+
+ No public address. No new port on the device. HMD-049 does not change.
+</code></pre>
+</div></div>
+<figcaption>Frame 4, the path of AXT-080 (ASCII). The Mermaid diagram is in the business vault only.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>
