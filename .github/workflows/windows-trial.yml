@@ -47,6 +47,9 @@ jobs:
       GOPROXY: https://proxy.golang.org
       GOSUMDB: sum.golang.org
     steps:
+      - name: Keep source line endings consistent with the Unix gates
+        shell: pwsh
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -101,6 +104,7 @@ jobs:
           Compress-Archive -Path $cli -DestinationPath out-cli/anima-windows-x86_64.zip
           $cliDigest = (Get-FileHash out-cli/anima-windows-x86_64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "cli_sha256=$cliDigest" >> $env:GITHUB_OUTPUT
+          "$cliDigest  anima-windows-x86_64.zip" | Set-Content out-cli/SHA256SUMS
       - name: Install and check the packaged programs
         shell: pwsh
         run: ./deploy/windows/install.ps1 -Installer "out/Anima_$($env:VERSION)_x64-setup.exe" -Version $env:VERSION

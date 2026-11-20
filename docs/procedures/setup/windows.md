@@ -568,3 +568,14 @@ No Mac run is claimed. Run `bun run gates:fast` on a Mac for the shared desktop,
 link changes before release. The native release workflow now requires Authenticode signing;
 certificate provisioning and a signed update trial remain pending. See
 [the release procedure](../releases.md#windows-builds-and-releases-win2).
+
+The dev integration run passed 6,600 Linux Rust tests, the Go gates, lint, types, client and
+deployment tests, and the client build. Its size gate caught the merged link module; the
+platform socket/ownership code moved into its existing platform modules. The final scoped
+run then passed all 13 selected gates, including 504 desktop tests and all quality gates.
+The Windows MSVC release-profile check passed for the merged desktop code. PowerShell
+parsing and the refusal of a release without a publisher certificate passed in the VM.
+Both the Task Scheduler XML-folder regression and Windows packaging release-map regressions
+failed before their fixes and passed afterward. The dev merge train now calls the native
+Windows build workflow and blocks landing on its failure; its artifacts are the trial installer
+and CLI archive. GitHub execution of this new workflow and the signed trial remain pending.

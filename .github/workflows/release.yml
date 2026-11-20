@@ -608,6 +608,9 @@ jobs:
       GOPROXY: https://proxy.golang.org
       GOSUMDB: sum.golang.org
     steps:
+      - name: Keep source line endings consistent with the Unix gates
+        shell: pwsh
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

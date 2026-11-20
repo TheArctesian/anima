@@ -15,4 +15,8 @@ $cli = Join-Path $installed 'anima.exe'
 if ((& $cli --version) -ne "anima $Version" -or $LASTEXITCODE -ne 0) {
     throw 'The installed CLI did not start at the packaged version'
 }
-if (-not (Test-Path "$installed/database/bin/postgres.exe")) { throw 'PostgreSQL was not installed' }
+$postgres = Join-Path $installed 'database/bin/postgres.exe'
+$pin = Get-Content "$root/apps/desktop/src-tauri/database-tree/windows.pin.json" -Raw | ConvertFrom-Json
+if ((& $postgres --version) -ne "postgres (PostgreSQL) $($pin.postgresql.version)" -or $LASTEXITCODE -ne 0) {
+    throw 'The installed PostgreSQL runtime did not start at the pinned version'
+}
