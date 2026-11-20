@@ -4,6 +4,7 @@ import type { IndexEntry } from '$lib/page/contents/PageIndex.svelte';
 export interface IndexShown {
   readonly keyStore: boolean;
   readonly stayAwake: boolean;
+  readonly runnerReport?: boolean;
   readonly desktopRows: boolean;
   readonly mcpPermissions: boolean;
   /** False on a hub that Anima.ing hosts: it has no VPN (R-222). */
@@ -19,6 +20,7 @@ export const SECTIONS = {
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
   linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'Devices that reach this hub over the link.' },
   stayAwake: { id: 'settings-stay-awake', title: 'Stay awake', icon: 'carbon:power', description: 'Keeps this computer on for a hub or agent.' },
+  runner: { id: 'settings-runner', title: 'Runner capabilities', icon: 'carbon:chip', description: 'Local capability report.' },
   appearance: { id: 'settings-appearance', title: 'Appearance', icon: 'carbon:color-palette', description: 'How Anima.ing looks on this device.' },
   notifications: { id: 'settings-notifications', title: 'Notifications', icon: 'carbon:notification', description: 'Where the hub sends alerts.' },
   checkDefaults: { id: 'settings-check-defaults', title: 'Default check settings', icon: 'carbon:settings-adjust', description: 'New checks start with these settings.' },
@@ -37,10 +39,10 @@ export const GROUPS = { hub: 'Hub and account', computer: 'This computer', conne
 
 /** The index of the sections the page shows, in the page's order and in its groups (WP-50 F-10, R-224). */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, stayAwake, appearance, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, stayAwake, appearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
     [GROUPS.hub, [account, shown.keyStore && hub, notifications, checkDefaults, retention]],
-    [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
+    [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, (shown.runnerReport ?? false) && runner, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
     [GROUPS.connections, [integrations, apiKeys, shown.vpn && vpn]],
   ];
   return groups.flatMap(([group, entries]) => entries.filter((entry) => entry !== false).map((entry) => ({ ...entry, group })));

@@ -49,6 +49,7 @@ const APP_COMMANDS: &[&str] = &[
     "command_line_install",
     "command_line_remove",
     "system_browser_open",
+    "runner_capabilities_read",
     "stay_awake_read",
     "stay_awake_choose",
     "stay_awake_floor",

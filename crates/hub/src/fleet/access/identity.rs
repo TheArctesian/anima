@@ -290,6 +290,7 @@ pub(super) async fn resolve(
     if !tokens::consistent(kind, scope)
         || !tokens::admitted(kind, spelling, transport)
         || !tokens::usable(row.expires_at, now)
+        || tokens::idled_out(row.idle_seconds, row.last_used_at, now)
     {
         return Ok(None);
     }

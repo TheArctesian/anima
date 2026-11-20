@@ -1,10 +1,12 @@
-import type { AgentUsageDimension } from '$lib/hub/generated/graphql';
 import type { Column } from '$lib/tables/table';
 import type { UsageRow } from '../api';
 import { tokens, whole } from './units';
 import { costText, sourceName } from './words';
 
 // The columns of the table: one key column for each dimension the rows are summed by, then the counts (as `anima agents usage`).
+
+/** What the hub can sum the use by. */
+type AgentUsageDimension = 'DAY' | 'DEVICE' | 'SOURCE' | 'MODEL' | 'REPOSITORY';
 
 /** A key as the row names it; a model or repository that the use has none of reads as words, never as an empty cell. */
 const KEYS: Readonly<Record<AgentUsageDimension, Column<UsageRow>>> = {

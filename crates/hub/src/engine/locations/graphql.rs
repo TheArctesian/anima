@@ -2,8 +2,9 @@
 //! `Query.locationIngestTokens`, `Query.transferContext`, `Mutation.recordLocationSamples`,
 //! `Mutation.createLocationIngestToken` and `Mutation.revokeLocationIngestToken`.
 //!
-//! Each change writes its rows, one audit entry and one event in one transaction. A read of
-//! samples writes one audit entry with the span and the count. No entry holds a position.
+//! A change of an ingest token writes its row, one audit entry and one event in one
+//! transaction. A stored sample writes no event (R-262). A read of samples writes one audit
+//! entry with the span and the count. No entry holds a position.
 
 mod views;
 
@@ -126,7 +127,8 @@ pub struct Mutation;
 #[Object(name = "LocationsMutation")]
 impl Mutation {
     /// Stores samples of an Anima phone app, at most 500 in one call, and returns how many
-    /// were new. The same sample again is not stored twice.
+    /// were new. The same sample again is not stored twice. A batch that stored a sample
+    /// writes one audit entry and no event.
     #[graphql(guard = "Authenticated")]
     async fn record_location_samples(
         &self,
@@ -144,14 +146,21 @@ impl Mutation {
             provider: Provider::Anima,
             account: operator.id.to_string(),
         };
-        let change = Trail::from_context(ctx)?;
+        let at = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
         let mut tx = begin(ctx).await?;
-        let stored = store_samples(&mut tx, seal, (&origin, &given), change.now)
+        let stored = store_samples(&mut tx, seal, (&origin, &given), at)
             .await
             .map_err(refused)?;
         if stored.added > 0 {
-            let entry = trail::recorded(&origin, &operator.name, stored);
-            change.write(&mut tx, entry).await.map_err(internal)?;
+            // One audit entry for the batch, and no event: a stored fix writes none (R-262).
+            let entry = NewAudit {
+                operator: operator.clone(),
+                action: AuditAction::Create,
+                target: AuditTarget::LocationSamples,
+                client: *schema_dependency::<ClientAddr>(ctx)?,
+                change: trail::recorded_change(&origin, &operator.name, stored),
+            };
+            events::audit(&mut tx, at, entry).await.map_err(internal)?;
         }
         commit(tx).await?;
         Ok(i32::try_from(stored.added).unwrap_or(i32::MAX))

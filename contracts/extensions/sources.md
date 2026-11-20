@@ -160,6 +160,8 @@ The account holds a credential reference (`credential_id`), never the value. The
 
 ## 7a. The attempt to connect GitHub (operator, 2026-11-14; ruling number to be assigned)
 
+**A hub that no browser can open** (HMD-070 of [hosted-mode.md](../../docs/proposals/hosted-mode.md); R-266): the flow needs one address of the hub that a browser can open, which is `ANIMA_PUBLIC_ORIGIN`. A hub in the link mode (`ANIMA_LINK_SOCKET`) that was given no `ANIMA_PUBLIC_ORIGIN` has none: its default names a different server. On such a hub `startGithubConnect` and `openGithubConnect` answer `CONFLICT` with the words "This hub has no address that a browser can open, so Connect GitHub cannot start here. Use the key file of a GitHub App.", start no attempt and make no ticket. `githubConnect` and `cancelGithubConnect` still answer, so an attempt of before can be ended. `connectGithubApp` (the key file) is not changed. A hub of the pool is given the address of its gateway (HMD-069).
+
 One attempt exists at a time, in hub memory only (`Attempts`: one `Arc<Mutex<Option<Attempt>>>` and a broadcast sender, held in `Reach` like `Tokens`). The flow adds no table and no migration (K2 has no row for it). Reasons: one hub (Section 8), one operator, at most 55 minutes, and the only secret, the private key between "Create" and "Install", would otherwise need a sealed row with no account to belong to. Nothing secret is at rest until the sealed key at the end (Section 6). A hub restart drops the attempt; the audit entry "GitHub App created" holds the App ID and slug so the operator can still delete the App.
 
 **Phases** (public): `WAITING_FOR_BROWSER`, `AT_GITHUB`, `APP_CREATED`, `CONNECTED`, `FAILED`, `CANCELLED`. `Finishing` is internal, taken under the lock, so the callback and the poll cannot both store. The work of `/created` (conversion, audit, `APP_CREATED`) and the store run in tasks of their own, so a browser that leaves does not stop them; a store that is dropped or panics returns the attempt to `APP_CREATED`, and one that holds `Finishing` past 2 minutes returns to `APP_CREATED` at the next step (an older store's outcome then counts only if it connected), after which expiry applies again (operator, 2026-11-14; ruling number to be assigned). Failures: `EXPIRED`, `EXCHANGE_REFUSED`, `GITHUB_UNREACHABLE`, `REPLY_UNUSABLE`, `KEY_REFUSED`.
@@ -205,6 +207,25 @@ One attempt exists at a time, in hub memory only (`Attempts`: one `Arc<Mutex<Opt
 **GitHub's "Confirm access"** prompt (password or passkey) when the hub posts the form cannot be avoided; the client says so in one line.
 
 **GitHub has no `DELETE /app`.** The hub cannot delete an App it made and no longer uses; `appSettingsUrl` (`https://github.com/settings/apps/<slug>/advanced`, or the organisation form; the Apps list without a slug) lets the operator do it.
+
+## 7b. Acquisition with a key of the account (R-261; `engine/sources/acquisition/account_key.rs`)
+
+A source whose server is of the operator (Dawarich) has no one API base and no App. Its account holds the address of the server and a key that the server gave the operator.
+
+```rust
+// source-exchange
+#[non_exhaustive] pub enum Acquisition { TokenPull(Minting), AccountKey(AccountKey) }
+pub struct AccountKey { pub probe: fn() -> Request }   // a GET that the server answers with 2xx only for a good key
+```
+
+- For a source with `AccountKey`, `Declaration.api_base` is the empty text: the base is of the account.
+- **The base of an account.** The operator gives it as text. It must be `https://<host>[:<port>]` and nothing more: no user, no password, no path other than `/`, no query and no fragment. The hub keeps its origin (`https://host[:port]`, the host in lower case, no default port) as `sources.accounts.instance_key`, so one server is one account of the source.
+- **The credential (Section 6).** The plaintext is `{"v":1,"base":"<the origin>","api_key":"<the key>"}`. When the engine opens it, it checks `base == accounts.instance_key`; a mismatch counts as an `auth` error, so a database writer cannot point the key at a different server. The key is 1 to 512 characters with no control character. It is read for each request and kept in no cache.
+- **One request.** The URL is `base + request.path`, with the path rule of Section 7. Before each request the hub resolves the host of the base one time and passes each address through the address policy of the hub (`fleet::targets::AddressPolicy`, R-030, P3-003): the same rule as for each outbound connection of the hub. It permits private and VPN ranges and public addresses. It refuses loopback, the unspecified address, link-local addresses (the home of cloud metadata), multicast, broadcast, reserved ranges, and each range of `ANIMA_PROBE_DENY`. If one address of the name is refused, the request is not sent. The connection goes only to a checked address; the name is not resolved a second time. This contract adds no exception to the deny list.
+- The client of this path is as the client of Section 7: redirects off, `https` only, no proxy from the environment, 20 s timeout, 8 MiB body cap, `User-Agent: anima-hub`. It sends `Authorization: Bearer <key>` (marked sensitive) and `Accept: application/json`, and no header of GitHub. TLS name verification is as for each source: the server must prove that it is the host of the base before the key is sent. Plain `http` is not sent (OD-E26).
+- **Refusals, in fixed words.** An address that the policy refuses: `provider`, "The address of this account is one that the hub does not connect to." A server that does not answer: `network`, "The hub cannot reach the address of this account. A hub outside your network reaches only an address that is open to it." A 401 or a 403: `auth`, "The source refused the key. Connect the account again."
+- **Connect.** `connect_with_key(s, trail, KeyConnection { source, label, base, api_key })` checks the label and the base, sends `probe` with the key, and stores the account and its sealed key only after a 2xx answer, with the audit entry and the event of Section 10a, then starts the first run when a consumer is on. The same base again replaces the stored key and keeps the account and its records.
+- A source with `AccountKey` has no live reads and no named changes (Section 13).
 
 ## 8. One run (`engine/sources/run.rs`; the order is fixed for SRC-007 and SRC-012)
 
@@ -255,7 +276,7 @@ The installation is verified before `establish`: `GET /app/installations/{N}` wi
 
 ## 11. Scope
 
-- **In now:** SRC-001; SRC-002 (the token-pull App-key variant only); SRC-003 to SRC-009; SRC-010 (through `write_reason`; GitHub states the PRJ-017 exception); SRC-011 and SRC-012; SRC-021 (poll part); KEY-001; KEY-002 (as `credentialStored`); ITG-001 to ITG-004 for the Sources list; the single-database claim and stale-owner rejection from issue 5.
+- **In now:** SRC-001; SRC-002 (the token-pull App-key variant, and the key of the account of Section 7b, R-261); SRC-003 to SRC-009; SRC-010 (through `write_reason`; GitHub states the PRJ-017 exception); SRC-011 and SRC-012; SRC-021 (poll part); KEY-001; KEY-002 (as `credentialStored`); ITG-001 to ITG-004 for the Sources list; the single-database claim and stale-owner rejection from issue 5.
 - **Deferred:** OAuth pull and SRC-020; collector push; file upload and ITG-005; the webhook half of SRC-021 and WHK-*; ITG-007 (24 h reminder; needs reminders); the Outputs tab; issue 5's two-server identity, preferred server and failover.
 
 ## 12. Dependencies (K3)

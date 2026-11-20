@@ -124,13 +124,17 @@ each train with its state and the branches of the next one.
 - **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
   so no run of the gates follows for `dev`.
-- **A move of `dev` while the gates of a train run.** The run is never stopped. Off today
-  (OD-W52): with `"carryDocuments": true` in `quality/merge-rule.json`, a train that passed
-  still lands when `dev` moved only in documents (the rule of the fast tier, `src/gates/tier.ts`): the
-  conductor merges the same branches again on the new `dev`, with the document gates on each merge commit,
-  proves that each file that is not a document is the one that the gates tested, and lands that. When `dev`
-  moved in code, or the rule is off, the train is made again on the new `dev` and its gates run one more
-  time. Not covered by a test: the calls to git and GitHub of this step.
+- **A move of `dev` while the gates of a train run** (R-260; `"carryDocuments": true` in
+  `quality/merge-rule.json`, on since 2026-11-20). The run is never stopped. When it passed and `dev` moved
+  only in documents (the rule of the fast tier, `src/gates/tier.ts`), the conductor merges the same branches
+  again on the new `dev`, with the document gates on each merge commit, and lands that if each file that is
+  not a document is the one that the gates tested (`src/merge/carry.ts`). If one is different, or a branch
+  does not merge again, it says which and lands nothing. When `dev` moved in code, the train is made again
+  on the new `dev` and its gates run one more time.
+- **Each branch has a reason.** `bun quality/bin/train.ts --plan` names each branch that is not in `dev`:
+  ready, or why it is not taken (its gates still run, ended with a failure, passed for an older commit, did
+  not run, it failed alone in a train), or the documents in which it has a conflict with `dev`. The
+  conductor writes the same lines into the summary of its run, apart from branches that never had a run.
 - **A failure.** The next train holds the first half of the failed one, in the same order. A branch that
   fails alone is refused: a note on its tip (`refs/notes/train`) keeps it out until the branch moves or its
   own gates pass again (`gh run rerun`). A cancelled run is no verdict: the train is built again.
@@ -143,11 +147,25 @@ rules are `src/merge/train.ts`, the git work is `src/merge/stack.ts`, the end of
 `src/merge/finish.ts` and `src/merge/commit.ts`: the merge commit comes first and the document gates run on
 it, because the mockup check counts the layout files of a branch as changed while its merge is not committed.
 
+The documents that each branch adds to. A conflict in a document leaves a branch out of a train, and its
+session must merge `dev` into the branch. Five documents merge by union (`.gitattributes`): the rulings, the
+human checks, the decisions table, the list of security findings and the table of owners; the documents gate
+finds an entry that a union kept two times (`decision-row-twice`, `finding-twice`, `owner-row-twice`). Two
+hot documents cannot take the union rule, because branches change the same lines of them:
+`docs/mockup/README.md` (each interface branch writes the cell "Compared" of its row again) and
+`docs/proposals/hosted-mode.md` (each task of the hosted work changes the version line, the header and the
+row of its task). They need one file for each entry, as the claims have: one record for each mockup, one
+file for each task. Not built: the two documents have owners.
+
 What works from where. GitHub takes `merge-to-dev.yml` from the default branch, `main`; the checkout is
 `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`. With the old file on `main` the train works,
 but the workflow starts only when the gates of a pushed branch pass: a train lands, or is split, at the next
 such start, so the last train of a quiet hour waits. The new file also starts at the end of the gates of a
-train and each 20 minutes. GitHub has a merge queue for this work only for a repository of an organization;
+train and each 20 minutes. Seen on 2026-11-20: two trains passed and did not land by themselves, because the
+end of the gates of a train starts nothing with the file of `main`; a call of the conductor by hand landed
+nine branches. Nothing in `dev` alone can start the conductor at that moment: a workflow that a different
+workflow starts, a schedule and a start by hand all take their file from `main`. Until `merge-to-dev.yml` of
+`dev` is on `main`, a session runs `bun quality/bin/train.ts` in a clean checkout of `dev` when a train ended. GitHub has a merge queue for this work only for a repository of an organization;
 this repository belongs to a personal account.
 
 Seen on GitHub on 2026-11-20, after this was in `dev`: the conductor made three trains (the third with nine

@@ -66,6 +66,9 @@ pub struct Config {
     /// The origin clients use, in canonical form (see `origin`). Compared byte-for-byte with a
     /// browser's `Origin` header (D-3).
     pub public_origin: String,
+    /// Whether `ANIMA_PUBLIC_ORIGIN` was given. Without it the origin is the default, which is
+    /// right only for a hub that a browser reaches at that address (HMD-070).
+    pub public_origin_given: bool,
     /// Folder with the web client's static build. `None` turns the web client off (D-2).
     pub web_root: Option<PathBuf>,
     /// Where releases are published; `None` turns publishing off (R-108).
@@ -342,6 +345,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             PUBLIC_ORIGIN,
             value(env, PUBLIC_ORIGIN, "https://hub.anima.ing")?,
         )?,
+        public_origin_given: env.contains_key(PUBLIC_ORIGIN),
         web_root: optional_root(env, WEB_ROOT)?,
         releases: releases::from_env(env)?,
         data_key_dir: optional_root(env, DATA_KEY_DIR)?,
