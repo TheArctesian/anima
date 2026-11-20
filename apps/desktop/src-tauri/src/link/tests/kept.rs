@@ -36,6 +36,7 @@ fn kept_in(folder: &std::path::Path, port: u16) -> Kept {
         program: stand_in(folder, UNIT_LINK),
         folder: folder.to_path_buf(),
         port,
+        daemon_socket: None,
         env: Vec::new(),
     }
 }
@@ -178,4 +179,68 @@ fn hmd_058_the_folder_of_a_hosted_link_is_marked_once_and_a_link_is_no_mark() {
     let other = tempfile::tempdir().unwrap();
     std::os::unix::fs::symlink("/etc/hosts", other.path().join("anima-unit")).unwrap();
     assert!(!super::super::folder::wants_unit(other.path()));
+}
+
+#[test]
+fn hmd_054_the_unit_is_given_the_socket_of_the_daemon_when_its_folder_is_private() {
+    let folder = tempfile::tempdir().unwrap();
+    let daemon = folder.path().join("made/anima-daemon");
+    let socket = kept::private_socket(&daemon).expect("a folder that the app made");
+    assert_eq!(socket, daemon.join("link.sock"));
+    let mode = std::os::unix::fs::MetadataExt::mode(&fs::metadata(&daemon).unwrap());
+    assert_eq!(mode & 0o777, 0o700);
+
+    let mut link = kept_in(folder.path(), 41001);
+    link.daemon_socket = Some(socket.clone());
+    link.install().unwrap();
+    let calls = fs::read_to_string(folder.path().join("calls")).unwrap();
+    assert_eq!(
+        calls.lines().last().unwrap(),
+        format!(
+            "unit install -state {} -listen 127.0.0.1:41001 -daemon-socket {}",
+            folder.path().display(),
+            socket.display()
+        )
+    );
+}
+
+#[test]
+fn hmd_054_a_folder_that_others_can_reach_or_a_link_gives_no_socket() {
+    use std::os::unix::fs::PermissionsExt;
+    let folder = tempfile::tempdir().unwrap();
+    let open = folder.path().join("open");
+    fs::create_dir(&open).unwrap();
+    fs::set_permissions(&open, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(kept::private_socket(&open), None);
+
+    let private = folder.path().join("private");
+    kept::private_socket(&private).unwrap();
+    let linked = folder.path().join("linked");
+    std::os::unix::fs::symlink(&private, &linked).unwrap();
+    assert_eq!(kept::private_socket(&linked), None);
+
+    let long = folder.path().join("a".repeat(100));
+    assert_eq!(kept::private_socket(&long), None, "too long for a socket");
+}
+
+#[test]
+fn the_folder_of_the_daemon_is_where_the_daemon_looks_for_it() {
+    use std::path::Path;
+    let home = Path::new("/home/me");
+    assert_eq!(
+        kept::daemon_folder(Path::new("/Users/me"), true, Some(Path::new("/x"))),
+        Path::new("/Users/me/Library/Application Support/anima-daemon")
+    );
+    assert_eq!(
+        kept::daemon_folder(home, false, None),
+        Path::new("/home/me/.config/anima-daemon")
+    );
+    assert_eq!(
+        kept::daemon_folder(home, false, Some(Path::new("/home/me/conf"))),
+        Path::new("/home/me/conf/anima-daemon")
+    );
+    assert_eq!(
+        kept::daemon_folder(home, false, Some(Path::new("relative"))),
+        Path::new("/home/me/.config/anima-daemon")
+    );
 }
