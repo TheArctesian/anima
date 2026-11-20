@@ -1711,6 +1711,7 @@ The operator deferred these fifteen checks on 2026-11-18 (R-169: "Approve the so
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A computer of a hosted hub has a link address and no VPN address | Entry below |
 | HT-019 | The VPN role `daemon` on the VPS | The policy of the VPN that the operator leaves | Entry below |
 | HT-024 | A hub restored on a second server from its backup | The operator starts fresh on the hosted hub (R-140). Row 4.2 of the priorities waits for nothing because of this ruling | Entry below |
+| HT-058 | The page Extensions as a tight list and as a grid (EXT-001) | The desktop application of a build that holds the branch `ui/extensions-grid` | Open |
 | O-1, O-2 | RDP | A hosted hub has no RDP session yet (HM-T14) | "Phase 2" above |
 | O-5 | Wake-on-LAN through the site relay | Not possible for a computer of the link (HT-031) | "Phase 2" above |
 | P-1 to P-6 | The deployed image, the T4 probe, and the web client in a browser | The hub on the VPS and its VPN | "Phase 3" above |
@@ -1982,5 +1983,29 @@ its switches, or the phone.
 6. Open the application on a phone, then Settings.
    Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
    "Open Extensions", which opens the page.
+
+Result: Open.
+
+### HT-058: the page Extensions as a tight list and as a grid (EXT-001)
+
+Built on the branch `ui/extensions-grid` (`189a48a5`): `apps/client/src/lib/extensions/ExtensionsSection.svelte` draws each
+extension as one line or as a tile, and `apps/client/src/routes/extensions/+page.svelte` has the control "List" and
+"Grid" and keeps the choice on the device. The tests prove the switches, the marks and that the choice is kept. The
+page was looked at only in pictures of the web client at 1280 px with a sample list. No person saw it with the
+extensions of a real hub, at other widths or on a phone.
+
+1. Open "Extensions" from the bar, in a window about 1280 px wide.
+   Expected: one line for each extension: its mark, its name, one line of words, and at the end its switch, "On" for
+   one that is always on, or nothing for one that is not built. A long line of words is cut and its full text is the
+   tooltip. The rows are closer than they were in Settings.
+2. Select "Grid".
+   Expected: the same extensions as tiles, each with its mark on a plain field, its name, its switch and its words in
+   full. No tile shows a screen that does not exist.
+3. Set "Projects" on in each view.
+   Expected: "Projects" comes into the bar at once. A switch that needs a second extension asks first, as before.
+4. Close the application and open it again, then open "Extensions".
+   Expected: the view that you chose last is shown.
+5. Make the window narrow (about 800 px), in the light and the dark appearance, and look at both views.
+   Expected: no part lies over another; the tiles go to fewer columns.
 
 Result: Open.
