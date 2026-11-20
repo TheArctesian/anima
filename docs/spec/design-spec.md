@@ -724,7 +724,7 @@ records the colour it comes from and the rule that made it.
 | `surface-hover`, `surface-selected` | Row and item states |
 | `border-subtle` | Where two equal surfaces meet; table row separators |
 | `border-strong` | Inputs and other control edges, at least 3:1 on `surface-raised` and `surface-sunken` (WCAG 1.4.11); every border under `prefers-contrast: more` |
-| `text`, `text-secondary`, `text-tertiary`, `text-quiet` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information); quiet text for the second line of a row and the small-caps section label, at least 4.5:1 on `surface-base` |
+| `text`, `text-secondary`, `text-tertiary`, `text-quiet` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information); quiet text for the second line of a row and for a count beside a label, at least 4.5:1 on `surface-base` |
 | `planned` | Things that are configured but not yet running: a planned machine, a pending change |
 | `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `accent-tint` | The one accent: active place, focus, the primary action |
 | `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` | Status shapes: dots, edges, bars |
@@ -858,7 +858,7 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl`, `text-display` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5, 2.25 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
-| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (small-caps labels) |
+| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (a one-time code; no label uses it: a label is in sentence case with `tracking-small`, R-NEW-nocapitals) |
 | Weight | `weight-light`, `weight-regular`, `weight-medium` | 200, 400, 500 (UR-7; OpenDyslexic has 400 and 700 only, so it shows 200 and 500 as 400) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 2, 4, 4, 999 px (UR-7: the website's near-square corners) |

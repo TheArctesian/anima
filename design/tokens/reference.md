@@ -429,7 +429,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `tracking-body` | `--tracking-body: 0em` | Body text (TOK-021) |
 | `tracking-small` | `--tracking-small: 0.01em` | Small text (TOK-021) |
 | `tracking-tight` | `--tracking-tight: -0.03em` | The display title (UR-7 D7) |
-| `tracking-label` | `--tracking-label: 0.14em` | Small-caps labels and section heads (UR-7 D7) |
+| `tracking-label` | `--tracking-label: 0.14em` | The wide spacing of a one-time code. No label uses it: a label is in sentence case (R-NEW-nocapitals) |
 
 ## size.weight
 

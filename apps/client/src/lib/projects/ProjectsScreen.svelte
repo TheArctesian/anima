@@ -7,8 +7,9 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import PageHeader from '$lib/page/PageHeader.svelte';
-  import SmallCaps from '$lib/page/SmallCaps.svelte';
   import ProjectTile from './ProjectTile.svelte';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { listRow } from '$lib/motion/roles/transitions';
   import ProjectBrowse from './ProjectBrowse.svelte';
   import type { ProjectsStore } from './store.svelte';
   import { GROUP_ORDER, GROUP_TITLES, groupOf, type TileGroup } from './tile';
@@ -35,6 +36,8 @@
       ? byGroup.filter((each) => each.projects.length > 0 && (only === 'all' || only === each.group))
       : [{ title: null, projects }],
   );
+  /** A tile that is left out, restored or filtered fades where it stands; the others slide to their places (5.7.3, Reorder). */
+  const track = reorderMotion(() => groups.flatMap((group) => group.projects.map((project) => project.id)).join('\n'));
   /** Each choice says how many of the projects on the page it holds. */
   const choices = $derived([
     { value: 'all' as const, label: `All ${String(projects.length)}` },
@@ -84,10 +87,12 @@
   {:else}
     {#each groups as group (group.title)}
       <section class="group" aria-label={group.title ?? (showing === 'leftOut' ? 'Left out' : 'All projects')}>
-        {#if group.title !== null}<h2><SmallCaps>{group.title}</SmallCaps><span class="count">{group.projects.length}</span></h2>{/if}
+        {#if group.title !== null}<h2>{group.title}<span class="count">{group.projects.length}</span></h2>{/if}
         <ul class="tiles">
-          {#each group.projects as project (project.id)}
-            <ProjectTile {project} onLeaveOut={(id) => void store.leaveOut(id)} onRestore={(id) => void store.restore(id)} />
+          {#each group.projects as project, index (project.id)}
+            <li class="entry" transition:listRow={{ index }} {@attach track(project.id)}>
+              <ProjectTile {project} onLeaveOut={(id) => void store.leaveOut(id)} onRestore={(id) => void store.restore(id)} />
+            </li>
           {/each}
         </ul>
       </section>
@@ -125,7 +130,10 @@
     align-items: center;
     gap: var(--space-2);
     margin: 0;
-    font: inherit;
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-small);
   }
 
   .count {
@@ -141,5 +149,11 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  /* The tile fills its cell, so the tiles of one row keep one height. */
+  .entry {
+    display: flex;
+    min-inline-size: 0;
   }
 </style>

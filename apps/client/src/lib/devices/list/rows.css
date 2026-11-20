@@ -27,33 +27,61 @@
 }
 
 .device-rows thead th {
-  block-size: var(--control-lg);
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
+  block-size: var(--control-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  letter-spacing: var(--tracking-small);
 }
 
+/*
+ * The name takes the free width; each other column has its own width, so a long name and its address are whole where
+ * the window has room (row H of the site language plan).
+ */
+/* The status widens with the table, so the reason of a problem and how long it has lasted are whole on a wide window. */
 .device-rows .c-status {
-  inline-size: calc(var(--space-16) * 3 + var(--space-4));
-}
-
-.device-rows thead .c-name {
-  inline-size: 20%;
+  inline-size: clamp(calc(var(--space-16) * 2.5), calc(100cqi - var(--space-16) * 14), calc(var(--space-16) * 3.5));
 }
 
 .device-rows .c-uptime {
-  inline-size: var(--space-16);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+  inline-size: calc(var(--space-16) + var(--space-4));
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
 
+.device-rows td.c-uptime {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
 .device-rows .c-beats {
-  /* The name gets 20% of the results width. Reserve room for the other columns before widening the history. */
-  inline-size: clamp(var(--space-16), calc(80cqi - var(--space-16) * 12), calc(var(--space-16) * 2));
+  /* The history widens only after the name has room: its head is on one line from about 7rem. */
+  inline-size: clamp(var(--space-16), calc(100cqi - var(--space-16) * 13 - var(--space-2)), calc(var(--space-16) * 2));
+}
+
+/* Three slots of one width for CPU, memory and disk; the words of the head stand over the values of each row. */
+.device-rows .c-detail {
+  --usage-slot: calc(var(--space-16) - var(--space-2));
+
+  inline-size: calc(var(--usage-slot) * 3 + var(--space-3) * 2 + var(--space-4));
+}
+
+.device-rows .usage-heads {
+  display: grid;
+  grid-template-columns: repeat(3, var(--usage-slot));
+  gap: var(--space-3);
+}
+
+.device-rows .no-usage {
+  color: var(--text-quiet);
+}
+
+.device-rows .narrow-reason {
+  display: none;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
 }
 
 .device-rows thead .c-beats {
@@ -67,14 +95,13 @@
   inline-size: 100%;
 }
 
-/* Room for two named buttons side by side (R-224). */
+/* Room for two named buttons, or for more as icons, on one line: a row keeps its height in each state (R-224, MOT-007). */
 .device-rows .c-connect {
-  inline-size: calc(var(--space-16) * 3);
+  inline-size: calc(var(--space-16) * 2.5 + var(--space-2));
   text-align: end;
 }
 
 .device-rows .c-connect .compact {
-  flex-wrap: wrap;
   justify-content: end;
 }
 
@@ -86,12 +113,17 @@
   block-size: var(--control-lg);
   padding-block-start: var(--space-4);
   border-block-end: var(--border-thin) solid var(--border-subtle);
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
+  color: var(--text);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  letter-spacing: var(--tracking-small);
   vertical-align: bottom;
+}
+
+/* The first group stands directly under the column heads. */
+.device-rows tbody .group:first-child th {
+  block-size: var(--control-md);
+  padding-block-start: 0;
 }
 
 .device-rows .group .count {
@@ -141,7 +173,42 @@
   gap: var(--space-2);
 }
 
-.device-rows .c-name {
+/* The reason is whole before the time: the time gives way first. */
+.device-rows .since {
+  flex: 0 20 auto;
+  overflow: hidden;
+  color: var(--text-quiet);
+  text-overflow: ellipsis;
+}
+
+/* Why the device needs a look and how long, under its status; the reason is the way to its checks. */
+.device-rows .why {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.device-rows .reason {
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-decoration: none;
+  text-overflow: ellipsis;
+}
+
+.device-rows .reason:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+.device-rows .reason:focus-visible {
+  outline: var(--border-focus) solid var(--focus-ring);
+  outline-offset: calc(var(--border-focus) * -1);
+}
+
+.device-rows .c-name,
+.device-rows .c-status {
   overflow: hidden;
 }
 
@@ -191,20 +258,6 @@
   overflow: hidden;
 }
 
-/*
- * On a wide list the usage column keeps one width and the name takes the free width, so a long name and its address are
- * whole where the window has room. Below this width the name keeps its 20%.
- */
-@container (min-inline-size: 72rem) {
-  .device-rows thead .c-name {
-    inline-size: auto;
-  }
-
-  .device-rows thead .c-detail {
-    inline-size: calc(var(--space-16) * 5);
-  }
-}
-
 /* Below 1100 px: two lines a device, the name, then its host and uptime; the meters or the reason on the right. */
 @media (max-width: 1100.98px) {
   .device-rows thead,
@@ -222,7 +275,7 @@
 
   .device-rows .device {
     display: grid;
-    grid-template: 'name detail connect' auto 'meta detail connect' auto / minmax(0, 0.8fr) minmax(0, 1.4fr) calc(var(--control-md) * 3 + var(--space-4));
+    grid-template: 'name detail connect' auto 'meta detail connect' auto / minmax(0, 1fr) minmax(0, 1.2fr) calc(var(--control-md) * 3 + var(--space-4));
     align-items: center;
     gap: 0 var(--space-5);
     padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
@@ -270,12 +323,27 @@
 
   .device-rows .c-detail {
     grid-area: detail;
+    inline-size: auto;
+  }
+
+  /* The status column is gone: the reason takes the place of the dash. */
+  .device-rows .c-detail .narrow-reason {
+    display: block;
+  }
+
+  .device-rows .narrow-reason + .no-usage {
+    display: none;
   }
 
   .device-rows .c-connect {
     grid-area: connect;
     inline-size: auto;
     justify-self: end;
+  }
+
+  /* Two lines a device here: the buttons may take the second. */
+  .device-rows .c-connect .compact {
+    flex-wrap: wrap;
   }
 
   .device-rows .c-meta {

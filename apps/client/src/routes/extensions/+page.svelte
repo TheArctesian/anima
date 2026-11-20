@@ -22,7 +22,7 @@
     {/snippet}
   </PageHeader>
 </div>
-<div class="page" class:wide={view === 'grid'}>
+<div class="page">
   <ExtensionsSection {view} />
 </div>
 
@@ -31,13 +31,9 @@
     margin-block-end: var(--space-6);
   }
 
+  /* The list and the tiles use the width of the page: the control of a row lines up with the control of the view in the
+     head, and the line of words of an extension is cut only where the page ends. */
   .page {
-    max-inline-size: calc(var(--space-16) * 13);
     min-inline-size: 0;
-  }
-
-  /* The tiles use the width of the page. */
-  .wide {
-    max-inline-size: none;
   }
 </style>

@@ -111,7 +111,7 @@
     {/snippet}
     <FormButton tabindex={0} data-add onclick={() => { editing = { channel: null }; }}>Add channel</FormButton>
   </SettingRow>
-  <!-- The channel count is unknown until the hub answers. Extra rows scroll inside the space kept during loading (MOT-007). -->
+  <!-- The channel count is unknown until the hub answers: the space of one channel is kept until then (MOT-007). -->
   <div class="stack" aria-busy={loading}>
     {#if loadFailed}
       <SettingRow>
@@ -179,22 +179,23 @@
     line-height: var(--leading-tight);
   }
 
+  /*
+   * While the hub answers, the stack keeps the space of one channel, the usual count, so the first answer moves nothing
+   * below it (MOT-007). Once it has answered, the stack is as tall as its channels: a fixed height cut a channel's own
+   * buttons off, and left a blank space under "No channels".
+   */
   .stack {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-    block-size: calc(var(--space-16) * 3);
     align-items: start;
+  }
+
+  .stack[aria-busy='true'] {
+    min-block-size: calc(var(--space-16) * 3.5);
   }
 
   .stack > * {
     grid-area: 1 / 1;
-  }
-
-  .list {
-    align-self: stretch;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
   }
 
   /* The one line a row of the card keeps when there is no list (MOT-007). */

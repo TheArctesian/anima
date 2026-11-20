@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Beat } from '$lib/checks/heartbeats';
 import type { Status } from '$lib/hub/generated/graphql';
 import { DEFAULT_QUERY } from '../query';
-import { durationText, listItems, reasonOf, tallyOf, tallyQuery, type LookDevice } from './look';
+import { durationText, hasLiveUsage, listItems, reasonOf, tallyOf, tallyQuery, type LookDevice } from './look';
 
 const NOW = Date.parse('2026-11-13T12:00:00Z');
 const ago = (minutes: number): string => new Date(NOW - minutes * 60_000).toISOString();
@@ -65,6 +65,8 @@ describe('D18: why a device needs a look', () => {
   it("UR-7: the worst check's last message, and how long it has not been up", () => {
     const device = look('a', 'DOWN', [check('UP'), { ...check('DOWN', 'Connection refused'), id: 'c1' }]);
     expect(reasonOf(device, beats(['UP', 'UP', 'DOWN', 'DOWN', 'DOWN']), NOW)).toEqual({ text: 'Connection refused', since: '2 min' });
+    // No kept beat is up: the run began before the oldest, so the time is the least it can be.
+    expect(reasonOf(device, beats(['DOWN', 'DOWN', 'DOWN']), NOW)?.since).toBe('over 2 min');
   });
 
   it('UR-7: without a message, the check and its status', () => {
@@ -91,4 +93,8 @@ describe('D18: why a device needs a look', () => {
   ])('UR-7: %i ms reads as %s', (ms, text) => {
     expect(durationText(ms)).toBe(text);
   });
+});
+
+it('a device that no check reaches shows no usage; a degraded device and one in maintenance do', () => {
+  expect((['UP', 'DEGRADED', 'MAINTENANCE', 'DOWN', 'UNKNOWN'] as const).map(hasLiveUsage)).toEqual([true, true, true, false, false]);
 });

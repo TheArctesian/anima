@@ -7,7 +7,7 @@
   import KeyValueList from '$lib/page/KeyValueList.svelte';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import Section from '$lib/page/Section.svelte';
-  import SmallCaps from '$lib/page/SmallCaps.svelte';
+  import QuietLabel from '$lib/page/QuietLabel.svelte';
   import type { Pair } from '$lib/page/pair';
   import Row from '$lib/rows/Row.svelte';
   import RowList from '$lib/rows/RowList.svelte';
@@ -67,13 +67,13 @@
   </Section>
 
   <Section title="Devices" icon="carbon:list">
-    <div class="caps"><SmallCaps>Needs a look</SmallCaps></div>
+    <div class="head"><QuietLabel>Needs a look</QuietLabel></div>
     <RowList label="Devices that need a look">
       <Row to="/devices" columns="6rem minmax(0, 1fr) 8rem" edge="down">
         <span class="down">Down</span><span>backup-01</span><span class="quiet">4 min ago</span>
       </Row>
     </RowList>
-    <div class="caps"><SmallCaps>Up</SmallCaps></div>
+    <div class="head"><QuietLabel>Up</QuietLabel></div>
     <RowList label="Devices that are up">
       <Row to="/devices" columns="6rem minmax(0, 1fr) 8rem">
         <span class="up">Up</span><span>nas</span><span class="quiet">99.9%</span>
@@ -115,7 +115,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .caps {
+  .head {
     padding-block: var(--space-4) var(--space-2);
   }
 </style>
