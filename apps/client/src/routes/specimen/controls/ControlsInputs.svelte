@@ -14,7 +14,7 @@
     <Input aria-label="Large" size="lg" placeholder="40 px, for sign-in" />
   </div>
   <div class="row">
-    <Input aria-label="Machine text" mono value="hub.anima.ing" />
+    <Input aria-label="Machine text" mono value="hub.example.net" />
     <Input aria-label="Fingerprint" mono value="SHA256:3f9aG0n+6hQ2" />
     <Input aria-label="Number" type="number" value={2222} />
     <Select aria-label="Select"><option>Password</option><option>Private key</option></Select>

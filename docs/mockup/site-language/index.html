@@ -11,26 +11,26 @@
 <link href="../../../apps/client/src/styles/tokens.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js"></script>
 <style>
-/* ---------- Tokens: Graphite, with the proposed additions (D1, D5, D7, D8, D10) ---------- */
+/* ---------- Tokens: Graphite. Each value is the value of design/tokens (R-221); this block adds no value of its own. ---------- */
 :root, [data-theme="dark"] {
   --surface-sunken:#16181B; --surface-base:#1B1D21; --surface-raised:#23262B; --surface-overlay:#2C3036;
-  --surface-hover:#1F2226; --border-subtle:#2C3036; --border-strong:#41464E;
+  --surface-hover:#2C3036; --border-subtle:#2C3036; --border-strong:#6C7076;
   --text:#E6E7E9; --text-secondary:#A4A8B0; --text-tertiary:#7E838C; --text-quiet:#5C6169;
-  --accent:#88C0D0; --on-accent:#16181B; --accent-tint:rgba(136,192,208,.12);
-  --up:#A3BE8C; --down:#BF616A; --down-text:#CA888F; --degraded:#EBCB8B; --warning:#D08770; --maintenance:#81A1C1; --unknown:#7E838C;
-  --planned:#B48EAD;
+  --accent:#88C0D0; --on-accent:#16181B; --accent-tint:#333F45;
+  --up:#A3BE8C; --down:#BF616A; --down-text:#CA888F; --degraded:#EBCB8B; --warning:#D08770; --maintenance:#B48EAD; --unknown:#7E838C;
+  --planned:#B997B3;
   --frost-10:#5E81AC; --frost-9:#81A1C1; --frost-8:#88C0D0; --frost-7:#8FBCBB;
   --hill:#16181B;
-  --chart-1:#88C0D0; --chart-2:#81A1C1; --chart-3:#8FBCBB;
+  --chart-1:#88C0D0; --chart-2:#81A1C1; --chart-3:#5E81AC;
 }
 [data-theme="light"] {
   --surface-sunken:#EEEFF1; --surface-base:#F6F7F8; --surface-raised:#FFFFFF; --surface-overlay:#FFFFFF;
-  --surface-hover:#E6E8EB; --border-subtle:#DADDE1; --border-strong:#86898E;
-  --text:#1D2024; --text-secondary:#5A5F68; --text-tertiary:#676B72; --text-quiet:#9A9EA5;
-  --accent:#2E6E80; --on-accent:#FFFFFF; --accent-tint:rgba(46,110,128,.10);
-  --up:#617159; --down:#9F545C; --down-text:#9F545C; --degraded:#786B51; --warning:#8D6154; --maintenance:#4F6E95; --unknown:#676B72;
+  --surface-hover:#EEEFF1; --border-subtle:#E3E5E8; --border-strong:#86898E;
+  --text:#1D2024; --text-secondary:#5A5F68; --text-tertiary:#71757D; --text-quiet:#A3A7AE;
+  --accent:#2E6E80; --on-accent:#FFFFFF; --accent-tint:#E2EBED;
+  --up:#617159; --down:#9F545C; --down-text:#9F545C; --degraded:#786B51; --warning:#8D6154; --maintenance:#7B657A; --unknown:#676B72;
   --planned:#7B657A; --hill:#EEEFF1;
-  --chart-1:#2E6E80; --chart-2:#4F6E95; --chart-3:#4E7F7E;
+  --chart-1:#5E81AC; --chart-2:#5A5F68; --chart-3:#7C906E;
 }
 :root {
   --font-ui:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
@@ -53,15 +53,15 @@ iconify-icon { display:inline-block; width:1em; height:1em; flex:none; font-size
 :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-sm); }
 
 /* ---------- Mockup switcher (not part of the design) ---------- */
-.switcher { position:fixed; z-index:50; right:16px; bottom:16px; display:flex; gap:2px; padding:4px; background:var(--surface-overlay); border:1px solid var(--border-strong); border-radius:var(--radius-md); font-size:var(--text-sm); box-shadow:0 8px 30px rgba(0,0,0,.35); }
+.switcher { position:fixed; z-index:50; right:16px; bottom:16px; display:flex; gap:2px; padding:4px; background:var(--surface-overlay); border:1px solid var(--border-subtle); border-radius:var(--radius-md); font-size:var(--text-sm); box-shadow:0 8px 30px rgba(0,0,0,.35); }
 .switcher button { border:0; background:none; padding:6px 10px; border-radius:var(--radius-sm); color:var(--text-secondary); cursor:pointer; }
 .switcher button[aria-pressed="true"] { background:var(--accent-tint); color:var(--text); }
-.switcher .sep { width:1px; background:var(--border-strong); margin:4px 4px; }
+.switcher .sep { width:1px; background:var(--border-subtle); margin:4px 4px; }
 
 /* ---------- Primitives ---------- */
 .label { display:flex; align-items:center; gap:10px; font-size:var(--text-sm); color:var(--text-tertiary); }
 .label iconify-icon { color:var(--accent); }
-.label .rule { width:28px; height:1px; background:var(--border-strong); }
+.label .rule { width:28px; height:1px; background:var(--text-quiet); }
 .caps { font-size:10.5px; font-weight:var(--weight-medium); letter-spacing:var(--tracking-label); text-transform:uppercase; color:var(--text-tertiary); }
 h1.display { font-weight:var(--weight-light); font-size:var(--text-display); letter-spacing:var(--tracking-tight); line-height:1.1; }
 .sub { color:var(--text-tertiary); margin-top:6px; }
@@ -109,7 +109,7 @@ a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX
 .bar i.hot { background:var(--degraded); }
 .beats { display:flex; gap:2px; align-items:flex-end; height:16px; }
 .beats i { width:3px; height:100%; border-radius:1px; background:var(--up); opacity:.75; }
-.beats i.d { background:var(--down); opacity:1; } .beats i.g { background:var(--degraded); opacity:1; } .beats i.u { background:var(--border-strong); }
+.beats i.d { background:var(--down); opacity:1; } .beats i.g { background:var(--degraded); opacity:1; } .beats i.u { background:var(--text-quiet); }
 
 /* Section head (D6) */
 .section { margin-top:44px; }
@@ -168,7 +168,7 @@ a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX
 .actions { display:flex; gap:6px; justify-content:flex-end; }
 .tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(18rem,1fr)); gap:12px; }
 .tile { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; gap:14px; transition:border-color .2s; }
-.tile:hover { border-color:var(--border-strong); }
+.tile:hover { border-color:var(--text-quiet); }
 .tile .top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
 .tile .line { display:flex; justify-content:space-between; align-items:center; font-size:var(--text-sm); color:var(--text-tertiary); }
 .tile .reason { font-size:var(--text-sm); color:var(--text-secondary); margin-top:-6px; }
@@ -427,7 +427,7 @@ a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX
 /* ---------- Opaque surfaces (frosted glass taken out, operator 2026-11-13) ---------- */
 .material-chrome { background:var(--surface-sunken); }
 .material-panel { background:var(--surface-raised); border:1px solid var(--border-subtle); }
-.material-overlay { background:var(--surface-overlay); border:1px solid var(--border-strong); box-shadow:0 8px 30px rgba(0,0,0,.35); }
+.material-overlay { background:var(--surface-overlay); border:1px solid var(--border-subtle); box-shadow:0 8px 30px rgba(0,0,0,.35); }
 
 .signin form.material-panel { padding:28px; border-radius:var(--radius-md); }
 .menu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; width:15rem; padding:6px; border-radius:var(--radius-md); display:none; }
@@ -617,12 +617,12 @@ a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX
 /* a problem row carries a 2 px status edge so the eye finds it without reading */
 .dl-row.s-row-down, .dl-tile.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
 .dl-row.s-row-warning, .dl-tile.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
-.dl-row.s-row-unknown { box-shadow:inset 2px 0 0 var(--border-strong); }
+.dl-row.s-row-unknown { box-shadow:inset 2px 0 0 var(--unknown); }
 
 .dl-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(17rem,1fr)); gap:12px; margin-top:12px; }
 p.dl-group { margin-top:18px; }
 .dl-tile { display:flex; flex-direction:column; gap:10px; padding:14px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:border-color .15s var(--ease-enter); }
-.dl-tile:hover { border-color:var(--border-strong); }
+.dl-tile:hover { border-color:var(--text-quiet); }
 .dl-tile .top { display:flex; align-items:center; gap:9px; }
 .dl-tile .top iconify-icon { color:var(--text-tertiary); }
 .dl-tile .nm { font-weight:var(--weight-medium); color:var(--text); }
@@ -754,7 +754,7 @@ p.dl-group { margin-top:18px; }
 .runs-on { display:flex; flex-wrap:wrap; gap:4px 12px; min-width:0; font-size:var(--text-sm); color:var(--text-secondary); }
 .runs-on span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .runs-on iconify-icon { color:var(--text-tertiary); font-size:14px; }
-.runs-on a { color:var(--text-secondary); text-decoration:underline; text-decoration-color:var(--border-strong); text-underline-offset:3px; }
+.runs-on a { color:var(--text-secondary); text-decoration:underline; text-decoration-color:var(--text-quiet); text-underline-offset:3px; }
 .runs-on a:hover { color:var(--text); }
 .runs-on .prop { color:var(--warning); }
 .runs-on .none { color:var(--text-quiet); }
@@ -769,7 +769,7 @@ p.dl-group { margin-top:18px; }
 /* tiles */
 .pj-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(19rem,1fr)); gap:12px; margin-top:12px; }
 .pj-tile { display:flex; flex-direction:column; gap:12px; padding:16px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:border-color .15s var(--ease-enter); }
-.pj-tile:hover { border-color:var(--border-strong); }
+.pj-tile:hover { border-color:var(--text-quiet); }
 .pj-tile.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
 .pj-tile.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
 .pj-tile .top { display:flex; align-items:flex-start; gap:10px; }
@@ -787,7 +787,7 @@ p.dl-group { margin-top:18px; }
 #screen-project[data-pt="overview"] .pt-overview, #screen-project[data-pt="work"] .pt-work, #screen-project[data-pt="code"] .pt-code, #screen-project[data-pt="history"] .pt-history { display:block; }
 #screen-project[data-pt="overview"] .pt-overview { display:grid; }
 .tab-n { margin-left:4px; padding:0 6px; border-radius:999px; background:var(--surface-raised); font-size:var(--text-xs); color:var(--text-secondary); }
-.dev-link { color:var(--text); text-decoration:underline; text-decoration-color:var(--border-strong); text-underline-offset:3px; }
+.dev-link { color:var(--text); text-decoration:underline; text-decoration-color:var(--text-quiet); text-underline-offset:3px; }
 .deploys { display:flex; align-items:center; gap:14px; margin-top:12px; }
 .deploys .history { display:flex; gap:3px; flex:1; height:18px; }
 .deploys .history i { flex:1; border-radius:1px; background:var(--up); opacity:.55; }
@@ -848,10 +848,10 @@ p.dl-group { margin-top:18px; }
 
 /* ---------- Logs panel ---------- */
 .logs-clearance { height:46vh; }
-.logs { position:fixed; left:232px; right:0; bottom:0; z-index:8; display:flex; flex-direction:column; height:44vh; background:var(--surface-raised); border-top:1px solid var(--border-strong); box-shadow:0 -10px 30px rgba(0,0,0,.28); transition:height .32s var(--ease-enter); }
+.logs { position:fixed; left:232px; right:0; bottom:0; z-index:8; display:flex; flex-direction:column; height:44vh; background:var(--surface-raised); border-top:1px solid var(--border-subtle); box-shadow:0 -10px 30px rgba(0,0,0,.28); transition:height .32s var(--ease-enter); }
 .logs[data-open="false"] { height:46px; }
 .logs-edge { position:absolute; top:-4px; left:0; right:0; height:8px; cursor:row-resize; }
-.logs-edge::after { content:""; position:absolute; left:50%; top:5px; width:36px; height:3px; margin-left:-18px; border-radius:999px; background:var(--border-strong); opacity:0; transition:opacity .15s; }
+.logs-edge::after { content:""; position:absolute; left:50%; top:5px; width:36px; height:3px; margin-left:-18px; border-radius:999px; background:var(--text-quiet); opacity:0; transition:opacity .15s; }
 .logs-edge:hover::after, .logs-edge:focus-visible::after { opacity:1; }
 .logs-head { display:flex; align-items:center; gap:12px; height:46px; flex:none; padding:0 16px 0 10px; }
 .logs-head .btn iconify-icon { transition:transform .25s var(--ease-enter); }
@@ -921,7 +921,7 @@ p.dl-group { margin-top:18px; }
       <div class="code"><input value="4"><input value="1"><input value="9"><input><input><input></div>
       <div class="links"><a href="#" onclick="step(1);return false"><iconify-icon icon="carbon:arrow-left" style="font-size:14px;vertical-align:-2px"></iconify-icon> Back</a><a href="#">Sign in without a code</a></div>
     </div>
-    <div class="hubline"><iconify-icon icon="carbon:network-3"></iconify-icon>Hub: <span class="mono">hub.anima.ing</span><button type="button" class="btn ghost sm">Change</button></div>
+    <div class="hubline"><iconify-icon icon="carbon:network-3"></iconify-icon>Hub: <span class="mono">hub.example.net</span><button type="button" class="btn ghost sm">Change</button></div>
   </form>
 </main>
 
@@ -1336,12 +1336,12 @@ p.dl-group { margin-top:18px; }
             <div class="setting" style="border-top:1px solid var(--border-subtle)"><div>Theme<p>System follows this computer.</p></div><div class="seg"><button>System</button><button aria-pressed="true" data-theme-set="dark">Dark</button><button data-theme-set="light">Light</button></div></div>
             <div class="setting"><div>Colours<p>Graphite is neutral grey with one frost accent.</p></div><div class="seg"><button aria-pressed="true">Graphite</button><button>Nord</button></div></div>
             <div class="setting"><div>Interface font</div><div class="seg"><button aria-pressed="true">IBM Plex Sans</button><button>OpenDyslexic</button></div></div>
-            <div class="setting"><div>Monospace font<p>For addresses, keys, commands and logs. Was Fira Code (D2).</p></div><div class="seg"><button aria-pressed="true">IBM Plex Mono</button><button>OpenDyslexic</button></div></div>
+            <div class="setting"><div>Monospace font<p>For addresses, keys, commands and logs.</p></div><div class="seg"><button aria-pressed="true">IBM Plex Mono</button><button>OpenDyslexic</button></div></div>
             <div class="setting"><div>Reduce motion</div><button class="switch" role="switch" aria-checked="false" aria-label="Reduce motion"></button></div>
           </div>
           <div class="section"><div class="label"><iconify-icon icon="carbon:network-3"></iconify-icon><span class="rule"></span>Hub</div>
             <dl class="kv">
-              <dt><iconify-icon icon="carbon:link"></iconify-icon>Hub address</dt><dd class="mono">https://hub.anima.ing</dd>
+              <dt><iconify-icon icon="carbon:link"></iconify-icon>Hub address</dt><dd class="mono">https://hub.example.net</dd>
             </dl>
             <div style="display:flex;gap:8px;margin-top:14px"><button class="btn">Change hub</button><button class="btn ghost">Test connection</button></div>
           </div>

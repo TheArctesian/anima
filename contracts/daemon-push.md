@@ -15,7 +15,7 @@ Section 9 (operational keys), the `keys` member of Section 4 and of `Accepted`, 
 `NO_KEY` were added by R-147 and R-148 (operator, 2026-11-18; K-E5 Section 2.1). They are optional members, so
 they need no new version of this contract (Section 1).
 
-This contract is the whole interface between `anima-daemon` and the hub. The daemon makes no other request.
+This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
 ## 1. Transport
 

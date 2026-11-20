@@ -113,7 +113,7 @@
         <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
       </div>
     {:else if keys !== null && keys.length === 0}
-      <p class="quiet">No API keys.</p>
+      <p class="quiet">No API keys</p>
     {:else if keys !== null}
       <ul class="list">
         {#each keys as key (key.id)}
