@@ -28,6 +28,14 @@
 
   const size = $derived(SIZES.findIndex((range) => range.min === (store.browse.minSizeKib ?? null) && range.max === (store.browse.maxSizeKib ?? null)));
 
+  /** The value of the group filter for "Ungrouped": no group ID looks like it (PRO-061). */
+  const NO_GROUP = 'ungrouped';
+  const group = $derived(store.browse.ungrouped === true ? NO_GROUP : (store.browse.group ?? ''));
+
+  function chooseGroup(value: string): void {
+    void store.setBrowse({ group: value === '' || value === NO_GROUP ? null : value, ungrouped: value === NO_GROUP ? true : null });
+  }
+
   function chooseSize(value: string): void {
     const range = SIZES[Number(value)];
     if (range !== undefined) void store.setBrowse({ minSizeKib: range.min, maxSizeKib: range.max });
@@ -35,6 +43,18 @@
 </script>
 
 <div class="browse">
+  {#if store.groups.length > 0 || group !== ''}
+    <label>
+      Group
+      <Select value={group} onchange={(event) => chooseGroup(event.currentTarget.value)}>
+        <option value="">All groups</option>
+        {#each store.groups.toSorted((a, b) => a.name.localeCompare(b.name)) as each (each.id)}
+          <option value={each.id}>{each.name}</option>
+        {/each}
+        <option value={NO_GROUP}>Ungrouped</option>
+      </Select>
+    </label>
+  {/if}
   <label>
     Sort
     <Select value={store.browse.order ?? 'NAME'} onchange={(event) => order(event.currentTarget.value)}>

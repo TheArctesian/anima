@@ -2525,3 +2525,36 @@ VPN keys and sites) already used these roles. Tests prove which row plays a fade
    Expected: nothing slides; rows fade only.
 
 Result: Open.
+
+### HT-NEW-projectgroups: project groups on the Projects screen (PRO-060 to PRO-063)
+
+Built on the branch `ui/project-groups`: `apps/client/src/lib/projects/groups/` (the select bar, the group head, the
+name dialog, the view by group) and `ProjectsScreen.svelte`, `ProjectTile.svelte` and `ProjectBrowse.svelte`. The tests
+prove with a scripted hub: New group with two selected projects, Select all with the filter "Ungrouped", Add to group,
+Remove from group, Delete group (no project is deleted or left out), the refused Rename with the hub's words, and that the
+view by group and a closed head are kept on the computer. No person saw the screen, with a real hub, in a desktop window
+or on a phone.
+
+1. Open "Projects" with about 50 imported projects. Select "Select".
+   Expected: each tile gets a check mark at its start, and a bar shows "0 selected", "Select all", "New group",
+   "Remove from group" and "Done".
+2. Select three tiles, then "New group". Type a name of your own and select "Make group".
+   Expected: the dialog closes, the check marks clear, and each of the three tiles shows the group name under its state.
+3. Select "Group" in "Show by".
+   Expected: a head for each group in name order with its count, then "Ungrouped" with the rest. Each head has "Rename"
+   and "Delete".
+4. Select the head of a group.
+   Expected: its tiles close; a second select opens them again. Close the window and open "Projects" again: the view is
+   still by group and the head is still closed.
+5. Set the filter "Group" to "Ungrouped", select "Select", then "Select all", then choose the group in "Add to group".
+   Expected: each project that the list showed moves to that group; the list of "Ungrouped" is empty.
+6. Select "Rename" on a group and give it the name of a different group.
+   Expected: the dialog stays open and shows "A project group already has this name."
+7. Select "Delete" on a group, then "Delete group".
+   Expected: the head goes. Its projects are under "Ungrouped"; none is left out and none is gone.
+8. Leave out a project that is in a group and open "Left out".
+   Expected: the tile shows the group name; the count of the group head in "Projects" is one less.
+9. Do steps 1 to 4 in the light appearance and on a phone.
+   Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.

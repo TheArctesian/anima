@@ -10,9 +10,14 @@
     project: Project;
     onLeaveOut: (repositoryId: string) => void;
     onRestore: (repositoryId: string) => void;
+    /** In select mode, whether the project is selected (PRO-060); undefined out of select mode. */
+    selected?: boolean | undefined;
+    onSelect?: (selected: boolean) => void;
+    /** Shows the name of the project's group; false under the head of that group (PRO-061). */
+    showGroup?: boolean;
   }
 
-  const { project, onLeaveOut, onRestore }: Props = $props();
+  const { project, onLeaveOut, onRestore, selected, onSelect, showGroup = true }: Props = $props();
   const reason = $derived(lookReason(project));
 </script>
 
@@ -20,14 +25,20 @@
      then its repositories with Leave out. A tile steps from the page by its surface, with no border (R-221, R-224); one
      that needs a look carries a 2 px warning edge (D18). -->
 <!-- The list item is the screen's, so the tile fades in and out where it stands (5.7.3, Reorder). -->
-<div class="tile" class:look={reason !== null}>
+<div class="tile" class:look={reason !== null} class:selected>
   <div class="top">
+    {#if selected !== undefined}
+      <input type="checkbox" class="pick" checked={selected} aria-label={`Select ${project.name}`} onchange={(event) => onSelect?.(event.currentTarget.checked)} />
+    {/if}
     <span class="name">
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the slug is the hub's and is encoded -->
       <a href={`${resolve('/projects')}/${encodeURIComponent(project.slug)}`}><Icon name="carbon:folder" size="sm" />{project.name}</a>
       {#if project.repositories[0] !== undefined}<span class="repo">{project.repositories[0].fullName}</span>{/if}
     </span>
-    <span class="state">{projectStatusWords(project)}</span>
+    <span class="side">
+      <span class="state">{projectStatusWords(project)}</span>
+      {#if showGroup && project.group != null}<span class="group">{project.group.name}</span>{/if}
+    </span>
   </div>
   {#if reason !== null}<p class="why">{reason}</p>{/if}
   <ul class="places" aria-label="Where it runs">
@@ -56,6 +67,33 @@
     padding: var(--space-4);
     border-radius: var(--radius-lg);
     background: var(--surface-raised);
+  }
+
+  .selected {
+    background: var(--surface-selected);
+  }
+
+  .pick {
+    flex: none;
+    margin: var(--space-1) 0 0;
+    accent-color: var(--accent);
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-1);
+    min-inline-size: 0;
+  }
+
+  .group {
+    max-inline-size: calc(var(--space-16) * 2);
+    overflow: hidden;
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .look {

@@ -1,5 +1,8 @@
 import { SvelteSet } from 'svelte/reactivity';
+import type { HubResult } from '$lib/hub/hub';
 import type { Project, ProjectBrowse, ProjectResource, ProjectsApi } from './api';
+import type { ProjectGroup } from './groups/api';
+import { withGroup, withGroupNamed } from './groups/view';
 import { isLeftOut } from './words';
 
 export type ProjectsStatus = 'loading' | 'ready' | 'failed';
@@ -31,9 +34,13 @@ export class ProjectsStore {
   #confirming = $state.raw<readonly string[]>([]);
 
   languages = $state.raw<readonly string[]>([]);
+  /** The operator's project groups (PRO-059). */
+  groups = $state.raw<readonly ProjectGroup[]>([]);
   readonly browse = $derived(this.#browse);
   readonly byName = $derived(this.#browse.order == null || this.#browse.order === 'NAME');
-  readonly filtered = $derived(this.#browse.language != null || this.#browse.minSizeKib != null || this.#browse.maxSizeKib != null);
+  readonly filtered = $derived(
+    this.#browse.language != null || this.#browse.minSizeKib != null || this.#browse.maxSizeKib != null || this.#browse.group != null || this.#browse.ungrouped === true,
+  );
 
   /** Keep the hub's order for metadata sorts, with local changes laid over it. */
   readonly shown = $derived.by(() => {
@@ -60,13 +67,14 @@ export class ProjectsStore {
     const generation = ++this.#generation;
     const browse = this.#browse;
     this.status = 'loading';
-    const [main, left] = await Promise.all([this.api.list(false, null, browse), this.api.list(true, null, browse)]);
+    const [main, left, groups] = await Promise.all([this.api.list(false, null, browse), this.api.list(true, null, browse), this.api.groups()]);
     if (generation !== this.#generation) return;
-    if (!main.ok || !left.ok) {
-      this.loadProblem = !main.ok ? main.error.message : left.ok ? '' : left.error.message;
+    if (!main.ok || !left.ok || !groups.ok) {
+      this.loadProblem = [main, left, groups].map((each) => (each.ok ? '' : each.error.message)).find((message) => message !== '') ?? '';
       this.status = 'failed';
       return;
     }
+    this.groups = groups.value;
     this.#known = [];
     this.#merge(main.value.projects);
     this.#merge(left.value.projects);
@@ -123,6 +131,55 @@ export class ProjectsStore {
     if (result.ok) this.#replaceResource(result.value);
     else this.refusal = { message: result.error.message };
     this.#confirming = this.#confirming.filter((each) => each !== resourceId);
+  }
+
+  /** Makes a group with the projects in it (PRO-060); the hub's words come back when it refuses. */
+  async createGroup(name: string, projectIds: readonly string[]): Promise<HubResult<unknown>> {
+    const result = await this.api.createGroup(name, projectIds);
+    if (result.ok) await this.#grouped(projectIds, { id: result.value.id, name: result.value.name });
+    return result;
+  }
+
+  /** Puts the projects in the group, or in none with null (PRO-060, PRO-063). */
+  async setGroup(projectIds: readonly string[], groupId: string | null): Promise<void> {
+    this.refusal = null;
+    const result = await this.api.setGroup(projectIds, groupId);
+    if (!result.ok) {
+      this.refusal = { message: result.error.message };
+      return;
+    }
+    const group = this.groups.find((each) => each.id === groupId);
+    await this.#grouped(projectIds, group === undefined ? null : { id: group.id, name: group.name });
+  }
+
+  async renameGroup(id: string, name: string): Promise<HubResult<unknown>> {
+    const result = await this.api.renameGroup(id, name);
+    if (result.ok) {
+      this.groups = this.groups.map((each) => (each.id === id ? result.value : each));
+      this.#known = withGroupNamed(this.#known, id, result.value.name);
+    }
+    return result;
+  }
+
+  /** Deletes the group only: its projects stay, with no group (PRO-062). */
+  async deleteGroup(id: string): Promise<HubResult<unknown>> {
+    const result = await this.api.deleteGroup(id);
+    if (!result.ok) return result;
+    this.groups = this.groups.filter((each) => each.id !== id);
+    this.#known = withGroupNamed(this.#known, id, null);
+    if (this.#browse.group === id) await this.setBrowse({ group: null });
+    return result;
+  }
+
+  /** Lays the new group over the projects, then reads the counts again; a group filter reads the list again. */
+  async #grouped(projectIds: readonly string[], group: Project['group']): Promise<void> {
+    this.#known = withGroup(this.#known, projectIds, group);
+    if (this.#browse.group != null || this.#browse.ungrouped === true) {
+      await this.load();
+      return;
+    }
+    const groups = await this.api.groups();
+    if (groups.ok) this.groups = groups.value;
   }
 
   async #setLeftOut(repositoryId: string, leftOut: boolean): Promise<void> {
