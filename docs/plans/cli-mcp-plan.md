@@ -1104,9 +1104,34 @@ decides differently.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| MI1 | The member editor for JSON with comments (MCP-030) and the safe file write with the copy (MCP-031, MCP-032, MCP-034), with their tests | In progress | `37d557ea` on the branch `mcp/install`: built and tested; the review of MI5 is open |
-| MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-NEW-mcpinstall); the review of MI5 is open |
+| MI1 | The member editor for JSON with comments (MCP-030) and the safe file write with the copy (MCP-031, MCP-032, MCP-034), with their tests | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested; reviewed (12.6) |
+| MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-NEW-mcpinstall); reviewed (12.6) |
 | MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
 | MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | Not started | |
-| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | Not started | |
+| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The Settings part (MI4) is not built and so not reviewed |
 | MI6 | The entry HT-NEW-mcpinstall: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
+
+### 12.6 The security review of the command line part (2026-11-19)
+
+A reviewer that did not write the code read it and tried it in a temporary folder: break attempts
+and three million made-up inputs to the member editor. It changed no file of the repository and read
+no real configuration. It found no panic, no read past the end, no unbounded stack or time, no path
+taken from the content of a file, no secret written or printed, and that the rename follows no link.
+Its findings and what was done (`5b10f6a6`):
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | Taking out the member could join the next member of the same line to a comment of the line before: that member was then lost | Corrected, with a test |
+| 2 | The number for `O_NOFOLLOW` was right for macOS and Linux x86_64 only | Corrected: the value of each system, from `rustix` |
+| 3 | For an agent with its own command, the entry of a person was removed before the add, and the list did not show the removal | Corrected: the removal runs only for the state `different` and is a line of the list. Open: `claude mcp remove anima` names no scope (the documentation shows none); OD-MI1 decides if a replacement happens at all |
+| 4 | The program of an agent ran in the folder of the caller and could read the project configuration there | Corrected: it runs in the home folder. Open: no time limit on that program |
+| 5 | The check of the `anima` path looked at one folder only, not at the folders above it or at what a link points at, and took the owner of the home folder as the user | Corrected: each folder above the path and above the real file; the user is the user of the process; a home folder of a different user is refused. Open: a program that root owns passes, which is intended for a system install |
+| 6 | Each file with a group write bit was refused, as the usual mask of Ubuntu and Fedora gives | Corrected: a group write bit is refused only when the group is not the private group of the user; a new folder is `0700` |
+| 7 | The state of an agent with its own command was read by a search for the path as a part of the text | Partly: the path must be a whole word. Open: the other arguments of that entry are not read; the output of `claude mcp get` and `gemini mcp list` has no documented form |
+| 8 | A key that is there twice: this program changed the first, a reader takes the last | Corrected: refused |
+| 9 | Comments inside an empty object or beside the member were dropped; Windows line ends became mixed; a missing comma was accepted | Corrected, with tests. An object that held only space comes back as an empty object with no space |
+| 10 | A link at the name of the copy made the write go on with no copy; a failed write left half a copy | Corrected: a link there is refused; the copy appears whole or not at all |
+| 11 | The library took any path of `anima` unchecked | Corrected: it takes only a path that the check returned |
+| 12 | A path with `$` or braces is a variable in the files of some agents | Corrected: refused, as is a path that is not text |
+| 13 | A file that an agent saved between the read and the write was overwritten; under `sudo` the files became root's | Corrected: the file is read again before the rename and a change is refused |
+| 14 | Notes | Open: a file that starts with a byte order mark is refused; the home folder itself is not checked; access lists are not read; the path of the running program differs by system (the Settings part must pass the installed path, MCP-039); the copy keeps the other entries of the file for as long as it stays |
