@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use super::*;
 use crate::points::{Kind, samples};
-use crate::readings::{Data, Reading, container};
+use crate::readings::{HubStorage, Reading, container};
 
 const MEMORY_MAX: &[u8] = b"1610612736\n";
 const MEMORY_CURRENT: &[u8] = b"359116800\n";
@@ -72,7 +72,7 @@ fn hmd_071_the_processor_share_is_the_time_used_against_the_time_of_the_allowed_
 #[test]
 fn hmd_072_the_data_of_a_hub_is_its_bytes_with_no_share() {
     let reading = Reading {
-        data: Some(Data {
+        hub_storage: Some(HubStorage {
             folder: "/var/lib/anima".to_owned(),
             bytes: 163_306_636,
         }),

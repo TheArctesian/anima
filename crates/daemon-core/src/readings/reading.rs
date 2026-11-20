@@ -58,7 +58,7 @@ pub struct DriveCounters {
 /// The bytes of the data of a hosted hub (HMD-072): its database and its files, which it measures
 /// itself. It has no total: the file system that holds it is the one of the pool.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Data {
+pub struct HubStorage {
     /// The folder of the data, the label of its series: a path that starts with `/`.
     pub folder: String,
     pub bytes: u64,
@@ -78,5 +78,5 @@ pub struct Reading {
     pub drives: Option<Vec<Drive>>,
     pub drive_counters: Vec<DriveCounters>,
     /// The data of a hosted hub (HMD-072); `None` on each other device.
-    pub data: Option<Data>,
+    pub hub_storage: Option<HubStorage>,
 }

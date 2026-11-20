@@ -60,7 +60,7 @@ pub async fn reading() -> Reading {
         interfaces: net.map_or_default(|bytes| linux::interfaces(&bytes)),
         drives: drive_list().await,
         drive_counters: diskstats.map_or_default(|bytes| linux::drive_counters(&bytes)),
-        data: None,
+        hub_storage: None,
     }
 }
 

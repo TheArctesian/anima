@@ -51,12 +51,12 @@ pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration)
         out.extend(Sample::new(Kind::DiskPercent, &disk.mount, share));
         out.extend(Sample::new(Kind::DiskBytes, &disk.mount, float(used)));
     }
-    if let Some(data) = &current.data {
+    if let Some(storage) = &current.hub_storage {
         // The bytes alone: a share would need the total of a file system of the pool (HMD-072).
         out.extend(Sample::new(
             Kind::DiskBytes,
-            &data.folder,
-            float(data.bytes),
+            &storage.folder,
+            float(storage.bytes),
         ));
     }
     if let Some(previous) = previous {

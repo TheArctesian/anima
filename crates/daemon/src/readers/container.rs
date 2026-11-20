@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use daemon_core::readings::{Data, Reading, container};
+use daemon_core::readings::{HubStorage, Reading, container};
 
 /// The control group of the container, under the root of the file system.
 const CGROUP: &str = "sys/fs/cgroup";
@@ -69,13 +69,13 @@ impl Container {
         Reading {
             cpu,
             memory,
-            data: self.data(now).await,
+            hub_storage: self.hub_storage(now).await,
             ..Reading::default()
         }
     }
 
     /// The bytes of the data folder, measured again when the last measure is a minute old.
-    async fn data(&mut self, now: Instant) -> Option<Data> {
+    async fn hub_storage(&mut self, now: Instant) -> Option<HubStorage> {
         let due = self
             .measured
             .is_none_or(|(at, _)| now.duration_since(at) >= MEASURE_EVERY);
@@ -88,7 +88,7 @@ impl Container {
             }
         }
         let (_, bytes) = self.measured?;
-        Some(Data {
+        Some(HubStorage {
             folder: self.data.to_str()?.to_owned(),
             bytes,
         })
