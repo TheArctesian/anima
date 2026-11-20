@@ -5,6 +5,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { ownCondition } from "./release-waits.ts";
+
 interface Step {
   id?: string;
   uses?: string;
@@ -44,9 +46,9 @@ describe("the switches of the iOS application", () => {
   });
 
   test("a build goes to TestFlight only from a push to main with the TestFlight switch on, and after the gates", () => {
-    expect(job("ios-upload").if).toBe(UPLOAD);
+    expect(ownCondition(job("ios-upload").if, needs("ios-upload"))).toBe(UPLOAD);
     expect(needs("ios-upload").sort()).toEqual(["commit", "gates", "ios"]);
-    expect(job("ios-record").if).toBe(UPLOAD);
+    expect(ownCondition(job("ios-record").if, needs("ios-record"))).toBe(UPLOAD);
     expect(needs("ios-record")).toContain("ios-upload");
   });
 

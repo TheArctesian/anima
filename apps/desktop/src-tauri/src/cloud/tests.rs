@@ -1,6 +1,8 @@
 use reqwest::StatusCode;
 
-use super::{CloudError, api, device::cloud_device, name::device_name, workos};
+use super::{
+    CloudError, api, device::cloud_device, memory_session, name::device_name, phone, workos,
+};
 use crate::this_machine::OperatingSystem;
 
 #[test]
@@ -123,5 +125,81 @@ fn log_007_an_error_serialises_as_its_code_only() {
     assert_eq!(
         serde_json::to_string(&CloudError::NotReady).unwrap(),
         r#"{"code":"not-ready"}"#
+    );
+}
+
+/// A folder of this test only, removed when the test ends.
+fn phone_folder(test: &str) -> tempfile::TempDir {
+    tempfile::Builder::new()
+        .prefix(&format!("anima-phone-{test}-"))
+        .tempdir()
+        .unwrap()
+}
+
+#[test]
+fn m3_4_a_phone_makes_its_device_name_one_time_and_keeps_it() {
+    let folder = phone_folder("kept");
+    let first = phone::device_name(Some(folder.path()), "iphone", || Some([0xab, 0x01, 0xff]));
+    assert_eq!(first, "iphone-ab01ff");
+    assert_eq!(device_name(&first), first, "the cloud takes the name");
+    let second = phone::device_name(Some(folder.path()), "iphone", || Some([1, 2, 3]));
+    assert_eq!(second, first, "a second sign-in sends the same name");
+}
+
+#[test]
+fn m3_4_a_kept_name_that_the_cloud_does_not_take_is_made_again() {
+    let folder = phone_folder("damaged");
+    for damaged in ["", "Not A Name", "9lives", "a/../b"] {
+        std::fs::write(folder.path().join("cloud-device"), damaged).unwrap();
+        let name = phone::device_name(Some(folder.path()), "android", || Some([0, 0, 7]));
+        assert_eq!(name, "android-000007", "{damaged:?}");
+    }
+}
+
+#[test]
+fn m3_4_a_phone_with_no_folder_or_no_random_bytes_still_has_a_name() {
+    assert_eq!(
+        phone::device_name(None, "android", || Some([9, 9, 9])),
+        "android-090909"
+    );
+    let folder = phone_folder("no-random");
+    assert_eq!(
+        phone::device_name(Some(folder.path()), "iphone", || None),
+        "iphone"
+    );
+    let missing = folder.path().join("not-there");
+    assert_eq!(
+        phone::device_name(Some(&missing), "iphone", || Some([1, 2, 3])),
+        "iphone-010203"
+    );
+}
+
+#[test]
+fn m3_4_the_memory_session_keeps_one_refresh_token_for_each_client() {
+    let (one, other) = ("client_test_memory_one", "client_test_memory_other");
+    assert!(memory_session::read(one).unwrap().is_none());
+    memory_session::write(one, "first").unwrap();
+    memory_session::write(one, "rotated").unwrap();
+    assert_eq!(
+        memory_session::read(one).unwrap().unwrap().as_str(),
+        "rotated"
+    );
+    assert!(memory_session::read(other).unwrap().is_none());
+    memory_session::clear(one).unwrap();
+    memory_session::clear(one).unwrap();
+    assert!(memory_session::read(one).unwrap().is_none());
+}
+
+#[test]
+fn m3_5_the_trade_of_a_code_sends_the_verifier_and_no_secret() {
+    let form = workos::code_form("client_123", "the-code", "the-verifier");
+    assert_eq!(
+        form,
+        [
+            ("grant_type", "authorization_code"),
+            ("client_id", "client_123"),
+            ("code", "the-code"),
+            ("code_verifier", "the-verifier"),
+        ]
     );
 }

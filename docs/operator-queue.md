@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (16)
+## 1. In the order of the priorities (17)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -36,8 +36,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (148)
+## 2. Open decisions (150)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -99,6 +100,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-28 | R-247 makes Arcane an entry of the catalogue that may hold the socket of Docker. R-234 lets an API key or an AI agent make the first install of an entry of the… | B. An agent can be led by text that it reads; the administrator of a machine is then never installed by an agent. It blocks the text of the exception (Section 1… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-29 | Who can turn on the port of an application at a machine, so that a hosted hub reaches it through the link (R-250)? A: only the administrator, in the machine set… | A. The daemon runs as the same user as the link and takes requests from the hub; with B it could open the port of each application by itself. With A he is asked… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-30 | Under which name does the hub serve the web page of an application of a different publisher? A: a name of its own for each application below a separate domain t… | B first, then A. Under the origin of the hub a script of such a page can use his session, and with one gateway for all hosted hubs (R-239) it could reach each o… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-M9 | Does the phone application get to a hosted hub through the link in the application, through the gateway of the web hub at `hub.anima.ing` (hosted-web-hub.md), o… | Open (2026-11-19). Recommendation of the session that built task M3-4: the link now, and the gateway later only as a second path. Reasons: the link is the decis… | [plans/mobile-plan.md](plans/mobile-plan.md) |
+| OD-M10 | Two rules of the App Store review for the sign-in of the iPhone application (read on 2026-11-19 on the page of the guidelines, which a tool cut, so the words ar… | Open (2026-11-19). Recommendation for (a): the rule applies, because the page of the account offers Google and GitHub; it is met when the same page offers Apple… | [plans/mobile-plan.md](plans/mobile-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
@@ -222,7 +225,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (79)
+## 4. Checks that only the operator can do (82)
 
 | Check | What |
 | --- | --- |
@@ -257,6 +260,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |
+| HT-055 | the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4) |
+| HT-053 | the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4) |
+| HT-054 | the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043) |
 | HT-043 | a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010) |
 | HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
