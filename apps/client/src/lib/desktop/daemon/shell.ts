@@ -38,6 +38,11 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
 
 const PROBLEMS = new Set<string>(Object.keys(MESSAGES));
 
+/** The sentence for a problem of the shell, for a place that shows it later than the call (HMD-053). */
+export function describeDaemonProblem(problem: DaemonShellProblem): string {
+  return MESSAGES[problem];
+}
+
 export type DaemonShellResult = { readonly ok: true } | { readonly ok: false; readonly problem: DaemonShellProblem; readonly message: string };
 
 /** The shell's error code; the shell's own text is never kept. */

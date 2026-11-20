@@ -7,6 +7,7 @@ mod browser;
 mod flow;
 mod installed;
 mod leaks;
+mod linked;
 mod pages;
 mod refusals;
 mod review;
