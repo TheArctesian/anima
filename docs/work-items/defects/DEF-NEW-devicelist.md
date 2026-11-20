@@ -1,0 +1,30 @@
+# DEF-NEW-devicelist: a device whose daemon enrols while Devices is open says "No metrics" until the page is loaded again
+
+Progress: the index [README.md](../README.md) holds the state of this item (PLN-006). The plan register in [work-plan.md](../../work-plan.md) Section 9 lists the index.
+
+| Item | Value |
+| --- | --- |
+| Identifier | DEF-NEW-devicelist |
+| Kind | Defect |
+| Owner | [design-spec.md](../../spec/design-spec.md) MET-004, MET-007, MET-011 |
+| Serves | Row 4.17 of the work plan (hosted mode): the application installs the daemon with no question (HMD-053) |
+| Version | 1.0 |
+| Date | 2026-11-20 |
+| Origin | The operator, on 2026-11-20, on Pop!_OS 24.04 with the AppImage 0.0.4: the row `pop-os` said "No metrics" while the daemon reported; "my curret active window is just behind". The operator then asked: "fix the device list not refreshing after daemon install". Not a GitHub issue (PLN-012). |
+
+## Cause
+
+Read in the log of the application and in the code of `dev` at the start of the branch.
+
+- The page Devices reads the metrics source of each device once, when it loads the list. A row with the source `NONE` says "No metrics" whatever readings arrive (`apps/client/src/lib/metrics/bars/bars.ts`, `barRow`).
+- The application loads the list first and installs the daemon of this computer after it (HMD-053). The enrolment sets the source to `DAEMON` at the hub (MET-011), but no live update of the page carries the source: the page receives status changes, readings and heartbeats only.
+- On `pop-os` the list loaded at 17:55:39 and the daemon enrolled at 17:55:45. The readings of `pop-os` arrived, and the row said "No metrics" until the application started again.
+
+The same happens for a daemon that is enrolled with `anima-daemon enrol` while a person has Devices open, in the application or in a browser.
+
+## Correction
+
+On the branch `fix/devices-after-daemon`:
+
+- [x] When readings arrive for a device that the list holds with the source `NONE`, the page loads the first page of the list again (`apps/client/src/lib/devices/screen/listing.svelte.ts`). The hub stores readings only from SSH or the daemon, so such readings show that the source changed. The load is the coalesced load that a status change uses (DEV-003).
+- [x] Tests in `listing.test.ts`: readings of a device with no source load the list again and the row then has the source `DAEMON`; readings of a device with its source change only its readings and load nothing.
