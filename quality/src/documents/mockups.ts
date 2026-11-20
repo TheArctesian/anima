@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { placeholders } from "../merge/numbers.ts";
 import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
 
@@ -59,4 +60,28 @@ export function checkMockups(documents: Document[], changedSince: (screen: strin
     }
   }
   return violations;
+}
+
+/** Whether `path` is a layout file (Svelte or CSS) below `screen`: a file that the comparison of a mockup watches. */
+function isScreenLayout(path: string, screen: string): boolean {
+  return path.startsWith(`${screen}/`) && (path.endsWith(".svelte") || path.endsWith(".css"));
+}
+
+/**
+ * PLN-019 and PLN-021: no placeholder of a number in a layout file of a screen that the index
+ * lists. The merge gives the placeholder its number in the merge commit, so the screen changes
+ * after the commit at which its mockup was compared, and the mockup check fails on the merge.
+ * `paths` are the files of the repository; `read` gives the text of one.
+ */
+export function placeholdersInScreens(index: string, paths: string[], read: (path: string) => string): Violation[] {
+  const screens = mockupRows(index).flatMap((row) => row.screens);
+  return paths
+    .filter((path) => screens.some((screen) => isScreenLayout(path, screen)))
+    .flatMap((path) =>
+      placeholders([{ path, text: read(path) }]).map((placeholder) => ({
+        path,
+        signal: "number-placeholder-in-screen",
+        detail: `${placeholder}: the merge would number it after the mockup was compared; name the plan row or a number that exists`,
+      })),
+    );
 }
