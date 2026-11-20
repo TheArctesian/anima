@@ -71,6 +71,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
+| HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1673,3 +1674,20 @@ Result: Passed. On 2026-11-19 the operator reported that the Linux preview worke
 signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
+
+### HT-048: the tab Overview of a device after the interface review (R-224)
+
+Built on the branch `ui/v2-device-overview` (`f3d25339`): `apps/client/src/routes/devices/[id]/overview/geometry.css` draws
+the four facts cards (Status, Uptime, Checks, SSH host key) in one row from a panel width of 56rem, and a card has no
+border. No test reads a layout. The page was looked at only in pictures of the gallery tool, at 1280 px, in the dark and
+the light appearance, with one sample device. No person saw it in the desktop application, at other widths, with a long
+host key, with many check states or while it loads.
+
+1. Open a device in the application, in a window about 1280 px wide.
+   Expected: Status, Uptime, Checks and SSH host key are one row. The three uptime figures are on one line. No card has a border.
+2. Make the window narrow, then wide, in the light and the dark appearance.
+   Expected: the cards go to two columns and then to one, and back; no text lies over another part; the whole host key shows.
+3. Reload the page and watch the first second.
+   Expected: the loading shapes are where the cards then are; nothing moves when the values arrive.
+
+Result: Open.
