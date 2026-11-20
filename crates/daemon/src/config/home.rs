@@ -1,8 +1,10 @@
 //! The daemon's own folder: its configuration file and, on Linux, its token file (MET-002,
 //! MET-013).
 
+#[cfg(unix)]
 use std::fs::DirBuilder;
 use std::io;
+#[cfg(unix)]
 use std::os::unix::fs::DirBuilderExt as _;
 use std::path::{Path, PathBuf};
 
@@ -49,6 +51,11 @@ impl Home {
     pub fn locate(env: impl Fn(&str) -> Option<String>, macos: bool) -> Result<Self, HomeError> {
         let dir = if let Some(set) = env(HOME_VARIABLE) {
             PathBuf::from(set)
+        } else if cfg!(windows) {
+            let local = env("LOCALAPPDATA")
+                .filter(|value| Path::new(value).is_absolute())
+                .ok_or(HomeError::NoFolder)?;
+            Path::new(&local).join("Anima/daemon")
         } else if macos {
             let home = env("HOME").ok_or(HomeError::NoFolder)?;
             Path::new(&home)
@@ -99,10 +106,13 @@ impl Home {
     /// # Errors
     /// [`HomeError::Exposed`] for such a folder, [`HomeError::Io`] when it cannot be made.
     pub fn ensure(&self) -> Result<(), HomeError> {
+        #[cfg(unix)]
         DirBuilder::new()
             .recursive(true)
             .mode(0o700)
             .create(&self.dir)?;
+        #[cfg(windows)]
+        anima_windows::files::directory(&self.dir)?;
         if private_file::folder_private(&self.dir)? {
             Ok(())
         } else {
@@ -134,7 +144,7 @@ impl Home {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

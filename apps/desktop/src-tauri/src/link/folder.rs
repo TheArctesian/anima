@@ -10,9 +10,11 @@
 use std::{
     fs::{self, DirBuilder, OpenOptions},
     io::{self, ErrorKind, Read, Write},
-    os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 
 const PORT_FILE: &str = "anima-port";
 /// Its presence says that a unit of the user must keep the link of this folder (HMD-058).
@@ -42,10 +44,15 @@ impl LinkFolders {
     /// the link's own folder to 0700, and removes a join that did not finish.
     pub fn prepare_next(&self) -> io::Result<()> {
         let link = self.device.parent().ok_or(ErrorKind::InvalidInput)?;
-        DirBuilder::new().recursive(true).mode(0o700).create(link)?;
+        let mut builder = DirBuilder::new();
+        builder.recursive(true);
+        #[cfg(unix)]
+        builder.mode(0o700);
+        builder.create(link)?;
         if !fs::symlink_metadata(link)?.is_dir() {
             return Err(ErrorKind::InvalidInput.into());
         }
+        #[cfg(unix)]
         fs::set_permissions(link, fs::Permissions::from_mode(0o700))?;
         remove_folder(&self.next)
     }
@@ -130,11 +137,19 @@ pub fn parse_port(text: &[u8]) -> Option<u16> {
 
 /// The saved port of the state folder `folder`. A symbolic link is not followed.
 pub fn read_port(folder: &Path) -> Option<u16> {
-    let file = OpenOptions::new()
-        .read(true)
-        .custom_flags(nix::libc::O_NOFOLLOW)
-        .open(folder.join(PORT_FILE))
-        .ok()?;
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    options.custom_flags(nix::libc::O_NOFOLLOW);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.custom_flags(0x0020_0000); // FILE_FLAG_OPEN_REPARSE_POINT
+    }
+    let file = options.open(folder.join(PORT_FILE)).ok()?;
+    if !file.metadata().ok()?.is_file() {
+        return None;
+    }
     let mut text = Vec::new();
     file.take(MOST_PORT_FILE).read_to_end(&mut text).ok()?;
     parse_port(&text)
@@ -142,22 +157,22 @@ pub fn read_port(folder: &Path) -> Option<u16> {
 
 /// Saves `port` in the new state folder `folder`, in a new owner-only file (0600).
 pub fn write_port(folder: &Path, port: u16) -> io::Result<()> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(folder.join(PORT_FILE))?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let mut file = options.open(folder.join(PORT_FILE))?;
     writeln!(file, "{port}")?;
     file.sync_all()
 }
 
 /// Marks `folder`: a unit of the user must keep its link. A mark that is there is not an error.
 pub fn want_unit(folder: &Path) -> io::Result<()> {
-    let made = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(folder.join(UNIT_FILE));
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let made = options.open(folder.join(UNIT_FILE));
     match made {
         Err(error) if error.kind() != io::ErrorKind::AlreadyExists => Err(error),
         _ => Ok(()),

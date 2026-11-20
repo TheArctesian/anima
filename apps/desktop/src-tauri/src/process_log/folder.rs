@@ -6,7 +6,7 @@ use crate::os_program::{self, OsProgramError};
 /// The file-manager opener. An absolute path on macOS, so `PATH` cannot swap it.
 #[cfg(target_os = "macos")]
 pub(super) const OPENER: &str = "/usr/bin/open";
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 pub(super) const OPENER: &str = "xdg-open";
 
 /// Creates `folder` if it is missing, then runs `opener` with the folder as its one argument
@@ -24,3 +24,6 @@ pub(super) fn open_with(
         _ => ProcessLogError::Failed,
     })
 }
+
+#[cfg(windows)]
+pub(super) const OPENER: &str = "explorer.exe";

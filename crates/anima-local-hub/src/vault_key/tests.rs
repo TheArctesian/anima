@@ -1,4 +1,5 @@
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 use base64::Engine as _;
@@ -9,6 +10,8 @@ use super::{KeyError, prepare};
 #[test]
 fn a_new_database_gets_a_key_of_32_bytes_that_only_the_user_can_read() {
     let folder = tempfile::tempdir().unwrap();
+    #[cfg(windows)]
+    anima_windows::files::protect(folder.path()).unwrap();
     let path = folder.path().join("vault.key");
 
     prepare(&path, true).unwrap();
@@ -16,6 +19,7 @@ fn a_new_database_gets_a_key_of_32_bytes_that_only_the_user_can_read() {
     let key = STANDARD.decode(fs::read(&path).unwrap()).unwrap();
     assert_eq!(key.len(), 32);
     assert_ne!(key, [0; 32]);
+    #[cfg(unix)]
     assert_eq!(
         fs::metadata(&path).unwrap().permissions().mode() & 0o777,
         0o600
@@ -26,6 +30,8 @@ fn a_new_database_gets_a_key_of_32_bytes_that_only_the_user_can_read() {
 #[test]
 fn a_key_that_is_there_is_never_replaced() {
     let folder = tempfile::tempdir().unwrap();
+    #[cfg(windows)]
+    anima_windows::files::protect(folder.path()).unwrap();
     let path = folder.path().join("vault.key");
     prepare(&path, true).unwrap();
     let first = fs::read(&path).unwrap();
@@ -39,6 +45,8 @@ fn a_key_that_is_there_is_never_replaced() {
 #[test]
 fn no_key_is_made_for_a_database_that_an_older_key_sealed() {
     let folder = tempfile::tempdir().unwrap();
+    #[cfg(windows)]
+    anima_windows::files::protect(folder.path()).unwrap();
     let path = folder.path().join("vault.key");
 
     let error = prepare(&path, false).unwrap_err();
@@ -48,8 +56,11 @@ fn no_key_is_made_for_a_database_that_an_older_key_sealed() {
 }
 
 #[test]
+#[cfg(unix)]
 fn a_link_at_the_keys_path_is_refused_and_not_followed() {
     let folder = tempfile::tempdir().unwrap();
+    #[cfg(windows)]
+    anima_windows::files::protect(folder.path()).unwrap();
     let path = folder.path().join("vault.key");
     fs::write(folder.path().join("elsewhere"), "open to others").unwrap();
     std::os::unix::fs::symlink(folder.path().join("elsewhere"), &path).unwrap();
@@ -68,6 +79,8 @@ fn a_link_at_the_keys_path_is_refused_and_not_followed() {
 #[test]
 fn two_keys_are_not_the_same() {
     let folder = tempfile::tempdir().unwrap();
+    #[cfg(windows)]
+    anima_windows::files::protect(folder.path()).unwrap();
     let (first, second) = (folder.path().join("a"), folder.path().join("b"));
 
     prepare(&first, true).unwrap();

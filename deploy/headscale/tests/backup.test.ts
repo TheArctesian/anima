@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ const SNAPSHOT_ITEMS = ["config.yaml", "db.sqlite", "derp_server_private.key", "
 
 afterEach(removeFixtures);
 
-describe("backup.sh", () => {
+describe.skipIf(process.platform === "win32")("backup.sh", () => {
   test("VPS-006 snapshots the database with VACUUM INTO and checks the copy with integrity_check", () => {
     const result = run("backup.sh");
     expect(result.code).toBe(0);
@@ -68,7 +69,7 @@ describe("backup.sh", () => {
   });
 });
 
-describe("backup.sh failures and cleanup", () => {
+describe.skipIf(process.platform === "win32")("backup.sh failures and cleanup", () => {
   test("VPS-006 removes the temporary snapshot after a successful backup", () => {
     const result = run("backup.sh");
     expect(result.code).toBe(0);
@@ -107,7 +108,7 @@ describe("backup.sh failures and cleanup", () => {
   });
 });
 
-describe("backup.sh refusals and stops", () => {
+describe.skipIf(process.platform === "win32")("backup.sh refusals and stops", () => {
   test("VPS-006 refuses a temporary folder whose path would break the VACUUM INTO quoting", () => {
     const root = fixture();
     const quoted = join(root, "tmp", "it's");
@@ -141,7 +142,7 @@ describe("backup.sh refusals and stops", () => {
   });
 });
 
-describe("shellcheck", () => {
+describe.skipIf(process.platform === "win32")("shellcheck", () => {
   test("VPS-006 backup.sh and prune.sh pass shellcheck (a missing shellcheck fails, CQ-024)", () => {
     const shellcheck = Bun.which("shellcheck");
     expect(shellcheck).not.toBeNull();

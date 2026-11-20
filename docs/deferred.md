@@ -45,7 +45,7 @@ Added 2026-11-04 to 2026-11-13, top of the issue.
 
 - [ ] **iOS TestFlight release pipeline** (Phase 5, spec Section 10). Build and sign the iOS app, upload to TestFlight with an App Store Connect API key, run it in the release workflow on push to `main` (R-005 allows only deployment workflows). iOS updates come from TestFlight / the App Store, not the Tauri updater (UPD-001).
 - [ ] **macOS Developer ID signing and notarization.** Releases start with ad-hoc signing (spec 3.9). Add the Apple secrets (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY`, `APPLE_API_ISSUER`); the release workflow switches to real signing, `notarytool submit --wait` and stapling when all are present.
-- [ ] **Windows desktop build** (out of scope, spec 1.4). NSIS installer, `windows-x86_64` feed entry, optional Authenticode signing. Needs a spec change first.
+- [ ] **Windows public signing and release.** Native desktop and host-service work is active in WIN1/WIN2 of [projects-and-builds-plan.md](plans/projects-and-builds-plan.md). The release workflow and Authenticode implementation are authorized and built on the Windows branch. Certificate provisioning, a signed trial and a public Windows release remain pending (spec 1.4; releases.md).
 - [ ] **Web client hosting** (Phase 3). Where the web build is served on the private network and how it is deployed.
 
 ## 2. Later phases and proposals

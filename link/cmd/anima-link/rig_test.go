@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/TheArctesian/anima/link/testpath"
 	"io"
 	"net"
 	"net/http"
@@ -78,7 +79,7 @@ func (o *output) String() string {
 // and the test's own temporary directory is too long on macOS.
 func stateDir(t *testing.T) string {
 	t.Helper()
-	path, err := os.MkdirTemp("/tmp", "anima-link-")
+	path, err := testpath.MkdirTemp("anima-link-")
 	if err != nil {
 		t.Fatal(err)
 	}

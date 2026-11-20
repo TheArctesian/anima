@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +21,7 @@ const HUB_ECHO_PREROUTING = `${HUB} icmp type echo-request ${REVERSE_PATH} accep
 const HUB_ECHO_INPUT = `${HUB} icmp type echo-request ${REVERSE_PATH} limit rate 5/second burst 10 packets accept`;
 const HUB_OTHERWISE = 'iifname "br-*" ip saddr $hub_source drop';
 
-describe("nftables.conf", () => {
+describe.skipIf(process.platform === "win32")("nftables.conf", () => {
   test("VPS-002: the input chain drops by default", () => {
     expect(input.table).toBe("inet anima_filter");
     expect(input.policy).toBe("drop");
@@ -63,7 +64,7 @@ describe("nftables.conf", () => {
   // checked the same way on alpine:3.22 with nftables 1.1.3, br_netfilter off and on (WP-52 T5).
 });
 
-describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => {
+describe.skipIf(process.platform === "win32")("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => {
   const OFF_VPN = 'iifname != { "lo", "tailscale0" }';
   const LOCAL_VPN_DROPS = [
     `${OFF_VPN} fib daddr type local ip daddr 100.64.0.0/10 drop`,
@@ -130,7 +131,7 @@ describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => 
   });
 });
 
-describe("configuration files", () => {
+describe.skipIf(process.platform === "win32")("configuration files", () => {
   const settings = (name: string): string[] =>
     readVps(name)
       .split("\n")

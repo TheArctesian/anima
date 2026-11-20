@@ -60,6 +60,33 @@ p {
   font-size: var(--text-md);
 }
 
+/* The one action of a page: the accent fill of the app's primary button (UI-004). */
+form {
+  margin: 0;
+}
+
+button {
+  block-size: var(--control-lg);
+  padding-inline: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+/* The app's hover step: the accent with a little of the text colour in it. */
+button:hover {
+  background: color-mix(in srgb, var(--text) 12%, var(--accent));
+}
+
+button:focus-visible {
+  outline: calc(var(--space-2) / 4) solid var(--accent);
+  outline-offset: calc(var(--space-2) / 4);
+}
+
 @media (max-width: 40rem) {
   main {
     grid-template-columns: minmax(0, 1fr);

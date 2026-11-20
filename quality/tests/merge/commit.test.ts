@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { mockupTable, recordText } from "../../src/documents/mockup-records.ts";
 import { checkMockups, MOCKUPS } from "../../src/documents/mockups.ts";
 import { layoutChangedSince } from "../../src/documents/screens.ts";
 import { commitThenCheck } from "../../src/merge/commit.ts";
@@ -23,9 +24,11 @@ function commit(root: string, path: string, text: string): string {
   return git(root, "rev-parse", "--short=8", "HEAD");
 }
 
-function index(compared: string): string {
-  const row = `| [containers/index.html](containers/index.html) | plan | [containers](../../${SCREEN}) | Built | \`${compared}\` | none |`;
-  return `# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n${row}\n`;
+const RECORD = "docs/mockup/records/containers.md";
+
+/** The record of the containers mockup, compared at `compared`. */
+function record(compared: string): string {
+  return recordText({ Mockup: "[containers/index.html](containers/index.html)", Owner: "plan", Screens: `[containers](../../${SCREEN})`, State: "Built", Compared: `\`${compared}\``, Differences: "none" });
 }
 
 /** A repository on `dev`, with a branch that changed the screen and then recorded that commit as compared. */
@@ -35,18 +38,19 @@ function repository(): string {
   git(root, "config", "user.name", "test");
   git(root, "config", "user.email", "test@anima.invalid");
   const first = commit(root, PAGE, "<p>one</p>\n");
-  commit(root, MOCKUPS, index(first));
+  commit(root, RECORD, record(first));
   git(root, "switch", "--quiet", "-c", "ui/containers");
   const built = commit(root, PAGE, "<p>two</p>\n");
-  commit(root, MOCKUPS, index(built));
+  commit(root, RECORD, record(built));
   git(root, "switch", "--quiet", "dev");
   return root;
 }
 
 /** The mockup check of the documents gate, on the files of the worktree and the commits of `root`. */
 function mockupCheck(root: string): string | undefined {
-  const text = readFileSync(join(root, MOCKUPS), "utf8");
-  const found = checkMockups([{ path: MOCKUPS, text }], (screen, at) => layoutChangedSince(root, screen, at));
+  const records = [{ path: RECORD, text: readFileSync(join(root, RECORD), "utf8") }];
+  const index = { path: MOCKUPS, text: `# Mockups\n\n${mockupTable(records)}\n` };
+  const found = checkMockups([index, ...records], (screen, at) => layoutChangedSince(root, screen, at));
   return found[0]?.signal;
 }
 

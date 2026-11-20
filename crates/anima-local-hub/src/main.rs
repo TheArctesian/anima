@@ -22,6 +22,8 @@
 //! `run` prints `ready` on standard output when the hub serves, and stops the group in order
 //! on SIGTERM or SIGINT. Nothing it prints holds a secret (LOG-007).
 
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod arguments;
 
 use std::io::Write as _;
@@ -57,6 +59,8 @@ pub(crate) const LISTEN: &str = "127.0.0.1:8443";
 type Failure = Box<dyn std::error::Error>;
 
 fn main() -> ExitCode {
+    #[cfg(windows)]
+    let _ = anima_windows::console::attach_parent();
     let outcome = match Arguments::parse().command {
         Command::Run {
             place,
@@ -151,7 +155,7 @@ struct User {
 
 impl User {
     fn current() -> Result<Self, Failure> {
-        let home = std::env::var_os("HOME")
+        let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
             .map(PathBuf::from)
             .filter(|home| home.is_absolute())
             .ok_or("HOME is not set to an absolute path")?;
@@ -165,7 +169,10 @@ impl User {
     fn request<'a>(&'a self, folders: &'a Folders, listen: Option<SocketAddr>) -> Request<'a> {
         Request {
             platform: Platform::HOST,
+            #[cfg(unix)]
             uid: nix::unistd::Uid::effective().as_raw(),
+            #[cfg(windows)]
+            uid: 0, // Unix-only field; Windows checks the current SID and ACLs.
             home: &self.home,
             folders,
             listen,

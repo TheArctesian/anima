@@ -7,7 +7,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anima_database::{Tree, backup, startup};
+#[cfg(unix)]
 use nix::sys::signal::{Signal, kill};
+#[cfg(unix)]
 use nix::unistd::Pid;
 
 use super::{RootCopyError, io_error};
@@ -33,10 +35,21 @@ impl Drop for Serving {
 pub(super) fn dump(carried: &Carried, folders: &Folders, file: &Path) -> Result<(), RootCopyError> {
     let tree = Tree::at(carried.tree())?;
     let spec = members::database(carried, folders);
-    let child = Command::new(&spec.program)
+    let mut command = Command::new(&spec.program);
+    command.env_clear();
+    #[cfg(windows)]
+    for name in ["SystemRoot", "WINDIR", "TEMP", "TMP"] {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
+    let child = command
         .args(&spec.args)
-        .env_clear()
-        .stdin(Stdio::null())
+        .stdin(if cfg!(windows) {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -82,10 +95,24 @@ fn wait_until_ready(
 
 /// Asks the database to stop and waits for it: the files must be at rest before the copy.
 fn stop(mut serving: Serving) -> Result<(), RootCopyError> {
-    let process = i32::try_from(serving.0.id())
-        .map_err(|_| RootCopyError::Database("its process number does not fit".to_owned()))?;
-    kill(Pid::from_raw(process), Signal::SIGTERM)
-        .map_err(|_| RootCopyError::Database("it took no stop signal".to_owned()))?;
+    #[cfg(unix)]
+    {
+        let process = i32::try_from(serving.0.id())
+            .map_err(|_| RootCopyError::Database("its process number does not fit".to_owned()))?;
+        kill(Pid::from_raw(process), Signal::SIGTERM)
+            .map_err(|_| RootCopyError::Database("it took no stop signal".to_owned()))?;
+    }
+    #[cfg(windows)]
+    {
+        use std::io::Write;
+        serving
+            .0
+            .stdin
+            .as_mut()
+            .ok_or_else(|| RootCopyError::Database("no stop pipe".into()))?
+            .write_all(b"stop\n")
+            .map_err(io_error("ask the database to stop"))?;
+    }
     let asked = Instant::now();
     loop {
         let ended = serving

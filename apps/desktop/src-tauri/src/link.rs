@@ -7,6 +7,10 @@
 //! web view; its form is checked first, it reaches `anima-link` on standard input only and it
 //! is never logged (LOG-007).
 
+#[cfg(unix)]
+mod copy;
+#[cfg(windows)]
+#[path = "link/copy/windows.rs"]
 mod copy;
 mod device;
 mod error;
@@ -15,9 +19,10 @@ mod joining;
 mod kept;
 mod printed;
 mod repair;
+mod restarts;
 mod state;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::{
@@ -27,7 +32,6 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
-    thread,
     time::Duration,
 };
 
@@ -40,9 +44,15 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
-pub use kept::{daemon_socket, hosted_hub_opened};
-pub use state::{DeviceState, Event};
+pub use kept::daemon_socket;
+pub use kept::hosted_hub_opened;
+#[cfg(windows)]
+pub use kept::owns_background;
+#[cfg(unix)]
+pub use state::DeviceState;
+pub use state::Event;
 use state::{Phase, Reason};
+use std::thread;
 
 const PROGRAM: &str = "anima-link";
 const RESTART_AFTER: Duration = Duration::from_secs(10);
@@ -99,7 +109,11 @@ fn folders() -> Result<LinkFolders, LinkError> {
 /// What `anima-link` may see of the app's environment: the home folder and the folder for
 /// temporary files.
 fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str, OsString)> {
-    ["HOME", "TMPDIR"]
+    #[cfg(unix)]
+    let names = ["HOME", "TMPDIR"];
+    #[cfg(windows)]
+    let names = ["USERPROFILE", "LOCALAPPDATA", "SystemRoot", "TEMP", "TMP"];
+    names
         .into_iter()
         .filter_map(|name| Some((name, read(name).filter(|value| !value.is_empty())?)))
         .collect()

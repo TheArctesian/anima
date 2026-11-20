@@ -5,17 +5,30 @@
 //! Only the main web view may ask (WEB-007). Every hold ends with the app (AWK-007): the OS
 //! ties each hold program to the app's process, and `release` runs at exit.
 
+#[cfg(windows)]
+#[path = "stay_awake/windows/journal.rs"]
+mod journal;
+#[cfg(windows)]
+#[path = "stay_awake/windows/lid_guard.rs"]
+mod lid_guard;
+#[cfg(windows)]
+pub use lid_guard::entry as guard_entry;
+
 mod control;
 mod error;
+#[cfg_attr(windows, path = "stay_awake/windows/hold.rs")]
 mod hold;
 mod level;
+#[cfg_attr(windows, path = "stay_awake/windows/lid_set_up.rs")]
 mod lid_set_up;
+#[cfg_attr(windows, path = "stay_awake/windows/platform.rs")]
 mod platform;
+#[cfg_attr(windows, path = "stay_awake/windows/power.rs")]
 mod power;
 mod saved;
 mod tray;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::{

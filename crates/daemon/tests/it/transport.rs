@@ -1,6 +1,8 @@
 //! The transport rules of K8 Section 1 (MET-020): no redirect, no proxy, no cookie.
 
+#[cfg(unix)]
 use std::fs::Permissions;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
@@ -37,7 +39,10 @@ async fn met_020_a_redirect_is_a_failed_request_and_is_not_followed() {
 /// A folder that only this user can reach, as the folder of the socket of the link must be.
 fn private_folder() -> tempfile::TempDir {
     let folder = tempfile::tempdir().expect("a folder");
+    #[cfg(unix)]
     std::fs::set_permissions(folder.path(), Permissions::from_mode(0o700)).expect("mode");
+    #[cfg(windows)]
+    anima_windows::files::protect(folder.path()).expect("private ACL");
     folder
 }
 
@@ -94,6 +99,7 @@ async fn k8_1_while_the_link_is_stopped_a_push_fails_and_goes_nowhere() {
     ));
 }
 
+#[cfg(unix)]
 #[test]
 fn k8_1_no_client_is_made_for_a_socket_that_a_different_user_could_put_there() {
     let open = private_folder();
@@ -321,3 +327,6 @@ async fn met_020_an_answer_of_60_kib_is_read_and_one_of_70_kib_is_cut_and_does_n
         }
     }
 }
+
+#[cfg(windows)]
+mod windows;

@@ -4,6 +4,7 @@
   import { useHub } from '$lib/hub/context';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import CodingAgents from './agents/CodingAgents.svelte';
+  import { capabilities } from '$lib/platform/platform';
   import BulkActions from './BulkActions.svelte';
   import { allowQuestion } from './allowance';
   import { groupTools, needsConfirmation, TOOLSET_COUNT, type McpChange } from './permissions';
@@ -20,7 +21,7 @@
     agents?: boolean;
   }
 
-  const { shell = desktopMcpShell, agents = true }: Props = $props();
+  const { shell = desktopMcpShell, agents = capabilities().commandLine }: Props = $props();
   const hub = useHub();
   // The hub address is fixed for the life of the section: changing the hub signs out and reloads the client.
   // svelte-ignore state_referenced_locally

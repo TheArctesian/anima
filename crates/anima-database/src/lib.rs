@@ -8,6 +8,7 @@ pub mod backup;
 mod cluster;
 mod layout;
 // Also for the program that runs the hub's group (S4): its key, state and logs are in the hub root.
+#[cfg_attr(windows, path = "owner_only/windows.rs")]
 pub mod owner_only;
 mod password;
 mod roles;
@@ -15,8 +16,10 @@ mod server;
 pub mod startup;
 mod tree;
 mod urls;
+#[cfg(windows)]
+mod windows;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod scratch;
 
 pub use cluster::ClusterError;
@@ -29,3 +32,6 @@ pub use urls::UrlError;
 use password::Password;
 use server::{Lock, Server, lock, stop_left_over};
 use tree::Program;
+
+#[cfg(all(windows, feature = "test-server"))]
+pub mod test_server;

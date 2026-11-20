@@ -1,3 +1,4 @@
+// Unix certificate-container scripts are exercised by the Linux/macOS gates.
 // deploy/certs/install.sh, the lego hook (DNS-002, SEC-001), run in a temporary folder.
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
@@ -36,7 +37,7 @@ async function run(env: Record<string, string> = {}, existing?: ReturnType<typeo
   return { exitCode: result.exitCode, output: result.stdout + result.stderr, dest, folder };
 }
 
-describe("install.sh", () => {
+describe.skipIf(process.platform === "win32")("install.sh", () => {
   test("DNS-002 writes key and chain as one tls.pem, mode 0400", async () => {
     const { exitCode, dest } = await run();
     expect(exitCode).toBe(0);
@@ -96,7 +97,7 @@ describe("install.sh", () => {
 
 });
 
-describe("install.sh stamp, folder and temporary file", () => {
+describe.skipIf(process.platform === "win32")("install.sh stamp, folder and temporary file", () => {
   test("DNS-002 reinstalls a file that was emptied, even though the content to install is unchanged", async () => {
     const env = setup();
     await run({}, env);

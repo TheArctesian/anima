@@ -9,7 +9,7 @@ export interface ThisMachine {
   readonly name: string;
   /** The OS user name of the app; empty when the OS gives none. */
   readonly user: string;
-  readonly os: Extract<OperatingSystem, 'MACOS' | 'LINUX'>;
+  readonly os: Extract<OperatingSystem, 'MACOS' | 'LINUX' | 'WINDOWS'>;
   /** Its IPv4 address on the Anima.ing VPN, from the VPN client logged in to the hub's login server (NET-001, ADR-005). */
   readonly vpnAddress: string;
   /** Whether SSH (TCP 22) accepted a connection on `vpnAddress`. */
@@ -38,7 +38,7 @@ function thisMachineFrom(answer: unknown): ThisMachine | null {
   if (!isRecord(answer)) return null;
   const { name, user, os, vpnAddress, sshListening } = answer;
   if (typeof name !== 'string' || typeof user !== 'string' || typeof sshListening !== 'boolean') return null;
-  if (os !== 'MACOS' && os !== 'LINUX') return null;
+  if (os !== 'MACOS' && os !== 'LINUX' && os !== 'WINDOWS') return null;
   if (typeof vpnAddress !== 'string' || !isVpnAddress(vpnAddress)) return null;
   return { name, user, os, vpnAddress, sshListening };
 }

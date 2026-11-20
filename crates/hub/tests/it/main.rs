@@ -20,6 +20,8 @@ mod jobs;
 mod link;
 mod links;
 mod listening;
+#[path = "transport/local_socket.rs"]
+mod local_socket;
 mod locations;
 mod login;
 mod logs;

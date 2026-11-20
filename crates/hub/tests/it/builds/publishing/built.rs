@@ -2,7 +2,7 @@
 //! (R-179; BLD-002, BLD-045, BLD-046, BLD-064 to BLD-069, UPD-008, UPD-010): a job signs, and a
 //! second job publishes with no hub and no database. Every key and token is made here.
 
-use std::{path::Path, process::Command};
+use std::path::Path;
 
 use minisign::KeyPair;
 use serde_json::Value;
@@ -44,9 +44,8 @@ impl Workflow {
     /// job that has `signer`'s key files, and the fake as the bucket.
     pub async fn run(&self, verb: &str, release: (&str, &str), folder: &Path) -> Ran {
         let secrets = self.secrets.path();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_anima-hub"));
+        let mut command = crate::transport::process::hub();
         command
-            .env_clear()
             .args(["release", verb, release.0, release.1])
             .arg(folder)
             .env("ANIMA_UPDATER_PUBLIC_KEY", public_key(&self.pair))
@@ -197,5 +196,47 @@ async fn r_179_a_trial_checks_the_files_and_reaches_no_bucket() {
         refused.printed.contains("notes.html"),
         "{}",
         refused.printed
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn windows_installer_is_signed_published_and_verified_before_its_feed() {
+    let workflow = Workflow::start().await;
+    let installer = File::new("Anima_0.2.2_x64-setup.exe", b"windows installer".to_vec());
+    let sum = format!(
+        "{}  {}\n",
+        hex(&Sha256::digest(&installer.bytes)),
+        installer.name
+    );
+    let folder = folder_of(&[
+        File::new(&installer.name, installer.bytes.clone()),
+        File::new("SHA256SUMS", sum),
+    ]);
+    let published = workflow
+        .release(("windows-x86_64", "0.2.2"), folder.path())
+        .await;
+    assert!(published.passed, "{}", published.printed);
+    let versioned = "windows-x86_64/0.2.2/Anima_0.2.2_x64-setup.exe";
+    assert_eq!(workflow.bytes(versioned).unwrap(), installer.bytes);
+    assert_eq!(
+        workflow.bytes("Anima-x86_64-setup.exe").unwrap(),
+        installer.bytes
+    );
+    let signature =
+        String::from_utf8(workflow.bytes(&format!("{versioned}.sig")).unwrap()).unwrap();
+    assert_eq!(
+        verified_version(&workflow.pair, &signature, &installer.bytes),
+        Ok("0.2.2".into())
+    );
+    let feed = workflow.feed("windows-x86_64/latest.json");
+    assert_eq!(feed["version"], "0.2.2");
+    assert_eq!(feed["platforms"]["windows-x86_64"]["signature"], signature);
+    assert_eq!(
+        feed["platforms"]["windows-x86_64"]["url"],
+        format!("{}/{versioned}", workflow.fake.public_base())
+    );
+    assert_eq!(
+        workflow.writes().last().map(String::as_str),
+        Some("windows-x86_64/latest.json")
     );
 }

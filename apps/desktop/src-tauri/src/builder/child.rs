@@ -37,6 +37,8 @@ const CHUNK: usize = 8192;
 struct Slot {
     busy: bool,
     group: Option<i32>,
+    #[cfg(windows)]
+    job: Option<anima_windows::job::Job>,
     cancelled: bool,
     /// The `reaper::MARKER` value of the step's processes.
     marker: Option<String>,
@@ -111,6 +113,8 @@ impl Running {
             if slot.busy {
                 slot.cancelled = true;
                 kill_group(slot.group);
+                #[cfg(windows)]
+                drop(slot.job.take());
                 if let Some(marker) = &slot.marker {
                     reaper::kill_marked(marker);
                 }
@@ -193,12 +197,23 @@ impl Claim<'_> {
             .kill_on_drop(true);
         #[cfg(unix)]
         process.process_group(0);
+        #[cfg(windows)]
+        process.creation_flags(anima_windows::job::SUSPENDED);
         let group = self.running.with_slot(|slot| {
             if slot.cancelled {
                 return Err(BuilderError::Cancelled);
             }
             let mut child = process.spawn().map_err(|_| BuilderError::Failed)?;
-            slot.group = child.id().and_then(|id| i32::try_from(id).ok());
+            #[cfg(unix)]
+            {
+                slot.group = child.id().and_then(|id| i32::try_from(id).ok());
+            }
+            #[cfg(windows)]
+            {
+                let pid = child.id().ok_or(BuilderError::Failed)?;
+                slot.job =
+                    Some(anima_windows::job::Job::start(pid).map_err(|_| BuilderError::Failed)?);
+            }
             Ok((child.stdout.take(), child.stderr.take(), child))
         });
         let (stdout, stderr, mut child) = group?;
@@ -208,6 +223,8 @@ impl Claim<'_> {
         let status = child.wait().await;
         // Anything the step left, in its group or out of it, would hold the output open.
         let group = self.running.with_slot(|slot| {
+            #[cfg(windows)]
+            drop(slot.job.take());
             let group = slot.group.take();
             kill_group(group);
             group

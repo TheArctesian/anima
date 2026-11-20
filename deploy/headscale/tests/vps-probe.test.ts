@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -16,6 +17,7 @@ const PROBE = "anima-probe:x:10002:10002::/home/anima-probe:/bin/bash";
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
@@ -26,7 +28,7 @@ function keyFile(text: string): string {
   return `--key=${file}`;
 }
 
-describe("harden.sh probe makes the hub's SSH user (VP-13 F1)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh probe makes the hub's SSH user (VP-13 F1)", () => {
   test("VP-13 makes group and user 10002 with a home and bash, and installs the key with the hub's options", () => {
     const run = host.run([keyFile(`${KEY}\n`), "probe"]);
     expect(run.code).toBe(0);
@@ -87,8 +89,9 @@ describe("harden.sh probe makes the hub's SSH user (VP-13 F1)", () => {
   });
 });
 
-describe("harden.sh check reports an anima-probe that is more than the hub's user (VP-13 F6)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check reports an anima-probe that is more than the hub's user (VP-13 F6)", () => {
   beforeEach(() => {
+  if (process.platform === "win32") return;
     host.harden();
     host.write(KEYS, `${OPTIONS} ${KEY}\n`, 0o600);
   });
