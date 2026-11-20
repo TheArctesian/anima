@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: Version 6 (2026-11-19): R-243 (operator, first-hand, 2026-11-19, 16:41 to 16:50 PT) folds the idea `agent-multiplexer-routing` in: the view of all agents on all devices (AXT-046 to AXT-052, Section 6.8) moves out of the deferred list and reopens OD-AXT10; Herdr stays hosted as it is (R-196); routing goes to jobs.md (ROU-001 to ROU-014). AXT-046 to AXT-052 are not approved. Version 5 (2026-11-18). R-196 (operator, first-hand, 2026-11-18 23:08 to 23:16 PT) decides OD-AXT1 to OD-AXT18, so the direction is decided (PLN-007). The requirements AXT-001 to AXT-045 are not approved: that is a separate step (task AX1). No task is built, and only AX0, a record, may start. Code state checked against origin/main at `cdd720ef`; the document is rebased on `9da268f4`. Serves row 4.21 of the priorities (tier 3, after row 4.7; R-196, OD-AXT11).
+evidence: Version 7 (2026-11-20): Section 6.9 plans the shared project folder (AXT-054 to AXT-078, tasks AX20 to AX38) from relayed operator direction; OD-AXT22 to OD-AXT30 are open, and nothing of Section 6.9 is approved or built. Version 6 (2026-11-19): R-243 (operator, first-hand, 2026-11-19, 16:41 to 16:50 PT) folds the idea `agent-multiplexer-routing` in: the view of all agents on all devices (AXT-046 to AXT-052, Section 6.8) moves out of the deferred list and reopens OD-AXT10; Herdr stays hosted as it is (R-196); routing goes to jobs.md (ROU-001 to ROU-014). AXT-046 to AXT-052 are not approved. Version 5 (2026-11-18). R-196 (operator, first-hand, 2026-11-18 23:08 to 23:16 PT) decides OD-AXT1 to OD-AXT18, so the direction is decided (PLN-007). The requirements AXT-001 to AXT-045 are not approved: that is a separate step (task AX1). No task is built, and only AX0, a record, may start. Code state checked against origin/main at `cdd720ef`; the document is rebased on `9da268f4`. Serves row 4.21 of the priorities (tier 3, after row 4.7; R-196, OD-AXT11).
 ---
 
 # Proposal: agent tools as extensions (an extension host for tools on the operator's machines)
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: agent tools as extensions. A host that opens a tool of another vendor, which runs on a machine of the operator, in a pane of the client |
-| Version | 6 |
-| Date | 2026-11-19 |
+| Version | 7 |
+| Date | 2026-11-20 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. Version 3 adds the list of later entries (Section 6.5.1), constraint C6 and OD-AXT16 and OD-AXT17. Version 4 replaces that list with the strict list and its filter, and adds OD-AXT18. Version 5 records R-196: all eighteen decisions are decided; T3 Code is in the catalogue with guardrails (constraint C2, AXT-045); Pi replaces Aider in bots.md; Open WebUI is a rival; the shared install counts are in version 1 (AXT-044); the changes of Section 7 that the decisions permit are made. The state is Direction decided. The requirements are not approved (task AX1). Version 6 records R-243: the idea `agent-multiplexer-routing` is folded in; its folder is deleted. Part (a), Herdr in a pane, is already AXT-014, AXT-020, AXT-024, AXT-026 and AXT-030 (R-196, OD-AXT2). Part (b), the view of which agent runs on which device, is Section 6.8. Part (c), automatic routing, is in [jobs.md](jobs.md) (ROU-001 to ROU-014). |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. Version 3 adds the list of later entries (Section 6.5.1), constraint C6 and OD-AXT16 and OD-AXT17. Version 4 replaces that list with the strict list and its filter, and adds OD-AXT18. Version 5 records R-196: all eighteen decisions are decided; T3 Code is in the catalogue with guardrails (constraint C2, AXT-045); Pi replaces Aider in bots.md; Open WebUI is a rival; the shared install counts are in version 1 (AXT-044); the changes of Section 7 that the decisions permit are made. The state is Direction decided. The requirements are not approved (task AX1). Version 6 records R-243: the idea `agent-multiplexer-routing` is folded in; its folder is deleted. Part (a), Herdr in a pane, is already AXT-014, AXT-020, AXT-024, AXT-026 and AXT-030 (R-196, OD-AXT2). Part (b), the view of which agent runs on which device, is Section 6.8. Part (c), automatic routing, is in [jobs.md](jobs.md) (ROU-001 to ROU-014). Version 7 adds Section 6.9, the shared project folder (relayed direction; OD-AXT22 to OD-AXT30 open). |
 | Serves | Row 4.21 of [priorities.md](../plan/priorities.md): tier 3, after row 4.7 (R-196, OD-AXT1, OD-AXT11) |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 2.8 (EXT-009), 2.8.1, 3.4 and 4.12 (AIS-009 to AIS-024); [bots.md](bots.md) (BOT-001 to BOT-078); the design specification Section 6.3.4 (WEB-001 to WEB-010); [hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049); [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (task H1, fixed commands through SSH) |
-| Identifiers | AXT-001 to AXT-053, OD-AXT1 to OD-AXT18 (decided, R-196; OD-AXT10 reopened by R-243), OD-AXT19 to OD-AXT21 (decided, R-244), tasks AX0 to AX19 |
+| Identifiers | AXT-001 to AXT-078 (AXT-054 to AXT-078: the shared project folder, Section 6.9), OD-AXT1 to OD-AXT18 (decided, R-196; OD-AXT10 reopened by R-243), OD-AXT19 to OD-AXT21 (decided, R-244), OD-AXT22 to OD-AXT30 (open), tasks AX0 to AX38 |
 
 ## 1. Goal
 
@@ -280,6 +280,60 @@ The operator, first-hand (R-243): "Multiplexer Q1: fold the multiplexer and agen
 - **AXT-052.** A device that is offline keeps its last rows with the state Unknown and the time when the hub last heard from it.
 - **AXT-053.** When an agent is in the state Waiting for input, the hub sends one alert through the needs-you inbox (idea `needs-you-inbox`), not through a second alert path (R-244, OD-AXT20). [NEEDS CLARIFICATION: the session files give only Active and Idle, so in version 1 an alert needs a source that can tell Waiting for input (AX17); and the needs-you inbox is an idea, not a plan.]
 
+### 6.9 Shared project folder (relayed direction, not approved)
+
+Source: the vault brief "Shared Project Folder" (vault `55154f8`) and a competitor feature list in the vault (vault `0b75704`), from Anima Product Ideas, 2026-11-20. This section copies behaviour only. It does not use the name, the logo or the marketing text of a competitor. The competitor's hosted service is closed; its SDK and command line are Apache-2.0, and this plan does not use them.
+
+**Direction (relayed, not a ruling).** The operator gave these answers first-hand in the chat of Anima Product Ideas on 2026-11-20 at 10:57 PT. They reached the Planner relayed, so they are operator direction until he confirms them first-hand (OD-AXT22 to OD-AXT24). His words: (1) "First version: a directory the hub syncs"; (2) "Yes, reverse MCP-001 for the hosted hub only and extend Remote MCP over HTTP"; (3) "Under 4.21". A fourth answer is in the business vault only. The principle of R-243 applies: support and host the open-source tools as they are, and do not build a second one (Syncthing for the sync, the crates of ripgrep for the search, rclone for the mount).
+
+**Goal.** People and agents on enrolled machines, and jobs on cloud machines, hand work off through the same live files. The folder is in the existing client and command line; there is no second application.
+
+**Wave 1** is AXT-054 to AXT-072. **Wave 2** is AXT-073 to AXT-078 (a filesystem product). Nothing in this section is approved; AXT-001 to AXT-045 are also not approved (AX1).
+
+#### 6.9.1 The folder and the sync (wave 1)
+
+- **AXT-054.** A shared project folder is a folder that the hub owns. A hub can have more than one. Each folder has a name, the list of the devices that sync it, its tokens (AXT-062) and its audit events. Only the operator makes, renames or deletes a folder. [NEEDS CLARIFICATION: the number of folders and the size limit of a folder on a hosted hub.]
+- **AXT-055.** The first version is a directory that the hub syncs (direction (1), OD-AXT22). The copy of record is on the hub (OD-AXT30). Each device that the operator adds gets a real directory on its disk that stays in sync. There is no mount in wave 1.
+- **AXT-056.** The sync engine is Syncthing (MPL-2.0), hosted as it is (OD-AXT29): the official release (AXT-029), in the supported versions (AXT-035). It runs as a separate process beside the hub and on each device. It is not code in the hub process (AXT-003). Anima writes its configuration: global discovery, the public relays, usage reports and the automatic upgrade are off (R-249: updates by the act of the operator).
+- **AXT-057.** The peers form a star. A device dials only the peer of the hub. A device listens on no port other than the loopback address (AXT-008, BOT-064). The peer of the hub listens on the VPN interface of a self-hosted hub (NET-003), or through the link of a hosted hub (HMD-048, R-250). [NEEDS CLARIFICATION: the port of the link for the sync, which the owner of HMD-049 designs with R-250.]
+- **AXT-058.** The folder must not sync these by default: `.git/`, `.env` and `.env.*`, `*.pem`, `*.key`, the SSH key files `id_*`, and `node_modules/`. The operator can add a pattern. [NEEDS CLARIFICATION: can the operator remove a default pattern?]
+- **AXT-059.** When two devices change the same file, the folder must keep both versions. The second one becomes a conflict copy, a file of its own. The client shows each conflict copy on the folder page. Wave 1 has no automatic merge.
+- **AXT-060.** Each file has a revision (a number and the SHA-256 of the content). Each write through the hub API, the command line or MCP must send `expectedRevision`, as WRT-003 does for a draft. When the file changed, the hub must refuse the write with the error `STALE_REVISION` and the current revision, and must write nothing. A new file sends no revision and fails when the file exists.
+- **AXT-061.** A change in the synced directory of a device is not checked by revision. AXT-059 applies to it. The client and the user documentation must say so in plain words.
+
+#### 6.9.2 Folder tokens (wave 1)
+
+- **AXT-062.** A folder token gives access to one folder, or a path in it, for read or for read and write, for 5 minutes to 12 hours (default 1 hour). The operator can revoke it. The hub records each mint, use and revoke in the audit log, with no token value (LOG-007).
+- **AXT-063.** The hub mints the token. It gives the token to a machine for one job over the relay as a secret, and the machine deletes it when the job ends, as JOB-010 does for a project secret (OD-AXT26). A token must never be in a prompt, an argument, a URL, a log or an MCP result (MCP-004, CMD-014, LOG-007). No MCP tool makes a token. An MCP tool can list the tokens (name, access, folder, end time) and revoke one (MCP-007).
+- **AXT-064.** A token holder uses the hub API only (the command line, MCP or HTTP). It never becomes a sync peer.
+- **AXT-065.** A token and an MCP write must never write, delete or rename an instruction file: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/`, `.cursor/`, `.claude/` and `.mcp.json`, also with read and write access. Only a signed-in person changes them, in the client or with the command line. A program on a synced device of the operator can still change them; the token sheet must say so. [NEEDS CLARIFICATION: the full list, and if the operator can add to it.]
+- **AXT-066.** Routing (ROU-003) and the placement of a job (R-270, OD-W53) must never give a folder token to a machine that the job could not get without them.
+
+#### 6.9.3 Search without a download (wave 1)
+
+- **AXT-067.** The hub searches its copy of record with the library crates of ripgrep (`grep`, `ignore`; MIT or Unlicense): a word, a phrase, a regular expression and a glob. A search has a limit of results, of time and of characters for each line. A hit gives the path, the line number and the cut line (AXT-069). A search index is later (Section 6.9.6).
+
+#### 6.9.4 Interfaces and MCP (wave 1, CMD-030 order)
+
+- **AXT-068.** The order is: the hub API in K1, then `anima folder` (`list`, `ls`, `cat`, `grep`, `put`, `mv`, `rm`, `device add`, `device remove`, `token issue`, `token list`, `token revoke`), then the MCP tools, then the client. A sketch of the tool names (MCP-011): `anima_folder_list`, `anima_folder_entries_list`, `anima_folder_glob`, `anima_folder_file_read`, `anima_folder_grep`, `anima_folder_file_write`, `anima_folder_entry_move`, `anima_folder_entry_delete`, `anima_folder_token_list`, `anima_folder_token_revoke`. `token issue` has no MCP tool (AXT-063).
+- **AXT-069.** MCP-008 applies to the content of a file and to the line of a search hit (OD-AXT28). Each is given in a named field (`content`, `line`), cleaned and cut by `mcp/untrusted.rs`. [NEEDS CLARIFICATION: the limits; proposed 64,000 characters for `content` and 500 for `line`.] A binary file gives no content, only its name, size and revision. The server instructions get one line for the text of a folder.
+- **AXT-070.** The rule "No MCP tool returns file content" (operator, 2026-11-14, Section 7 "Tools" of [cli-mcp-plan.md](../plans/cli-mcp-plan.md)) gets one exception: the files of a shared project folder (OD-AXT25). `Query.codeFile` of the Projects slice keeps the rule. The read tools are `allow` (R-120). Write, move and delete are change tools; delete is destructive (MCP-025, MCP-026, MCP-007).
+- **AXT-071.** For a hosted hub only, MCP is also a remote server over HTTP (direction (2), OD-AXT23). It extends the idea `remote-mcp-over-http`; this plan does not start a second one. The hosted hub serves MCP (Streamable HTTP) at `https://hub.anima.ing/mcp`, through the gateway (HMD-061), behind OAuth with the Anima.ing account. It has the tools and the states of `anima mcp`; the states for each connected client are kept in the hub; each call is in the audit log (MCP-026). A self-hosted hub keeps standard input and output only (MCP-001 stays for it). HMD-067 applies before a person other than the operator uses it. [NEEDS CLARIFICATION: which tool sets the first version lists (question 2 of the idea); and whether the OAuth server is the OIDC provider of R-245 (Arcane Q3), whose owner is OD-ARC3.]
+- **AXT-072.** The client gets a page "Folders" (mockup [shared-project-folder](../mockup/shared-project-folder/index.html)): the files with their revisions, the devices and their sync state, the conflict copies, the protected files and the tokens.
+
+#### 6.9.5 Wave 2 (a filesystem product)
+
+- **AXT-073.** `anima folder mount` mounts a folder with rclone (MIT), hosted as it is, against the file API of the hub, on macOS, Linux and Windows. On Windows it needs WinFsp. `.git/` and `.env` stay local. [NEEDS CLARIFICATION: the protocol that rclone uses with the hub (WebDAV or HTTP), and the mount on macOS without a kernel extension.]
+- **AXT-074.** The file API reads a range of bytes and writes at an offset, with the revision check of AXT-060.
+- **AXT-075.** The hub merges changes that do not overlap: the lines of a text file (a three-way merge from the base revision) and the rows of a CSV file with a key column. Else AXT-059 applies.
+- **AXT-076.** A short-lived file link lasts 60 to 3,600 seconds and supports range downloads. It goes only through the gateway or the relay, to a signed-in caller or a valid folder token (OD-AXT27). There is no public link (RA-035, R-111, SEC-008).
+- **AXT-077.** A deleted file goes to a trash on the hub (the trash-can versioning of Syncthing on the peer of the hub). The operator can restore it. The client must say in plain words that the backups of the operations team are not a rewind for the user. [NEEDS CLARIFICATION: how many days; proposed 30.]
+- **AXT-078.** When the operator makes a folder, the client can offer a starter team-memory folder: a `README.md`, an index page and a short skill file for agents, in STE.
+
+#### 6.9.6 Later (not in a wave)
+
+A search index on the hub; sharing a folder with a person who is not the operator (RA-035, R-111); a phone client for the folder.
+
 ## 7. Changes to other documents (R-196)
 
 R-196 decides each decision of this table. The commit of R-196 makes the changes that a decision alone permits ("Made"). The changes that need the approval of AXT-001 to AXT-045 or a contract ruling (CON-001) wait for task AX2 ("Waits").
@@ -302,6 +356,13 @@ R-196 decides each decision of this table. The commit of R-196 makes the changes
 | [compute-plan.md](../plans/compute-plan.md) Section 8 | A direction note: the Chat page becomes a full chat page; Open WebUI is a rival. No requirement; a later pass of the Planner writes them. | OD-AXT18. Made. |
 | [deferred.md](../deferred.md) | The list "R-196: agent tools as extensions". | R-196. Made. |
 | [priorities.md](../plan/priorities.md) row 4.21 | From the placeholder to its tier and state: tier 3, after row 4.7; Direction decided. | OD-AXT11. Made. |
+| [cli-mcp-plan.md](../plans/cli-mcp-plan.md) MCP-001 | Add: "Exception: a hosted hub also serves MCP over HTTP (AXT-071)." | OD-AXT23, a ruling. Waits. |
+| cli-mcp-plan.md Section 7 "Tools", the rule "No MCP tool returns file content"; [extensions-plan.md](../plans/extensions-plan.md) Section 4.2, "Private code" | Add the one exception for the files of a shared project folder (AXT-070). `codeFile` does not change. | OD-AXT25, a ruling. Waits. |
+| cli-mcp-plan.md MCP-008 | Add: "and the content of a file and the line of a search hit of a shared project folder (AXT-069)". | OD-AXT28, a ruling. Waits. |
+| `contracts/schema.graphql` (K1), `contracts/database.md` (K2), `contracts/hub-domains.md` (K3), `quality/hub-modules.json` | The types of folders, files, revisions, tokens and search; the tables; a domain, for example `fleet/folders`. A separate change of K1 from R-270. | The approval of AXT-054 to AXT-078, CON-001. Waits (AX22). |
+| [hosted-mode.md](hosted-mode.md) HMD-049, with R-250 | A port of the link for the sync of the peer of the hub (AXT-057), and the route `/mcp` of the gateway (AXT-071). | The owner of HMD-049, CON-001. Waits (AX22). |
+| [ownership.md](../plan/ownership.md), [priorities.md](../plan/priorities.md) row 4.21, [register.md](../plan/register.md) | The shared project folder in the row of this document. | Made (no ruling: it records where the subject is planned, PLN-004). |
+| The idea `remote-mcp-over-http` | A review entry: AXT-071 extends it for the hosted hub only. The folder stays until OD-AXT23 is confirmed; the commit of that ruling deletes it (PLN-018). | Made. |
 
 ## 8. Reviews
 
@@ -405,6 +466,77 @@ PaneTicket   { grant, session, expiresAt }          -- one use, as the session t
 | HMD-048, HMD-049 (the link) | None with choice (a) of OD-AXT6 | Hosted mode | None. |
 | MCP rules (MCP-004, MCP-006) | None. One read tool only. | Each MCP client | None. |
 
+### 8.5 Shared project folder (Section 6.9): reviews
+
+Code state checked on 2026-11-20 against `origin/dev` at `e9a34fb8` (keyword search and a read of the named files, not a full read):
+
+- No folder, sync or file domain in the hub: `crates/hub/src/fleet/` has no `folders` module, and `contracts/schema.graphql` has no type for a shared folder. `rg -i "syncthing|sharedfolder" crates contracts` finds only the error `SharedFolder` in `crates/anima-database/src/backup.rs` and `crates/anima-local-hub/src/root_copy.rs`, which refuses a backup target in a shared folder; it is not this subject.
+- The MCP server is `crates/anima-cli/src/mcp/`. `crates/anima-cli/src/mcp/untrusted.rs` cleans and cuts the text of GitHub (`BODY_CAP` is 4,000 characters). It has no case for the content of a file, because no tool returns one.
+- `Query.codeFile` exists in K1 (`contracts/schema.graphql`, line 3444) and has no MCP tool (cli-mcp-plan.md Section 7 "Tools").
+- The SFTP file panel of RA-032 is a session to one device. The RDP drive of RA-021 is for each device. Neither is a shared folder.
+- The Writing extension uses `expected_revision` (WRT-003); AXT-060 follows that pattern.
+- Not verified: the paths above are read from the plan text and a search; the Planner did not run the code.
+
+**Scope review.**
+
+| Mode | What it means here | Verdict |
+| --- | --- | --- |
+| Expand | A hosted drive with its own file system, sharing with other people, a phone client, a search index | No. A drive product is off the position of Anima.ing (machines that agents run on), and sharing breaks RA-035 and R-111. |
+| Selective | A directory that the hub syncs with Syncthing, revisions on API writes, folder tokens, grep on the copy of record, MCP file tools, remote MCP on the hosted hub | Yes, wave 1. It is the narrowest version that cloud jobs can use with no mount. |
+| Hold | Wave 2 (mount, ranges, merges, links, trash, team memory) | Yes until wave 1 is measured and the operator asks for a drive product. |
+| Reduce | Local `anima mcp` file tools only, no remote MCP | No: direction (2) asks for remote MCP on the hosted hub. It stays the fallback if OD-AXT23 is no. |
+
+**Design scores** (judgement of the Planner, 2026-11-20, 0 to 10; not a measurement).
+
+| Dimension | Score | Why, and what raises it |
+| --- | --- | --- |
+| Reuse of open source | 8 | Syncthing, the ripgrep crates and rclone, hosted as they are (R-243). Raise to 9 when AX20 shows the star through the link works. |
+| Secret safety | 6 | Default ignore patterns (AXT-058), tokens on the JOB-010 path, no token in MCP. A person can still put a secret in a normal file, and a remote assistant can read it (OD-AXT25). |
+| Instruction safety | 5 | File text is data (AXT-069), and tokens cannot change instruction files (AXT-065). A synced device of the operator can still change them, and a read tool brings text that can hold instructions. |
+| Fit with rulings | 5 | Four rules need a ruling (MCP-001, the file-content rule, MCP-008, the link port); see Section 9. |
+| Dependency risk | 5 | Wave 1 needs the host (AX1, AX3) for the Syncthing manifest, the link port (R-250) and, for remote MCP, an OAuth server (OD-ARC3). |
+| Testability | 7 | Revisions, tokens, protected paths and limits have automatic tests. The sync through the link needs a hand check. |
+| Reversibility | 7 | A folder can stop sync; files stay on the devices. A remote MCP connection can be revoked. |
+| Effort realism | 5 | About six to nine weeks for one person for wave 1 (an estimate), after AX1 and AX3. |
+
+**Engineering review.** Types (a sketch for the contract review, not a contract):
+
+```text
+SharedFolder { id, name, devices: [FolderDevice], createdAt }
+FolderDevice { deviceId, state: IN_SYNC | SYNCING | OFFLINE | ERROR, lastSeen }
+FolderEntry  { path, kind: FILE | DIRECTORY, size, revision: Revision, changedAt, changedBy, protected: bool, conflictOf: path? }
+Revision     { number: u64, sha256 }
+FolderToken  { id, name, folderId, path, access: READ | READ_WRITE, endsAt, lastUsedAt }   (never the value)
+writeFolderFile(folderId, path, expectedRevision: Revision?, content) -> FolderEntry | STALE_REVISION | PROTECTED_PATH
+```
+
+Failure modes and tests: a stale write writes nothing (test); a token write to each protected path fails (test for each pattern); an expired or revoked token is refused at the next request (test); no MCP result holds a token (test, MCP-004); a token for a job is deleted on the machine when the job ends (test, JOB-010); a search stops at its limits (test); a file of 10 MB gives cut content and a binary file gives no content (test); the Syncthing configuration has discovery, relays, usage reports and upgrades off (test of the written file); a device peer listens on loopback only (AX20 record); the hub peer is reachable only on the VPN or the link (hand check, SEC-008).
+
+**Blast radius on shared contracts.**
+
+| Shared item | Change | Who else uses it | Action |
+| --- | --- | --- | --- |
+| K1 `contracts/schema.graphql` | Folder types, queries and mutations; a change separate from the job fields of R-270 | Command line (CMD-031), MCP, client, mock hub fixtures | CON-001 ruling (AX22). |
+| K2, K3, `quality/hub-modules.json` | Tables for folders, revisions and tokens; a domain `fleet/folders` | Backups, retention, import gates | CON-001 ruling. |
+| HMD-048, HMD-049 (the link) | A port of the link for the sync, and the gateway route `/mcp` | Hosted mode, the relay tests | The owner of HMD-049, with R-250. |
+| MCP-001, MCP-008, the file-content rule | Exceptions (OD-AXT23, OD-AXT25, OD-AXT28) | Each MCP client | Rulings. |
+| JOB-010, ROU-003, R-270 placement | A folder token goes the path of a project secret; routing and placement never widen it | Jobs and routing (row 4.7) | No change of text; tests in AX25. |
+| AXT host (AXT-003, AXT-008, AXT-029, AXT-035) | Syncthing is one more manifest; it listens on loopback only on a device | The catalogue | A catalogue entry, with AX1. |
+
+**Interactions with recent rulings.**
+
+| Ruling | Interaction |
+| --- | --- |
+| R-226 to R-233, R-246 | Syncthing does not run as a container of the hosted-applications plan, so the applications program, the profile `contained` and the local-only ports (R-229) do not apply. If the operator wants it as a container, R-229 blocks the sync port; AXT-057 avoids that because a device only dials. |
+| R-234 | Not affected: no container work. |
+| R-237 | Not affected: wave 1 does not wait for H30. |
+| R-241, R-242 | The public path of the observability extensions is not used. File links (AXT-076) go through the gateway or the relay only. |
+| R-249 | Syncthing updates by the act of the operator, not by itself (AXT-056). |
+| R-250 | The sync of a hosted hub goes through the link; the design of R-250 must cover it (AXT-057). |
+| R-243, R-244 (OD-ROU1) | Routed work that opens a session or a command line never gets a folder token that it could not get without routing (AXT-066). |
+| R-245 (Arcane Q3), OD-ARC3 | One OAuth or OIDC provider can serve the remote MCP server and the Arcane pane; its owner is open (OD-ARC3). |
+| R-270 | The folder fields of K1 are a change separate from the job and placement fields of R-270. A folder token follows the `placement` of a job (AXT-066). |
+
 ## 9. Decisions
 
 Each row asks one question with yes, no or one choice, and gives the recommendation of the Planner (PLN-018, PLN-021). The operator answered each row first-hand on 2026-11-18, 23:08 to 23:16 PT, and R-196 records the answers.
@@ -432,6 +564,15 @@ Each row asks one question with yes, no or one choice, and gives the recommendat
 | OD-AXT19 | Where does the state of a Herdr pane come from? (one choice: a state interface of Herdr, if one exists (task AX17 checks); the hook protocol of the idea `agent-state-hooks`, built first; only Active or Idle from the session files in version 1) | Decided (R-244): "OD-AXT19: the daemon's session files in v1, then Herdr's own interface once AX17 finds one." As recommended. AXT-047. |
 | OD-AXT20 | Does the view send an alert when an agent waits for input? (yes/no) | Decided (R-244): "OD-AXT20: yes, alert when an agent waits for input." Against the recommendation. The alert goes through the needs-you inbox (AXT-053). |
 | OD-AXT21 | Does the Agents page replace the link list of PNL-002, or add a tab beside it? (one choice: replace; a tab "All devices") | Decided (R-244): "OD-AXT21: the Agents page is a new tab beside the PNL-002 list." Against the recommendation. AXT-046. |
+| OD-AXT22 | Do you confirm, first-hand, the relayed direction (1): the first version of the shared project folder is a directory that the hub syncs, not a hosted drive with its own file system? (yes/no) | Yes. Strength: the files are real files on each device, so agents and editors need no new tool, and the hub stores only one copy. Weakness: a change on a device is not checked by revision (AXT-061). | Open. Recommendation: yes. Relayed operator direction (Product Ideas chat, 2026-11-20, 10:57 PT): "First version: a directory the hub syncs". |
+| OD-AXT23 | Do you confirm, first-hand, the relayed direction (2): MCP-001 changes for the hosted hub only, which also serves MCP over HTTP behind the Anima.ing sign-in, and this extends the idea `remote-mcp-over-http`? (yes/no) | Yes. Strength: cloud jobs and cloud assistants reach the folder with no mount and no stdio, and a self-hosted hub stays off the internet. Weakness: it needs an OAuth server and the security review of HMD-067 before it ships. | Open. Recommendation: yes. Relayed (same chat): "Yes, reverse MCP-001 for the hosted hub only and extend Remote MCP over HTTP". |
+| OD-AXT24 | Do you confirm, first-hand, the relayed direction (3): the shared project folder is part of row 4.21 and of this document? (yes/no) | Yes. Strength: one owner (PLN-004), and it uses the host for Syncthing. Weakness: row 4.21 is tier 3, after row 4.7, so wave 1 waits. | Open. Recommendation: yes. Relayed (same chat): "Under 4.21". |
+| OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow` (R-120)? (one choice: yes, an exception for the folder only; no, the folder has no read tool and agents use the synced directory or the mount; yes, but the read tools are `ask` by default) | Yes, an exception for the folder only. Strength: the operator puts files there for agents, the default ignore list keeps the usual secret files out (AXT-058), and `codeFile` keeps the rule. Weakness: a secret that a person puts in a normal file reaches the assistant. | Open. Recommendation: yes, an exception for the folder only. |
+| OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL or an MCP result? (yes/no) | Yes. Strength: it uses a path that the plan already has, and no MCP tool can leak a token. Weakness: an agent cannot make a token for a helper by itself; a person or a job definition does it. | Open. Recommendation: yes. |
+| OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; public signed links) | Only through the gateway or the relay to a signed-in caller or a token. Strength: it keeps SEC-008, NET-003, HMD-011 and RA-035 (R-111). Weakness: a link cannot go to a person or a tool with no Anima.ing sign-in or token. | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. |
+| OD-AXT28 | Does MCP-008 also cover the content of a file and the line of a search hit, in named fields with a limit? (yes/no) | Yes. Strength: a small change of a rule that exists, and the server tells the agent not to obey file text. Weakness: a limit cuts long files; the agent must read in parts (AXT-074 in wave 2). | Open. Recommendation: yes. |
+| OD-AXT29 | Which sync engine? (one choice: Syncthing (MPL-2.0), hosted as it is through the host of this document; a sync that Anima.ing writes in the daemon) | Syncthing. Strength: the principle of R-243, a mature engine with conflict copies and versioning, and no new protocol to secure. Weakness: wave 1 waits on AX1 and AX3 (the host), and Anima.ing depends on its configuration and releases. | Open. Recommendation: Syncthing. |
+| OD-AXT30 | Where is the copy of record? (one choice: on the hub, with a Syncthing peer beside the hub; on one enrolled device that the operator names, and the hub only routes) | On the hub. Strength: a cloud job and the remote MCP server read the folder when the devices are off. Weakness: it uses the disk of the hub, and a hosted hub has a limit (AXT-054). | Open. Recommendation: on the hub. |
 
 ## 10. Tasks
 
@@ -459,6 +600,25 @@ One pull request for each task. The size of each task is a few hours to three da
 | AX17 | 2 | A record: the state sources of AXT-047 on a Mac and a Linux machine (Herdr's interface if any, the session files), with the states that each gives (OD-AXT19) | AX1 | Not started | — |
 | AX18 | 3 | The hub and the daemon: the rows of AXT-046 to AXT-048 and AXT-052; the alert of AXT-053 to the needs-you inbox; the command `anima agents list`; the MCP read tool `anima_agents_list` (AXT-050) | AX17, AX4 | Not started | — |
 | AX19 | 4 | The client: the Agents page of AXT-046, AXT-049 and AXT-051; the mockup `agent-routing` frame 1 compared | AX18 | Not started | — |
+| AX20 | F0 | A record: Syncthing as the folder engine on a Mac, a Linux machine and Windows: the star with a device that only dials, the peer of the hub on a VPN hub and through a test link (R-250), the names of conflict copies, the ignore file, trash-can versioning, and the configuration with discovery, relays, usage reports and upgrades off (AXT-056 to AXT-059, AXT-077) | Nothing (record only) | Not started | — |
+| AX21 | F0 | The operator confirms OD-AXT22 to OD-AXT24 first-hand, decides OD-AXT25 to OD-AXT30, approves AXT-054 to AXT-078 with a ruling, and answers his [NEEDS CLARIFICATION] markers of Section 6.9 | The operator; AX1 for the host | Not started | — |
+| AX22 | F1 | Docs only, merged first (R-155): the ruling; the Section 7 rows for MCP-001, the file-content rule, MCP-008; the contract text of K1, K2, K3 and `hub-modules.json` for folders; the link port and the route `/mcp` with the owner of HMD-049 | AX21 | Not started | — |
+| AX23 | F2 | The hub: the domain `fleet/folders`: folders, entries, revisions, `writeFolderFile` with `expectedRevision`, the protected paths, the audit events; the GraphQL (AXT-054, AXT-055, AXT-060, AXT-065) | AX22 | Not started | — |
+| AX24 | F2 | The hub and the daemon: the Syncthing manifest of the host, the peer beside the hub, the configuration that Anima writes, the default ignore list, add and remove a device, the sync states (AXT-056 to AXT-059) | AX23, AX20, AX3 | Not started | — |
+| AX25 | F2 | The hub: folder tokens: mint, expiry, revoke, the hand-off over the relay for one job (JOB-010), the refusal of protected paths, the tests of ROU-003 and of the placement of R-270 (AXT-062 to AXT-066) | AX23 | Not started | — |
+| AX26 | F2 | The hub: search on the copy of record with the `grep` and `ignore` crates, with its limits (AXT-067) | AX23 | Not started | — |
+| AX27 | F3 | `anima folder` commands (AXT-068) | AX23, AX25, AX26 | Not started | — |
+| AX28 | F3 | The MCP folder tools on standard input and output, with the wrapping of AXT-069 and the exception of AXT-070; no tool makes a token | AX27 | Not started | — |
+| AX29 | F4 | The hosted hub: MCP over HTTP at `/mcp` through the gateway, OAuth with the Anima.ing account, the states for each client in the hub, the audit (AXT-071) | AX28; the OAuth provider (OD-ARC3) | Not started | — |
+| AX30 | F4 | The client: the page "Folders", the stale-write message, the token sheet and the remote MCP connection; the mockup `shared-project-folder` frames 1 to 4 are compared (AXT-072) | AX23, AX25 | Not started | — |
+| AX31 | F5 | The security review of wave 1 (tokens, protected paths, file text in MCP, the link port, the remote MCP server) and the entry in `need-human-testing.md`; the hand check on two devices and a cloud machine on the hosted hub | AX24, AX29, AX30 | Not started | — |
+| AX32 | W2 | A record: rclone mount against the file API of the hub on macOS, Linux and Windows (WinFsp), with range reads (AXT-073) | AX31 | Not started | — |
+| AX33 | W2 | The hub: range reads and writes at an offset with the revision check (AXT-074) | AX31 | Not started | — |
+| AX34 | W2 | `anima folder mount` with rclone, `.git/` and `.env` local (AXT-073) | AX32, AX33 | Not started | — |
+| AX35 | W2 | The hub: three-way merges of text lines and of CSV rows by key (AXT-075) | AX31 | Not started | — |
+| AX36 | W2 | Short-lived file links through the gateway or the relay (AXT-076) | AX33; OD-AXT27 | Not started | — |
+| AX37 | W2 | The trash and restore, with the sentence about backups (AXT-077) | AX31 | Not started | — |
+| AX38 | W2 | The starter team-memory folder (AXT-078) | AX30 | Not started | — |
 
 ### 10.1 Task briefs
 
@@ -485,8 +645,26 @@ One pull request for each task. The size of each task is a few hours to three da
 | AX17 | Pass when the record gives, for each source and each platform, the states it reports with the version and the date; fail if a source has no result | `bun run quality:documents` | Code |
 | AX18 | Pass when a fixture of each source gives the right state, an unknown source gives Unknown, an offline device keeps its rows as Unknown, the MCP tool returns no pane content (test) and passes its JSON-RPC test (MCP-017); fail otherwise | `cargo nextest run -p anima-hub`, `cargo nextest run -p anima-daemon`, `cargo nextest run -p anima-cli` | Alerts (OD-AXT20) |
 | AX19 | Pass when the page matches the mockup frame 1 at 1040 px in light and dark, a Herdr row links to the pane only for the operator, and the mockup row names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run gates` | Alerts |
+| AX20 | Pass when `docs/research/agent-tools/ax20-folder-sync.md` gives, for each platform and each item, a result (works, refused, not tested) with the Syncthing version, the date and the machine; fail if a row has no result | `bun run quality:documents` | Product code |
+| AX22 | Pass when each changed document names the ruling, and each new root field names its command; fail otherwise | `bun run quality:register`, `bun run quality:documents` | Any code |
+| AX23 | Pass when a stale write writes nothing and returns `STALE_REVISION` with the current revision, a new file fails when it exists, and each protected path refuses a token write; fail otherwise | `cargo nextest run -p anima-hub`, `bun run quality:imports` | Sync |
+| AX24 | Pass when the written configuration has discovery, relays, usage reports and upgrades off, a device peer listens on loopback only, the default ignore list holds, and a test of two peers makes a conflict copy; fail otherwise | `cargo nextest run -p anima-hub`, `cargo nextest run -p anima-daemon` | The mount |
+| AX25 | Pass when tokens outside 5 minutes to 12 hours are refused, a revoked or expired token is refused at the next request, no log or audit event holds a token value, the machine deletes the token at the end of the job, and routing or placement never gives a token to another machine; fail otherwise | `cargo nextest run -p anima-hub` | MCP |
+| AX26 | Pass when each search stops at its limits of results, time and characters, and the ignore list applies; fail otherwise | `cargo nextest run -p anima-hub` | An index |
+| AX27 | Pass when each new root field has its command and the coverage test passes (CMD-031); fail otherwise | `cargo nextest run -p anima-cli` | MCP |
+| AX28 | Pass when each tool passes its JSON-RPC test (MCP-017), file text is in named fields with the limits, a binary file gives no content, no result holds a token, and `codeFile` still has no tool; fail otherwise | `cargo nextest run -p anima-cli` | HTTP |
+| AX29 | Pass when a call with no OAuth token is refused, a self-hosted hub has no HTTP MCP route, each call is in the audit log, and the states of a client apply; fail otherwise | `cargo nextest run -p anima-hub` | Other tool sets than the approved first list |
+| AX30 | Pass when the screens match the mockup at 1040 px in light and dark and its row in `mockup/README.md` names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run quality:documents` | Wave 2 |
+| AX31 | Pass when the review lists each item with a result and the human check has an entry with steps; fail otherwise | `bun run quality:documents` | Fixes, which are their own tasks |
+| AX32 | Pass when the record gives a result for each platform; fail if a row has no result | `bun run quality:documents` | Product code |
+| AX33 | Pass when a range read gives the right bytes and an offset write with a stale revision writes nothing; fail otherwise | `cargo nextest run -p anima-hub` | The mount |
+| AX34 | Pass when a mount on each platform of AX32 reads and writes a file, and `.git/` and `.env` are not sent; fail otherwise | `cargo nextest run -p anima-cli` and a hand check | Other platforms |
+| AX35 | Pass when changes that do not overlap merge, changes that overlap give a conflict copy, and a CSV with no key column is not merged; fail otherwise | `cargo nextest run -p anima-hub` | Other file types |
+| AX36 | Pass when a link outside 60 to 3,600 seconds is refused, a request with no sign-in or token is refused, and a range download works; fail otherwise | `cargo nextest run -p anima-hub` | Public links |
+| AX37 | Pass when a deleted file can be restored inside the limit, and the client shows the sentence about backups; fail otherwise | `cargo nextest run -p anima-hub`, `bun run --cwd apps/client test` | Backups |
+| AX38 | Pass when the starter folder is offered only when a folder is made, and its text passes the STE check; fail otherwise | `bun run --cwd apps/client test`, `bun run quality:documents` | Other templates |
 
-Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task AXn of docs/proposals/agent-tools-as-extensions.md. Read Sections 5, 6 and 8 first. Build only what the row of AXn says, in the order of CMD-030. Run the check commands of the row, then bun run quality:documents and bun run gates."
+Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task AXn of docs/proposals/agent-tools-as-extensions.md. Read Sections 5, 6 and 8 first (for AX20 to AX38: Sections 6.9 and 8.5). Build only what the row of AXn says, in the order of CMD-030. Run the check commands of the row, then bun run quality:documents and bun run gates."
 
 ## 11. Not verified
 
@@ -501,6 +679,13 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - The size of the work: an estimate.
 - Whether Herdr exposes the state of its panes to another program (OD-AXT19). The idea stage could not load the Herdr GitHub page on 2026-11-19; the Planner did not read the Herdr documents.
 - That the session files give a reliable Active or Idle for each agent of AXT-046 (AX17).
+- The shared project folder (Section 6.9): the merge quality, the mount behaviour and the full MCP tool list of the competitor's product. Nobody made an account; the feature list in the vault comes from its public pages (2026-11-20).
+- That Syncthing works as a star where a device only dials, through the link of a hosted hub, with discovery, relays, usage reports and upgrades off (AX20). The names of its conflict copies and its trash-can versioning are from memory of its documents, not read again.
+- The licences: Syncthing MPL-2.0, rclone MIT and ripgrep Unlicense (dual MIT) are from the GitHub API on 2026-11-20; the licence of WinFsp (GitHub gives no SPDX value) and of the macOS mount options are not read.
+- The rclone mount against the hub on each platform, and range reads through the relay (AX32).
+- Whether an OAuth server for the Anima.ing account exists or is planned outside the OIDC provider of R-245 (OD-ARC3).
+- Whether the disk of a hosted hub can hold a folder of useful size (AXT-054).
+- The relayed direction of Section 6.9 is not first-hand to the Planner (OD-AXT22 to OD-AXT24).
 
 ## 12. Review notes
 
@@ -511,3 +696,4 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - 2026-11-18, version 4. The operator chose first-hand (23:08 PT): "Yes, update the later entries to the strict list." The Planner wrote the strict filter as the rule for each entry, replaced the later entries with Open WebUI, ComfyUI, Unsloth Studio, OpenClaw (after a security review), Agent Zero, JupyterLab and InvokeAI, and recorded the tools that the filter removed (Ollama, OpenHands, Goose, code-server). Herdr stays in version 1 only if OD-AXT2 is approved. OD-AXT17 has the new waves, and OD-AXT18 asks about the Chat page. No ruling.
 - 2026-11-18, version 5. The operator decided OD-AXT1 to OD-AXT18 first-hand (23:08 to 23:16 PT), and R-196 records his words. The state is Direction decided (PLN-007); AXT-001 to AXT-045 are not approved (AX1). The relayed markers are gone, because OD-AXT1 confirmed them. Constraint C2 changes from a ban to the T3 Code guardrails, and T3 Code is in the catalogue (AXT-020, AXT-045; version 1 or later is a [NEEDS CLARIFICATION] marker for AX1). Pi replaces Aider in bots.md. Open WebUI is a rival, so wave A is ComfyUI and Unsloth Studio, and the compute plan gets a direction note for a full chat page. The shared install counts are in version 1 (AXT-044, AX15). The changes of Section 7 that the decisions permit are made in extensions-plan.md, bots.md, ai-direction.md, compute-plan.md, priorities.md, ownership.md, deferred.md and the two mockups. Arcane and Portainer stay rivals (R-149); no decision was made.
 - 2026-11-19, version 6. R-243 (operator, first-hand, 16:41 to 16:50 PT) folds the idea `agent-multiplexer-routing` in. Section 6.8 adds AXT-046 to AXT-052 (the view of all agents on all devices, out of `deferred.md`), OD-AXT19 to OD-AXT21 and tasks AX17 to AX19. AXT-012, AXT-019 and AXT-021 get the routing exception or limit of jobs.md. OD-AXT10 is reopened for the page.
+- 2026-11-20, version 7. The idea "Shared Project Folder" (vault brief, from Anima Product Ideas; a competitor feature list) is planned here as Section 6.9 (AXT-054 to AXT-078, OD-AXT22 to OD-AXT30, tasks AX20 to AX38) and Section 8.5 (reviews), with the mockup `shared-project-folder`. The operator gave three answers first-hand in another chat; they reached the Planner relayed, so they are direction to confirm (OD-AXT22 to OD-AXT24), not a ruling. AXT-071 extends the idea `remote-mcp-over-http` for the hosted hub only. No ruling. Not pushed.

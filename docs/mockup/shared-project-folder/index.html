@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared project folder mockups</title>
+<style>
+/* Layout: a review board for the shared project folder (agent-tools-as-extensions.md Section 6.9, AXT-054 to AXT-078).
+   Frame 1 is the Folders page (dark). Frame 2 is a refused stale write and a conflict copy (light). Frame 3 is the folder
+   token sheet with the protected instruction files (dark). Frame 4 is the remote MCP connection of a hosted hub (light).
+   Not approved. No font, script or image comes from a third party. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). Maintenance uses aurora-15 (#B48EAD) in both; the light text value is not checked. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.pad { padding: var(--space-8); display: grid; gap: var(--space-6); }
+h2 { margin: 0; font-weight: var(--weight-light); font-size: var(--text-display); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); }
+h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.muted { color: var(--text-secondary); font-size: var(--text-sm); }
+.banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); }
+.dot { inline-size: 0.75rem; block-size: 0.75rem; border-radius: 50%; flex: none; }
+.sq { border-radius: 2px; }
+.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; }
+.up { background: var(--status-up); } .down { background: var(--status-down); } .deg { background: var(--status-degraded); }
+.mnt { background: var(--status-maintenance); } .nod { background: var(--status-unknown); }
+.comp { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.bars { display: grid; grid-template-columns: repeat(90, 1fr); gap: 2px; block-size: 1.75rem; }
+.bars i { display: block; border-radius: 1px; }
+.legend { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.inc { padding: var(--space-4); border-inline-start: 3px solid var(--status-degraded); background: var(--surface-raised); display: grid; gap: var(--space-1); }
+.app { display: grid; grid-template-columns: 13rem 1fr; min-block-size: 30rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-2); align-content: start; }
+.nav { color: var(--text-secondary); } .nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+table { border-collapse: collapse; inline-size: 100%; }
+th, td { text-align: start; padding: var(--space-2) var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); vertical-align: top; }
+th { font-weight: var(--weight-medium); color: var(--text-secondary); font-size: var(--text-sm); }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.btn.pri { background: var(--accent); color: var(--surface-base); border-color: var(--accent); }
+.chip { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: 0.75rem; color: var(--text-secondary); }
+.warn { color: var(--status-down); font-size: var(--text-sm); }
+code { font-family: var(--font-mono); font-size: 0.8125rem; }
+</style>
+<body>
+<h1 class="board">Shared project folder</h1>
+<p class="about">Mockups for <a href="../../proposals/agent-tools-as-extensions.md" style="color:inherit">agent-tools-as-extensions.md</a> Section 6.9 (AXT-054 to AXT-078). Proposed, not approved: the direction is relayed and waits for the operator (OD-AXT22 to OD-AXT30). All names and numbers are examples. The folder is in the existing client; there is no second application (AXT-072).</p>
+<div class="frames">
+
+<figure>
+<div class="frame gd"><div class="app">
+  <div class="side"><div class="group">Fleet</div><span class="nav">Devices</span><span class="nav">Agents</span><span class="nav on">Folders</span><span class="nav">Projects</span><span class="nav">Builds</span></div>
+  <div class="pad">
+    <div class="row"><h2>handoff</h2><span><span class="btn">Search</span> <span class="btn">Folder tokens</span> <span class="btn pri">Add a device</span></span></div>
+    <div class="banner"><span class="dot up"></span><span>In sync on 3 devices. The copy of record is on the hub (AXT-055, OD-AXT30). Files that match the ignore list stay on each device (AXT-058).</span></div>
+    <table>
+      <tr><th>Name</th><th>Revision</th><th>Changed</th><th>By</th><th>State</th></tr>
+      <tr><td><code>AGENTS.md</code> <span class="chip">Protected</span></td><td><code>r14 · 3f2a…</code></td><td>10:12</td><td>You, Studio</td><td><span class="dot up" style="display:inline-block"></span> In sync</td></tr>
+      <tr><td><code>plan/brief.md</code></td><td><code>r9 · 81cc…</code></td><td>10:47</td><td>Token "nightly-review", cloud machine</td><td><span class="dot up" style="display:inline-block"></span> In sync</td></tr>
+      <tr><td><code>plan/brief.sync-conflict-Laptop.md</code></td><td><code>r1 · 0b19…</code></td><td>10:48</td><td>Laptop</td><td><span class="dot deg tri" style="display:inline-block"></span> Conflict copy</td></tr>
+      <tr><td><code>data/leads.csv</code></td><td><code>r22 · c7d0…</code></td><td>09:30</td><td>Codex, Studio</td><td><span class="dot up" style="display:inline-block"></span> In sync</td></tr>
+      <tr><td><code>.github/</code> <span class="chip">Protected</span></td><td>—</td><td>Nov 18</td><td>You</td><td><span class="dot up" style="display:inline-block"></span> In sync</td></tr>
+    </table>
+    <div class="row"><span class="muted">Devices: Studio (in sync), Laptop (in sync), Shelf (offline since 08:05; it gets the changes when it is back).</span><span class="chip">Sync engine: Syncthing [NEEDS CLARIFICATION: OD-AXT29]</span></div>
+  </div>
+</div></div>
+<figcaption>Frame 1, the Folders page (dark). AXT-054 to AXT-059, AXT-065, AXT-072. A conflict copy is a file of its own; wave 1 has no automatic merge. A state has a word as well as a color and a shape.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl"><div class="pad">
+  <h3>The save was refused: the file changed</h3>
+  <div class="inc"><span><code>plan/brief.md</code>: you read revision <code>r8</code>. The hub has <code>r9</code> (10:47, token "nightly-review").</span><span class="muted">The hub wrote nothing (AXT-060). Open both versions, then save again with the new revision.</span></div>
+  <div class="row"><span class="muted">An edit in a synced directory on a device is not checked by revision. When two devices change the same file, the folder keeps both and names the second one a conflict copy (AXT-059, AXT-061).</span><span><span class="btn">Compare r8 and r9</span> <span class="btn pri">Open r9</span></span></div>
+</div></div>
+<figcaption>Frame 2, a stale write through the client, the command line or MCP (light). The MCP result is a tool error with the same sentence (MCP-010) and the current revision, never the content of the other version.</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd"><div class="pad">
+  <div class="row"><h3>New folder token</h3><span class="chip">Only you can make a token. No MCP tool makes one (AXT-063).</span></div>
+  <table>
+    <tr><th>Folder</th><td><code>handoff/plan</code></td></tr>
+    <tr><th>Access</th><td><span class="btn">Read</span> <span class="btn pri">Read and write</span></td></tr>
+    <tr><th>Lifetime</th><td><span class="btn">5 min</span> <span class="btn pri">1 hour</span> <span class="btn">12 hours</span> (from 5 minutes to 12 hours, AXT-062)</td></tr>
+    <tr><th>For</th><td>The job "nightly-review" on the machine that it runs on. The hub gives the token to that machine for that one job, over the relay, and the machine deletes it at the end (AXT-063, JOB-010).</td></tr>
+    <tr><th>Never writable by a token</th><td><code>AGENTS.md</code> <code>CLAUDE.md</code> <code>GEMINI.md</code> <code>.github/</code> <code>.cursor/</code> <code>.claude/</code> <code>.mcp.json</code> [NEEDS CLARIFICATION: the full list, and if you can add to it]</td></tr>
+  </table>
+  <div class="row"><span class="muted">The token is never shown in a prompt, a URL, a log or a tool result. The list shows its name, access, folder and end time only.</span><span><span class="btn">Cancel</span> <span class="btn pri">Make the token</span></span></div>
+  <pre class="muted"><code>Folder tokens            access       ends     used
+nightly-review  plan/    read-write   11:47    10:47   [Revoke]
+docs-reader     /        read         15:00    —       [Revoke]</code></pre>
+</div></div>
+<figcaption>Frame 3, the folder token sheet (dark). AXT-062 to AXT-066. Revoke takes effect at the next request of the token; the audit event holds no token value (LOG-007).</figcaption>
+</figure>
+
+<figure>
+<div class="frame gl"><div class="pad">
+  <div class="row"><h3>Connect an assistant (hosted hub)</h3><span class="chip">Hosted hub only (OD-AXT23)</span></div>
+  <p>Server address: <code>https://hub.anima.ing/mcp</code>. The assistant asks you to sign in with your Anima.ing account. Your hub is not open to the internet; the request goes through the gateway to your hub only (HMD-061, SEC-008).</p>
+  <table>
+    <tr><th>Tool set</th><th>State</th><th>What the assistant gets</th></tr>
+    <tr><td>Folders: list, glob, read, grep</td><td><span class="chip">Allow</span></td><td>File text as data, cut to a limit (AXT-069) [NEEDS CLARIFICATION: OD-AXT25 and OD-AXT28]</td></tr>
+    <tr><td>Folders: write, upload, move</td><td><span class="chip">Allow</span></td><td>Only with the revision it read (AXT-060); never a protected file</td></tr>
+    <tr><td>Folders: delete</td><td><span class="chip">Ask</span> when the switch "Ask before destructive actions" is on</td><td>The name of the file in <code>confirm</code> (MCP-007)</td></tr>
+    <tr><td>Folder tokens: list, revoke</td><td><span class="chip">Allow</span></td><td>Names and end times; never a token</td></tr>
+  </table>
+  <p class="muted">A self-hosted hub keeps <code>anima mcp</code> on standard input and output (MCP-001 stays for it). Which other tool sets the remote server lists first: [NEEDS CLARIFICATION: question 2 of the idea remote-mcp-over-http].</p>
+</div></div>
+<figcaption>Frame 4, the remote MCP connection (light). AXT-068 to AXT-071. Every call is in the audit log (MCP-026).</figcaption>
+</figure>
+
+<figure>
+<div class="frame gd"><div class="pad">
+<h3>ASCII: how the parts connect (wave 1)</h3>
+<pre><code>
+ Studio (enrolled)      Laptop (enrolled)       Cloud machine (job, no sync)
+ ~/Anima/handoff        ~/Anima/handoff          anima folder cat|put (token)
+   | Syncthing peer       | Syncthing peer              |
+   | dials the hub only   | dials the hub only           | hub API over the relay
+   +----------+-----------+                              |
+              | VPN, or the link of a hosted hub         |
+        +-----v------------------------------------------v------+
+        | hub: copy of record, revisions, tokens, audit, grep   |
+        |   Syncthing peer beside the hub (not hub code)        |
+        |   K1 API -&gt; anima CLI -&gt; MCP (stdio; HTTP if hosted)  |
+        +--------------------------^----------------------------+
+                                   | https://hub.anima.ing/mcp (hosted only)
+                          cloud assistant, signed in with OAuth
+</code></pre>
+</div></div>
+<figcaption>Frame 5, the parts of wave 1 (ASCII). The diagram with Mermaid is in the business vault only.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

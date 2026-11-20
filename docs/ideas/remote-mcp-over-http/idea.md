@@ -39,6 +39,7 @@ Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../pl
 ## Reviews
 
 - 2026-11-18: round 1. The bot framed the idea from the research note. The Serves row is not confirmed. The operator has not picked this idea.
+- 2026-11-20: round 2. The Planner. The operator said in the chat of Anima Product Ideas (relayed to the Planner, not a ruling): "Yes, reverse MCP-001 for the hosted hub only and extend Remote MCP over HTTP". [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md) Section 6.9 (AXT-071) extends this idea for the hosted hub only, as the MCP server of the shared project folder; the question of the first tool sets stays open there. The Status stays Framed. When OD-AXT23 is confirmed first-hand, the commit of that ruling moves the rest of this idea into that document and deletes this folder (PLN-018).
 
 ## Source text
 
