@@ -76,6 +76,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-NEW-settingsv2 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1795,5 +1796,28 @@ host key, with many check states or while it loads.
    Expected: the cards go to two columns and then to one, and back; no text lies over another part; the whole host key shows.
 3. Reload the page and watch the first second.
    Expected: the loading shapes are where the cards then are; nothing moves when the values arrive.
+
+Result: Open.
+
+### HT-NEW-settingsv2: the Settings page after the interface review (R-224)
+
+Built on the branch `ui/v2-settings` (`1ffb6bf8`): the index of the Settings page (`apps/client/src/routes/settings/index.ts`,
+`apps/client/src/lib/page/contents/PageIndex.svelte`) names three groups, "Hub and account", "This computer" and
+"Connections", and the sections of the page are in the same order. The tests prove the order and the group names. The
+page was looked at only in pictures of the web client at 1280 px. No person saw it in the desktop application, which
+has the sections Hub, Stay awake, Updates and MCP, or on a phone.
+
+1. Open Settings in the desktop application, in a window about 1280 px wide.
+   Expected: the index at the left has three small titles. Under "Hub and account": Account, Hub, Notifications, Default
+   check settings, Data retention. Under "This computer": Stay awake, Appearance, Updates, MCP. Under "Connections":
+   Integrations, API keys, Extensions, and VPN on a hub that is not hosted.
+2. Scroll the page from the top to the foot.
+   Expected: the sections come in the order of the index, and the index marks the section at the top of the window.
+3. Select "MCP" in the index, then "Account".
+   Expected: the page goes to that section each time.
+4. Make the window narrow (below 1100 px).
+   Expected: the index is one row of links above the sections, with no group title.
+5. Open Settings on a phone.
+   Expected: Account and Hub are first and "Leave" is last; no part lies over another.
 
 Result: Open.
