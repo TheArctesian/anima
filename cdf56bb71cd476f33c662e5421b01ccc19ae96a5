@@ -1,2 +1,2 @@
-2026-11-20T21:53:21.272Z
-a conflict in docs/mockup/README.md
+2026-11-20T22:12:36.591Z
+`bun run quality:documents` failed on the merge commit: docs/mockup/records/agent-usage-v2.md: screen-changed-after-mockup apps/client/src/lib/agent-usage has 1 layout file(s) that changed after 16a817ec; compare [agent-usage-v2/index.html](agent-usage-v2/index.html) again
