@@ -412,7 +412,8 @@ Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` 
 `containerLog` is closed to every API key and only `anima containers logs` reads it.
 `anima_container_storage` and `anima_container_networks` (read, tool set `devices`) give the images,
 the volumes and the networks of one device (HOST-020, R-150); `anima_container_list` also gives the
-one state of each Compose project (HOST-019). `anima_container_updates` (read, tool set `devices`)
+one state of each Compose project (HOST-019) and where Compose found the project (R-211, task H15;
+`anima containers projects` lists the projects). `anima_container_updates` (read, tool set `devices`)
 says for each container whether its public registry has a newer image (HOST-021); it pulls and
 updates nothing. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a

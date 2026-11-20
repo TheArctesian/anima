@@ -21,11 +21,12 @@ fn containers() -> Value {
           "ports": ["0.0.0.0:3000->3000/tcp", "[::]:3000->3000/tcp"],
           "createdAt": "2026-11-18T18:00:00+00:00",
           "composeProject": "dawarich", "composeService": "app",
-          "composeProjectState": "PARTLY_RUNNING" },
+          "composeProjectState": "PARTLY_RUNNING", "composeWorkingDir": "/srv/dawarich",
+          "composeFiles": ["/srv/dawarich/compose.yaml", "/srv/dawarich/override.yaml"] },
         { "id": "a".repeat(64), "name": "old-db", "image": "postgres:17",
           "state": "EXITED", "status": "Exited (0) 2 days ago", "health": "NONE",
           "ports": [], "createdAt": null, "composeProject": null, "composeService": null,
-          "composeProjectState": null }
+          "composeProjectState": null, "composeWorkingDir": null, "composeFiles": [] }
     ] })
 }
 
@@ -225,4 +226,46 @@ async fn host_001_container_list_gives_device_text_cleaned_and_no_tool_returns_a
     }
     let (printed, stderr) = session.finish().await;
     assert_protocol_only(&printed, &stderr, API_KEY);
+}
+
+#[tokio::test]
+async fn r_211_containers_projects_shows_each_project_with_its_state_and_where_compose_found_it() {
+    let hub = FakeHub::start().await;
+    hub.answer("ContainerList", data(containers()));
+    let run = Anima::new()
+        .with("ANIMA_TOKEN", TOKEN)
+        .run(&["containers", "projects", DEVICE, "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let lines: Vec<&str> = run.stdout.lines().collect();
+    assert!(lines[0].starts_with("PROJECT"), "{}", run.stdout);
+    // One project: the container with no project is in none.
+    assert_eq!(lines.len(), 2, "{}", run.stdout);
+    assert!(
+        lines[1].starts_with("dawarich")
+            && lines[1].contains("partly running")
+            && lines[1].contains("1 of 1")
+            && lines[1].contains("/srv/dawarich ")
+            && lines[1].ends_with("/srv/dawarich/compose.yaml, /srv/dawarich/override.yaml"),
+        "{}",
+        run.stdout
+    );
+    hub.answer("ContainerList", data(containers()));
+    let run = Anima::new()
+        .with("ANIMA_TOKEN", TOKEN)
+        .run(&[
+            "containers",
+            "projects",
+            DEVICE,
+            "--json",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(
+        run.json(),
+        json!([{ "name": "dawarich", "state": "PARTLY_RUNNING", "containers": 1, "running": 1,
+                 "workingDir": "/srv/dawarich",
+                 "files": ["/srv/dawarich/compose.yaml", "/srv/dawarich/override.yaml"] }])
+    );
 }

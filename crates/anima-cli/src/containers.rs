@@ -7,6 +7,7 @@ pub mod inspect;
 pub mod list;
 pub mod logs;
 pub mod networks;
+pub mod projects;
 pub mod storage;
 pub mod updates;
 
@@ -30,6 +31,9 @@ pub enum ContainerCommand {
     Volumes(storage::StorageArgs),
     /// List the networks of Docker on a device, with the containers on each.
     Networks(networks::NetworksArgs),
+    /// List the Compose projects of a device: state, running count, and where Compose found
+    /// the project (its folder and files on the device).
+    Projects(projects::ProjectsArgs),
     /// Show for each container whether its public registry has a newer image for its tag.
     /// Anima updates nothing.
     Updates(updates::UpdatesArgs),
@@ -49,6 +53,7 @@ impl ContainerCommand {
             Self::Images(args) => args.images(invocation).await,
             Self::Volumes(args) => args.volumes(invocation).await,
             Self::Networks(args) => args.run(invocation).await,
+            Self::Projects(args) => args.run(invocation).await,
             Self::Updates(args) => args.run(invocation).await,
         }
     }

@@ -72,7 +72,8 @@ fn definition() -> Definition {
              RESTARTING, PAUSED, CREATED, REMOVING, DEAD or UNKNOWN), status, health (HEALTHY, \
              UNHEALTHY, STARTING or NONE), ports, createdAt, composeProject, composeService, \
              composeProjectState (RUNNING, UNHEALTHY, PARTLY_RUNNING, FAILING, PAUSED, STOPPED \
-             or UNKNOWN; null with no project).",
+             or UNKNOWN; null with no project), composeWorkingDir and composeFiles (where \
+             Compose found the project: paths on the device, read only).",
         ),
         ("count", "integer", "How many containers are listed."),
     ])

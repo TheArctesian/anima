@@ -954,6 +954,10 @@ type Container {
   "The Compose project of the container; null when it has none."
   composeProject: String
   composeService: String
+  "The folder from which Compose started the project, as Docker says (R-211); null when the container has no project or Docker has no such label. A path on the device."
+  composeWorkingDir: String
+  "The Compose files of the project, as paths on the device, in the order Compose read them (R-211). Anima reads them here and changes no file."
+  composeFiles: [String!]!
   "The one state of the Compose project of the container (HOST-019); null when it has none. Each container of a project has the same value."
   composeProjectState: ComposeProjectState
 }

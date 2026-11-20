@@ -11,5 +11,7 @@ query ContainerList($deviceId: ID!) {
     composeProject
     composeService
     composeProjectState
+    composeWorkingDir
+    composeFiles
   }
 }

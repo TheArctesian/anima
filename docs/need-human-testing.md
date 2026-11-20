@@ -1489,6 +1489,10 @@ step 4 were not possible (OD-25).
     image, of a volume or of a network, no label and no name of an environment variable (LOG-007).
 12. On the device, run `docker ps -a`, `docker image ls` and `docker volume ls` again. Expected:
     nothing changed because of the steps.
+13. Added with task H15 (R-211): run `anima containers projects <device>`. Expected: one row for
+    each Compose project, with its state, its running count, and the folder and the files from
+    which it was started; the paths agree with `docker compose ls` on the device. Anima changed no
+    file.
 
 Result: Open.
 
