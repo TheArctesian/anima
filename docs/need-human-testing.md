@@ -66,11 +66,11 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
 | HT-041 | The first formula and the first crate version of `anima` alone, from the release workflow (tasks B8h, R8d) | A crates.io account of the operator, the key of the tap, a public release, a Mac and a Linux computer with no Anima | Open |
-| HT-045 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
-| HT-045 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
+| HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
+| HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1199,7 +1199,7 @@ The check only reads. It pulls nothing and updates nothing (ETH-004, VPS-005, R-
 
 Result: Open.
 
-### HT-045: the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, HOST-021; task H9)
+### HT-042: the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, HOST-021; task H9)
 
 Built: `apps/client/src/lib/containers/` (the table, `detail/`, `log/`, `storage/`), in the tab
 "Containers" of the device page. The tests use a fake of the hub calls and, in a browser, a hub of
@@ -1340,7 +1340,7 @@ starts on a computer with no `libdbus-1`, and if the build of the crate needs th
 
 Result: Open.
 
-### HT-045: the iOS application from the release workflow to TestFlight (R-203; task B8i)
+### HT-046: the iOS application from the release workflow to TestFlight (R-203; task B8i)
 
 Built: on the branch `release/ios-job`. The release workflow has the jobs `ios` (build and sign), `ios-upload`
 (send to App Store Connect) and `ios-record`, behind the variables `ANIMA_IOS_BUILD` and `ANIMA_PUBLIC_TESTFLIGHT`.
