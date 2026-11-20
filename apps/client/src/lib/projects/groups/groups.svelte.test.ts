@@ -114,7 +114,7 @@ it('PRO-061: the view by group and a closed head are kept on this computer', asy
   document.querySelector<HTMLButtonElement>('button[aria-controls="group-none"]')?.click();
   flushSync();
   expect(text()).not.toContain('acme/acme-site');
-  await unmount(app);
+  if (app !== undefined) await unmount(app);
   app = mount(ProjectsScreen, { target: document.body, props: { store, projectGroups: groups() } });
   flushSync();
   expect(heads()).toEqual(['Home 1', 'Ungrouped 2']);
