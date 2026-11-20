@@ -188,8 +188,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(pool.clone())
     .data(bus)
     .data(vault)
-    // The open claims of a hosted hub (R-129).
-    .data(link::Claims::default());
+    // The open claims of a hosted hub (R-129), and its open browser tickets (HMD-061).
+    .data(link::Claims::default())
+    .data(access::BrowserTickets::default());
     // One block per domain: its loaders (R-014) and its state.
     with_devices_loaders(builder, &pool, &clock)
         // checks

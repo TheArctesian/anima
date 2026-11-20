@@ -86,6 +86,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-NEW-hostedbrowsersession | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
 
@@ -97,6 +98,35 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-NEW-hostedbrowsersession: a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26)
+
+Built: on the branch `hosted/hm-t26-browser-session`. A hosted hub gives the Anima.ing cloud a
+one-time ticket (`hostedBrowserTicket`), and trades it for its own session cookie when the request
+comes from its public origin (`hostedBrowserSignIn`). The session ends 12 hours after the sign-in,
+or after 30 minutes with no request.
+
+The tests cover, through the routes of the hub as it serves them: the ticket only for the key of the
+cloud; the trade only from the public origin, once; the cookie and its attributes; a request with
+that cookie that is signed in; a foreign host name or origin, refused; a hub that is not hosted;
+the rule of the 30 minutes as a rule of time. Not covered: a real gateway and a real browser, a
+session that ends after 30 minutes on a real hub, a terminal that stays open for longer than that,
+and the web client on a hosted hub (task HM-T27).
+
+It needs: the gateway of the pool, and a hub of the pool whose image has this build. The steps are
+for the time when both exist.
+
+1. In a browser with no session, open `https://hub.anima.ing`. Sign in with the account. Expected:
+   the hub of the account opens. No password of a hub is asked.
+2. In the tools of the browser, look at the cookies of `hub.anima.ing`. Expected: `__Host-anima`,
+   with `Secure`, `HttpOnly` and `SameSite=Strict`, that ends in 12 hours.
+3. Leave the tab with no page that updates (for example a settings page) for 31 minutes. Press a
+   link. Expected: the gateway asks the hub for a new session with no question, or the sign-in of
+   the account shows; no page of the hub shows with the old session.
+4. Open a terminal session to a device and leave it open for 40 minutes with no key pressed. Press
+   a key. Expected: the session still works.
+5. In a second browser profile, open `https://hub.anima.ing/graphql` with no session. Expected: no
+   data of a hub.
 
 ### HT-001: `anima snapshot` against GitHub
 

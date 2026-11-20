@@ -161,11 +161,16 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
 pub fn all_routes(dependencies: schema::Dependencies, edge: fleet::access::Edge) -> Router {
     let origin = fleet::access::PublicOrigin::new(dependencies.config.public_origin.clone());
     let link_mode = dependencies.config.link_socket.is_some();
+    // Only a hosted hub is reached through the gateway of the pool, by its public origin (HMD-061).
+    let gateway = (dependencies.config.hosted_cloud_key_file.is_some()).then(|| origin.clone());
     let beside = beside_graphql(&dependencies, &origin);
     let (pool, clock) = (dependencies.pool.clone(), dependencies.clock.clone());
     let routes = router_at(schema::build_schema(dependencies), pool, clock, origin).merge(beside);
     let routes = if link_mode {
-        routes.layer(fleet::access::loopback_names_layer(&CLIENT_ORIGINS))
+        routes.layer(fleet::access::loopback_names_layer(
+            &CLIENT_ORIGINS,
+            gateway,
+        ))
     } else {
         routes
     };
