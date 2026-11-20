@@ -8,6 +8,7 @@ const APP_COMMANDS: &[&str] = &[
     "cloud_sign_in_start",
     "cloud_sign_in_poll",
     "cloud_sign_in_resume",
+    "cloud_sign_out",
     "cloud_sign_in_session",
     "cloud_hub",
     "cloud_hub_access",

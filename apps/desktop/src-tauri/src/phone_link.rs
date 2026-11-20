@@ -8,7 +8,7 @@
 
 #[expect(
     dead_code,
-    reason = "the desktop link's errors Caller and NotCarried do not happen inside the app"
+    reason = "the desktop link's NotCarried error does not happen inside the app"
 )]
 #[path = "link/error.rs"]
 mod error;
@@ -21,7 +21,7 @@ use std::{
 };
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::{AppHandle, Manager, Runtime, State, Webview};
 
 pub use error::LinkError;
 
@@ -201,6 +201,33 @@ pub async fn link_join<R: Runtime>(app: AppHandle<R>, invite: String) -> Result<
 )]
 pub fn link_status(link: State<'_, PhoneLink>) -> LinkStatus {
     link.status()
+}
+
+/// The key of the link that owns this origin. A reused port must not give another hub an old token.
+pub(crate) fn listener_key(origin: &str) -> Option<String> {
+    let running = library::status();
+    (running.up
+        && !running.device_key.is_empty()
+        && origin.strip_prefix("http://") == Some(running.local.as_str()))
+    .then_some(running.device_key)
+}
+
+#[tauri::command]
+pub async fn hub_listener_check(
+    webview: Webview,
+    origin: String,
+) -> Result<&'static str, LinkError> {
+    if webview.label() != "main" {
+        return Err(LinkError::Caller);
+    }
+    blocking(move || {
+        Ok(if listener_key(&origin).is_some() {
+            "own"
+        } else {
+            "none"
+        })
+    })
+    .await
 }
 
 #[tauri::command]

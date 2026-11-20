@@ -27,8 +27,6 @@ mod mcp_agents;
 #[cfg(desktop)]
 mod mcp_permissions;
 #[cfg(mobile)]
-mod memory_tokens;
-#[cfg(mobile)]
 #[cfg_attr(
     target_os = "android",
     expect(
