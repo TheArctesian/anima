@@ -76,6 +76,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-NEW-containersv2 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1805,5 +1806,28 @@ host key, with many check states or while it loads.
    Expected: the cards go to two columns and then to one, and back; no text lies over another part; the whole host key shows.
 3. Reload the page and watch the first second.
    Expected: the loading shapes are where the cards then are; nothing moves when the values arrive.
+
+Result: Open.
+
+### HT-NEW-containersv2: the tab Containers of a device after the interface review (R-224)
+
+Built on the branch `ui/v2-device-containers`, in `apps/client/src/lib/containers`: the table has one column "State" with
+the state word and the status text of Docker; the log and the details of the selected container are one raised pane
+with a switch "Log" and "Details"; the count of the lines is in the bar of the log tools. The tests prove that the switch
+reads the details and the log. No test reads a layout. No person saw the tab in the desktop application, with long
+names, with many containers or at a narrow width.
+
+1. Open a device that has Docker, then the tab "Containers", in a window about 1280 px wide.
+   Expected: each row has the name, then the state word with a dot and the status text of Docker beside it (for example
+   "Running" and "Up 3 hours (healthy)"), then the image and the ports. No text lies over another part.
+2. Select "Log" on a row.
+   Expected: a pane opens under the table with the title "Log of" and the name, a switch "Log" and "Details", the choice
+   of the lines, "Refresh" and a close button. The search, the level, "Wrap", "Timestamps", the count ("200 of 200 lines")
+   and "Download" are one bar.
+3. Select "Details" in the switch of the pane, then "Log".
+   Expected: the same pane shows the details, then the log again. The table does not move.
+4. Make the window narrow (about 900 px) and look again, in the light and the dark appearance.
+   Expected: the status text is cut with an ellipsis and its full text is the tooltip; the state word is whole; the tools
+   of the log go to a second line and none lies over another.
 
 Result: Open.
