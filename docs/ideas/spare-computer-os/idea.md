@@ -38,6 +38,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 16: workload and host dependencies | Decided | A + B + C: separate workload environments by default; curated host integrations; supported custom host packages and services through a controlled configuration mechanism. This expands the supported customization scope beyond curated profiles. Keep the normal system root read-only; do not infer unrestricted imperative host writes or blanket agent authority. Custom configuration must participate in update, validation and recovery design. Exact accepted configuration surface and authorization remain open. |
 | Decision 17: agent authority for host changes | Decided | A by default, with B available: owner approval for each host change unless an explicit bounded standing grant covers it. Grants must have precise scope and be revocable. Broad administrator-agent mode C is not selected. Use the existing Anima permission/execution model; do not create a separate OS permission system or infer bypass of maintenance windows. Reconcile the proposal with existing owner requirements before implementation. |
 | Decision 18: resource priorities | Decided | A + D: service-first by default, with owner-selectable service-first, worker-first and balanced profiles. Reserve capacity for OS, remote management and recovery under every profile. Jobs use remaining capacity under service-first, and admission may wait. Explain effects of profile changes; do not silently kill running work. Existing scheduler/workload owners define enforcement, resource limits and admission behavior. |
+| Decision 19: automatic storage cleanup | Decided | A + B + C: eligible regenerable caches/unused images; history expired under explicit retention; completed job workspaces/artifacts explicitly marked disposable with a configured lifetime. Protect active/pinned workloads, designated recovery points and the previous known-good system. Preserve persistent app data, user files, credentials and unmarked job outputs. If permitted cleanup is insufficient, alert and restrict new allocations rather than broaden deletion authority. Exact eligibility, retention and pressure thresholds remain open. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -74,7 +75,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 19: what may automatic storage cleanup remove? Options can be combined: verified regenerable caches and unused images; expired snapshots/logs/system generations under explicit retention and protected recovery rules; completed workspaces/artifacts only when explicitly marked disposable; alerts and admission limits without automatic deletion. Recommendation: regenerable material plus retention-governed history, never arbitrary workload data. No selection yet. Shared Btrfs capacity makes cleanup and admission control necessary design topics; exact thresholds and deletion eligibility remain open.
+2. Decision 20: which backup destinations should the first version support? Options can be combined: another enrolled Anima machine; user-provided network storage; attached separate drive; user-provided cloud/object storage; Anima-managed backup storage. Recommendation: another enrolled machine and user-provided network storage, subject to existing storage/backup owner boundaries. No choice yet. Same-disk snapshots remain local recovery aids, not disk-failure backups. Destination provisioning, authentication, encryption, capacity, restore tests and retention are separate design work; no cloud service or storage entitlement is implied.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -155,6 +156,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 17 accepted the recommendation: per-change owner approval by default, optional bounded standing grants. Broad administrator-agent mode is not selected. Next: workload priorities under resource contention.
 
 - 2026-11-19: Decision 18 accepted A + D: service-first default with owner-selectable profiles. Protect OS/management/recovery capacity and explain profile changes. Next: automatic cleanup boundaries for shared storage.
+
+- 2026-11-19: Decision 19 accepted A + B + C. Completed work is removable only when explicitly disposable under its declared lifetime; persistent/unmarked data stays protected. Next: backup destinations beyond same-disk snapshots.
 
 ## Source text
 
@@ -255,3 +258,7 @@ In response to Decision 17 (recommendation A default, B available):
 In response to Decision 18 (recommendation A + D):
 
 > agreeded
+
+In response to Decision 19:
+
+> A B and C
