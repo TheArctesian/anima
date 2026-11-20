@@ -27,6 +27,9 @@ on:
   push:
     branches-ignore:
       - main
+      # The conductor starts the gates of a train itself (`workflow_dispatch`). A train that a
+      # person pushed from a checkout must not start a second run, which stops the first.
+      - "train/**"
   workflow_dispatch:
   workflow_call:
     inputs:
