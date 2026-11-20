@@ -21,9 +21,9 @@ describe("the merge of a branch into dev", () => {
 });
 
 describe("the two rules of a merge (quality/merge-rule.json; R-NEW-gaterule, R-NEW-automerge)", () => {
-  test("the rule file of the repository has the two rules on", () => {
+  test("the rule file of the repository has the two rules on, and the carry-over of documents (OD-W52)", () => {
     const text = readFileSync(join(import.meta.dir, "..", "..", "merge-rule.json"), "utf8");
-    expect(parseMergeRule(text)).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryDocuments: false });
+    expect(parseMergeRule(text)).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryDocuments: true });
   });
 
   test("a rule file that is not exact is refused, and never read as on", () => {
