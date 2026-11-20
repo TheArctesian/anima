@@ -21,6 +21,7 @@ export const DESKTOP_MAC: Capabilities = {
   deviceLink: true,
   cloudAccount: true,
   accountSession: false,
+  runnerReport: false,
   overlayTitleBar: true,
   recentCopy: true,
 };
@@ -32,4 +33,4 @@ export const BROWSER: Capabilities = browserCapabilities;
 export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true, cloudAccount: true };
 
 /** The mobile app on an iPhone or an iPad: it also signs in inside the app (mobile plan M3-5). */
-export const MOBILE_APPLE: Capabilities = { ...MOBILE, accountSession: true };
+export const MOBILE_APPLE: Capabilities = { ...MOBILE, accountSession: true, runnerReport: true };

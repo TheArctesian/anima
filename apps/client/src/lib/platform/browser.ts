@@ -18,6 +18,7 @@ export const browserCapabilities: Capabilities = {
   deviceLink: false,
   cloudAccount: false,
   accountSession: false,
+  runnerReport: false,
   overlayTitleBar: false,
   recentCopy: false,
 };
