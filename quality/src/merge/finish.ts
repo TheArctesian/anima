@@ -6,6 +6,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { commitThenCheck } from "./commit.ts";
+import { settleMockups } from "./mockups.ts";
 import { GENERATED, mergeMessage } from "./rules.ts";
 
 const CHECKS = [["bun", "run", "quality:documents"], ["bun", "quality/bin/numbers.ts", "--check"]];
@@ -22,6 +23,8 @@ export function finishMerge(root: string, source: string, into: string): Finishe
     process.stderr.write(said);
     return { ok: done.exitCode === 0, out: done.stdout.toString() };
   };
+  // The records of the mockups keep the newer comparison, and the index takes the generated form (PLN-019).
+  settleMockups(root);
   // A generated file is never merged: take the one of `dev`, then write it again from the documents.
   for (const path of GENERATED) {
     const ours = run(["git", "show", `HEAD:${path}`]);

@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { checkDocuments, MOCKUP, parseKnown } from "../src/documents/documents.ts";
-import { MOCKUPS, placeholdersInScreens } from "../src/documents/mockups.ts";
+import { placeholdersInScreens } from "../src/documents/mockups.ts";
 import { QUEUE } from "../src/documents/queue.ts";
 import { REGISTER } from "../src/documents/register.ts";
 import { layoutChangedSince } from "../src/documents/screens.ts";
@@ -24,9 +24,8 @@ const violations = checkDocuments(documents, exists, known, (screen, commit) => 
 for (const [path, signal] of [[REGISTER, "register-without-list"], [QUEUE, "queue-without-list"]] as const) {
   if (!exists(path)) violations.push({ path, signal, detail: "the file is missing" });
 }
-// PLN-019 and PLN-021: a layout file of a listed screen holds no placeholder, also on a branch.
-const indexText = documents.find((document) => document.path === MOCKUPS)?.text ?? "";
-violations.push(...placeholdersInScreens(indexText, paths, (path) => readRepoFile(REPO_ROOT, path)));
+// PLN-019 and PLN-021: a layout file of a screen of a mockup record holds no placeholder, also on a branch.
+violations.push(...placeholdersInScreens(documents, paths, (path) => readRepoFile(REPO_ROOT, path)));
 // PLN-021: a branch can hold a placeholder of a number; `dev` and `main` cannot. The merge script
 // (quality/bin/merge.ts) gives each placeholder its number.
 const head = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: REPO_ROOT, encoding: "utf8" }).stdout.trim();
