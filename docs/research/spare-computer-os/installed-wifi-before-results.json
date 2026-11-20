@@ -1,0 +1,38 @@
+{
+  "iso_sha256": "a9dfc0badc4a65cc56c3d69f268df8d68acd503ee841b004335822f53126a364",
+  "results": [
+    {
+      "case": "wifi-supplicant-dbus-activation",
+      "result": "Passed"
+    },
+    {
+      "case": "mounted-child-excluded",
+      "result": "Passed"
+    },
+    {
+      "case": "iso-uefi-live",
+      "result": "Passed"
+    },
+    {
+      "case": "cancel-before-erase",
+      "result": "Passed"
+    },
+    {
+      "case": "offline-install",
+      "result": "Passed"
+    },
+    {
+      "case": "installed-login-readonly-runtime",
+      "result": "Passed"
+    },
+    {
+      "case": "iso-run",
+      "result": "Failed",
+      "reason": "Guest command failed: findmnt -n -o OPTIONS / | tr ',' '\\n' | grep -qx ro; systemctl restart wpa_supplicant || { journalctl -u wpa_supplicant --no-pager -n 25; exit 1; }; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ]
+}

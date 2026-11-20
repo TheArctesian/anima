@@ -1,11 +1,13 @@
-<script lang="ts"></script>
+<script lang="ts">
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import FormButton from '$lib/forms/FormButton.svelte';
+  import EmptyState from '$lib/states/EmptyState.svelte';
+</script>
 
-<h1>Device not found</h1>
-<p>It may have been deleted.</p>
-
-<style>
-  h1 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--text-xl);
-  }
-</style>
+<!-- The page of a device the hub does not have: what happened, and the one way on (UI-030). -->
+<EmptyState level={1} title="Device not found" line="It may have been removed, or the address is wrong.">
+  {#snippet action()}
+    <FormButton onclick={() => void goto(resolve('/devices'))}>Go to Devices</FormButton>
+  {/snippet}
+</EmptyState>

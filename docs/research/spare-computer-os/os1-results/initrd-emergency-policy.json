@@ -1,0 +1,38 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "variant": "Disposable candidate boot entry adds boot.panic_on_fail; base artifact unchanged.",
+  "results": [
+    {
+      "case": "initrd-emergency-policy",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "initrd-emergency-policy",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "initrd-emergency-policy",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "initrd-emergency-policy/1/serial.log",
+      "sha256": "87cd293d3cc00d5989cade63c85a89097d60604ef497400a9bf4d9a207565a8e"
+    },
+    {
+      "path": "initrd-emergency-policy/2/serial.log",
+      "sha256": "f321300cb5b56dd2b317e17cf36ed1809e296318a48db5c87d8b3c4e7d0b30dd"
+    },
+    {
+      "path": "initrd-emergency-policy/3/serial.log",
+      "sha256": "71708b930848474c4f8675437e43c2e85537923a17cdd4e566095a3f86550f12"
+    }
+  ]
+}

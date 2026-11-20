@@ -1,0 +1,4 @@
+type: job
+name: anima
+interface: python
+script: main.py

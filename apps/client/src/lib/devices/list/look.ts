@@ -1,5 +1,5 @@
 import type { Beat } from '$lib/checks/heartbeats';
-import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
+import type { Status } from '$lib/hub/generated/graphql';
 import type { CardDevice } from '../api';
 import type { ListQuery } from '../query';
 
@@ -26,7 +26,7 @@ export type ListEntry<T> =
  */
 export function listItems<T extends LookDevice>(devices: readonly T[], query: Pick<ListQuery, 'sort' | 'statuses'>): readonly ListEntry<T>[] {
   const rows = devices.map((device) => ({ kind: 'device' as const, key: device.id, device }));
-  if (!grouped(query.sort, query.statuses)) return rows;
+  if (!grouped(query)) return rows;
   const counts = new Map<GroupKey, number>();
   for (const device of devices) counts.set(groupOf(device.status), (counts.get(groupOf(device.status)) ?? 0) + 1);
   const items: ListEntry<T>[] = [];
@@ -42,7 +42,8 @@ export function listItems<T extends LookDevice>(devices: readonly T[], query: Pi
   return items;
 }
 
-function grouped(sort: DeviceSort, statuses: readonly Status[]): boolean {
+/** Whether the list has group titles: sorted by status and not filtered by it (D18). */
+export function grouped({ sort, statuses }: Pick<ListQuery, 'sort' | 'statuses'>): boolean {
   return sort === 'STATUS' && statuses.length === 0;
 }
 
@@ -76,7 +77,7 @@ export function tallyQuery(query: ListQuery, status: Status | null): ListQuery {
 export interface Reason {
   /** What is wrong, in a few words. */
   readonly text: string;
-  /** How long it has been so, "12 min"; `null` when the beats do not say. */
+  /** How long it has been so, "12 min", or "over 12 min" when no kept beat is up; `null` when the beats do not say. */
   readonly since: string | null;
 }
 
@@ -99,17 +100,27 @@ export function reasonOf(device: LookDevice, beats: readonly Beat[] | undefined,
   return { text, since: sinceOf(beats?.filter((beat) => beat.checkId === worst.id), now) };
 }
 
-/** How long the check has been other than up: from the first beat of the last run that is not up. */
+/**
+ * How long the check has been other than up: from the first beat of the last run that is not up. Only the newest
+ * beats are kept; a run that fills them all began before the oldest.
+ */
 function sinceOf(beats: readonly Beat[] | undefined, now: number): string | null {
   if (beats === undefined || beats.length === 0) return null;
   let start: string | null = null;
+  let sawUp = false;
   for (let index = beats.length - 1; index >= 0; index -= 1) {
     const beat = beats[index];
-    if (beat === undefined || beat.status === 'UP') break;
+    if (beat === undefined) break;
+    if (beat.status === 'UP') {
+      sawUp = true;
+      break;
+    }
     start = beat.at;
   }
   const from = start === null ? Number.NaN : Date.parse(start);
-  return Number.isNaN(from) ? null : durationText(now - from);
+  if (Number.isNaN(from)) return null;
+  // The kept beats do not reach the start of the run, so their oldest is only the least it can be.
+  return sawUp ? durationText(now - from) : `over ${durationText(now - from)}`;
 }
 
 /** "<1 min", "12 min", "3 h", "2 days". */
@@ -121,6 +132,11 @@ export function durationText(ms: number): string {
   if (hours < 36) return `${String(hours)} h`;
   const days = Math.round(hours / 24);
   return `${String(days)} ${days === 1 ? 'day' : 'days'}`;
+}
+
+/** A device that no check reaches gives no reading that is of now: its usage is a dash, not old values. */
+export function hasLiveUsage(status: Status): boolean {
+  return status !== 'DOWN' && status !== 'UNKNOWN';
 }
 
 /** The order of a list that has no groups: by name, every status. */

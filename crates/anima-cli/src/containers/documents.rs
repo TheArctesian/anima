@@ -57,3 +57,21 @@ pub struct ContainerNetworkList;
     variables_derives = "Debug"
 )]
 pub struct ContainerUpdateList;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/check_file.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct ComposeFileCheckRun;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/containers/from_run.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct ComposeFromDockerRunRead;

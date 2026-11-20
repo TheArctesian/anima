@@ -113,7 +113,7 @@
       },
       "label": {
         "$value": "0.14em",
-        "$description": "Small-caps labels and section heads (UR-7 D7)"
+        "$description": "The wide spacing of a one-time code. No label uses it: a label is in sentence case (R-279)"
       }
     },
     "weight": {
