@@ -217,8 +217,10 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
 - The workflow `merge-to-dev` runs `bun quality/bin/merge.ts <branch> --push`; a session that merges by
   hand runs `bun quality/bin/merge.ts <branch>` in a clean worktree on `dev`. It refuses a branch whose
   gates did not pass on GitHub (`quality/merge-rule.json`). It merges
-  the branch, writes the generated files again, assigns the numbers, runs the document gates and makes the
-  merge commit. It pushes only with `--push`, and only to `dev`. A conflict in a different file stops it:
+  the branch, writes the generated files again, assigns the numbers, makes the merge commit and
+  runs the document gates on that commit; if they fail, it removes the commit. The mockup check (PLN-019)
+  reads commits, so it is wrong on a merge that is not committed: when you merge by hand, commit the merge
+  first, then run `bun run quality:documents`. It pushes only with `--push`, and only to `dev`. A conflict in a different file stops it:
   merge `origin/dev` into the branch and solve it there.
 
 ## Tests
