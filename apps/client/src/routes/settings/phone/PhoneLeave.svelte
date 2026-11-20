@@ -6,7 +6,7 @@
   import { useHub } from '$lib/hub/context';
   import type { HubResult } from '$lib/hub/hub';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
-  import { signOutPhone } from './sign-out';
+  import { signOutMobile } from '$lib/access/mobile/sign-out';
 
   // "Leave hub" of the phone layout (mockup 7). A phone has no link yet (mobile plan M3-1), so leaving signs out and
   // forgets the hub's address; the app starts again at the first-run choices.
@@ -15,7 +15,7 @@
   let asking = $state(false);
 
   async function leave(): Promise<HubResult<unknown>> {
-    const kept = await signOutPhone(api, hub.address);
+    const kept = await signOutMobile(api, hub.address);
     if (kept !== null) return { ok: false, error: { code: 'INTERNAL', message: kept } };
     forgetHubAddress(localStorage, hub.address.origin);
     loadClientAt('/welcome');

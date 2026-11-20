@@ -8,6 +8,7 @@ import { enrolAtAddress, type DeviceEnrolment, type ThisComputerParts } from '$l
 export interface LinkedDeviceParts extends Omit<ThisComputerParts, 'device' | 'linkDevices'> {
   readonly link: () => Promise<LinkResult<DeviceLinkStatus>>;
   readonly linkDevices: () => Promise<HubResult<readonly { readonly key: string; readonly address: string; readonly name?: string }[]>>;
+  readonly enableMetrics?: (address: string) => Promise<boolean>;
 }
 
 interface DeviceIdentity {
@@ -32,8 +33,14 @@ async function add(origin: string, parts: LinkedDeviceParts, device: DeviceIdent
   if (!linked.ok) return 'failed';
   const linkedDevice = linked.value.find((candidate) => candidate.key === publicKey);
   if (!linkedDevice?.address) return 'not-linked';
-  const name = (device.invitedKey === undefined ? undefined : linkedDevice.name) || device.name;
-  return enrolAtAddress(parts, LINK_SITE, { name, kind: device.kind, host: linkedDevice.address, os: device.os ?? 'OTHER', tags: [], metricsSource: 'NONE', addDefaultCheck: false });
+  const name = (device.invitedKey !== undefined || parts.enableMetrics !== undefined ? linkedDevice.name : undefined) || device.name;
+  return addAtLinkAddress(parts, device, name, linkedDevice.address);
+}
+
+async function addAtLinkAddress(parts: LinkedDeviceParts, device: DeviceIdentity, name: string, host: string): Promise<DeviceEnrolment> {
+  const result = await enrolAtAddress(parts, LINK_SITE, { name, kind: device.kind, host, os: device.os ?? 'OTHER', tags: [], metricsSource: 'NONE', addDefaultCheck: false });
+  if (result === 'failed' || parts.enableMetrics === undefined) return result;
+  return await parts.enableMetrics(host) ? result : 'metrics-failed';
 }
 
 const adding = new Map<string, Promise<DeviceEnrolment>>();

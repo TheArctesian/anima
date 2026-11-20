@@ -75,6 +75,13 @@ impl PhoneLink {
         self.folder.is_dir()
     }
 
+    #[cfg(target_os = "android")]
+    pub(crate) fn metrics_socket(&self, origin: &str, account: &str) -> Option<PathBuf> {
+        let key = listener_key(origin)?;
+        (account.strip_prefix("link:")? == key)
+            .then(|| self.folder.join(format!("metrics-{key}.sock")))
+    }
+
     fn saved_port(&self) -> Option<u16> {
         fs::read_to_string(&self.port).ok()?.trim().parse().ok()
     }

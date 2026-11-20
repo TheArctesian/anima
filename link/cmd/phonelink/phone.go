@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -96,7 +98,9 @@ func start(state, listen string) (started, error) {
 		_ = dir.Close()
 		return started{}, err
 	}
-	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: listen, Save: func(renewed identity.Device) error {
+	key := device.Key.Public()
+	socket := metricsSocket(dir, key.Fingerprint())
+	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: listen, DaemonSocket: socket, Save: func(renewed identity.Device) error {
 		return renewed.Save(dir)
 	}})
 	if err != nil {
@@ -104,11 +108,19 @@ func start(state, listen string) (started, error) {
 		return started{}, err
 	}
 	running, held = link, dir
-	key := device.Key.Public()
 	deviceKey = key.Fingerprint()
 	encoded, _ := key.MarshalText() // A populated public key always has a text form.
 	publicKey = string(encoded)
 	return started{Local: link.LocalAddr().String()}, nil
+}
+
+func metricsSocket(dir *statedir.Dir, fingerprint string) net.Listener {
+	if runtime.GOOS != "android" {
+		return nil
+	}
+	// Keep the UI link available even when Android cannot open the reporting socket.
+	socket, _ := dir.Listen("metrics-" + fingerprint + ".sock")
+	return socket
 }
 
 // status reads the link that runs, if one does.

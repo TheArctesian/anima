@@ -57,7 +57,7 @@ async function addressOnLink(device: CloudDevice, parts: ThisComputerParts): Pro
   return address || null;
 }
 
-export type DeviceEnrolment = 'added' | 'already-added' | 'not-linked' | 'failed';
+export type DeviceEnrolment = 'added' | 'already-added' | 'not-linked' | 'failed' | 'metrics-failed';
 
 export async function enrolAtAddress(parts: Pick<ThisComputerParts, 'hosts' | 'sites' | 'createSite' | 'createDevice'>, network: NewSite, input: Omit<CreateDeviceInput, 'siteId'>): Promise<DeviceEnrolment> {
   const hosts = await parts.hosts();

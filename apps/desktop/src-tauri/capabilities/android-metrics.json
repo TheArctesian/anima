@@ -1,0 +1,11 @@
+{
+  "identifier": "android-metrics",
+  "description": "Report readings from an enrolled Android device through its active link.",
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": [
+    "allow-mobile-metrics-enrolled",
+    "allow-mobile-metrics-enrol",
+    "allow-mobile-metrics-push"
+  ]
+}

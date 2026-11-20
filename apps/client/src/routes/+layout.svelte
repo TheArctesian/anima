@@ -13,6 +13,7 @@
   import { hubIsHosted } from '$lib/hosted/mark';
   import { provideHub } from '$lib/hub/context';
   import { createHub, desktopRecentCopy, type HubAddress } from '$lib/hub/hub';
+  import { watchAndroidMetrics } from '$lib/metrics/mobile/report';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { shiftShell } from '$lib/nav/banner-shift';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
@@ -77,6 +78,11 @@
   // a hub (E-2). Every route but sign-in needs sign-in, so the shell's start guard runs on all of them (API-003, R-111).
   const start = startAt(page.url);
   const shell = start.kind === 'shell' ? startShell(start.address) : null;
+  const android = capabilities().deviceLink && isAndroid(navigator);
+  const signedOut = $derived(showsSignedOutPage(page.url));
+  $effect(() => {
+    if (shell !== null && android && !signedOut) return watchAndroidMetrics(shell.hub.address.origin);
+  });
 
   /** The hub the shell talks to, provided to every page, with its token read behind the listener check (F-10). */
   function startHub(address: HubAddress) {

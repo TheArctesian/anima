@@ -13,6 +13,7 @@
   import { hubIsHosted } from '$lib/hosted/mark';
   import { enrolAtAddress, enrolThisComputer, type DeviceEnrolment } from '$lib/hosted/this-computer';
   import { enrolLinkedDevice } from '$lib/devices/enrollment/enrol-linked-device';
+  import { enableAndroidMetrics } from '$lib/metrics/mobile/report';
   import { clearPendingEnrolment, pendingEnrolment } from '$lib/devices/enrollment/pending-enrolment';
   import { VPN_SITE } from '$lib/devices/form/site';
   import FormButton from '$lib/forms/FormButton.svelte';
@@ -44,8 +45,15 @@
   const canEnrolHere = platform.thisMachine || platform.deviceLink;
   const inventory = { hosts: devices.hosts, sites: devices.sites, createSite: devices.createSite, createDevice: devices.create };
   const hostedComputer = { ...inventory, device: readCloudDevice, linkDevices: link.devices };
-  const currentLink = { ...inventory, link: readLink, linkDevices: link.devices };
-  const mobileDevice = { name: deviceName, kind: deviceName === 'iPad' ? 'tablet' : 'phone' };
+  const android = platform.deviceLink && isAndroid(navigator);
+  const currentLink = {
+    ...inventory,
+    link: readLink,
+    linkDevices: link.devices,
+    ...(android ? { enableMetrics: (host: string) => enableAndroidMetrics(hub, host) } : {}),
+  };
+  const tablet = deviceName === 'iPad' || (android && Math.min(screen.width, screen.height) >= 600);
+  const mobileDevice = { name: deviceName, kind: tablet ? 'tablet' : 'phone' };
   let panel = $state<'choose' | 'invite' | null>(null);
   let busy = $state(false);
   let result = $state<DeviceEnrolment | null>(null);
@@ -82,7 +90,7 @@
     result = null;
     try {
       result = await enrollHere();
-      if (result === 'added') listVersion += 1;
+      if (result === 'added' || result === 'metrics-failed') listVersion += 1;
     } catch {
       result = 'failed';
     } finally {
@@ -94,17 +102,22 @@
     if (!busy) panel = null;
   }
 
+  async function enrollInvitedDevice(invitedKey: string): Promise<void> {
+    const computer = platform.thisMachine ? await readCloudDevice() : null;
+    const device = platform.thisMachine
+      ? { name: computer?.computer || 'Computer', kind: 'workstation', os: computer?.os }
+      : mobileDevice;
+    const outcome = await enrolLinkedDevice(hub.address.origin, currentLink, { ...device, invitedKey });
+    if (outcome === 'added' || outcome === 'already-added' || outcome === 'metrics-failed') clearPendingEnrolment(sessionStorage);
+    if (outcome === 'added' || outcome === 'metrics-failed') listVersion += 1;
+    if (outcome === 'metrics-failed') result = outcome;
+  }
+
   async function enrollAfterSignIn(): Promise<void> {
     if (!platform.deviceLink) return;
     const invitedKey = pendingEnrolment(sessionStorage, hub.address.origin);
     if (invitedKey !== undefined) {
-      const computer = platform.thisMachine ? await readCloudDevice() : null;
-      const device = platform.thisMachine
-        ? { name: computer?.computer || 'Computer', kind: 'workstation', os: computer?.os }
-        : mobileDevice;
-      const outcome = await enrolLinkedDevice(hub.address.origin, currentLink, { ...device, invitedKey });
-      if (outcome === 'added' || outcome === 'already-added') clearPendingEnrolment(sessionStorage);
-      if (outcome === 'added') listVersion += 1;
+      await enrollInvitedDevice(invitedKey);
     } else if (platform.thisMachine && hubIsHosted(hub.address.origin) && await enrolThisComputer(hostedComputer) === 'added') {
       listVersion += 1;
     }
@@ -155,6 +168,7 @@
       {#if result === 'added'}<p role="status">Added to Devices.</p>
       {:else if result === 'already-added'}<p role="status">This device is already in Devices.</p>
       {:else if result === 'not-linked'}<p role="alert">Connect this device to this hub before enrolling it.</p>
+      {:else if result === 'metrics-failed'}<p role="alert">This device is in Devices, but reporting didn’t start. Try enrolling it again.</p>
       {:else if result === 'failed'}<p role="alert">Couldn’t enroll this device. Try again.</p>
       {/if}
     </div>

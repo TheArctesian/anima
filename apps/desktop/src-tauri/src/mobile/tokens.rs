@@ -15,6 +15,16 @@ pub(crate) fn store(webview: &Webview) -> State<'_, SecureTokens<Wry>> {
     webview.state()
 }
 
+#[cfg(target_os = "android")]
+pub(super) async fn reporting_link(webview: &Webview, origin: &str) -> Option<String> {
+    let account = account_for(webview, origin).ok()?;
+    if !origin.starts_with("http://127.0.0.1:") {
+        return None;
+    }
+    store(webview).read(HUB_SCOPE, &account).await.ok()??;
+    Some(account)
+}
+
 fn account_for(webview: &Webview, origin: &str) -> Result<String, TokenProblem> {
     if webview.label() != "main" {
         return Err(TokenProblem { code: "caller" });

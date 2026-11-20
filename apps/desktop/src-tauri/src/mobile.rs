@@ -7,6 +7,8 @@ use tauri::RunEvent;
 use crate::{cloud, phone_browser, phone_link};
 
 pub(crate) mod account_session;
+#[cfg(target_os = "android")]
+mod metrics;
 mod runner;
 pub(crate) mod tokens;
 
@@ -35,6 +37,12 @@ pub fn run() {
             cloud::cloud_sign_in_poll,
             cloud::cloud_sign_in_resume,
             cloud::cloud_sign_out,
+            #[cfg(target_os = "android")]
+            metrics::mobile_metrics_enrolled,
+            #[cfg(target_os = "android")]
+            metrics::mobile_metrics_enrol,
+            #[cfg(target_os = "android")]
+            metrics::mobile_metrics_push,
             cloud::in_app::cloud_sign_in_session,
             cloud::cloud_hub,
             cloud::cloud_hub_access,

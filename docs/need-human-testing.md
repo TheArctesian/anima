@@ -64,6 +64,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 | HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
 | HT-070 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
+| HT-NEW-androidreadings | Android reports its memory and storage readings (M6-1) | A physical Android device joined to a hub, and another client to check the same device | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -1645,7 +1646,18 @@ Result: Open.
 
 On 2026-11-20 a separate debug app on the Android tablet stored and replaced a synthetic hub token, refused access from another origin and from an unowned loopback port, restored the token after force-stop, and kept it cleared after a second force-stop. The record contained ciphertext in the app’s no-backup directory.
 
-An Android emulator joined an isolated hub by invitation through the relay after the Android interface enumeration fix. The app verified that it owned the loopback listener, reached the hub with the stored token before and after force-stop, and confirmed that clearing the token removed it. The hosted sign-in service issued a device code on the emulator. Completing hosted sign-in, repeating the invite check on the physical tablet, checking an update signed with the release key, and testing the iOS Keychain at runtime remain open.
+An Android emulator joined an isolated hub by invitation through the relay after the Android interface enumeration fix. The app verified that it owned the loopback listener, reached the hub with the stored token before and after force-stop, and confirmed that clearing the token removed it. The hosted sign-in service issued a device code on the emulator. The physical tablet later joined the isolated hub, signed in to the hosted hub after returning manually from the browser, and made fresh authenticated requests to both hubs after force-stop. The wide Settings layout initially signed in again after Sign out. The wide layout now clears the same account session as the compact layout and returns to Welcome. The signed update check and runtime iOS Keychain check remain open.
+
+Result: Open.
+
+### HT-NEW-androidreadings: Android reports its memory and storage readings (M6-1)
+
+1. On a signed-in Android device that has joined the hub, open Devices, choose Add device, and choose to enroll this device. Confirm that its entry appears.
+2. On another signed-in client, open the same device. Confirm that Memory and Storage have recent values and that the metrics source is Daemon.
+3. Put Anima in the background on Android for 45 seconds. Confirm that the hub marks the values stale and does not turn the device Down. Return to Anima and confirm that the readings get a newer timestamp.
+4. In Android Settings, choose Sign out. Confirm that Anima returns to Welcome. Select Sign in again and check that it asks for a new approval.
+
+On 2026-11-20 the Samsung tablet was enrolled from the app. The hosted hub showed the tablet with source Daemon and new memory and storage readings. New readings reached the hub again after bringing the app back to the foreground. The background stale state still needs an independent client check.
 
 Result: Open.
 
