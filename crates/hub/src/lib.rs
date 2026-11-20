@@ -272,7 +272,7 @@ pub fn source_reach(
     intakes: Vec<Arc<dyn engine::sources::Intake>>,
     policy: fleet::targets::AddressPolicy,
 ) -> Result<engine::sources::Reach, engine::sources::BuildFailed> {
-    let declarations = vec![provider_github::DECLARATION];
+    let declarations = vec![provider_github::DECLARATION, provider_dawarich::DECLARATION];
     let bases: Vec<&str> = declarations.iter().map(|d| d.api_base).collect();
     let transport = engine::sources::Transport::new(bases, policy)?;
     let registry = engine::sources::Registry::new(declarations, intakes);

@@ -50,6 +50,19 @@ pub(super) async fn insert_sample(
     Ok(done.rows_affected() == 1)
 }
 
+/// Deletes each sample of `origin` and gives their count.
+pub(super) async fn delete_samples(
+    conn: &mut PgConnection,
+    origin: &Origin,
+) -> Result<u64, sqlx::Error> {
+    sqlx::query("DELETE FROM locations.sample WHERE provider = $1 AND account = $2")
+        .bind(origin.provider.as_str())
+        .bind(&origin.account)
+        .execute(conn)
+        .await
+        .map(|done| done.rows_affected())
+}
+
 /// The samples observed from `from` to `to`, oldest first, at most `limit`.
 pub(super) async fn samples_between(
     db: impl PgExecutor<'_>,
@@ -171,6 +184,57 @@ pub(super) async fn use_token(
     .fetch_optional(conn)
     .await?;
     Ok(row.map(Into::into))
+}
+
+/// Adds `fixes` to the count of `token` for `hour`, and keeps `client` as the address of the
+/// last post of the hour.
+pub(super) async fn count_fixes(
+    conn: &mut PgConnection,
+    (token, hour): (IngestTokenId, DateTime<Utc>),
+    (fixes, client): (i32, std::net::IpAddr),
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO locations.ingest_hour (token_id, hour, fixes, client) VALUES ($1, $2, $3, $4) \
+         ON CONFLICT (token_id, hour) DO UPDATE \
+         SET fixes = locations.ingest_hour.fixes + excluded.fixes, client = excluded.client",
+    )
+    .bind(token)
+    .bind(hour)
+    .bind(fixes)
+    .bind(client)
+    .execute(conn)
+    .await
+    .map(drop)
+}
+
+/// One hour of one ingest token that has ended.
+#[derive(sqlx::FromRow)]
+pub(super) struct ClosedHour {
+    pub token_id: IngestTokenId,
+    pub name: String,
+    pub hour: DateTime<Utc>,
+    pub fixes: i32,
+    pub client: std::net::IpAddr,
+}
+
+/// Takes each count of an hour before `open_hour` out of the table, oldest first. A second
+/// caller at the same time skips the rows that this one holds.
+pub(super) async fn take_closed_hours(
+    conn: &mut PgConnection,
+    open_hour: DateTime<Utc>,
+) -> Result<Vec<ClosedHour>, sqlx::Error> {
+    sqlx::query_as(
+        "WITH closed AS (SELECT token_id, hour FROM locations.ingest_hour WHERE hour < $1 \
+         ORDER BY hour, token_id FOR UPDATE SKIP LOCKED), \
+         taken AS (DELETE FROM locations.ingest_hour h USING closed c \
+         WHERE h.token_id = c.token_id AND h.hour = c.hour \
+         RETURNING h.token_id, h.hour, h.fixes, h.client) \
+         SELECT t.token_id, k.name, t.hour, t.fixes, t.client FROM taken t \
+         JOIN locations.ingest_token k ON k.id = t.token_id ORDER BY t.hour, t.token_id",
+    )
+    .bind(open_hour)
+    .fetch_all(conn)
+    .await
 }
 
 fn ids(end: &End) -> (Option<Uuid>, Option<Uuid>, Option<Uuid>) {

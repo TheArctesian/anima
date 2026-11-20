@@ -65,6 +65,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
+| HT-063 | The hub pulls the points of your Dawarich server with an API key | A hub of this build that can reach your Dawarich server over `https`, an API key of your Dawarich account | Open |
 | HT-041 | The first formula and the first crate version of `anima` alone, from the release workflow (tasks B8h, R8d) | A crates.io account of the operator, the key of the tap, a public release, a Mac and a Linux computer with no Anima | Open |
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
@@ -1153,6 +1154,38 @@ ntfy app on a phone, the text on a real lock screen, and a change of the clocks 
 8. Run `anima reminder set <rule> --message "Changed"` for the rule of step 2 in the minute before it
    is due again on the next day, or run `anima reminder disable <rule>`. Expected: a firing that
    waited is `SUPPRESSED` with the reason `rule_changed`, and the phone shows nothing.
+
+Result: Open.
+
+### HT-063: the hub pulls the points of a Dawarich server (E0-5 T3 and T4, R-261)
+
+Built: on the branch `engine/e0-5-dawarich`. `anima source connect dawarich` connects a Dawarich
+server with an API key of its account. The hub then reads `GET /api/v1/points` of that server each
+15 minutes and stores each point as one location sample of the provider `DAWARICH`.
+
+The tests use a server of the test that answers with points that the test wrote. Not covered: a real
+Dawarich server and its real answers (the names of the fields, the pages, the time form of
+`start_at`), a real certificate, a server on a private address of the VPN, and a hub that is hosted
+outside your network.
+
+1. In Dawarich, open the account settings and copy the API key.
+2. Run `anima source connect dawarich --label Home --url https://<your Dawarich address>` and paste
+   the key at the question. Expected: the account is shown with the source `dawarich` and
+   "credential stored"; the key is not on the screen.
+3. Wait 1 minute, then run `anima source list`. Expected: the account is healthy and its last run
+   says how many samples it added.
+4. Run `anima location list --from <a day that Dawarich has points for>T00:00:00Z --to <the next
+   day>T00:00:00Z`. Expected: rows with the provider `DAWARICH`, with the times and the positions
+   that Dawarich shows for that day. A point with no accuracy in Dawarich shows `?`.
+5. Run `anima source sync <account>` two times. Expected: the runs add 0 samples when Dawarich has
+   no new point: no point is stored two times.
+6. Run the command of step 2 with a wrong key. Expected: "The server refused this key.", and the
+   account of step 2 still works.
+7. If your Dawarich answers only plain `http`, run the command of step 2 with `http://`. Expected:
+   the hub refuses the address (OD-E26 asks if this must change).
+8. On a hosted hub, with a Dawarich server that only your home network reaches: run the command
+   of step 2. Expected: the hub says that it cannot reach the server; nothing is stored.
+9. Run `anima source pause <account>`. Expected: no new run until you resume it.
 
 Result: Open.
 

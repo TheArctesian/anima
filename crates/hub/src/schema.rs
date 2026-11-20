@@ -240,12 +240,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
 pub fn engine_routes(parts: &Dependencies) -> Router {
     let (pool, bus, clock) = (&parts.pool, &parts.bus, &parts.clock);
     let files = files::router(pool, bus, clock, &parts.files);
-    crate::logged(files.merge(locations::router(
-        pool,
-        bus,
-        clock,
-        parts.files.sealing_keys(),
-    )))
+    crate::logged(files.merge(locations::router(pool, clock, parts.files.sealing_keys())))
 }
 
 type Builder = SchemaBuilder<Query, Mutation, Subscription>;

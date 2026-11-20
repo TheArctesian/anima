@@ -16,6 +16,7 @@
 //! path, a verb or a URL.
 
 mod address;
+mod at_account;
 
 use std::{error::Error as StdError, net::IpAddr, sync::Arc, time::Duration};
 
@@ -111,6 +112,8 @@ pub struct Transport {
     allowed: Arc<[String]>,
     /// Replaces every API base: a loopback stub, set only by tests.
     base_override: Option<Url>,
+    /// The address policy of the hub, for a base that is of an account (Section 7b).
+    policy: AddressPolicy,
     tokens: Tokens,
     /// The live path's cache, budget and pace (K-E1 Section 13.1).
     live: Live,
@@ -194,9 +197,10 @@ impl Transport {
     ) -> Result<Self, BuildFailed> {
         let hosts: Arc<[String]> = api_bases.into_iter().filter_map(host_name).collect();
         Ok(Self {
-            client: client(hosts.clone(), policy, true)?,
+            client: client(hosts.clone(), policy.clone(), true)?,
             allowed: hosts,
             base_override: None,
+            policy,
             tokens: Tokens::default(),
             live: Live::default(),
         })
@@ -211,9 +215,10 @@ impl Transport {
     pub fn to_stub(stub: Url, policy: AddressPolicy) -> Result<Self, BuildFailed> {
         let hosts: Arc<[String]> = stub.host_str().map(str::to_owned).into_iter().collect();
         Ok(Self {
-            client: client(hosts.clone(), policy, false)?,
+            client: client(hosts.clone(), policy.clone(), false)?,
             allowed: hosts,
             base_override: Some(stub),
+            policy,
             tokens: Tokens::default(),
             live: Live::default(),
         })

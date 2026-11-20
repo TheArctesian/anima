@@ -325,6 +325,7 @@ dependencies = [
  "minisign",
  "nix 0.31.3",
  "proptest",
+ "provider-dawarich",
  "provider-github",
  "rand 0.10.3",
  "rcgen",
@@ -5921,6 +5922,16 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "provider-dawarich"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "source-exchange",
 ]
 
 [[package]]
