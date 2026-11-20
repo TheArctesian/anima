@@ -88,6 +88,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
+| HT-NEW-threadview | The page Threads with the real sessions of Claude Code and Codex of this computer (R-NEW-t3native) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -2432,6 +2433,37 @@ extensions of a real hub, at other widths or on a phone.
    Expected: the view that you chose last is shown.
 5. Make the window narrow (about 800 px), in the light and the dark appearance, and look at both views.
    Expected: no part lies over another; the tiles go to fewer columns.
+
+Result: Open.
+
+### HT-NEW-threadview: the page Threads with the real sessions of this computer (R-NEW-t3native)
+
+Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
+Threads of the desktop application, the commands `anima agents threads` and `anima agents thread`, and the MCP tool
+`anima_agents_threads`. The tests use made session files and a made shell. The command was run one time on a Mac with
+real session files (2026-11-20). No person saw the page in a desktop window, and nothing was run on Linux. The page was
+not compared with its mockup.
+
+1. On the Mac, with sessions of Claude Code and Codex in the home folder, open the desktop application and select
+   "Threads" in the navigation bar.
+   Expected: a list of the sessions, the last changed first, in the groups "Changed now", "Today" and "Earlier". Each row
+   has a title, the program, the folder and the time. A session that you use now has a dot in the accent colour.
+2. Select a thread of Claude Code, then one of Codex.
+   Expected: the prompts that you typed, the replies, "Reasoning" folded, and the tool calls of a turn in one block. An
+   edit shows the removed and the added lines when it is opened. No text of a different session shows.
+3. Press the Down key, Cmd+2, Cmd+Shift+], the key E and the key /.
+   Expected: the next thread opens; the second thread opens; the next thread opens; the tool calls open and close; the
+   focus goes to the search, where typing narrows the list and Escape leaves.
+4. Look at the foot of a thread and at the whole page.
+   Expected: a note says that the thread is read from the session file and that the page sends no message. No control
+   starts, stops or answers an agent.
+5. In a terminal run `anima agents threads --limit 5` and `anima agents thread <an ID of the list>`.
+   Expected: the same threads as the page; the thread as text with "> You" before each prompt.
+6. Open the application in the dark and the light appearance beside the mockup `docs/mockup/agent-threads/index.html`,
+   frames 1 and 2.
+   Expected: the same parts in the same order. Write each difference in the row of the mockup.
+7. On the Linux computer `pop-os`, do steps 1, 2 and 5.
+   Expected: the same.
 
 Result: Open.
 
