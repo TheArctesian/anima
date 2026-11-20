@@ -22,6 +22,8 @@ const APP_COMMANDS: &[&str] = &[
     "builder_cancel",
     "builder_release_files",
     "builder_upload",
+    "agent_threads_list",
+    "agent_thread_read",
     "mcp_agents_read",
     "mcp_agents_change",
     "mcp_permissions_read",

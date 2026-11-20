@@ -4,6 +4,8 @@
 //! feature does not compile for a mobile target (MOB-003).
 
 #[cfg(desktop)]
+mod agent_threads;
+#[cfg(desktop)]
 mod builder;
 #[cfg(desktop)]
 mod carried;
