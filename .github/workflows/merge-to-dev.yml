@@ -1,5 +1,5 @@
 # Merges a branch into `dev` when its gates passed on GitHub, with no person and no session
-# (R-NEW-automerge). `quality/merge-rule.json` on `dev` is the switch: `"mergeWithoutCheck": true`.
+# (R-252). `quality/merge-rule.json` on `dev` is the switch: `"mergeWithoutCheck": true`.
 # Nothing here touches `main`: `main` stays a deliberate step (R-198).
 #
 # GitHub has a merge queue that does this work, but only for a repository that an

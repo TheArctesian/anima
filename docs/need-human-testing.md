@@ -70,7 +70,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
-| HT-NEW-gatesci | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
+| HT-051 | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
@@ -1421,7 +1421,7 @@ built or signed the application, and nothing was sent to App Store Connect.
 
 Result: Open.
 
-### HT-NEW-gatesci: the workflows `gates` and `merge-to-dev` on GitHub (R-NEW-fastgates, R-NEW-gaterule, R-NEW-automerge)
+### HT-051: the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252)
 
 Built: on the branch `quality/faster-gates`. `.github/workflows/gates.yml` runs the 21 gates on Linux
 machines of GitHub for each pushed branch, as merged with `dev`. `.github/workflows/merge-to-dev.yml`

@@ -85,7 +85,7 @@ only with the whole Rust group. The full list does that. `--group rust,go,bun,qu
 ### The gates on GitHub
 
 `.github/workflows/gates.yml` runs the full list on `ubuntu-24.04` machines of GitHub for each pushed branch
-but `main` (R-NEW-gaterule). No pull request starts it. The job `base` reads the commit of `dev`; then four
+but `main` (R-254). No pull request starts it. The job `base` reads the commit of `dev`; then four
 jobs run at the same time, each on the branch as merged with that commit (`gates-merge.sh`): `rust-lint`
 (`fmt`, `clippy`), `rust-test` (`rust-test`, `doctest`, `pinning`), `go`, and `bun` (the bun gates and the
 quality gates). The job `passed` passes when each passed. A run for `dev`, and a run that a workflow calls
@@ -108,7 +108,7 @@ two for the set-up of the machine (a wrapper script that `sh` of Ubuntu broke; P
 of `deploy`), one for three tests of the daemon that run only on Linux and were stale, and two because
 `dev` had moved and the branch did not merge with it.
 
-### The merge into `dev` (R-NEW-automerge)
+### The merge into `dev` (R-252)
 
 `.github/workflows/merge-to-dev.yml` starts when a run of `gates` ends. For a push of a branch of this
 repository that passed, `merge-to-dev.sh` reads the rule of `dev`, makes sure that the branch and `dev` are
@@ -146,7 +146,7 @@ of the operator (R-198).
 `bin/numbers.ts --check` fails when a placeholder of a number (`R-NEW-` and a name; `src/merge/numbers.ts` has the series) is in the repository;
 `--assign` gives each its number. `bin/merge.ts <branch>` merges a branch into `dev` with them
 (`AGENTS.md`, "Numbers and generated files at a merge"). `merge-rule.json` holds the two rules
-of R-NEW-gaterule and R-NEW-automerge; the two are on.
+of R-254 and R-252; the two are on.
 
 ### Rust tests: gates 3 to 5 (R-112)
 

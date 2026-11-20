@@ -5,7 +5,7 @@
 # it (`workflow_call`), so there is one definition of "the gates on GitHub". The workflow
 # `merge-to-dev` starts it for `dev` (`workflow_dispatch`) after a merge.
 #
-# What a run tests (R-NEW-automerge). A push of a branch tests the branch as merged with the
+# What a run tests (R-252). A push of a branch tests the branch as merged with the
 # `dev` of that moment: the job `base` reads the commit of `dev`, each job merges that commit
 # into its checkout, and the artifact `tested-base` keeps it. A run for `dev`, and a run that a
 # workflow calls with `ref`, tests that commit as it is.

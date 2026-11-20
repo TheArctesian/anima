@@ -85,7 +85,7 @@ describe("the gates workflow (gates.yml)", () => {
     }
   });
 
-  test("R-NEW-automerge each job of the gates tests the branch as merged with the dev that the job `base` read", () => {
+  test("R-252 each job of the gates tests the branch as merged with the dev that the job `base` read", () => {
     expect(workflow.jobs["base"]?.steps.some((step) => step.with?.["name"] === "tested-base")).toBe(true);
     for (const [name, job] of gateJobs) {
       expect(job.needs, name).toEqual("base" as unknown as string[]);
@@ -113,7 +113,7 @@ describe("the gates workflow (gates.yml)", () => {
   });
 });
 
-describe("the workflow that merges into dev (merge-to-dev.yml; R-NEW-automerge)", () => {
+describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
   const raw = readFileSync(join(ROOT, ".github", "workflows", "merge-to-dev.yml"), "utf8");
   const merge = (Bun.YAML.parse(raw) as Workflow).jobs["merge"];
   const script = readFileSync(join(ROOT, ".github", "workflows", "merge-to-dev.sh"), "utf8");

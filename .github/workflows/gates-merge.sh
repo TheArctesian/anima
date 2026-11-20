@@ -1,5 +1,5 @@
 #!/bin/sh
-# Makes a job of gates.yml test the branch as merged with `dev` (R-NEW-automerge): merges the
+# Makes a job of gates.yml test the branch as merged with `dev` (R-252): merges the
 # commit DEV_SHA into the checkout. With an empty DEV_SHA the job tests the commit as it is.
 set -eu
 
