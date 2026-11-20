@@ -1441,6 +1441,8 @@ Result: Open.
 
 Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
 
+Observation (2026-11-20; the operator, first-hand, in the session that writes this; not a result): `Anima_0.0.2_amd64.AppImage` of the release workflow stopped at start on Pop!_OS 24.04 with "Failed to load ayatana-appindicator3 or appindicator3 dynamic library" ([DEF-NEW-appimagetray](work-items/defects/DEF-NEW-appimagetray.md)). Corrected on the branch `fix/appimage-tray-library`. Expected in the next release: the job `linux` passes its new check of the tray libraries, and the AppImage opens its window on a 24.04 computer.
+
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
 
 Built: in the hub domain `crates/hub/src/work/containers/`, `Query.containerDetail`,
