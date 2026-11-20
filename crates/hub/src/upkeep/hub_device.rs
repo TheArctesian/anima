@@ -1,6 +1,7 @@
 //! A hosted hub is a device of its own list (HMD-045, R-137): at the start it makes sure that
 //! its device and the check `Hub running` exist, reports the check as Up, and then reports it
-//! again at each half of the check's interval, so the device is Up while the hub runs. When the
+//! again at each half of the check's interval, so the device is Up while the hub runs. It records
+//! the Linux distribution of its container on its device (HMD-046). When the
 //! daemon of its container is not enrolled yet, it writes one enrolment code of its device to
 //! the private file that `anima-local-hub` named (HMD-071, HM-T35).
 
@@ -52,6 +53,13 @@ pub async fn start(
             return None;
         }
     };
+    if let Some(distribution) = own_distribution(Path::new("/")).await
+        && devices::record_distribution(db, device, &distribution)
+            .await
+            .is_err()
+    {
+        job_failed(JOB, "distribution");
+    }
     let code_file = config
         .own_daemon
         .as_ref()
@@ -67,6 +75,20 @@ pub async fn start(
     };
     alive.report().await;
     Some(alive)
+}
+
+/// The files that name the distribution, in the order of os-release(5).
+const OS_RELEASE: [&str; 2] = ["etc/os-release", "usr/lib/os-release"];
+
+/// The distribution of the system under `root` (`/` for the container of the hub): the first
+/// file of [`OS_RELEASE`] that reads; `None` when it names none.
+pub(super) async fn own_distribution(root: &Path) -> Option<devices::Distribution> {
+    for file in OS_RELEASE {
+        if let Ok(text) = tokio::fs::read(root.join(file)).await {
+            return metrics::distribution_of(&text);
+        }
+    }
+    None
 }
 
 /// Makes a code for the daemon of the container and writes it to `file`, mode 0600, in place of

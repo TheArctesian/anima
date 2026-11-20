@@ -177,6 +177,13 @@ pub async fn daemon_versions(
     Ok(ingest::daemon_versions(db, devices).await?)
 }
 
+/// The distribution that the text of an `os-release` file names (DEV-016); `None` when it names
+/// none that reads. The hosted hub reads its own with it (HMD-046).
+#[must_use]
+pub fn distribution_of(os_release: &[u8]) -> Option<crate::fleet::devices::Distribution> {
+    collector::os_release::distribution(os_release)
+}
+
 /// Why the code of the hub's own daemon was not made (HMD-071).
 #[derive(Debug, thiserror::Error)]
 #[error("the enrolment code of the hub's own daemon cannot be made")]
