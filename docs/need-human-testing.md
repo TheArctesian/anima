@@ -1555,10 +1555,15 @@ Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-
 2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is
    faster than the first (the cache).
 3. When `merge-to-dev.yml` is on `main` and the settings are made: push a branch with one changed document and
-   one placeholder of a number. Expected: after the gates, the run `merge-to-dev` merges it; `dev` has a merge
-   commit that names the number; the placeholder is gone; a run `gates` for `dev` starts.
-4. Push two such branches at the same time. Expected: the first merges; the gates of the second run again
-   with the new `dev`, and then it merges. `main` did not move.
+   one placeholder of a number. Expected: after its gates, a run `merge-to-dev` makes a branch `train/...`
+   and a run `gates` starts for it; when that run passes, the next run `merge-to-dev` moves `dev` to the
+   commit of the train: `dev` has a merge commit that names the number, the placeholder is gone, the branch
+   `train/...` is gone, and no run `gates` starts for `dev`.
+4. Push three such branches at the same time. Expected: one train holds each branch whose gates passed
+   when it was made; one run of the gates lands them in one step; no branch runs a second time. `main`
+   did not move. (Seen on 2026-11-20 with the workflow before the train: `ui/bar-foot` and
+   `fix/first-use-observations` merged with no session, and each merge started the gates of each waiting
+   branch again; the train replaces that.)
 5. Push a branch that has a conflict with `dev` in a document. Expected: its gates fail in the step "Merge
    the dev of this run into the checkout", and nothing is merged.
 
