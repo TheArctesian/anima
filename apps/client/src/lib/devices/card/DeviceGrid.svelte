@@ -59,11 +59,10 @@
     min-block-size: var(--control-lg);
     padding: var(--space-4) var(--space-2) var(--space-2);
     border-block-end: var(--border-thin) solid var(--border-subtle);
-    color: var(--text-tertiary);
-    font-size: var(--text-xs);
+    color: var(--text);
+    font-size: var(--text-sm);
     font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+    letter-spacing: var(--tracking-small);
   }
 
   .group:first-child {

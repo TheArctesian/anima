@@ -19,7 +19,7 @@ for each row goes into `design-spec.md` in Phase B.
 | D1 | Drop 700. The app ships Plex Sans 200, 400 and 500; `weight-bold` is removed and its uses move to `weight-medium`. Under OpenDyslexic, light maps to regular and medium to bold |
 | D2 | IBM Plex Mono everywhere, the terminal included, with a Nerd Font symbols-only face after it so shell prompt glyphs still draw |
 | D5 | One display size on every top-level page, Settings included |
-| D6 | The small-caps section head is enough on long forms; the rows under it carry the rest |
+| D6 | The small-caps section head is enough on long forms; the rows under it carry the rest. Changed by R-NEW-nocapitals (2026-11-20): the head and each label are in sentence case, not in capitals |
 | D9 | The devices grid uses hairline tiles, not raised cards |
 | D12 | The resolve entrance plays on first load and on a route change, never when a list re-renders in place |
 | D13 | Sign-in shows the particle doors, a still mark under reduced motion |
@@ -43,7 +43,7 @@ interface is drawn.
 | Page ground | `surface-sunken` (#16181B); content sits directly on it | `surface-base` window, `surface-raised` cards |
 | Grouping | Hairline rows: a `border-subtle` line between rows, no card fill | Raised cards and tables ("surfaces, not borders") |
 | Display type | IBM Plex Sans **200** (Light), large, tracking −0.03 em | 700 for titles; 400 and 700 only |
-| Labels | Small caps: 10.5 px, weight **500**, tracking +0.14 em, uppercase, `text-tertiary`, Plex Sans (never mono) | Sentence-case labels |
+| Labels | Small caps: 10.5 px, weight **500**, tracking +0.14 em, uppercase, `text-tertiary`, Plex Sans (never mono). The application does not take this trait (R-NEW-nocapitals): its labels are in sentence case, `text-sm`, weight 500, `text-secondary`, tracking +0.01 em | Sentence-case labels |
 | Section head | Icon, a 28 px rule, then the label | Bold title, no icon (UI-026) |
 | Machine text | IBM Plex Mono | Fira Code |
 | Icons | Carbon (outline, 16 px), brand marks from Simple Icons; used widely, always beside a word | Nerd Font glyphs, four places only (UI-014, UI-026) |
@@ -133,6 +133,7 @@ Draft for review, 2026-11-15. This proposal extends the palette model in UI-005,
 | D | Primitives: page header (display title), section head, row list, key-value row, small-caps label, the resolve entrance | Specimen route review |
 | E | Shell and pages: sidebar, sign-in, Devices, device page, Live sessions, Settings. The app's `/specimen` route opens with the mockup's Specimen screen, section for section: label and display title, Type, Colour, Icons, Controls, Corners, Motion with a replay (operator, 2026-11-13); the component lanes follow below it | `reviewer-interface` per page; `/specimen` side by side with the mockup's `#specimen`; operator look |
 | F | `motion-audit`, screen-reader check, full gates | Operator approves the merge |
+| G | Labels in sentence case (R-NEW-nocapitals): no label of the client is in capitals or has the wide tracking. The column heads, the day heads and the section labels are `text-sm`, weight 500 and `text-secondary`; the head of a group of rows ("Needs a look 1") has the text colour. The component `QuietLabel` replaces `SmallCaps`. Each mockup loses its capitals in the same commit. State: built on the branch `ui/no-capitals`; the look in a desktop window is HT-NEW-nocapitals | `bun run gates:fast`; pictures of the Devices list before and after |
 
 ## 4. Risks
 

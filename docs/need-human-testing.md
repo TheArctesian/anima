@@ -2285,3 +2285,21 @@ extensions of a real hub, at other widths or on a phone.
    Expected: no part lies over another; the tiles go to fewer columns.
 
 Result: Open.
+
+### HT-NEW-nocapitals: labels in sentence case in the whole application (R-NEW-nocapitals)
+
+Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
+`apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
+1280 px, in the dark and the light appearance. No person saw the other screens, a desktop window or a phone.
+
+1. Open "Devices" in a desktop window, in the dark and the light appearance.
+   Expected: the column heads read "Name", "Status", "24 h", "Last 50 checks", "Usage", "Connect", and a group head
+   reads for example "Needs a look 1". No word is in capitals. A group head is easy to tell from a device row.
+2. Select the grid view.
+   Expected: the group heads are the same as in the list.
+3. Open the logs panel, a project's commits, "Agent usage", "Projects" and "Settings".
+   Expected: each head of a day, a column or a group is in sentence case, and is still seen as a head.
+4. Open "Devices" and "Settings" on a phone.
+   Expected: the group heads and the section labels are in sentence case.
+
+Result: Open.

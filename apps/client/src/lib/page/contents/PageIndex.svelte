@@ -13,13 +13,13 @@
 
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
-  import SmallCaps from '../SmallCaps.svelte';
+  import QuietLabel from '../QuietLabel.svelte';
 
   interface Props {
     entries: readonly IndexEntry[];
     /** The navigation's accessible name, for example "Settings sections". */
     label: string;
-    /** A small-caps heading over the links, for example "On this page". */
+    /** A quiet heading over the links, for example "On this page". */
     heading?: string | undefined;
     /** Below a wide window: a scrolling row of links above the sections, or no index at all. */
     narrow?: 'row' | 'hidden';
@@ -56,9 +56,9 @@
 <!-- A page's sections (UR-7, SET-001, D17): sticky beside them on a wide window; on a narrow one a scrolling row above
      them, or nothing. -->
 <nav aria-label={label} class:hidden={narrow === 'hidden'}>
-  {#if heading !== undefined}<span class="heading"><SmallCaps>{heading}</SmallCaps></span>{/if}
+  {#if heading !== undefined}<span class="heading"><QuietLabel>{heading}</QuietLabel></span>{/if}
   {#each entries as entry, at (entry.id)}
-    {#if entry.group !== undefined && entry.group !== entries[at - 1]?.group}<span class="group"><SmallCaps>{entry.group}</SmallCaps></span>{/if}
+    {#if entry.group !== undefined && entry.group !== entries[at - 1]?.group}<span class="group"><QuietLabel>{entry.group}</QuietLabel></span>{/if}
     <a href="#{entry.id}" aria-current={(current ?? entries[0]?.id) === entry.id ? 'true' : undefined}>
       <Icon name={entry.icon} size="sm" />{entry.title}
     </a>
