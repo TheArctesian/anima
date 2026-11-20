@@ -36,7 +36,16 @@ Use the draft [F-Droid recipe](../../../apps/desktop/fdroid/ing.anima.mobile.yml
 The checkout includes the [project license](../../../LICENSE), [font notices](../../../apps/client/src/styles/fonts/) and the [Carbon icon license](../../../apps/client/src/lib/icons/LICENSE-Carbon.txt). The F-Droid source scanner flagged a Go test fixture. The recipe removes it from the recipe checkout because the production build does not use it.
 
 1. Copy the recipe to `metadata/ing.anima.mobile.yml` in an `fdroiddata` checkout. Set `commit`, `versionName` and `versionCode` to the first release.
-2. Use `apksigner sign --alignment-preserved` when signing the upstream APK with build-tools 36.0.0. This keeps the APK layout that the [signature comparison tool](https://github.com/obfusk/apksigcopier#what-about-signatures-made-by-apksigner-from-build-tools--3500-rc1) expects. Set `binary` in the build entry to the versioned URL of that APK. Run `apksigner verify --print-certs` on it. Put the signing certificate SHA-256 in `AllowedAPKSigningKeys` at the top level.
+2. On the release builder, the operator signs the upstream APK with the Android release keystore. Use build-tools 36.0.0 and let `apksigner` prompt for the passwords. `--alignment-preserved` keeps the APK layout that the [signature comparison tool](https://github.com/obfusk/apksigcopier#what-about-signatures-made-by-apksigner-from-build-tools--3500-rc1) expects.
+
+   ```sh
+   "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --alignment-preserved \
+     --ks "$RELEASE_KEYSTORE" --ks-key-alias "$RELEASE_KEY_ALIAS" \
+     --in target/android/Anima-unsigned.apk --out target/android/Anima.apk
+   "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs target/android/Anima.apk
+   ```
+
+   Set `binary` in the build entry to the versioned URL of that APK. Put the signing certificate SHA-256 in `AllowedAPKSigningKeys` at the top level.
 3. Remove `disable` from the build entry. Run `fdroid lint ing.anima.mobile` and `fdroid build --server ing.anima.mobile` using the F-Droid build server. Review the scanner output and the dependency licenses.
 4. Compare the signed APK to the unsigned APK from that build. Put the Android build-tools folder on `PATH` so the comparison can run `apksigner`.
 
