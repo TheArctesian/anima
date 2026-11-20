@@ -1643,7 +1643,9 @@ Result: Open.
 3. In Settings, sign out. Force-stop the application and open it again. Confirm that a fresh read now requires sign-in.
 4. Repeat with an Anima.ing account and its hosted hub. After signing out, select Sign in again and confirm that the app starts a new browser sign-in instead of resuming locally.
 
-On 2026-11-20 a separate debug app on the Android tablet stored and replaced a synthetic hub token, refused access from another origin and from an unowned loopback port, restored the token after force-stop, and kept it cleared after a second force-stop. The record contained ciphertext in the app’s no-backup directory. The real hosted sign-in and invite-join steps, signed update check, and runtime iOS Keychain check are open.
+On 2026-11-20 a separate debug app on the Android tablet stored and replaced a synthetic hub token, refused access from another origin and from an unowned loopback port, restored the token after force-stop, and kept it cleared after a second force-stop. The record contained ciphertext in the app’s no-backup directory.
+
+An Android emulator joined an isolated hub by invitation through the relay after the Android interface enumeration fix. The app verified that it owned the loopback listener, reached the hub with the stored token before and after force-stop, and confirmed that clearing the token removed it. The hosted sign-in service issued a device code on the emulator. Completing hosted sign-in, repeating the invite check on the physical tablet, checking an update signed with the release key, and testing the iOS Keychain at runtime remain open.
 
 Result: Open.
 
