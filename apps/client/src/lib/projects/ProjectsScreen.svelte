@@ -11,19 +11,35 @@
   import ProjectTile from './ProjectTile.svelte';
   import ProjectBrowse from './ProjectBrowse.svelte';
   import type { ProjectsStore } from './store.svelte';
-  import { GROUP_ORDER, GROUP_TITLES, groupOf } from './tile';
+  import { GROUP_ORDER, GROUP_TITLES, groupOf, type TileGroup } from './tile';
 
-  const { store }: { store: ProjectsStore } = $props();
+  interface Props {
+    store: ProjectsStore;
+    /**
+     * True for a hub that the application reaches at a port of this computer (a hosted hub through the link, or a hub
+     * on this computer): GitHub cannot open such a hub in a browser, so only the key file of a GitHub App connects it.
+     */
+    keyFileOnly?: boolean;
+  }
+
+  const { store, keyFileOnly = false }: Props = $props();
   let showing = $state<'main' | 'leftOut'>('main');
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
+  /** The one group the operator chose to see, or all of them (R-224). */
+  let only = $state<'all' | TileGroup>('all');
+  const grouped = $derived(showing === 'main' && store.byName);
+  const byGroup = $derived(GROUP_ORDER.map((group) => ({ group, title: GROUP_TITLES[group], projects: projects.filter((project) => groupOf(project) === group) })));
   /** The main view in groups, problems first; the left-out view is one plain group. */
   const groups = $derived(
-    showing === 'leftOut' || !store.byName
-      ? [{ title: null, projects }]
-      : GROUP_ORDER.map((group) => ({ title: GROUP_TITLES[group], projects: projects.filter((project) => groupOf(project) === group) })).filter(
-          (group) => group.projects.length > 0,
-        ),
+    grouped
+      ? byGroup.filter((each) => each.projects.length > 0 && (only === 'all' || only === each.group))
+      : [{ title: null, projects }],
   );
+  /** Each choice says how many of the projects on the page it holds. */
+  const choices = $derived([
+    { value: 'all' as const, label: `All ${String(projects.length)}` },
+    ...byGroup.map((each) => ({ value: each.group, label: `${each.title} ${String(each.projects.length)}` })),
+  ]);
   const VIEWS = [
     { value: 'main', label: 'Projects' },
     { value: 'leftOut', label: 'Left out' },
@@ -38,7 +54,13 @@
       <Segmented label="Which projects" size="sm" options={VIEWS} bind:value={showing} />
     {/snippet}
   </PageHeader>
-  <ProjectBrowse {store} />
+  <!-- With no project and no filter there is nothing to sort or to filter, so the controls are not drawn. -->
+  {#if projects.length > 0 || store.filtered || !store.byName}
+    <div class="tools">
+      {#if grouped && projects.length > 0}<Segmented label="Which group" size="sm" options={choices} bind:value={only} />{/if}
+      <ProjectBrowse {store} />
+    </div>
+  {/if}
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />
   {/if}
@@ -49,7 +71,7 @@
   {:else if projects.length === 0 && store.filtered}
     <EmptyState title="No matching projects" line="Change the language or size filter." />
   {:else if projects.length === 0 && showing === 'main'}
-    <EmptyState title="No projects yet" line="Connect GitHub.">
+    <EmptyState title="No projects yet" line={keyFileOnly ? 'Connect GitHub with the key file of a GitHub App.' : 'Connect GitHub.'}>
       {#snippet action()}
         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the section anchor is added -->
         <a href={`${resolve('/settings')}#settings-integrations`}>Settings > Integrations</a>
@@ -57,6 +79,8 @@
     </EmptyState>
   {:else if projects.length === 0}
     <EmptyState title="Nothing left out" line="Repositories you leave out appear here." />
+  {:else if groups.length === 0}
+    <EmptyState title="No project in this group" line="Choose All to see each project." />
   {:else}
     {#each groups as group (group.title)}
       <section class="group" aria-label={group.title ?? (showing === 'leftOut' ? 'Left out' : 'All projects')}>
@@ -80,6 +104,14 @@
     flex-direction: column;
     gap: var(--space-6);
     min-inline-size: 0;
+  }
+
+  /* The choice of the group, then the order and the filters of the hub, on one line when they fit (R-224). */
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-6);
   }
 
   .group {

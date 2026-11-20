@@ -17,7 +17,8 @@
 </script>
 
 <!-- One project as a tile (UR-7, PRO-001): its name and the state of its repository, why it needs a look, where it runs,
-     then its repositories with Leave out. A tile that needs a look carries a 2 px warning edge (D18). -->
+     then its repositories with Leave out. A tile steps from the page by its surface, with no border (R-221, R-224); one
+     that needs a look carries a 2 px warning edge (D18). -->
 <li class="entry tile" class:look={reason !== null}>
   <div class="top">
     <span class="name">
@@ -51,13 +52,8 @@
     gap: var(--space-3);
     min-inline-size: 0;
     padding: var(--space-4);
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    transition: border-color var(--duration-fast) var(--ease-enter);
-  }
-
-  .tile:hover {
-    border-color: var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
   }
 
   .look {
