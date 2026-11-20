@@ -1,0 +1,37 @@
+#!/bin/sh
+# Prints the build number of the phone applications for a release version (mobile plan M5-3,
+# RLS-003): the build number of the iOS application (CFBundleVersion) and the version code of
+# the Android application. No person types the number.
+#
+#   phone-build-number <version>     for example 0.7.95 gives 795
+#
+# The rule: for the version A.B.C the number is A * 10000000 + B * 100 + C.
+#
+# - For a version of deploy/bin/commit-version (0.<N div 100>.<N mod 100>, R-183) the number
+#   is N itself: the number of commits on the first line of `main` (R-201).
+# - A higher version always gives a higher number, and two versions never give the same
+#   number. That holds because C is at most 99 and B at most 99999; a version outside these
+#   limits is refused, and so is 0.0.0, which would give 0.
+# - The number stays below 2100000000, the highest version code that Android takes: A is at
+#   most 209.
+#
+# App Store Connect takes a build only if its number is higher than each build that it has for
+# the same version. Each release has a version of its own and thus a number of its own, higher
+# than the number of each release before it, because `main` only gets longer (R-201). A second
+# archive of one version has the same number, and App Store Connect refuses its upload: one
+# version is one commit and one build.
+set -eu
+
+refuse() { echo "phone-build-number: $1" >&2; exit 1; }
+
+[ $# -eq 1 ] || refuse "give one version, for example 0.7.95"
+echo "$1" | grep -Eq '^(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]?)$' \
+    || refuse "the version is not like 0.7.95: the first number is at most 209, the second at most 99999, the third at most 99"
+MAJOR=${1%%.*}
+REST=${1#*.}
+MINOR=${REST%%.*}
+PATCH=${REST#*.}
+[ "$MAJOR" -le 209 ] || refuse "the first number of the version is more than 209"
+NUMBER=$((MAJOR * 10000000 + MINOR * 100 + PATCH))
+[ "$NUMBER" -ge 1 ] || refuse "the version 0.0.0 has no build number"
+echo "$NUMBER"

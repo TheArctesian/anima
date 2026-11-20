@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cloud-sign-in-session"
+description = "Enables the cloud_sign_in_session command without any pre-configured scope."
+commands.allow = ["cloud_sign_in_session"]
+
+[[permission]]
+identifier = "deny-cloud-sign-in-session"
+description = "Denies the cloud_sign_in_session command without any pre-configured scope."
+commands.deny = ["cloud_sign_in_session"]

@@ -1,0 +1,31 @@
+#!/bin/sh
+# Runs the tests that only a Mac runs. The gates on GitHub run on Linux
+# (.github/workflows/gates.yml), where these tests are skipped or not compiled; the release
+# runs this file on a Mac before it signs (BLD-042). On the Mac of a person: run it from the
+# repository, with PostgreSQL 17, cargo-nextest and Go on PATH.
+#
+# What it runs:
+#   1. the bun tests that skip off macOS: check-mach-o.sh, and the refusal of a release build
+#      with no signing identity;
+#   2. the Go tests of link/statedir (the access lists of macOS);
+#   3. the Rust tests of each package that holds code for macOS only (PACKAGES; a test holds
+#      the list against the source). Of the hub, only the tests of fleet::link: its other
+#      tests have no macOS code and ran on Linux;
+#   4. the pinning test of the desktop shell, with the trust hook of WKWebView.
+set -eu
+
+PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub"
+
+cd "$(dirname "$0")/../.."
+[ "$(uname -s)" = Darwin ] || { echo "macos-tests: this is not a Mac" >&2; exit 2; }
+unset DATABASE_URL
+
+bun install --frozen-lockfile
+bun test deploy/test/check-mach-o.test.ts deploy/test/release-workflow.test.ts
+go -C link test -race ./statedir/...
+packages=""
+for package in $PACKAGES; do packages="$packages -p $package"; done
+# shellcheck disable=SC2086 # the list is words, one for each package
+bun quality/bin/with-postgres.ts cargo nextest run $packages -E 'not package(anima-hub) | test(/fleet::link/)'
+cargo test -p anima-app --test pinning
+echo "macos-tests: pass"
