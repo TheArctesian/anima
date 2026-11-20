@@ -1,2 +1,2 @@
-2026-11-20T21:53:21.272Z
-a conflict in docs/mockup/README.md
+2026-11-20T22:12:36.591Z
+`bun run quality:documents` failed on the merge commit: docs/mockup/records/device-overview-v2.md: screen-changed-after-mockup apps/client/src/routes/devices has 2 layout file(s) that changed after 8b19c3d1; compare [device-overview-v2/index.html](device-overview-v2/index.html) again
