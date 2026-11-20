@@ -112,3 +112,21 @@ async fn the_commit_and_the_lowest_version_are_settings_that_must_be_valid() {
     );
     assert!(!folder.path().join(RECORD_FILE).exists());
 }
+
+#[tokio::test]
+async fn rol_008_a_target_with_no_daemon_release_has_no_record() {
+    let (keys, folder) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    std::fs::write(folder.path().join("anima-daemon"), DAEMON).unwrap();
+    let (env, _) = settings(keys.path());
+    let path = folder.path().to_string_lossy();
+    let args = ["record", "windows-x86_64", "0.9.3", &path];
+    let refused = release_command(&env, &args, &reqwest::Client::new())
+        .await
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        refused,
+        "a release record is only for linux-x86_64 and darwin-universal"
+    );
+    assert!(!folder.path().join(RECORD_FILE).exists());
+}

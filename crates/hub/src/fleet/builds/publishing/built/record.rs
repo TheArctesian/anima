@@ -22,14 +22,18 @@ pub enum RecordError {
     NotAProgram(String),
     #[error("the folder holds no program file")]
     Empty,
+    #[error("a release record is only for linux-x86_64 and darwin-universal")]
+    NoRecordTarget,
     #[error("the release record breaks a rule, or its signature did not check")]
     Refused(#[from] release_record::SignError),
 }
 
-const fn target_of(target: Target) -> release_record::Target {
+/// The target of the record; `None` for a target with no daemon release (OD-ROL-8).
+const fn target_of(target: Target) -> Option<release_record::Target> {
     match target {
-        Target::LinuxX86_64 => release_record::Target::LinuxX8664,
-        Target::DarwinUniversal => release_record::Target::DarwinUniversal,
+        Target::LinuxX86_64 => Some(release_record::Target::LinuxX8664),
+        Target::DarwinUniversal => Some(release_record::Target::DarwinUniversal),
+        Target::WindowsX86_64 => None,
     }
 }
 
@@ -45,6 +49,7 @@ pub(super) fn record(
     version: Version,
     folder: &Path,
 ) -> Result<String, ReleaseError> {
+    let record_target = target_of(target).ok_or(RecordError::NoRecordTarget)?;
     let commit = setting(env, COMMIT)?.to_owned();
     let replaces_from = version_of(setting(env, REPLACES_FROM)?, REPLACES_FROM)?;
     let mut files = Vec::new();
@@ -60,7 +65,7 @@ pub(super) fn record(
         format: FORMAT,
         version: version_of(&version.to_string(), "the version")?,
         commit,
-        target: target_of(target),
+        target: record_target,
         replaces_from,
         database: Database::Compatible,
         files,
