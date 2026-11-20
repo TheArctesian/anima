@@ -17,6 +17,8 @@
   <a href="LICENSE">AGPL-3.0-or-later</a>
   ·
   <a href="docs/procedures/setup/anima-mcp.md">MCP</a>
+  ·
+  <a href="https://github.com/sponsors/TheArctesian">Sponsor on GitHub</a>
 </p>
 
 <p align="center">

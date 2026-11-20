@@ -3,6 +3,8 @@
   import ExtensionsSection from '$lib/extensions/ExtensionsSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import { hubIsHosted } from '$lib/hosted/mark';
+  import { useHub } from '$lib/hub/context';
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
   import LinkDevicesSection from '$lib/link/LinkDevicesSection.svelte';
@@ -36,10 +38,12 @@
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub } = capabilities();
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
+  // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
+  const vpnShown = !hubIsHosted(useHub().address.origin);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
-  const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions });
+  const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions, vpn: vpnShown });
   // The phone layout has the rows of mockup 7 for Account and Hub, and Leave hub at the end.
   const phone = $derived(phoneLayout());
 </script>
@@ -129,9 +133,11 @@
   {/if}
 
   <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
-  <SettingsSection {...SECTIONS.vpn}>
-    <VpnSection />
-  </SettingsSection>
+  {#if vpnShown}
+    <SettingsSection {...SECTIONS.vpn}>
+      <VpnSection />
+    </SettingsSection>
+  {/if}
 
   {#if phone && keyStore}
     <SettingsSection {...SECTIONS.leave}>

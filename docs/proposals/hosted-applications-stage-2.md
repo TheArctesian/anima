@@ -94,7 +94,12 @@ text keeps it. Section 4 is written for that.
 ## 4. Proposed contract text: the container work types
 
 This is the text for a version 0.4 of [work-route.md](../../contracts/work-route.md). It is a
-proposal. No security review has read it. The review of version 0.1 found 12 faults (SF-003 to
+proposal. A security review read it on 2026-11-19 and found 19 weaknesses, 7 of severity High
+(SF-015 to SF-033 of [security-findings.md](../security-findings.md)). The text below is the text
+that the review read. It is not corrected yet, and it must not be built as it is: the list of
+Section 6.4.3 does not keep its own promise (SF-015). Version 0.4 is written after the operator
+has answered OD-HOST-14 to OD-HOST-21 of the plan. Before the review this paragraph said:
+no security review has read it. The review of version 0.1 found 12 faults (SF-003 to
 SF-014); a text that gives a machine to Docker deserves the same review before it is accepted.
 Decision OD-HOST-5 asks the operator how to join the two.
 
