@@ -6,6 +6,7 @@
   "workspaces": ["apps/*", "quality", "design", "deploy", "deploy/*"],
   "scripts": {
     "gates": "bun quality/bin/gates.ts",
+    "gates:fast": "bun quality/bin/gates.ts --fast",
     "lint": "bun run --filter '*' lint",
     "check": "bun run --filter '*' check",
     "test": "bun run --filter '*' test",
