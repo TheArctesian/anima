@@ -276,3 +276,16 @@ it('HMD-044: a hosted hub that has this Mac at its link address adds nothing and
   expect(operations).not.toContain('CreateDevice');
   expect(operations.filter((operation) => operation === 'Devices')).toHaveLength(1);
 });
+
+it('MOB-005, M3-4: a phone on a hosted hub reads no computer and adds no device', async () => {
+  const { MOBILE } = await import('$lib/platform/answers.fixture');
+  current.answers = MOBILE;
+  markHosted(localStorage, 'https://hub.test');
+  const fake = await visit(['nas.lan'], ON_LINK);
+  await settle();
+  expect(dialog()).toBeNull();
+  expect(current.reads).toBe(0);
+  const operations = fake.requests.map((request) => request.operation);
+  expect(operations).not.toContain('LinkDevices');
+  expect(operations).not.toContain('CreateDevice');
+});

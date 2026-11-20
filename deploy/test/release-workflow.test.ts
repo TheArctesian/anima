@@ -4,6 +4,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { ownCondition } from "./release-waits.ts";
+
 const ROOT = join(import.meta.dir, "..", "..");
 const RAW = readFileSync(join(ROOT, ".github", "workflows", "release.yml"), "utf8");
 
@@ -17,6 +19,7 @@ interface Step {
   with?: Record<string, string | boolean | number>;
 }
 interface Job {
+  uses?: string;
   environment?: string;
   needs?: string | string[];
   if?: string;
@@ -28,11 +31,12 @@ interface Workflow {
   on: Record<string, { branches?: string[]; tags?: string[]; inputs?: Record<string, unknown> }>;
   concurrency: { group: string; "cancel-in-progress": boolean };
   permissions: Record<string, string>;
-  jobs: Record<string, Job>;
+  jobs: Record<string, Omit<Job, "steps"> & { steps?: Step[] }>;
 }
 
 const workflow = Bun.YAML.parse(RAW) as Workflow;
-const jobs = workflow.jobs;
+// The job that calls the workflow `gates` has no steps of its own (release-gates.test.ts).
+const jobs = Object.fromEntries(Object.entries(workflow.jobs).map(([name, found]) => [name, { ...found, steps: found.steps ?? [] }]));
 const allSteps = Object.values(jobs).flatMap((job) => job.steps);
 
 /** The environment of each job that has one, and the secrets that only that job may name. */
@@ -118,10 +122,10 @@ describe("which push is a release (R-184, R-198)", () => {
     for (const name of ["tool", "macos", "linux"]) {
       expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
     }
-    expect(job("gates").if).toBe("needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')");
     for (const name of ["sign", "publish", "trial"]) {
       expect(waitsFor(name).has("macos")).toBe(true);
-      expect(job(name).if ?? "").not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
+      expect(() => ownCondition(job(name).if, needsOf(name))).not.toThrow();
+      expect(job(name).if ?? "").not.toContain("always()");
     }
   });
 
@@ -168,9 +172,11 @@ describe("the commit that each job builds (BLD-041, R-183)", () => {
 describe("permissions and pinning", () => {
   test("no job may write to the repository", () => {
     expect(workflow.permissions).toEqual({});
-    for (const found of Object.values(jobs)) {
+    for (const [name, found] of Object.entries(jobs)) {
       const granted = JSON.stringify(found.permissions);
-      expect(granted === "{}" || granted === '{"contents":"read"}').toBe(true);
+      // The first job also reads the list of the runs of the gates.
+      if (name === "commit") expect(granted).toBe('{"contents":"read","actions":"read"}');
+      else expect(granted === "{}" || granted === '{"contents":"read"}').toBe(true);
     }
     expect(RAW).not.toMatch(/:\s*write\b/);
   });
@@ -235,26 +241,14 @@ describe("the order to a published release (UPD-008, BLD-042)", () => {
     expect(needsOf("sign").sort()).toEqual(["commit", "gates", "linux", "macos", "tool"]);
   });
 
-  test("the gates job has the tools and the history that the gates need on a machine of GitHub", () => {
-    const install = runText(job("gates"));
-    for (const tool of ["postgresql@17", "cargo-nextest", "shellcheck"]) {
-      expect(install).toMatch(new RegExp(`brew install [^\\n]*${tool}`));
-    }
-    const checkout = job("gates").steps.find((step) => step.uses?.startsWith("actions/checkout@"));
-    expect(checkout?.with?.["fetch-depth"]).toBe(0);
-    expect(job("gates").steps.some((step) => step.uses?.startsWith("actions/setup-go@"))).toBe(true);
-    expect(job("gates").steps.some((step) => step.uses?.startsWith("oven-sh/setup-bun@"))).toBe(true);
-  });
-
   test("publish runs only for a push to main with the switch on, and only after every other job passed", () => {
-    expect(job("publish").if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
-    expect(job("publish").if).not.toMatch(/always\(\)|cancelled\(\)|failure\(\)/);
-    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "gates", "linux", "macos", "sign", "tool"]);
+    expect(ownCondition(job("publish").if, needsOf("publish"))).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
+    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "gates", "gates-linux", "gates-macos", "linux", "macos", "sign", "tool"]);
   });
 
 });
 
-describe("the bucket check and the cache of the gates", () => {
+describe("the bucket check and the one cache", () => {
   test("a release reads the bucket with the token in its first minute, writes nothing there, and a trial never does", () => {
     const found = job("bucket");
     expect(needsOf("bucket")).toEqual(["commit"]);
@@ -266,22 +260,22 @@ describe("the bucket check and the cache of the gates", () => {
     expect(waitsFor("trial").has("bucket")).toBe(false);
   });
 
-  test("only the gates job has a cache: nothing that is shipped or that holds a key is built from one", () => {
+  test("only the job of the Mac tests has a cache: nothing that is shipped or that holds a key is built from one", () => {
     for (const [name, found] of Object.entries(jobs)) {
       const cached = found.steps.some((step) => step.uses?.startsWith("actions/cache@"));
-      expect(cached).toBe(name === "gates");
+      expect(cached).toBe(name === "gates-macos");
       for (const step of found.steps.filter((one) => one.uses?.startsWith("oven-sh/setup-bun@"))) expect(step.with?.["no-cache"]).toBe(true);
       for (const step of found.steps.filter((one) => one.uses?.startsWith("actions/setup-go@"))) expect(step.with?.["cache"]).toBe(false);
     }
-    expect(Object.keys(HOLDERS)).not.toContain("gates");
-    expect(runText(job("gates"))).toMatch(/brew install [^\n]*sccache/);
+    expect(Object.keys(HOLDERS)).not.toContain("gates-macos");
+    expect(runText(job("gates-macos"))).toMatch(/brew install [^\n]*sccache/);
   });
 
 });
 
 describe("the end of a run (UPD-008)", () => {
   test("a run by hand ends in the trial job, which has no token and publishes nothing", () => {
-    expect(job("trial").if).toBe("github.event_name == 'workflow_dispatch'");
+    expect(ownCondition(job("trial").if, needsOf("trial"))).toBe("github.event_name == 'workflow_dispatch'");
     expect(runText(job("trial"))).not.toContain("release publish");
     expect(secretsNamed(job("trial"))).toEqual([]);
   });

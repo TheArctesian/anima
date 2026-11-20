@@ -88,6 +88,43 @@ pub(super) async fn poll(
     polled(status, &body)
 }
 
+/// Trades the code of a sign-in inside the app for tokens, with the code verifier in place of a
+/// secret (PKCE; the fields are those of
+/// <https://workos.com/docs/reference/user-management/authentication/code>, read on 2026-11-19).
+#[cfg(target_os = "ios")]
+pub(super) async fn exchange(
+    http: &Client,
+    client_id: &str,
+    code: &str,
+    verifier: &str,
+) -> Result<Tokens, CloudError> {
+    let form = code_form(client_id, code, verifier);
+    let response = http.post(TOKEN_URL).form(&form).send().await?;
+    let (status, body) = (
+        response.status(),
+        Zeroizing::new(response.bytes().await?.to_vec()),
+    );
+    match polled(status, &body)? {
+        Poll::SignedIn(tokens) => Ok(tokens),
+        Poll::Waiting | Poll::SlowDown => Err(CloudError::Refused),
+    }
+}
+
+/// The fields of the trade of a code. No client secret: the app is a public client (HMD-032).
+#[cfg(any(target_os = "ios", test))]
+pub(super) fn code_form<'a>(
+    client_id: &'a str,
+    code: &'a str,
+    verifier: &'a str,
+) -> [(&'static str, &'a str); 4] {
+    [
+        ("grant_type", "authorization_code"),
+        ("client_id", client_id),
+        ("code", code),
+        ("code_verifier", verifier),
+    ]
+}
+
 /// New tokens for the refresh token. A refused refresh token is `Unauthenticated`.
 pub(super) async fn refresh(
     http: &Client,

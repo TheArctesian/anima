@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19).
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28.
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -695,6 +695,12 @@ operator can say yes or no to it. None has contract text yet.
   OD-HOST-1).
 - **HOST-043.** The operator can give a machine the credential of a private registry. The hub keeps
   it sealed; only that machine uses it.
+- **HOST-044.** Proposed (R-249: later, as a general rule). The operator can turn on, for an
+  application of the catalogue, updates to a digest that Anima tested. It needs the copies of
+  HOST-042 first, a setting at the machine, and the actor "the hub by itself" in the contract.
+- **HOST-045.** Proposed (R-250). On a hosted hub, the link carries the port of an application to
+  the hub when the person turns that port on at the machine. The design is made with the owner of
+  the open ports of the link (HMD-049 of [hosted-mode.md](hosted-mode.md)).
 
 | Task | Content | Needs |
 | --- | --- | --- |
@@ -863,7 +869,164 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-041: databases as a kind | Approved for stage 3 (R-216) | Task H7 |
 | HOST-042: copies with a way back | Not approved | OD-HOST-1 of the plan |
 | HOST-043: the credential of a private registry | Not approved | A question for the operator |
+| HOST-044: updates to a digest that Anima tested | Not approved; the direction is decided (R-249: later) | HOST-042; the actor in the contract, after a security review |
+| HOST-045: the link carries the port of an application on a hosted hub | Not approved; the direction is decided (R-250) | The design with the owner of HMD-049 |
 
 One question remains for the operator from this table: "Do you approve HOST-030 and HOST-032 to
 HOST-036 for stage 2?" It is decision OD-HOST-13 of
 [hosted-applications-plan.md](../plans/hosted-applications-plan.md).
+
+## 10. A proposed exception to the rules of a file: an entry that may hold the socket of the engine (R-247)
+
+This section is a proposal. It is not in contract K10 and no reviewer has read it. R-247 (operator,
+2026-11-19) says that Arcane is an entry of the tested catalogue with an exception to the profile
+`contained`, so that it may mount the socket of Docker, and that the exact exception goes through a
+security review before any code. Nothing that installs Arcane is merged until the operator has
+decided the findings of that review.
+
+What the exception gives, in plain words: a program that holds the socket of the engine is the
+administrator of the machine on a system engine, and has the rights of the owner of the engine on
+an engine of a user. The settings "All containers", "Protected" and "The hub may delete volumes"
+limit Anima. They do not limit a person or a key inside such a program.
+
+### 10.1 The proposed text, for Section 6.4.4 of K10
+
+"**Excepted entries.** The applications program holds a list of excepted entries. The list is fixed
+in the program: the hub cannot add an entry and cannot change one. Each entry of the list has a
+name, the repository of one image and one digest of that image. A release of the applications
+program changes the list; nothing else does.
+
+An excepted entry is a service of a file whose `image` is exactly the repository and the digest of
+an entry of the list. For such a service, and for no other service of the file, one more mount is
+permitted: the type `bind`, the source `engine-socket`, and the target `/var/run/docker.sock`. The
+applications program writes the real path of the socket of the engine in the place of the source.
+Each other rule of this section applies to the service with no change: its ports, its other
+mounts, its limits, its labels, and each key that is not in the list of keys.
+
+The applications program refuses the mount (`not_at_machine`) unless the owner named the entry in
+the setting 'Programs that control Docker' of the machine. The setting is empty after the install.
+The screen that sets it says: 'This program controls Docker on this machine, and so can do all on
+this machine. What a person does inside it is outside the rules of Anima.'
+
+An excepted entry is never updated by `pull`: its image is the digest of the list. A new version
+comes with a new list. `application_back` applies the rule again with the list of today.
+
+The first entry of the list is the manager of Arcane. The agent of Arcane is a second entry."
+
+And for Section 3 of K10, in the paragraph of what a person who controls the hub can do: "On a
+machine whose setting 'Programs that control Docker' names an entry, that person can install that
+entry, and thus a program that is the administrator of the machine."
+
+### 10.2 What this text adds to the answer of the operator
+
+Two things in the text are controls that his answer did not name. The reviewer and he must see
+them as proposals, not as his words:
+
+- The list is in the program, with a digest. Thus neither the hub nor the catalogue can name a
+  different image as "Arcane".
+- The setting "Programs that control Docker" at the machine. Without it, the consequence that he
+  was told holds on each machine whose "Manage applications" is on. With it, it holds only on a
+  machine where the owner named the entry.
+
+### 10.3 The question that his answer left open (OD-HOST-28)
+
+R-234 lets an API key or an AI agent make the first install of an entry of the tested catalogue.
+Does that apply to an excepted entry?
+
+| Option | For | Against |
+| --- | --- | --- |
+| A. Yes: an excepted entry is installed as each other entry | One rule for the catalogue | An agent, which can be led by text that it reads, can install a program that is the administrator of a machine |
+| B. No: only a person with a login or a browser session installs an excepted entry | The administrator of a machine is never installed by an agent | One more row in the table of actors |
+
+Recommendation: B. With the setting of Section 10.1 at the machine, an agent could install the
+entry only on a machine where the owner already named it; B closes that also.
+
+### 10.4 Before the review: the test by hand (task AR0)
+
+R-247 asks for the test of Arcane by hand first. It needs a container that holds the socket of an
+engine, so it gives the image of a different publisher the control of that engine. This session
+did not run it on the build machine: it was told to install nothing and change no setting there.
+It is a step for the operator, or for a session on a machine that he names for it.
+
+## 11. The port of an application through the link: design options (task H35, R-250)
+
+This section is a design with options. It adds no approved requirement and no code exists for
+it. The facts about the link are from the session that built task HM-T12 of
+[hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049; tasks HM-T13 and HM-T14 are not started;
+the unit of the link is HMD-058, task HM-T24). This session did not read that code again:
+each fact of Section 11.1 is a claim of that session.
+
+### 11.1 What the link does today
+
+- **The list.** One file `open-ports` in the state folder of the link on the computer: a list
+  of port numbers. A fixed rule in the program permits only 22, 5900, and 3389 on Windows; a
+  different port in the file is ignored. The link reads the file at each request.
+- **Who can write it.** The user that runs the link. Since R-240 that is the logged-in user,
+  the same user as the daemon. So "the hub cannot change the list" holds against the network.
+  It does not hold against a program of that user, the daemon included.
+- **What it dials.** Only `127.0.0.1:<port>` of its own computer, and only for a port of the
+  list. That is the address at which an installed application listens (R-229).
+- **Who can ask at the hub.** Each process of the user of the hub can open the socket of the
+  link, and one hub function connects for SSH, the checks and the sessions alike. The link
+  does not know who asked. Today a TCP check to an open port passes for each caller that may
+  make a check.
+- **What protects the bytes.** The tunnel of the link, between the computer and the hub. In
+  the hub they are plain. No certificate of the application is checked: there is none.
+
+### 11.2 The proposed design
+
+1. **A second kind of entry.** The list gains entries "port of an application". Each names the
+   identifier of an application and the port that the applications program recorded for it at
+   its install. The fixed rule becomes: 22, 5900, 3389 on Windows, or a port that the record
+   of the applications program names at the time of the request.
+2. **Checked at each request.** The link refuses a port that the record does not name now.
+   An application that is removed takes its entry with it, so a different program that takes
+   the port later is not reachable. "Manage applications" off removes each such entry.
+3. **Where the entry is kept** is the question OD-HOST-29 below.
+4. **The limit is in the hub, not in the link.** An open entry says only "the hub may reach
+   this port". Who may use it is a rule of the hub function that opens it. The proposed rule:
+   the web page of an application opens only for a person with a login or a browser session;
+   no API key and no MCP tool gets bytes of it; a check of the health of an application
+   (HOST-008) reads only "answers" or "does not answer" and returns no byte of the answer.
+   A hub function that sends to an application by itself (events to an analytics stack) is a
+   named function with its own requirement, not a general path.
+5. **The page of a different publisher is not served under the origin of the hub.** Served
+   under the origin of the hub, such a page can use the session of the person at the hub.
+   With one gateway for all hosted hubs (R-239) it could reach each hub of that person. The
+   proposed rule: each application gets an origin of its own (a name of its own below a
+   domain that holds no session of a hub), and the hub sends none of its cookies to it. How
+   that name is made is the question OD-HOST-30.
+6. **The switch** is on the page of the application, with one store behind it and the screen
+   of the open ports (task HM-T13), which shows such an entry with the name of the
+   application and does not change it.
+
+### 11.3 What this design does not protect
+
+- A person who controls the hub reaches each port that is open at a machine. That is what
+  "open" means, and it is the same as for port 22.
+- Until the limit of point 4 is built and tested in the hub, an open application port is
+  reachable by each hub caller that can make a TCP check. Thus the entry of the second kind
+  must not be built before the hub rule.
+- An application with the socket of the engine (Section 10) behind an open port: a person who
+  reaches its web interface and can sign in to it is the administrator of that machine.
+
+### 11.4 Questions for the operator
+
+- **OD-HOST-29: who can turn on the port of an application at the machine?**
+  A: only the administrator, in the file of the machine settings that the applications
+  program reads (as "Manage applications"); the link asks that record and does not use its
+  own file for such an entry. B: the user, in the file of the link, as for port 22.
+  Recommendation: A. With B, the daemon, which runs as the same user and takes requests from
+  the hub, could open the port of each application by itself; with A, a hub that controls
+  the daemon cannot. Against A: on a Mac he is asked for the administrator one time more for
+  each application whose page he wants in the hub.
+- **OD-HOST-30: under which name does the hub serve the page of an application?**
+  A: a name of its own for each application below a separate domain that holds no session of
+  a hub (needs a domain or a sub-domain with a wildcard certificate; a change of DNS that
+  only he can make). B: no page in the hub in the first version; the hub shows the state and
+  the health of the application, and he opens its page in a session to the machine. C: under
+  the origin of the hub with the cookies removed. Recommendation: B first, then A. C is not
+  safe enough: a script of the page still runs in the origin of the hub.
+
+A security review by a separate reviewer reads this section before it becomes a plan.
+

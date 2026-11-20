@@ -124,6 +124,26 @@ that owns the area.
 | SF-NEW-rcl22 | The texts that Section 2 missed | A command line or a session for an agent (proposal, no code) | Open |
 | SF-NEW-rcl23 | The gate of Section 9 is weaker than ROU-014 | A command line or a session for an agent (proposal, no code) | Open |
 | SF-NEW-rcl24 | "No shell" and "`startSession` stays closed" are true and protect nothing | A command line or a session for an agent (proposal, no code) | Open |
+| SF-070 | Sections 6.4.1 and 6.4.2: "the administrator" has two meanings. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-071 | Section 6.4.1: the write check names "a real file", and the socket is one. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-072 | Sections 6.4.2 and 6.4.7: who writes the adoption record on an engine of a user. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-073 | Section 7 paragraph: "A hub keeps a member of `result` as the machine sent it." Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-074 | Section 4 paragraph: a `stop` waits behind a running item, and a key has no limit on installs. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-075 | Sections 4 and 7 paragraphs: an item that no machine claims has no end. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-076 | Section 7 paragraph and 6.4.1: the machine has no exclusion and no time limit of its own. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-077 | Sections 6.4.1 and 6.4.4, `ports`: no lowest version of the engine. Medium (not verified) | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-078 | Section 6.4.7: the comparison at adoption reads three fields. Low to Medium (not verified) | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-079 | Section 12: a `container_action` item makes a machine busy. Low (not verified against K8) | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-080 | Section 6.4.4 steps 1, 3 and 5: rules that two honest implementers build differently. Low each | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-081 | Section 6.4.4 step 3: the variable form and the environment file. Low | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-082 | Section 6.4.4 step 5: characters that the reader of Compose can take as a line end or refuse. Low (not verified) | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-083 | Section 6.4.1: the environment and configuration rules are said for `docker` only. Low | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-084 | Section 7 paragraph: `limits.seconds` has no maximum for three types, and some refusals have no cause. Low | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-085 | Section 6.4.2: the pair of origin and device. Low | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-086 | Section 6.4.1: the paths are checked "at each start" only. Low | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-087 | Section 6.4.2, row "Registries with a login". Low | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-088 | Eleven sentences of contract K10 version 0.4 contradict each other | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-089 | The clean-up with "All containers" on can remove an adopted project, against R-211 | Container work types (contract K10 Section 6.4, not built) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -1458,6 +1478,267 @@ Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Seve
 What it is, where, the effect and who can cause it, and the mitigation now: finding F24 of the record [command-lines-review-2026-11-19.md](research/work-route/command-lines-review-2026-11-19.md).
 
 State: Open. It is a correction of the text.
+## The fourth read of the container work types (task H14, 2026-11-19)
+
+The third read was of the form before its own 21 changes and before nine changes that the owner of the contract file asked for. Thus no security reviewer had read the text of version 0.4 as it is in `contracts/work-route.md`. A fourth separate reviewer agent read it on `dev`: Section 6.4 and each sentence that version 0.4 added elsewhere. It did not read the proposal. Nothing was run; the behaviour of Docker and Compose in these entries is from the knowledge of the reviewer, marked "not verified" where it carries a finding.
+
+The last line of the reviewer, in its words: "No finding remains that the owner has not decided; the open points are changes of the text." On what needs the owner, in its words:
+
+None. SF-074, SF-075, SF-076 and SF-084 add rules with numbers (10 minutes, 6 and 12, 600 seconds); the owner of the contract file may choose different values, but each is a change of the text and not an accepted risk.
+
+No finding remains that the owner has not decided; the open points are changes of the text.
+
+The reviewer found 18 weaknesses, none of severity High (SF-070 to SF-087), eleven sentences of the file that contradict each other (SF-088), and one contradiction with a ruling (SF-089). Each is a change of the text. Version 0.5 of the contract has them; the owner of the contract file reviews that change. Until this read was recorded, no code that gives a container type to a real machine was to be merged; none exists.
+
+How the reviewer judged the 21 entries of the third read:
+
+| Entry | In the text? | Sentence, or what is missing |
+| --- | --- | --- |
+| SF-049 | Yes | 6.4.1: "It refuses to start when the owner of the real socket is not the user that it runs as, or when the kind is different from the recorded one." The word "administrator" has no definition (SF-070). |
+| SF-050 | Yes | 6.4.1: "On an engine of a user the accepted user is the owner of the socket of the engine; the applications program refuses to start when the two are different". |
+| SF-051 | Yes | 6.4.2: "When a request has a different pair, it refuses each container item (`applications_off`) until the administrator sets 'Manage applications' on again." |
+| SF-052 | Yes | 6.4.4 step 5: "It writes the final form itself, as JSON … each string in quotes with each control character escaped"; step 1 has the five refusals; 6.4.1 has the lowest Compose version. |
+| SF-053 | Yes, in part | Step 3: "The result is one scalar of text: it is never read again as YAML, and it is not filled a second time." Missing: what `text` of `${NAME:-text}` may hold (SF-082). |
+| SF-054 | Yes | `image` row: "A reference that starts with `a-z` or `0-9` … The program gives it to a command after `--`"; Section 3: "also an address of the local network". |
+| SF-055 | Yes, in part | "the form with a name only is refused"; "Only the long form"; "`source` is always present"; "A prefix that starts with `com.docker.` cannot be named". Missing: a value rule for `working_dir`, `aliases`, `cap_drop`, and the members of `healthcheck` other than `interval`. |
+| SF-056 | Yes | "A value of one of them that is zero or below is refused. `healthcheck.interval` is at least 5 seconds."; step 1: "more than 16 networks and more than 64 volumes". |
+| SF-057 | Yes | Top level: "There is no `secrets`: a secret of an application is a variable of the environment file". Residue: step 1 still names "a secret or a config". |
+| SF-058 | Yes | 6.4.9: "makes the final form again from the kept Compose file and the kept environment file, by the six steps of Section 6.4.4 of today, with the kept image digests and no pull." 6.4.5 disagrees on what is kept (SF-088, point 5). |
+| SF-059 | Yes | 6.4.7: "It gives each recorded file, the recorded folder as the project folder and the project name as arguments, with the environment and the configuration folder of Section 6.4.1." |
+| SF-060 | Yes | Section 4: "The hub gives, in this order: `container_action` with `stop`; each other container item, the oldest first; a job." A `stop` still waits behind a running item (SF-074). |
+| SF-061 | Yes, in part | Six of seven points are present (for example "reported with the state `failed` and that cause; the diagram of Section 7 does not change"). Missing: "no container item is refused for `unclean`"; the text has only "`container_action` with `stop` is never refused for `policy` or for `unclean`" (SF-088, point 2). |
+| SF-062 | Yes | 6.4.12: "gives no Compose file, no environment file and no value of a variable, apart from a value that the recipe names as a choice with a fixed list." |
+| SF-063 | Yes | Section 9: "On an engine of a user the log is a file of that user"; 6.4.1: "A fault of the daemon that the hub can reach is not limited there by the settings." |
+| SF-064 | Yes | "neither an administrator nor the user that it runs as"; "It starts the Compose program directly at its recorded path, not through `docker`"; "replaces `anima-daemon` only". |
+| SF-065 | Yes | Section 3: "bring an application back to its earlier version; remove an application with its kept files; remove stopped containers and images … Each setting of the machine that is on adds what its row says." |
+| SF-066 | Yes | 6.4.12, `adopted_apply`: "No. A key or a tool starts, stops and restarts one container with `container_action`". |
+| SF-067 | Yes | 6.4.12: "Only the first install of an entry of the tested catalogue of Anima … Not an update". |
+| SF-068 | Yes | 6.4.7: "can thus become the administrator of the machine through Anima on a system engine, and get the rights of the owner of the engine on an engine of a user." |
+| SF-069 | Yes | Section 8: "on each machine, also on one that the operator does not own alone; the operator accepts this (R-231)". |
+
+### SF-070: Sections 6.4.1 and 6.4.2: "the administrator" has two meanings. Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: on the measured Mac the one account is an administrator account and owns the socket. Read with "administrator = member of `admin`", the kind is "system engine", and a settings file "that only the administrator can write" can be written by the daemon, which runs as that account. Read with "administrator = identifier 0", the write check "neither an administrator nor the user" refuses `/Applications` (group `admin`).
+- Who: the hub, through a fault of the daemon, if the settings file is built group-writable; an honest implementer in either reading.
+- Change, Section 1: "The administrator: the user with the identifier 0. An administrator account: a member of the group `admin` on a Mac, of no group elsewhere." In the kind table: "belongs to the identifier 0" and "belongs to a different identifier". In 6.4.2: "one file that the identifier 0 owns, with no write right for a group or for others". In the write check: "a user who is neither the identifier 0, nor an administrator account, nor the user that it runs as".
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-071: Section 6.4.1: the write check names "a real file", and the socket is one. Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: on a Linux system engine the socket is `root:docker`, mode 660. Read exactly, the program refuses to start on each such machine; an implementer then makes the rule weaker by guess. The text also does not say how "can be written" is decided (mode bits, group members, access lists).
+- Change: "For the socket the rule is for each link and each folder above it, not for the right to connect to the socket. 'Can be written' is decided from the owner, the mode bits and the access list of each one; a group write bit counts unless each member of the group is permitted."
+- Add: "It refuses to start on a system engine when the accepted user of the daemon can connect to the socket of the engine."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-072: Sections 6.4.2 and 6.4.7: who writes the adoption record on an engine of a user. Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: the settings file holds "Adopted projects … with its recorded paths", only the administrator writes it, and the applications program "reads it". But 6.4.7 says "the applications program records the real path" and "makes the form of the project", which starts Compose. On an engine of a user the applications program cannot write that file. One implementer moves the list to a file of the user; another runs the adoption as the administrator, who then starts a Compose program that the user can write (SF-035 again). The same holds for the step that records the paths and checks the Compose version.
+- Who: each program of the user of a Mac, in the second build.
+- Change: "The program that writes the settings file runs as the administrator; it starts no program of Docker and opens no socket of an engine. For an adoption, the applications program, as the user that it runs as, makes the form and the comparison and shows the result; the administrator then writes the record."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-073: Section 7 paragraph: "A hub keeps a member of `result` as the machine sent it." Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: a machine, or a person with its daemon token (R-231 names machines not owned alone), sends `"rule"`, `"health"` or an unknown member as free text. The hub keeps it, and a screen or an MCP tool gives it to the operator or an AI agent. This breaks "fixed codes and numbers, never text" of version 0.3 and Section 2 ("The hub ignores a member that it does not know").
+- Change: replace the sentence with: "The hub checks each member of `result` of the kind `host`: a code that is not in the list of its member is stored as `unknown`; a member that this section does not name is dropped; `service` is null or a whole number from 0 to 31; each count and each number of bytes is a whole number from 0 to 2^53, else `400 MALFORMED`."
+- With that change neither a code nor a number carries text from a file. Counts and bytes are numbers of the engine only.
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-074: Section 4 paragraph: a `stop` waits behind a running item, and a key has no limit on installs. Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: `stop` is "an item that changes Docker", and the hub gives one at a time. A `stop` waits while an `application_apply` is in `claimed`, `preparing` or `running`, up to 1,800 seconds. An API key may start a first install of a catalogue entry, and only `container_action` has a rate limit. The items of the operator ("the oldest first") also wait behind all installs of a key.
+- Who: an API key; an AI agent.
+- Change: "`container_action` with `stop` is not counted and does not wait for the place of the item that changes Docker. The hub makes at most 6 container items in a minute, and holds at most 12 that are not final, for one API key and one machine. In one class of the order, an item of a login is before an item of an API key."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-075: Sections 4 and 7 paragraphs: an item that no machine claims has no end. Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: the end "`limits.seconds` and 5 minutes … since the claim" needs a claim. Items for a machine that is off stay in the queue; the limit of 6 in a minute is on giving, not on making. When the machine returns after days, it runs each old `restart`, `application_remove` or `application_apply`, and the per-application rule holds back the new items of the operator.
+- Who: an API key (`container_action`, `application_back`, a catalogue install); an operator who forgot.
+- Change: "A container item that no machine claimed 10 minutes after it was made is final, `failed`, with the cause `orphan`. The hub makes no second item that is equal to one that waits."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-076: Section 7 paragraph and 6.4.1: the machine has no exclusion and no time limit of its own. Medium
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way (a): the hub ends an attempt (`holds` after a restart of the daemon, `expired`, no answer), and the applications program "finishes the one command". The operator asks again, and the hub gives a second item for the same application while the first command runs. A request on the socket with no hub (R-236) has no order at all.
+- Way (b): nothing ends a command on the machine. A registry that never answers (the hub names the address) holds a pull with no end.
+- Change: "The applications program runs one item that changes Docker at a time, apart from `container_action` with `stop`, and refuses a second one (`busy`) until the first command has ended. It ends a command when `limits.seconds` have passed since it took the item, and reports `failed` with `limit_seconds`." Add `busy` to the causes of Section 5.
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-077: Sections 6.4.1 and 6.4.4, `ports`: no lowest version of the engine. Medium (not verified)
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: on older engines a port published on `127.0.0.1` could be reached from a different host of the same local network. R-229 ("only on the machine itself") then does not hold. I recall the hardening in engine 28.0; I did not check it.
+- Who: a host on the local network.
+- Change: "It refuses to start when the engine is older than the lowest version that it knows." The check plan must measure that a port on `127.0.0.1` is closed from a second host.
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-078: Section 6.4.7: the comparison at adoption reads three fields. Low to Medium (not verified)
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: a variable of the shell of the owner can also set `privileged`, `network_mode`, `cap_add`, `pid`, `user`, `command` or a value of `environment` (for example one that sets a login off). The first `up` from the hub then makes a different stack, and the check does not see it.
+- Change: "… refuses the adoption when the configuration hash that Compose computes for a service is different from the label `com.docker.compose.config-hash` of its container; where that cannot be compared, when the image, a port, a mount, the network mode, `privileged`, a capability, a device, the user, the command or the environment is different. A service with no container is shown and is not compared."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-079: Section 12: a `container_action` item makes a machine busy. Low (not verified against K8)
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: during a rollout the hub still gives `stop`. A key sends 6 in a minute and the machine reports `busy: true` each time, so an update of the daemon can wait with no end.
+- Change: "A `container_action` item does not make a machine busy."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-080: Section 6.4.4 steps 1, 3 and 5: rules that two honest implementers build differently. Low each
+
+Requirements: task H14; contract K10 version 0.4.
+
+- The YAML schema is not named: `restart: no`, `user: 1000:1000`, `mode: 0444` and `published: "8080"` have a different type by implementer. Change: "A scalar is read by the core schema of YAML 1.2. Where a rule asks for a text, a plain scalar is taken as written."
+- A filled value is "one scalar of text", but `published`, `target`, `mem_limit`, `pids_limit`, `cpus`, `read_only`, `init` and `retries` need a number or a truth value. Change: "A key whose rule asks for a number or a truth value takes no variable."
+- No form for `mem_limit` (unit letters), `cpus` (a decimal number), `stop_grace_period` and the times of `healthcheck`; "the lower of" cannot be computed without one. Change: "`mem_limit` is a whole number of bytes; `cpus` is a decimal number; each time is whole seconds, written as `<n>s`."
+- `healthcheck.start_interval` has no minimum, so `interval` "at least 5 seconds" is passed. Change: "`start_interval` is at least 5 seconds; `timeout` and `start_period` are at most `limits.seconds`."
+- `mode` has no input rule. Change: "`mode` is a text of 3 or 4 octal digits."
+- "A key, at any level, that is not here is refused" also reads on the names below `services`, `volumes`, `networks`, `configs`, `environment`, `labels` and `depends_on`. Change: "These are names, not keys of this list. A name of `environment` has no `=`; a value that is null is refused."
+- `published` has no rule for "absent". Change: "`published` is always present."
+- "its own limit" (memory, processes, processors, grace time, free disk) has no value and no place. Change: say that each is a constant of the program, with its value, or a setting of 6.4.2.
+- The flags of `up` for `application_apply` are not said, though 6.4.7 says them for an adopted project. Change: "`up -d --remove-orphans --pull never --no-build`."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-081: Section 6.4.4 step 3: the variable form and the environment file. Low
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Not said: whether `text` may hold `}` or `$` (`${A:-${B}}`); an empty line, a line that starts with `#`, a line with no `=`, a carriage return, a NUL.
+- Effect: a difference between the check of the hub and the machine; step 4 still checks the result.
+- Change: "`text` has no `$` and no `}`. In the environment file an empty line is ignored; each other line with no `=`, with a name that breaks the rule, or with a carriage return or a NUL is refused; `#` has no meaning."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-082: Section 6.4.4 step 5: characters that the reader of Compose can take as a line end or refuse. Low (not verified)
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: U+0085, U+2028, U+2029, U+007F and U+0080 to U+009F inside a JSON string. A YAML reader can fold them, so the value that Compose reads differs from the checked one. It stays one scalar; I found no way to structure.
+- Change: "The writer escapes each character below U+0020, U+007F to U+009F, U+2028, U+2029 and U+FEFF as `\uXXXX`, and writes no pair of surrogates; a NUL in a value is refused."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-083: Section 6.4.1: the environment and configuration rules are said for `docker` only. Low
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: step 6 starts the Compose program for an application with no sentence on its environment. `DOCKER_HOST`, `DOCKER_CONTEXT`, `COMPOSE_FILE` and a `.env` in the project folder change what Compose does. A `config.json` with `credsStore`, `credHelpers` or plug-in entries starts other programs, as the administrator on a system engine.
+- Change: "The same rules apply to the Compose program. The configuration folder can be written only by the user that the program runs as; its `config.json` has the member `auths` only, else the program refuses to start. The working folder of Compose is `files/`, which holds no file named `.env`."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-084: Section 7 paragraph: `limits.seconds` has no maximum for three types, and some refusals have no cause. Low
+
+Requirements: task H14; contract K10 version 0.4.
+
+- `application_remove`, `application_back` and `docker_prune` have no maximum; the per-application rule and "Waiting for the machine" then last as long as the hub writes. Change: "at most 600 for `application_remove`, `application_back` and `docker_prune`."
+- No cause is named for: a second `application_back`, or one with nothing kept; `pull` false with no digest; a project of the same name in a different folder; a name in "Protected"; a `start` that is not permitted; an identifier that the engine does not have. The hub reads an unknown cause as `failed`, so a code made by guess is lost. Change: name the cause of each in the table of Section 5.
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-085: Section 6.4.2: the pair of origin and device. Low
+
+Requirements: task H14; contract K10 version 0.4.
+
+- The form of the origin is not said (letter case, default port, last `/`); a difference gives a false refusal. Change: "The origin is the scheme, the host in lower case and the port, always written."
+- It is not said that the record is deleted when the administrator sets "Manage applications" on again. Change: add that sentence.
+- A program of the user of the daemon can send a false first pair, and the real daemon is then refused until the administrator acts. This is inside R-236 as loss of service only. Change, optional: "The administrator can name the pair when he sets the setting on."
+- It is not said how the daemon knows what to send in `applications`. Change: "The daemon sends `on` only when the applications program answered on the socket that the setting is on and the pair is the recorded one."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-086: Section 6.4.1: the paths are checked "at each start" only. Low
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: on a Mac a helper of Docker that runs as root makes the link `/var/run/docker.sock` again for the user who starts Docker Desktop. A program that uses the recorded path later talks to a different engine than the one it checked.
+- Change: "It gives each command the real paths that it resolved at the start, and reads the owner of the real socket again before each item; a different owner ends the program."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-087: Section 6.4.2, row "Registries with a login". Low
+
+Requirements: task H14; contract K10 version 0.4.
+
+- Way: with a login named, a file from the hub can pull each image that the login can read and run it with a command of its choice. Thus a person who controls the hub reads the private images of the owner. The row does not say so, though Section 3 says "adds what its row says".
+- Change, in the row: "A person who controls the hub can then get and read each image that this login can read."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-088: Eleven sentences of contract K10 version 0.4 contradict each other
+
+Requirements: task H14; contract K10 version 0.4.
+
+What it is, in the words of the reviewer (its points C1 to C11):
+
+- C1. 6.4.9 says "`data_not_restored`"; the Section 7 paragraph says the member is "`dataNotRestored`, a truth value".
+- C2. Whether a container item other than `stop` is refused for `unclean`:
+- Section 4 paragraph: "the hub gives a container item to a machine that is `unclean`".
+- Section 5 paragraph: only "`stop` is never refused for `policy` or for `unclean`"; the Section 5 table has `unclean` with no pointer.
+- Section 9 third point (version 0.3, no pointer): "sets itself `unclean`, claims no item".
+- Change: "No container item is refused for `unclean`", and a pointer in Section 9.
+- C3. Section 4 first paragraph (version 0.3, no pointer): "asks for work each 10 seconds while its switch is on and it has a free slot" and "While its switch is off … one in each hour". The paragraph at the end says the opposite when `applications` is `on`.
+- C4. `WORK_OFF`:
+- Section 7 (version 0.3, no pointer): "`403 WORK_OFF` to a report end the job at once, for each type".
+- Section 11: "Ends each item that it holds".
+- Section 7 paragraph: a container item is not ended by `WORK_OFF`. It is not said what a `WORK_OFF` to a report of a job does to a container item that the same machine holds.
+- Change: "`WORK_OFF` ends jobs only."
+- C5. 6.4.5 says `files/` holds "the same three of the earlier version" (with the final form); 6.4.6 says `keep` holds "the Compose file as it came, the environment file and the image digests" (no final form; the digests are not in 6.4.5).
+- C6. Section 11, column "Daemon does", rows `TOKEN_REFUSED`, `WRONG_DEVICE` and `NOT_HOLDER` ("ends the job at once", "deletes each thing"): no pointer to the Section 7 paragraph, where the applications program "finishes the one command" and "does not undo a start".
+- C7. Section 7 (version 0.3, no pointer): "`finishing`: the job ended and the machine deletes each thing"; Section 4 paragraph: `finishing` is the wait for health. The diagram has no change `running` to `done`, and it is not said that a `container_action` or a `docker_prune` goes through `finishing`.
+- C8. Section 12, second point: "gives that machine no item until its update ends"; first point: the hub still gives `container_action` with `stop`.
+- C9. 6.4.4 step 1 names "a secret", and the top level has "no `secrets`".
+- C10. Section 6 first line (version 0.3, no pointer): "There is no type that runs a command which the hub names"; its replacement is after Section 6.3.
+- C11. The status line names the paragraphs "in Sections 1 to 9 and 13"; Sections 11 and 12 also have version 0.4 sentences.
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-089: The clean-up with "All containers" on can remove an adopted project, against R-211
+
+Requirements: task H14; contract K10 version 0.4, Section 6.4.10; R-211, R-227.
+
+What it is, in the words of the reviewer:
+
+- SF-089. R-211 point (2) ("does not remove the project") and 6.4.7 ("There is no `down`") against 6.4.10.
+- With "All containers" on, `docker_prune` removes "what `docker container prune`, `docker network prune` … remove". After an `adopted_apply` with `stop`, that is each container and network of the adopted project.
+- R-227 opens "the other containers", not the adopted ones.
+- Change in 6.4.10: "In each case it removes no container and no network of an adopted project."
+- K2. R-246: "Each program of that user holds it with no Anima" is true for the engine. It is not said for the settings file under SF-070; with the definition of SF-070 the text agrees with R-246 point (3).
+- I found no other contradiction. R-228, R-229, R-230, R-231, R-232, R-233, R-235, R-236 and R-238 are stated in the sense of each ruling, neither softer nor wider. Section 6.4.12 agrees with R-234 row by row; "a choice with a fixed list" is inside "the install of an entry".
+- One sentence to add in 6.4.13 (HOST-018), so that R-226 holds on a system engine: "The daemon gets these values from the applications program, not from the engine."
+
+State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
 
 ## Closed
 
