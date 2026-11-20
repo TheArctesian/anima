@@ -41,7 +41,10 @@ fn with_updater(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
 }
 
 /// The shell's commands; each refuses every web view but the main one (WEB-007).
-#[expect(clippy::too_many_lines, reason = "a list with one line for each command of the shell; it holds no logic")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "a list with one line for each command of the shell; it holds no logic"
+)]
 fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         keystore::access_token_read,
