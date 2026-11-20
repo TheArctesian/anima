@@ -31,6 +31,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 10: disk encryption | Decided | C: optional, explicit opt-in at installation, off by default. The operator prioritizes remote access and unattended restart after a crash; a default setup must not wait for someone to enter a disk password locally. Explain the at-rest protection tradeoff and reboot behavior when encryption is selected. No hardware or remote unlock mechanism has been selected. |
 | Decision 11: encrypted-storage unlock | Decided | A + B: local passphrase and hardware-backed automatic unlock on validated hardware. Include a recovery key stored outside the machine, as recommended in the accepted choice. Encryption stays opt-in/off by default. Owner-initiated remote unlock, network-assisted automatic unlock and removable-token unlock are deferred. TPM boot policy, key custody and update/rollback validation remain open. |
 | Decision 12: default filesystem | Decided | A: Btrfs for installed OS and persistent data, with separate subvolumes. The operator accepted it as sufficient for the current design. Use NixOS generations for system software/configuration rollback; data restoration remains separate. This selects a filesystem, not an application database. Exact partitions, subvolumes, snapshot policy, compression and additional-drive layouts remain open. |
+| Decision 13: disk capacity layout | Decided | A: one shared Btrfs filesystem with separate subvolumes, plus hardware-appropriate boot partitions. System and workload data share free capacity. Space limits, cleanup and snapshot retention must be designed; subvolumes do not by themselves reserve system capacity. Data-preserving OS repair must not format the shared filesystem. Separate system/data partitions, LVM and a multi-disk installation are not selected. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -67,7 +68,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 13: how should the selected installation disk separate system and workload capacity? Alternatives: one shared Btrfs filesystem with subvolumes; separate Btrfs system/data partitions; LVM-backed separate filesystems; dedicated system and data drives. Recommendation: one shared Btrfs filesystem plus firmware-required boot partitions, with limits and free-space policy to be designed. No selection yet. Subvolumes are not independent filesystems: OS repair must not format the shared filesystem if it is to preserve data.
+2. Decision 14: how should root filesystem state persist? Alternatives: persistent root with separate persistent workload/state subvolumes; root reset to a known baseline at boot with an explicit persistence inventory; read-only root with designated writable mounts. Recommendation: persistent root first, with Nix-managed configuration and defined state boundaries. No selection yet. This choice precedes exact subvolume paths and must preserve device identity, network configuration, workloads and recovery access.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -128,6 +129,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 11 accepted A + B: local passphrase and hardware-backed automatic unlock, with an external recovery key. Remote and network-assisted unlock are deferred. Next: filesystem choice, then partition and subvolume layout.
 
 - 2026-11-19: Decision 12 accepted Btrfs for OS and persistent data. Next: shared versus separate system/data capacity on the installation disk, before exact partition sizes and subvolume paths.
+
+- 2026-11-19: Decision 13 accepted A: one shared Btrfs filesystem with subvolumes and hardware-specific boot partitions. Next: system-state persistence before the detailed subvolume layout.
 
 ## Source text
 
@@ -200,3 +203,7 @@ In response to Decision 11:
 In response to Decision 12:
 
 > Yeah Abtfs is the best db in my option so just good enough for now
+
+In response to Decision 13:
+
+> yeah A is good
