@@ -41,6 +41,7 @@
       <span>Join a hub</span><Icon name="carbon:chevron-right" size="sm" />
     </a>
     <p id="join-hub-description" class="join-description">Connect to a hub your team already runs.</p>
+    {#if deviceLink}<a class="button join" href={resolve('/welcome/join')} {@attach press()}>Scan enrollment QR</a>{/if}
   </div>
 </div>
 

@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import { pendingEnrolment } from '$lib/devices/enrollment/pending-enrolment';
 import Page from './+page.svelte';
 
 const mocks = vi.hoisted(() => ({ join: vi.fn(), read: vi.fn(), clear: vi.fn(), loadClientAt: vi.fn() }));
@@ -53,6 +54,7 @@ afterEach(async () => {
   app = undefined;
   document.body.innerHTML = '';
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 it('FRN-005: the invite field is monospace text with no autocomplete or spell check', () => {
@@ -74,8 +76,13 @@ it('FRN-005, S3, MOB-033: Join clears the old token, saves the link address, sho
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:41000');
   expect(target.querySelector('.steps small')?.textContent).toBe('Key ab12-cd34');
   expect(marks(target)).toEqual(['done', 'done', 'done', 'now']);
+  mocks.read.mockResolvedValue({ ok: true, value: { joined: true, state: 'up', port: 41_000, publicKey: 'nodekey:tablet' } });
   [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Sign in')?.click();
+  await settle();
   expect(mocks.loadClientAt).toHaveBeenCalledWith('/sign-in');
+  expect(pendingEnrolment(sessionStorage, 'http://127.0.0.1:41000')).toBe('nodekey:tablet');
+  expect(pendingEnrolment(sessionStorage, 'http://127.0.0.1:41001')).toBeUndefined();
+  expect(Object.values(sessionStorage)).not.toContain(INVITE);
 });
 
 it('LNK-003, LOG-007: a used invite says why, saves nothing and never shows or logs the invite', async () => {

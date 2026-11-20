@@ -22,7 +22,7 @@
     <div class="pair">
       <QrCode text={invite.invite} label="Invite for {name}" />
       <div class="side">
-        <p>On {name}, open Anima.ing, choose "Join a hub", then scan or paste this. Works once.</p>
+        <p>On {name}, open Anima.ing and choose <strong>Scan enrollment QR</strong> on the sign-in screen. You can also paste the key. It works once.</p>
         <!-- Not a live region: a countdown read out every second would drown the page. -->
         <p class="left">Expires in <time datetime={invite.expiresAt}>{countdownText(left)}</time></p>
       </div>

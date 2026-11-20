@@ -33,6 +33,8 @@ This procedure serves M5-7 of the [mobile plan](../../plans/mobile-plan.md). It 
 
 Use the draft [F-Droid recipe](../../../apps/desktop/fdroid/ing.anima.mobile.yml). The inputs are the release commit, version, upstream APK URL and signing certificate fingerprint. The draft build stays disabled until these inputs are available and the release meets the phone checks in the mobile plan.
 
+The upstream listing reads the [Fastlane metadata](../../../fastlane/metadata/android/en-US/) from the release tag. Before submission, check the Android release against [HT-070](../../need-human-testing.md#ht-070-keep-and-clear-a-mobile-session-m5-1).
+
 The checkout includes the [project license](../../../LICENSE), [font notices](../../../apps/client/src/styles/fonts/) and the [Carbon icon license](../../../apps/client/src/lib/icons/LICENSE-Carbon.txt). The F-Droid source scanner flagged a Go test fixture. The recipe removes it from the recipe checkout because the production build does not use it.
 
 1. Copy the recipe to `metadata/ing.anima.mobile.yml` in an `fdroiddata` checkout. Set `commit`, `versionName` and `versionCode` to the first release.

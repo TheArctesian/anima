@@ -1,6 +1,6 @@
 import type { CloudDevice } from '$lib/desktop/cloud/device';
 import { normalizeHost } from '$lib/devices/form/host';
-import { LINK_SITE } from '$lib/devices/form/site';
+import { LINK_SITE, type NewSite } from '$lib/devices/form/site';
 import type { CreateDeviceInput } from '$lib/hub/generated/graphql';
 import type { HubResult } from '$lib/hub/hub';
 
@@ -36,13 +36,13 @@ export function comparable(host: string): string {
   return groups.map((group) => Number.parseInt(group, 16).toString(16)).join(':');
 }
 
-/** The ID of the site `Link`: the site with that name or that range, else a new one. */
-async function linkSite(parts: ThisComputerParts): Promise<string | null> {
+/** An existing site for the managed address range, or a newly created one. */
+export async function networkSite(parts: Pick<ThisComputerParts, 'sites' | 'createSite'>, network: NewSite): Promise<string | null> {
   const sites = await parts.sites();
   if (!sites.ok) return null;
-  const known = sites.value.find((site) => site.name === LINK_SITE.name || site.subnet === LINK_SITE.subnet);
+  const known = sites.value.find((site) => site.subnet === network.subnet || site.name === network.name);
   if (known !== undefined) return known.id;
-  const created = await parts.createSite(LINK_SITE.name, LINK_SITE.subnet);
+  const created = await parts.createSite(network.name, network.subnet);
   return created.ok ? created.value.id : null;
 }
 
@@ -50,43 +50,52 @@ async function linkSite(parts: ThisComputerParts): Promise<string | null> {
  * The link address of this computer when no device of the hub has it as its host; `null` when this computer is not on
  * the link, is a device already, or a read failed (a partial answer could hide its device).
  */
-async function addressToAdd(device: CloudDevice, parts: ThisComputerParts): Promise<string | null> {
+async function addressOnLink(device: CloudDevice, parts: ThisComputerParts): Promise<string | null> {
   const linked = await parts.linkDevices();
   if (!linked.ok) return null;
   const address = linked.value.find((link) => link.name === device.name)?.address;
-  if (address === undefined || address === '') return null;
-  const hosts = await parts.hosts();
-  if (!hosts.ok) return null;
-  const mine = comparable(address);
-  return hosts.value.some((host) => comparable(host) === mine) ? null : address;
+  return address || null;
 }
 
-async function add(parts: ThisComputerParts): Promise<boolean> {
+export type DeviceEnrolment = 'added' | 'already-added' | 'not-linked' | 'failed' | 'metrics-failed';
+
+export async function enrolAtAddress(parts: Pick<ThisComputerParts, 'hosts' | 'sites' | 'createSite' | 'createDevice'>, network: NewSite, input: Omit<CreateDeviceInput, 'siteId'>): Promise<DeviceEnrolment> {
+  const hosts = await parts.hosts();
+  if (!hosts.ok) return 'failed';
+  if (hosts.value.some((host) => comparable(host) === comparable(input.host))) return 'already-added';
+  const siteId = await networkSite(parts, network);
+  if (siteId === null) return 'failed';
+  const created = await parts.createDevice({ ...input, siteId });
+  return created.ok ? 'added' : 'failed';
+}
+
+async function add(parts: ThisComputerParts): Promise<DeviceEnrolment> {
   const device = await parts.device();
-  if (device === null) return false;
-  const host = await addressToAdd(device, parts);
-  if (host === null) return false;
-  const siteId = await linkSite(parts);
-  if (siteId === null) return false;
+  if (device === null) return 'not-linked';
+  const host = await addressOnLink(device, parts);
+  if (host === null) return 'not-linked';
   const name = device.computer.trim() === '' ? device.name : device.computer.trim();
   // No default check: the hub cannot reach a link address yet, so an ICMP check would always say Down (HM-D11).
-  const created = await parts.createDevice({ siteId, name, host, kind: 'workstation', os: device.os, tags: [], addDefaultCheck: false });
-  return created.ok;
+  return enrolAtAddress(parts, LINK_SITE, { name, host, kind: 'workstation', os: device.os, tags: [], addDefaultCheck: false });
 }
 
 /** The add that runs now; a second page that opens meanwhile waits for it, so it cannot add the computer twice. */
-let running: Promise<boolean> | null = null;
+let running: Promise<DeviceEnrolment> | null = null;
 
 /**
  * Adds the computer the app runs on to the devices of a hosted hub, with no question (HMD-044, R-136): its host is its
  * address on the link of the hub, in the site `Link`. `true` when it added a device. It does nothing when a device has
  * that host already, and every failure is quiet: the device list stays as it is, and the next start tries again.
  */
-export function addThisComputer(parts: ThisComputerParts): Promise<boolean> {
+export function enrolThisComputer(parts: ThisComputerParts): Promise<DeviceEnrolment> {
   running ??= add(parts)
-    .catch(() => false)
+    .catch((): DeviceEnrolment => 'failed')
     .finally(() => {
       running = null;
     });
   return running;
+}
+
+export async function addThisComputer(parts: ThisComputerParts): Promise<boolean> {
+  return (await enrolThisComputer(parts)) === 'added';
 }
