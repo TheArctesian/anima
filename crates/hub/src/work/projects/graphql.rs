@@ -16,7 +16,7 @@ use self::views::{ProjectConnection, ProjectView, ResourceView, Rows};
 use super::{
     Error,
     browse::ProjectBrowse,
-    code, history, issues,
+    code, groups, history, issues,
     model::ResourceKind,
     on,
     page::{After, decode_cursor, page_size},
@@ -37,6 +37,7 @@ use crate::{
 #[graphql(name = "ProjectsQueries")]
 pub struct Query(
     ProjectsQuery,
+    groups::graphql::GroupsQuery,
     pull_requests::Query,
     issues::Query,
     workflows::Query,
@@ -76,6 +77,12 @@ async fn shown(db: &PgPool, projects: Vec<reads::ProjectRow>) -> Result<Vec<(Aft
         repositories,
         resources: reads::resources(db, &ids).await.map_err(failed)?,
         evidence: reads::evidence(db, &ids).await.map_err(failed)?,
+        groups: groups::store::of_projects(db, &ids)
+            .await
+            .map_err(failed)?
+            .into_iter()
+            .map(|(project, row)| (project, row.into()))
+            .collect(),
         standings,
     };
     Ok(views::projects(projects, rows))
@@ -219,6 +226,7 @@ impl ProjectsQuery {
 #[graphql(name = "ProjectsMutations")]
 pub struct Mutation(
     ProjectsMutation,
+    groups::graphql::GroupsMutation,
     issues::Mutation,
     pull_requests::Mutation,
     workflows::Mutation,

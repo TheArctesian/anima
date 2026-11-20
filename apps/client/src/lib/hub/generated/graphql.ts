@@ -681,10 +681,14 @@ export type PrivateKeyInput = {
 };
 
 export type ProjectBrowse = {
+  /** Only the projects of this group (PRO-061). VALIDATION with ungrouped true. */
+  group?: string | null | undefined;
   language?: string | null | undefined;
   maxSizeKib?: number | null | undefined;
   minSizeKib?: number | null | undefined;
   order?: ProjectOrder | null | undefined;
+  /** True: only the projects in no group (PRO-061). */
+  ungrouped?: boolean | null | undefined;
 };
 
 export type ProjectOrder =

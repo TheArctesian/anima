@@ -3,9 +3,9 @@
 
 use crate::ids::{
     ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-    IngestTokenId, JobId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId,
-    RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SessionId, SiteId, SourceAccountId,
-    WindowId,
+    IngestTokenId, JobId, OperationalKeyId, OperatorId, PlaceId, ProjectGroupId, ProjectId,
+    ProposalId, RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SessionId, SiteId,
+    SourceAccountId, WindowId,
 };
 
 /// The thing an audited action changed.
@@ -45,6 +45,8 @@ pub enum AuditTarget {
     SourceAccount(SourceAccountId),
     /// A project, its repositories or its resources (PRO-001).
     Project(ProjectId),
+    /// A group of projects (PRO-059).
+    ProjectGroup(ProjectGroupId),
     /// A project repository on GitHub, for a change the hub sent there; the change names the
     /// issue, pull request, run or commit (PRJ-028, OD-E14).
     Repository(RepositoryId),
@@ -95,6 +97,7 @@ impl AuditTarget {
             Self::Link => "link",
             Self::SourceAccount(_) => "source_account",
             Self::Project(_) => "project",
+            Self::ProjectGroup(_) => "project_group",
             Self::Repository(_) => "repository",
             Self::RecordLink(_) => "record_link",
             Self::Attachment(_) => "attachment",
@@ -131,6 +134,7 @@ impl AuditTarget {
             Self::Link => "link".to_owned(),
             Self::SourceAccount(id) => id.to_string(),
             Self::Project(id) => id.to_string(),
+            Self::ProjectGroup(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),
             Self::RecordLink(id) => id.to_string(),
             Self::Attachment(id) => id.to_string(),

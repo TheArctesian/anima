@@ -2371,6 +2371,21 @@ type Project {
   resources: [ProjectResource!]!
   "When the hub last read its repositories."
   syncedAt: DateTime
+  "Its group; null when it is in none (PRO-059)."
+  group: ProjectGroup
+}
+
+"""
+A group of projects: the operator's own label in the hub, never from GitHub (PRO-059 to PRO-064; ruling of
+2026-11-20 in projects-and-builds-plan.md, "Project groups"). A project is in at most one group; a group holds no group.
+"""
+type ProjectGroup {
+  id: ID!
+  "1 to 60 characters; two groups never have the same name when the case of the letters is ignored."
+  name: String!
+  "Its projects that have a repository that is not left out (PRO-064)."
+  projectCount: Int!
+  createdAt: DateTime!
 }
 
 type ProjectEdge {
@@ -2385,6 +2400,10 @@ input ProjectBrowse {
   language: String
   minSizeKib: Int
   maxSizeKib: Int
+  "Only the projects of this group (PRO-061). VALIDATION with ungrouped true."
+  group: ID
+  "True: only the projects in no group (PRO-061)."
+  ungrouped: Boolean
 }
 
 type ProjectConnection {
@@ -3352,6 +3371,8 @@ type Query {
   projects(leftOut: Boolean = false, first: Int = 50, after: String, browse: ProjectBrowse): ProjectConnection!
   "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
   project(slug: String!): Project
+  "Each project group, in name order (PRO-059). CONFLICT while Projects is off."
+  projectGroups: [ProjectGroup!]!
   "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."
   githubConnect: GithubConnectAttempt
 
@@ -3583,6 +3604,14 @@ type Mutation {
   restoreRepository(id: ID!): Project!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
+  "Makes a group and puts projects (Project.id, at most 200) in it; a project in a different group moves (PRO-060). VALIDATION on name; CONFLICT when a group has the name; NOT_FOUND for an unknown project. Writes an audit entry."
+  createProjectGroup(name: String!, projects: [ID!]! = []): ProjectGroup!
+  "VALIDATION on name; CONFLICT when a different group has the name; NOT_FOUND for an unknown ID (PRO-062). Writes an audit entry."
+  renameProjectGroup(id: ID!, name: String!): ProjectGroup!
+  "Deletes the group only: each of its projects stays, with no group, and none is left out (PRO-062). Returns the ID. NOT_FOUND for an unknown ID. Writes an audit entry."
+  deleteProjectGroup(id: ID!): ID!
+  "Puts projects (at most 200) in the group, or in no group when group is null (PRO-060, PRO-063). Returns the IDs of the projects that moved. NOT_FOUND for an unknown project or group. Writes an audit entry when one moved."
+  setProjectsGroup(projects: [ID!]!, group: ID): [ID!]!
   "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. CONFLICT on a hub that no browser can open: a hub in the link mode with no ANIMA_PUBLIC_ORIGIN of its own (HMD-070); openGithubConnect refuses the same way and makes no ticket. Login or browser token only (D-23, R-100)."
   startGithubConnect(input: StartGithubConnectInput): GithubConnectAttempt!
   "Returns a ONE-TIME link; an earlier one stops working. CONFLICT outside WAITING_FOR_BROWSER and AT_GITHUB. FORBIDDEN for a request that declares an AI agent. Login or browser token only (D-23, R-100)."

@@ -4,9 +4,9 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use async_graphql::{Enum, InputObject};
+use async_graphql::{Enum, ID, InputObject};
 
-use crate::api_errors::FieldError;
+use crate::{api_errors::FieldError, ids::ProjectGroupId};
 
 #[derive(Clone, Copy, Debug, Default, Enum, Eq, PartialEq)]
 pub(super) enum ProjectOrder {
@@ -36,6 +36,10 @@ pub(super) struct ProjectBrowse {
     pub language: Option<String>,
     pub min_size_kib: Option<i32>,
     pub max_size_kib: Option<i32>,
+    /// Only the projects of this group (PRO-061).
+    pub group: Option<ID>,
+    /// True: only the projects in no group (PRO-061).
+    pub ungrouped: Option<bool>,
 }
 
 impl ProjectBrowse {
@@ -59,6 +63,24 @@ impl ProjectBrowse {
                 "Use nonnegative repository sizes, with the minimum first.",
             ));
         }
+        if self.group.is_some() && self.ungrouped == Some(true) {
+            return Err(FieldError::new(
+                "group",
+                "Ask for one group or for the projects in no group, not both.",
+            ));
+        }
+        if self
+            .group
+            .as_ref()
+            .is_some_and(|id| id.parse::<ProjectGroupId>().is_err())
+        {
+            return Err(FieldError::new("group", "That id is not valid."));
+        }
         Ok(())
+    }
+
+    /// The group that the list asks for, once [`ProjectBrowse::validate`] passed.
+    pub fn group_id(&self) -> Option<ProjectGroupId> {
+        self.group.as_ref().and_then(|id| id.parse().ok())
     }
 }

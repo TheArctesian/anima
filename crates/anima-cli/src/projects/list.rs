@@ -71,6 +71,8 @@ impl Browse {
             language: self.language.clone(),
             min_size_kib: self.min_size_kib.map(i64::from),
             max_size_kib: self.max_size_kib.map(i64::from),
+            group: None,
+            ungrouped: None,
         })
     }
 }
