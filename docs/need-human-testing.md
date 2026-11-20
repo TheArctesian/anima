@@ -2172,4 +2172,10 @@ started in the Windows 11 VM. Real account sign-in and remote sessions need this
 7. Uninstall through Windows Settings, then install again.
    Expected: the application and shortcut are removed and installed without administrator rights.
 
+Operator report, 2026-11-20: Sign in displayed "No network" (Failed). After the VM
+was restarted, agent checks reached WorkOS and the Anima cloud from Windows; the
+installed app resumed the saved account and showed Devices, Connected, and one hub
+Up. The original transport failure was not isolated. No application code changed.
+Operator confirmation and remote-session testing remain outstanding.
+
 Result: Open.
