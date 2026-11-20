@@ -216,7 +216,11 @@ Not in the command line, with the reason:
 
 - **MCP-001.** `anima mcp` is an MCP server on standard input and output. It uses the same
   context and token as the command line. A remote HTTP server is not planned: it needs OAuth and
-  a hub change.
+  a hub change. Exception (R-280, OD-AXT23: "Yes, reverse MCP-001 for the hosted hub only and
+  extend Remote MCP over HTTP"): a hosted hub also serves MCP over HTTP behind the Anima.ing
+  sign-in ([agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) AXT-071). A
+  self-hosted hub keeps standard input and output only. Not approved (task AX21); no effect before
+  that approval and the review of HMD-067.
 - **MCP-002.** Each tool has one state: `allow` (listed; the agent may call it), `ask` (listed;
   each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
   without a hub request). With nothing saved, every read tool and every change tool is `allow`:

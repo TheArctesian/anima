@@ -78,7 +78,7 @@ code { font-family: var(--font-mono); font-size: 0.8125rem; }
 </style>
 <body>
 <h1 class="board">Shared project folder</h1>
-<p class="about">Mockups for <a href="../../proposals/agent-tools-as-extensions.md" style="color:inherit">agent-tools-as-extensions.md</a> Section 6.9 (AXT-054 to AXT-078). Proposed, not approved: the direction is relayed and waits for the operator (OD-AXT22 to OD-AXT30). All names and numbers are examples. The folder is in the existing client; there is no second application (AXT-072).</p>
+<p class="about">Mockups for <a href="../../proposals/agent-tools-as-extensions.md" style="color:inherit">agent-tools-as-extensions.md</a> Section 6.9 (AXT-054 to AXT-078). Proposed, not approved: R-280 decides the direction (OD-AXT22 to OD-AXT24); OD-AXT25 to OD-AXT30 are open. All names and numbers are examples. The folder is in the existing client; there is no second application (AXT-072).</p>
 <div class="frames">
 
 <figure>
@@ -130,7 +130,7 @@ docs-reader     /        read         15:00    —       [Revoke]</code></pre>
 
 <figure>
 <div class="frame gl"><div class="pad">
-  <div class="row"><h3>Connect an assistant (hosted hub)</h3><span class="chip">Hosted hub only (OD-AXT23)</span></div>
+  <div class="row"><h3>Connect an assistant (hosted hub)</h3><span class="chip">Hosted hub only (R-280)</span></div>
   <p>Server address: <code>https://hub.anima.ing/mcp</code>. The assistant asks you to sign in with your Anima.ing account. Your hub is not open to the internet; the request goes through the gateway to your hub only (HMD-061, SEC-008).</p>
   <table>
     <tr><th>Tool set</th><th>State</th><th>What the assistant gets</th></tr>
@@ -139,7 +139,7 @@ docs-reader     /        read         15:00    —       [Revoke]</code></pre>
     <tr><td>Folders: delete</td><td><span class="chip">Ask</span> when the switch "Ask before destructive actions" is on</td><td>The name of the file in <code>confirm</code> (MCP-007)</td></tr>
     <tr><td>Folder tokens: list, revoke</td><td><span class="chip">Allow</span></td><td>Names and end times; never a token</td></tr>
   </table>
-  <p class="muted">A self-hosted hub keeps <code>anima mcp</code> on standard input and output (MCP-001 stays for it). Which other tool sets the remote server lists first: [NEEDS CLARIFICATION: question 2 of the idea remote-mcp-over-http].</p>
+  <p class="muted">A self-hosted hub keeps <code>anima mcp</code> on standard input and output (MCP-001 stays for it). Which other tool sets the remote server lists first: [NEEDS CLARIFICATION: AXT-071, the first tool sets].</p>
 </div></div>
 <figcaption>Frame 4, the remote MCP connection (light). AXT-068 to AXT-071. Every call is in the audit log (MCP-026).</figcaption>
 </figure>
