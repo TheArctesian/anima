@@ -295,6 +295,9 @@ pub async fn cloud_hub_access(
             })
             .await;
         if !matches!(answered, Err(CloudError::NotReady)) || started.elapsed() >= NOT_READY_LIMIT {
+            if let Ok(access) = &answered {
+                crate::link::hosted_hub_opened(&webview, access.is_joined());
+            }
             return answered;
         }
         tokio::time::sleep(NOT_READY_WAIT).await;
@@ -316,6 +319,9 @@ pub async fn cloud_device(webview: Webview) -> Result<CloudDevice, CloudError> {
     from_main(&webview)?;
     // The sign-in is only on macOS and Linux (`capabilities/cloud.json`).
     let os = OperatingSystem::current().ok_or(CloudError::Unconfigured)?;
+    // The client asks this only for a hosted hub, at each start: the shell then knows that a
+    // unit of the user must keep the link, also when no sign-in runs (HMD-058).
+    crate::link::hosted_hub_opened(&webview, true);
     Ok(device::cloud_device(
         &crate::this_machine::computer_name(),
         os,

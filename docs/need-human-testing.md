@@ -76,6 +76,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-NEW-linkunitapp | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-NEW-daemonathostedhub | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -905,6 +907,95 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.
+
+### HT-NEW-daemonathostedhub: sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19)
+
+Built: on the branches `hosted/hm-t17-daemon-socket` (the unit of the link makes the socket of the
+daemon; the shell enrols the daemon at that socket) and `hosted/hm-t19-daemon-at-sign-in` (the
+application enrols and installs the daemon when it opens a hosted hub). They need
+the branch `hosted/hm-t24b-shell-link-unit` (the link as a unit that the application watches).
+
+The tests cover: the folder and the socket of the daemon, the arguments of the unit, the origin
+`unix:<socket>` for the local address of the link, the search of this computer among the devices,
+the one code for each try, the wait for the socket, and each case in which no code is made. Not
+covered: a real link, a real daemon, the Keychain and the `LaunchAgent` on a Mac, the user unit and
+its sandbox on Linux, the hub of the pool that takes an enrolment and a batch through the link, and
+the time until the first numbers show.
+
+It needs: an application of this build on each computer (a trial bundle of this build carries both
+programs), and the sign-in to the hosted hub.
+
+On this Mac:
+
+1. Open the application and wait until the Devices page shows. Leave it open for 3 minutes. Nothing
+   asks for a password or a question. Expected: after at most 3 minutes the row of this Mac shows
+   numbers (processor, memory, disk) in the place of "No metrics".
+2. Run `ls -l ~/Library/LaunchAgents/ | grep anima`. Expected: `ing.anima.link.plist` and
+   `ing.anima.daemon.plist`.
+3. Run `ls -l "$HOME/Library/Application Support/anima-daemon/"`. Expected: `link.sock` (its line
+   starts with `srw-------`) and `daemon.json`.
+4. Open the device of this Mac, Settings, the panel "Daemon". Expected: "Metrics come from the daemon
+   on ...", with a time of the last report that is less than 2 minutes old.
+5. Quit the application. Wait 5 minutes. Open it again. Expected: the chart of this Mac has no hole
+   for those 5 minutes: the link and the daemon ran with the application closed.
+6. Open Agent usage after you used Claude Code or Codex on this Mac. Expected: the page shows counts
+   for this Mac (this is also HT-026 on a hosted hub).
+
+On the Linux computer: steps 1, 4 and 5 as written. For step 2 run
+`systemctl --user status anima-link.service anima-daemon.service`: both are "active (running)". For
+step 3 run `ls -l ~/.config/anima-daemon/`.
+
+Observation (2026-11-19, 19:50 local time; the orchestrating session on the Mac of the operator, a local build 0.8.17 of the first form of these branches, the application already signed in; not a result of the operator): four minutes after the start the link was still the child of the application, with no socket for the daemon; no unit, no copy in `~/.local/bin`, no daemon, and no line in the log. Cause: the hand-over of the link ran only after a sign-in, and the application was signed in already. Corrected on the branch `hosted/hm-t19-daemon-at-sign-in`: the hand-over also runs at each start, and each step writes a line to the log.
+
+Observation (2026-11-20, 04:03 to 04:08 UTC; the orchestrating session on the Mac of the operator, a local build 0.8.17 with the corrected branch, the application already signed in; not a result of the operator): the log said at 04:03:37 "this hub is a hosted one: a unit of the user will keep the device link"; at 04:04:22 "the device link goes to a unit of the user" and "a unit of the user keeps the device link"; `ing.anima.link.plist` was loaded, and the link ran from `~/.local/bin/anima-link` with `-daemon-socket`. At 04:07:31 the log said "the daemon was installed on this computer" and "the daemon of this computer: try 1 of 5: installed"; `ing.anima.daemon.plist` was loaded, and `~/.local/bin/anima-daemon run` ran and was still up a minute later, with the exit status 0 in `launchctl list`. This agrees with steps 2 and 3 on the Mac. Not known at that time: whether the hub received an enrolment and a batch, so step 1 (the numbers on the row) and steps 4 to 6 are open. The first try came about three minutes after the start, later than the plan of this entry: not explained yet.
+
+Observation (2026-11-20; the operator, first-hand to the orchestrating session, with a picture of the Devices page of his hosted hub; relayed to the session that writes this; not a result, only he sets Passed or Failed): his words: "mac os metrics are back". The row of his Mac showed Up, an uptime of 100.00 %, and CPU 85 %, Memory 59 %, Disk 95 %. So the hub of the pool took an enrolment and batches of the daemon through the link. This agrees with step 1 on the Mac. Steps 4 to 6 were not reported. The row of the Linux computer `pop-os` still said "No metrics": it ran an older build, and no Linux build with these branches exists yet, so the Linux part of this entry is not started.
+
+Where to look, with no change of the system: the daemon and the link write their lines to standard error, and a `LaunchAgent` of this build names no file for it, so on a Mac those lines are lost. A push that succeeded shows only at the hub: the row of the device has numbers, and Settings > Daemon of the device says "Metrics come from the daemon" with the time of the last report. `launchctl print gui/$(id -u)/ing.anima.daemon` shows the state, the count of starts and the last exit of the unit; a count of starts that grows means that the daemon ends and is started again. On Linux `journalctl --user -u anima-daemon.service` has the lines.
+
+What the log says when it works (`~/Library/Logs/ing.anima.desktop/Anima.log`), in this order: "this hub is a hosted one: a unit of the user will keep the device link"; about 45 seconds later "the device link goes to a unit of the user" and "a unit of the user keeps the device link"; lines "the daemon of this computer: try N of 5: ...", the last of them "installed"; and "the daemon was installed on this computer".
+
+If step 1 shows no numbers after 3 minutes: quit the application, open it again and wait 3 minutes
+more (a start of the application tries once). If there are still none, write here what
+`tail -20 ~/Library/Logs/ing.anima.desktop/*.log` says about the device link and the daemon, and the
+output of step 2.
+
+### HT-NEW-linkunitapp: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
+
+Built: on the branch `hosted/hm-t24b-shell-link-unit` (task HM-T24 of
+[hosted-mode.md](proposals/hosted-mode.md), parts b and c; R-240). After a hosted hub gives this
+computer its access, the shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies `anima-link` to
+`~/.local/bin`, has it install the unit of the user, and watches the running link in place of a
+child of its own. A computer that is on the link already is handed over at the next start of the
+application. When the unit cannot be made, the application runs the link itself as before.
+
+The tests cover: the calls of `anima-link unit` and `ctl status` with a stand-in link, the watch of
+a kept link (up, down, up again, and a stop of the application that leaves the unit), the mark of
+the folder. Not covered: the copy to the real home folder, `launchctl`, the hand-over inside a real
+sign-in, the start of the application with a unit that runs, and an update of the application.
+
+It needs: this Mac with the application of this build (a trial bundle is enough), signed in to the
+hosted hub. `<DIR>` is `~/Library/Application Support/ing.anima.desktop/link/device`; put it in
+double quotes in a command, because the path has a space.
+
+1. Open the application and sign in (or let it open the hosted hub as before). Use it for a minute.
+   Expected: the hub opens as before. Nothing asks for a password.
+2. Quit the application and open it again. Wait 30 seconds. Run `~/.local/bin/anima-link unit show`.
+   Expected: `{"installed":true,...}`. The hub opens in the application.
+3. Quit the application. Run `~/.local/bin/anima-link ctl -state <DIR> status`. Expected: a JSON
+   answer with `"role":"device"`: the link runs with the application closed. On the hub (in a
+   browser later, or after you open the application again) the check `Connected` of this Mac did not
+   go Down while the application was closed.
+4. Log out of the Mac and log in again. Do not open the application. Run step 3's command.
+   Expected: the same answer.
+5. Open the application. Expected: the hub opens at once; the application log has no line "the
+   device link was not handed to a unit of the user".
+6. Install a newer build of the application and open it. Run
+   `cmp ~/.local/bin/anima-link /Applications/Anima.ing.app/Contents/MacOS/anima-link`. Expected: no
+   output (the copy is the program of the new application), and the hub still opens.
+7. Only if you want to leave the hub on this Mac: leave it in the application (Settings). Run
+   `~/.local/bin/anima-link unit show`. Expected: the file is gone ("No such file"), and
+   `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
