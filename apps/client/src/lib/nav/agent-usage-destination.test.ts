@@ -35,7 +35,7 @@ function hrefs(): (string | null)[] {
 }
 
 it('AIS-020: a wide window has Agent usage between Devices and Settings', () => {
-  expect(hrefs()).toEqual(['/devices', '/agents/usage', '/settings']);
+  expect(hrefs()).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
 });
 
 it('AIS-020, MOB-010: the phone bar keeps its four destinations, so Agent usage is not in it', () => {

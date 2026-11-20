@@ -1,0 +1,19 @@
+[package]
+name = "tauri-plugin-account-session"
+description = "Shows the sign-in page of the Anima.ing account inside the iPhone app, in the web authentication session of iOS (mobile plan M3-5)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+# Tauri finds a plugin's iOS package through this name: the app's build reads it from the plugin's build output.
+links = "tauri-plugin-account-session"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7", features = ["build"] }
+
+[dependencies]
+tauri.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

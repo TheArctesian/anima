@@ -787,9 +787,9 @@ The navigation bar is on the left side of the window on desktop and web. It is a
 
 The logo block at the top of the navigation bar is 24 px high (UR-6).
 
-- **NAV-001.** The navigation bar must show the page items at the top: Devices, Live sessions. Settings must be the last item, at the bottom of the navigation bar, below a divider. Every item must open a page. Each label must fit on one line in both interface typefaces.
+- **NAV-001.** The navigation bar must show the page items at the top: Devices first. Live sessions must be at the foot of the bar, below a divider and directly above the status of the hub. Extensions and then Settings must be the last items, below the status of the hub; the phone bar has no Extensions item (MOB-010) and reaches that page from Settings. Every item must open a page or a panel. Each label must fit on one line in both interface typefaces (R-255).
 - **NAV-002.** The navigation bar must show the active item with an `accent-tint` fill, the accent colour on its icon and a 3 px accent bar on its leading edge.
-- **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item as a status icon, with an accessible name (for example "Hub connected: hub.anima.ing") and a HelpTip with the hub name, the state and the time of the last answer. When the hub is disconnected the page also shows a banner.
+- **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Extensions and Settings items as a status icon, with an accessible name (for example "Hub connected: hub.anima.ing") and a HelpTip with the hub name, the state and the time of the last answer. When the hub is disconnected the page also shows a banner.
 - **NAV-004.** The Devices page must be the start page.
 - **NAV-005.** The operator must be able to go to each page with the keyboard.
 - **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again with a control at the trailing end of the logo row. The app must keep the choice on the device.

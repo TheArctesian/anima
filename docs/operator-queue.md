@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (16)
+## 1. In the order of the priorities (17)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -36,8 +36,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (148)
+## 2. Open decisions (172)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -47,8 +48,14 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
 | OD-W50 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the jobs of the work route? K1 changes only by a ruling (CON-001). Part 1 of task… | Open. Recommendation: approve the five fields as proposed; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
+| OD-W51 | Can a branch that changes only documents land in `dev` with the document gates alone, with no run of the full list on GitHub? R-254 says that the full list of 2… | Open. Recommendation: yes, for a branch whose changed paths are all documents by the rule of the fast tier (`quality/src/gates/tier.ts`); the job `base` of `gat… | [plan/decisions.md](plan/decisions.md) |
+| OD-W52 | Can a merge train whose gates passed land when `dev` moved under it only in documents? R-252 item 2 says: "when `dev` moved after the run, the gates run again b… | Open. Recommendation: yes. It is the reasoning of the local rule for a change of documents only: the full list reads no document as code, and the documents of t… | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI1 | Does "Set up all" also replace an entry `anima` that a person wrote and that starts a different program (state `different`)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI2 | Which agents are in the first build: the eight of 12.2? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI3 | May the command run the own program of an agent (`claude`, `codex`, `gemini`) to set it up, or must it only write files? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
+| OD-MI4 | Does the application set up the agents by itself at the first sign-in? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -99,6 +106,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-28 | R-247 makes Arcane an entry of the catalogue that may hold the socket of Docker. R-234 lets an API key or an AI agent make the first install of an entry of the… | B. An agent can be led by text that it reads; the administrator of a machine is then never installed by an agent. It blocks the text of the exception (Section 1… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-29 | Who can turn on the port of an application at a machine, so that a hosted hub reaches it through the link (R-250)? A: only the administrator, in the machine set… | A. The daemon runs as the same user as the link and takes requests from the hub; with B it could open the port of each application by itself. With A he is asked… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-30 | Under which name does the hub serve the web page of an application of a different publisher? A: a name of its own for each application below a separate domain t… | B first, then A. Under the origin of the hub a script of such a page can use his session, and with one gateway for all hosted hubs (R-239) it could reach each o… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-M9 | Does the phone application get to a hosted hub through the link in the application, through the gateway of the web hub at `hub.anima.ing` (hosted-web-hub.md), o… | Open (2026-11-19). Recommendation of the session that built task M3-4: the link now, and the gateway later only as a second path. Reasons: the link is the decis… | [plans/mobile-plan.md](plans/mobile-plan.md) |
+| OD-M10 | Two rules of the App Store review for the sign-in of the iPhone application (read on 2026-11-19 on the page of the guidelines, which a tool cut, so the words ar… | Open (2026-11-19). Recommendation for (a): the rule applies, because the page of the account offers Google and GitHub; it is met when the same page offers Apple… | [plans/mobile-plan.md](plans/mobile-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-2 | An unreleased Tailcat commit. The functions that S1 needs are only on Tailcat's `main` (spike Section 8, item 1). | Pin `main` at `e00cdde6ff78` (2026-11-05) by pseudo-version; `go.sum` fixes the content. Do not vendor (the dependencies are tens of MB). Keep Tailcat in the `t… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
 | D-3 | The relay for the first version. The Headscale relay is set to refuse link keys. A relay of our own is a VPS change. | First version: Tailscale's shared relays, the library's default. No VPS change in S1. S1 builds and tests the own-relay setting against a relay that the tests s… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
@@ -165,6 +174,22 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
+| OD-RCL1 | The setting "Command lines for agents" at a machine: on or off after the install, and in which form? The review (SF-094): one switch covers two mechanisms; it h… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL2 | As which user does a command line run: the isolation of a job (RCL-008), or the user of the daemon (ROU-015 as written)? The review (SF-092): the user of the da… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL3 | Is the command line kept in the audit entry (redacted)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL4 | A session keeps no record of what was done (R-113). Is that accepted for a session that an agent opens? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL5 | Does a command line or a session from the Chat page need the click (CHAT-041), or none (R-244, OD-ROU6)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL6 | Does Anima get a tool with which an agent drives a terminal (RCL-020)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL7 | Which form is built first? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL8 | Is the interactive session built for an agent at all? The review (SF-090): a routed session is a full login of the stored user for each agent key; from it each… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL9 | Does the command line wait for an isolation that is accepted and measured (SF-091)? The design of task W2 is a proposal that the security reviewer and the opera… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL10 | Does an API key need a permission of its own at the hub for a command line (SF-093)? Today each write key would get the function, the MCP state is a file on the… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL11 | Is the function open on a hub that the owner of the machine does not control (SF-095)? There the list of R-185 is no control for a command, and the key of the d… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL12 | Which network does a command have (SF-097)? Proposed in RCL-013: the public internet and no local address. The limits are not measured | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL13 | The limits (SF-101): 30 starts in an hour at 3,600 seconds each can hold 30 machines with no end, and "caller" has no definition | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL14 | The output of a command comes back to an agent that can start the next command (SF-103) | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL15 | The click rules that R-196 made absolute (SF-106): an install of a tool on a machine "always needs the click", "in any MCP state". A command line can install wi… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL16 | The gate (SF-112): "he has decided its findings", or "no finding of severity High is open" as ROU-014 says for routing? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
@@ -190,7 +215,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (27)
+## 3. Documents that wait for an approval (28)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -217,12 +242,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
+| [proposals/routed-command-lines.md](proposals/routed-command-lines.md) | Proposal | Draft |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (79)
+## 4. Checks that only the operator can do (83)
 
 | Check | What |
 | --- | --- |
@@ -254,9 +280,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-032 | the containers of a real device, and the log of one (HOST-001, HOST-013; tasks H1 to H4) |
 | HT-026 | the use of AI agent programs from real session files |
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
+| HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |
+| HT-055 | the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4) |
+| HT-053 | the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4) |
+| HT-054 | the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043) |
 | HT-043 | a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010) |
 | HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |

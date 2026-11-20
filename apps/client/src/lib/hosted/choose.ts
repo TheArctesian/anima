@@ -6,6 +6,7 @@ import { createRequestHub } from '$lib/hub/hub';
 import type { HubAccess } from './access';
 import type { Answer, HostedAccount } from './account';
 import { cloudAccount } from '$lib/desktop/cloud/shell';
+import { capabilities } from '$lib/platform/platform';
 import { joinHostedHub } from './join';
 import { markHosted } from './mark';
 import { parseFailure, standInAccount } from './stand-in';
@@ -27,7 +28,7 @@ export function hostedParts(mode: string | undefined, query: URLSearchParams): H
     return { account: standIn, join: standIn.join };
   }
   return {
-    account: cloudAccount(),
+    account: cloudAccount(capabilities().accountSession),
     join: (access) =>
       joinHostedHub(access, {
         join: joinLink,

@@ -5,8 +5,11 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { HostedParts } from '$lib/hosted/choose';
   import { crossFade } from '$lib/motion/roles/transitions';
+  import { isMobile } from '$lib/platform/mobile';
+  import { capabilities } from '$lib/platform/platform';
   import { FIRST, nextStep, stepText, type HostedEvent, type HostedStep } from './hosted';
   import { runStep } from './run';
+  import './phone.css';
 
   interface Props {
     /** The cloud and the join: the stub, or the stand-in for tests and `VITE_ANIMA_HOSTED=stand-in`. */
@@ -23,7 +26,7 @@
   let gone = false;
   /** Each run of a step has a number; the answer of an older run is dropped. */
   let turn = 0;
-  const text = $derived(stepText(step));
+  const text = $derived(stepText(step, isMobile(navigator) ? 'this device' : 'this computer', capabilities().accountSession));
   const canLeave = $derived(step.kind === 'start' || step.kind === 'waiting' || step.kind === 'failed');
 
   onMount(() => {
@@ -67,7 +70,7 @@
 <h1>Sign in</h1>
 
 <!-- One step at a time; the steps cross-fade in one cell (MOT-008). -->
-<div class="steps">
+<div class="steps" data-hosted>
   {#key step.kind}
     <div class="step" class:failed={step.kind === 'failed'} transition:crossFade>
       <h2 tabindex="-1" {@attach focused}>{text.title}</h2>

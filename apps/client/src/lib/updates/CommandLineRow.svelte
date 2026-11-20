@@ -98,9 +98,11 @@
     background: var(--surface-hover);
   }
 
+  /* As FormButton: a control that cannot be pressed must not look like one that can. */
   button:disabled {
     color: var(--text-secondary);
-    cursor: default;
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
   }
 
   button:focus-visible {
