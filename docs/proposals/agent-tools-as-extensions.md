@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: Version 7 (2026-11-20): Section 6.9 plans the shared project folder (AXT-054 to AXT-078, tasks AX20 to AX38). R-280 (operator, first-hand, 2026-11-20) decides OD-AXT22 to OD-AXT24: a directory the hub syncs, MCP over HTTP for the hosted hub only (MCP-001 reversed for it; the idea `remote-mcp-over-http` folded in), row 4.21. OD-AXT25 to OD-AXT30 are open, and nothing of Section 6.9 is approved or built. Version 6 (2026-11-19): R-243 (operator, first-hand, 2026-11-19, 16:41 to 16:50 PT) folds the idea `agent-multiplexer-routing` in: the view of all agents on all devices (AXT-046 to AXT-052, Section 6.8) moves out of the deferred list and reopens OD-AXT10; Herdr stays hosted as it is (R-196); routing goes to jobs.md (ROU-001 to ROU-014). AXT-046 to AXT-052 are not approved. Version 5 (2026-11-18). R-196 (operator, first-hand, 2026-11-18 23:08 to 23:16 PT) decides OD-AXT1 to OD-AXT18, so the direction is decided (PLN-007). The requirements AXT-001 to AXT-045 are not approved: that is a separate step (task AX1). No task is built, and only AX0, a record, may start. Code state checked against origin/main at `cdd720ef`; the document is rebased on `9da268f4`. Serves row 4.21 of the priorities (tier 3, after row 4.7; R-196, OD-AXT11).
+evidence: Version 8 (2026-11-20): Section 6.10 plans the preview of a dev server and the forward of its port (AXT-079 to AXT-088, tasks AX39 to AX48); R-281 (operator, first-hand, 2026-11-20) decides OD-AXT31 (both the pane and the forward, under row 4.21); OD-AXT32 to OD-AXT34 are open; nothing of it is approved or built. Version 7 (2026-11-20): Section 6.9 plans the shared project folder (AXT-054 to AXT-078, tasks AX20 to AX38). R-280 (operator, first-hand, 2026-11-20) decides OD-AXT22 to OD-AXT24: a directory the hub syncs, MCP over HTTP for the hosted hub only (MCP-001 reversed for it; the idea `remote-mcp-over-http` folded in), row 4.21. OD-AXT25 to OD-AXT30 are open, and nothing of Section 6.9 is approved or built. Version 6 (2026-11-19): R-243 (operator, first-hand, 2026-11-19, 16:41 to 16:50 PT) folds the idea `agent-multiplexer-routing` in: the view of all agents on all devices (AXT-046 to AXT-052, Section 6.8) moves out of the deferred list and reopens OD-AXT10; Herdr stays hosted as it is (R-196); routing goes to jobs.md (ROU-001 to ROU-014). AXT-046 to AXT-052 are not approved. Version 5 (2026-11-18). R-196 (operator, first-hand, 2026-11-18 23:08 to 23:16 PT) decides OD-AXT1 to OD-AXT18, so the direction is decided (PLN-007). The requirements AXT-001 to AXT-045 are not approved: that is a separate step (task AX1). No task is built, and only AX0, a record, may start. Code state checked against origin/main at `cdd720ef`; the document is rebased on `9da268f4`. Serves row 4.21 of the priorities (tier 3, after row 4.7; R-196, OD-AXT11).
 ---
 
 # Proposal: agent tools as extensions (an extension host for tools on the operator's machines)
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: agent tools as extensions. A host that opens a tool of another vendor, which runs on a machine of the operator, in a pane of the client |
-| Version | 7 |
+| Version | 8 |
 | Date | 2026-11-20 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. Version 3 adds the list of later entries (Section 6.5.1), constraint C6 and OD-AXT16 and OD-AXT17. Version 4 replaces that list with the strict list and its filter, and adds OD-AXT18. Version 5 records R-196: all eighteen decisions are decided; T3 Code is in the catalogue with guardrails (constraint C2, AXT-045); Pi replaces Aider in bots.md; Open WebUI is a rival; the shared install counts are in version 1 (AXT-044); the changes of Section 7 that the decisions permit are made. The state is Direction decided. The requirements are not approved (task AX1). Version 6 records R-243: the idea `agent-multiplexer-routing` is folded in; its folder is deleted. Part (a), Herdr in a pane, is already AXT-014, AXT-020, AXT-024, AXT-026 and AXT-030 (R-196, OD-AXT2). Part (b), the view of which agent runs on which device, is Section 6.8. Part (c), automatic routing, is in [jobs.md](jobs.md) (ROU-001 to ROU-014). Version 7 adds Section 6.9, the shared project folder; R-280 decides OD-AXT22 to OD-AXT24 and folds the idea `remote-mcp-over-http` in; OD-AXT25 to OD-AXT30 are open. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Made from the idea `agent-tools-as-extensions` (PLN-018); the commit that adds this document deletes the idea folder. Version 1 had relayed direction only. Version 2 changes the goal to the first-hand direction of the operator (2026-11-18, 22:32 PT): support the open-source projects and gain their users. It adds Section 6.7 (AXT-028 to AXT-043), the input of Anima Marketing Bot, OD-AXT12 to OD-AXT15 and tasks AX13 to AX16. Version 3 adds the list of later entries (Section 6.5.1), constraint C6 and OD-AXT16 and OD-AXT17. Version 4 replaces that list with the strict list and its filter, and adds OD-AXT18. Version 5 records R-196: all eighteen decisions are decided; T3 Code is in the catalogue with guardrails (constraint C2, AXT-045); Pi replaces Aider in bots.md; Open WebUI is a rival; the shared install counts are in version 1 (AXT-044); the changes of Section 7 that the decisions permit are made. The state is Direction decided. The requirements are not approved (task AX1). Version 6 records R-243: the idea `agent-multiplexer-routing` is folded in; its folder is deleted. Part (a), Herdr in a pane, is already AXT-014, AXT-020, AXT-024, AXT-026 and AXT-030 (R-196, OD-AXT2). Part (b), the view of which agent runs on which device, is Section 6.8. Part (c), automatic routing, is in [jobs.md](jobs.md) (ROU-001 to ROU-014). Version 7 adds Section 6.9, the shared project folder; R-280 decides OD-AXT22 to OD-AXT24 and folds the idea `remote-mcp-over-http` in; OD-AXT25 to OD-AXT30 are open. Version 8 adds Section 6.10, the preview of a dev server and the forward of its port; R-281 decides OD-AXT31; OD-AXT32 to OD-AXT34 are open. |
 | Serves | Row 4.21 of [priorities.md](../plan/priorities.md): tier 3, after row 4.7 (R-196, OD-AXT1, OD-AXT11) |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 2.8 (EXT-009), 2.8.1, 3.4 and 4.12 (AIS-009 to AIS-024); [bots.md](bots.md) (BOT-001 to BOT-078); the design specification Section 6.3.4 (WEB-001 to WEB-010); [hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049); [hosted-applications-plan.md](../plans/hosted-applications-plan.md) (task H1, fixed commands through SSH) |
-| Identifiers | AXT-001 to AXT-078 (AXT-054 to AXT-078: the shared project folder, Section 6.9), OD-AXT1 to OD-AXT18 (decided, R-196; OD-AXT10 reopened by R-243), OD-AXT19 to OD-AXT21 (decided, R-244), OD-AXT22 to OD-AXT24 (decided, R-280), OD-AXT25 to OD-AXT30 (open), tasks AX0 to AX38 |
+| Identifiers | AXT-001 to AXT-088 (AXT-054 to AXT-078: the shared project folder, Section 6.9; AXT-079 to AXT-088: the preview of a dev server, Section 6.10), OD-AXT1 to OD-AXT18 (decided, R-196; OD-AXT10 reopened by R-243), OD-AXT19 to OD-AXT21 (decided, R-244), OD-AXT22 to OD-AXT24 (decided, R-280), OD-AXT25 to OD-AXT30 (open), OD-AXT31 (decided, R-281), OD-AXT32 to OD-AXT34 (open), tasks AX0 to AX48 |
 
 ## 1. Goal
 
@@ -334,6 +334,27 @@ Source: the vault brief "Shared Project Folder" (vault `55154f8`) and a competit
 
 A search index on the hub; sharing a folder with a person who is not the operator (RA-035, R-111); a phone client for the folder.
 
+### 6.10 Preview of a dev server and forward of a port (direction decided, R-281; not approved)
+
+Source: the vault brief "Remote Dev Server Preview and Port Forwarding" (vault `a914c9f`), from Anima Product Ideas, 2026-11-20. The behaviour comes from the release notes of an open-source agent tool (version 0.1.11, published 2026-11-19, MIT). This section copies behaviour only, not a name or marketing text, and copies no code.
+
+**Direction (R-281).** The operator said in the chat of Anima Product Ideas on 2026-11-20 at 12:38 PT: "yes then pass it down the chain into the agents plan." He asked for no more questions. He confirmed it first-hand on a question card of the planning session the same day: "Yes, I confirm the Remote Dev Server Preview direction." (R-281; OD-AXT31 decided). The Planner gives a recommendation for each other choice (OD-AXT32 to OD-AXT34).
+
+**Goal.** An agent starts a dev server on an enrolled device, for example `127.0.0.1:3000` on a Mac mini. The operator opens it in a pane of the client at its real `localhost` origin, or forwards the same port to his own computer in one click. The bytes go through the hub on the private network or the relay. There is no SSH `-L` and no public address.
+
+This section extends AXT-009 to AXT-011 (the path of a tool pane) to any loopback port of a device. It adds no second tunnel and no second browser. AXT-001 to AXT-045 are not approved (AX1); AXT-079 to AXT-088 are not approved (AX40).
+
+- **AXT-079.** A preview is a TCP port on the loopback address of an enrolled device that is not the port of a catalogue tool. Only the operator opens a preview or a forward, with a login or a browser token (AXT-012).
+- **AXT-080.** The path is the path of AXT-009 (OD-AXT32): for each TCP connection, the hub opens one SSH `direct-tcpip` channel to `127.0.0.1:<port>` or `[::1]:<port>` of the device, and relays the bytes to the client over a WebSocket with a ticket. It works on a hub on the VPN and on a hosted hub (port 22 through the link, HMD-048). HMD-049 does not change, and the device opens no new port (OD-AXT6, R-250 point 1). When SSH of the device is not set up in Anima.ing, the client must say so and must offer no other path. [NEEDS CLARIFICATION: a path for a device with SSH off on a hosted hub comes from the design of R-250 point 2, with the owner of HMD-049.]
+- **AXT-081.** Any loopback port from 1 to 65535 can be previewed (OD-AXT33), except the ports of Anima.ing on that device: the daemon, the link, the Syncthing interface of AXT-056 (it has no sign-in on loopback), and the port of each catalogue tool (that tool opens as a tool pane, AXT-009). The hub refuses those. The target is always the loopback address; the hub never opens a channel to another address of the device or of its network.
+- **AXT-082.** The daemon reports the TCP ports that listen on the loopback address, with the name of the process and its start time, in its push (K8). The hub ignores the field when it does not know it (K8 Section 4). The device page shows a list "Servers" with the actions Open and Forward. When the daemon can tie the process to an agent session, the row names the agent, and the row of that agent in AXT-046 shows the port. [NEEDS CLARIFICATION: how the daemon ties a process to an agent session (AX39).] The push and the log hold no URL path, no page content and no arguments of the process (LOG-007).
+- **AXT-083.** A preview pane uses the web view of AXT-010 at the real origin `http://localhost:<port>` of the device, so cookies, CORS and WebSocket work (OD-AXT34). The web view sends its requests for that origin only to the tunnel of that pane. It fails closed: when the tunnel is down, the pane shows an error and never reaches the `localhost` of the computer of the operator. It has its own data store for each pair of device and port (this extends WEB-006), no Tauri commands (WEB-007), and the header names the device, the port and the process. [NEEDS CLARIFICATION: a proxy for each web view on WKWebView, WebView2 and WebKitGTK (AX39); if one fails, that platform uses the listener of AXT-011.]
+- **AXT-084.** Forward opens a listener on `127.0.0.1` of the computer of the operator, on the same port number when it is free, else on a port that the operator types. It never listens on another address. Before it opens, the client checks with a one-time value that the device is not the same computer, and refuses a forward to itself. Each program on the computer of the operator can reach the listener, as with SSH `-L`; the sheet must say so. It works on macOS, Linux and Windows. It closes when the operator stops it, the session of the operator ends, the switch of AXT-086 is set off, or the client quits (AXT-015).
+- **AXT-085.** The errors must be different and plain: nothing listens on the port (502), the port is refused by AXT-081 or AXT-086 (403), the device cannot be reached, SSH is off. Each carries a reason code, so the client can tell them apart. The hub keeps at most 1 MiB for each connection in its buffer, then stops reading from the faster end.
+- **AXT-086.** A switch "Port preview" for each device, and one for the hub, both on by default for a device that has SSH set up in Anima.ing (the SSH terminal already gives the same reach). When a switch goes off, each open preview and forward of that device closes. [NEEDS CLARIFICATION: a switch at the machine that the hub cannot change, as for HMD-049, needs the daemon or the link.]
+- **AXT-087.** AXT-012, AXT-013, AXT-015, RA-008 and LOG-007 apply. The pane shows the notice of AXT-015. The hub writes one audit event for each preview and each forward, with the device, the port and the operator only. An API key, an MCP tool and an AI agent must not open a preview or a forward (MCP-006); the remote MCP server of R-280 gets no such tool. There is no public preview address and no share link (SEC-008, NET-003, HMD-011, RA-035, R-111).
+- **AXT-088.** The order is CMD-030: the hub API (the list of servers and a ticket for a port tunnel, closed to an API key), then `anima port list --device <d>` and `anima port forward <device> <port> [--local <port>]` (signed in with a login only), then the MCP read tool `anima_ports_list` (port, process name, device; MCP-008), then the client (AXT-082 to AXT-084; mockup [remote-dev-preview](../mockup/remote-dev-preview/index.html)).
+
 ## 7. Changes to other documents (R-196)
 
 R-196 decides each decision of this table. The commit of R-196 makes the changes that a decision alone permits ("Made"). The changes that need the approval of AXT-001 to AXT-045 or a contract ruling (CON-001) wait for task AX2 ("Waits").
@@ -363,6 +384,7 @@ R-196 decides each decision of this table. The commit of R-196 makes the changes
 | [hosted-mode.md](hosted-mode.md) HMD-049, with R-250 | A port of the link for the sync of the peer of the hub (AXT-057), and the route `/mcp` of the gateway (AXT-071). | The owner of HMD-049, CON-001. Waits (AX22). |
 | [ownership.md](../plan/ownership.md), [priorities.md](../plan/priorities.md) row 4.21, [register.md](../plan/register.md) | The shared project folder in the row of this document. | Made (no ruling: it records where the subject is planned, PLN-004). |
 | The idea `remote-mcp-over-http` | AXT-071 extends it for the hosted hub only. R-280 confirms OD-AXT23, so the commit of R-280 moves its narrowest version and its stop rule into AXT-071 and deletes the folder (PLN-018). [user-documentation.md](user-documentation.md) points to AXT-071. | Made (R-280). |
+| `contracts/tunnel.md` (K4), `contracts/daemon-push.md` (K8), K1, design specification WEB-006 | The port tunnel for a tool or a preview (one section with the tool tunnel of AX2); the field of listening loopback ports; the list of servers and `openPortTunnel`; one store for each pair of device and port (AXT-080 to AXT-083, AXT-088) | The approval of AXT-079 to AXT-088, CON-001. Waits (AX41). |
 
 ## 8. Reviews
 
@@ -537,6 +559,69 @@ Failure modes and tests: a stale write writes nothing (test); a token write to e
 | R-245 (Arcane Q3), OD-ARC3 | One OAuth or OIDC provider can serve the remote MCP server and the Arcane pane; its owner is open (OD-ARC3). |
 | R-270 | The folder fields of K1 are a change separate from the job and placement fields of R-270. A folder token follows the `placement` of a job (AXT-066). |
 
+### 8.6 Preview of a dev server and forward of a port (Section 6.10): reviews
+
+Code state checked on 2026-11-20 against `origin/dev` at `4ffc36a59` (a search and a read of the named files, not a full read; no code was run):
+
+- The hub opens no `direct-tcpip` channel today. `crates/hub/src/fleet/ssh/observer.rs` refuses each channel that the device opens, `direct-tcpip` included (K4 Section 8.4); the test server in `crates/hub/src/fleet/ssh/link/tests/server.rs` records such a channel as forbidden.
+- K4 (`contracts/tunnel.md`) has the tunnels `/terminal` (Section 8), `/tunnel` (RDP and VNC, Sections 2 to 5) and `/files` (Section 9). It has no TCP port tunnel.
+- The desktop web view is built: `apps/desktop/src-tauri/src/web_view.rs` and `web_view/view.rs`, with a data store for each device (`data_store_identifier` on macOS 14 and later, `data_directory` elsewhere). It has no proxy for each web view.
+- K8 (`contracts/daemon-push.md`) is a push from the daemon to the hub over HTTPS or the socket of the link. The hub cannot open a stream to the daemon on it. The daemon reports no listening ports (`rg -il "listening" crates/daemon crates/daemon-core` gives no result).
+- HMD-049 (approved, R-143) holds only the ports 22, 5900 and 3389.
+
+**Scope review.**
+
+| Mode | What it means here | Verdict |
+| --- | --- | --- |
+| Expand | A public preview address, share links, a preview for other people, an MCP tool that opens a forward | No. Each breaks SEC-008, RA-035 and R-111, or AXT-012. |
+| Selective | The pane at the real `localhost` origin and a one-click same-port forward, on the SSH path of AXT-009, for any loopback port that is not Anima.ing's | Yes. It reuses the tool tunnel and the web view. |
+| Hold | A path for a device with SSH off | Yes, until the link design of R-250. |
+| Reduce | The pane only, no forward | No. The forward is the half that serves the system browser, `curl` and database clients, and the cost is a local listener. |
+
+**Design scores** (judgement of the Planner, 2026-11-20, 0 to 10; not a measurement).
+
+| Dimension | Score | Why, and what raises it |
+| --- | --- | --- |
+| Reuse | 8 | One tunnel with the tool panes (AXT-009), the web view that is built, and `sshd` on the device. |
+| Safety of the reach | 7 | The operator already has the SSH terminal, so a preview adds no new reach. The forward listener is open to each program on his computer. |
+| Isolation of the client | 6 | A store for each device and port, no IPC, fail closed. The proxy for each web view is not measured (AX39). |
+| Fit with rulings | 8 | No change to HMD-049 or SEC-008. K4 needs CON-001 (with AX2). |
+| Dependency risk | 5 | It needs AX5 (the tool tunnel) and AX8 (the web view of a pane), so it waits for AX1. |
+| Effort realism | 6 | About two to three weeks for one person after AX5 and AX8 (an estimate). |
+
+**Engineering review.** Types (a sketch, not a contract):
+
+```text
+DeviceServer { deviceId, port: u16, address: LOOPBACK_V4 | LOOPBACK_V6, process: String (cut), startedAt, agentSessionId? }
+PortTicket   (K1 mutation openPortTunnel(deviceId, port) -> ticket; login or browser token only, never an API key)
+PortRefusal  { code: NOTHING_LISTENS | PORT_REFUSED | PREVIEW_OFF | SSH_OFF | DEVICE_UNREACHABLE }
+```
+
+Failure modes and tests: a port of AXT-081 is refused (test for each kind); a target that is not loopback is refused (test); a closed port gives `NOTHING_LISTENS` and 502 (test with the fake SSH server); an API key gets no ticket (test); a switch set off closes each open channel (test); the hub keeps at most 1 MiB for each connection (test with a client that does not read); no URL path or content in the log (test, LOG-007); the pane does not reach the `localhost` of the client when the tunnel is down (AX46 test); a forward to the same computer is refused (AX46 test); stock `sshd` permits `direct-tcpip` to loopback (AX39 record, also AX0).
+
+**Blast radius on shared contracts.**
+
+| Shared item | Change | Who else uses it | Action |
+| --- | --- | --- | --- |
+| K4 `contracts/tunnel.md` | The tool tunnel of AX2 becomes a port tunnel for a tool or a preview: one section | Terminal client, the relay tests | CON-001 ruling, with AX2. Section 8.4 does not change. |
+| K8 `contracts/daemon-push.md` | A field for the listening loopback ports | Push, the hub's push handler | CON-001 ruling; the hub ignores an unknown field. |
+| K1 | The list of servers and `openPortTunnel` | Command line (CMD-031), MCP, client | CON-001 ruling. |
+| WEB-006 | One store for each pair of device and port | Web interfaces | With the approval (AX41). |
+| HMD-048, HMD-049 | None (port 22 only) | Hosted mode | None. R-250 point 2 is a later path. |
+| MCP (MCP-006, R-280) | One read tool only | Each MCP client, the remote server of a hosted hub | None. |
+
+**Interactions.**
+
+| Item | Interaction |
+| --- | --- |
+| Section 6.9 (shared project folder) | The Syncthing interface on loopback is refused as a preview (AXT-081). A folder token gives no preview. A dev server that runs from a synced folder is a normal preview. |
+| R-226 to R-233, R-246, R-247 | A container port on `127.0.0.1` (R-229) can be previewed by the operator, as R-250 point 1 already lets the hub reach it; "Open to the network" does not change. Arcane (R-247) is a catalogue tool, so it opens as a tool pane, not as a preview. R-234: an API key and MCP get no preview. |
+| R-241, R-242 | The public path of the observability extensions is not used. |
+| R-243, R-244 | A routed agent run may start a dev server; routing opens no preview or forward (AXT-087). |
+| R-245 | No interaction. |
+| R-250 | Point 1 is the path of AXT-080; point 2 is the later path for SSH off. |
+| R-280 | The remote MCP server of a hosted hub lists `anima_ports_list` only. |
+
 ## 9. Decisions
 
 Each row asks one question with yes, no or one choice, and gives the recommendation of the Planner (PLN-018, PLN-021). The operator answered each row first-hand on 2026-11-18, 23:08 to 23:16 PT, and R-196 records the answers.
@@ -573,6 +658,10 @@ Each row asks one question with yes, no or one choice, and gives the recommendat
 | OD-AXT28 | Does MCP-008 also cover the content of a file and the line of a search hit, in named fields with a limit? (yes/no) | Yes. Strength: a small change of a rule that exists, and the server tells the agent not to obey file text. Weakness: a limit cuts long files; the agent must read in parts (AXT-074 in wave 2). | Open. Recommendation: yes. |
 | OD-AXT29 | Which sync engine? (one choice: Syncthing (MPL-2.0), hosted as it is through the host of this document; a sync that Anima.ing writes in the daemon) | Syncthing. Strength: the principle of R-243, a mature engine with conflict copies and versioning, and no new protocol to secure. Weakness: wave 1 waits on AX1 and AX3 (the host), and Anima.ing depends on its configuration and releases. | Open. Recommendation: Syncthing. |
 | OD-AXT30 | Where is the copy of record? (one choice: on the hub, with a Syncthing peer beside the hub; on one enrolled device that the operator names, and the hub only routes) | On the hub. Strength: a cloud job and the remote MCP server read the folder when the devices are off. Weakness: it uses the disk of the hub, and a hosted hub has a limit (AXT-054). | Open. Recommendation: on the hub. |
+| OD-AXT31 | Do you confirm, first-hand, the relayed direction: the preview of a dev server and the one-click forward of its port go into this document under row 4.21, and the first version has both the pane and the forward? (yes/no) | Yes. Strength: one owner (PLN-004), one tunnel with the tool panes, and the forward serves the system browser and other clients. Weakness: it waits for AX1 and the tool tunnel (AX5). | Decided (R-281, operator, 2026-11-20, first-hand on a question card: "Yes, I confirm the Remote Dev Server Preview direction."; earlier, relayed: "yes then pass it down the chain into the agents plan."). As recommended. |
+| OD-AXT32 | Which path reaches a loopback port? (one choice: the SSH `direct-tcpip` channel of AXT-009 (OD-AXT6, R-250 point 1); a new tunnel through the daemon that works with SSH off) | The SSH channel. Strength: no new port, no change to HMD-049, one tunnel to secure, and K8 has no stream from the hub to the daemon. Weakness: a device with SSH off gets no preview until the link design of R-250. | Open. Recommendation: the SSH channel. |
+| OD-AXT33 | Which ports can be previewed? (one choice: any loopback port except Anima.ing's own, with a switch for each device and the hub; only ports that an agent session or a job declared; a list that the operator sets) | Any loopback port except Anima.ing's own, with the switches. Strength: a dev server works with no setup, and the reach is not more than the SSH terminal gives. Weakness: a local dashboard with no sign-in is open to the operator's pane and forward (AXT-013). | Open. Recommendation: any loopback port except Anima.ing's own. |
+| OD-AXT34 | Which origin does the preview pane use? (one choice: the real `http://localhost:<port>` through a proxy for each web view, with the listener of AXT-011 where a platform cannot; the random port of AXT-011 only) | The real origin. Strength: cookies, CORS, WebSocket and the redirects of a dev server work as on the device. Weakness: a proxy for each web view is not measured on the three platforms (AX39). | Open. Recommendation: the real origin. |
 
 ## 10. Tasks
 
@@ -619,6 +708,16 @@ One pull request for each task. The size of each task is a few hours to three da
 | AX36 | W2 | Short-lived file links through the gateway or the relay (AXT-076) | AX33; OD-AXT27 | Not started | — |
 | AX37 | W2 | The trash and restore, with the sentence about backups (AXT-077) | AX31 | Not started | — |
 | AX38 | W2 | The starter team-memory folder (AXT-078) | AX30 | Not started | — |
+| AX39 | P0 | A record: `direct-tcpip` to any loopback port on stock `sshd` of macOS, Linux and Windows; a proxy for each web view on WKWebView, WebView2 and WebKitGTK at a real `localhost` origin, and fail closed; a local listener on the same port on each platform; listening loopback ports and their process without root on each platform; how a process is tied to an agent session (AXT-080 to AXT-084) | Nothing (record only) | Not started | — |
+| AX40 | P0 | The operator decides OD-AXT32 to OD-AXT34 (OD-AXT31 is decided, R-281), approves AXT-079 to AXT-088 with a ruling, and answers his [NEEDS CLARIFICATION] markers of Section 6.10 | The operator; AX1 | Not started | — |
+| AX41 | P1 | Docs only, merged first (R-155), with AX2: the ruling; one K4 section for the port tunnel of a tool or a preview; the K8 field; the K1 fields; WEB-006 | AX40, AX2 | Not started | — |
+| AX42 | P2 | The hub: `openPortTunnel`, the ticket, one `direct-tcpip` for each connection, the refused ports, the reason codes, the 1 MiB buffer, the switches, the audit event (AXT-080, AXT-081, AXT-085 to AXT-087) | AX41, AX5 | Not started | — |
+| AX43 | P2 | The daemon: the listening loopback ports and their process in the push; the tie to an agent session when AX39 finds one (AXT-082) | AX41, AX39 | Not started | — |
+| AX44 | P3 | `anima port list` and `anima port forward` (AXT-088) | AX42, AX43 | Not started | — |
+| AX45 | P3 | The MCP read tool `anima_ports_list` (AXT-088) | AX44 | Not started | — |
+| AX46 | P4 | The desktop: the preview pane at the real origin with fail closed, its store, the fallback to AXT-011; the forward listener with the check of the same computer, on macOS, Linux and Windows (AXT-083, AXT-084) | AX42, AX8, AX39 | Not started | — |
+| AX47 | P4 | The client: the list "Servers" on the device page, Open and Forward, the pane header, the forward sheet, the error messages, the port on the row of AXT-046; the mockup `remote-dev-preview` is compared | AX46, AX43 | Not started | — |
+| AX48 | P5 | The security review (reach, the forward listener, fail closed, refused ports) and the entry in `need-human-testing.md`; the hand check from a laptop to a Mac mini on the VPN hub and on the hosted hub | AX44, AX47 | Not started | — |
 
 ### 10.1 Task briefs
 
@@ -663,8 +762,17 @@ One pull request for each task. The size of each task is a few hours to three da
 | AX36 | Pass when a link outside 60 to 3,600 seconds is refused, a request with no sign-in or token is refused, and a range download works; fail otherwise | `cargo nextest run -p anima-hub` | Public links |
 | AX37 | Pass when a deleted file can be restored inside the limit, and the client shows the sentence about backups; fail otherwise | `cargo nextest run -p anima-hub`, `bun run --cwd apps/client test` | Backups |
 | AX38 | Pass when the starter folder is offered only when a folder is made, and its text passes the STE check; fail otherwise | `bun run --cwd apps/client test`, `bun run quality:documents` | Other templates |
+| AX39 | Pass when `docs/research/agent-tools/ax39-port-preview.md` gives a result (works, refused, not tested) for each item and platform, with the version, the date and the machine; fail if a row has no result | `bun run quality:documents` | Product code |
+| AX41 | Pass when each changed document names the ruling, K4 Section 8.4 does not change, and each new root field names its command; fail otherwise | `bun run quality:register`, `bun run quality:documents` | Any code |
+| AX42 | Pass when each port of AXT-081 and each target that is not loopback is refused, a closed port gives `NOTHING_LISTENS`, an API key gets no ticket, a switch set off closes each channel, the buffer stays at 1 MiB with a client that does not read, and the log holds no path or content; fail otherwise | `cargo nextest run -p anima-hub` | The client |
+| AX43 | Pass when a fixture of each platform gives the ports and process names, the push holds no arguments of a process, and an older hub ignores the field; fail otherwise | `cargo nextest run -p anima-daemon`, `cargo nextest run -p daemon-core` | The hub |
+| AX44 | Pass when each new root field has its command (CMD-031), and `forward` listens on `127.0.0.1` only and refuses an API key; fail otherwise | `cargo nextest run -p anima-cli` | MCP |
+| AX45 | Pass when the tool returns only port, process name and device in named fields with a limit (MCP-008), passes its JSON-RPC test (MCP-017), and no tool opens a preview or a forward; fail otherwise | `cargo nextest run -p anima-cli` | Change tools |
+| AX46 | Pass when tests show the pane at the real origin, no request to the `localhost` of the client when the tunnel is down, no IPC, its own store, and a forward to the same computer refused; fail otherwise | `cargo nextest run -p anima-app`, `bun run --cwd apps/client test` | The hub |
+| AX47 | Pass when the screens match the mockup at 1040 px in light and dark, each error of AXT-085 has its own text, and the mockup row names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run quality:documents` | New tunnels |
+| AX48 | Pass when the review lists each item with a result and the human check has an entry with steps; fail otherwise | `bun run quality:documents` | Fixes, which are their own tasks |
 
-Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task AXn of docs/proposals/agent-tools-as-extensions.md. Read Sections 5, 6 and 8 first (for AX20 to AX38: Sections 6.9 and 8.5). Build only what the row of AXn says, in the order of CMD-030. Run the check commands of the row, then bun run quality:documents and bun run gates."
+Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task AXn of docs/proposals/agent-tools-as-extensions.md. Read Sections 5, 6 and 8 first (for AX20 to AX38: Sections 6.9 and 8.5; for AX39 to AX48: Sections 6.10 and 8.6). Build only what the row of AXn says, in the order of CMD-030. Run the check commands of the row, then bun run quality:documents and bun run gates."
 
 ## 11. Not verified
 
@@ -686,6 +794,11 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - Whether an OAuth server for the Anima.ing account exists or is planned outside the OIDC provider of R-245 (OD-ARC3).
 - Whether the disk of a hosted hub can hold a folder of useful size (AXT-054).
 - The direction of Section 6.9 is first-hand now (R-280, a question card of the planning session). OD-AXT25 to OD-AXT30 are open, and AXT-054 to AXT-078 are not approved (AX21).
+- Section 6.10: the behaviour of the source tool (its four pull requests and its release notes come from the vault brief; the Planner did not read them again, did not run the tool, and has no account). The tunnel per connection, the 1 MiB limit, the refusal header and the check of the same computer are taken from that brief.
+- That stock `sshd` on macOS, Linux and Windows permits `direct-tcpip` to any loopback port for the user of the device (AX39, AX0).
+- A proxy for each web view on WKWebView, WebView2 and WebKitGTK, and the fail-closed behaviour (AX39).
+- That the daemon can list listening loopback ports and their process without root, and tie a process to an agent session (AX39).
+- The direction of Section 6.10 is first-hand now (R-281, a question card of the planning session). OD-AXT32 to OD-AXT34 are open, and AXT-079 to AXT-088 are not approved (AX40).
 
 ## 12. Review notes
 
@@ -698,3 +811,5 @@ Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build ta
 - 2026-11-19, version 6. R-243 (operator, first-hand, 16:41 to 16:50 PT) folds the idea `agent-multiplexer-routing` in. Section 6.8 adds AXT-046 to AXT-052 (the view of all agents on all devices, out of `deferred.md`), OD-AXT19 to OD-AXT21 and tasks AX17 to AX19. AXT-012, AXT-019 and AXT-021 get the routing exception or limit of jobs.md. OD-AXT10 is reopened for the page.
 - 2026-11-20, version 7. The idea "Shared Project Folder" (vault brief, from Anima Product Ideas; a competitor feature list) is planned here as Section 6.9 (AXT-054 to AXT-078, OD-AXT22 to OD-AXT30, tasks AX20 to AX38) and Section 8.5 (reviews), with the mockup `shared-project-folder`. The operator gave three answers first-hand in another chat; they reached the Planner relayed, so they are direction to confirm (OD-AXT22 to OD-AXT24), not a ruling. AXT-071 extends the idea `remote-mcp-over-http` for the hosted hub only. No ruling. Not pushed.
 - 2026-11-20, version 7, second commit. R-280 (operator, first-hand on a question card of the planning session): "Yes, I confirm all three answers." OD-AXT22 to OD-AXT24 are decided. MCP-001 gets the exception for a hosted hub. The idea `remote-mcp-over-http` is folded into AXT-071 and its folder is deleted. OD-AXT25 to OD-AXT30 stay open; AXT-054 to AXT-078 are not approved.
+- 2026-11-20, version 8. The idea "Remote Dev Server Preview and Port Forwarding" (vault brief, from Anima Product Ideas) is planned here as Section 6.10 (AXT-079 to AXT-088, OD-AXT31 to OD-AXT34, tasks AX39 to AX48) and Section 8.6 (reviews), with the mockup `remote-dev-preview`. It extends AXT-009 to AXT-011. The direction is relayed (OD-AXT31); no ruling. Not pushed.
+- 2026-11-20, version 8, second commit. R-281 (operator, first-hand on a question card of the planning session): "Yes, I confirm the Remote Dev Server Preview direction." OD-AXT31 is decided. OD-AXT32 to OD-AXT34 stay open; AXT-079 to AXT-088 are not approved.

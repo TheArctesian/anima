@@ -9,6 +9,11 @@
 #include <QProcess>
 #include <QFile>
 #include <QTimer>
+#include <QGuiApplication>
+#include <QScreen>
+#include <QScrollArea>
+#include <QShowEvent>
+#include <QWindow>
 
 class AnimaSettings : public QDialog {
     QComboBox* screens;
@@ -20,6 +25,24 @@ class AnimaSettings : public QDialog {
     QString previous;
     QString output;
     int remaining = 0;
+    void fitToScreen() {
+        auto* display=screen();
+        if (!display) return;
+        const QRect available=display->availableGeometry().adjusted(16,16,-16,-16);
+        const QSize fitted=QSize(480,700).boundedTo(available.size());
+        setMaximumSize(available.size());
+        resize(fitted);
+        move(available.center()-QPoint(width()/2,height()/2));
+    }
+    void observeScreen(QScreen* display) {
+        connect(display,&QScreen::geometryChanged,this,[this]{QTimer::singleShot(0,this,&AnimaSettings::fitToScreen);});
+        connect(display,&QScreen::availableGeometryChanged,this,[this]{QTimer::singleShot(0,this,&AnimaSettings::fitToScreen);});
+    }
+    void showEvent(QShowEvent* event) override {
+        QDialog::showEvent(event);
+        connect(windowHandle(),&QWindow::screenChanged,this,&AnimaSettings::fitToScreen,Qt::UniqueConnection);
+        QTimer::singleShot(0,this,&AnimaSettings::fitToScreen);
+    }
     bool change(const QString& rotation) {
         QProcess command; command.start("anima-display", {"--set",output,rotation});
         if (!command.waitForFinished(5000)) { command.kill(); command.waitForFinished(); return false; }
@@ -40,8 +63,14 @@ class AnimaSettings : public QDialog {
     }
 public:
     explicit AnimaSettings(QWidget* parent) : QDialog(parent,Qt::Dialog|Qt::FramelessWindowHint) {
-        setObjectName("animaSettings"); setMinimumWidth(440);
-        auto* box=new QVBoxLayout(this); box->setContentsMargins(28,24,28,24); box->setSpacing(16);
+        setObjectName("animaSettings");
+        auto* frame=new QVBoxLayout(this); frame->setContentsMargins(24,20,24,20); frame->setSpacing(16);
+        auto* scroll=new QScrollArea(this); scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        auto* content=new QWidget(scroll); scroll->setWidget(content); frame->addWidget(scroll,1);
+        auto* box=new QVBoxLayout(content); box->setContentsMargins(4,4,12,4); box->setSpacing(16);
+        for (auto* display:QGuiApplication::screens()) observeScreen(display);
+        connect(qGuiApp,&QGuiApplication::screenAdded,this,&AnimaSettings::observeScreen);
         auto* heading=new QLabel("Display and recovery",this); heading->setObjectName("animaDialogHeading"); box->addWidget(heading);
         screens=new QComboBox(this); rotations=new QComboBox(this);
         QProcess query; query.start("anima-display",{"--list"}); query.waitForFinished(5000);
@@ -69,7 +98,7 @@ public:
         auto* shutdown=new QPushButton("Shut down live session",this); box->addWidget(shutdown);
         shutdown->setEnabled(Calamares::ViewManager::instance()->currentStepIndex() < 6);
         connect(shutdown,&QPushButton::clicked,this,[]{QProcess::startDetached("systemctl",{"poweroff"});});
-        auto* close=new QPushButton("Done",this); close->setObjectName("view-button-next"); box->addWidget(close);
+        auto* close=new QPushButton("Done",this); close->setObjectName("view-button-next"); frame->addWidget(close);
         connect(close,&QPushButton::clicked,this,&QDialog::accept);
     }
     ~AnimaSettings() override { revert(); }

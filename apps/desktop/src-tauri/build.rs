@@ -98,9 +98,9 @@ fn link_phone_library() {
     }
     println!("cargo:rustc-link-lib=dylib=phonelink");
     let libraries = manifest.join("gen/android/app/src/main/jniLibs/arm64-v8a");
-    if std::fs::create_dir_all(&libraries).is_ok() {
-        let _ = std::fs::copy(folder.join(file), libraries.join(file));
-    }
+    std::fs::create_dir_all(&libraries).expect("create the Android native libraries directory");
+    std::fs::copy(folder.join(file), libraries.join(file))
+        .expect("copy the phone link into the Android package");
 }
 
 fn main() {

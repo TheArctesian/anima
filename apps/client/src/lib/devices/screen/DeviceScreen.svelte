@@ -17,6 +17,7 @@
   import { Sites } from '../toolbar/sites.svelte';
   import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
+  import ErrorState from '$lib/states/ErrorState.svelte';
   import { Listing } from './listing.svelte';
   import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
@@ -108,7 +109,10 @@
 
 <LiveNotice message={listing.liveError?.message ?? null} />
 
-{#if listing.error !== null}
+{#if listing.error !== null && list === null}
+  <!-- Nothing to show: the failure takes the place of the list, in the look of every other failed load (UI-030). -->
+  <ErrorState message={`Devices did not load. ${listing.error.message}`} onRetry={() => void listing.retry()} />
+{:else if listing.error !== null}
   <div class="notice" role="alert">
     <p>{listing.error.message}</p>
     <button

@@ -136,8 +136,10 @@ each train with its state and the branches of the next one.
   the `dev` of that moment) and that is not in `dev`; the oldest pass first, then the name; at most 12.
 - **The train.** The conductor merges the batch in that order on the `dev` of the moment, each branch with
   the steps of `bin/merge.ts` (the generated files written again, the numbers, the merge commit, the document
-  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with a line that
-  says why. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
+  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with one line
+  that says why: the conflicting files, or the failed check and its first fault. A note on its tip
+  (`refs/notes/train-left-out`) keeps that line, and `--plan` and each later step of the conductor print it
+  until the branch moves. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
   it one time, on the commit as it is.
 - **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,

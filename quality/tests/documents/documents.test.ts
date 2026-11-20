@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { checkDocuments, definedIdentifiers, linkTargets, parseKnown, type Document } from "../../src/documents/documents.ts";
+import { placeholdersInScreens } from "../../src/documents/mockups.ts";
 import { registerRows, withRows } from "../../src/documents/register.ts";
 import { check } from "./kit.ts";
 
@@ -261,5 +262,30 @@ describe("PLN-019 a mockup agrees with the application", () => {
   test("a mockup that is not built can wait for its first comparison; a built one cannot, and a day is not a commit", () => {
     expect(run("Approved", "Not compared", 5)).toEqual([]);
     expect(run("built", "2026-11-17", 0)).toEqual(["mockup-not-compared [a.html](a.html)"]);
+  });
+});
+
+describe("PLN-019 PLN-021 no number placeholder in a screen that a mockup watches", () => {
+  // Made of two parts, so that the merge does not number it in this file.
+  const placeholder = ["R-", "NEW-listlayout"].join("");
+  const index = "# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | Built | `abc1234` |  |\n";
+  const texts: Record<string, string> = {
+    "apps/client/src/routes/devices/Layout.svelte": `<!-- the layout of ${placeholder} -->`,
+    "apps/client/src/routes/devices/list.css": `/* ${placeholder} */`,
+    "apps/client/src/routes/devices/list.ts": `// ${placeholder}`,
+    "apps/client/src/routes/settings/Page.svelte": `<!-- ${placeholder} -->`,
+  };
+  const found = (paths: string[]) => placeholdersInScreens(index, paths, (path) => texts[path] ?? "").map((v) => `${v.path}: ${v.signal}`);
+
+  test("a placeholder in a Svelte or CSS file of a listed screen fails, and says what to write", () => {
+    expect(found(Object.keys(texts))).toEqual([
+      "apps/client/src/routes/devices/Layout.svelte: number-placeholder-in-screen",
+      "apps/client/src/routes/devices/list.css: number-placeholder-in-screen",
+    ]);
+    expect(placeholdersInScreens(index, ["apps/client/src/routes/devices/list.css"], (path) => texts[path] ?? "")[0]?.detail).toContain("name the plan row");
+  });
+
+  test("a placeholder outside the layout files of a listed screen passes: the merge may number it", () => {
+    expect(found(["apps/client/src/routes/devices/list.ts", "apps/client/src/routes/settings/Page.svelte"])).toEqual([]);
   });
 });
