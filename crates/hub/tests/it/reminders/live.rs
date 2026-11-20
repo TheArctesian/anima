@@ -116,6 +116,6 @@ async fn rem_008_reminder_firings_refuses_a_request_with_no_sign_in(pool: PgPool
     let schema = build_schema(parts(&pool, &live));
     let mut stream = schema.execute_stream(Request::new("subscription { reminderFirings { id } }"));
     let refused = stream.next().await.unwrap();
-    assert!(!refused.errors.is_empty());
+    assert_eq!(refused.errors.len(), 1, "{:?}", refused.errors);
     assert_eq!(live.open(), 0, "it is not an open application");
 }
