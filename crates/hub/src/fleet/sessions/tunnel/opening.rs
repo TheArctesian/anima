@@ -25,11 +25,15 @@ use std::{
     time::Duration,
 };
 
-use guac_protocol::{ConnectParams, DecodeError};
+use guac_protocol::ConnectParams;
 use tokio::time::timeout;
 
+mod not_opened;
+
+pub(super) use not_opened::NotOpened;
+
 use super::{
-    arguments::{BadConnectValue, Sources, audio, connect_values, pinned_security, time_zone},
+    arguments::{Sources, audio, connect_values, pinned_security, time_zone},
     guacd::{self, Connected},
     policy::Policy,
     route::Route,
@@ -41,12 +45,12 @@ use crate::{
         devices,
         devices::{Device, RdpSecurity},
         sessions::{
-            self, Desktop, PendingTicket, Protocol,
+            Desktop, PendingTicket,
             connection_test::{ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
             start::{certificate_required, protocol_off},
         },
         ssh::{self, SshError, Target},
-        targets::{self, AddressPolicy, TargetError},
+        targets::{self, AddressPolicy, LinkPort, TargetError},
         trust::{self, ServerCertificate},
     },
 };
@@ -66,132 +70,9 @@ pub(super) enum Opening {
 pub(super) struct Opened {
     pub(super) connected: Connected,
     pub(super) policy: Policy,
-}
-
-/// Why the tunnel did not open. The messages are for the process log; none holds a value,
-/// an address, guacd's text or the token (LOG-007).
-#[derive(Debug, thiserror::Error)]
-pub(super) enum NotOpened {
-    #[error("the ticket is for a protocol the Guacamole tunnel does not serve")]
-    NotDesktop,
-    #[error("the device no longer exists")]
-    DeviceGone,
-    #[error("the protocol is turned off for the device")]
-    ProtocolOff,
-    #[error("no server certificate is accepted for the device")]
-    NoCertificate,
-    #[error("the device host does not resolve")]
-    Unresolved,
-    #[error("the device host resolves to a refused address")]
-    RefusedTarget,
-    #[error("the device did not answer in time after the Wake-on-LAN packet")]
-    NotAwake,
-    #[error("the device's RDP server certificate could not be read")]
-    CertificateUnread(#[source] ReadError),
-    #[error("the device offers only standard RDP security, so it has no certificate")]
-    StandardOnly,
-    #[error("the device refused the RDP security the hub asked for to read its certificate")]
-    SecurityRefused,
-    /// The stored password was entered for another host than the device's host now; guacd was
-    /// never reached (SEC-011).
-    #[error("the stored password was entered for another host of the device")]
-    CredentialMoved,
-    #[error(transparent)]
-    Values(#[from] BadConnectValue),
-    #[error("guacd cannot be reached")]
-    Unreachable,
-    #[error("the guacd handshake did not finish in time")]
-    HandshakeTimeout,
-    #[error("guacd closed the connection during the handshake")]
-    GatewayClosed,
-    #[error("guacd refused the handshake (status {status:?})")]
-    Refused { status: Option<u16> },
-    #[error("guacd broke the handshake")]
-    Broken,
-    #[error("guacd sent bytes that do not decode")]
-    Garbled(#[source] DecodeError),
-    #[error("device store error")]
-    Devices(#[source] devices::Error),
-    #[error("session store error")]
-    Sessions(#[source] sessions::Error),
-    #[error("credential store error")]
-    Credentials(#[source] credentials::Error),
-}
-
-impl NotOpened {
-    /// The event message for a `protocol` session: what the operator can do about it, with
-    /// no detail from guacd.
-    pub(super) const fn message(&self, protocol: Protocol) -> &'static str {
-        let rdp = matches!(protocol, Protocol::Rdp);
-        match self {
-            Self::NotDesktop => "The ticket was not for an RDP or VNC session.",
-            Self::DeviceGone if rdp => "The device was deleted before the RDP session opened.",
-            Self::DeviceGone => "The device was deleted before the VNC session opened.",
-            Self::ProtocolOff if rdp => {
-                "RDP was turned off for the device before the session opened."
-            }
-            Self::ProtocolOff => "VNC was turned off for the device before the session opened.",
-            Self::NoCertificate => {
-                "The device has no accepted server certificate. Test the connection and accept \
-                 its certificate."
-            }
-            Self::Unresolved => "The device's host name does not resolve.",
-            Self::RefusedTarget => {
-                "The device's host resolves to a loopback, link-local, multicast or unspecified \
-                 address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
-                 gateway must not reach."
-            }
-            Self::NotAwake => {
-                "The device did not answer within 120 seconds of the Wake-on-LAN packet."
-            }
-            Self::CertificateUnread(error) => unread_message(*error),
-            Self::StandardOnly => {
-                "The device offers only standard RDP security, so the hub could not check its \
-                 server certificate. Check the security setting."
-            }
-            Self::SecurityRefused => {
-                "The device refused the RDP security the hub asked for to check its server \
-                 certificate. Check the security setting."
-            }
-            Self::CredentialMoved => sessions::credential_moved(protocol),
-            Self::Values(_) => {
-                "The device's settings or stored credential cannot be sent to the gateway."
-            }
-            Self::Unreachable => "The hub could not reach the gateway.",
-            Self::HandshakeTimeout
-            | Self::GatewayClosed
-            | Self::Refused { .. }
-            | Self::Broken
-            | Self::Garbled(_)
-                if rdp =>
-            {
-                "The gateway did not open the RDP session."
-            }
-            Self::HandshakeTimeout
-            | Self::GatewayClosed
-            | Self::Refused { .. }
-            | Self::Broken
-            | Self::Garbled(_) => "The gateway did not open the VNC session.",
-            Self::Devices(_) | Self::Sessions(_) | Self::Credentials(_) => {
-                "The hub could not read the session's settings from its database."
-            }
-        }
-    }
-}
-
-/// The event message for a server certificate the hub could not read from the device.
-const fn unread_message(error: ReadError) -> &'static str {
-    match error {
-        ReadError::Unexpected => {
-            "The device did not answer as an RDP server when the hub checked its server \
-             certificate."
-        }
-        ReadError::Tls => {
-            "The device did not complete a TLS handshake when the hub checked its server \
-             certificate."
-        }
-        _ => "The hub could not reach the device's RDP port to check its server certificate.",
-    }
+    /// The port of the hub that carries guacd to a computer on the link, for the life of
+    /// the session (HMD-048); none for a device that guacd reaches by the network.
+    pub(super) carried: Option<LinkPort>,
 }
 
 /// Opens the gateway side of the ticket's session. Safe to drop at any await: the
@@ -233,12 +114,46 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         };
         device.rdp.security = pinned_security(device.rdp.security, chosen);
     }
-    let password = password(route, &device, desktop).await?;
-    let sources = Sources {
+    let checked = Checked {
         device: &device,
-        target: address,
-        password: password.as_ref(),
+        address: SocketAddr::new(address, port),
         certificate: certificate.as_ref(),
+    };
+    through_gateway(route, ticket, desktop, checked).await
+}
+
+/// A device whose address the opening resolved and checked, with its accepted certificate.
+struct Checked<'a> {
+    device: &'a Device,
+    address: SocketAddr,
+    certificate: Option<&'a ServerCertificate>,
+}
+
+/// Opens guacd for the device at its checked address. guacd cannot reach a computer
+/// on the link, so for a link address it gets a port of the hub that carries there (HMD-048);
+/// the port stays open with the session.
+async fn through_gateway(
+    route: &Route,
+    ticket: &PendingTicket,
+    desktop: Desktop,
+    checked: Checked<'_>,
+) -> Result<Opening, NotOpened> {
+    let Checked {
+        device,
+        address: device_port,
+        certificate,
+    } = checked;
+    let carried = LinkPort::open(route.live.policy(), device_port)
+        .await
+        .map_err(|_| NotOpened::Unreachable)?;
+    let for_guacd = carried.as_ref().map_or(device_port, LinkPort::local);
+    let password = password(route, device, desktop).await?;
+    let sources = Sources {
+        device,
+        target: for_guacd.ip(),
+        port: for_guacd.port(),
+        password: password.as_ref(),
+        certificate,
         drive_root: &route.drive_root,
     };
     let values = connect_values(desktop, &sources)?;
@@ -247,13 +162,16 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         display: ticket.display,
         timezone: time_zone(ticket.timezone.as_deref()),
         name: ticket.operator.name.clone(),
-        audio: audio(desktop, &device),
+        audio: audio(desktop, device),
         values,
     };
-    let policy = Policy::of(desktop, &device);
-    guacd::connect(&route.guacd, desktop.select(), params, route.timing)
-        .await
-        .map(|connected| Opening::Gateway(Box::new(Opened { connected, policy })))
+    let policy = Policy::of(desktop, device);
+    let connected = guacd::connect(&route.guacd, desktop.select(), params, route.timing).await?;
+    Ok(Opening::Gateway(Box::new(Opened {
+        connected,
+        policy,
+        carried,
+    })))
 }
 
 /// The device's stored password for `desktop`, opened only for the device's host the opening
@@ -356,7 +274,7 @@ async fn awake(
             SshError::RefusedTarget => NotOpened::RefusedTarget,
             _ => NotOpened::Unresolved,
         })?;
-    // The gateway does not reach a computer of the link yet (HM-T14).
+    // A computer on the link has no network address to wake; its link answers for it.
     let answered = stream.network_peer().ok_or(NotOpened::NotAwake)?;
     Ok(answered.to_canonical())
 }
