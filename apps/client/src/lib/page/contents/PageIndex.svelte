@@ -6,6 +6,8 @@
     readonly id: string;
     readonly title: string;
     readonly icon: IconName;
+    /** The group of the section, for example "This computer": the index writes it once, above the first link of the group. */
+    readonly group?: string;
   }
 </script>
 
@@ -55,7 +57,8 @@
      them, or nothing. -->
 <nav aria-label={label} class:hidden={narrow === 'hidden'}>
   {#if heading !== undefined}<span class="heading"><SmallCaps>{heading}</SmallCaps></span>{/if}
-  {#each entries as entry (entry.id)}
+  {#each entries as entry, at (entry.id)}
+    {#if entry.group !== undefined && entry.group !== entries[at - 1]?.group}<span class="group"><SmallCaps>{entry.group}</SmallCaps></span>{/if}
     <a href="#{entry.id}" aria-current={(current ?? entries[0]?.id) === entry.id ? 'true' : undefined}>
       <Icon name={entry.icon} size="sm" />{entry.title}
     </a>
@@ -73,6 +76,15 @@
 
   .heading {
     padding: 0 var(--space-3) var(--space-2);
+  }
+
+  /* The name of a group of links; each group after the first has space above it (R-224). */
+  .group {
+    padding: var(--space-2) var(--space-3) var(--space-1);
+  }
+
+  a + .group {
+    margin-block-start: var(--space-3);
   }
 
   a {
@@ -112,7 +124,8 @@
       scrollbar-width: none;
     }
 
-    .heading {
+    .heading,
+    .group {
       display: none;
     }
 
