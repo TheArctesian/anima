@@ -39,6 +39,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 17: agent authority for host changes | Decided | A by default, with B available: owner approval for each host change unless an explicit bounded standing grant covers it. Grants must have precise scope and be revocable. Broad administrator-agent mode C is not selected. Use the existing Anima permission/execution model; do not create a separate OS permission system or infer bypass of maintenance windows. Reconcile the proposal with existing owner requirements before implementation. |
 | Decision 18: resource priorities | Decided | A + D: service-first by default, with owner-selectable service-first, worker-first and balanced profiles. Reserve capacity for OS, remote management and recovery under every profile. Jobs use remaining capacity under service-first, and admission may wait. Explain effects of profile changes; do not silently kill running work. Existing scheduler/workload owners define enforcement, resource limits and admission behavior. |
 | Decision 19: automatic storage cleanup | Decided | A + B + C: eligible regenerable caches/unused images; history expired under explicit retention; completed job workspaces/artifacts explicitly marked disposable with a configured lifetime. Protect active/pinned workloads, designated recovery points and the previous known-good system. Preserve persistent app data, user files, credentials and unmarked job outputs. If permitted cleanup is insufficient, alert and restrict new allocations rather than broaden deletion authority. Exact eligibility, retention and pressure thresholds remain open. |
+| Decision 20: backup destinations | Decided | A + B + C: another explicitly authorized enrolled Anima machine, user-provided network storage, and a deliberately selected separate attached or secondary drive. Do not automatically use or format unselected disks. User-provided cloud/object storage and Anima-managed backup storage are not selected for the first version. Expose destination configuration and last successful backup; define capacity, authentication, retention and restore validation. Same-disk snapshots are not disk-failure backups. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -75,7 +76,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 20: which backup destinations should the first version support? Options can be combined: another enrolled Anima machine; user-provided network storage; attached separate drive; user-provided cloud/object storage; Anima-managed backup storage. Recommendation: another enrolled machine and user-provided network storage, subject to existing storage/backup owner boundaries. No choice yet. Same-disk snapshots remain local recovery aids, not disk-failure backups. Destination provisioning, authentication, encryption, capacity, restore tests and retention are separate design work; no cloud service or storage entitlement is implied.
+2. Decision 21: what should a configured backup include by default? Alternatives: managed persistent data plus configuration, excluding regenerable/disposable state; a whole-machine image; explicit owner selection only. Optional addition: owner-selected unmanaged paths. Recommendation: managed persistent data/configuration by default with explicit extra paths, after destination and policy approval. Credentials, identity restoration, encryption, app-consistent capture, retention and restore validation need separate design. No selection yet; encryption of backup content is not decided by installation-disk encryption being off.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -158,6 +159,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 18 accepted A + D: service-first default with owner-selectable profiles. Protect OS/management/recovery capacity and explain profile changes. Next: automatic cleanup boundaries for shared storage.
 
 - 2026-11-19: Decision 19 accepted A + B + C. Completed work is removable only when explicitly disposable under its declared lifetime; persistent/unmarked data stays protected. Next: backup destinations beyond same-disk snapshots.
+
+- 2026-11-19: Decision 20 accepted A + B + C: another enrolled machine, network storage and selected separate drives. Cloud destinations and Anima-operated storage are not in the selected first-version scope. Next: default backup coverage.
 
 ## Source text
 
@@ -262,3 +265,7 @@ In response to Decision 18 (recommendation A + D):
 In response to Decision 19:
 
 > A B and C
+
+In response to Decision 20:
+
+> Yeah A B C
