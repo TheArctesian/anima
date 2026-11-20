@@ -236,7 +236,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: See, Reach
 - Work: four extensions, off by default, built together (OD-OBS3): status pages served on one public path of the hub, error tracking and product analytics on a self-hosted PostHog that the hub places on a machine with room or a VM, and short links. Uptime checks stay in the design specification.
 - Work items: No work item yet. The tasks OB0 to OB18 are in [extensions-plan.md](../plans/extensions-plan.md) Section 4.17.9
-- State: Direction decided (R-241, operator, 2026-11-19, first-hand). OD-OBS1 to OD-OBS14 are decided (OD-OBS9 withdrawn); R-243 (2026-11-19, first-hand) decides OD-OBS7 and OD-OBS15 to OD-OBS20: Dub for short links, automatic image updates, OD-E6 reversed when the extension works. OD-OBS21 to OD-OBS25 are open (the stacks against R-226 to R-238). The requirements are not approved; no task may start.
+- State: Direction decided (R-241, operator, 2026-11-19, first-hand). OD-OBS1 to OD-OBS14 are decided (OD-OBS9 withdrawn); R-242 (2026-11-19, first-hand) decides OD-OBS7 and OD-OBS15 to OD-OBS20: Dub for short links, automatic image updates, OD-E6 reversed when the extension works. OD-OBS21 to OD-OBS25 are open (the stacks against R-226 to R-238). The requirements are not approved; no task may start.
 
 ### Notes on the order
 
