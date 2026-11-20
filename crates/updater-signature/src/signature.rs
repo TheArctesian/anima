@@ -153,16 +153,34 @@ impl SignatureStream<'_> {
     ///
     /// `Signature` when the signature does not hold; `SignedVersion` when it holds for another
     /// version.
-    pub fn finish(mut self, version: &str) -> Result<(), SignatureError> {
+    pub fn finish(self, version: &str) -> Result<(), SignatureError> {
+        self.finish_named(version, None)
+    }
+
+    /// As [`Self::finish`], and when `file_name` is given, the trusted comment must also name
+    /// exactly that file once. A release record uses it, so that the signature of a file of a
+    /// different name is never read as the signature of a record (ROL-013).
+    ///
+    /// # Errors
+    ///
+    /// `Signature` when the signature does not hold; `SignedVersion` when it holds for another
+    /// version or another file name.
+    pub fn finish_named(
+        mut self,
+        version: &str,
+        file_name: Option<&str>,
+    ) -> Result<(), SignatureError> {
         self.verifier
             .finalize()
             .map_err(|_| SignatureError::Signature)?;
-        let versions = self
-            .signature
-            .trusted_comment()
-            .split('\t')
-            .filter_map(|field| field.strip_prefix("version:"));
-        if versions.eq([version]) {
+        let comment = self.signature.trusted_comment();
+        let field = |prefix: &'static str| {
+            comment
+                .split('\t')
+                .filter_map(move |field| field.strip_prefix(prefix))
+        };
+        let named = file_name.is_none_or(|name| field("file:").eq([name]));
+        if field("version:").eq([version]) && named {
             Ok(())
         } else {
             Err(SignatureError::SignedVersion)
