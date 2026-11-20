@@ -5,6 +5,8 @@ import { SETTINGS_SCREENS } from './screens-settings';
 import { SIGN_IN_SCREENS, STATE_SCREENS } from './screens-states';
 import { VPN_SCREENS } from './screens-vpn';
 import type { Screen } from './shots';
+import { HUB_ORIGIN } from '../synthetic/access';
+import { expect } from '@playwright/test';
 
 /** Every screen, in the order that numbers its pictures. A screen added in the middle moves the numbers after it. */
 export const SCREENS: readonly Screen[] = [
@@ -15,4 +17,11 @@ export const SCREENS: readonly Screen[] = [
   ...VPN_SCREENS,
   ...SESSION_SCREENS,
   ...STATE_SCREENS,
+  {
+    name: 'agent-usage',
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/agents/usage`);
+      await expect(page.getByRole('table', { name: 'By device' })).toBeVisible();
+    },
+  },
 ];

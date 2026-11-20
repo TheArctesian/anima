@@ -4,63 +4,50 @@ import { NO_PRICE, dollars, tokens } from './units';
 
 // The words of the page. Where the command says the same thing, the wording is the command's (report.rs, AIS-021, AIS-024).
 
-/** The sentence for a device whose daemon runs as the systemd system unit (AIS-024). */
-export const SYSTEM_UNIT = 'This daemon runs as a system unit and cannot see the sessions of a user.';
-
-/** The sentence for a device where the counts are off in the daemon's settings. */
-export const TURNED_OFF = 'The use counts are turned off in the settings of the daemon on this device.';
-
 const SOURCE_NAMES: Readonly<Record<AgentSource, string>> = { CLAUDE_CODE: 'Claude Code', CODEX: 'Codex' };
 
 /** The name of a program; one this client does not know yet shows as the hub names it. */
-export function sourceName(source: AgentSource): string {
+export function sourceName(source: AgentSource | null): string {
+  if (source === null) return 'No program';
   return (SOURCE_NAMES as Partial<Record<string, string>>)[source] ?? source;
 }
 
-/** The sentence for a daemon that sends no counts; `null` for one that reads. */
-export function stateSentence(state: AgentUsageState): string | null {
-  if (state === 'SYSTEM_UNIT') return SYSTEM_UNIT;
-  return state === 'TURNED_OFF' ? TURNED_OFF : null;
-}
-
-/** All the tokens of a group: input, output and both cache counts. */
-export function totalTokens(sums: UsageSums): number {
-  return sums.inputTokens + sums.outputTokens + sums.cacheReadTokens + sums.cacheWriteTokens;
+/** What the daemon of a device does with the sessions (AIS-024), and whether that is the working state. */
+export function stateWords(state: AgentUsageState): { readonly words: string; readonly reads: boolean } {
+  if (state === 'SYSTEM_UNIT') return { words: "Runs as a system unit: it cannot see a user's sessions", reads: false };
+  if (state === 'TURNED_OFF') return { words: "Turned off in the daemon's settings", reads: false };
+  return { words: 'Reads sessions', reads: true };
 }
 
 /** The estimate of a group in US dollars, or the words that say it has no price. */
-export function costText(sums: UsageSums): string {
-  return sums.estimatedCostUsd == null ? NO_PRICE : dollars(sums.estimatedCostUsd);
+export function costText(sums: Pick<UsageSums, 'estimatedCostUsd'>): string {
+  return sums.estimatedCostUsd == null ? NO_PRICE : `$${dollars(sums.estimatedCostUsd)}`;
 }
 
-/** The one line over the table: sessions, tokens and the estimate, as text. */
-export function summaryLine(total: UsageSums): string {
-  const sessions = `${String(total.sessions)} ${total.sessions === 1 ? 'session' : 'sessions'}`;
-  const cost = total.estimatedCostUsd == null ? 'no estimated cost' : `estimated cost $${dollars(total.estimatedCostUsd)}`;
-  return `${sessions}, ${tokens(totalTokens(total))} tokens, ${cost}`;
+/** What the estimate is, and what it is not (AIS-021), with the tokens that it leaves out when there are some. */
+export function estimateNote(pricesAsOf: string, unpricedTokens: number): string {
+  const base = `list prices of ${pricesAsOf}; not a bill`;
+  return unpricedTokens > 0 ? `${base}. ${tokens(unpricedTokens)} tokens have no known price` : base;
 }
 
-/** What the estimate is, and what it is not (AIS-021). */
-export function estimateNote(pricesAsOf: string): string {
-  return `The cost is an estimate from the public list prices of ${pricesAsOf}. It is not the bill of a subscription.`;
+/** The line under the list of repositories when the hub left some out. */
+export function leftOutLine(count: number): string {
+  if (count <= 0) return '';
+  return `${String(count)} more ${count === 1 ? 'group is' : 'groups are'} not shown. The totals count them.`;
 }
 
-/** The lines under the table, as text: the estimate, the tokens it leaves out, and the rows the hub cut. */
+// The two functions below serve only `UsageNotes.svelte`, which the page no longer draws. That file and
+// `report/columns.ts` are not used any more and wait for a person to take them out of the repository.
+
+/** The lines under the old table. */
 export function notes(answer: UsageAnswer): string[] {
-  const lines = [estimateNote(answer.pricesAsOf)];
-  if (answer.total.unpricedTokens > 0) {
-    lines.push(`${tokens(answer.total.unpricedTokens)} tokens have no price and are not in the estimate.`);
-  }
-  if (answer.rowsLeftOut > 0) {
-    lines.push(answer.rowsLeftOut === 1 ? '1 row is not shown.' : `${String(answer.rowsLeftOut)} rows are not shown.`);
-  }
-  return lines;
+  return [estimateNote(answer.pricesAsOf, answer.total.unpricedTokens), leftOutLine(answer.rowsLeftOut)].filter((line) => line !== '');
 }
 
-/** One entry for each device whose daemon sends no counts, with the reason; a device that reads gives none. */
+/** One entry for each device whose daemon sends no counts, with the reason. */
 export function deviceNotes(devices: readonly UsageDevice[]): { readonly id: string; readonly name: string; readonly sentence: string }[] {
   return devices.flatMap(({ device, state }) => {
-    const sentence = stateSentence(state);
-    return sentence === null ? [] : [{ id: device.id, name: device.name, sentence }];
+    const { words, reads } = stateWords(state);
+    return reads ? [] : [{ id: device.id, name: device.name, sentence: words }];
   });
 }

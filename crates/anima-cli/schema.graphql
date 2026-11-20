@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite` and `claimDeviceToken` (API-003, D-4, R-111, R-129).
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket` and `hostedBrowserSignIn` (API-003, D-4, R-111, R-129, HMD-061).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -954,6 +954,10 @@ type Container {
   "The Compose project of the container; null when it has none."
   composeProject: String
   composeService: String
+  "The folder from which Compose started the project, as Docker says (R-211); null when the container has no project or Docker has no such label. A path on the device."
+  composeWorkingDir: String
+  "The Compose files of the project, as paths on the device, in the order Compose read them (R-211). Anima reads them here and changes no file."
+  composeFiles: [String!]!
   "The one state of the Compose project of the container (HOST-019); null when it has none. Each container of a project has the same value."
   composeProjectState: ComposeProjectState
 }
@@ -1872,6 +1876,19 @@ type HostedDeviceInvite {
   expiresAt: DateTime!
 }
 
+"""What a hosted hub gives the Anima.ing cloud for a browser of its account (hosted-mode.md HMD-061): shown once, never logged (LOG-007)."""
+type HostedBrowserTicket {
+  "The one-time ticket that the gateway trades for the session cookie of the hub (hostedBrowserSignIn). It works once, for 60 seconds."
+  ticket: String!
+  expiresAt: DateTime!
+}
+
+"""What hostedBrowserSignIn answers (hosted-mode.md HMD-061, HMD-062). The token is only in the Set-Cookie of the answer, never in its body."""
+type HostedBrowserSignIn {
+  "When the session ends at the latest: 12 hours after the sign-in. It ends sooner after 30 minutes with no request; an open socket counts as a request."
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -2224,6 +2241,15 @@ type SourceAccount {
   "Newest first, 1 to 20 (ITG-003)."
   runs(first: Int = 20): [SyncRun!]!
   createdAt: DateTime!
+}
+
+"A Dawarich server to connect (R-261). apiKey is a secret: it is never returned, logged or put in the audit log."
+input DawarichInput {
+  "1 to 64 characters."
+  label: String!
+  "https://host or https://host:port, with no path."
+  baseUrl: String!
+  apiKey: String!
 }
 
 input GithubAppInput {
@@ -3544,6 +3570,8 @@ type Mutation {
   setExtension(key: String!, on: Boolean!): [Extension!]!
   "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Login or browser token only (D-23, R-100)."
   connectGithubApp(input: GithubAppInput!): SourceAccount!
+  "Login or browser token only (D-23, R-100). Connects a Dawarich server with an API key of its account (R-261; K-E1 Section 7b): the hub reads one point with the key before it stores it. VALIDATION on baseUrl for an address that is not https://host[:port] or that the hub does not connect to, on apiKey when the server refuses the key, on label; UNAVAILABLE when the server does not answer. The same address again replaces the stored key and keeps the account and its samples."
+  connectDawarich(input: DawarichInput!): SourceAccount!
   "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
   syncSourceAccount(id: ID!): SourceAccount!
   setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount!
@@ -3555,7 +3583,7 @@ type Mutation {
   restoreRepository(id: ID!): Project!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
-  "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. Login or browser token only (D-23, R-100)."
+  "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. CONFLICT on a hub that no browser can open: a hub in the link mode with no ANIMA_PUBLIC_ORIGIN of its own (HMD-070); openGithubConnect refuses the same way and makes no ticket. Login or browser token only (D-23, R-100)."
   startGithubConnect(input: StartGithubConnectInput): GithubConnectAttempt!
   "Returns a ONE-TIME link; an earlier one stops working. CONFLICT outside WAITING_FOR_BROWSER and AT_GITHUB. FORBIDDEN for a request that declares an AI agent. Login or browser token only (D-23, R-100)."
   openGithubConnect(id: ID!): GithubConnectLink!
@@ -3597,6 +3625,10 @@ type Mutation {
   hostedDeviceInvite(cloudKey: String!, name: String!): HostedDeviceInvite!
   "A login token for the device that sends this through the link, when it joined with the invite of claim. The claim works once, until its invite expires. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for any other refusal. The response is no-store."
   claimDeviceToken(claim: String!): AuthPayload!
+  "A one-time ticket for a browser of the account, for the Anima.ing cloud only: cloudKey is the key of ANIMA_HOSTED_CLOUD_KEY_FILE. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for a wrong key, UNAVAILABLE when too many tickets are open. Writes nothing to a log or an entry (LOG-007; HMD-061)."
+  hostedBrowserTicket(cloudKey: String!): HostedBrowserTicket!
+  "The browser session of this hub in trade for ticket: the answer sets the __Host-anima cookie (Secure, HttpOnly, SameSite=Strict, Path=/, Max-Age 12 hours). The gateway of the pool sends it for the browser, with Origin of the public origin of the hub, and passes the Set-Cookie on; the ticket is never in an address. The ticket works once. Needs no token. FORBIDDEN on a hub that is not hosted and for a request that does not come from the public origin; UNAUTHENTICATED for a ticket that is used, expired or wrong. Writes an audit entry and an event (HMD-061, HMD-062)."
+  hostedBrowserSignIn(ticket: String!): HostedBrowserSignIn!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
   "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."

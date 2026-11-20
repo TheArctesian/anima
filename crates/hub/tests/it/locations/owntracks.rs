@@ -135,3 +135,45 @@ async fn r_145_the_owntracks_path_refuses_a_wrong_a_revoked_and_a_login_token(po
     let (_, answer) = hub.send(request).await;
     assert_eq!(error(&answer).1, "UNAUTHENTICATED");
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_stored_fix_writes_no_event_and_each_ended_hour_one_audit_entry(pool: PgPool) {
+    let hub = LocationHub::new(&pool).await;
+    let (_, token) = hub.ingest_token("Phone").await;
+    for tst in [NOW - 30, NOW - 20, NOW - 20] {
+        assert_eq!(hub.owntracks(&token, &fix(tst)).await.0, StatusCode::OK);
+    }
+    let events: Vec<String> = sqlx::query_scalar(
+        "select message from events.event_log where message like '%location%' \
+         or message like '%sample%' or message like '%fix%'",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        events,
+        ["A location ingest token named Phone was made."],
+        "a stored fix writes no event"
+    );
+    let hours = "select change from events.audit_log where target_type = 'location_ingest_token' \
+                 and change ? 'fixes'";
+    let open: Vec<Value> = sqlx::query_scalar(hours).fetch_all(&pool).await.unwrap();
+    assert!(open.is_empty(), "the hour did not end yet: {open:?}");
+
+    let later = start() + chrono::TimeDelta::hours(1);
+    let written = anima_hub::engine::locations::audit_ended_hours(&pool, later)
+        .await
+        .unwrap();
+    assert_eq!(written, 1);
+    let closed: Vec<Value> = sqlx::query_scalar(hours).fetch_all(&pool).await.unwrap();
+    assert_eq!(closed.len(), 1);
+    assert_eq!(
+        (&closed[0]["name"], &closed[0]["fixes"], &closed[0]["hour"]),
+        (&json!("Phone"), &json!(2), &json!("2030-05-05T12:00:00Z")),
+        "the fix that the hub already had is not counted"
+    );
+    let again = anima_hub::engine::locations::audit_ended_hours(&pool, later)
+        .await
+        .unwrap();
+    assert_eq!(again, 0, "an hour is written one time");
+}

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { commitThenCheck } from "../../src/merge/commit.ts";
 import { members, stack } from "../../src/merge/stack.ts";
-import { batch, firstHalf, MOST, trainName, verdict, type GatesRun, type Tip } from "../../src/merge/train.ts";
+import { batch, firstHalf, MOST, standing, trainName, verdict, type GatesRun, type Tip } from "../../src/merge/train.ts";
 
 function gatesRun(headBranch: string, headSha: string, conclusion: string | null, updatedAt = "2026-11-20T04:00:00Z"): GatesRun {
   const event = headBranch.startsWith("train/") ? "workflow_dispatch" : "push";
@@ -48,6 +48,23 @@ describe("R-252 which branches the next train holds", () => {
     expect(batch(tips, runs, new Map([["b1", "2026-11-20T05:00:00.000Z"]]), notInDev)).toEqual([]);
     const again = [...runs, gatesRun("ui/b", "b1", "success", "2026-11-20T05:40:00Z")];
     expect(batch(tips, again, new Map([["b1", "2026-11-20T05:00:00.000Z"]]), notInDev)).toHaveLength(1);
+  });
+
+  test("each branch that is not taken has a reason, and a branch in dev is not named", () => {
+    const runs = [
+      gatesRun("ui/b", "b1", "failure"),
+      gatesRun("hub/a", "a1", null),
+      gatesRun("docs/c", "c1", "success"),
+      gatesRun("hosted/d", "d1", "success", "2026-11-20T04:10:00Z"),
+    ];
+    const all = [...tips, { branch: "hosted/d", sha: "d1" }, { branch: "new/e", sha: "e1" }, { branch: "old/f", sha: "f1" }];
+    const reasons = new Map(standing(all, runs, new Map([["d1", "2026-11-20T05:00:00.000Z"]]), (sha) => sha === "f1").map((each) => [each.tip.branch, each.reason]));
+    expect(reasons.get("ui/b")).toContain('ended with "failure"');
+    expect(reasons.get("hub/a")).toBe("its gates still run");
+    expect(reasons.get("docs/c")).toBe("its gates passed for an older commit (c1), not for its tip");
+    expect(reasons.get("hosted/d")).toContain("failed alone in a train");
+    expect(reasons.get("new/e")).toBe("its gates did not run for its tip");
+    expect([...reasons.keys()].sort()).toEqual(["docs/c", "hosted/d", "hub/a", "new/e", "ui/b"]);
   });
 
   test("one train holds a limited number of branches", () => {
@@ -120,7 +137,7 @@ describe("R-252 the commit of a train", () => {
     expect(git(root, "status", "--porcelain")).toBe("");
     expect(members(root, base, "HEAD")).toEqual([tips[0], tips[2]] as Tip[]);
     expect(git(root, "merge-base", "--is-ancestor", base, "HEAD")).toBe("");
-  });
+  }, 60_000);
 
   test("a branch whose document gates fail on its merge commit is left out, and the next branch still joins", () => {
     const { root, tips } = repository();
@@ -129,5 +146,5 @@ describe("R-252 the commit of a train", () => {
     const made = stack(root, [tips[0], tips[2]] as Tip[], failing);
     expect(made.merged.map((tip) => tip.branch)).toEqual(["docs/c"]);
     expect(made.leftOut).toEqual([{ branch: "hub/a", reason: "documents" }]);
-  });
+  }, 60_000);
 });

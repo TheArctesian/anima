@@ -63,10 +63,16 @@ pub fn cookie_value<'h>(headers: &'h HeaderMap, name: &str) -> Option<&'h str> {
 /// The `Set-Cookie` value that gives the browser `token` for 7 days. Marked sensitive, so its
 /// `Debug` shows no token (LOG-007).
 pub(super) fn signed_in(token: &Token) -> HeaderValue {
+    signed_in_for(token, BROWSER_LIFETIME)
+}
+
+/// The `Set-Cookie` value that gives the browser `token` for `lifetime`: the 12 hours of the
+/// browser session of a hosted hub (HMD-062). Marked sensitive as [`signed_in`].
+pub(super) fn signed_in_for(token: &Token, lifetime: chrono::TimeDelta) -> HeaderValue {
     let text = Zeroizing::new(format!(
         "{COOKIE_NAME}={}; Max-Age={}; {ATTRIBUTES}",
         token.expose(),
-        BROWSER_LIFETIME.num_seconds()
+        lifetime.num_seconds()
     ));
     let mut value = HeaderValue::from_str(&text).expect("a token is base64url text");
     value.set_sensitive(true);

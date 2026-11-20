@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::change::Changes;
-use crate::exchange::Problem;
+use crate::exchange::{Problem, Request};
 use crate::registration::Registration;
 
 /// The shortest poll interval a declaration may ask for (SRC-021).
@@ -23,6 +23,7 @@ pub struct Declaration {
     /// What the source gives, for example "Repositories".
     pub gives: &'static [&'static str],
     pub poll_interval_seconds: u32,
+    /// Empty for a source with [`Acquisition::AccountKey`]: the base is of the account.
     pub api_base: &'static str,
     /// `None`: a read-only source. `Some`: the named changes it can make (OD-E14).
     pub changes: Option<Changes>,
@@ -41,6 +42,17 @@ impl Declaration {
 #[non_exhaustive]
 pub enum Acquisition {
     TokenPull(Minting),
+    /// A key that the server of the operator gave: the account holds the base address and the
+    /// key, and the source has no API base of its own (K-E1 Section 7b, R-261).
+    AccountKey(AccountKey),
+}
+
+/// The provider-specific part of a connection with a key of the account.
+#[derive(Clone, Copy, Debug)]
+pub struct AccountKey {
+    /// A `GET` below the base of the account that the server answers with 2xx only for a good
+    /// key: the proof at connect.
+    pub probe: fn() -> Request,
 }
 
 /// How a pulled token is made.

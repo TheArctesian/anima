@@ -71,6 +71,7 @@ redaction = { path = "../redaction" }
 # wiring registers, and the boxed futures of the `Intake` trait object.
 source-exchange = { path = "../providers/exchange" }
 provider-github = { path = "../providers/github" }
+provider-dawarich = { path = "../providers/dawarich" }
 async-trait = "0.1"
 # The hub's own user id, which the link's control socket and its process must have (FRN-009).
 rustix = { version = "1.1", features = ["process"] }

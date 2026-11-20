@@ -1,6 +1,7 @@
 //! Signing in: the throttle, the password check, the token and their records (SEC-002,
 //! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`.
 
+pub(super) mod browser_ticket;
 pub(super) mod hosted;
 mod sign_out;
 

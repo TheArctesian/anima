@@ -9,7 +9,7 @@ use source_exchange::Registration;
 
 use super::super::{failed, scheduling, seen, views::AccountView};
 use crate::{
-    api_errors::{FieldError, invalid, schema_dependency},
+    api_errors::{ErrorCode, FieldError, coded, invalid, schema_dependency},
     config::Config,
     engine::sources::{
         Error, Scheduling, connect,
@@ -22,6 +22,21 @@ use crate::{
     },
     fleet::events::ActorKind,
 };
+
+const NO_BROWSER_ADDRESS: &str = "This hub has no address that a browser can open, so Connect GitHub \
+    cannot start here. Use the key file of a GitHub App.";
+
+/// Refuses the flow on a hub that no browser can open (HMD-070): a hub in the link mode that was
+/// given no public origin. Its pages and the App that GitHub would make would name the default
+/// origin, which is a different server. A hub of the pool is given the address of its gateway
+/// (HMD-069); a hub on a server is reached at its own origin and is not in the link mode.
+pub(super) fn browser_can_open(ctx: &Context<'_>) -> Result<()> {
+    let config = schema_dependency::<Arc<Config>>(ctx)?;
+    if config.link_socket.is_some() && !config.public_origin_given {
+        return Err(coded(NO_BROWSER_ADDRESS, ErrorCode::Conflict));
+    }
+    Ok(())
+}
 
 /// The attempt as the API shows it, with what its links are built from.
 pub struct AttemptView {

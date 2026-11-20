@@ -188,8 +188,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(pool.clone())
     .data(bus)
     .data(vault)
-    // The open claims of a hosted hub (R-129).
-    .data(link::Claims::default());
+    // The open claims of a hosted hub (R-129), and its open browser tickets (HMD-061).
+    .data(link::Claims::default())
+    .data(access::BrowserTickets::default());
     // One block per domain: its loaders (R-014) and its state.
     with_devices_loaders(builder, &pool, &clock)
         // checks
@@ -240,12 +241,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
 pub fn engine_routes(parts: &Dependencies) -> Router {
     let (pool, bus, clock) = (&parts.pool, &parts.bus, &parts.clock);
     let files = files::router(pool, bus, clock, &parts.files);
-    crate::logged(files.merge(locations::router(
-        pool,
-        bus,
-        clock,
-        parts.files.sealing_keys(),
-    )))
+    crate::logged(files.merge(locations::router(pool, clock, parts.files.sealing_keys())))
 }
 
 type Builder = SchemaBuilder<Query, Mutation, Subscription>;

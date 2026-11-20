@@ -1,7 +1,8 @@
 //! The two `docker` commands and the pure reading of their output (HOST-001, CHK-012).
 //!
-//! The list asks Docker for nine named values of each container and no label but the two of
-//! Compose, so a label that holds a secret never leaves the device. The log asks for both
+//! The list asks Docker for nine named values of each container and no label but four of
+//! Compose (the project, the service, and where Compose found the project, R-211), so a label
+//! that holds a secret never leaves the device. The log asks for both
 //! output streams of the container (`2>&1`): the link never reads standard error.
 
 use chrono::{DateTime, Utc};
@@ -20,7 +21,9 @@ const LIST_FORMAT: &str = concat!(
     r#""state":{{json .State}},"status":{{json .Status}},"ports":{{json .Ports}},"#,
     r#""created":{{json .CreatedAt}},"#,
     r#""project":{{json (.Label "com.docker.compose.project")}},"#,
-    r#""service":{{json (.Label "com.docker.compose.service")}}}'"#,
+    r#""service":{{json (.Label "com.docker.compose.service")}},"#,
+    r#""dir":{{json (.Label "com.docker.compose.project.working_dir")}},"#,
+    r#""files":{{json (.Label "com.docker.compose.project.config_files")}}}'"#,
 );
 
 /// The exit status of a shell that found no such program.
@@ -64,6 +67,11 @@ struct Line {
     created: String,
     project: String,
     service: String,
+    /// The two labels of where Compose found the project. An older answer has none.
+    #[serde(default)]
+    dir: String,
+    #[serde(default)]
+    files: String,
 }
 
 /// Why a command that did not exit 0 failed, from its status alone.
@@ -113,6 +121,13 @@ fn container(line: Line) -> Container {
         created_at: created(&line.created),
         compose_project: Some(line.project).filter(|project| !project.is_empty()),
         compose_service: Some(line.service).filter(|service| !service.is_empty()),
+        compose_working_dir: Some(line.dir).filter(|dir| !dir.is_empty()),
+        compose_files: line
+            .files
+            .split(',')
+            .filter(|file| !file.is_empty())
+            .map(str::to_owned)
+            .collect(),
         project_state: None,
     }
 }
