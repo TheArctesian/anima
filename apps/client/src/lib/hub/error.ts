@@ -1,4 +1,4 @@
-import { hubIsHosted, networkAdvice } from '$lib/hosted/mark';
+import { HOSTED_ADDRESS_MOVED, holdsMovedAddressHere, hubIsHosted, networkAdvice } from '$lib/hosted/mark';
 
 /** The K7 `extensions.code` values the hub sends. */
 const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'] as const;
@@ -36,8 +36,12 @@ const UNREACHABLE_HOSTED: HubError = {
   message: `The hub did not answer. ${networkAdvice(true)}.`,
 };
 
+/** The address of the settings is the address of the hosted hubs in a browser now: no hub answers the application there (HM-T31). */
+const ADDRESS_MOVED: HubError = { code: 'unreachable', message: HOSTED_ADDRESS_MOVED };
+
 /** The error of a call that got no answer from the hub at `origin`. */
 export function noAnswer(origin: string): HubError {
+  if (holdsMovedAddressHere(origin)) return ADDRESS_MOVED;
   return hubIsHosted(origin) ? UNREACHABLE_HOSTED : UNREACHABLE;
 }
 

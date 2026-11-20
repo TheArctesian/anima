@@ -26,7 +26,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-050 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
-| 4.4 | The engine (E0) | Agent: the rest of E0-7 T3 (`Subscription.reminderFirings`) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"). Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E26 (plain `http` for a Dawarich server), HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
+| 4.4 | The engine (E0) | Agent: the client-sealed records of E0-6 T2 (K-E5 Section 3), then E0-6 T4, of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E26 (plain `http` for a Dawarich server), HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the steps of HT-065 on his Linux computer `pop-os` for the measurements of task W2 (R-188, R-264), an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
 | 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker; OD-HOST-13. The choices of the two reads and the design for a Mac are decided (R-226 to R-238, R-246); the third read of the text of the container work types found changes of the text only (SF-049 to SF-069), and the text is in its fourth form for the owner of the contract of the work route. Agent: hosted-applications-plan.md, tasks H28, H29 and H30; version 0.4 of the contract of the work route (task H14) with the owner of that contract |
@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (196)
+## 2. Open decisions (197)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -48,6 +48,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W50 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the jobs of the work route? K1 changes only by a ruling (CON-001). Part 1 of task… | Open. Recommendation: approve the five fields as proposed; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-W51 | Can a branch that changes only documents land in `dev` with the document gates alone, with no run of the full list on GitHub? R-254 says that the full list of 2… | Open. Recommendation: yes, for a branch whose changed paths are all documents by the rule of the fast tier (`quality/src/gates/tier.ts`); the job `base` of `gat… | [plan/decisions.md](plan/decisions.md) |
+| OD-W53 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the pins, the exclusion and the reason of a placement? K1 changes only by a rulin… | Open. Recommendation: approve the four with OD-W50, in the same change of K1; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-MI1 | Does "Set up all" also replace an entry `anima` that a person wrote and that starts a different program (state `different`)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
@@ -274,7 +275,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (88)
+## 4. Checks that only the operator can do (89)
 
 | Check | What |
 | --- | --- |
@@ -309,6 +310,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-061 | sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) |
 | HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
+| HT-068 | a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |

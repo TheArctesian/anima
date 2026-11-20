@@ -36,6 +36,31 @@ export function hubIsHosted(origin: string): boolean {
   return storage !== null && isHostedHub(storage, origin);
 }
 
+/**
+ * The address of the hosted hubs in a browser (HMD-059). Until 2026-11-20 it was the default address of a hub of
+ * one's own, so an application of that time may still hold it as the address of its hub (HM-T31, R-269).
+ */
+export const HOSTED_BROWSER_ORIGIN = 'https://hub.anima.ing';
+
+/** What the application says when the hub of its settings is that address: the hub of before is not there. */
+export const HOSTED_ADDRESS_MOVED =
+  'hub.anima.ing is now the address of the hosted Anima.ing hubs in a browser. Sign in with your Anima.ing account, or give the address of your own hub.';
+
+/**
+ * Whether a client whose page came from `pageOrigin` holds the address of the hosted hubs as the address of its own
+ * hub. The application reaches a hosted hub through its link, at a port of this computer, never at this address, so an
+ * application that asks there has the hub of before in its settings. A browser page that this address served is at its
+ * own hub.
+ */
+export function holdsMovedAddress(pageOrigin: string | null, origin: string): boolean {
+  return origin === HOSTED_BROWSER_ORIGIN && pageOrigin !== origin;
+}
+
+/** `holdsMovedAddress` for the page of this client; where there is no page (a test with no browser), no. */
+export function holdsMovedAddressHere(origin: string): boolean {
+  return typeof location !== 'undefined' && holdsMovedAddress(location.origin, origin);
+}
+
 /** What the operator can check when the hub does not answer, with no full stop (NET-004, R-222). */
 export function networkAdvice(hosted: boolean): string {
   return hosted ? "Check this computer's network" : 'Check the VPN client';

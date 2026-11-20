@@ -195,6 +195,7 @@ dependencies = [
  "clap_complete",
  "crossterm",
  "futures-util",
+ "getrandom 0.4.3",
  "graphql-parser",
  "graphql_client",
  "hmac 0.13.0",

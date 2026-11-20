@@ -230,6 +230,7 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         vpn_broker: None,
         sources: anima_hub::source_reach(Vec::new(), AddressPolicy::default()).unwrap(),
         files: anima_hub::engine::files::Store::off(),
+        reminders: anima_hub::engine::reminders::Live::default(),
     }
 }
 

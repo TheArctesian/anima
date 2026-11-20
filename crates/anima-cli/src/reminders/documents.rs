@@ -94,3 +94,12 @@ pub struct ReminderSnooze;
     variables_derives = "Debug"
 )]
 pub struct ReminderAck;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/reminders/documents/watch.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct ReminderWatch;
