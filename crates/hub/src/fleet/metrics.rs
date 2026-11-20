@@ -177,6 +177,28 @@ pub async fn daemon_versions(
     Ok(ingest::daemon_versions(db, devices).await?)
 }
 
+/// Why the code of the hub's own daemon was not made (HMD-071).
+#[derive(Debug, thiserror::Error)]
+#[error("the enrolment code of the hub's own daemon cannot be made")]
+pub struct OwnCodeError(#[source] ingest::Error);
+
+/// A one-use enrolment code for the daemon in the container of a hosted hub, whose device is
+/// `device`, the hub's own (HMD-071, HM-T35). The OS random source makes it; earlier unused codes
+/// of the device stop working.
+///
+/// # Errors
+/// [`OwnCodeError`] when the random source or the database fails, or the device is gone.
+pub async fn own_daemon_code(
+    db: &PgPool,
+    device: DeviceId,
+    now: DateTime<Utc>,
+) -> Result<daemon_core::wire::EnrolmentCode, OwnCodeError> {
+    let bytes = ingest::random::<{ daemon_core::wire::CODE_BYTES }>().map_err(OwnCodeError)?;
+    ingest::own_device_code(db, device, *bytes, now)
+        .await
+        .map_err(OwnCodeError)
+}
+
 /// Creates the sample partitions of today (UTC) and the next 7 days (DB-004).
 ///
 /// # Errors

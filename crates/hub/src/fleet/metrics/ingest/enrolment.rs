@@ -61,6 +61,24 @@ pub(in crate::fleet::metrics) async fn make_code(
     Ok(DaemonEnrolment { code, expires_at })
 }
 
+/// A new code for `device`, the hub's own device, for the daemon in the container of a hosted
+/// hub (HMD-071, HM-T35): made from `bytes` and stored as [`make_code`] stores one, in a
+/// transaction of its own. The enrolment that spends it writes its event.
+///
+/// # Errors
+/// As [`make_code`].
+pub(in crate::fleet::metrics) async fn own_device_code(
+    db: &PgPool,
+    device: DeviceId,
+    bytes: [u8; daemon_core::wire::CODE_BYTES],
+    now: DateTime<Utc>,
+) -> Result<EnrolmentCode, Error> {
+    let mut tx = db.begin().await?;
+    make_code(&mut tx, device, EnrolmentCode::from_random(bytes), now).await?;
+    tx.commit().await?;
+    Ok(EnrolmentCode::from_random(bytes))
+}
+
 /// A code marked used, whose exchange for a token is still to come.
 #[derive(Clone, Copy)]
 pub(super) struct Redeemed {

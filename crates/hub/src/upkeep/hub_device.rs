@@ -1,14 +1,16 @@
 //! A hosted hub is a device of its own list (HMD-045, R-137): at the start it makes sure that
 //! its device and the check `Hub running` exist, reports the check as Up, and then reports it
-//! again at each half of the check's interval, so the device is Up while the hub runs.
+//! again at each half of the check's interval, so the device is Up while the hub runs. When the
+//! daemon of its container is not enrolled yet, it writes one enrolment code of its device to
+//! the private file that `anima-local-hub` named (HMD-071, HM-T35).
 
-use std::{sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 use anima_hub::{
     clock::Clock,
     config::Config,
-    fleet::{checks, devices, events::Bus},
-    ids::CheckId,
+    fleet::{checks, devices, events::Bus, metrics},
+    ids::{CheckId, DeviceId},
 };
 use sqlx::PgPool;
 
@@ -43,13 +45,20 @@ pub async fn start(
     clock: &Arc<dyn Clock>,
 ) -> Option<Alive> {
     config.hosted_cloud_key_file.as_ref()?;
-    let check = match ensure(db, bus, clock.as_ref()).await {
-        Ok(check) => check,
+    let (device, check) = match ensure(db, bus, clock.as_ref()).await {
+        Ok(made) => made,
         Err(fault) => {
             job_failed(JOB, fault);
             return None;
         }
     };
+    let code_file = config
+        .own_daemon
+        .as_ref()
+        .and_then(|own| own.code_file.as_deref());
+    if let Some(file) = code_file {
+        write_own_code(db, device, clock.as_ref(), file).await;
+    }
     let alive = Alive {
         db: db.clone(),
         bus: bus.clone(),
@@ -60,8 +69,35 @@ pub async fn start(
     Some(alive)
 }
 
+/// Makes a code for the daemon of the container and writes it to `file`, mode 0600, in place of
+/// a file that an earlier start left. A failure is logged by its fault word: the daemon then
+/// does not enrol, and the next start tries again. The code reaches no log (LOG-007).
+async fn write_own_code(db: &PgPool, device: DeviceId, clock: &dyn Clock, file: &Path) {
+    let Ok(code) = metrics::own_daemon_code(db, device, clock.now()).await else {
+        return job_failed(JOB, "own_daemon_code");
+    };
+    let line = zeroize::Zeroizing::new(format!("{}\n", code.expose()));
+    let _ = tokio::fs::remove_file(file).await;
+    let mut options = tokio::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let written = match options.open(file).await {
+        Ok(mut opened) => tokio::io::AsyncWriteExt::write_all(&mut opened, line.as_bytes()).await,
+        Err(error) => Err(error),
+    };
+    if written.is_err() {
+        let _ = tokio::fs::remove_file(file).await;
+        job_failed(JOB, "own_daemon_code_file");
+    }
+}
+
 /// The device and its check, added in one transaction or not at all.
-async fn ensure(db: &PgPool, bus: &Bus, clock: &dyn Clock) -> Result<CheckId, &'static str> {
+async fn ensure(
+    db: &PgPool,
+    bus: &Bus,
+    clock: &dyn Clock,
+) -> Result<(DeviceId, CheckId), &'static str> {
     let mut tx = db.begin().await.map_err(|_| "database")?;
     let (device, added) = devices::ensure_hub_device(&mut tx, bus, clock.now())
         .await
@@ -76,7 +112,7 @@ async fn ensure(db: &PgPool, bus: &Bus, clock: &dyn Clock) -> Result<CheckId, &'
     if added {
         tracing::info!(job = JOB, "the hub added itself to its devices");
     }
-    Ok(check)
+    Ok((device.id, check))
 }
 
 impl Alive {
