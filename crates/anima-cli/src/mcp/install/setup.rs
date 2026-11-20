@@ -3,7 +3,8 @@
 //! agents' own programs; `agents.rs` and `jsonc.rs` decide what to write.
 
 use std::fs;
-use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -22,6 +23,9 @@ pub struct Here {
     /// The user that runs the command.
     pub user: u32,
     pub macos: bool,
+    /// Windows roaming application settings, including redirected user profiles.
+    #[cfg(windows)]
+    pub roaming: Option<PathBuf>,
 }
 
 impl Here {
@@ -30,116 +34,67 @@ impl Here {
     #[must_use]
     pub fn for_this_user(home: PathBuf, path: Vec<PathBuf>) -> Option<Self> {
         // The user of this process is the owner of a file that it makes.
+        #[cfg(unix)]
         let user = tempfile::tempfile()
             .and_then(|file| file.metadata())
             .ok()?
             .uid();
+        #[cfg(unix)]
         let owned = fs::metadata(&home).is_ok_and(|metadata| metadata.uid() == user);
+        #[cfg(windows)]
+        let (user, owned) = (
+            0,
+            anima_windows::files::secure(&home, false).unwrap_or(false),
+        );
         owned.then_some(Self {
             home,
             path,
             user,
             macos: cfg!(target_os = "macos"),
+            #[cfg(windows)]
+            roaming: std::env::var_os("APPDATA")
+                .map(PathBuf::from)
+                .filter(|path| {
+                    path.is_absolute()
+                        && path
+                            .ancestors()
+                            .all(|part| anima_windows::files::secure(part, false).unwrap_or(false))
+                }),
         })
     }
 
-    fn root(&self) -> Root<'_> {
+    fn root(&self, path: &Path) -> Root<'_> {
+        let home = self.home.as_path();
+        #[cfg(windows)]
+        let home = self
+            .roaming
+            .as_deref()
+            .filter(|root| path.starts_with(root))
+            .unwrap_or(home);
+        #[cfg(unix)]
+        let _ = path;
         Root {
-            home: self.home.as_path(),
+            home,
             user: self.user,
         }
     }
 }
 
-/// Why `anima` cannot be the program of an entry (MCP-033).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-pub enum CommandError {
-    #[error("the path of anima is not an absolute path of plain text")]
-    NotAbsolute,
-    #[error("the path of anima is not a program that can be run")]
-    NotAProgram,
-    #[error("a different user can replace the anima program or its folder")]
-    Replaceable,
-}
-
-/// The path of `anima` after [`check_command`] accepted it: the only value an entry is made of.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Checked(PathBuf);
-
-impl Checked {
-    #[must_use]
-    pub fn path(&self) -> &Path {
-        &self.0
-    }
-}
-
-/// Whether a different user can replace what is at `path`: the thing itself or a folder above it,
-/// up to the root. The system's own folders (owned by root) count as fixed.
-fn replaceable(path: &Path, user: u32) -> bool {
-    path.ancestors().any(|part| {
-        fs::symlink_metadata(part).map_or(true, |metadata| {
-            let mode = metadata.permissions().mode();
-            let owned = metadata.uid() == user || metadata.uid() == 0;
-            // A link has no mode of its own; the folder that holds it decides who replaces it. A
-            // folder with the sticky bit (as /tmp) lets only the owner of an entry replace it.
-            let sticky = metadata.is_dir() && mode & 0o1000 != 0;
-            let open = !metadata.file_type().is_symlink()
-                && !sticky
-                && (mode & 0o002 != 0
-                    || (mode & 0o020 != 0 && metadata.gid() != user && metadata.gid() != 0));
-            !owned || open
-        })
-    })
-}
-
-/// Checks that `anima` is a fixed program that only this user or the system can replace, and
-/// that its path is text that no agent reads as a variable (MCP-033).
-///
-/// # Errors
-/// [`CommandError`] when it is not absolute, not a runnable regular file, or replaceable.
-pub fn check_command(anima: &Path, user: u32) -> Result<Checked, CommandError> {
-    let text = anima.to_str().ok_or(CommandError::NotAbsolute)?;
-    // `$` and braces are variables in the files of some agents; `..` names a different place.
-    let plain = !text
-        .chars()
-        .any(|character| character.is_control() || matches!(character, '$' | '{' | '}'));
-    if !anima.is_absolute()
-        || !plain
-        || anima
-            .components()
-            .any(|part| part == std::path::Component::ParentDir)
-    {
-        return Err(CommandError::NotAbsolute);
-    }
-    // The program may be a link that an installer made (INS-002): the link and what it points at
-    // are both checked, each with every folder above it.
-    let program = fs::metadata(anima).map_err(|_| CommandError::NotAProgram)?;
-    if !program.is_file() || program.permissions().mode() & 0o111 == 0 {
-        return Err(CommandError::NotAProgram);
-    }
-    let real = fs::canonicalize(anima).map_err(|_| CommandError::NotAProgram)?;
-    if replaceable(anima, user) || replaceable(&real, user) {
-        return Err(CommandError::Replaceable);
-    }
-    Ok(Checked(anima.to_path_buf()))
-}
-
-/// The first program named `name` in the folders of `PATH`, as an absolute path.
-fn program(here: &Here, name: &str) -> Option<PathBuf> {
-    here.path
-        .iter()
-        .filter(|folder| folder.is_absolute())
-        .map(|folder| folder.join(name))
-        .find(|path| {
-            fs::metadata(path).is_ok_and(|metadata| {
-                metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
-            })
-        })
-}
+mod program;
+#[cfg(windows)]
+mod windows;
+use program::program;
+pub use program::{Checked, CommandError, check_command};
 
 /// Whether the agent is on this computer (MCP-027).
 #[must_use]
 pub fn present(agent: &Agent, here: &Here) -> bool {
+    #[cfg(windows)]
+    if matches!(agent.id, "claude-desktop" | "zed") {
+        return windows::file(agent.id, here.roaming.as_deref())
+            .and_then(|path| path.parent().map(Path::is_dir))
+            .unwrap_or(false);
+    }
     agent
         .programs
         .iter()
@@ -151,6 +106,10 @@ pub fn present(agent: &Agent, here: &Here) -> bool {
 }
 
 fn file_of(agent: &Agent, here: &Here) -> Option<PathBuf> {
+    #[cfg(windows)]
+    if matches!(agent.id, "claude-desktop" | "zed") {
+        return windows::file(agent.id, here.roaming.as_deref());
+    }
     match agent.way {
         Way::File { place, .. } => Some(file(place, &here.home, here.macos, Path::is_file)),
         Way::Own { .. } => None,
@@ -181,7 +140,7 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
             let Some(path) = file_of(agent, here) else {
                 return State::Unreadable;
             };
-            let Ok(text) = files::read(here.root(), &path) else {
+            let Ok(text) = files::read(here.root(&path), &path) else {
                 return State::Unreadable;
             };
             match jsonc::member(text.as_deref().unwrap_or(""), keys, NAME) {
@@ -311,7 +270,7 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
     match agent.way {
         Way::File { keys, shape, .. } => {
             let path = file_of(agent, here).ok_or(SetupError::NoProgram)?;
-            let before = files::read(here.root(), &path)?;
+            let before = files::read(here.root(&path), &path)?;
             let text = before.as_deref().unwrap_or("");
             let after = match action {
                 Action::Install => {
@@ -323,7 +282,7 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
             };
             match after {
                 Some(after) if after != text => Ok(files::replace(
-                    here.root(),
+                    here.root(&path),
                     &path,
                     before.as_deref(),
                     &after,
@@ -356,5 +315,5 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;

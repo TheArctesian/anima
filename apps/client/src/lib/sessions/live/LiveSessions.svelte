@@ -41,13 +41,23 @@
    * Moves the panel out of the bar to the body, whose blur the bar's own backdrop filter would otherwise hide
    * (MAT-002), and places it at the bar's outer edge, level with the control; it still grows from the control (MOT-005).
    */
-  function placeBesideBar(node: HTMLElement): void {
+  function placeBesideBar(node: HTMLElement): () => void {
     document.body.append(node);
     const edge = (button?.closest('nav') ?? button)?.getBoundingClientRect().right ?? 0;
     const top = button?.getBoundingClientRect().top ?? 0;
     node.style.insetInlineStart = `${String(edge)}px`;
-    const room = document.documentElement.clientHeight - node.getBoundingClientRect().height;
-    node.style.insetBlockStart = `${String(Math.max(0, Math.min(top, room)))}px`;
+    // The rows come after the panel opens, so its height is known only then: each new height places it again, so its
+    // foot stays inside the window. Its layout height, not its box, which is scaled while it grows from the control.
+    const place = (): void => {
+      const room = document.documentElement.clientHeight - node.offsetHeight;
+      node.style.insetBlockStart = `${String(Math.max(0, Math.min(top, room)))}px`;
+    };
+    place();
+    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : undefined;
+    watch?.observe(node);
+    return () => {
+      watch?.disconnect();
+    };
   }
 
   const inside = (target: EventTarget | null): boolean =>

@@ -21,8 +21,10 @@ mod steps;
 mod tools;
 pub mod upload;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
+#[cfg(all(test, windows))]
+mod windows_tests;
 
 use std::{path::PathBuf, sync::Arc};
 
@@ -89,7 +91,7 @@ fn workshop<'a, R: Runtime>(
     }))?;
     Ok(Workshop {
         claim,
-        env: Environment::from_parent(std::env::vars_os()),
+        env: build_environment(),
         repository: Repository::anima(),
         clone: clone_folder(app)?,
     })
@@ -139,6 +141,7 @@ pub async fn builder_tools_check<R: Runtime>(
     let (os, arch) = match target {
         Target::LinuxX86_64 => ("LINUX", "X86_64"),
         Target::DarwinUniversal => ("MACOS", "AARCH64"),
+        Target::WindowsX86_64 => ("WINDOWS", "X86_64"),
     };
     let app_key = tools::app_public_key(app_public_key(&app).as_deref());
     let identity = tools::readings::signing_identity();
@@ -148,7 +151,7 @@ pub async fn builder_tools_check<R: Runtime>(
         .filter(|clone| clone.is_dir())
         .unwrap_or_else(|| PathBuf::from("/"));
     let mut missing = tauri::async_runtime::spawn_blocking(move || {
-        let env = Environment::from_parent(std::env::vars_os());
+        let env = build_environment();
         let mut missing = tools::missing(target, &env, std::path::Path::exists);
         if target == Target::DarwinUniversal {
             if !missing.contains(&Tool::Rust) {
@@ -279,4 +282,18 @@ pub fn builder_cancel<R: Runtime>(
     from_main(&webview)?;
     running.cancel();
     Ok(())
+}
+
+/// The installed runtime is the native gate database; no host-wide PostgreSQL is needed.
+fn build_environment() -> Environment {
+    let env = Environment::from_parent(std::env::vars_os());
+    #[cfg(windows)]
+    let env = env.with_compiler();
+    #[cfg(windows)]
+    if let Ok(executable) = std::env::current_exe()
+        && let Some(folder) = executable.parent()
+    {
+        return env.with_postgres(folder.join("database"));
+    }
+    env
 }

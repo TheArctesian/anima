@@ -2,6 +2,8 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { crossFade, listRow } from '$lib/motion/roles/transitions';
   import { projectGroups } from './rows';
   import type { ContainersStore } from './store.svelte';
 
@@ -15,6 +17,8 @@
   /** The count is of the rows that are shown: a container that is gone after a refresh is not counted. */
   const newer = $derived(groups.flatMap((group) => group.rows).filter((row) => row.update?.newer === true).length);
   const pressed = (id: string, shown: 'log' | 'detail') => id === store.selected && store.shown === shown;
+  /** A refresh that adds, removes or moves a container: the rows fade where they stand and slide to their places (5.7.3, Reorder). */
+  const track = reorderMotion(() => groups.flatMap((group) => [group.project, ...group.rows.map((row) => row.id)]).join('\n'));
 </script>
 
 {#if store.status === 'failed'}
@@ -45,12 +49,12 @@
             {group.project}{#if group.state !== ''}<span class="state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>{/if}<span class="summary">{group.summary}</span>
           </th>
         </tr>
-        {#each group.rows as row (row.id)}
-          <tr class:selected={row.id === store.selected}>
+        {#each group.rows as row, index (row.id)}
+          <tr class:selected={row.id === store.selected} transition:listRow={{ index }} {@attach track(row.id)}>
             <th scope="row" class="text" title={row.name}>{row.name}<span class="id">{row.shortId}</span></th>
             <!-- The state word and Docker's own status text are one fact, so they share one cell (R-224). -->
             <td title={row.status}>
-              <span class="both"><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span><span class="text status">{row.status}</span></span>
+              <span class="both"><span class="swap">{#key row.state}<span class="state {row.tone}" transition:crossFade><span class="dot" aria-hidden="true"></span>{row.state}</span>{/key}</span><span class="text status">{row.status}</span></span>
             </td>
             <td title={row.image}>
               <span class="image"><span class="text mono">{row.image}</span>{#if row.update !== null}<span class="mark" class:newer={row.update.newer}>{row.update.words}</span>{/if}</span>
@@ -217,6 +221,16 @@
   .mark.newer {
     border-color: var(--status-warning);
     color: var(--text);
+  }
+
+  /* The old state and the new one share one place while they cross-fade (MOT-008, Status change). */
+  .swap {
+    flex: none;
+    display: inline-grid;
+  }
+
+  .swap > .state {
+    grid-area: 1 / 1;
   }
 
   .state {

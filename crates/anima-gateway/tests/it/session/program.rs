@@ -27,7 +27,7 @@ async fn each_session_has_its_own_worker_and_a_failed_one_leaves_the_others() {
     let free = std::net::TcpListener::bind("127.0.0.1:0").expect("a port");
     let port = free.local_addr().expect("an address").port();
     drop(free);
-    let _program = Command::new(env!("CARGO_BIN_EXE_anima-gateway"))
+    let mut program = Command::new(crate::program())
         .args(["listen", &format!("127.0.0.1:{port}")])
         .stderr(Stdio::null())
         .kill_on_drop(true)
@@ -79,4 +79,9 @@ async fn each_session_has_its_own_worker_and_a_failed_one_leaves_the_others() {
         .open("vnc", values(third_device.address, &[]))
         .await
         .expect("ready");
+    drop((second, third));
+    program
+        .kill()
+        .await
+        .expect("the listener stops and is reaped");
 }

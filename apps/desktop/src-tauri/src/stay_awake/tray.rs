@@ -38,6 +38,7 @@ pub fn level_of(id: &str) -> Option<Level> {
 pub fn lid_text(lid: Lid) -> &'static str {
     match lid {
         Lid::Ready => "Keep awake with the lid closed",
+        #[cfg(unix)]
         Lid::NeedsSetUp => "Keep awake with the lid closed (set up in Settings)",
         Lid::Unsupported => "Keep awake with the lid closed (not available on this desktop)",
     }

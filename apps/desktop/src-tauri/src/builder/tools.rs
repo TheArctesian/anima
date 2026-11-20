@@ -21,11 +21,15 @@ use super::{environment::Environment, job::Target};
 pub enum Tool {
     Git,
     Bun,
+    /// Node runs the client DOM tests; Bun remains the package manager.
+    Node,
     Rust,
     /// `cargo-nextest`, which gate 3 runs the Rust tests with (R-112).
     CargoNextest,
     /// `go`, which the six gates of `link/` run (D4 of the projects and builds proposal).
     Go,
+    /// `MinGW` GCC, required by Go's race detector on Windows even for a pure Go link.
+    GoRaceCompiler,
     Postgres,
     TauriPackages,
     /// On Linux, a program or the zlib header that `database-tree/build.sh` needs (S12 T3).
@@ -150,6 +154,9 @@ fn tauri_packages(target: Target, env: &Environment, exists: &impl Fn(&Path) -> 
                         .any(|dir| exists(&Path::new(dir).join(format!("{package}.pc"))))
                 })
         }
+        Target::WindowsX86_64 => {
+            env.find("link", exists).is_some() && env.find("rc", exists).is_some()
+        }
         Target::DarwinUniversal => MAC_DEVELOPER_DIRS
             .iter()
             .any(|dir| exists(&Path::new(dir).join("clang"))),
@@ -175,7 +182,7 @@ fn tree_tools(target: Target, exists: &impl Fn(&Path) -> bool) -> bool {
                         .any(|folder| exists(&Path::new(folder).join(program)))
                 })
         }
-        Target::DarwinUniversal => true,
+        Target::DarwinUniversal | Target::WindowsX86_64 => true,
     }
 }
 
@@ -183,15 +190,21 @@ fn tree_tools(target: Target, exists: &impl Fn(&Path) -> bool) -> bool {
 /// the gates start their own PostgreSQL with `initdb` and `pg_ctl` and never run it.
 pub fn missing(target: Target, env: &Environment, exists: impl Fn(&Path) -> bool) -> Vec<Tool> {
     let has = |program: &str| env.find(program, &exists).is_some();
-    let postgres = postgres_dirs(env.dirs())
-        .iter()
-        .any(|dir| exists(&dir.join("initdb")) && exists(&dir.join("pg_ctl")));
+    let postgres = postgres_dirs(env.dirs()).iter().any(|dir| {
+        let suffix = if cfg!(windows) { ".exe" } else { "" };
+        exists(&dir.join(format!("initdb{suffix}"))) && exists(&dir.join(format!("pg_ctl{suffix}")))
+    });
     [
         (Tool::Git, has("git")),
         (Tool::Bun, has("bun")),
+        (Tool::Node, target != Target::WindowsX86_64 || has("node")),
         (Tool::Rust, has("cargo") && has("rustc")),
         (Tool::CargoNextest, has("cargo-nextest")),
         (Tool::Go, has("go")),
+        (
+            Tool::GoRaceCompiler,
+            target != Target::WindowsX86_64 || has("gcc"),
+        ),
         (Tool::Postgres, postgres),
         (Tool::TauriPackages, tauri_packages(target, env, &exists)),
         (Tool::TreeTools, tree_tools(target, &exists)),

@@ -212,14 +212,14 @@ async fn m_2_a_go_workspace_or_vendor_folder_stops_the_link_before_its_recipe() 
     let order = origin.clone.parent().unwrap().join("order");
     fs::write(origin.clone.join("link/go.work"), "go 1.21\n").unwrap();
     assert_eq!(
-        workshop.link(&origin.commit).await,
+        workshop.link(&origin.commit, Target::LinuxX86_64).await,
         Err(BuilderError::Dirty)
     );
     assert!(!order.exists(), "the link recipe did not run");
     fs::remove_file(origin.clone.join("link/go.work")).unwrap();
     fs::create_dir_all(origin.clone.join("link/vendor")).unwrap();
     assert_eq!(
-        workshop.link(&origin.commit).await,
+        workshop.link(&origin.commit, Target::LinuxX86_64).await,
         Err(BuilderError::Dirty)
     );
     assert!(!order.exists(), "the link recipe did not run");

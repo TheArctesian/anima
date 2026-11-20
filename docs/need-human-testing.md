@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -2435,6 +2436,106 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
+
+### HT-074: the native Windows desktop client (WIN1)
+
+Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
+state with protected ACLs, platform capability controls and a per-user NSIS installer.
+The build procedure is [windows.md](procedures/setup/windows.md). Automated Windows tests
+cover shared shell logic and link file security. The installer and welcome window were
+started in the Windows 11 VM. Real account sign-in and remote sessions need this check.
+
+1. Run the local installer and start Anima.ing from Start.
+   Expected: the welcome screen appears with Sign in, Sign up and Join hub.
+2. Sign in to your Anima account, or use Join hub with an existing hub invitation.
+   Expected: the device link connects and the hub's devices appear. No token is logged.
+3. Close Anima and open it again.
+   Expected: the saved credential is read from Windows Credential Manager; the link reconnects.
+4. Open an SSH or remote desktop session to a device you control.
+   Expected: keyboard input and screen updates work; closing the session returns to the hub.
+5. Open a device's HTTPS web interface.
+   Expected: the system browser opens it. Windows does not offer native certificate pinning.
+6. Inspect Settings and close the app.
+   Expected: unsupported host controls and the updater are absent; the link child stops.
+7. Uninstall through Windows Settings, then install again.
+   Expected: the application and shortcut are removed and installed without administrator rights.
+
+Operator report, 2026-11-20: Sign in displayed "No network" (Failed). After the VM
+was restarted, agent checks reached WorkOS and the Anima cloud from Windows; the
+installed app resumed the saved account and showed Devices, Connected, and one hub
+Up. The original transport failure was not isolated. No application code changed.
+Operator confirmation and remote-session testing remain outstanding.
+
+Agent observation, 2026-11-20: later the client disconnected while Defender repeatedly
+terminated its `anima-link.exe` child (`Behavior:Win32/SuspClickFix.F`). The desktop
+was stopped to end its restart loop. Detection cause is unresolved; Defender remains
+enabled, with no new exclusions. Sustained connection and restart acceptance remain open.
+
+Further agent observation, 2026-11-20: starting the unchanged app from the Start menu
+kept the same connection-helper process alive for six minutes, with no new Defender
+detection and all three reported protection modes enabled. This supports a launch-context
+hypothesis; it does not establish the detector's cause. WIN2 adds a bounded retry policy
+and bundles a native CLI. A temporary MCP configuration add/remove test preserved the
+other entry; a real coding agent connection remains to be tested.
+
+8. With the WIN2 installer, open PowerShell and run
+   `& "$env:LOCALAPPDATA\Anima.ing\anima.exe" --help`.
+   Expected: the native CLI prints its commands without a missing-runtime error.
+9. In a supported coding agent installed on Windows, configure its MCP command as
+   the installed `anima.exe` with argument `mcp`, then connect it to your configured hub.
+   Expected: the agent lists the same permitted hub tools as on Linux/macOS, and a read
+   command succeeds. Do not assume that all agent-specific automatic setup paths work yet.
+
+Result: Open.
+
+### WIN2 continuation checks for HT-074
+
+The entry HT-074 remains Open. These checks extend that entry; they are not a pass record.
+
+1. In Windows Settings > Updates, install the command line tool. Confirm the displayed user-PATH
+   folder. Open a fresh terminal and run `anima --version`; it must resolve to the bundled CLI.
+   Remove it and open another terminal; unrelated PATH entries must remain unchanged.
+2. In Settings > MCP, inspect an installed coding agent, confirm the shown change and connect
+   the agent to `anima mcp`. Remove Anima's entry; other server entries and their settings must remain.
+3. After the hosted connection hands off to Task Scheduler, close Anima. Its link must remain
+   connected. Open Anima again, sign out/in to Windows, and verify reconnection without a password
+   prompt, elevation prompt, or an extra console window.
+4. Remove the link through Anima. Its task and persistent process must stop. Repeat with a
+   standard non-administrator Windows account; the VM's administrator account is insufficient proof.
+
+5. Open the hosted hub with the bundled daemon present. This Windows computer must appear
+   once, enroll automatically, and have a running per-user daemon task. Check CPU, memory,
+   disk and network metrics. Close Anima and confirm new metrics still arrive; sign out/in
+   and confirm both tasks restart. Do not treat device registration alone as metrics acceptance.
+6. On a Windows laptop, choose Keep awake in Settings and confirm the tray agrees. Wait past
+   the configured idle sleep time; the computer should remain running while the display may
+   sleep. Turn it off, quit, then separately force-close the app; each must release Anima's
+   request (`powercfg /requests` can inspect it). Repeat on battery and test the saved floor:
+   below the floor it must pause, and connecting mains must resume it. Check Modern Standby
+   hardware separately. On a laptop whose power policy permits it, choose the closed-lid level.
+   Anima must use a temporary copy of the active power plan and restore the previous plan on
+   Off, normal exit and force-closing the app. The original plan's settings must not change.
+   Select a different power plan while the hold is active, then stop the hold: the selected
+   plan must remain active. Restart after an interrupted guard and verify recovery removes
+   Anima's temporary plan. A VM without a lid, or a machine with locked policy, must show
+   this level as unavailable.
+
+7. Install the local hub from Settings on a standard Windows account. Wait for Ready, close
+   the app and reopen it; the hub must remain available. Stop and start it, make a backup,
+   and recover that backup into a fresh folder. Confirm the account and devices survive.
+   This check does not authorize deleting an existing hub or replacing its database.
+8. On a Windows builder with the documented native compiler tools, enable building and
+   run a trial Windows release. Its gates must pass before packaging. Cancel during a build;
+   no compiler or packaging child may remain. Test the signed installer update with the
+   private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
+   Do not enable or publish a public feed as part of this check.
+
+9. Download the `windows-trial` artifact from a successful dev workflow and install it in
+   a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and
+   automatic updates are disabled. For a signed release trial on main, confirm the installer
+   shows the expected verified publisher and its timestamp is valid. Test a private update
+   from the previous signed version and check the link, daemon and hub after restart.
+   Certificate provisioning and this signed trial remain Open.
 ### HT-073: labels in sentence case in the whole application (R-279)
 
 Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
@@ -2514,5 +2615,28 @@ headless WebKit with sample devices. No person saw it in a desktop window, at th
    the bar under the value is at its new length at once.
 7. Do steps 1 to 4 with "Reduce motion" on.
    Expected: no row slides; rows and views fade only.
+
+Result: Open.
+
+### HT-NEW-motionlists: the motion of the other lists (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/lists-motion` with the roles of `ui/motion` (`listRow`, `reorderMotion`, `crossFade`):
+the Checks tab (`apps/client/src/routes/devices/[id]/checks/ChecksPanel.svelte`), the Containers tab
+(`apps/client/src/lib/containers/ContainerTable.svelte`), the Sessions tab
+(`apps/client/src/routes/devices/[id]/sessions/SessionsPanel.svelte`) and Projects
+(`apps/client/src/lib/projects/ProjectsScreen.svelte`). The logs panel and the lists of Settings (channels, API keys,
+VPN keys and sites) already used these roles. Tests prove which row plays a fade; no person saw it.
+
+1. On the Checks tab of a device, add a check, then delete it.
+   Expected: the new row fades in where it lands; the deleted row fades out where it stands, then the rows under it
+   slide up to close the gap.
+2. On the Containers tab of a device with Docker, stop a container on the device, then select "Refresh".
+   Expected: its state word cross-fades in place ("Running" to "Exited"); nothing else moves.
+3. On Projects, select "Leave out" on a tile.
+   Expected: the tile fades out where it stands, then the tiles after it slide to their places.
+4. Open a session to a device and end it, with the Sessions tab of that device open.
+   Expected: the new row fades in at the top and the rows under it slide down.
+5. Do steps 1, 3 and 4 with Settings, Appearance, "Reduce motion" on.
+   Expected: nothing slides; rows fade only.
 
 Result: Open.

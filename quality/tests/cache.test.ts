@@ -1,21 +1,23 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { compileCache } from "../src/gates/cache.ts";
 
 const onPath = (...files: string[]) => (path: string) => files.includes(path);
 
 describe("compileCache", () => {
   test("uses sccache from PATH and turns incremental builds off", () => {
-    const { env, note } = compileCache({ PATH: "/usr/bin:/opt/homebrew/bin", HOME: "/h" }, onPath("/opt/homebrew/bin/sccache"));
-    expect(env).toEqual({ PATH: "/usr/bin:/opt/homebrew/bin", HOME: "/h", RUSTC_WRAPPER: "/opt/homebrew/bin/sccache", CARGO_INCREMENTAL: "0" });
-    expect(note).toBe("rust cache: sccache (/opt/homebrew/bin/sccache)");
+    const path = ["/usr/bin", "/opt/homebrew/bin"].join(delimiter);
+    const wrapper = join("/opt/homebrew/bin", process.platform === "win32" ? "sccache.exe" : "sccache");
+    const { env, note } = compileCache({ PATH: path, HOME: "/h" }, onPath(wrapper));
+    expect(env).toEqual({ PATH: path, HOME: "/h", RUSTC_WRAPPER: wrapper, CARGO_INCREMENTAL: "0" });
+    expect(note).toBe(`rust cache: sccache (${wrapper})`);
   });
 
   test("runs without a cache, and says how to get one, when sccache is not on PATH", () => {
     const given = { PATH: "/usr/bin" };
     const { env, note } = compileCache(given, onPath());
-    expect(env).toBe(given);
+    expect(env).toEqual(process.platform === "win32" ? { ...given, RUSTC_WRAPPER: "" } : given);
     expect(note).toContain("brew install sccache");
   });
 
@@ -30,7 +32,8 @@ describe("compileCache", () => {
 describe("the compiler wrapper of .cargo/config.toml (quality/bin/rustc-cache.sh)", () => {
   const wrapper = join(import.meta.dir, "..", "bin", "rustc-cache.sh");
 
-  test("runs the compiler directly when sccache is not on PATH, and keeps a variable with a hyphen in its name", () => {
+  // Windows uses a native environment override, never this Unix wrapper.
+  test.skipIf(process.platform === "win32")("runs the compiler directly when sccache is not on PATH, and keeps a variable with a hyphen in its name", () => {
     // cargo names the program of a test `CARGO_BIN_EXE_<name>`, and a name can have a hyphen.
     const run = Bun.spawnSync([wrapper, "/usr/bin/env"], {
       env: { PATH: "/usr/bin:/bin", "CARGO_BIN_EXE_anima-local-hub": "/target/debug/anima-local-hub" },

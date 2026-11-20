@@ -8,6 +8,7 @@ use std::io::{self, Read as _, Write};
 use std::sync::Once;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 use zeroize::Zeroizing;
 
@@ -130,7 +131,10 @@ impl Drop for Hidden {
 /// Where questions are shown: the controlling terminal, so that neither a question nor a
 /// shown answer lands in a redirected standard error; standard error when there is none.
 fn screen() -> Box<dyn Write> {
-    match File::options().write(true).open("/dev/tty") {
+    match File::options()
+        .write(true)
+        .open(if cfg!(windows) { "CONOUT$" } else { "/dev/tty" })
+    {
         Ok(terminal) => Box::new(terminal),
         Err(_) => Box::new(io::stderr()),
     }
@@ -179,6 +183,7 @@ fn watch_signals() {
 
 /// The number of the first of `SIGINT`, `SIGTERM` and `SIGHUP`; says on `ready` once they
 /// are watched. Never resolves when they cannot be.
+#[cfg(unix)]
 async fn first_signal(ready: std::sync::mpsc::SyncSender<()>) -> i32 {
     let kinds = (
         signal(SignalKind::interrupt()),
@@ -195,4 +200,18 @@ async fn first_signal(ready: std::sync::mpsc::SyncSender<()>) -> i32 {
         _ = terminate.recv() => 15,
         _ = hangup.recv() => 1,
     }
+}
+
+#[cfg(windows)]
+async fn first_signal(ready: std::sync::mpsc::SyncSender<()>) -> i32 {
+    let (Ok(mut interrupt), Ok(mut close), Ok(mut shutdown)) = (
+        tokio::signal::windows::ctrl_c(),
+        tokio::signal::windows::ctrl_close(),
+        tokio::signal::windows::ctrl_shutdown(),
+    ) else {
+        drop(ready);
+        return std::future::pending().await;
+    };
+    let _told = ready.send(());
+    tokio::select! { _ = interrupt.recv() => 2, _ = close.recv() => 15, _ = shutdown.recv() => 15 }
 }

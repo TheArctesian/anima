@@ -36,7 +36,7 @@ pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
     if env(HOME_VARIABLE).as_deref() == Some(SYSTEM_HOME) {
         return None;
     }
-    let home = PathBuf::from(env("HOME")?);
+    let home = PathBuf::from(env(if cfg!(windows) { "USERPROFILE" } else { "HOME" })?);
     (home.is_absolute() && home != Path::new(SYSTEM_HOME)).then_some(home)
 }
 

@@ -2,6 +2,7 @@ package statedir_test
 
 import (
 	"errors"
+	"github.com/TheArctesian/anima/link/testpath"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 // path: a socket path has a limit of about 100 bytes.
 func privateFolder(t *testing.T) string {
 	t.Helper()
-	folder, err := os.MkdirTemp("/tmp", "anima-own-")
+	folder, err := testpath.MkdirTemp("anima-own-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,9 +34,10 @@ func TestK8ListenOwnedMakesASocketThatOnlyItsOwnerCanOpen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stat.Mode().Type() != os.ModeSocket || stat.Mode().Perm() != 0o600 {
+	if stat.Mode().Type() != os.ModeSocket {
 		t.Errorf("the socket has mode %v, want a socket with 0600", stat.Mode())
 	}
+	testpath.AssertPrivate(t, path)
 	conn, err := net.Dial("unix", path)
 	if err != nil {
 		t.Fatalf("its owner cannot connect: %v", err)
@@ -51,7 +53,7 @@ func TestK8ListenOwnedReplacesTheSocketThatAnEarlierProcessLeft(t *testing.T) {
 	}
 	left.SetUnlinkOnClose(false)
 	left.Close()
-	if err := os.Chmod(path, 0o600); err != nil {
+	if err := testpath.Chmod(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	listener, err := statedir.ListenOwned(path)
@@ -63,7 +65,7 @@ func TestK8ListenOwnedReplacesTheSocketThatAnEarlierProcessLeft(t *testing.T) {
 
 func TestK8ListenOwnedRefusesAFolderThatOtherUsersCanReach(t *testing.T) {
 	folder := privateFolder(t)
-	if err := os.Chmod(folder, 0o755); err != nil {
+	if err := testpath.Chmod(folder, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	listener, err := statedir.ListenOwned(filepath.Join(folder, "link.sock"))

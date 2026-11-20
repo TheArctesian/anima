@@ -20,4 +20,5 @@ mod renewal;
 #[cfg(target_os = "linux")]
 mod token_store;
 mod transport;
+#[cfg(unix)]
 mod units;

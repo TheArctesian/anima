@@ -5,6 +5,7 @@
 use std::io;
 use std::sync::Once;
 
+#[cfg(unix)]
 use crossterm::terminal;
 
 /// Raw mode while it lives: no line editing, no echo, no signals from keys; keys arrive as
@@ -23,18 +24,24 @@ impl RawMode {
         PANIC_RESTORES.call_once(|| {
             let previous = std::panic::take_hook();
             std::panic::set_hook(Box::new(move |panic| {
-                let _restored = terminal::disable_raw_mode();
+                Self::restore();
                 previous(panic);
             }));
         });
+        #[cfg(unix)]
         terminal::enable_raw_mode()?;
+        #[cfg(windows)]
+        anima_windows::console::enter()?;
         Ok(Self(()))
     }
 
     /// Restores the previous mode when raw mode is on; does nothing otherwise. For an exit
     /// that skips destructors.
     pub fn restore() {
+        #[cfg(unix)]
         let _restored = terminal::disable_raw_mode();
+        #[cfg(windows)]
+        let _restored = anima_windows::console::restore();
     }
 }
 

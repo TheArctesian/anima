@@ -24,12 +24,23 @@ async fn broke_the_protocol(pool: &PgPool, bench: Bench, mut client: Socket) {
 
 /// As [`broke_the_protocol`] for a message over the cap. The hub stops reading at the cap,
 /// so it closes its socket with the rest of the message unread, and the kernel resets the
-/// connection: the reset can overtake the close frame, never the `end` before it, which is
-/// the reason the client shows (K4 Section 8.4).
+/// connection. Windows can discard both outgoing frames on that reset. When the client
+/// receives `end`, it must carry the protocol cause; the persisted cause is always checked.
 async fn over_the_cap(pool: &PgPool, bench: Bench, mut client: Socket) {
-    let (reason, code) = client.ended().await;
-    assert_eq!(reason, "PROTOCOL_ERROR");
-    assert!(matches!(code, Some(1002) | None), "{code:?}");
+    loop {
+        match client.next().await {
+            socket::Received::Text(text) if text == r#"{"type":"ping"}"# => continue,
+            socket::Received::Text(text) => {
+                assert_eq!(text, r#"{"type":"end","reason":"PROTOCOL_ERROR"}"#);
+                let code = client.close_code().await;
+                assert!(matches!(code, Some(1002) | None), "{code:?}");
+            }
+            #[cfg(windows)]
+            socket::Received::Closed(None) => {}
+            other => panic!("{other:?} instead of a protocol-error end"),
+        }
+        break;
+    }
     recorded(pool, bench).await;
 }
 

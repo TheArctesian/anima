@@ -24,6 +24,21 @@ application carries. The VPS mode (Docker) does not change.
 
 ## 1. Design
 
+### Windows boundary for WIN2
+
+Windows local-hub boundary (WIN2): keep the shared hub and PostgreSQL role separation.
+The current SQLx runtime has no Windows Unix-socket connector. Use a native PostgreSQL
+17 process on IPv4 loopback, a generated per-installation TLS identity, full certificate
+verification before authentication, SCRAM logins, and Windows-private state. Never use
+`trust` authentication or a network-interface listener. The bootstrap superuser secret
+stays in the private database folder and is never given to the hub. Preserve the Unix
+socket implementation on macOS/Linux. This extends the local database OS boundary for
+WIN2; no hosted deployment is part of it.
+This work is owned by WIN2 in [projects-and-builds-plan.md](../projects-and-builds-plan.md).
+The native database transport and process tests must pass before the Windows shell exposes
+the local hub. PostgreSQL's [TLS verification contract](https://www.postgresql.org/docs/17/libpq-ssl.html)
+applies to SQLx, bootstrap connections, and the bundled backup tools.
+
 ### 1.1 The seam
 
 The hub reads one file name from `ANIMA_DATABASE_URL_FILE`, reads a URL from that file and

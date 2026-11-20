@@ -112,12 +112,13 @@ async fn r_023_start_check_refuses_a_login_whose_session_runs_as_another_role(po
     let role = test_role("hub");
     execute(
         &mut conn,
-        &format!("create role {role} login in role anima_runtime"),
+        &format!("create role {role} login password '{role}' in role anima_runtime"),
     )
     .await;
     let options = (*pool.connect_options())
         .clone()
         .username(&role)
+        .password(&role)
         .options([("role", "anima_runtime")]);
     let session = super::connect(options).await;
     let outcome = check_runtime_role(&session).await;

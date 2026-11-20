@@ -202,7 +202,8 @@ fn cmd_004_every_document_is_typed_by_a_query_path() {
     let base = crate_source().parent().expect("the crate").to_owned();
     for document in files(&crate_source(), "graphql") {
         let relative = document.strip_prefix(&base).expect("under the crate");
-        let declared = format!("query_path = \"{}\"", relative.display());
+        let portable = relative.to_string_lossy().replace('\\', "/");
+        let declared = format!("query_path = \"{portable}\"");
         assert!(
             sources.contains(&declared),
             "{} has no #[derive(GraphQLQuery)] with {declared}, so it is not checked against K1",

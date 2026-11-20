@@ -37,7 +37,7 @@ function cratesOf(program: string): string[] {
       if (dependency.kind !== "dev" && dependency.path !== undefined && byFolder.has(dependency.path)) waiting.push(dependency.path);
     }
   }
-  return [...used].map((folder) => `${relative(ROOT, folder)}/`).sort();
+  return [...used].map((folder) => `${relative(ROOT, folder).replaceAll("\\", "/")}/`).sort();
 }
 
 /** The folders below `crates/` that no `out` line of `application` names. */

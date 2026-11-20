@@ -123,7 +123,11 @@ pub fn shell_word(word: &str) -> String {
     if plain {
         word.to_owned()
     } else {
-        format!("'{}'", clean(word).replace('\'', "'\\''"))
+        #[cfg(unix)]
+        let quote = "'\\''";
+        #[cfg(windows)]
+        let quote = "''";
+        format!("'{}'", clean(word).replace('\'', quote))
     }
 }
 
@@ -228,6 +232,9 @@ mod tests {
     fn cmd_026_a_hint_quotes_a_word_with_spaces() {
         assert_eq!(shell_word("ping"), "ping");
         assert_eq!(shell_word("HTTP check"), "'HTTP check'");
+        #[cfg(unix)]
         assert_eq!(shell_word("it's"), "'it'\\''s'");
+        #[cfg(windows)]
+        assert_eq!(shell_word("it's"), "'it''s'");
     }
 }

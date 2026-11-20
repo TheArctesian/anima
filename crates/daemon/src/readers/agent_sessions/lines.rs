@@ -123,7 +123,7 @@ mod tests {
         let target = folder.path().join("target.jsonl");
         std::fs::write(&target, format!("{REPLY}\n")).expect("written");
         let link = folder.path().join("s1.jsonl");
-        std::os::unix::fs::symlink(&target, &link).expect("a link");
+        crate::test_links::symlink(&target, &link).expect("a link");
         let mut tally = Tally::new(Source::ClaudeCode);
         assert!(read_new(&link, 0, &mut tally, &mut |_| false).is_err());
         assert_eq!(tally.days().len(), 0);

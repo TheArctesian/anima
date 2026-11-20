@@ -16,7 +16,8 @@ describe("systemd units (DB-007, VPS-006)", () => {
       "/opt/anima/deploy/backup/backup.sh",
       "/opt/anima/deploy/backup/offsite.sh",
     ]);
-    for (const script of ["backup.sh", "offsite.sh"]) {
+    // Windows checkouts have no Unix executable bit; the content checks still apply.
+    for (const script of process.platform === "win32" ? [] : ["backup.sh", "offsite.sh"]) {
       expect(statSync(join(BACKUP_FOLDER, script)).mode & 0o111).not.toBe(0);
     }
     expect(lines(unit, "Type")).toEqual(["oneshot"]);

@@ -11,6 +11,8 @@ pub mod answer;
 pub mod body;
 pub mod enrolment;
 pub mod link_socket;
+#[cfg(windows)]
+mod windows;
 
 use std::path::Path;
 use std::time::Duration;
@@ -56,6 +58,8 @@ struct Call<'a> {
 pub struct HubClient {
     http: Client,
     base: Url,
+    #[cfg(windows)]
+    local: Option<windows::Local>,
 }
 
 impl HubClient {
@@ -72,7 +76,12 @@ impl HubClient {
             .timeout(limit)
             .build()
             .map_err(|_| HubError::Build)?;
-        Ok(Self { http, base })
+        Ok(Self {
+            http,
+            base,
+            #[cfg(windows)]
+            local: None,
+        })
     }
 
     /// A client for the hub behind the socket of `anima-link` at `socket` (K8 Section 1). Each
@@ -82,14 +91,26 @@ impl HubClient {
     /// [`HubError::LinkSocket`] when a different user could listen at the path.
     pub fn over_link(socket: &Path, limit: Duration) -> Result<Self, HubError> {
         link_socket::trusted(socket)?;
-        let http = Client::builder()
-            .redirect(redirect::Policy::none())
-            .timeout(limit)
-            .unix_socket(socket)
-            .build()
-            .map_err(|_| HubError::Build)?;
-        let base = Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?;
-        Ok(Self { http, base })
+        #[cfg(windows)]
+        {
+            let mut client = Self::new(
+                Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?,
+                limit,
+            )?;
+            client.local = Some(windows::Local::new(socket.to_path_buf(), limit));
+            Ok(client)
+        }
+        #[cfg(unix)]
+        {
+            let http = Client::builder()
+                .redirect(redirect::Policy::none())
+                .timeout(limit)
+                .unix_socket(socket)
+                .build()
+                .map_err(|_| HubError::Build)?;
+            let base = Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?;
+            Ok(Self { http, base })
+        }
     }
 
     /// A client for the hub that `reach` names; `own_socket` is the socket in the daemon's own
@@ -162,6 +183,10 @@ impl HubClient {
         call: Call<'_>,
         read_ok: impl FnOnce(u16, &[u8]) -> Option<T>,
     ) -> Answer<T> {
+        #[cfg(windows)]
+        if let Some(local) = &self.local {
+            return local.post(call, read_ok).await;
+        }
         let Ok(url) = self.base.join(call.route) else {
             return Answer::Failed(Cause::Unreadable);
         };

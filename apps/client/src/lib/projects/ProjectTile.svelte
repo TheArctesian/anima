@@ -19,7 +19,8 @@
 <!-- One project as a tile (UR-7, PRO-001): its name and the state of its repository, why it needs a look, where it runs,
      then its repositories with Leave out. A tile steps from the page by its surface, with no border (R-221, R-224); one
      that needs a look carries a 2 px warning edge (D18). -->
-<li class="entry tile" class:look={reason !== null}>
+<!-- The list item is the screen's, so the tile fades in and out where it stands (5.7.3, Reorder). -->
+<div class="tile" class:look={reason !== null}>
   <div class="top">
     <span class="name">
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the slug is the hub's and is encoded -->
@@ -43,10 +44,11 @@
       <RepositoryRow {repository} {onLeaveOut} {onRestore} />
     {/each}
   </ul>
-</li>
+</div>
 
 <style>
   .tile {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);

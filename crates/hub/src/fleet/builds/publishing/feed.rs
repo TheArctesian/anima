@@ -28,6 +28,7 @@ pub(super) struct CheckedFeed {
 pub(super) const fn platform_keys(target: Target) -> &'static [&'static str] {
     match target {
         Target::LinuxX86_64 => &["linux-x86_64"],
+        Target::WindowsX86_64 => &["windows-x86_64"],
         Target::DarwinUniversal => &["darwin-aarch64", "darwin-x86_64"],
     }
 }
@@ -36,6 +37,7 @@ pub(super) const fn platform_keys(target: Target) -> &'static [&'static str] {
 const fn updater_suffix(target: Target) -> &'static str {
     match target {
         Target::LinuxX86_64 => ".AppImage",
+        Target::WindowsX86_64 => "-setup.exe",
         Target::DarwinUniversal => ".app.tar.gz",
     }
 }

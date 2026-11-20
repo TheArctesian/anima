@@ -1,6 +1,9 @@
 //! Where a token may travel: the `Authorization` header and the WebSocket `connection_init`
 //! payload, never a URL query (K7 "Authentication transport", R-020, SEC-002).
 
+pub(crate) mod postgres;
+pub(crate) mod process;
+
 use anima_hub::fleet::access;
 use axum::{
     body::Body,

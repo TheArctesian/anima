@@ -1,8 +1,10 @@
 //! Files only the running user can read: created `0600` from the start in the folder they will
 //! live in, then renamed into place (MET-013, K8 Section 2).
 
+#[cfg(unix)]
 use std::fs::File;
 use std::io::{self, Read as _, Write as _};
+#[cfg(unix)]
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
 use std::path::Path;
 
@@ -43,6 +45,7 @@ pub const fn parent_replaceable(mode: u32) -> bool {
 ///
 /// # Errors
 /// An I/O error when the folder or one above it cannot be read.
+#[cfg(unix)]
 pub fn folder_private(dir: &Path) -> io::Result<bool> {
     let metadata = std::fs::symlink_metadata(dir)?;
     let running = running_user()?;
@@ -54,6 +57,22 @@ pub fn folder_private(dir: &Path) -> io::Result<bool> {
         if !parent.as_os_str().is_empty()
             && parent_replaceable(std::fs::metadata(parent)?.permissions().mode())
         {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+/// Whether a Windows directory and every ancestor refuse replacement by another user.
+/// # Errors
+/// The path or its security descriptor cannot be inspected.
+#[cfg(windows)]
+pub fn folder_private(dir: &Path) -> io::Result<bool> {
+    if !std::fs::symlink_metadata(dir)?.is_dir() || !anima_windows::files::secure(dir, true)? {
+        return Ok(false);
+    }
+    for parent in dir.ancestors().skip(1) {
+        if !anima_windows::files::secure(parent, false)? {
             return Ok(false);
         }
     }
@@ -76,11 +95,14 @@ pub enum PrivateFileError {
 pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileError> {
     // `tempfile` creates the file with mode 0600, exclusively, so no other process can have it.
     let mut temporary = tempfile::Builder::new().prefix(".tmp-").tempfile_in(dir)?;
+    #[cfg(windows)]
+    anima_windows::files::protect(temporary.path())?;
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
     temporary
         .persist(dir.join(name))
         .map_err(|error| error.error)?;
+    #[cfg(unix)]
     File::open(dir)?.sync_all()?;
     Ok(())
 }
@@ -102,12 +124,18 @@ pub fn read_within(
     path: &Path,
     limit: usize,
 ) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError> {
-    let file = match File::open(path) {
+    #[cfg(unix)]
+    let opened = File::open(path);
+    #[cfg(windows)]
+    let opened = anima_windows::files::read(path, true);
+    let file = match opened {
         Ok(file) => file,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
     };
+    #[cfg(unix)]
     let metadata = file.metadata()?;
+    #[cfg(unix)]
     if exposed(
         metadata.permissions().mode(),
         metadata.uid(),
@@ -140,6 +168,7 @@ pub fn read_limited(reader: impl io::Read, limit: usize) -> io::Result<Zeroizing
 ///
 /// # Errors
 /// An I/O error when the temporary file cannot be made.
+#[cfg(unix)]
 pub fn running_user() -> io::Result<u32> {
     Ok(tempfile::tempfile()?.metadata()?.uid())
 }
@@ -147,6 +176,22 @@ pub fn running_user() -> io::Result<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_private_records_round_trip_with_acl_checks_and_size_bounds() {
+        let temporary = tempfile::tempdir().unwrap();
+        let home = crate::config::home::Home::at(temporary.path().join("daemon"));
+        home.ensure().unwrap();
+        write(home.dir(), "record", b"first").unwrap();
+        let path = home.dir().join("record");
+        assert!(anima_windows::files::secure(&path, true).unwrap());
+        assert_eq!(read(&path).unwrap().unwrap().as_slice(), b"first");
+        write(home.dir(), "record", b"replacement").unwrap();
+        assert_eq!(read(&path).unwrap().unwrap().as_slice(), b"replacement");
+        assert!(read_within(&path, 4).is_err());
+        assert!(read(&home.dir().join("missing")).unwrap().is_none());
+    }
 
     #[test]
     fn met_019_a_private_file_is_read_into_one_buffer_that_never_moves() {

@@ -8,8 +8,6 @@
 
 use std::{ffi::OsStr, time::Duration};
 
-use serde::Serialize;
-
 use super::platform::{Os, Platform};
 use crate::os_program::{self, AfterLimit, Limit, Stdout};
 
@@ -32,16 +30,8 @@ const ASK: [&str; 3] = [
     "end run",
 ];
 
-/// Whether this computer can keep awake with the lid closed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Lid {
-    Ready,
-    /// A Mac without the rule file.
-    NeedsSetUp,
-    /// The desktop decides the lid itself and ignores a different program (KDE Plasma).
-    Unsupported,
-}
+mod model;
+pub use model::{Lid, SetUpError};
 
 /// The lid state of `platform`, from its OS, its desktop name and whether the rule exists.
 #[must_use]
@@ -91,15 +81,6 @@ fn remove_script(platform: &Platform, set_sleep_back: bool) -> String {
         String::new()
     };
     format!("{restore}/bin/rm -f '{}'", platform.rule.display())
-}
-
-/// Why a set-up step did not finish. A cancelled password dialog is `Refused` too.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-pub enum SetUpError {
-    #[error("this system has no set-up step")]
-    Unsupported,
-    #[error("the administrator step was cancelled or failed")]
-    Refused,
 }
 
 fn as_administrator(platform: &Platform, script: &str) -> Result<(), SetUpError> {

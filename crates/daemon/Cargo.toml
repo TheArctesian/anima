@@ -29,7 +29,6 @@ rpassword.workspace = true
 # `install` reads a folder's POSIX ACL (an xattr) and opens the system token with
 # O_NOFOLLOW | O_NONBLOCK | O_NOCTTY (MET-019). Safe wrappers: the workspace forbids `unsafe`, so
 # raw `libc` calls are out. Already in Cargo.lock through tempfile.
-rustix = { version = "1.1", features = ["fs", "process"] }
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
@@ -49,3 +48,17 @@ keyring.workspace = true
 daemon-core = { path = "../daemon-core", features = ["test-support"] }
 axum.workspace = true
 plist.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+anima-windows = { path = "../anima-windows" }
+sysinfo = { version = "0.40.4", default-features = false, features = ["system", "disk", "network"] }
+hyperlocal-with-windows = { version = "0.9", default-features = false, features = ["client"] }
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util.workspace = true
+http-body-util.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", features = ["fs", "process"] }
+
+[target.'cfg(windows)'.dev-dependencies]
+uds_windows = "1.2"

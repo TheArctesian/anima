@@ -2,13 +2,15 @@
 //! the request line, the connection after `ok`, and the error of each other word. The fake
 //! also serves the tests of the checks and of SSH that go through the link.
 
-use std::{fs, io::ErrorKind, net::SocketAddr, os::unix::fs::PermissionsExt as _};
+#[cfg(unix)]
+use std::{fs, os::unix::fs::PermissionsExt as _};
+use std::{io::ErrorKind, net::SocketAddr};
 
 use tokio::{
     io::{
         AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader, copy_bidirectional,
     },
-    net::{TcpListener, TcpStream, UnixListener, UnixStream},
+    net::{TcpListener, TcpStream},
 };
 
 use crate::fleet::targets::{AddressPolicy, LinkPort, Reached, connect, on_link};
@@ -29,11 +31,14 @@ pub(crate) enum Link {
 /// A policy whose link is a fake dial socket, and the folder that holds the socket.
 pub(crate) fn link(behaviour: Link) -> (tempfile::TempDir, AddressPolicy) {
     let folder = tempfile::tempdir().unwrap();
+    #[cfg(unix)]
     fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
     let path = folder.path().join("dial.sock");
+    #[cfg(windows)]
+    anima_windows::files::protect(path.parent().unwrap()).unwrap();
     let listener = UnixListener::bind(&path).unwrap();
     tokio::spawn(async move {
-        while let Ok((stream, _)) = listener.accept().await {
+        while let Ok(stream) = accept(&listener).await {
             tokio::spawn(serve(stream, behaviour));
         }
     });
@@ -148,6 +153,18 @@ fn only_the_range_of_the_link_is_on_the_link() {
     ] {
         assert!(!on_link(other.parse().unwrap()), "{other}");
     }
+}
+
+#[cfg(windows)]
+use anima_windows::socket::{Listener as UnixListener, Stream as UnixStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
+
+async fn accept(listener: &UnixListener) -> std::io::Result<UnixStream> {
+    #[cfg(unix)]
+    return listener.accept().await.map(|(stream, _)| stream);
+    #[cfg(windows)]
+    listener.accept().await
 }
 
 /// A program beside the hub (guacd) that connects to `port` on the loopback address.

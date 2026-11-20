@@ -2,7 +2,6 @@
 //! arguments and output, and a removal needs a stated choice and a confirmation (PRJ-018,
 //! ITG-004, CMD-024, CMD-025, CMD-014).
 
-use std::os::unix::fs::PermissionsExt as _;
 use std::path::Path;
 
 use serde_json::{Value, json};
@@ -16,7 +15,7 @@ const KEY: &str = "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAsecretsecret
 fn key_file(directory: &Path, mode: u32) -> String {
     let path = directory.join("app.pem");
     std::fs::write(&path, KEY).expect("a key file");
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).expect("a mode");
+    crate::kit::file_access::mode(&path, mode);
     path.display().to_string()
 }
 
@@ -87,7 +86,7 @@ async fn cmd_025_connect_refuses_a_key_file_looser_than_0600_and_sends_nothing()
     let file = key_file(directory.path(), 0o644);
     let run = signed_in().run(&connect(&hub.origin, &file)).await;
     assert_eq!(run.code, 1, "{run:?}");
-    assert!(run.stderr.contains("0600"), "{}", run.stderr);
+    crate::kit::file_access::assert_refused(&run.stderr);
     run.assert_never_shows("MIIEowIBAAKCAQEAsecretsecretsecret");
     assert!(hub.seen().is_empty(), "the hub was not asked");
 }

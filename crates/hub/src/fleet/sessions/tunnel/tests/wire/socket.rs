@@ -87,6 +87,8 @@ impl Socket {
                     return Received::Text(text.to_string());
                 }
                 Some(Ok(Message::Close(frame))) => {
+                    // A browser sends the queued close echo before reporting the close.
+                    let _ = timeout(WAIT, self.stream.flush()).await;
                     return Received::Closed(frame.map(|frame| u16::from(frame.code)));
                 }
                 Some(Ok(Message::Ping(_) | Message::Pong(_) | Message::Frame(_))) => {}

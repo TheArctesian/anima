@@ -7,7 +7,6 @@
 use std::{
     ffi::OsString,
     io::{ErrorKind, Write},
-    os::unix::process::CommandExt,
     path::Path,
     process::{Child, Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
@@ -17,7 +16,19 @@ use std::{
 
 /// The variables the daemon gets from the app, when they are set: its home (where `enrol` stores
 /// the token and `install` writes the unit), and the user session bus `systemctl --user` needs.
+#[cfg(unix)]
 const PASSED_ON: [&str; 2] = ["XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"];
+
+#[cfg(windows)]
+const PASSED_ON: [&str; 7] = [
+    "SystemRoot",
+    "WINDIR",
+    "USERPROFILE",
+    "LOCALAPPDATA",
+    "APPDATA",
+    "TEMP",
+    "TMP",
+];
 
 const POLL: Duration = Duration::from_millis(20);
 
@@ -93,6 +104,11 @@ pub fn run(daemon_run: &Run<'_>) -> Result<(), RunError> {
         return Err(RunError::Stopped);
     }
     let mut child = start(daemon_run)?;
+    #[cfg(windows)]
+    let Ok(_job) = anima_windows::job::Job::start(child.id()) else {
+        reap(child);
+        return Err(RunError::CouldNotStart);
+    };
     if let Err(error) = hand_over(&mut child, daemon_run.input) {
         reap(child);
         return Err(error);
@@ -124,9 +140,18 @@ pub fn run(daemon_run: &Run<'_>) -> Result<(), RunError> {
 fn start(daemon_run: &Run<'_>) -> Result<Child, RunError> {
     let mut tries = 0;
     loop {
-        let started = Command::new(daemon_run.program)
-            // Its own process group, led by the child, so a kill reaches what it started (BLD-027).
-            .process_group(0)
+        let mut command = Command::new(daemon_run.program);
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt as _;
+            command.process_group(0);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt as _;
+            command.creation_flags(anima_windows::job::SUSPENDED);
+        }
+        let started = command
             .args(daemon_run.args)
             .env_clear()
             .envs(daemon_run.env.iter().map(|(name, value)| (name, value)))
@@ -167,6 +192,7 @@ fn hand_over(child: &mut Child, input: Option<&[u8]>) -> Result<(), RunError> {
 /// reaps the child. The child is not reaped before the kill, so its pid still names its own group
 /// and no other process can hold that number; nothing outside the group is touched.
 fn reap(mut child: Child) {
+    #[cfg(unix)]
     if let Ok(group) = i32::try_from(child.id()) {
         // A group that is gone is not an error: the wait below still reaps the child.
         let _ = nix::sys::signal::killpg(
