@@ -5,7 +5,7 @@ use super::{Facts, free, managed};
 use crate::{
     Plan, Refusal, Removal, Step,
     forms::{is_engine_name, project_of},
-    inventory::project_is_protected,
+    inventory::{digest_of, project_is_protected},
     plan::Project,
 };
 
@@ -53,8 +53,25 @@ fn by_the_label(project: &str, volumes: bool, facts: &Facts<'_>) -> Vec<Step> {
         .collect()
 }
 
+/// The removal of each image that the program pulled for `application`. The engine refuses
+/// to remove an image that a container uses; no step forces it. A refused removal does not
+/// stop the plan. An image that a version of a different application holds is left out.
+fn image_steps(application: &str, facts: &Facts<'_>) -> Vec<Step> {
+    let installed = facts.records.installed(application);
+    let pulled = installed.map_or_default(|installed| installed.pulled.as_slice());
+    let held = |image: &&String| {
+        digest_of(image).is_some_and(|digest| facts.records.holds_digest(digest, Some(application)))
+    };
+    pulled
+        .iter()
+        .filter(|image| is_pulled_name(image) && !held(image))
+        .map(|image| Step::Attempt(facts.paths.docker(&["image", "rm"], &[image])))
+        .collect()
+}
+
 /// The plan of `application_remove`. It deletes `files/` of the application in each case,
-/// and `binds/` only with `volumes`.
+/// directly after the stop and also when the stop failed, and `binds/` only with `volumes`
+/// and only after a stop that did not fail.
 ///
 /// # Errors
 /// `applications_off`; `not_at_machine` for `volumes` while "The hub may delete volumes" is
@@ -101,19 +118,14 @@ pub fn removed(removal: &Removal, facts: &Facts<'_>) -> Result<Plan, Refusal> {
     } else {
         by_the_label(&project, removal.volumes, facts)
     };
-    if removal.images {
-        // The engine refuses to remove an image that a container uses; no step forces it.
-        let pulled = installed.map_or_default(|installed| installed.pulled.as_slice());
-        steps.extend(
-            pulled
-                .iter()
-                .filter(|image| is_pulled_name(image))
-                .map(|image| Step::Run(facts.paths.docker(&["image", "rm"], &[image]))),
-        );
-    }
-    steps.push(Step::DeleteFolder {
+    // `files/` holds the environment file and the final form: it is deleted directly after
+    // the stop, also when a step before failed (Section 6.4.8, "in each case").
+    steps.push(Step::DeleteFolderInEachCase {
         path: folders.files(),
     });
+    if removal.images {
+        steps.extend(image_steps(&removal.application, facts));
+    }
     if removal.volumes {
         steps.push(Step::DeleteFolder {
             path: folders.application().to_owned(),

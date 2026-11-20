@@ -6,9 +6,8 @@
 use super::{Facts, free, managed};
 use crate::{
     Container, Image, Network, Plan, Pruned, Refusal, Step,
-    final_form::image_by_digest,
     forms::{is_digest, is_engine_name},
-    inventory::{container_is_protected, is_installed},
+    inventory::{container_is_protected, digest_of, is_installed},
 };
 
 fn label_is_adopted(label: Option<&str>, facts: &Facts<'_>) -> bool {
@@ -46,18 +45,20 @@ fn network_goes(network: &Network, facts: &Facts<'_>) -> bool {
 
 /// An image that no container uses and that the program pulled for an application; with
 /// "All containers" on, also each image with no tag. Never an image that a version that
-/// runs or a kept version holds.
+/// runs or a kept version holds: an image is held when a digest of one of its names is the
+/// digest of such a version, whatever name the engine or the file writes.
 fn image_goes(image: &Image, facts: &Facts<'_>) -> bool {
-    let applications = &facts.records.applications;
+    let records = facts.records;
     let named = |name: &String| image.pulled_as.contains(name);
-    let pulled = applications
+    let pulled = records
+        .applications
         .iter()
         .any(|installed| installed.pulled.iter().any(named));
-    let held = applications.iter().any(|installed| {
-        let kept = installed.kept.iter().flatten();
-        let mut versions = installed.current.iter().chain(kept);
-        versions.any(|one| named(&image_by_digest(&one.image, &one.digest)))
-    });
+    let held = image
+        .pulled_as
+        .iter()
+        .filter_map(|name| digest_of(name))
+        .any(|digest| records.holds_digest(digest, None));
     let reached = pulled || (facts.settings.all_containers && image.dangling);
     reached && !image.used && !held && is_digest(&image.id)
 }

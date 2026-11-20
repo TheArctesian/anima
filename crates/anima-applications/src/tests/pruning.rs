@@ -140,3 +140,23 @@ fn k10_6_4_10_a_prune_is_refused_while_an_item_that_changes_docker_runs() {
     world.busy = true;
     assert_eq!(pruned(&ALL, &world.facts()), Err(Refusal::Busy));
 }
+
+#[test]
+fn k10_6_4_10_an_image_that_keep_holds_stays_when_the_engine_writes_a_different_name() {
+    let mut world = World::new();
+    world.settings.all_containers = true;
+    let kept_digest = "sha256:5555555555555555555555555555555555555555555555555555555555555555";
+    world.records.applications[0].kept = Some(vec![crate::Pulled {
+        digest: kept_digest.to_owned(),
+        ..pulled("app", "docker.io/library/nginx:1")
+    }]);
+    // The engine writes the short name; the file named the long one.
+    world.inventory.images = vec![image(OLD, &format!("nginx@{kept_digest}"), true)];
+    assert_eq!(removed(&world, &[Pruned::Images]), Vec::<String>::new());
+    // The same image with a digest that no version holds goes.
+    world.records.applications[0].kept = None;
+    assert_eq!(
+        removed(&world, &[Pruned::Images]),
+        [format!("image rm -- {OLD}")]
+    );
+}

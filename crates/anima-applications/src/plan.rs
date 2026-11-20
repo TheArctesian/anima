@@ -33,8 +33,9 @@ pub struct Command {
     pub folder: Option<String>,
 }
 
-/// One step of a plan. The caller does the steps in their order and stops at the first that
-/// fails.
+/// One step of a plan. The caller does the steps in their order. A step that fails stops the
+/// plan: after it, the caller does only each [`Step::DeleteFolderInEachCase`]. A failed
+/// [`Step::Attempt`] does not stop the plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Step {
     /// Makes a folder that only the user of the program can reach, when it is not there.
@@ -47,6 +48,9 @@ pub enum Step {
     Delete { path: String },
     /// Deletes a folder with all below it, when it is there, without following a link.
     DeleteFolder { path: String },
+    /// Deletes a folder as [`Step::DeleteFolder`] does. It runs also when an earlier step
+    /// failed and stopped the plan.
+    DeleteFolderInEachCase { path: String },
     /// Stops the plan when the path exists.
     Absent { path: String },
     /// Stops the plan unless `path` is a real folder directly below the real folder
@@ -54,6 +58,9 @@ pub enum Step {
     RealFolder { path: String, below: String },
     /// Starts a program and waits for its end.
     Run(Command),
+    /// Starts a program and waits for its end. When it fails, the caller reports the failure
+    /// and does the next step: the plan does not stop.
+    Attempt(Command),
 }
 
 /// The steps of one item.

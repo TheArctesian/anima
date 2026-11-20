@@ -107,12 +107,33 @@ impl Records {
             .find(|installed| installed.application == application)
     }
 
+    /// True when `digest` is a digest of the version that runs or of the kept version of an
+    /// application of these records other than `except`.
+    pub(crate) fn holds_digest(&self, digest: &str, except: Option<&str>) -> bool {
+        self.applications
+            .iter()
+            .filter(|installed| Some(installed.application.as_str()) != except)
+            .flat_map(|installed| {
+                installed
+                    .current
+                    .iter()
+                    .chain(installed.kept.iter().flatten())
+            })
+            .any(|one| one.digest == digest)
+    }
+
     /// True when `project` is the project of an application of these records.
     pub(crate) fn has_project(&self, project: &str) -> bool {
         self.applications
             .iter()
             .any(|installed| project_of(&installed.application) == project)
     }
+}
+
+/// The digest of a name of an image with its digest, `name@sha256:…`. The name part is not
+/// compared: the engine and a file can write one image with two different names.
+pub(crate) fn digest_of(pulled: &str) -> Option<&str> {
+    pulled.rsplit_once('@').map(|(_, digest)| digest)
 }
 
 impl Container {
