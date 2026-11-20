@@ -118,6 +118,7 @@ async fn push(
             let told = keys::current(state, device, &held, now).await;
             Ok(told.map(|current| PushAccepted {
                 keys: Some(current),
+                update: None,
             }))
         }
         Ok(Written::Refused(code)) => Err(refused(code)),

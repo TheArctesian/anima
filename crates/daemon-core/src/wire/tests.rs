@@ -14,6 +14,7 @@ mod range;
 mod secrets;
 mod series;
 mod shape;
+mod update;
 mod version;
 mod work;
 
