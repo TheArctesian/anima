@@ -11,7 +11,7 @@ import { finishMerge } from "../src/merge/finish.ts";
 import { isDocument } from "../src/gates/tier.ts";
 import { parseMergeRule } from "../src/merge/rules.ts";
 import { members, stack } from "../src/merge/stack.ts";
-import { batch, firstHalf, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
+import { batch, firstHalf, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";
@@ -132,9 +132,24 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
   return firstHalf(held);
 }
 
+/** Says, for each branch that is not in `dev` and not ready, why the next train does not take it. */
+function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
+  for (const each of standing(tips(), runs, refused(), inDev)) {
+    // An old branch that nobody pushed since the gates exist has no run; only the plan names those.
+    const quiet = also === "with-a-run" && each.reason === "its gates did not run for its tip";
+    if (each.reason !== undefined && !quiet) say(`${each.tip.branch} is not taken: ${each.reason}`);
+  }
+}
+
+/** The paths in which the branch has a conflict with `dev` as it is now; no merge is made. */
+function conflictWithDev(tip: Tip): string[] {
+  const tried = run(["git", "merge-tree", "--write-tree", "--name-only", "--no-messages", `origin/${INTO}`, tip.sha]);
+  return tried.ok ? [] : tried.out.split("\n").slice(1).filter((path) => path !== "");
+}
+
 /** Builds a train of `wanted` on the local `dev`, pushes it as a train branch and starts its gates. */
 function build(wanted: Tip[], now: Date): void {
-  if (wanted.length === 0) return say("no branch waits: each is in dev, or its own gates did not pass yet");
+  if (wanted.length === 0) return say("no branch is ready: each is in dev, or has a reason above");
   const base = must(["git", "rev-parse", "HEAD"]);
   const made = stack(REPO_ROOT, wanted, finish);
   for (const each of made.leftOut) say(`${each.branch} is left out: ${each.reason}. Merge origin/${INTO} into the branch and solve it there.`);
@@ -151,7 +166,11 @@ if (process.argv.includes("--plan")) {
   must(["git", "fetch", "--quiet", "--prune", "origin"]);
   const listed = gatesRuns();
   for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) say(`${train.branch}: ${verdict(train.sha, listed)}`);
-  say(`the next train would hold: ${batch(tips(), listed, refused(), inDev).map((tip) => tip.branch).join(", ") || "nothing"}`);
+  sayWhoWaits(listed, "each");
+  for (const tip of batch(tips(), listed, refused(), inDev)) {
+    const conflict = conflictWithDev(tip);
+    say(conflict.length === 0 ? `${tip.branch} is ready for the next train` : `${tip.branch} would be left out: a conflict with ${INTO} in ${conflict.join(", ")}`);
+  }
   process.exit(0);
 }
 if (must(["git", "rev-parse", "--abbrev-ref", "HEAD"]) !== INTO) must(["git", "switch", "--quiet", INTO]);
@@ -172,5 +191,6 @@ for (const train of tips().filter((tip) => tip.branch.startsWith(TRAIN))) {
   next ??= settled;
 }
 const current = new Map(tips().map((tip) => [tip.branch, tip.sha]));
+sayWhoWaits(runs, "with-a-run");
 const still = next?.filter((tip) => current.get(tip.branch) === tip.sha && !inDev(tip.sha));
 build(still !== undefined && still.length > 0 ? still : batch(tips(), runs, refused(), inDev), now);

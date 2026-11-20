@@ -86,3 +86,45 @@ export function rowsTwice(text: string): string[] {
   return [...twice];
 }
 
+
+/** The list of the security findings and the table of owners: each branch adds entries, so they merge by union too. */
+export const FINDINGS = "docs/security-findings.md";
+export const OWNERS = "docs/plan/ownership.md";
+
+/**
+ * The keys that more than one row of the same table has. A table ends at the first line that is
+ * not a row, so an identifier can be in two tables of one document. `key` gives the key of a
+ * row from its cells, or undefined for a row that has none.
+ */
+export function twiceInOneTable(text: string, key: (cells: string[]) => string | undefined): string[] {
+  let seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("|")) {
+      seen = new Set();
+      continue;
+    }
+    const id = key(line.split("|").slice(1, -1).map((cell) => cell.trim()));
+    if (id === undefined) continue;
+    if (seen.has(id)) twice.add(id);
+    seen.add(id);
+  }
+  return [...twice];
+}
+
+/** The headings of the form `### SF-nnn:` that are in `text` more than one time. */
+export function headingsTwice(text: string): string[] {
+  const all = [...text.matchAll(/^### ([A-Z]+-[A-Za-z0-9-]+):/gm)].map((match) => match[1] ?? "");
+  return [...new Set(all.filter((id, at) => all.indexOf(id) !== at))];
+}
+
+/** The key of a row of the findings list: its identifier. */
+export function findingKey(cells: string[]): string | undefined {
+  return /^SF-[A-Za-z0-9-]+$/.exec(cells[0] ?? "")?.[0];
+}
+
+/** The key of a row of the owners table: its identifiers, when the cell names a number. */
+export function ownerKey(cells: string[]): string | undefined {
+  const identifiers = cells.at(-1) ?? "";
+  return /\d/.test(identifiers) ? identifiers : undefined;
+}
