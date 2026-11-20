@@ -1,4 +1,5 @@
-//! The five Rust programs a release carries (INS-002, INS-003, OD-17, S12 2.2 step 2): one
+//! The six Rust programs a release carries (INS-002, INS-003, OD-17, S12 2.2 step 2; `anima-daemon`
+//! since HMD-052, R-206): one
 //! `cargo build` from the clone with the release version in `ANIMA_VERSION`, for the targets the
 //! app is built for. Pure.
 
@@ -12,12 +13,13 @@ use crate::builder::{
 };
 
 /// Each program's cargo package and binary, in the order of [`super::programs`].
-pub const PROGRAMS: [(&str, &str); 5] = [
+pub const PROGRAMS: [(&str, &str); 6] = [
     ("anima-cli", "anima"),
     ("anima-local-hub", "anima-local-hub"),
     ("anima-hub", "anima-hub"),
     ("anima-database", "anima-database"),
     ("anima-gateway", "anima-gateway"),
+    ("anima-daemon", "anima-daemon"),
 ];
 /// The variable `crates/anima-cli/build.rs` reads the release version from.
 const VERSION_VARIABLE: &str = "ANIMA_VERSION";
@@ -33,7 +35,7 @@ fn built(clone: &Path, target: Target, triple: &str, binary: &str) -> PathBuf {
     }
 }
 
-/// One `cargo build` of the five programs for every triple of `target`, with the release version
+/// One `cargo build` of the six programs for every triple of `target`, with the release version
 /// (OD-17).
 pub fn build(clone: &Path, target: Target, version: &Version) -> Command {
     let mut args = vec!["build", "--release", "--locked"];

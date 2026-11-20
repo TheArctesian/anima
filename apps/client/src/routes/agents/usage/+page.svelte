@@ -6,9 +6,12 @@
   import AgentUsageScreen from '$lib/agent-usage/AgentUsageScreen.svelte';
   import { parseUsageQuery, usageRequest, writeUsageQuery, type UsageQuery } from '$lib/agent-usage/query';
   import { UsageStore } from '$lib/agent-usage/store.svelte';
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
 
-  const api = agentUsageApi(useHub());
+  const hub = useHub();
+  const api = agentUsageApi(hub);
+  const hosted = hubIsHosted(hub.address.origin);
   const store = new UsageStore(api.read);
   const query = $derived(parseUsageQuery(page.url.searchParams));
 
@@ -29,4 +32,4 @@
   });
 </script>
 
-<AgentUsageScreen {store} {query} onQueryChange={changeQuery} onRetry={() => void store.load(usageRequest(query, new Date()))} />
+<AgentUsageScreen {store} {query} {hosted} onQueryChange={changeQuery} onRetry={() => void store.load(usageRequest(query, new Date()))} />

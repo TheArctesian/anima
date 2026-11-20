@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, createRequestHub, DEFAULT_HUB_ADDRESS, TOKEN_UNREADABLE, type Hub, type TokenProvider } from './hub';
+import { createHub, createRequestHub, NO_HUB_ADDRESS, TOKEN_UNREADABLE, type Hub, type TokenProvider } from './hub';
 import { acknowledge, FAKE_WEBSOCKET, FakeSocket } from './socket/fake';
 
 const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNode<
@@ -30,7 +30,7 @@ function hubAnswering(answer: (signal?: AbortSignal | null) => Promise<Response>
     });
     return answer(init?.signal);
   };
-  const hub: Hub = createHub({ address: DEFAULT_HUB_ADDRESS, token, fetch: fakeFetch, WebSocket: FAKE_WEBSOCKET, now: () => CONTACT_AT });
+  const hub: Hub = createHub({ address: NO_HUB_ADDRESS, token, fetch: fakeFetch, WebSocket: FAKE_WEBSOCKET, now: () => CONTACT_AT });
   hubs.push(hub);
   return { hub, sent };
 }
@@ -63,7 +63,7 @@ describe('Hub.request', () => {
     const result = await hub.request(ME, { first: 3 });
     expect(result).toEqual({ ok: true, value: { me: { username: 'op' } } });
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.url).toBe('https://hub.anima.ing/graphql');
+    expect(sent[0]?.url).toBe(NO_HUB_ADDRESS.http);
     expect(sent[0]?.headers.authorization).toBe('Bearer s3cret-token');
     expect(sent[0]?.body).toEqual({ query: expect.stringContaining('me {') as unknown, variables: { first: 3 } });
   });
@@ -155,7 +155,7 @@ describe('createRequestHub', () => {
       sent.push({ url: String(input), headers: headers !== undefined && !Array.isArray(headers) && !(headers instanceof Headers) ? headers : {}, body: undefined });
       return Promise.resolve(new Response(JSON.stringify({ data: { me: { username: 'builder' } } })));
     };
-    const hub = createRequestHub({ address: DEFAULT_HUB_ADDRESS, token: () => Promise.resolve('builder-token'), fetch: fakeFetch });
+    const hub = createRequestHub({ address: NO_HUB_ADDRESS, token: () => Promise.resolve('builder-token'), fetch: fakeFetch });
     await expect(hub.request(ME, {})).resolves.toEqual({ ok: true, value: { me: { username: 'builder' } } });
     expect(sent).toHaveLength(1);
     expect(sent[0]?.headers.authorization).toBe('Bearer builder-token');

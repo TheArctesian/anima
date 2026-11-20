@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { asset, resolve } from '$app/paths';
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import CollapseToggle from './collapse/CollapseToggle.svelte';
@@ -43,7 +44,7 @@
   const { pathname, now, onnavigate, projectsOn = false, buildsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse, running }: Props =
     $props();
   const hub = useHub();
-  const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
+  const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now, hubIsHosted(hub.address.origin)));
 
   // Below the compact breakpoint the bar and the page make room for the strip; the root attribute tells their styles (NET-004).
   const strip = watchHubBanner(document.documentElement);

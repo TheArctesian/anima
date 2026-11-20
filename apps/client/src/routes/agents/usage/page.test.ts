@@ -3,6 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fakeUsageHub, type FakeUsageHub } from '$lib/agent-usage/agent-usage.fixture';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import { markHosted } from '$lib/hosted/mark';
 import Page from './+page.svelte';
 
 const mocks = vi.hoisted(() => ({ search: '', goto: vi.fn(() => Promise.resolve()), hub: undefined as unknown }));
@@ -16,13 +17,17 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
 }));
 
+/** The origin of a hub that the application reaches through its link. */
+const HUB = 'http://127.0.0.1:41001';
+
 let app: ReturnType<typeof mount> | undefined;
 let hub: FakeUsageHub;
 
 beforeEach(() => {
   installAnimations();
   hub = fakeUsageHub();
-  mocks.hub = hub;
+  mocks.hub = Object.assign(hub, { address: { origin: HUB } });
+  localStorage.clear();
   mocks.search = '';
 });
 
@@ -61,4 +66,16 @@ it('a choice goes to the address and keeps the others', async () => {
   await open('?by=MODEL');
   document.querySelector<HTMLElement>('[role="radio"][data-value="90"]')?.click();
   expect(mocks.goto).toHaveBeenCalledWith('/agents/usage?days=90&by=MODEL', { replaceState: true, keepFocus: true, noScroll: true });
+});
+
+it('DEF-002: the hub that this client marked as hosted gets the empty state with no link; a different hub gets Open Devices', async () => {
+  hub.answer = { ...hub.answer, rows: [], devices: [] };
+  hub.everyone = [];
+  await open('');
+  expect(document.querySelector('a')?.textContent).toBe('Open Devices');
+  if (app !== undefined) await unmount(app);
+  markHosted(localStorage, HUB);
+  await open('');
+  expect(document.querySelector('a')).toBeNull();
+  expect(document.body.textContent).toContain('Coming soon: the Anima.ing application will install the daemon on this computer.');
 });

@@ -23,6 +23,14 @@ pub enum RefusalCode {
     /// The key does not exist, has no active version, or the device is no consumer of it: one
     /// answer for the three, so a server cannot learn which keys exist (K-E5 Section 2.1).
     NoKey,
+    /// The device does not hold the job, the attempt is not the current one, the job has
+    /// ended, or the change of state is not permitted (K10 Section 7).
+    NotHolder,
+    /// The operator set the device off for work in the hub, or the hub gives it no work for
+    /// 1 hour (K10 Section 11).
+    WorkOff,
+    /// The secret is not given; the answer does not say which test failed (K10 Section 8).
+    SecretRefused,
 }
 
 /// A refusal body, `{ "error": "<CODE>" }`, and nothing else: it never echoes the request.
@@ -38,7 +46,8 @@ impl RefusalCode {
         match self {
             Self::Malformed => 400,
             Self::TokenRefused | Self::EnrolmentRefused => 401,
-            Self::WrongDevice => 403,
+            Self::WrongDevice | Self::WorkOff => 403,
+            Self::NotHolder | Self::SecretRefused => 409,
             Self::TooLarge => 413,
             Self::OutOfRange => 422,
             Self::NoKey => 404,
@@ -58,6 +67,9 @@ impl RefusalCode {
             Self::OutOfRange => "OUT_OF_RANGE",
             Self::Unavailable => "UNAVAILABLE",
             Self::NoKey => "NO_KEY",
+            Self::NotHolder => "NOT_HOLDER",
+            Self::WorkOff => "WORK_OFF",
+            Self::SecretRefused => "SECRET_REFUSED",
         }
     }
 

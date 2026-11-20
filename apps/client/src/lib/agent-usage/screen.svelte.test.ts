@@ -31,12 +31,12 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-async function open(query: UsageQuery = DEFAULT_QUERY): Promise<UsageStore> {
+async function open(query: UsageQuery = DEFAULT_QUERY, hosted = false): Promise<UsageStore> {
   const store = new UsageStore(agentUsageApi(hub).read);
   const reading = store.load(usageRequest(query, NOW));
   app = mount(AgentUsageScreen, {
     target: document.body,
-    props: { store, query, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
+    props: { store, query, hosted, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
   });
   flushSync();
   await reading;
@@ -102,15 +102,26 @@ it('AIS-024: a device whose daemon is a system unit gives the reason, and a devi
   expect(text()).not.toContain('mac-mini: ');
 });
 
-it('AIS-020: with no daemon that sent counts the page is an empty state with an Install daemon action', async () => {
+it('AIS-020: with no daemon that sent counts the page is an empty state that says where the daemon is installed', async () => {
   hub.answer = { ...ANSWER, rows: [], devices: [] };
   hub.everyone = [];
   await open();
   expect(text()).toContain('No use counts yet');
-  expect(text()).toContain('The daemon of each device reports the use');
-  const action = [...document.querySelectorAll('a')].find((link) => link.textContent === 'Install daemon');
-  expect(action?.getAttribute('href')).toBe('/devices');
+  expect(text()).toContain('To install it, open a device, then Settings, then Daemon.');
+  const links = [...document.querySelectorAll('a')];
+  expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([['Open Devices', '/devices']]);
   expect(document.querySelector('table')).toBeNull();
+});
+
+it('DEF-002, R-223: on a hub that Anima.ing hosts the empty state says that the installation by the application is coming soon, and offers no link', async () => {
+  hub.answer = { ...ANSWER, rows: [], devices: [] };
+  hub.everyone = [];
+  await open(DEFAULT_QUERY, true);
+  expect(text()).toContain('No use counts yet');
+  expect(text()).toContain('Coming soon: the Anima.ing application will install the daemon on this computer.');
+  expect(text()).not.toContain('not built');
+  expect(text()).not.toContain('To install it');
+  expect(document.querySelector('a')).toBeNull();
 });
 
 it('a device that reads but has no use in the days gives an empty table message, with the filters still there', async () => {

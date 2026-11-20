@@ -2,4 +2,5 @@
 //! code (K3).
 
 pub mod containers;
+pub mod jobs;
 pub mod projects;

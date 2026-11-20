@@ -2,7 +2,7 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { createClient, type Client, type Sink as ClientSink } from 'graphql-ws';
 import type { HubAddress } from '../address';
-import { MALFORMED, parseErrors, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubError } from '../error';
+import { MALFORMED, noAnswer, parseErrors, parseResponse, TOKEN_UNREADABLE, type HubError } from '../error';
 import { readToken, type TokenProvider } from '../request';
 import type { StatusSignal } from '../status/status';
 
@@ -67,16 +67,16 @@ function closeSignal(event: unknown): StatusSignal | undefined {
 }
 
 /** Why a subscription ended without `complete`. */
-function subscriptionError(reason: unknown, tokenUnreadable: boolean): HubError {
+function subscriptionError(reason: unknown, tokenUnreadable: boolean, origin: string): HubError {
   if (tokenUnreadable) return TOKEN_UNREADABLE;
   if (Array.isArray(reason)) return parseErrors(reason);
   const code = closeCode(reason);
-  if (code === undefined) return UNREACHABLE;
+  if (code === undefined) return noAnswer(origin);
   if (code === REFUSED_CLOSE_CODE) return REFUSED;
   if (code === SERVER_ERROR_CLOSE_CODE || code === CLIENT_CLOSE_CODE) {
     return { code: 'INTERNAL', message: 'The live connection to the hub failed.' };
   }
-  return code >= 4000 && code <= 4999 ? MALFORMED : UNREACHABLE;
+  return code >= 4000 && code <= 4999 ? MALFORMED : noAnswer(origin);
 }
 
 /** Where the current connection attempt is: `opening` until `connection_ack`, `live` after it, `waiting` after a close. */
@@ -175,7 +175,7 @@ function connect(transport: SocketTransport, state: SocketState, refuse: () => v
 }
 
 /** The graphql-ws side of one subscription: parse payloads and map errors. */
-function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean): ClientSink {
+function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean, origin: string): ClientSink {
   return {
     next: (payload) => {
       const result = parseResponse(payload);
@@ -183,7 +183,7 @@ function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean): ClientSink
       if (result.ok) sink.next(result.value as T);
       else sink.error(result.error);
     },
-    error: (reason) => sink.error(subscriptionError(reason, tokenUnreadable())),
+    error: (reason) => sink.error(subscriptionError(reason, tokenUnreadable(), origin)),
     complete: () => sink.complete(),
   };
 }
@@ -223,7 +223,7 @@ export function createSocket(transport: SocketTransport): Socket {
         complete: () => finish(),
       };
       live.add(finish);
-      stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => state.tokenUnreadable));
+      stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => state.tokenUnreadable, transport.address.origin));
       return () => end(() => undefined);
     },
     close() {

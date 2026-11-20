@@ -11,7 +11,7 @@ describe('the first-run choices (FRN-001)', () => {
   });
 
   it('M3-1: a phone app with the link but no cloud commands says that sign-in is not on phones yet', () => {
-    expect(signInChoice({ deviceLink: true, cloudAccount: false, localHub: false, carried: false }, true).off).toBe('Not on phones yet.');
+    expect(signInChoice({ deviceLink: true, cloudAccount: false, localHub: false, carried: false }, true).off).toBe('Coming soon on phones.');
   });
 
   it('FRN-001, HMD-022: behind "Join a hub" are the invite, the hub address and the hub on this computer, in order', () => {

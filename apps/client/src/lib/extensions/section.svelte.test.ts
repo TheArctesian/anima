@@ -113,10 +113,10 @@ it('EXT-012: a needed extension has a disabled switch that names the extension t
   expect(isDisabled('model_gateway')).toBe(false);
 });
 
-it('EXT-001: an extension that is not built has no live switch and says so', async () => {
+it('EXT-001, R-223: an extension that is not built has no live switch, and says "Coming soon" and what it will do', async () => {
   await open();
   expect(switchOf('map')).toBeNull();
-  expect(document.querySelector('#extension-map-hint')?.textContent).toBe('Not built yet');
+  expect(document.querySelector('#extension-map-hint')?.textContent).toBe('Coming soon. It will show where you were, the places that you use, and where your sites and belongings are.');
 });
 
 it('EXT-012: a refused change puts the switch back and shows the hub words', async () => {

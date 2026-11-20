@@ -32,6 +32,7 @@ use super::{
     refusals::{self, Recorder, Refused, Route},
     renewal,
     turns::{DAEMON_REQUESTS, Turn, Turns},
+    work,
 };
 use crate::{
     clock::Clock,
@@ -77,7 +78,7 @@ pub(super) struct DaemonState {
     pub(super) vault: Vault,
     pub(super) turns: Turns,
     recorder: Recorder,
-    deadlines: Deadlines,
+    pub(super) deadlines: Deadlines,
 }
 
 /// `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` and
@@ -132,6 +133,7 @@ fn routes(state: DaemonState) -> Router {
         .route("/daemon/v1/push", post(push))
         .route("/daemon/v1/renew", post(renew))
         .route("/daemon/v1/keys/fetch", post(fetch_key))
+        .merge(work::routes())
         .with_state(state)
 }
 
@@ -157,7 +159,7 @@ async fn fetch_key(State(state): State<DaemonState>, request: Request) -> Respon
 
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back
 /// its open transaction; a code it already redeemed stays used (MET-012).
-async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Response {
+pub(super) async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Response {
     tokio::time::timeout(limit, answer)
         .await
         .unwrap_or_else(|_| {

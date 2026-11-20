@@ -16,6 +16,7 @@ mod extensions;
 mod files;
 mod graphql;
 mod hub;
+mod jobs;
 mod link;
 mod links;
 mod listening;
