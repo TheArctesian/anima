@@ -26,16 +26,18 @@ Updates currently transfer a full closure, do not automatically drain workloads,
 
 ## Final ISO lifecycle
 
-The [final ISO results](installed-operation-results.json) pass actual graphical multi-drive installation, completion Restart, installed-console authentication, Wi-Fi backend activation on read-only root, battery rendering, real daemon storage messages, signed HTTPS staging, candidate boot and owner rollback. Unselected-disk bytes are unchanged. The generated `anima-node-48b6` name survived reboot, update and rollback alongside device identity and workload-data sentinels.
+The [final ISO results](installed-operation-results.json) pass actual graphical multi-drive installation, completion Restart, installed-console authentication, Wi-Fi backend activation on read-only root, battery rendering, real daemon storage messages, signed HTTPS staging, candidate boot and owner rollback. Unselected-disk bytes are unchanged. The generated `anima-node-176b` name survived reboot, update and rollback alongside device identity and workload-data sentinels.
 
-ISO SHA-256: `99adbb0c6051f6fff666a515166b39dd26f01a9189ddd4d1d0438fbe8be4b094`.
-Appliance closure: `/nix/store/8ibw8wyizk1da51379mgnmd5qkvgzyvx-nixos-system-anima-Preview`.
+ISO SHA-256: `139011f6fa415a055a7364bdac5de622322cdb27aef58e94e6530ea2ad145dcb`.
+Appliance closure: `/nix/store/n6z8g1bnsh00vvgjxjrpvvd546cxj8yd-nixos-system-anima-Preview`.
 The signed public package matches this exact appliance closure; its signature, size and archive digest were verified locally.
 
-Local evidence: `/home/okita/.local/share/anima-os-prototype/2026-11-20/node-final-001/`. The installer and console screenshots in that folder show the battery fixture; no synthetic battery data ships in the image.
+Local evidence: `/home/okita/.local/share/anima-os-prototype/2026-11-20/node-delivery-002/`. The installer and console screenshots in that folder show the battery fixture; no synthetic battery data ships in the image.
 
-The [final automatic-recovery test](installed-operation-recovery.json) passed: an actually masked NetworkManager caused two failed candidate boots, followed by the previous system with its identity and persistent data intact.
+The [automatic-recovery test](installed-operation-recovery.json) passed: an actually masked NetworkManager caused two failed candidate boots, followed by the previous system with its identity and persistent data intact.
 
 ## Hosted delivery check
 
 Public delivery rejected urllib's default client identity with Cloudflare HTTP 403 / code 1010. The feed was not published. An explicit `AnimaOS-Updater/1` User-Agent returned HTTP 200; the production fetch function then downloaded and verified the complete public archive. The image was rebuilt with this transport correction before delivery. Signature, redirect and size restrictions remain unchanged.
+
+The transport-corrected final ISO (source `31257587`) repeated all five lifecycle checks successfully. Automatic fallback was verified on the preceding image with identical boot/recovery code; the transport correction only adds the public HTTP client identity.
