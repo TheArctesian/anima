@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mobile-metrics-enrolled"
+description = "Enables the mobile_metrics_enrolled command without any pre-configured scope."
+commands.allow = ["mobile_metrics_enrolled"]
+
+[[permission]]
+identifier = "deny-mobile-metrics-enrolled"
+description = "Denies the mobile_metrics_enrolled command without any pre-configured scope."
+commands.deny = ["mobile_metrics_enrolled"]

@@ -78,7 +78,13 @@ pub fn run(
         Stdout::Discard => Stdio::null(),
         Stdout::Capture { .. } => Stdio::piped(),
     };
-    let mut child = Command::new(program)
+    let mut command = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    let mut child = command
         .args(args)
         .stdin(Stdio::null())
         .stdout(stdout)
@@ -109,6 +115,7 @@ pub fn run(
 ///
 /// # Errors
 /// As `run`, except that `TimedOut` is never returned.
+#[cfg(unix)]
 pub fn open(opener: &str, target: &OsStr) -> Result<(), OsProgramError> {
     open_within(opener, target, OPENER_PATIENCE)
 }
@@ -174,7 +181,7 @@ fn read_output(child: &mut Child, output: Stdout) -> Result<Vec<u8>, OsProgramEr
     Ok(bytes)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     //! The tests run `/bin/sh`, `/bin/sleep` or a missing program; none opens an app.
 

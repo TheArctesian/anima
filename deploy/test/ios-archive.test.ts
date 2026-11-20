@@ -13,7 +13,8 @@ function plan(set: Record<string, string>, ...given: string[]): { exitCode: numb
 
 const SIGNED = { IOS_SIGN_IDENTITY: "Apple Distribution: Example LLC (ABCDE12345)", IOS_PROFILE: "/nowhere/app.mobileprovision" };
 
-describe("the plan of a run", () => {
+// This script packages iOS on Unix release hosts.
+describe.skipIf(process.platform === "win32")("the plan of a run", () => {
   test("M5-3: the build number comes from the version, and with no identity there is no signature", () => {
     expect(plan({}, "0.7.95")).toEqual({ exitCode: 0, printed: "version=0.7.95\nbuild=795\nsigned=no", said: "" });
   });
@@ -35,7 +36,8 @@ describe("the plan of a run", () => {
   });
 });
 
-describe("what is refused before a build", () => {
+// This script packages iOS on Unix release hosts.
+describe.skipIf(process.platform === "win32")("what is refused before a build", () => {
   test.each([
     [{ IOS_SIGN_IDENTITY: SIGNED.IOS_SIGN_IDENTITY }, "0.1.0", "IOS_PROFILE must name"],
     [{ IOS_PROFILE: SIGNED.IOS_PROFILE }, "0.1.0", "IOS_SIGN_IDENTITY must name"],

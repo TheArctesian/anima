@@ -31,7 +31,9 @@ pub fn beside(
     let folder = programs_folder(executable, release, dev).ok_or(LocalHubError::NotCarried)?;
     let tree = if release {
         let above = folder.parent().ok_or(LocalHubError::NotCarried)?;
-        if macos {
+        if cfg!(windows) {
+            folder.join("database")
+        } else if macos {
             above.join("Resources/database")
         } else {
             above.join(LINUX_TREE)
@@ -43,10 +45,22 @@ pub fn beside(
             .ok_or(LocalHubError::NotCarried)?
     };
     let carried = Carried {
-        program: folder.join(PROGRAM),
+        program: folder.join(if cfg!(windows) {
+            "anima-local-hub.exe"
+        } else {
+            PROGRAM
+        }),
         tree,
     };
-    let is_there = carried.program.is_file() && carried.tree.join("bin/postgres").is_file();
+    let is_there = carried.program.is_file()
+        && carried
+            .tree
+            .join(if cfg!(windows) {
+                "bin/postgres.exe"
+            } else {
+                "bin/postgres"
+            })
+            .is_file();
     if !is_there {
         return Err(LocalHubError::NotCarried);
     }

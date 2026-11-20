@@ -6,7 +6,7 @@ const endless = (): Response =>
   new Response(
     new ReadableStream({
       async pull(controller) {
-        controller.enqueue(new Uint8Array(64 * 1024));
+        controller.enqueue(new Uint8Array(2 * 1024 * 1024));
         await Bun.sleep(0);
       },
     }),

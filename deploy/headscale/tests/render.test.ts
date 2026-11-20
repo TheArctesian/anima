@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 // config/render.sh refuses unsafe input and never writes a partial config
 // (WP-03 T2; VPS-002, VPS-003). Runs the script with fake `ip` and `envsubst`.
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -71,7 +72,7 @@ function expectRefused(run: Run, message: RegExp): void {
   expect(existsSync(result.out)).toBe(false);
 }
 
-describe('render.sh refuses unsafe input and writes nothing (VPS-002, VPS-003)', () => {
+describe.skipIf(process.platform === "win32")('render.sh refuses unsafe input and writes nothing (VPS-002, VPS-003)', () => {
   test('unset, empty or malformed VPS_PUBLIC_IPV4 is refused', () => {
     for (const ip of [undefined, '', '1.2.3', '1.2.3.4.5', '01.2.3.4', '256.1.1.1', ' 80.240.10.10', '1.2.3.4\n']) {
       expectRefused({ ip }, /not a dotted-quad/);
@@ -105,7 +106,7 @@ describe('render.sh refuses unsafe input and writes nothing (VPS-002, VPS-003)',
   });
 });
 
-describe('render.sh output (VPS-002, VPS-003)', () => {
+describe.skipIf(process.platform === "win32")('render.sh output (VPS-002, VPS-003)', () => {
   test('good input writes a private config equal to the tested template rendering', async () => {
     const result = render({ ip: address });
     expect(result.code).toBe(0);

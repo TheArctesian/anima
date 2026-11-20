@@ -7,9 +7,8 @@
 //! <root>/programs/previous/  the copy before, until `put_in_place` removes it
 //! ```
 
-use std::fs::{self, DirBuilder, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::{self, Read as _};
-use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 
 use anima_database::{Tree, owner_only};
@@ -17,8 +16,9 @@ use anima_database::{Tree, owner_only};
 use crate::Folders;
 use crate::members::{Carried, LOCAL_HUB, PROGRAMS};
 
+mod access;
 pub mod digest;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 pub(crate) mod tests;
 pub mod version;
 
@@ -158,10 +158,9 @@ fn copy_folder(from: &Path, to: &Path, depth: usize, budget: &mut Budget) -> Res
     if depth == 0 {
         return Err(CopyError::TooLarge);
     }
-    DirBuilder::new()
-        .mode(0o700)
-        .create(to)
-        .map_err(io_error("make", to))?;
+    #[cfg(windows)]
+    access::inspect_folder(from).map_err(io_error("read", from))?;
+    access::folder(to).map_err(io_error("make", to))?;
     for entry in fs::read_dir(from).map_err(io_error("read", from))? {
         let entry = entry.map_err(io_error("read", from))?;
         budget.entries = budget.entries.checked_sub(1).ok_or(CopyError::TooLarge)?;
@@ -171,7 +170,7 @@ fn copy_folder(from: &Path, to: &Path, depth: usize, budget: &mut Budget) -> Res
             copy_folder(&from, &to, depth - 1, budget)?;
         } else if kind.is_file() {
             let found = entry.metadata().map_err(io_error("read", &from))?;
-            let runs = found.permissions().mode() & 0o111 != 0;
+            let runs = access::executable(&from, &found);
             copy_file(&from, &to, if runs { 0o700 } else { 0o600 }, budget)?;
         } else if kind.is_symlink() {
             copy_link(&from, &to)?;
@@ -185,8 +184,16 @@ fn copy_folder(from: &Path, to: &Path, depth: usize, budget: &mut Budget) -> Res
 /// A library's short name is a link to the file beside it. A link that names a path outside
 /// its own folder could make the copy run a file that is not in the copy.
 fn copy_link(from: &Path, to: &Path) -> Result<(), CopyError> {
-    let target = link_target(from)?;
-    std::os::unix::fs::symlink(&target, to).map_err(io_error("make", to))
+    #[cfg(unix)]
+    {
+        let target = link_target(from)?;
+        std::os::unix::fs::symlink(&target, to).map_err(io_error("make", to))
+    }
+    #[cfg(windows)]
+    {
+        let _ = to;
+        Err(CopyError::Refused(from.to_owned()))
+    }
 }
 
 /// The target of the link at `from`, when it names a file beside the link.
@@ -203,13 +210,7 @@ fn link_target(from: &Path) -> Result<PathBuf, CopyError> {
 }
 
 fn copy_file(from: &Path, to: &Path, mode: u32, budget: &mut Budget) -> Result<(), CopyError> {
-    use nix::fcntl::OFlag;
-    // No link is followed, and a pipe that took the file's place does not hold the copy.
-    let source = OpenOptions::new()
-        .read(true)
-        .custom_flags((OFlag::O_NOFOLLOW | OFlag::O_NONBLOCK).bits())
-        .open(from)
-        .map_err(io_error("read", from))?;
+    let source = access::source(from).map_err(io_error("read", from))?;
     let found = source.metadata().map_err(io_error("read", from))?;
     if !found.is_file() {
         return Err(CopyError::Refused(from.to_path_buf()));
@@ -218,16 +219,10 @@ fn copy_file(from: &Path, to: &Path, mode: u32, budget: &mut Budget) -> Result<(
         .bytes
         .checked_sub(found.len())
         .ok_or(CopyError::TooLarge)?;
-    let mut copy: File = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(mode)
-        .open(to)
-        .map_err(io_error("write", to))?;
+    let mut copy: File = access::create(to, mode).map_err(io_error("write", to))?;
     // No more than the size that was counted, also when the file grows meanwhile.
     io::copy(&mut source.take(found.len()), &mut copy).map_err(io_error("write", to))?;
     // The mode of a new file is cut by the umask; the unit must be able to run a program.
-    copy.set_permissions(fs::Permissions::from_mode(mode))
-        .map_err(io_error("write", to))?;
+    access::set_mode(&copy, mode).map_err(io_error("write", to))?;
     copy.sync_all().map_err(io_error("write", to))
 }

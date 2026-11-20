@@ -7,10 +7,12 @@
   "permissions": [
     "allow-link-join",
     "allow-link-status",
+    "allow-hub-listener-check",
     "allow-link-leave",
     "allow-cloud-sign-in-start",
     "allow-cloud-sign-in-poll",
     "allow-cloud-sign-in-resume",
+    "allow-cloud-sign-out",
     "allow-cloud-sign-in-session",
     "allow-cloud-hub",
     "allow-cloud-hub-access",

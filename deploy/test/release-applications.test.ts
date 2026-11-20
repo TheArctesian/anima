@@ -12,7 +12,7 @@ const MAP = readFileSync(join(ROOT, "deploy", "release", "applications.txt"), "u
 interface Package {
   name: string;
   manifest_path: string;
-  dependencies: { name: string; kind: string | null; path?: string }[];
+  dependencies: { name: string; kind: string | null; path?: string; target: string | null }[];
 }
 
 /**
@@ -20,7 +20,7 @@ interface Package {
  * its tests. It reads only the manifests of the workspace (`--no-deps`), so it needs no crate of
  * the registry on the computer and no network.
  */
-function cratesOf(program: string): string[] {
+function cratesOf(program: string, includes: (dependency: Package["dependencies"][number]) => boolean = () => true): string[] {
   const ran = Bun.spawnSync(["cargo", "metadata", "--format-version", "1", "--no-deps", "--offline"], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
   if (ran.exitCode !== 0) throw new Error(`cargo metadata failed: ${ran.stderr.toString()}`);
   const packages = (JSON.parse(ran.stdout.toString()) as { packages: Package[] }).packages;
@@ -34,10 +34,12 @@ function cratesOf(program: string): string[] {
     if (used.has(folder)) continue;
     used.add(folder);
     for (const dependency of byFolder.get(folder)?.dependencies ?? []) {
-      if (dependency.kind !== "dev" && dependency.path !== undefined && byFolder.has(dependency.path)) waiting.push(dependency.path);
+      if (dependency.kind !== "dev" && dependency.path !== undefined && byFolder.has(dependency.path) && includes(dependency)) {
+        waiting.push(dependency.path);
+      }
     }
   }
-  return [...used].map((folder) => `${relative(ROOT, folder)}/`).sort();
+  return [...used].map((folder) => `${relative(ROOT, folder).replaceAll("\\", "/")}/`).sort();
 }
 
 /** The folders below `crates/` that no `out` line of `application` names. */
@@ -61,6 +63,8 @@ describe("the map of `anima` alone (task B8h)", () => {
 
 describe("the map of the iOS application (task B8i)", () => {
   test.skipIf(Bun.which("cargo") === null)("the crates that affect it are the crates below `crates/` that the shell is built from", () => {
-    expect(cratesIn("ios")).toEqual(cratesOf("anima-app").filter((folder) => folder.startsWith("crates/")));
+    // The release map includes the desktop shell's shared crates, while Android-only code cannot affect iOS.
+    const crates = cratesOf("anima-app", (dependency) => dependency.target !== 'cfg(target_os = "android")');
+    expect(cratesIn("ios")).toEqual(crates.filter((folder) => folder.startsWith("crates/")));
   });
 });

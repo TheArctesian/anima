@@ -15,12 +15,14 @@ let app: ReturnType<typeof mount> | undefined;
 
 beforeEach(() => {
   mocks.origin = 'https://hub.anima.ing';
+  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (X11; Linux x86_64)');
 });
 
 afterEach(async () => {
   if (app) await unmount(app);
   app = undefined;
   document.body.innerHTML = '';
+  vi.restoreAllMocks();
 });
 
 /** A shell whose calls a test can replace. */
@@ -129,6 +131,14 @@ it('AWK-003: Linux has no set-up row, and a desktop that decides the lid itself 
   expect(button('Remove')).toBeUndefined();
   expect((select('stay-awake-level').options[2] as HTMLOptionElement).disabled).toBe(true);
   expect(state()).toContain('This desktop controls the closed lid.');
+});
+
+it('WIN2: Windows without lid control explains that it is unavailable without a Mac setup step', async () => {
+  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+  await show(fake({ ...OFF, lid: 'unsupported' }), false);
+  expect(state()).toContain('Closed-lid sleep control is unavailable on this computer.');
+  expect(button('Set up')).toBeUndefined();
+  expect((select('stay-awake-level').options[2] as HTMLOptionElement).disabled).toBe(true);
 });
 
 it('AWK-006: the operator sets and removes the battery floor', async () => {

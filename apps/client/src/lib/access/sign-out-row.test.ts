@@ -12,18 +12,21 @@ import { COOKIE_KEPT } from './sign-out';
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
   clearAccessToken: vi.fn(),
+  clearCloudSession: vi.fn(),
   goToSignIn: vi.fn(),
+  goToWelcome: vi.fn(),
   loadClientAt: vi.fn(),
   desktop: true,
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
+vi.mock('$lib/desktop/cloud/shell', () => ({ clearCloudSession: mocks.clearCloudSession }));
 vi.mock('$lib/platform/platform', async () => {
   const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
-vi.mock('./navigation', () => ({ goToSignIn: mocks.goToSignIn, loadClientAt: mocks.loadClientAt }));
+vi.mock('./navigation', () => ({ goToSignIn: mocks.goToSignIn, goToWelcome: mocks.goToWelcome, loadClientAt: mocks.loadClientAt }));
 
 let app: ReturnType<typeof mount> | undefined;
 let sent: ReturnType<typeof fakeHub>['sent'];
@@ -48,7 +51,9 @@ async function signOutWith(logout: HubResult<unknown>): Promise<HTMLElement> {
 
 beforeEach(() => {
   mocks.clearAccessToken.mockReset().mockResolvedValue(undefined);
+  mocks.clearCloudSession.mockReset().mockResolvedValue(undefined);
   mocks.goToSignIn.mockReset();
+  mocks.goToWelcome.mockReset();
   mocks.loadClientAt.mockReset();
   mocks.desktop = true;
 });
@@ -81,6 +86,19 @@ it('CLI-003: on desktop, Sign out clears the key store and goes to sign-in withi
   expect(mocks.clearAccessToken).toHaveBeenCalledOnce();
   expect(mocks.goToSignIn).toHaveBeenCalledOnce();
   expect(mocks.loadClientAt).not.toHaveBeenCalled();
+});
+
+it('MOB-006: tablet sign-out clears the hosted session before returning to Welcome', async () => {
+  const agent = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 15; Tablet)');
+  try {
+    await signOutWith(ok({ logout: true }));
+    expect(mocks.clearAccessToken).toHaveBeenCalledOnce();
+    expect(mocks.clearCloudSession).toHaveBeenCalledBefore(mocks.goToWelcome);
+    expect(mocks.goToWelcome).toHaveBeenCalledOnce();
+    expect(mocks.goToSignIn).not.toHaveBeenCalled();
+  } finally {
+    agent.mockRestore();
+  }
 });
 
 it('MOT-007: the alert is in the row from the start, empty, so a message only fills it', async () => {

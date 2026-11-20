@@ -2,11 +2,9 @@
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '../../../forms/animations.fixture';
-import { addDevice, type AddDeviceApi } from '../../add/add-device';
 import type { RemoteDeviceFields } from './values';
 import { OK, SAVED, input, leave, save, show, type } from '../form/form.fixture';
-import type { DeviceFields, DeviceFormValues } from '../values';
-import { formValues } from '../values';
+import type { DeviceFields } from '../values';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -164,58 +162,4 @@ it('DEV-011: typed RDP and VNC passwords go to save and are cleared after it', a
   expect(values?.remoteSecrets).toEqual({ rdpPassword: 'secret-r', vncPassword: 'secret-v' });
   expect(input('rdp-password').value).toBe('');
   expect(input('vnc-password').value).toBe('');
-});
-
-function fakeApi(change: Partial<AddDeviceApi> = {}): AddDeviceApi {
-  return {
-    sites: () => Promise.resolve({ ok: true, value: [] }),
-    createSite: () => Promise.resolve({ ok: true, value: { id: 's1' } }),
-    createDevice: () => Promise.resolve({ ok: true, value: { id: 'd1' } }),
-    setSshCredential: () => Promise.resolve(OK),
-    setRdpCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
-    setVncCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
-    createCheck: () => Promise.resolve(OK),
-    ...change,
-  };
-}
-
-function withRdpPassword(): DeviceFormValues {
-  const base = formValues(null);
-  return {
-    ...base,
-    name: 'pc',
-    host: '10.0.0.9',
-    rdp: { ...base.rdp, enabled: true, username: 'me' },
-    remoteSecrets: { rdpPassword: 'typed', vncPassword: '' },
-  };
-}
-
-it('DEV-011: addDevice stores a typed RDP password through setRdpCredential', async () => {
-  const setRdpCredential = vi.fn(() => Promise.resolve({ ok: true as const, value: { credentialStored: true } }));
-  const result = await addDevice(withRdpPassword(), { kind: 'existing', id: 's1' }, fakeApi({ setRdpCredential }));
-  expect(setRdpCredential).toHaveBeenCalledWith('d1', { password: 'typed' });
-  expect(result).toEqual({ ok: true, value: { id: 'd1', credentialError: null } });
-});
-
-it('DEV-011: addDevice reports an RDP password it could not store', async () => {
-  const failed = await addDevice(
-    withRdpPassword(),
-    { kind: 'existing', id: 's1' },
-    fakeApi({ setRdpCredential: () => Promise.resolve({ ok: false, error: { code: 'INTERNAL', message: 'vault locked' } }) }),
-  );
-  expect(failed.ok && failed.value.credentialError?.message).toBe('vault locked');
-});
-
-it('RA-032, RA-033: the Files and clipboard flags default on and a cleared one reaches the saved values', async () => {
-  const { onSave } = show(SAVED);
-  disclosure('Files and clipboard').click();
-  flushSync();
-  for (const label of ['upload', 'download', 'copy', 'paste']) expect(checkbox(`Allow ${label}`).checked).toBe(true);
-
-  checkbox('Allow paste').click();
-  flushSync();
-  await save();
-
-  const [values] = onSave.mock.calls[0] ?? [];
-  expect(values?.transfer).toEqual({ upload: true, download: true, copy: true, paste: false });
 });

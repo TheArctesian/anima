@@ -61,6 +61,8 @@ pub fn verify(clone: &Path) -> Command {
 fn go_platform(triple: &str) -> String {
     let os = if triple.ends_with("-apple-darwin") {
         "darwin"
+    } else if triple.ends_with("-windows-msvc") {
+        "windows"
     } else {
         "linux"
     };
@@ -83,11 +85,28 @@ pub fn copies(clone: &Path, target: Target) -> Vec<(PathBuf, PathBuf)> {
         .iter()
         .map(|triple| {
             (
-                clone
-                    .join(OUTPUT)
-                    .join(format!("{PROGRAM}-{}", go_platform(triple))),
+                clone.join(OUTPUT).join(format!(
+                    "{PROGRAM}-{}{}",
+                    go_platform(triple),
+                    if triple.ends_with("-windows-msvc") {
+                        ".exe"
+                    } else {
+                        ""
+                    }
+                )),
                 staged_as(clone, PROGRAM, triple),
             )
         })
         .collect()
+}
+
+/// Native Windows recipe and module definitions checked before executing Go.
+pub const WINDOWS_COMMITTED: [&str; 3] = ["link/build-windows.ts", "link/go.mod", "link/go.sum"];
+
+pub fn build_for(clone: &Path, target: Target) -> Command {
+    if target == Target::WindowsX86_64 {
+        with_go_environment(command(Program::Bun, clone, &["link/build-windows.ts"]))
+    } else {
+        build(clone)
+    }
 }

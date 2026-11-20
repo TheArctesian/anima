@@ -27,6 +27,8 @@ enum TargetArg {
     #[value(name = "linux-x86-64")]
     LinuxX8664,
     DarwinUniversal,
+    #[value(name = "windows-x86-64")]
+    WindowsX8664,
 }
 
 impl CreateArgs {
@@ -74,6 +76,7 @@ impl TargetArg {
         match self {
             Self::LinuxX8664 => release_create::BuildTarget::LINUX_X86_64,
             Self::DarwinUniversal => release_create::BuildTarget::DARWIN_UNIVERSAL,
+            Self::WindowsX8664 => release_create::BuildTarget::WINDOWS_X86_64,
         }
     }
 }

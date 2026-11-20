@@ -1,13 +1,11 @@
 <script lang="ts">
   import { accessApi } from '$lib/access/api';
   import { signInNeeded } from '$lib/access/guard';
-  import { goToSignIn } from '$lib/access/navigation';
-  import { signOut } from '$lib/access/sign-out';
-  import { clearAccessToken } from '$lib/desktop/token';
+  import { goToSignIn, goToWelcome } from '$lib/access/navigation';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { capabilities } from '$lib/platform/platform';
+  import { signOutMobile } from '$lib/access/mobile/sign-out';
 
   // The Account rows of the phone layout (mockup 7): the user name, whether two-factor is on, and Sign out.
   const hub = useHub();
@@ -26,9 +24,9 @@
   async function leave(): Promise<void> {
     if (busy) return;
     busy = true;
-    const kept = await signOut({ api, address: hub.address, desktop: capabilities().keyStore, clearToken: clearAccessToken });
+    const kept = await signOutMobile(api, hub.address);
     busy = false;
-    if (kept === null) goToSignIn();
+    if (kept === null) goToWelcome();
     else problem = kept;
   }
 </script>

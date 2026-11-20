@@ -18,6 +18,11 @@ describe('readCloudDevice (HMD-044)', () => {
     expect(shell.invoke).toHaveBeenCalledExactlyOnceWith('cloud_device');
   });
 
+  it.each(['MACOS', 'LINUX', 'WINDOWS'])('reads a %s computer for automatic device and daemon setup', async (os) => {
+    shell.invoke.mockResolvedValue({ ...DEVICE, os });
+    expect(await readCloudDevice()).toEqual({ ...DEVICE, os });
+  });
+
   it('a computer with no name is still a device', async () => {
     shell.invoke.mockResolvedValue({ ...DEVICE, computer: '' });
     expect(await readCloudDevice()).toEqual({ ...DEVICE, computer: '' });
@@ -29,7 +34,7 @@ describe('readCloudDevice (HMD-044)', () => {
     ['no link name', { ...DEVICE, name: '' }],
     ['a link name that is not text', { ...DEVICE, name: 7 }],
     ['no computer name field', { name: DEVICE.name, os: 'MACOS' }],
-    ['an OS the app does not run on', { ...DEVICE, os: 'WINDOWS' }],
+    ['an OS the app does not run on', { ...DEVICE, os: 'UNKNOWN' }],
   ])('an answer with %s is not a device', async (_what, answer) => {
     shell.invoke.mockResolvedValue(answer);
     expect(await readCloudDevice()).toBeNull();

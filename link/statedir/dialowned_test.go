@@ -2,6 +2,7 @@ package statedir_test
 
 import (
 	"errors"
+	"github.com/TheArctesian/anima/link/testpath"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 func socketIn(t *testing.T) (folder, socket string) {
 	t.Helper()
 	// Under /tmp, not t.TempDir(): a socket's path must be short.
-	folder, err := os.MkdirTemp("/tmp", "own")
+	folder, err := testpath.MkdirTemp("own")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +28,7 @@ func socketIn(t *testing.T) (folder, socket string) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { listener.Close() })
-	if err := os.Chmod(socket, 0o600); err != nil {
+	if err := testpath.Chmod(socket, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return folder, socket
@@ -61,7 +62,7 @@ func exposures() map[string]func(t *testing.T, folder, socket string) string {
 			return link
 		},
 		"a socket that others can open": func(t *testing.T, _, socket string) string {
-			if err := os.Chmod(socket, 0o666); err != nil {
+			if err := testpath.Chmod(socket, 0o666); err != nil {
 				t.Fatal(err)
 			}
 			return socket
@@ -69,12 +70,12 @@ func exposures() map[string]func(t *testing.T, folder, socket string) string {
 		// The folder is private, but the path goes through a link that any
 		// user could turn to a folder of their own after the check.
 		"a path through a link in a folder that others can write": func(t *testing.T, folder, _ string) string {
-			shared, err := os.MkdirTemp("/tmp", "shared")
+			shared, err := testpath.MkdirTemp("shared")
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { os.RemoveAll(shared) })
-			if err := os.Chmod(shared, 0o777); err != nil {
+			if err := testpath.Chmod(shared, 0o777); err != nil {
 				t.Fatal(err)
 			}
 			if err := os.Symlink(folder, filepath.Join(shared, "l")); err != nil {

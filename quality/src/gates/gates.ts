@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 /** An executable a gate needs on `PATH`, how to install it, and the folder that install puts it in. */
 export interface Requirement {
@@ -75,7 +75,7 @@ export function gateList(baseRef: string): Gate[] {
     goGate("go-revive", "tool", "revive", "-config", "revive.toml", "-set_exit_status", "./..."),
     goGate("go-test", "test", "-race", "./..."),
     // `-o /dev/null`: with one main package, a plain `go build` writes the program into `link/`.
-    goGate("go-build", "build", "-o", "/dev/null", "./..."),
+    goGate("go-build", "build", "-o", process.platform === "win32" ? "NUL" : "/dev/null", "./..."),
     { name: "install", group: "bun", argv: ["bun", "install", "--frozen-lockfile"] },
     { name: "lint", group: "bun", argv: ["bun", "run", "lint"] },
     { name: "check", group: "bun", argv: ["bun", "run", "check"] },
@@ -131,8 +131,8 @@ export function runGates(
  * A missing tool fails its gate, never skips it (CQ-024).
  */
 export function missingRequirement(gate: Gate, pathEnv: string, exists: (path: string) => boolean): string | undefined {
-  const dirs = pathEnv.split(":").filter((dir) => dir !== "");
-  const missing = (gate.requires ?? []).find((need) => !dirs.some((dir) => exists(join(dir, need.executable))));
+  const dirs = pathEnv.split(delimiter).filter((dir) => dir !== "");
+  const missing = (gate.requires ?? []).find((need) => !dirs.some((dir) => exists(join(dir, process.platform === "win32" ? `${need.executable}.exe` : need.executable))));
   if (missing === undefined) return undefined;
   return `${missing.executable} is not on PATH; install it with \`${missing.install}\` and put its folder (${missing.folder}) on PATH`;
 }

@@ -76,6 +76,7 @@ impl Architecture {
 pub enum Os {
     Macos,
     Linux,
+    Windows,
 }
 
 impl Os {
@@ -85,6 +86,7 @@ impl Os {
         match text {
             "macos" => Some(Self::Macos),
             "linux" => Some(Self::Linux),
+            "windows" => Some(Self::Windows),
             _ => None,
         }
     }
@@ -94,6 +96,7 @@ impl Os {
         match self {
             Self::Macos => "macos",
             Self::Linux => "linux",
+            Self::Windows => "windows",
         }
     }
 }

@@ -1,18 +1,21 @@
 //! The hub's client of the link's control socket: one connection for each request, checked
-//! before it opens ([`owned::check`]) and after ([`peer_is`]), the request line out and the
+//! before it opens (private path and ACL), and on Unix after it connects (peer UID), the request line out and the
 //! reply line in, all within [`CALL_LIMIT`].
 
 use std::{io::ErrorKind, path::PathBuf, time::Duration};
 
+#[cfg(windows)]
+use anima_windows::socket::Stream as UnixStream;
 use serde::de::DeserializeOwned;
-use tokio::{
-    io::{AsyncReadExt as _, AsyncWriteExt as _},
-    net::UnixStream,
-};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+#[cfg(unix)]
+use tokio::net::UnixStream;
 use zeroize::Zeroizing;
 
+#[cfg(unix)]
+use super::owned;
 use super::{
-    Error, owned,
+    Error,
     wire::{MAX_LINE, Request, parse_reply},
 };
 
@@ -28,17 +31,22 @@ const FIRST_READ: usize = 8 * 1024;
 #[derive(Clone, Debug)]
 pub(super) struct Control {
     path: PathBuf,
+    #[cfg(unix)]
     uid: u32,
 }
 
 impl Control {
+    #[cfg(unix)]
     pub fn new(path: PathBuf, uid: u32) -> Self {
         Self { path, uid }
     }
 
     /// The control socket at `path`, which the hub's own user must own and serve.
     pub fn of_hub(path: PathBuf) -> Self {
-        Self::new(path, rustix::process::geteuid().as_raw())
+        #[cfg(unix)]
+        return Self::new(path, rustix::process::geteuid().as_raw());
+        #[cfg(windows)]
+        Self { path }
     }
 
     /// Sends `request` and reads its reply.
@@ -54,18 +62,23 @@ impl Control {
     }
 
     async fn exchange(&self, request: Request<'_>) -> Result<Zeroizing<Vec<u8>>, Error> {
-        let (path, uid) = (self.path.clone(), self.uid);
-        // The check reads file metadata and may run `/bin/ls`: off the async workers.
-        tokio::task::spawn_blocking(move || owned::check(&path, uid))
-            .await
-            .map_err(|_| Error::Connection)??;
+        #[cfg(unix)]
+        {
+            let (path, uid) = (self.path.clone(), self.uid);
+            // The check reads file metadata and may run `/bin/ls`: off the async workers.
+            tokio::task::spawn_blocking(move || owned::check(&path, uid))
+                .await
+                .map_err(|_| Error::Connection)??;
+        }
         let mut stream =
             UnixStream::connect(&self.path)
                 .await
                 .map_err(|error| match error.kind() {
                     ErrorKind::NotFound | ErrorKind::ConnectionRefused => Error::NotRunning,
+                    ErrorKind::PermissionDenied => Error::Exposed("the socket path is not private"),
                     _ => Error::Connection,
                 })?;
+        #[cfg(unix)]
         peer_is(&stream, self.uid)?;
         stream
             .write_all(&request.line())
@@ -79,6 +92,7 @@ impl Control {
 ///
 /// # Errors
 /// `Exposed` for another user's process; `Connection` when the system does not say.
+#[cfg(unix)]
 pub(super) fn peer_is(stream: &UnixStream, uid: u32) -> Result<(), Error> {
     let peer = stream.peer_cred().map_err(|_| Error::Connection)?;
     if peer.uid() == uid {

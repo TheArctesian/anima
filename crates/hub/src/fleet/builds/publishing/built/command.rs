@@ -36,7 +36,7 @@ const SIGNED_AT: &str = "SOURCE_DATE_EPOCH";
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseError {
     #[error(
-        "usage: anima-hub release <sign | check | publish> <linux-x86_64 | darwin-universal> \
+        "usage: anima-hub release <sign | check | publish> <linux-x86_64 | darwin-universal | windows-x86_64> \
          <version> <folder>"
     )]
     Usage,

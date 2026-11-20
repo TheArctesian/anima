@@ -5,8 +5,6 @@
 mod device;
 mod sftp;
 
-use std::os::unix::fs::PermissionsExt as _;
-
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -33,8 +31,7 @@ async fn reachable_device(anima: &Anima, device: &Device) -> String {
 
     let secret = tempfile::NamedTempFile::new().expect("a file");
     std::fs::write(secret.path(), format!("{PASSWORD}\n")).expect("written");
-    let private = std::fs::Permissions::from_mode(0o600);
-    std::fs::set_permissions(secret.path(), private).expect("0600");
+    crate::kit::file_access::mode(secret.path(), 0o600);
     let path = secret.path().to_str().expect("UTF-8");
     let line = format!("device credential set ssh box --from-file {path}");
     let stored = anima.run(&words(&line)).await;

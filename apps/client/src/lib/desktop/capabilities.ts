@@ -16,7 +16,7 @@ const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, dev
  * What the shell can do, or `null` outside it (WP-42 D-4). On a phone or a tablet the answers are the mobile shell's.
  * The desktop shell has the key store, web view tabs, the
  * updater, the process log, the builder (BLD-026), the command line tool's link or launcher (INS-004) and the
- * stay-awake control (AWK-004), the local hub and the device link (FRN-002, FRN-005; the app runs on macOS and Linux), and reads
+ * stay-awake control (AWK-004), the local hub and the device link (FRN-002, FRN-005; the app runs on macOS, Linux and Windows), and reads
  * this computer; System Settings at Sharing exists on a Mac only (R-059, R-079), and only the Mac window draws under
  * its title bar. It keeps the copy of recent hub answers (FND-007). It has no pop-out window command yet, so `popOut` is no (RA-002, WP-14 H-2).
  */

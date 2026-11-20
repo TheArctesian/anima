@@ -11,6 +11,8 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
   go: 'Go (for the gates of link/)',
   postgres: 'PostgreSQL 17',
   'tauri-packages': 'the Tauri system packages',
+  node: 'Node.js for the client tests',
+  'go-race-compiler': 'MinGW GCC for the Go race tests',
   'tree-tools': 'the tools that build the PostgreSQL tree (make, bison, flex, patchelf, readelf, curl and the zlib headers in /usr)',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
   'signing-identity': 'the Developer ID certificate in the login keychain',
@@ -20,7 +22,7 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
     'the Rust target x86_64-apple-darwin (rustup target add x86_64-apple-darwin)',
 };
 
-const OS_NAMES: Readonly<Record<BuilderPlatform['os'], string>> = { LINUX: 'Linux', MACOS: 'macOS' };
+const OS_NAMES: Readonly<Record<BuilderPlatform['os'], string>> = { LINUX: 'Linux', MACOS: 'macOS', WINDOWS: 'Windows' };
 const ARCH_NAMES: Readonly<Record<BuilderPlatform['arch'], string>> = { X86_64: 'x86-64', AARCH64: 'Apple silicon (arm64)' };
 
 /** A platform as the operator reads it, for example "Linux, x86-64". */

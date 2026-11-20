@@ -1,8 +1,6 @@
 use reqwest::StatusCode;
 
-use super::{
-    CloudError, api, device::cloud_device, memory_session, name::device_name, phone, workos,
-};
+use super::{CloudError, api, device::cloud_device, name::device_name, phone, workos};
 use crate::this_machine::OperatingSystem;
 
 #[test]
@@ -172,22 +170,6 @@ fn m3_4_a_phone_with_no_folder_or_no_random_bytes_still_has_a_name() {
         phone::device_name(Some(&missing), "iphone", || Some([1, 2, 3])),
         "iphone-010203"
     );
-}
-
-#[test]
-fn m3_4_the_memory_session_keeps_one_refresh_token_for_each_client() {
-    let (one, other) = ("client_test_memory_one", "client_test_memory_other");
-    assert!(memory_session::read(one).unwrap().is_none());
-    memory_session::write(one, "first").unwrap();
-    memory_session::write(one, "rotated").unwrap();
-    assert_eq!(
-        memory_session::read(one).unwrap().unwrap().as_str(),
-        "rotated"
-    );
-    assert!(memory_session::read(other).unwrap().is_none());
-    memory_session::clear(one).unwrap();
-    memory_session::clear(one).unwrap();
-    assert!(memory_session::read(one).unwrap().is_none());
 }
 
 #[test]

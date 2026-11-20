@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 // `harden.sh broker` against the fake VPS (R-055, VP-2, VP-8, D-14, H2, L5, M3).
 import { afterEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { readdirSync, statSync } from 'node:fs';
@@ -29,7 +30,7 @@ function withBinary(host: Host, count = '4'): string {
   return `--sha256=${sha256(text)}`;
 }
 
-describe('harden.sh broker: refusals', () => {
+describe.skipIf(process.platform === "win32")('harden.sh broker: refusals', () => {
   test('VPS-005: a dry run changes nothing and runs nothing from the new binary', () => {
     const host = fakeHost();
     const sum = withBinary(host);
@@ -82,7 +83,7 @@ describe('harden.sh broker: refusals', () => {
 
 });
 
-describe('harden.sh broker: install', () => {
+describe.skipIf(process.platform === "win32")('harden.sh broker: install', () => {
   test('5.1: a new broker.conf is the node count + 5; an existing one is kept', () => {
     const host = fakeHost();
     expect(host.run([withBinary(host), 'broker']).code).toBe(0);
@@ -144,7 +145,7 @@ describe('harden.sh broker: install', () => {
 
 });
 
-describe('harden.sh broker: units', () => {
+describe.skipIf(process.platform === "win32")('harden.sh broker: units', () => {
   test('H2: the request and the audit take the same lock, and the audit runs the audit entry point', () => {
     const host = fakeHost();
     expect(host.run([withBinary(host), 'broker']).code).toBe(0);

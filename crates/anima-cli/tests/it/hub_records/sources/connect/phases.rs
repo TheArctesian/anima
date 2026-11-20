@@ -1,9 +1,12 @@
 //! The phases the command prints and the exit code of each ending (PRJ-039, PRJ-041, CMD-021).
 
+#[cfg(unix)]
 use std::process::Stdio;
+#[cfg(unix)]
 use std::time::Duration;
 
 use serde_json::json;
+#[cfg(unix)]
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 
 use super::{
@@ -150,6 +153,7 @@ async fn cmd_021_a_conflict_at_start_is_exit_6_and_an_api_key_is_exit_5() {
     }
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn prj_041_ctrl_c_leaves_the_attempt_open_and_exits_130_with_the_cancel_command() {
     let (hub, _) = scripted(Script::Hold(changes(&[attempt("AT_GITHUB")]))).await;
@@ -211,4 +215,30 @@ async fn prj_041_text_from_github_is_cleaned_and_foreign_links_are_not_printed()
     );
     assert!(run.stderr.contains("anima [2J-x"), "{:?}", run.stderr);
     assert!(!run.stderr.contains("evil"), "{:?}", run.stderr);
+}
+
+#[cfg(windows)]
+#[tokio::test]
+async fn prj_041_windows_ctrl_c_keeps_the_attempt_open_and_prints_cancel() {
+    let (hub, _) = scripted(Script::Hold(changes(&[attempt("AT_GITHUB")]))).await;
+    let anima = signed_in();
+    let mut terminal = crate::kit::terminal::Terminal::start(
+        &anima,
+        &[
+            "source",
+            "connect",
+            "github",
+            "--no-browser",
+            "--hub",
+            &hub.origin,
+        ],
+    );
+    terminal.expect("Create GitHub App").await;
+    terminal.press("\x03").await;
+    let (code, screen) = terminal.finish().await;
+    assert_eq!(code, 130, "{screen}");
+    assert!(
+        screen.contains("still open on the hub") && screen.contains("--cancel"),
+        "{screen}"
+    );
 }
