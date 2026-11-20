@@ -115,7 +115,11 @@ repository that passed, `merge-to-dev.sh` reads the rule of `dev`, makes sure th
 still the commits that the gates tested (if `dev` moved, it starts the gates again), runs
 `bun quality/bin/merge.ts <branch> --push`, and starts the gates for the new `dev`. GitHub has a merge queue
 for this work only for a repository of an organization; this repository belongs to a personal account.
-GitHub takes this file from the default branch, so it works only when it is on `main`.
+GitHub takes the workflow file from the default branch, so it works only when it is on `main`. The workflow
+checks out `dev`, so `merge-to-dev.sh` and `quality/bin/merge.ts` are those of `dev`: a change of one of the
+two has effect when it is in `dev`. The script makes the merge commit first and runs the document gates on
+it, because the mockup check counts the layout files of the branch as changed while the merge is not
+committed; when the gates fail it removes the commit (`src/merge/commit.ts`).
 
 ### Settings of GitHub
 
