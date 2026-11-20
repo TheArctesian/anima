@@ -207,10 +207,10 @@ jobs:
         env:
           DEV_SHA: ${{ needs.base.outputs.dev_sha }}
         run: /bin/sh .github/workflows/gates-merge.sh
-      # A test of the quality package runs Clippy on its fixtures, and three tests of
-      # deploy/headscale need shellcheck.
-      - name: Install shellcheck
-        run: /bin/sh .github/workflows/gates-packages.sh shellcheck
+      # A test of the quality package runs Clippy on its fixtures, three tests of
+      # deploy/headscale need shellcheck, and the tests of deploy start a PostgreSQL 17.
+      - name: Install shellcheck and PostgreSQL 17
+        run: /bin/sh .github/workflows/gates-packages.sh shellcheck postgres
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: gates-bun
