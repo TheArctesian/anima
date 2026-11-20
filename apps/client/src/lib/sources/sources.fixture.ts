@@ -44,6 +44,8 @@ export function account(id: string, label: string, more: Partial<SourceAccount> 
 export const NOW = new Date('2026-11-13T12:00:00Z');
 
 export interface FakeHub extends Pick<Hub, 'request' | 'subscribe'> {
+  /** The address of the hub; a test sets a port of this computer for a hub that no browser can open. */
+  address: Hub['address'];
   /** Each call sent, as `Operation` and its variables, in order. */
   readonly sent: { readonly operation: string; readonly variables: Record<string, unknown> }[];
   /** What the next mutation answers instead of doing anything. */
@@ -65,6 +67,7 @@ export function fakeHub(start: readonly SourceAccount[]): FakeHub {
   const attemptSinks = new Set<{ next(value: unknown): void }>();
   const answer = <T>(value: unknown): Promise<HubResult<T>> => Promise.resolve({ ok: true, value } as HubResult<T>);
   const hub: FakeHub = {
+    address: { origin: 'https://hub.example', http: 'https://hub.example/graphql', socket: 'wss://hub.example/graphql' },
     sent: [],
     refuse: null,
     connect: null,

@@ -24,6 +24,10 @@ export const HUB_RESTARTED =
   'The hub restarted and dropped the connection. Delete any App you made on GitHub, then start again.';
 export const TAB_BLOCKED = 'The tab did not open. Open this page in a browser signed in to Anima.ing and press Continue.';
 
+/** On a hub that no browser can open: the flow is not offered (DEF-003; the gateway of R-239 will give the address). */
+export const NO_BROWSER_ADDRESS =
+  'Coming soon: Connect GitHub in your browser for this hub. Today a browser cannot open a page of this hub, so nothing is opened. If you made a GitHub App yourself, use its key file.';
+
 const GITHUB = 'https://github.com/';
 const TRY_AGAIN = 'Delete any new App on GitHub that starts with "anima-".';
 const AT_GITHUB =

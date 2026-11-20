@@ -977,6 +977,8 @@ sign-in to the hosted hub.
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): he pressed "+ VNC" on a row of the Devices list with Tailscale quit. A small panel said "No answer on port 5900. Screen Sharing (or the VNC se", cut off at the edge of the window, with a Close button. He did not report that Tailscale started. This agrees with step 3. Steps 1, 2, 4 and 5 were not reported. The message that is cut off is a fault of the layout, not of this check; the interface session has it.
+
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
 Built: on the branch `engine/e0-7-reminders`. The hub evaluates reminder rules each minute and sends
@@ -1164,6 +1166,8 @@ with the token. Expected in step 4: `bucket` passes in the first minute. Expecte
 merge: the job `gates` is shorter than 82 minutes, and its last step shows cache hits.
 
 Result: Open.
+
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
 
@@ -1759,6 +1763,8 @@ Result: Passed. On 2026-11-19 the operator reported that the Linux preview worke
 signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
+
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): the Devices list of his hosted hub showed three rows, all Up: `Hub` with the host `localhost`, his MacBook with a link address, and `pop-os` with a link address. Each row showed "No metrics", which is expected until the daemon is installed (task HM-T19). So a Linux computer joined the hosted hub through the application. Which build ran on `pop-os` is not known here.
 
 ### HT-047: the Devices page after the interface review (R-224)
 
