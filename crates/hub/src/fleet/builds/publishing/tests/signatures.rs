@@ -200,12 +200,10 @@ fn log_007_the_key_has_no_debug_and_no_error_carries_key_text() {
 /// app's value must be a key the hub reads: the operator's, never the old placeholder.
 #[test]
 fn r_108_the_app_updater_key_is_one_the_hub_reads() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../apps/desktop/src-tauri/tauri.conf.json"
-    );
-    let config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let config: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../../../apps/desktop/src-tauri/tauri.conf.json"
+    ))
+    .unwrap();
     let pubkey = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
     assert!(
         PublicKey::from_key_file(pubkey).is_ok(),

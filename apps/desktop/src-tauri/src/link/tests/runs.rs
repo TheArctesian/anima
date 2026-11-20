@@ -134,3 +134,33 @@ fn a_link_that_ends_is_started_again_after_the_pause() {
 
     assert!(fs::read_to_string(&starts).unwrap().lines().count() >= 2);
 }
+
+#[test]
+fn repeated_early_exits_stop_automatic_restarts_until_explicitly_started_again() {
+    let folder = tempfile::tempdir().unwrap();
+    let program = stand_in(folder.path(), r#"echo start >> "$3/starts"; exit 1"#);
+    let device = DeviceLink::default();
+    let run = launch(program, folder.path(), free_port());
+    device.start(run.clone());
+    let down = until(&device, |state| {
+        state.reason == Some(Reason::RepeatedFailure)
+    });
+    assert_eq!(down.phase, Phase::Down);
+    assert_eq!(down.reason, Some(Reason::RepeatedFailure));
+    let starts = || {
+        fs::read_to_string(folder.path().join("starts"))
+            .unwrap()
+            .lines()
+            .count()
+    };
+    assert_eq!(starts(), 3);
+    thread::sleep(Duration::from_millis(250));
+    assert_eq!(starts(), 3);
+    device.start(run);
+    let down = until(&device, |state| {
+        state.reason == Some(Reason::RepeatedFailure)
+    });
+    assert_eq!(down.reason, Some(Reason::RepeatedFailure));
+    assert_eq!(starts(), 6);
+    device.stop();
+}

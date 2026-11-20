@@ -1,0 +1,12 @@
+mutation SealedRecordStore($input: SealedRecordInput!) {
+  storeSealedRecord(input: $input) {
+    id
+    owner
+    extension
+    sealed
+    sealedIndex
+    keyId
+    createdAt
+    updatedAt
+  }
+}

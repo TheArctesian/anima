@@ -30,6 +30,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
+| HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -56,12 +58,14 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
+| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -89,7 +93,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
-| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
@@ -103,6 +107,29 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
+### HT-069: Anima OS preview hardware and enrollment
+
+Latest operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+
+Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. Wi-Fi connection on this machine remains unverified.
+
+Built: [preview source](../experiments/anima-os/README.md), under R-274.
+
+Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-273 adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
+VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
+
+1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation. Keep settings open while changing between portrait and landscape: the panel must recenter within the screen, its body must scroll on a short display, and Done must remain visible and clickable. The operator reported this failure on 2026-11-20; the rotation-panel follow-up needs physical retesting.
+3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
+4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
+5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
+6. Choose **Sign in to Anima**, complete WorkOS authentication in the secure browser, then **Add this computer**. Expected: private link, device registration and daemon enrollment complete without a copied code or terminal command. Verify the actual device heartbeat in Anima; an active local service alone is insufficient. Record account-service/hub refusals without weakening trust rules. Test cancellation, retry after network loss, and existing-owner protection. Do not include credentials in screenshots or reports.
+7. Reboot, unlock and check the Anima screen. Expected: confirmed orientation, network profiles and enrollment persist, the private link resumes, and monitoring reaches the hub. Lock the local screen while observing monitoring remotely. Test hub disconnection separately; local recovery must remain usable.
+8. Compare motion on this hardware at native orientation and after rotation, including fast navigation, dialog dismissal and reduced motion. Confirm responsiveness under representative workload load and record any rendering or touch issues.
+
+This does not qualify managed apps/jobs/agents, BIOS/ARM, encryption, backups or updates on hardware.
+
+Result: Open.
 ### HT-066: a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26)
 
 Built: on the branch `hosted/hm-t26-browser-session`. A hosted hub gives the Anima.ing cloud a
@@ -724,6 +751,35 @@ state directory that the application gives it: read the two from the output of
 
 Result: Open.
 
+### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
+
+Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
+address, the hub opens a port on its own loopback address for the session and gives the gateway
+(guacd) that port; each connection of the port goes through the link to the port of the computer.
+
+The tests cover, with a fake link: a program beside the hub reaches a port of a computer through
+the port of the hub, two times in one session; a port that the computer did not turn on gives a
+closed connection; the port closes with its session; a device of the network and a hub with no
+link get no such port. Not covered: a real gateway, a real computer, Screen Sharing of macOS, the
+speed of a session through the relay of the link, and RDP (no link program for Windows yet).
+
+It needs: a hub of the pool from a new hub image that has this build, and an application with the
+link program of HM-T12. The steps are for the time when both exist.
+
+1. On this Mac, turn Screen Sharing on in System Settings, General, Sharing. Do not turn port 5900
+   on for the link yet.
+2. In the application, open the device of this Mac and press VNC. Expected: the session does not
+   open, and the message says that the computer did not answer or refused. Nothing else on the
+   Mac changes.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "<the device folder of the link>" on 5900`
+   (or the switch of HM-T13 when it is built). Press VNC again. Expected: the screen of this Mac
+   shows in the session after the password of Screen Sharing.
+4. Move the mouse and type in a text field in the session for one minute. Expected: the screen
+   follows; write how slow it feels.
+5. End the session, then turn port 5900 off again. Press VNC. Expected: the session does not open.
+
+Result: Open.
+
 ### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
 
 Built: migration `0506_events_audit_chain.sql` and the hash chain of the audit log
@@ -1069,7 +1125,9 @@ the hosted hub; for step 5, this Mac with the unit that an earlier application m
    Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
    the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
 
-Result: Open.
+Result: Open. Steps 1 to 4 passed (operator, 2026-11-20: "all reporting now", with a picture of Devices), with
+the 0.0.4 AppImage of `main` (`19dc3510`) on `pop-os`: the row `pop-os` showed CPU, Memory, Disk and VRAM.
+Step 5 is not done.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1620,6 +1678,17 @@ checks the screen, those check the values. Sign in to the application with a log
     layout has no special form yet.
 12. Sign in with a browser session of an API key, if the hub permits one, and select "Details".
     Expected: the sentence of the hub that it refuses, and the table stays.
+
+Result: Open.
+
+### HT-069: install and update Anima from F-Droid (M5-7)
+
+The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
+
+1. Install the signed release APK from the Anima release server. Open Anima and sign in. Expected: the app starts and reads the device list.
+2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
+3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
+4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
 
 Result: Open.
 
@@ -2367,7 +2436,107 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
-### HT-NEW-nocapitals: labels in sentence case in the whole application (R-NEW-nocapitals)
+
+### HT-074: the native Windows desktop client (WIN1)
+
+Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
+state with protected ACLs, platform capability controls and a per-user NSIS installer.
+The build procedure is [windows.md](procedures/setup/windows.md). Automated Windows tests
+cover shared shell logic and link file security. The installer and welcome window were
+started in the Windows 11 VM. Real account sign-in and remote sessions need this check.
+
+1. Run the local installer and start Anima.ing from Start.
+   Expected: the welcome screen appears with Sign in, Sign up and Join hub.
+2. Sign in to your Anima account, or use Join hub with an existing hub invitation.
+   Expected: the device link connects and the hub's devices appear. No token is logged.
+3. Close Anima and open it again.
+   Expected: the saved credential is read from Windows Credential Manager; the link reconnects.
+4. Open an SSH or remote desktop session to a device you control.
+   Expected: keyboard input and screen updates work; closing the session returns to the hub.
+5. Open a device's HTTPS web interface.
+   Expected: the system browser opens it. Windows does not offer native certificate pinning.
+6. Inspect Settings and close the app.
+   Expected: unsupported host controls and the updater are absent; the link child stops.
+7. Uninstall through Windows Settings, then install again.
+   Expected: the application and shortcut are removed and installed without administrator rights.
+
+Operator report, 2026-11-20: Sign in displayed "No network" (Failed). After the VM
+was restarted, agent checks reached WorkOS and the Anima cloud from Windows; the
+installed app resumed the saved account and showed Devices, Connected, and one hub
+Up. The original transport failure was not isolated. No application code changed.
+Operator confirmation and remote-session testing remain outstanding.
+
+Agent observation, 2026-11-20: later the client disconnected while Defender repeatedly
+terminated its `anima-link.exe` child (`Behavior:Win32/SuspClickFix.F`). The desktop
+was stopped to end its restart loop. Detection cause is unresolved; Defender remains
+enabled, with no new exclusions. Sustained connection and restart acceptance remain open.
+
+Further agent observation, 2026-11-20: starting the unchanged app from the Start menu
+kept the same connection-helper process alive for six minutes, with no new Defender
+detection and all three reported protection modes enabled. This supports a launch-context
+hypothesis; it does not establish the detector's cause. WIN2 adds a bounded retry policy
+and bundles a native CLI. A temporary MCP configuration add/remove test preserved the
+other entry; a real coding agent connection remains to be tested.
+
+8. With the WIN2 installer, open PowerShell and run
+   `& "$env:LOCALAPPDATA\Anima.ing\anima.exe" --help`.
+   Expected: the native CLI prints its commands without a missing-runtime error.
+9. In a supported coding agent installed on Windows, configure its MCP command as
+   the installed `anima.exe` with argument `mcp`, then connect it to your configured hub.
+   Expected: the agent lists the same permitted hub tools as on Linux/macOS, and a read
+   command succeeds. Do not assume that all agent-specific automatic setup paths work yet.
+
+Result: Open.
+
+### WIN2 continuation checks for HT-074
+
+The entry HT-074 remains Open. These checks extend that entry; they are not a pass record.
+
+1. In Windows Settings > Updates, install the command line tool. Confirm the displayed user-PATH
+   folder. Open a fresh terminal and run `anima --version`; it must resolve to the bundled CLI.
+   Remove it and open another terminal; unrelated PATH entries must remain unchanged.
+2. In Settings > MCP, inspect an installed coding agent, confirm the shown change and connect
+   the agent to `anima mcp`. Remove Anima's entry; other server entries and their settings must remain.
+3. After the hosted connection hands off to Task Scheduler, close Anima. Its link must remain
+   connected. Open Anima again, sign out/in to Windows, and verify reconnection without a password
+   prompt, elevation prompt, or an extra console window.
+4. Remove the link through Anima. Its task and persistent process must stop. Repeat with a
+   standard non-administrator Windows account; the VM's administrator account is insufficient proof.
+
+5. Open the hosted hub with the bundled daemon present. This Windows computer must appear
+   once, enroll automatically, and have a running per-user daemon task. Check CPU, memory,
+   disk and network metrics. Close Anima and confirm new metrics still arrive; sign out/in
+   and confirm both tasks restart. Do not treat device registration alone as metrics acceptance.
+6. On a Windows laptop, choose Keep awake in Settings and confirm the tray agrees. Wait past
+   the configured idle sleep time; the computer should remain running while the display may
+   sleep. Turn it off, quit, then separately force-close the app; each must release Anima's
+   request (`powercfg /requests` can inspect it). Repeat on battery and test the saved floor:
+   below the floor it must pause, and connecting mains must resume it. Check Modern Standby
+   hardware separately. On a laptop whose power policy permits it, choose the closed-lid level.
+   Anima must use a temporary copy of the active power plan and restore the previous plan on
+   Off, normal exit and force-closing the app. The original plan's settings must not change.
+   Select a different power plan while the hold is active, then stop the hold: the selected
+   plan must remain active. Restart after an interrupted guard and verify recovery removes
+   Anima's temporary plan. A VM without a lid, or a machine with locked policy, must show
+   this level as unavailable.
+
+7. Install the local hub from Settings on a standard Windows account. Wait for Ready, close
+   the app and reopen it; the hub must remain available. Stop and start it, make a backup,
+   and recover that backup into a fresh folder. Confirm the account and devices survive.
+   This check does not authorize deleting an existing hub or replacing its database.
+8. On a Windows builder with the documented native compiler tools, enable building and
+   run a trial Windows release. Its gates must pass before packaging. Cancel during a build;
+   no compiler or packaging child may remain. Test the signed installer update with the
+   private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
+   Do not enable or publish a public feed as part of this check.
+
+9. Download the `windows-trial` artifact from a successful dev workflow and install it in
+   a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and
+   automatic updates are disabled. For a signed release trial on main, confirm the installer
+   shows the expected verified publisher and its timestamp is valid. Test a private update
+   from the previous signed version and check the link, daemon and hub after restart.
+   Certificate provisioning and this signed trial remain Open.
+### HT-073: labels in sentence case in the whole application (R-279)
 
 Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
 `apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
@@ -2385,7 +2554,7 @@ Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text
 
 Result: Open.
 
-### HT-NEW-listlayout: the layout of the Devices list (R-NEW-listlayout)
+### HT-071: the layout of the Devices list (R-278)
 
 Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
 `apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
@@ -2419,7 +2588,7 @@ window with real devices.
 Result: Open.
 
 
-### HT-NEW-motionlist: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
 `apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,

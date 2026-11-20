@@ -12,7 +12,6 @@ use std::{
 
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
-    net::UnixListener,
     time::Instant,
 };
 
@@ -28,12 +27,14 @@ use crate::fleet::vpn::{
 /// A broker that accepts every connection, reads nothing and never answers; it counts them.
 fn hung_broker(folder: &tempfile::TempDir) -> (Broker, Arc<AtomicUsize>) {
     let path = folder.path().join("broker.sock");
+    #[cfg(windows)]
+    anima_windows::files::protect(path.parent().unwrap()).unwrap();
     let listener = UnixListener::bind(&path).unwrap();
     let accepted = Arc::new(AtomicUsize::new(0));
     let counted = accepted.clone();
     tokio::spawn(async move {
         let mut held = Vec::new();
-        while let Ok((stream, _)) = listener.accept().await {
+        while let Ok(stream) = accept(&listener).await {
             counted.fetch_add(1, Ordering::SeqCst);
             held.push(stream);
         }
@@ -101,9 +102,11 @@ async fn bd_15_the_reader_s_node_read_is_busy_at_once_while_a_call_holds_the_tur
 async fn bd_10_a_key_the_broker_makes_at_its_last_moment_reaches_the_hub() {
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("broker.sock");
+    #[cfg(windows)]
+    anima_windows::files::protect(path.parent().unwrap()).unwrap();
     let listener = UnixListener::bind(&path).unwrap();
     tokio::spawn(async move {
-        let (stream, _) = listener.accept().await.unwrap();
+        let stream = accept(&listener).await.unwrap();
         let mut stream = BufReader::new(stream);
         let mut line = String::new();
         stream.read_line(&mut line).await.unwrap();
@@ -187,4 +190,16 @@ async fn bd_15_a_hung_node_read_holds_up_the_reader_only_for_its_broker_wait() {
         broker.nodes_if_free().await,
         Err(Error::BrokerTimedOut)
     ));
+}
+
+#[cfg(windows)]
+use anima_windows::socket::{Listener as UnixListener, Stream as UnixStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
+
+async fn accept(listener: &UnixListener) -> std::io::Result<UnixStream> {
+    #[cfg(unix)]
+    return listener.accept().await.map(|(stream, _)| stream);
+    #[cfg(windows)]
+    listener.accept().await
 }

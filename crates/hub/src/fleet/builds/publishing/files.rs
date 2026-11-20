@@ -19,6 +19,9 @@ pub(super) fn content_type(target: Target, version: Version, name: &str) -> Opti
         _ if name == SUMS => Some("text/plain; charset=utf-8"),
         Target::LinuxX86_64 => (name == format!("Anima_{version}_amd64.AppImage"))
             .then_some("application/vnd.appimage"),
+        Target::WindowsX86_64 => {
+            (name == format!("Anima_{version}_x64-setup.exe")).then_some("application/octet-stream")
+        }
         Target::DarwinUniversal if name == "Anima.app.tar.gz" => Some("application/gzip"),
         Target::DarwinUniversal => (name == format!("Anima_{version}_universal.dmg"))
             .then_some("application/x-apple-diskimage"),
@@ -33,6 +36,7 @@ const fn stable(target: Target) -> (&'static str, &'static str) {
     match target {
         Target::LinuxX86_64 => (".AppImage", "Anima-x86_64.AppImage"),
         Target::DarwinUniversal => (".dmg", "Anima.dmg"),
+        Target::WindowsX86_64 => ("-setup.exe", "Anima-x86_64-setup.exe"),
     }
 }
 

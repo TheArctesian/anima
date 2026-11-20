@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{BatchAgentUsage, BatchInventory, BatchKeys, KeyVersion};
+use super::{BatchAgentUsage, BatchInventory, BatchKeys, BatchUpdate, KeyVersion};
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
 
@@ -51,6 +51,10 @@ pub struct Batch {
     /// it (K8 Section 1).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keys: Option<BatchKeys>,
+    /// What the daemon says about its own update (K8 Section 8.1, R-139). A daemon that cannot
+    /// update itself sends none (ROL-044); a hub older than R-139 ignores it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update: Option<BatchUpdate>,
 }
 
 /// The lists a batch announces besides its points, each `None` when unchanged (K8 Section 4).
@@ -189,6 +193,7 @@ impl Batch {
             daemon_version: None,
             agent_usage: announced.agent_usage,
             keys: None,
+            update: None,
         }
     }
 
@@ -197,6 +202,15 @@ impl Batch {
     pub fn with_keys(self, held: Vec<KeyVersion>) -> Self {
         Self {
             keys: Some(BatchKeys { held }),
+            ..self
+        }
+    }
+
+    /// This batch, with what the daemon says about its own update (K8 Section 8.1).
+    #[must_use]
+    pub fn with_update(self, update: BatchUpdate) -> Self {
+        Self {
+            update: Some(update),
             ..self
         }
     }

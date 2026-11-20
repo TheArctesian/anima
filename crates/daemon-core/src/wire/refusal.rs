@@ -31,6 +31,9 @@ pub enum RefusalCode {
     WorkOff,
     /// The secret is not given; the answer does not say which test failed (K10 Section 8).
     SecretRefused,
+    /// The hub does not tell that version to this device, or does not hold that release for
+    /// that target (K8 Section 8.3).
+    NoRelease,
 }
 
 /// A refusal body, `{ "error": "<CODE>" }`, and nothing else: it never echoes the request.
@@ -50,7 +53,7 @@ impl RefusalCode {
             Self::NotHolder | Self::SecretRefused => 409,
             Self::TooLarge => 413,
             Self::OutOfRange => 422,
-            Self::NoKey => 404,
+            Self::NoKey | Self::NoRelease => 404,
             Self::Unavailable => 503,
         }
     }
@@ -70,6 +73,7 @@ impl RefusalCode {
             Self::NotHolder => "NOT_HOLDER",
             Self::WorkOff => "WORK_OFF",
             Self::SecretRefused => "SECRET_REFUSED",
+            Self::NoRelease => "NO_RELEASE",
         }
     }
 

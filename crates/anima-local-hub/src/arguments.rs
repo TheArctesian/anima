@@ -118,7 +118,10 @@ impl Place {
             _ => Folders::for_user(
                 Platform::HOST,
                 &UserFolders {
-                    home: std::env::var_os("HOME").map_or_else(PathBuf::new, PathBuf::from),
+                    home: std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+                        .map_or_else(PathBuf::new, PathBuf::from),
+                    #[cfg(windows)]
+                    local_app_data: std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
                     xdg_data_home: std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
                     xdg_runtime_dir: std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from),
                 },

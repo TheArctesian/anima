@@ -445,8 +445,9 @@ The `update` member of a `Batch`:
 }
 ```
 
-- `target`: the target of the installed program: `linux-x86_64` or `darwin-universal` (OD-ROL-8). The hub
-  reads a target that it does not know as "no release for this machine".
+- `target`: the target of the installed program: `linux-x86_64` or `darwin-universal` (OD-ROL-8). It is 1 to
+  64 bytes of ASCII letters, digits, `-` and `_`. The hub reads a target of that form that it does not know as
+  "no release for this machine".
 - `switch`: `on` or `off`. `off` means that updates are set off at the machine (ROL-028). The hub cannot
   change it, and it tells no version to such a machine.
 - `previous`: optional. The previous version that the machine keeps (ROL-017), with the rule of

@@ -8,7 +8,7 @@ mod served;
 
 use std::{
     io::Read as _,
-    process::{Child, Command, Stdio},
+    process::{Child, Stdio},
     thread,
     time::{Duration, Instant},
 };
@@ -26,9 +26,8 @@ impl Drop for Running {
 }
 
 fn spawn(args: &[&str], envs: &[(&str, &str)]) -> Running {
-    let child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
+    let child = crate::transport::process::hub()
         .args(args)
-        .env_clear()
         .env("ANIMA_LOG", "info")
         .envs(envs.iter().copied())
         .stdout(Stdio::piped())
@@ -40,9 +39,8 @@ fn spawn(args: &[&str], envs: &[(&str, &str)]) -> Running {
 
 /// As [`spawn`], with a pipe for standard input.
 fn spawn_with_input(args: &[&str], envs: &[(&str, &str)]) -> Running {
-    let child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
+    let child = crate::transport::process::hub()
         .args(args)
-        .env_clear()
         .env("ANIMA_LOG", "info")
         .envs(envs.iter().copied())
         .stdin(Stdio::piped())

@@ -10,6 +10,8 @@ use std::collections::BTreeSet;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error as _};
 use uuid::Uuid;
+
+use super::UpdateInstruction;
 use zeroize::Zeroizing;
 
 /// The most bytes a value has (K-E5 Section 2).
@@ -59,6 +61,9 @@ pub struct KeysCurrent {
 pub struct PushAccepted {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keys: Option<KeysCurrent>,
+    /// The version the machine is to have (K8 Section 8.2, R-139).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update: Option<UpdateInstruction>,
 }
 
 /// `POST /daemon/v1/keys/fetch`: the device of the bearer token and the name of one key.

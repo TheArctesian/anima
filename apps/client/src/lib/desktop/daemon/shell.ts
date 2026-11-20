@@ -28,8 +28,8 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
   origin: 'The hub address is not a plain https origin on port 443.',
   'no-home': 'The app could not find your home folder.',
   untrusted:
-    '~/.local/bin, or a folder above it, can be changed by other users (through its group, an ACL or as others). Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL, then try again.',
-  copy: 'The daemon could not be copied to ~/.local/bin.',
+    'The daemon installation folder or an ancestor can be changed by another user.',
+  copy: 'The daemon could not be copied to its installation folder.',
   enrol: 'The daemon could not enrol. Retry to make a new code.',
   install: 'The daemon enrolled but did not start. Run `anima-daemon install` in a terminal to see why.',
   'timed-out': 'The daemon did not finish in time.',
@@ -39,8 +39,12 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
 const PROBLEMS = new Set<string>(Object.keys(MESSAGES));
 
 /** The sentence for a problem of the shell, for a place that shows it later than the call (HMD-053). */
-export function describeDaemonProblem(problem: DaemonShellProblem): string {
-  return MESSAGES[problem];
+export function describeDaemonProblem(problem: DaemonShellProblem, agent = navigator.userAgent): string {
+  if (problem !== 'untrusted') return MESSAGES[problem];
+  const fix = /Windows NT/.test(agent)
+    ? "Open the folder's Properties → Security and remove other users' write access."
+    : 'Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL.';
+  return `${MESSAGES.untrusted} ${fix}`;
 }
 
 export type DaemonShellResult = { readonly ok: true } | { readonly ok: false; readonly problem: DaemonShellProblem; readonly message: string };
@@ -72,7 +76,7 @@ export async function installDaemon(code: string, origin: string): Promise<Daemo
     return { ok: true };
   } catch (reason) {
     const problem = problemOf(reason);
-    return { ok: false, problem, message: MESSAGES[problem] };
+    return { ok: false, problem, message: describeDaemonProblem(problem) };
   }
 }
 

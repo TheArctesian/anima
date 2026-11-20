@@ -25,7 +25,13 @@ use shared_records::SharedRecordCommand;
 
 /// The command line for an Anima hub.
 #[derive(Debug, Parser)]
-#[command(name = "anima", version, about, propagate_version = true)]
+#[command(
+    name = "anima",
+    bin_name = "anima",
+    version,
+    about,
+    propagate_version = true
+)]
 pub struct Cli {
     #[command(flatten)]
     globals: Globals,

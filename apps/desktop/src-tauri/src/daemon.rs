@@ -14,17 +14,18 @@
 
 mod error;
 mod installing;
+#[cfg_attr(windows, path = "daemon/placement/windows.rs")]
 pub(crate) mod placement;
 mod request;
 mod run;
+#[cfg(unix)]
 pub(crate) mod trust;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::{
     ffi::OsString,
-    fs,
     path::{Path, PathBuf},
     sync::atomic::AtomicBool,
     time::Duration,
@@ -38,6 +39,9 @@ pub use error::DaemonError;
 pub use installing::Installing;
 use request::{EnrolmentCode, HubOrigin};
 use run::{INSTALL_ARGS, Run};
+#[cfg(unix)]
+use std::fs;
+#[cfg(unix)]
 use trust::User;
 
 /// The hub answers an enrolment within its own 10 s timeout; a macOS Keychain write adds a little.
@@ -47,13 +51,16 @@ const ENROL_DEADLINE: Duration = Duration::from_secs(60);
 const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
 
 /// Where accounts and groups are read, to find the user's private group.
+#[cfg(unix)]
 const PASSWD: &str = "/etc/passwd";
+#[cfg(unix)]
 const GROUP: &str = "/etc/group";
 
 /// This computer as the install needs it: the bundled daemon, the user and the daemon's variables.
 struct Here {
     source: PathBuf,
     home: PathBuf,
+    #[cfg(unix)]
     user: User,
     env: Vec<(&'static str, OsString)>,
 }
@@ -74,8 +81,11 @@ fn install_here(
     limits: &Limits<'_>,
 ) -> Result<PathBuf, DaemonError> {
     let destination = placement::destination(&here.home);
-    let installed = placement::place(&here.source, &destination, here.user)
-        .map_err(DaemonError::of_placement)?;
+    #[cfg(unix)]
+    let placed = placement::place(&here.source, &destination, here.user);
+    #[cfg(windows)]
+    let placed = placement::place(&here.source, &destination);
+    let installed = placed.map_err(DaemonError::of_placement)?;
     let input = code.input_line();
     let enrol = Run {
         program: &installed,
@@ -101,15 +111,17 @@ fn install_here(
 /// This computer, read from the process: `HOME` must be an absolute path. An account file that
 /// cannot be read means no private group, so a folder its group may write is refused.
 fn here(source: PathBuf) -> Result<Here, DaemonError> {
-    let home = std::env::var_os("HOME")
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
         .map(PathBuf::from)
         .filter(|home| home.is_absolute())
         .ok_or(DaemonError::NoHome)?;
+    #[cfg(unix)]
     let user = this_user();
     let env = run::daemon_env(&home, |name| std::env::var_os(name));
     Ok(Here {
         source,
         home,
+        #[cfg(unix)]
         user,
         env,
     })
@@ -117,6 +129,7 @@ fn here(source: PathBuf) -> Result<Here, DaemonError> {
 
 /// The user of this process, with their private group. An account file that cannot be read
 /// means no private group, so a folder its group may write is refused.
+#[cfg(unix)]
 pub(crate) fn this_user() -> User {
     let uid = nix::unistd::getuid().as_raw();
     let passwd = fs::read_to_string(PASSWD).ok();
@@ -140,7 +153,7 @@ fn bundled(executable: &Path, release: bool) -> Result<PathBuf, DaemonError> {
 
 /// The daemon this app carries, when it carries one.
 fn carried() -> Result<PathBuf, DaemonError> {
-    if !cfg!(any(target_os = "macos", target_os = "linux")) {
+    if !cfg!(any(target_os = "macos", target_os = "linux", windows)) {
         return Err(DaemonError::Unavailable);
     }
     let executable = std::env::current_exe().map_err(|_| DaemonError::NotBundled)?;

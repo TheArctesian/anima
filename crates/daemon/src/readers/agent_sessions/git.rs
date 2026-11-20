@@ -217,11 +217,11 @@ mod tests {
         assert_eq!(repository(&guarded, &bounds), Repository::default());
         let linked = home.path().join("linked");
         fs::create_dir_all(&linked).expect("a folder");
-        std::os::unix::fs::symlink(guarded.join(".git"), linked.join(".git")).expect("a link");
+        crate::test_links::symlink(guarded.join(".git"), linked.join(".git")).expect("a link");
         assert_eq!(repository(&linked, &bounds), Repository::default());
         let config_link = home.path().join("config-link");
         write(&config_link.join(".git/HEAD"), "ref: refs/heads/main\n");
-        std::os::unix::fs::symlink(guarded.join(".git/config"), config_link.join(".git/config"))
+        crate::test_links::symlink(guarded.join(".git/config"), config_link.join(".git/config"))
             .expect("a link");
         assert_eq!(
             repository(&config_link, &bounds).name,
@@ -265,7 +265,7 @@ mod tests {
             "a guarded folder"
         );
         write(&home.path().join("code/app/.git/config"), CONFIG);
-        std::os::unix::fs::symlink(home.path().join("code"), home.path().join("via"))
+        crate::test_links::symlink(home.path().join("code"), home.path().join("via"))
             .expect("a link");
         let linked = worktree("linked", &home.path().join("via/app/.git"));
         assert_eq!(

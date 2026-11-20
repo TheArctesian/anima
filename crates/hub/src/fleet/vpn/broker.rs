@@ -12,13 +12,16 @@ use std::{
     time::Duration,
 };
 
+#[cfg(windows)]
+use anima_windows::socket::Stream as UnixStream;
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 use serde_json::{Value, json};
+#[cfg(unix)]
+use tokio::net::UnixStream;
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
-    net::UnixStream,
     sync::{Mutex, MutexGuard},
     time::Instant,
 };

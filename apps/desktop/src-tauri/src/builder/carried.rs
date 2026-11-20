@@ -32,6 +32,7 @@ pub fn programs() -> impl Iterator<Item = &'static str> {
 /// The folder Tauri reads the programs from, in the clone.
 const STAGE: &str = "apps/desktop/src-tauri/binaries";
 const UNIVERSAL: &str = "universal-apple-darwin";
+const WINDOWS_TRIPLE: &str = "x86_64-pc-windows-msvc";
 const LINUX_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 const MAC_TRIPLES: [&str; 2] = ["aarch64-apple-darwin", "x86_64-apple-darwin"];
 
@@ -48,18 +49,27 @@ pub fn bundle_settings() -> serde_json::Value {
 fn triples(target: Target) -> &'static [&'static str] {
     match target {
         Target::LinuxX86_64 => &[LINUX_TRIPLE],
+        Target::WindowsX86_64 => &[WINDOWS_TRIPLE],
         Target::DarwinUniversal => &MAC_TRIPLES,
     }
 }
 
 fn staged_as(clone: &Path, program: &str, triple: &str) -> PathBuf {
-    clone.join(STAGE).join(format!("{program}-{triple}"))
+    let suffix = if triple.ends_with("-windows-msvc") {
+        ".exe"
+    } else {
+        ""
+    };
+    clone
+        .join(STAGE)
+        .join(format!("{program}-{triple}{suffix}"))
 }
 
 /// The file of `program` the bundle takes for `target`.
 pub fn staged(clone: &Path, target: Target, program: &str) -> PathBuf {
     match target {
         Target::LinuxX86_64 => staged_as(clone, program, LINUX_TRIPLE),
+        Target::WindowsX86_64 => staged_as(clone, program, WINDOWS_TRIPLE),
         Target::DarwinUniversal => staged_as(clone, program, UNIVERSAL),
     }
 }
@@ -85,4 +95,24 @@ pub fn is_x86_64_elf(header: &[u8]) -> bool {
     matches!(header, [0x7f, b'E', b'L', b'F', 2, 1, ..])
         && matches!(header.get(16..18), Some([2 | 3, 0]))
         && header.get(18..20) == Some(&[62, 0][..])
+}
+
+/// A PE executable whose COFF machine is AMD64 and optional header is PE32+.
+pub fn is_x86_64_pe(header: &[u8]) -> bool {
+    if !header.starts_with(b"MZ") {
+        return false;
+    }
+    let Some(offset) = header
+        .get(60..64)
+        .and_then(|bytes| <[u8; 4]>::try_from(bytes).ok())
+    else {
+        return false;
+    };
+    let Ok(offset) = usize::try_from(u32::from_le_bytes(offset)) else {
+        return false;
+    };
+    let Some(pe) = header.get(offset..) else {
+        return false;
+    };
+    pe.starts_with(b"PE\0\0\x64\x86") && pe.get(24..26) == Some(&[0x0b, 0x02])
 }

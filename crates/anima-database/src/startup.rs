@@ -11,7 +11,7 @@ use crate::{
     Layout, Limits, Lock, Platform, Role, Server, ServerError, Settings, Stopped, Tree, TreeError,
 };
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 #[derive(Debug, thiserror::Error)]
@@ -124,6 +124,16 @@ pub fn start(
     server.wait_until_ready(layout, limits)?;
     if !has_logins {
         roles::prepare(layout)?;
+    }
+    #[cfg(windows)]
+    if has_logins {
+        // A stopped hub root may have moved. Keep its passwords, but point each pinned
+        // certificate at this root instead of the former absolute Windows path.
+        for role in [Role::Owner, Role::Hub] {
+            if let Some(password) = urls::password(layout, role)? {
+                urls::write(layout, role, &password)?;
+            }
+        }
     }
     Ok(Running {
         server,

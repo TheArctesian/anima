@@ -19,9 +19,24 @@ function run(argv: string[], env: Record<string, string | undefined> = process.e
   return result.exitCode ?? 1;
 }
 
-if (process.env["DATABASE_URL"]) {
-  process.exit(run(command));
+/** The native stand-in keeps local-hub tests offline, like their Unix shell fixture. */
+function runWindows(): number {
+  const folder = mkdtempSync(join(tmpdir(), "anima-test-link-"));
+  try {
+    const fixture = join(folder, "offline-link.exe");
+    const built = run(["rustc", "--edition=2024", "-C", "target-feature=+crt-static",
+      join(REPO_ROOT, "crates/anima-local-hub/tests/fixtures/offline_link.rs"), "-o", fixture]);
+    if (built !== 0) return built;
+    const argv = process.env["DATABASE_URL"] ? command :
+      ["cargo", "run", "--quiet", "-p", "anima-database", "--features", "test-server", "--bin", "anima-test-database", "--", ...command];
+    return run(argv, { ...process.env, ANIMA_LINK_FIXTURE_EXE: fixture });
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 }
+
+if (process.platform === "win32") process.exit(runWindows());
+if (process.env["DATABASE_URL"]) process.exit(run(command));
 
 const binDir = findTools(binaryDirs(process.env["PATH"] ?? ""), ["initdb", "pg_ctl"], existsSync);
 if (binDir === undefined) {

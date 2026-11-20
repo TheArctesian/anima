@@ -4,7 +4,7 @@
 use crate::{
     Node, Refusal, Rule, Settings,
     declared::Declared,
-    forms::{is_name, is_target, truth, whole},
+    forms::{bind_name, is_name, is_target, truth, whole},
     project::Names,
 };
 
@@ -56,19 +56,13 @@ pub(crate) fn ports(service: &Declared<'_>, settings: &Settings) -> Result<(), R
     Ok(())
 }
 
-/// A bind mount names exactly `binds/<name>` of the application.
-fn is_bind_source(source: &str) -> bool {
-    let relative = source.strip_prefix("./").unwrap_or(source);
-    relative.strip_prefix("binds/").is_some_and(is_name)
-}
-
 /// One mount: its target, when the mount is permitted.
 fn mount<'a>(entry: &'a Node, all: &Names<'_>) -> Option<&'a str> {
     let text = |key: &str| entry.get(key).and_then(Node::text);
     let source = text("source")?;
     let sound_source = match text("type")? {
         "volume" => all.volumes.contains(&source),
-        "bind" => is_bind_source(source),
+        "bind" => bind_name(source).is_some(),
         _ => false,
     };
     let read_only = entry

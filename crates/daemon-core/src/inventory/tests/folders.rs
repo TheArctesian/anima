@@ -11,6 +11,7 @@ fn paths(texts: &[&str]) -> Vec<PathBuf> {
 }
 
 #[test]
+#[cfg(unix)]
 fn cap_021_the_fixed_folders_with_the_home_folder_come_first_then_path() {
     let found = candidates(
         Some(OsStr::new("/usr/bin:/bin")),
@@ -36,6 +37,7 @@ fn cap_021_the_fixed_folders_with_the_home_folder_come_first_then_path() {
 }
 
 #[test]
+#[cfg(unix)]
 fn cap_021_a_relative_or_repeated_folder_is_skipped_and_no_home_skips_the_home_folders() {
     let found = candidates(
         Some(OsStr::new(".:bin::/usr/local/bin:/usr/bin")),
@@ -50,6 +52,41 @@ fn cap_021_a_relative_or_repeated_folder_is_skipped_and_no_home_skips_the_home_f
     );
     assert_eq!(homebrew_first, paths(&["/opt/homebrew/bin", "/usr/bin"]));
     let relative_home = candidates(None, Some(Path::new("home")), &["~/.cargo/bin"]);
+    assert_eq!(relative_home, Vec::<PathBuf>::new());
+}
+
+#[test]
+#[cfg(windows)]
+fn cap_021_windows_user_tools_precede_semicolon_separated_path_folders() {
+    let found = candidates(
+        Some(OsStr::new(r"C:\Windows\System32;C:\Program Files\Git\cmd")),
+        Some(Path::new(r"C:\Users\op")),
+        &TOOL_FOLDERS,
+    );
+    assert_eq!(
+        found,
+        paths(&[
+            r"C:\Users\op\.cargo\bin",
+            r"C:\Users\op\.bun\bin",
+            r"C:\Users\op\.local\bin",
+            r"C:\Users\op\.docker\bin",
+            r"C:\Users\op\.nix-profile\bin",
+            r"C:\Windows\System32",
+            r"C:\Program Files\Git\cmd",
+        ])
+    );
+}
+
+#[test]
+#[cfg(windows)]
+fn cap_021_windows_relative_and_duplicate_folders_are_skipped() {
+    let found = candidates(
+        Some(OsStr::new(r".;bin;;C:\Tools;C:\Windows\System32")),
+        None,
+        &["~/.cargo/bin", r"C:\Tools", "relative"],
+    );
+    assert_eq!(found, paths(&[r"C:\Tools", r"C:\Windows\System32"]));
+    let relative_home = candidates(None, Some(Path::new(r"C:relative")), &["~/.cargo/bin"]);
     assert_eq!(relative_home, Vec::<PathBuf>::new());
 }
 

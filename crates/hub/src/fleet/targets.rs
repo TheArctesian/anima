@@ -5,6 +5,7 @@
 //! one resolver that applies it before a connection, and the one connect function
 //! ([`connect`]), which reaches a computer of the link through the link (HMD-048).
 
+mod link_port;
 mod reached;
 
 use std::{
@@ -16,6 +17,7 @@ use std::{
 
 use ipnet::IpNet;
 
+pub use link_port::LinkPort;
 pub use reached::{Reached, connect, on_link};
 
 /// The addresses the hub may connect to.

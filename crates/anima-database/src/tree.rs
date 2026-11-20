@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The PostgreSQL programs this crate runs.
@@ -76,7 +76,10 @@ impl Tree {
 
     #[must_use]
     pub fn path_of(&self, program: Program) -> PathBuf {
-        self.bin.join(program.file_name())
+        let path = self.bin.join(program.file_name());
+        #[cfg(windows)]
+        let path = path.with_extension("exe");
+        path
     }
 
     /// A command for `program` with a fixed environment (see [`sealed_command`]).
@@ -119,6 +122,22 @@ fn sealed_command(program: &Path) -> Command {
         .env("PGPASSFILE", "/dev/null/none")
         .env("PGSERVICEFILE", "/dev/null/none")
         .env("PGSYSCONFDIR", "/dev/null");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        command.creation_flags(0x0800_0000);
+        for name in ["SystemRoot", "WINDIR", "TEMP", "TMP"] {
+            if let Some(value) = std::env::var_os(name) {
+                command.env(name, value);
+            }
+        }
+        if let Some(root) = std::env::var_os("SystemRoot") {
+            let system = Path::new(&root).join("System32");
+            command.env("COMSPEC", system.join("cmd.exe"));
+            command.env("PATH", system);
+        }
+        command.env("PGPASSFILE", "NUL").env("PGSERVICEFILE", "NUL");
+    }
     command
 }
 
