@@ -81,7 +81,9 @@ export const DeviceHosts = graphql(`
       }
       edges {
         node {
+          id
           host
+          metricsSource
         }
       }
     }

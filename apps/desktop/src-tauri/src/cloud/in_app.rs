@@ -64,6 +64,6 @@ async fn session_sign_in(webview: &Webview, cloud: &Cloud) -> Result<bool, Cloud
     })
     .await;
     let tokens = workos::exchange(&cloud.http, id, &code?, &attempt.verifier).await?;
-    cloud.keep(id, &tokens)?;
+    cloud.keep(webview, id, &tokens).await?;
     Ok(true)
 }

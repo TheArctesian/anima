@@ -1,14 +1,19 @@
-//! Shows the sign-in page of the Anima.ing account inside the iPhone app (mobile plan M3-5).
+//! Native account sign-in and secure session storage (M3-5, MOB-006).
 //!
 //! iOS has a web authentication session for this: a page over the app that shares the sign-in of Safari. The
 //! plugin shows a page and takes it away; it knows nothing of the sign-in. The shell gets the result at a loopback
-//! address. The web view has no command here. On Android and on a computer the plugin does nothing.
+//! address. The shell alone calls the native plugin.
 
 use tauri::Runtime;
 use tauri::plugin::{Builder, TauriPlugin};
 
 #[cfg(target_os = "ios")]
 tauri::ios_plugin_binding!(init_plugin_account_session);
+
+#[cfg(any(target_os = "ios", target_os = "android"))]
+mod tokens;
+#[cfg(any(target_os = "ios", target_os = "android"))]
+pub use tokens::{SecureTokens, StoreError};
 
 /// The page of one sign-in, on iOS.
 #[cfg(target_os = "ios")]
@@ -50,13 +55,19 @@ impl<R: Runtime> AccountSession<R> {
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("account-session")
         .setup(|app, api| {
-            #[cfg(target_os = "ios")]
+            #[cfg(any(target_os = "ios", target_os = "android"))]
             {
                 use tauri::Manager;
+                #[cfg(target_os = "ios")]
                 let handle = api.register_ios_plugin(init_plugin_account_session)?;
-                app.manage(AccountSession(handle));
+                #[cfg(target_os = "android")]
+                let handle = api
+                    .register_android_plugin("ing.anima.accountsession", "AccountSessionPlugin")?;
+                #[cfg(target_os = "ios")]
+                app.manage(AccountSession(handle.clone()));
+                app.manage(SecureTokens::new(handle));
             }
-            #[cfg(not(target_os = "ios"))]
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             let _ = (app, api);
             Ok(())
         })

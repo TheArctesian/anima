@@ -89,6 +89,8 @@ pub struct LinkStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<Reason>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
@@ -256,19 +258,23 @@ pub async fn link_status<R: Runtime>(
         joined: folders.device.is_dir(),
         state: now.phase,
         port: now.port,
+        public_key: None,
         reason: now.reason,
         path: None,
         latency_ms: None,
     };
-    if now.phase == Phase::Up {
-        let path = blocking(move || Ok(link_path(&folders.device))).await?;
-        (status.path, status.latency_ms) = path.unzip();
+    if now.phase == Phase::Up
+        && let Some((path, latency, key)) = blocking(move || Ok(link_path(&folders.device))).await?
+    {
+        status.path = Some(path);
+        status.latency_ms = Some(latency);
+        status.public_key = key;
     }
     Ok(status)
 }
 
 /// `anima-link ctl status` of the running device link: its path and latency.
-fn link_path(folder: &Path) -> Option<(String, f64)> {
+fn link_path(folder: &Path) -> Option<(String, f64, Option<String>)> {
     let program = crate::carried::program(PROGRAM)?;
     let env = environment(|name| std::env::var_os(name));
     let args = [

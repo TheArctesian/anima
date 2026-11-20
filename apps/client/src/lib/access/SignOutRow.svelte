@@ -7,16 +7,19 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { capabilities } from '$lib/platform/platform';
+  import { isMobile } from '$lib/platform/mobile';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { accessApi } from './api';
   import { signInNeeded } from './guard';
-  import { goToSignIn, loadClientAt } from './navigation';
+  import { goToSignIn, goToWelcome, loadClientAt } from './navigation';
   import { SIGN_IN_PATH } from './routes';
   import { GATEWAY_KEPT, signOut } from './sign-out';
+  import { signOutMobile } from './mobile/sign-out';
 
   const hub = useHub();
   const api = accessApi(hub);
   const desktop = capabilities().keyStore;
+  const mobile = desktop && isMobile(navigator);
   let username = $state<string | null>(null);
   let problem = $state<string | null>(null);
   let busy = $state(false);
@@ -33,7 +36,9 @@
     busy = true;
     let kept: string | null;
     try {
-      kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
+      kept = mobile
+        ? await signOutMobile(api, hub.address)
+        : await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
     } catch (reason) {
       busy = false;
       throw reason;
@@ -56,7 +61,8 @@
     busy = false;
     // The desktop socket reads the key store anew, so the router may move within the page.
     if (kept === null) {
-      goToSignIn();
+      if (mobile) goToWelcome();
+      else goToSignIn();
       return;
     }
     problem = kept;
