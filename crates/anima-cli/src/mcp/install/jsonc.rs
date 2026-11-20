@@ -47,10 +47,16 @@ impl Scan<'_> {
             match (self.bytes.get(at), self.bytes.get(at + 1)) {
                 (Some(b' ' | b'\t' | b'\n' | b'\r'), _) => at += 1,
                 (Some(b'/'), Some(b'/')) => {
-                    at = self.bytes[at..].iter().position(|byte| *byte == b'\n').map_or(self.bytes.len(), |end| at + end);
+                    at = self.bytes[at..]
+                        .iter()
+                        .position(|byte| *byte == b'\n')
+                        .map_or(self.bytes.len(), |end| at + end);
                 }
                 (Some(b'/'), Some(b'*')) => {
-                    let end = self.bytes[at + 2..].windows(2).position(|pair| pair == b"*/").ok_or(JsoncError::Malformed)?;
+                    let end = self.bytes[at + 2..]
+                        .windows(2)
+                        .position(|pair| pair == b"*/")
+                        .ok_or(JsoncError::Malformed)?;
                     at += end + 4;
                 }
                 _ => return Ok(at),
@@ -80,9 +86,18 @@ impl Scan<'_> {
             _ => {
                 let end = self.bytes[at..]
                     .iter()
-                    .position(|byte| matches!(byte, b',' | b'}' | b']' | b' ' | b'\t' | b'\n' | b'\r' | b'/'))
+                    .position(|byte| {
+                        matches!(
+                            byte,
+                            b',' | b'}' | b']' | b' ' | b'\t' | b'\n' | b'\r' | b'/'
+                        )
+                    })
                     .map_or(self.bytes.len(), |end| at + end);
-                if end == at { Err(JsoncError::Malformed) } else { Ok(end) }
+                if end == at {
+                    Err(JsoncError::Malformed)
+                } else {
+                    Ok(end)
+                }
             }
         }
     }
@@ -113,12 +128,21 @@ impl Scan<'_> {
         let mut at = self.trivia(open + 1)?;
         loop {
             match self.bytes.get(at) {
-                Some(b'}') => return Ok(Object { open, close: at, members }),
+                Some(b'}') => {
+                    return Ok(Object {
+                        open,
+                        close: at,
+                        members,
+                    });
+                }
                 Some(b'"') => {}
                 _ => return Err(JsoncError::Malformed),
             }
             let key_end = self.string(at)?;
-            let key = std::str::from_utf8(&self.bytes[at..key_end]).ok().and_then(|text| serde_json::from_str(text).ok()).ok_or(JsoncError::Malformed)?;
+            let key = std::str::from_utf8(&self.bytes[at..key_end])
+                .ok()
+                .and_then(|text| serde_json::from_str(text).ok())
+                .ok_or(JsoncError::Malformed)?;
             let colon = self.trivia(key_end)?;
             if self.bytes.get(colon) != Some(&b':') {
                 return Err(JsoncError::Malformed);
@@ -127,7 +151,12 @@ impl Scan<'_> {
             let end = self.value(start, depth + 1)?;
             let after = self.trivia(end)?;
             let comma = (self.bytes.get(after) == Some(&b',')).then_some(after);
-            members.push(Member { key, span: at..end, value: start..end, comma });
+            members.push(Member {
+                key,
+                span: at..end,
+                value: start..end,
+                comma,
+            });
             at = match comma {
                 Some(comma) => self.trivia(comma + 1)?,
                 None => after,
@@ -147,7 +176,9 @@ fn object_at(scan: &Scan<'_>, path: &[&str]) -> Result<Option<Object>, JsoncErro
         return Err(JsoncError::Malformed);
     }
     for key in path {
-        let Some(member) = object.members.iter().find(|member| member.key == *key) else { return Ok(None) };
+        let Some(member) = object.members.iter().find(|member| member.key == *key) else {
+            return Ok(None);
+        };
         if scan.bytes.get(member.value.start) != Some(&b'{') {
             return Err(JsoncError::PlaceNotAnObject);
         }
@@ -162,14 +193,20 @@ fn object_at(scan: &Scan<'_>, path: &[&str]) -> Result<Option<Object>, JsoncErro
 /// [`JsoncError`] when the text is not an object or cannot be read.
 pub fn member<'a>(text: &'a str, path: &[&str], name: &str) -> Result<Option<&'a str>, JsoncError> {
     let text = if text.trim().is_empty() { "{}" } else { text };
-    let scan = Scan { bytes: text.as_bytes() };
-    Ok(object_at(&scan, path)?.and_then(|object| object.members.into_iter().find(|member| member.key == name)).map(|member| &text[member.value]))
+    let scan = Scan {
+        bytes: text.as_bytes(),
+    };
+    Ok(object_at(&scan, path)?
+        .and_then(|object| object.members.into_iter().find(|member| member.key == name))
+        .map(|member| &text[member.value]))
 }
 
 /// The white space at the start of the line that holds `at`.
 fn indent_of(text: &str, at: usize) -> &str {
     let line = text[..at].rfind('\n').map_or(0, |newline| newline + 1);
-    let end = text[line..].find(|character: char| character != ' ' && character != '\t').map_or(text.len(), |end| line + end);
+    let end = text[line..]
+        .find(|character: char| character != ' ' && character != '\t')
+        .map_or(text.len(), |end| line + end);
     &text[line..end.min(at)]
 }
 
@@ -185,7 +222,12 @@ fn insert(text: &str, object: &Object, name: &str, value: &str) -> String {
         None => {
             let outer = indent_of(text, object.open);
             let inner = format!("{outer}  ");
-            format!("{}\n{inner}{key}: {}\n{outer}{}", &text[..=object.open], indented(value, &inner), &text[object.close..])
+            format!(
+                "{}\n{inner}{key}: {}\n{outer}{}",
+                &text[..=object.open],
+                indented(value, &inner),
+                &text[object.close..]
+            )
         }
         Some(last) => {
             let inner = indent_of(text, last.span.start);
@@ -193,7 +235,11 @@ fn insert(text: &str, object: &Object, name: &str, value: &str) -> String {
             match last.comma {
                 // The file ends its members with a comma, so the new member does also.
                 Some(comma) => format!("{}{member},{}", &text[..=comma], &text[comma + 1..]),
-                None => format!("{},{member}{}", &text[..last.span.end], &text[last.span.end..]),
+                None => format!(
+                    "{},{member}{}",
+                    &text[..last.span.end],
+                    &text[last.span.end..]
+                ),
             }
         }
     }
@@ -207,20 +253,37 @@ fn insert(text: &str, object: &Object, name: &str, value: &str) -> String {
 /// value at the path.
 pub fn set(text: &str, path: &[&str], name: &str, value: &str) -> Result<String, JsoncError> {
     let text = if text.trim().is_empty() { "{}\n" } else { text };
-    let scan = Scan { bytes: text.as_bytes() };
+    let scan = Scan {
+        bytes: text.as_bytes(),
+    };
     // The deepest object of the path that is there; the rest of the path is made inside the value.
     for depth in (0..=path.len()).rev() {
-        let Some(object) = object_at(&scan, &path[..depth])? else { continue };
+        let Some(object) = object_at(&scan, &path[..depth])? else {
+            continue;
+        };
         if depth == path.len() {
             if let Some(found) = object.members.iter().find(|member| member.key == name) {
                 let inner = indent_of(text, found.span.start);
-                return Ok(format!("{}{}{}", &text[..found.value.start], indented(value, inner), &text[found.value.end..]));
+                return Ok(format!(
+                    "{}{}{}",
+                    &text[..found.value.start],
+                    indented(value, inner),
+                    &text[found.value.end..]
+                ));
             }
             return Ok(insert(text, &object, name, value));
         }
-        let mut nested = format!("{{\n  {}: {}\n}}", serde_json::Value::from(name), indented(value, "  "));
+        let mut nested = format!(
+            "{{\n  {}: {}\n}}",
+            serde_json::Value::from(name),
+            indented(value, "  ")
+        );
         for key in path[depth + 1..].iter().rev() {
-            nested = format!("{{\n  {}: {}\n}}", serde_json::Value::from(*key), indented(&nested, "  "));
+            nested = format!(
+                "{{\n  {}: {}\n}}",
+                serde_json::Value::from(*key),
+                indented(&nested, "  ")
+            );
         }
         return Ok(insert(text, &object, path[depth], &nested));
     }
@@ -236,11 +299,20 @@ pub fn remove(text: &str, path: &[&str], name: &str) -> Result<Option<String>, J
     if text.trim().is_empty() {
         return Ok(None);
     }
-    let scan = Scan { bytes: text.as_bytes() };
-    let Some(object) = object_at(&scan, path)? else { return Ok(None) };
-    let Some(at) = object.members.iter().position(|member| member.key == name) else { return Ok(None) };
+    let scan = Scan {
+        bytes: text.as_bytes(),
+    };
+    let Some(object) = object_at(&scan, path)? else {
+        return Ok(None);
+    };
+    let Some(at) = object.members.iter().position(|member| member.key == name) else {
+        return Ok(None);
+    };
     let found = &object.members[at];
-    let cut = match (found.comma, at.checked_sub(1).map(|before| &object.members[before])) {
+    let cut = match (
+        found.comma,
+        at.checked_sub(1).map(|before| &object.members[before]),
+    ) {
         // A comma follows: the member goes with its comma and with the line break before it.
         (Some(comma), _) => line_start(text, found.span.start)..comma + 1,
         // The last member of several: it goes with the comma that the member before it then loses.
