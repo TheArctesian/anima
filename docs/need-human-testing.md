@@ -76,6 +76,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-NEW-projectsv2 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1795,5 +1796,28 @@ host key, with many check states or while it loads.
    Expected: the cards go to two columns and then to one, and back; no text lies over another part; the whole host key shows.
 3. Reload the page and watch the first second.
    Expected: the loading shapes are where the cards then are; nothing moves when the values arrive.
+
+Result: Open.
+
+### HT-NEW-projectsv2: the Projects page after the interface review (R-224)
+
+Built on the branch `ui/v2-projects` (`0d1c1303`), in `apps/client/src/lib/projects`: the page has a choice "All", "Needs a
+look", "Deployed" and "Not deployed" above the tiles, each with the number of projects of the page that it holds, and a
+tile has a raised surface and no border. The tests prove the choice. The page was not seen at all: the test hub of the
+gallery tool has no project, so there is no picture of it, in the dark or the light appearance.
+
+1. Turn the extension "Projects" on, connect GitHub, and open Projects in a window about 1280 px wide.
+   Expected: above the tiles is one line with the choice of the group, then Sort, Language and Size. Each choice ends with
+   a number. Each tile is a little lighter than the page and has no border; a tile that needs a look has a coloured edge
+   at its left.
+2. Select "Needs a look", then "Deployed", then "Not deployed", then "All".
+   Expected: only the tiles of that group show, and the number of tiles is the number of the choice. A group with no
+   project says "No project in this group".
+3. Select "Left out" at the top of the page, then "Projects".
+   Expected: the choice of the group is not there for "Left out", and comes back for "Projects".
+4. Set Sort to "Last commit".
+   Expected: the choice of the group is not there, and the tiles are one list.
+5. Make the window narrow (about 800 px), in the light and the dark appearance.
+   Expected: the controls go to a second line; no part lies over another.
 
 Result: Open.
