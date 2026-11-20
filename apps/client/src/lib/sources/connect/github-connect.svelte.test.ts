@@ -57,8 +57,9 @@ async function settled(): Promise<void> {
   flushSync();
 }
 
-async function show(current: ReturnType<typeof attempt> | null = null): Promise<void> {
+async function show(current: ReturnType<typeof attempt> | null = null, origin?: string): Promise<void> {
   hub = fakeHub([account('a', 'Personal')]);
+  if (origin !== undefined) hub.address = { ...hub.address, origin };
   hub.connect = current;
   mocks.hub = hub;
   app = mount(SourcesSection, { target: document.body, props: { now: () => NOW, opener } });
@@ -181,4 +182,23 @@ it('PRJ-039: a refused start shows the hub words and opens nothing', async () =>
   expect(document.querySelector('[role="alert"]')?.textContent).toBe('A GitHub App is made and waits for Install. Finish it or cancel it first.');
   expect(opened).toEqual([]);
   expect(closed).toBe(1);
+});
+
+it('DEF-003: on a hub at a port of this computer the browser flow is not offered, no link is asked for, and the key file stays', async () => {
+  await show(null, 'http://127.0.0.1:41001');
+  expect(text()).toContain('Coming soon: Connect GitHub in your browser for this hub.');
+  expect(button('Connect GitHub')).toBeUndefined();
+  expect(hub.sent).toEqual([]);
+  expect(opened).toEqual([]);
+  await click('Use key file');
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+});
+
+it('DEF-003: an attempt that is open on such a hub can be cancelled but not continued in a browser', async () => {
+  await show(attempt({ phase: 'WAITING_FOR_BROWSER' }), 'http://127.0.0.1:41001');
+  expect(button('Continue in browser')).toBeUndefined();
+  expect(button('Install on GitHub')).toBeUndefined();
+  await click('Cancel');
+  expect(hub.sent.map((call) => call.operation)).toEqual(['CancelGithubConnect']);
+  expect(opened).toEqual([]);
 });

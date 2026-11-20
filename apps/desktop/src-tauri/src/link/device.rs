@@ -23,6 +23,8 @@ use super::{
 };
 
 const POLL: Duration = Duration::from_millis(50);
+/// How often a link that a unit keeps is asked for its port.
+pub const WATCH_EVERY: Duration = Duration::from_secs(2);
 /// How long a child that was asked to stop (its standard input closed) has before it is killed.
 pub const STOP_PATIENCE: Duration = Duration::from_secs(3);
 /// The longest log line that is read whole; a longer one is cut.
@@ -44,6 +46,9 @@ pub struct Launch {
 pub struct DeviceLink {
     state: Arc<Mutex<DeviceState>>,
     running: Mutex<Option<Running>>,
+    /// Set once the hub of this run is a hosted one: a unit of the user then keeps the link
+    /// running with the app closed (HMD-058).
+    background: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -56,6 +61,16 @@ impl DeviceLink {
     /// The state now.
     pub fn state(&self) -> DeviceState {
         *self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// From now, a link that this device joins is handed to a unit of the user.
+    pub fn keep_in_background(&self) {
+        self.background.store(true, Ordering::Release);
+    }
+
+    /// Whether a unit of the user must keep the link of this device.
+    pub fn in_background(&self) -> bool {
+        self.background.load(Ordering::Acquire)
     }
 
     /// Records a state that no child gives, such as a link that cannot start at all.
@@ -73,6 +88,21 @@ impl DeviceLink {
         let state = Arc::clone(&self.state);
         let stop_seen = Arc::clone(&stop);
         let thread = thread::spawn(move || supervise(&launch, &stop_seen, &state));
+        *running = Some(Running { stop, thread });
+    }
+
+    /// Watches a device link that a unit of the user keeps running (HMD-058): `serving` asks
+    /// the link for the port it listens on. No child is started, and [`Self::stop`] ends only
+    /// the watch: the link runs on with the app closed.
+    pub fn watch(&self, port: u16, serving: impl Fn() -> Option<u16> + Send + 'static) {
+        let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(before) = running.take() {
+            before.end();
+        }
+        let stop = Arc::new(AtomicBool::new(false));
+        let state = Arc::clone(&self.state);
+        let stop_seen = Arc::clone(&stop);
+        let thread = thread::spawn(move || observe(port, &serving, &stop_seen, &state));
         *running = Some(Running { stop, thread });
     }
 
@@ -109,6 +139,36 @@ fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>
         run_once(launch, stop, state);
         let resume = Instant::now() + launch.restart_after;
         while !stop.load(Ordering::Acquire) && Instant::now() < resume {
+            thread::sleep(POLL);
+        }
+    }
+    record(state, Event::Stopped);
+}
+
+/// Asks the kept link for its port until `stop`, and records when it comes up and goes down.
+fn observe(
+    port: u16,
+    serving: &dyn Fn() -> Option<u16>,
+    stop: &AtomicBool,
+    state: &Mutex<DeviceState>,
+) {
+    record(state, Event::Starting { port });
+    let mut up = false;
+    while !stop.load(Ordering::Acquire) {
+        match serving() {
+            Some(reported) if !up => {
+                record(state, Event::Starting { port });
+                record(state, Event::Ready { port: reported });
+                up = true;
+            }
+            None if up => {
+                record(state, Event::Ended);
+                up = false;
+            }
+            _ => {}
+        }
+        let next = Instant::now() + WATCH_EVERY;
+        while !stop.load(Ordering::Acquire) && Instant::now() < next {
             thread::sleep(POLL);
         }
     }

@@ -3,10 +3,11 @@
 // placeholder its number (PLN-021), makes the merge commit and runs the document gates on that
 // commit (`src/merge/commit.ts` says why in that order); if they fail, the commit is removed.
 // Without `--push` it pushes nothing and prints the command. It never pushes to `main`.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { commitThenCheck, undoMerge } from "../src/merge/commit.ts";
-import { conflictsForAHand, gatesRefusal, GENERATED, mergeMessage, parseMergeRule, type CheckRun } from "../src/merge/rules.ts";
+import { undoMerge } from "../src/merge/commit.ts";
+import { finishMerge } from "../src/merge/finish.ts";
+import { conflictsForAHand, gatesRefusal, GENERATED, parseMergeRule, type CheckRun } from "../src/merge/rules.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";
@@ -63,17 +64,12 @@ if (forAHand.length > 0) {
   run(["git", "merge", "--abort"], true);
   stop(3, `a conflict that the script does not solve:\n${forAHand.join("\n")}\nMerge origin/${INTO} into the branch, solve it there, and run this again.`);
 }
-// A generated file is never merged: take the one of `dev`, then write it again from the documents.
-for (const path of GENERATED) writeFileSync(join(REPO_ROOT, path), step(["git", "show", `HEAD:${path}`]));
-step(["bun", "install", "--frozen-lockfile"]);
-const numbers = step(["bun", "quality/bin/numbers.ts", "--assign"])
-  .split("\n")
-  .map((line) => line.split(" -> "))
-  .filter((pair): pair is [string, string] => pair.length === 2);
-step(["bun", "run", "quality:register"]);
-const CHECKS = [["bun", "run", "quality:documents"], ["bun", "quality/bin/numbers.ts", "--check"]];
-const failed = commitThenCheck(REPO_ROOT, mergeMessage(source, INTO, numbers), () => CHECKS.find((argv) => !run(argv).ok)?.join(" "));
-if (failed !== undefined) stop(4, `\`${failed}\` failed on the merge commit; the commit is removed and nothing is changed`);
+const finished = finishMerge(REPO_ROOT, source, INTO);
+if ("failure" in finished) {
+  undoMerge(REPO_ROOT, before);
+  stop(4, `${finished.failure}; the merge is undone and nothing is changed`);
+}
+const { numbers } = finished;
 console.log(`merge: ${source} is merged into local ${INTO} at ${run(["git", "rev-parse", "--short", "HEAD"]).out.trim()}`);
 for (const [placeholder, number] of numbers) console.log(`merge: ${placeholder} is ${number}`);
 console.log(`merge: the generated files are written again: ${GENERATED.join(", ")}`);

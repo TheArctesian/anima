@@ -35,7 +35,7 @@ async function settled(): Promise<void> {
 async function open(): Promise<HTMLElement> {
   const target = document.createElement('div');
   document.body.append(target);
-  app = mount(McpSection, { target, props: { shell } });
+  app = mount(McpSection, { target, props: { shell, agents: false } });
   flushSync();
   await settled();
   return target;
@@ -133,7 +133,7 @@ it('MCP-021: arrow keys alone cause no write and never wrap between Off and Allo
 it('MCP-020: the section is as tall as its list from the first paint: one group placeholder for each known tool set at once, then the groups', async () => {
   const target = document.createElement('div');
   document.body.append(target);
-  app = mount(McpSection, { target, props: { shell } });
+  app = mount(McpSection, { target, props: { shell, agents: false } });
   flushSync();
   expect(target.querySelector('[role="status"][aria-label="Loading MCP permissions"]')).not.toBeNull();
   expect(target.querySelectorAll('.placeholder .row')).toHaveLength(14);

@@ -1,7 +1,8 @@
 //! `anima-local-hub`: wires the command line to the library and sets the exit code. No rules here.
 //!
 //!   anima-local-hub run     [--root <folder> --socket-folder <folder>] [--listen <address:port>]
-//!                           [--hosted-cloud-key-file <file>]
+//!                           [--hosted-cloud-key-file <file>] [--public-origin <origin>]
+//!                           [--web-root <folder>]
 //!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...] [--step-back]
 //!   anima-local-hub update  --tree <folder> [--root ... --socket-folder ...]
 //!   anima-local-hub remove  [--root <folder> --socket-folder <folder>]
@@ -113,14 +114,14 @@ fn loopback(listen: SocketAddr) -> Result<SocketAddr, Failure> {
 }
 
 fn serve(place: &Place, listen: SocketAddr, programs: RunFiles) -> Result<ExitCode, Failure> {
-    let hosted_cloud_key_file = programs.hosted_cloud_key_file.clone();
+    let pool = programs.pool();
     let plan = Plan {
         carried: programs.carried()?,
         folders: place.folders()?,
         listen: loopback(listen)?,
         limits: LIMITS,
         clock: SystemTime::now,
-        hosted_cloud_key_file,
+        pool,
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()

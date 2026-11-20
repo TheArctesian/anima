@@ -26,6 +26,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](../proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](../proposals/bulk-data-placement.md) | STO-001 to STO-011 |
 | Rules for all work on machines, and jobs, and the automatic routing of work to the right machine (R-243) | [jobs.md](../proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-027, ROU-001 to ROU-016 |
+| A command line or a session on a machine for an AI agent (R-258): the mechanism, the texts that it changes, its open decisions | [routed-command-lines.md](../proposals/routed-command-lines.md) | RCL-001 to RCL-024 |
 | AI agent runs | [agent-runs.md](../proposals/agent-runs.md) | AGN-001 to AGN-014 |
 | Hosted applications | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) | HOST-001 to HOST-025 |
 | Hosted applications, stage 2 and the stage after it: the container work types, stacks that already run, the reverse proxy, deploys from git, databases and copies (proposed) | [hosted-applications-stage-2.md](../proposals/hosted-applications-stage-2.md) | HOST-026 to HOST-045 |

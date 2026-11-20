@@ -246,8 +246,8 @@ one list of such checks (PLN-014): a task that waits for a check is not done unt
 
 ## Gates
 
-Run `bun run gates:fast` while you work and before you push. The full list of 21 gates must pass on GitHub before a merge: push your branch, and the workflow `gates` runs it for the branch as merged with `dev` (R-254). When that run passed, the workflow `merge-to-dev` merges the branch into `dev` by itself (R-252); nothing merges into `main` by itself. If your change touches code that is compiled or tested only on macOS (the Keychain store and the LaunchAgent of the daemon, `link/statedir`, the macOS parts of the desktop shell, `check-mach-o.sh`, `trial-bundle.sh`), run `bun run gates:fast` on a Mac first: GitHub runs Linux. A commit that changes only
-`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`. `bun run gates` runs the full list on your machine; one run at a time on one computer.
+Run `bun run gates:fast` while you work and before you push. The full list of 21 gates must pass on GitHub before a merge: push your branch, and the workflow `gates` runs it for the branch as merged with `dev` (R-254). When that run passed, the merge train takes the branch: the workflow `merge-to-dev` merges each branch that passed into one commit on `dev`, runs the gates one time for that commit and, when they pass, moves `dev` to it (R-252; [quality/README.md](quality/README.md), "The merge into `dev`"). Nothing merges into `main` by itself. `bun quality/bin/train.ts --plan` prints what the train holds. Do not push your branch again only because `dev` moved, and do not start the gates of your branch again: both make the queue longer. Never push a branch whose name starts with `train/`. If your change touches code that is compiled or tested only on macOS (the Keychain store and the LaunchAgent of the daemon, `link/statedir`, the macOS parts of the desktop shell, `check-mach-o.sh`, `trial-bundle.sh`), run `bun run gates:fast` on a Mac first: GitHub runs Linux. A commit that changes only
+`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`, and you can push it to `dev` directly (`git push origin HEAD:dev`): the merge train carries over a `dev` that moved only in documents (R-260). Each other change, also of a document, goes to a branch. `bun run gates` runs the full list on your machine; one run at a time on one computer.
 `rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh
@@ -266,7 +266,7 @@ The workflow `.github/workflows/gates.yml` runs the full list on Linux machines 
 branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no
 secret. A push of a branch is tested as merged with the `dev` of that moment; if the two do not merge,
 the run fails: merge `origin/dev` into your branch and solve the conflict there. If `dev` moves after
-your run, the gates run again by themselves before the merge.
+your run, nothing runs again for your branch: the train tests it with the `dev` that it lands on.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),

@@ -117,10 +117,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, label, span.name, button, option')].map(readable);
 }
 
-it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys, then VPN', async () => {
+it('SET-001, UI-005, MOT-043, R-224: the page is the title, then Account, Notifications, Default check settings and Data retention, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Integrations and API keys, then VPN', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys', 'Extensions', 'Integrations', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Notifications', 'Default check settings', 'Data retention', 'Appearance', 'Integrations', 'API keys', 'VPN']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -131,23 +131,23 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   expect(sections(target).flatMap((section) => [...section.querySelectorAll(controls)])).toHaveLength(0);
 });
 
-it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
+it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section after Appearance, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Stay awake', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'Extensions', 'Integrations', 'MCP', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Notifications', 'Default check settings', 'Data retention', 'Stay awake', 'Appearance', 'Updates', 'MCP', 'Integrations', 'API keys', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
 });
 
-it('AWK-004: the desktop app shows the Stay awake section after Hub, and the web client shows none', async () => {
+it('AWK-004: the desktop app shows the Stay awake section first of the sections of this computer, and the web client shows none', async () => {
   const web = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(web.querySelector('section[aria-labelledby="settings-stay-awake"]')).toBeNull();
   if (app !== undefined) await unmount(app);
   mocks.platform = DESKTOP_MAC;
   const desktop = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(desktop);
-  expect(headings.indexOf('Stay awake')).toBe(headings.indexOf('Hub') + 1);
+  expect(headings.indexOf('Stay awake')).toBe(headings.indexOf('Appearance') - 1);
 });
 
 it('MCP-023: the web client shows no MCP section, because the permissions are a file on this computer', async () => {
@@ -155,11 +155,11 @@ it('MCP-023: the web client shows no MCP section, because the permissions are a 
   expect(target.querySelector('section[aria-labelledby="settings-mcp"]')).toBeNull();
 });
 
-it('MCP-018: the desktop app shows the MCP section before VPN', async () => {
+it('MCP-018: the desktop app shows the MCP section after Updates, with the sections of this computer', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.indexOf('MCP')).toBe(headings.indexOf('VPN') - 1);
+  expect(headings.indexOf('MCP')).toBe(headings.indexOf('Updates') + 1);
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {
@@ -257,11 +257,11 @@ it('CLI-002, D-5: the browser shows no Hub section', async () => {
   expect(target.querySelector('section[aria-labelledby="settings-hub"]')).toBeNull();
 });
 
-it('CLI-002, F-10: desktop shows Hub after Account and before Appearance, with the stored address and an empty status line', async () => {
+it('CLI-002, F-10: desktop shows Hub after Account and before Notifications, with the stored address and an empty status line', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.slice(0, 4)).toEqual(['Account', 'Hub', 'Stay awake', 'Appearance']);
+  expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Notifications']);
   expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });

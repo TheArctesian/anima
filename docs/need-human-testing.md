@@ -76,11 +76,16 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
+| HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-NEW-w2linux | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
+| HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
+| HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
+| HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -905,6 +910,43 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
+### HT-059: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
+
+Built: on the branch `hosted/hm-t24b-shell-link-unit` (task HM-T24 of
+[hosted-mode.md](proposals/hosted-mode.md), parts b and c; R-240). After a hosted hub gives this
+computer its access, the shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies `anima-link` to
+`~/.local/bin`, has it install the unit of the user, and watches the running link in place of a
+child of its own. A computer that is on the link already is handed over at the next start of the
+application. When the unit cannot be made, the application runs the link itself as before.
+
+The tests cover: the calls of `anima-link unit` and `ctl status` with a stand-in link, the watch of
+a kept link (up, down, up again, and a stop of the application that leaves the unit), the mark of
+the folder. Not covered: the copy to the real home folder, `launchctl`, the hand-over inside a real
+sign-in, the start of the application with a unit that runs, and an update of the application.
+
+It needs: this Mac with the application of this build (a trial bundle is enough), signed in to the
+hosted hub. `<DIR>` is `~/Library/Application Support/ing.anima.desktop/link/device`; put it in
+double quotes in a command, because the path has a space.
+
+1. Open the application and sign in (or let it open the hosted hub as before). Use it for a minute.
+   Expected: the hub opens as before. Nothing asks for a password.
+2. Quit the application and open it again. Wait 30 seconds. Run `~/.local/bin/anima-link unit show`.
+   Expected: `{"installed":true,...}`. The hub opens in the application.
+3. Quit the application. Run `~/.local/bin/anima-link ctl -state <DIR> status`. Expected: a JSON
+   answer with `"role":"device"`: the link runs with the application closed. On the hub (in a
+   browser later, or after you open the application again) the check `Connected` of this Mac did not
+   go Down while the application was closed.
+4. Log out of the Mac and log in again. Do not open the application. Run step 3's command.
+   Expected: the same answer.
+5. Open the application. Expected: the hub opens at once; the application log has no line "the
+   device link was not handed to a unit of the user".
+6. Install a newer build of the application and open it. Run
+   `cmp ~/.local/bin/anima-link /Applications/Anima.ing.app/Contents/MacOS/anima-link`. Expected: no
+   output (the copy is the program of the new application), and the hub still opens.
+7. Only if you want to leave the hub on this Mac: leave it in the application (Settings). Run
+   `~/.local/bin/anima-link unit show`. Expected: the file is gone ("No such file"), and
+   `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
+
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
 Built: on the branch `hosted/hm-t24-link-unit` (task HM-T24 of
@@ -1077,6 +1119,7 @@ part, the page on a screen, a real answer of WorkOS, the refresh after this flow
    with no password.
 
 Result: Open.
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): he pressed "+ VNC" on a row of the Devices list with Tailscale quit. A small panel said "No answer on port 5900. Screen Sharing (or the VNC se", cut off at the edge of the window, with a Close button. He did not report that Tailscale started. This agrees with step 3. Steps 1, 2, 4 and 5 were not reported. The message that is cut off is a fault of the layout, not of this check; the interface session has it.
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
@@ -1275,6 +1318,8 @@ when it must run. Not proven before that trial: the time of `gates-macos`, and t
 `deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
 
 Result: Open.
+
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
 
@@ -1551,10 +1596,15 @@ Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-
 2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is
    faster than the first (the cache).
 3. When `merge-to-dev.yml` is on `main` and the settings are made: push a branch with one changed document and
-   one placeholder of a number. Expected: after the gates, the run `merge-to-dev` merges it; `dev` has a merge
-   commit that names the number; the placeholder is gone; a run `gates` for `dev` starts.
-4. Push two such branches at the same time. Expected: the first merges; the gates of the second run again
-   with the new `dev`, and then it merges. `main` did not move.
+   one placeholder of a number. Expected: after its gates, a run `merge-to-dev` makes a branch `train/...`
+   and a run `gates` starts for it; when that run passes, the next run `merge-to-dev` moves `dev` to the
+   commit of the train: `dev` has a merge commit that names the number, the placeholder is gone, the branch
+   `train/...` is gone, and no run `gates` starts for `dev`.
+4. Push three such branches at the same time. Expected: one train holds each branch whose gates passed
+   when it was made; one run of the gates lands them in one step; no branch runs a second time. `main`
+   did not move. (Seen on 2026-11-20 with the workflow before the train: `ui/bar-foot` and
+   `fix/first-use-observations` merged with no session, and each merge started the gates of each waiting
+   branch again; the train replaces that.)
 5. Push a branch that has a conflict with `dev` in a document. Expected: its gates fail in the step "Merge
    the dev of this run into the checkout", and nothing is merged.
 
@@ -1746,6 +1796,7 @@ The operator deferred these fifteen checks on 2026-11-18 (R-169: "Approve the so
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A computer of a hosted hub has a link address and no VPN address | Entry below |
 | HT-019 | The VPN role `daemon` on the VPS | The policy of the VPN that the operator leaves | Entry below |
 | HT-024 | A hub restored on a second server from its backup | The operator starts fresh on the hosted hub (R-140). Row 4.2 of the priorities waits for nothing because of this ruling | Entry below |
+| HT-058 | The page Extensions as a tight list and as a grid (EXT-001) | The desktop application of a build that holds the branch `ui/extensions-grid` | Open |
 | O-1, O-2 | RDP | A hosted hub has no RDP session yet (HM-T14) | "Phase 2" above |
 | O-5 | Wake-on-LAN through the site relay | Not possible for a computer of the link (HT-031) | "Phase 2" above |
 | P-1 to P-6 | The deployed image, the T4 probe, and the web client in a browser | The hub on the VPS and its VPN | "Phase 3" above |
@@ -1910,6 +1961,8 @@ signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, a
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
 
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): the Devices list of his hosted hub showed three rows, all Up: `Hub` with the host `localhost`, his MacBook with a link address, and `pop-os` with a link address. Each row showed "No metrics", which is expected until the daemon is installed (task HM-T19). So a Linux computer joined the hosted hub through the application. Which build ran on `pop-os` is not known here.
+
 ### HT-047: the Devices page after the interface review (R-224)
 
 Built on the branch `ui/v2-devices` (`132e03b3`): in `apps/client/src/lib/devices/card/DeviceTable.svelte` the name is the
@@ -1948,6 +2001,46 @@ host key, with many check states or while it loads.
 
 Result: Open.
 
+### HT-060: the Projects page after the interface review (R-224)
+
+Built on the branch `ui/v2-projects` (`0d1c1303`), in `apps/client/src/lib/projects`: the page has a choice "All", "Needs a
+look", "Deployed" and "Not deployed" above the tiles, each with the number of projects of the page that it holds, and a
+tile has a raised surface and no border. The tests prove the choice. The page was not seen at all: the test hub of the
+gallery tool has no project, so there is no picture of it, in the dark or the light appearance.
+
+1. Turn the extension "Projects" on, connect GitHub, and open Projects in a window about 1280 px wide.
+   Expected: above the tiles is one line with the choice of the group, then Sort, Language and Size. Each choice ends with
+   a number. Each tile is a little lighter than the page and has no border; a tile that needs a look has a coloured edge
+   at its left.
+2. Select "Needs a look", then "Deployed", then "Not deployed", then "All".
+   Expected: only the tiles of that group show, and the number of tiles is the number of the choice. A group with no
+   project says "No project in this group".
+3. Select "Left out" at the top of the page, then "Projects".
+   Expected: the choice of the group is not there for "Left out", and comes back for "Projects".
+4. Set Sort to "Last commit".
+   Expected: the choice of the group is not there, and the tiles are one list.
+5. Make the window narrow (about 800 px), in the light and the dark appearance.
+   Expected: the controls go to a second line; no part lies over another.
+### HT-057: the Settings page after the interface review (R-224)
+
+Built on the branch `ui/v2-settings` (`1ffb6bf8`): the index of the Settings page (`apps/client/src/routes/settings/index.ts`,
+`apps/client/src/lib/page/contents/PageIndex.svelte`) names three groups, "Hub and account", "This computer" and
+"Connections", and the sections of the page are in the same order. The tests prove the order and the group names. The
+page was looked at only in pictures of the web client at 1280 px. No person saw it in the desktop application, which
+has the sections Hub, Stay awake, Updates and MCP, or on a phone.
+
+1. Open Settings in the desktop application, in a window about 1280 px wide.
+   Expected: the index at the left has three small titles. Under "Hub and account": Account, Hub, Notifications, Default
+   check settings, Data retention. Under "This computer": Stay awake, Appearance, Updates, MCP. Under "Connections":
+   Integrations, API keys, Extensions, and VPN on a hub that is not hosted.
+2. Scroll the page from the top to the foot.
+   Expected: the sections come in the order of the index, and the index marks the section at the top of the window.
+3. Select "MCP" in the index, then "Account".
+   Expected: the page goes to that section each time.
+4. Make the window narrow (below 1100 px).
+   Expected: the index is one row of links above the sections, with no group title.
+5. Open Settings on a phone.
+   Expected: Account and Hub are first and "Leave" is last; no part lies over another.
 ### HT-052: the tab Containers of a device after the interface review (R-224)
 
 Built on the branch `ui/v2-device-containers`, in `apps/client/src/lib/containers`: the table has one column "State" with
@@ -1968,5 +2061,95 @@ names, with many containers or at a narrow width.
 4. Make the window narrow (about 900 px) and look again, in the light and the dark appearance.
    Expected: the status text is cut with an ellipsis and its full text is the tooltip; the state word is whole; the tools
    of the log go to a second line and none lies over another.
+
+Result: Open.
+
+### HT-062: `anima mcp install` with the real coding agents (MCP-027 to MCP-038)
+
+Built on the branch `mcp/install`, in `crates/anima-cli/src/mcp/install`. The tests prove each way against a temporary
+home folder and a stand-in program: the bytes that stay, the copy, the refusal of a symbolic link, the dry run of the
+library. No test starts a real agent and none reads a real configuration. The place and the form of each entry are from
+the documentation of each product on 2026-11-19 and were not tried. The part "Coding agents" of Settings (task MI4)
+is built and was not seen: no desktop build was made.
+
+1. Run `anima mcp agents`.
+   Expected: one row for each of the eight agents. An agent that you have says "not set up"; one that you do not have
+   says "not on this computer".
+2. Run `anima mcp install --dry-run`.
+   Expected: for each agent that you have, the file that would be written with its copy, or the command line that would
+   run, with the full path of `anima`. Look at a file that it names: it is not changed.
+3. Run `anima mcp install` and answer yes. Then run `anima mcp agents`.
+   Expected: each agent says "set up". Beside each written file there is a file with the same name and `.before-anima`,
+   which is the file as it was. Compare the two: only the entry `anima` is different; your comments and your other
+   servers are as they were.
+4. Start each agent anew and look at its list of MCP servers.
+   Expected: a server `anima` is there and its tools work. Write down for each agent: yes or no. The points that the
+   documentation does not settle are: Claude Code at user scope; VS Code through `~/.copilot/mcp-config.json`; opencode
+   under `mcp`, `servers`; Zed at `~/.config/zed/settings.json`; whether an agent needs a restart.
+5. Run `anima auth logout`, start one agent anew, then sign in again.
+   Expected: while signed out the agent shows the server as failed or with no tool; nothing asks for a token.
+6. Run `anima mcp uninstall` and answer yes.
+   Expected: each agent says "not set up". Each file is the same as its copy, byte for byte (an object that Anima had to
+   make stays, empty).
+7. Put a server named `anima` with a different command into one agent by hand, then run `anima mcp agents`,
+   `anima mcp uninstall`, and `anima mcp install`.
+   Expected: the state is "set up, starts a different anima"; uninstall leaves it; install replaces it after it shows
+   it in its list.
+### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
+
+Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
+name of the hub, and Extensions is an entry directly above Settings that opens the new page
+`apps/client/src/routes/extensions`. The Settings page has no section Extensions on a computer. The tests prove the
+order of the entries. The bar was looked at only in pictures of the web client at 1280 px; the page Extensions was
+pictured with no extension. No person saw the narrow bar, the panel of Live sessions at its new place, the page with
+its switches, or the phone.
+
+1. Open the application in a window about 1280 px wide.
+   Expected: the top of the bar has Devices, Agent usage, and Projects while that extension is on. At the foot, from the
+   top: Live sessions with its count, the name of the hub with "Connected", Extensions, Settings.
+2. Select "Live sessions" while a session is open.
+   Expected: its panel opens beside the bar and is whole inside the window; "Stop" ends the session.
+3. Select "Extensions".
+   Expected: a page "Extensions" opens with each extension and its switch. Set Projects on: "Projects" comes into the
+   top of the bar at once. Set it off again.
+4. Open Settings.
+   Expected: there is no section Extensions, and the index does not list it.
+5. Make the bar narrow with the control at its top.
+   Expected: the same order as icons; each icon has its name as a tooltip; Live sessions keeps its count.
+6. Open the application on a phone, then Settings.
+   Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
+   "Open Extensions", which opens the page.
+8. In the desktop application, open Settings, then MCP, with the command line tool not installed (Settings, Updates).
+   Expected: the part "Coding agents" says to install the command line tool first and shows no agent.
+9. Install the command line tool, then open Settings, MCP again.
+   Expected: one row for each agent that you have, with its state in words, and "Set up all". Select "Set up" on one
+   row: a box lists the file that is written with its copy, or the whole command line, and "Set up" and "Cancel".
+   "Cancel" changes nothing. "Set up" changes the row to "Set up" with a button "Remove".
+10. Select "Set up all", confirm, then select "Remove" on one row and confirm.
+   Expected: the same results as steps 3 and 6 for those agents. A row that was refused says why under it.
+
+Result: Open.
+
+### HT-058: the page Extensions as a tight list and as a grid (EXT-001)
+
+Built on the branch `ui/extensions-grid` (`189a48a5`): `apps/client/src/lib/extensions/ExtensionsSection.svelte` draws each
+extension as one line or as a tile, and `apps/client/src/routes/extensions/+page.svelte` has the control "List" and
+"Grid" and keeps the choice on the device. The tests prove the switches, the marks and that the choice is kept. The
+page was looked at only in pictures of the web client at 1280 px with a sample list. No person saw it with the
+extensions of a real hub, at other widths or on a phone.
+
+1. Open "Extensions" from the bar, in a window about 1280 px wide.
+   Expected: one line for each extension: its mark, its name, one line of words, and at the end its switch, "On" for
+   one that is always on, or nothing for one that is not built. A long line of words is cut and its full text is the
+   tooltip. The rows are closer than they were in Settings.
+2. Select "Grid".
+   Expected: the same extensions as tiles, each with its mark on a plain field, its name, its switch and its words in
+   full. No tile shows a screen that does not exist.
+3. Set "Projects" on in each view.
+   Expected: "Projects" comes into the bar at once. A switch that needs a second extension asks first, as before.
+4. Close the application and open it again, then open "Extensions".
+   Expected: the view that you chose last is shown.
+5. Make the window narrow (about 800 px), in the light and the dark appearance, and look at both views.
+   Expected: no part lies over another; the tiles go to fewer columns.
 
 Result: Open.
