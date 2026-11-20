@@ -7,29 +7,40 @@ import { installSyntheticHub } from '../synthetic/synthetic-hub';
 test.describe('signed in', () => {
   test.use({ signedIn: true });
 
-  test('AIS-020: the page is in the navigation and shows the summary, the table and the notes', async ({ page, watch }) => {
+  test('AIS-020: the page is in the navigation and shows the repositories, the totals, the days and the two tables', async ({ page, watch }) => {
     await page.goto(`${HUB_ORIGIN}/devices`);
     await page.getByRole('link', { name: 'Agent usage' }).click();
     await expect(page).toHaveURL(`${HUB_ORIGIN}/agents/usage`);
     await expect(page.getByRole('heading', { name: 'Agent usage', level: 1 })).toBeVisible();
-    await expect(page.locator('.summary')).toContainText('sessions');
-    await expect(page.getByRole('table')).toContainText('mac-mini');
-    await expect(page.getByRole('table')).toContainText('No price');
-    await expect(page.getByText('It is not the bill of a subscription.')).toBeVisible();
-    await expect(page.getByText('This daemon runs as a system unit and cannot see the sessions of a user.')).toBeVisible();
-    await expect(page.getByText('The use counts are turned off in the settings of the daemon on this device.')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Repositories' })).toContainText('github.com/example/anima');
+    await expect(page.getByRole('region', { name: 'Totals' })).toContainText('not a bill');
+    await expect(page.getByRole('list', { name: 'Estimated cost for each day (UTC)' }).getByRole('listitem')).toHaveCount(30);
+    await expect(page.getByRole('table', { name: 'By program and model' })).toContainText('No price');
+    const devices = page.getByRole('table', { name: 'By device' });
+    await expect(devices).toContainText('mac-mini');
+    await expect(devices).toContainText("Runs as a system unit: it cannot see a user's sessions");
+    await expect(devices).toContainText("Turned off in the daemon's settings");
     expect(watch.pageErrors).toEqual([]);
   });
 
   test('AIS-020: a choice is in the address, and an address restores it', async ({ page }) => {
-    await page.goto(`${HUB_ORIGIN}/agents/usage?days=90&by=MODEL&source=CODEX`);
+    await page.goto(`${HUB_ORIGIN}/agents/usage?days=90&count=sessions&source=CODEX`);
     await expect(page.getByRole('radio', { name: '90 days' })).toBeChecked();
-    await expect(page.getByRole('columnheader', { name: 'Model' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Device' })).toHaveCount(0);
-    await expect(page.getByRole('table')).toContainText('gpt-5-codex');
-    await expect(page.getByRole('table')).not.toContainText('claude-opus-4');
+    await expect(page.getByRole('radio', { name: 'Sessions' })).toBeChecked();
+    const models = page.getByRole('table', { name: 'By program and model' });
+    await expect(models).toContainText('gpt-5-codex');
+    await expect(models).not.toContainText('claude-opus-4');
     await page.getByRole('radio', { name: '7 days' }).click();
     await expect(page).toHaveURL(/days=7/);
+  });
+
+  test('a repository of the list limits the page to it, and the list stays whole', async ({ page }) => {
+    await page.goto(`${HUB_ORIGIN}/agents/usage`);
+    const repositories = page.getByRole('navigation', { name: 'Repositories' });
+    await repositories.getByRole('button', { name: /github\.com\/example\/site/ }).click();
+    await expect(page).toHaveURL(/repository=github\.com%2Fexample%2Fsite/);
+    await expect(page.getByRole('table', { name: 'By program and model' })).not.toContainText('claude-opus-4');
+    await expect(repositories).toContainText('github.com/example/anima');
   });
 });
 

@@ -3,7 +3,7 @@
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import type { AgentSource } from '$lib/hub/generated/graphql';
   import type { UsageDevice } from './api';
-  import { DAY_CHOICES, GROUP_CHOICES, SOURCE_CHOICES, withGroup, type Days, type UsageQuery } from './query';
+  import { COUNT_CHOICES, DAY_CHOICES, SOURCE_CHOICES, type Count, type Days, type UsageQuery } from './query';
 
   interface Props {
     query: UsageQuery;
@@ -26,8 +26,17 @@
   const sourceShown = $derived(sourceOptions.find((option) => option.value === (query.source ?? ALL))?.label ?? 'All programs');
 </script>
 
-<!-- One row of choices; each is in the address of the page, so Back and a copied link restore them. -->
+<!-- The choices at the head of the page; each is in the address, so Back and a copied link restore them. -->
 <div class="filters" role="group" aria-label="Usage filters">
+  <Segmented
+    label="Count"
+    size="sm"
+    options={COUNT_CHOICES}
+    value={query.count}
+    onchange={(value) => {
+      onChange({ ...query, count: value as Count });
+    }}
+  />
   <Segmented
     label="Days"
     size="sm"
@@ -35,16 +44,6 @@
     value={String(query.days)}
     onchange={(value) => {
       onChange({ ...query, days: Number(value) as Days });
-    }}
-  />
-  <Menu
-    label="Group by"
-    icon="carbon:list"
-    kind="checkbox"
-    options={GROUP_CHOICES}
-    chosen={query.group}
-    onChoose={(value) => {
-      onChange({ ...query, group: withGroup(query.group, value as UsageQuery['group'][number]) });
     }}
   />
   <Menu
@@ -78,7 +77,5 @@
     align-items: center;
     gap: var(--space-2) var(--space-3);
     min-inline-size: 0;
-    padding-block-end: var(--space-3);
-    border-block-end: var(--border-thin) solid var(--border-subtle);
   }
 </style>

@@ -909,6 +909,7 @@ result gives them in named fields with a length limit (MCP-008).
 | AU-3 | `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, CMD-030, CMD-031) | In progress: built in 2a001a34. Waits for HT-026. | See the state |
 | AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | In progress: built in 4b3823cd, 8bd2579e, 51f77f8f. The browser specs did not run and the mockup is not compared. Waits for HT-026. | See the state |
 | AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | In progress: the review found six faults of the daemon, corrected in cbbc1122. The entry is HT-026, which is open. | See the state |
+| AU-6 | The page drawn again after the mockup agent-usage-v2 (operator, 2026-11-19: "B: look and work like T3 Code", then "Approved, build it"): the repositories at the side with the newest use first, the totals with one bar for each UTC day, the use by program and model and by device. Only what `agentUsage` gives: no change of the hub, of the contract or of the daemon. The three states of a hosted hub stay (HMD-053) | In progress: built on the branch `hosted/agent-usage-v2`. The built page was compared with the mockup from pictures at 1280 px in the dark and the light appearance; not compared in a window of the application. Waits for HT-026. | See the state |
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
