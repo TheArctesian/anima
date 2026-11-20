@@ -183,6 +183,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "crossterm",
+ "daemon-core",
  "futures-util",
  "getrandom 0.4.3",
  "graphql-parser",
