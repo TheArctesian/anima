@@ -24,6 +24,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 4: boot paths | Decided | A + B + C: 64-bit UEFI, legacy BIOS for 64-bit PCs and board-specific boot for selected ARM64 hardware. This does not add 32-bit CPU support. Bootloader choice, Secure Boot policy, exact hardware targets and installation/recovery validation remain open. |
 | Decision 5: disk installation modes | Decided | A + B + E: install to one explicitly selected disk after erase confirmation, keep installation and boot files on that disk and preserve unselected disks; offer a live trial before installation. B is a safeguard of A, not a separate mode. Same-disk dual boot and external-drive installation are not first-version commitments. Trial persistence, partition layout and filesystem remain open. |
 | Decision 6: setup surfaces | Decided in part | Add setup from within Anima after the machine boots and connects to the internet. Include an opt-in prepared, fully unattended setup path aligned with one-click installation. A standalone local-browser interface is not implied. The operator has not explicitly selected or rejected graphical setup, text setup or a desktop. Enrollment, network bootstrap, prepared-media identity and authorization to erase a disk remain open. |
+| Decision 6: distribution | Decided | Standard downloadable ISO written to USB with dd or a graphical flasher. No custom flasher is required by this choice. It does not settle prepared-media settings, enrollment or automatic disk erasure. Selected ARM boards may need board-specific image formats; do not assume one ISO boots every target. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -59,7 +60,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Decision 6 follow-up: how should installation from Anima and unattended installation authorize disk selection and erasure? Proposed combination: ordinary media boots a live environment and waits for pairing plus disk confirmation in Anima; prepared media may install unattended only under an explicit disk-selection and erase authorization given beforehand. No automatic first-disk erasure is approved. Local graphical/text fallback choices remain open.
+1. Decision 7: which local setup surfaces should accompany the standard ISO and setup through Anima? Options can be combined: graphical setup/status; text setup/recovery; remote-only setup with a minimal local connection/pairing screen; optional full desktop. Recommendation: graphical setup/status plus text fallback, with the same installation workflow available through Anima. No selection yet. Prepared-media authorization remains a later discussion; the distribution answer did not select its policy.
 2. Which bootloader, Secure Boot policy, resource minimums and exact hardware models should be selected? Discuss after installation and recovery goals; no selection yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
@@ -106,6 +107,8 @@ Read 2026-11-19 at the operator's request:
 
 - 2026-11-19: The operator requested setup within Anima once the machine boots and has internet, plus an optional prepared autonomous plug-and-play path. Recorded both intentions without assuming approval of disk-erasure rules, pairing design, local interfaces or a separate browser UI. Next: unattended-install authorization and behavior.
 
+- 2026-11-19: The operator specified a standard downloadable ISO written with dd or a flasher application. Recorded the delivery choice without inferring acceptance of all unattended-install options. Next: close the local-interface choice; avoid repeating the delivery question.
+
 ## Source text
 
 Selected direct operator messages, unchanged:
@@ -145,3 +148,7 @@ In response to Decision 5:
 In response to Decision 6:
 
 > I could see setting up from within anima as a thing that can be done as well just boot it connect to the interent and it will be fine. I also wouldn't mind a D like set option which is fully automous plug and play in line with the one click option
+
+In response to the plug-and-play follow-up:
+
+> yeah standard download an iso and flash it on with dd or a flasher app
