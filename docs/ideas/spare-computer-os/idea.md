@@ -19,6 +19,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Project starting point | Decided | Start from scratch. Do not assume a fork of OmniXY or nascentOS. Repository name and location remain open. |
 | NixOS foundation | Provisional | The operator proposed NixOS as a good fit. Confirm its selection during the design review; no release or package choices are made. |
 | Decision 1: first-version workloads | Decided | Hosted applications, queued jobs and agent execution are all in scope. An agent runner executes agents on the machine; it is not only a machine that an external agent can control. |
+| Decision 2: maintenance | Decided | A + B + C: automatic approved routine upkeep and problem reporting; owner-defined maintenance windows and control over disruptive actions; optional SSH or local administrative access. Fully manual maintenance mode is out of the first version. Exact update, reboot, access and configuration policies remain to be designed. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -54,8 +55,8 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Decision 2: which maintenance controls should the owner have? Options can be combined: automatic routine maintenance; approval of disruptive changes; advanced access through SSH or local console; manual maintenance. Recommendation pending the operator's answer: automatic routine maintenance, approval of disruptive changes and optional advanced access.
-2. Which hardware and installation targets should the first version support? Discuss CPU architecture, firmware and the installation experience separately after the maintenance goals.
+1. Decision 3: which hardware families should the first version support? Allow combined choices: ordinary 64-bit Intel/AMD PCs; Intel Macs; selected ARM boards or mini PCs; Apple Silicon Macs; older 32-bit PCs. Suggested starting scope: ordinary 64-bit Intel/AMD PCs. Other families need explicit targets and validation.
+2. Which boot firmware and installation targets should the first version support? Discuss UEFI, legacy boot and the installation experience after hardware families. No choice is made yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -81,6 +82,7 @@ These are discussion topics, not selected requirements or a task breakdown:
 ## Reviews
 
 - 2026-11-19: First record. Captured the fresh-project direction and corrected Decision 1 to include applications, jobs and agents. No filesystem, partition layout or software stack is selected. The next discussion is the maintenance model, with combined answers allowed.
+- 2026-11-19: The operator accepted the recommendation for Decision 2 (A + B + C). Recorded routine automation, owner control over disruption and optional advanced access. Fully manual mode is not in the first version. Next: hardware families, with combined answers allowed.
 
 ## Source text
 
@@ -97,3 +99,7 @@ Selected direct operator messages, unchanged:
 > Like should also be an agent and job runner
 
 > Okay write these up in the planning docs while we go through it once thats done give me the next descions (allow for multi slect next time)
+
+In response to the Decision 2 recommendation A + B + C:
+
+> ueah agreed
