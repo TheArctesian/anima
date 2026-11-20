@@ -13,9 +13,11 @@
     api: WakeApi;
     /** Set when the caller knows a wake cannot help, for example while the device is Up. */
     disabled?: boolean;
+    /** A square button with the icon alone and "Wake" as its tooltip: a row of the device list, which has one line. */
+    small?: boolean;
   }
 
-  const { deviceId, api, disabled = false }: Props = $props();
+  const { deviceId, api, disabled = false, small = false }: Props = $props();
 
   const hosted = contextHubIsHosted();
   let busy = $state(false);
@@ -34,9 +36,9 @@
 
 <!-- RA-031: a manual wake; the status line holds a fixed block so the text causes no layout shift (MOT-007). -->
 <div class="wake">
-  <button type="button" onclick={wake} disabled={disabled || busy} aria-busy={busy} {@attach press()}>
-    <Icon name="carbon:connect" />
-    <span>Wake</span>
+  <button type="button" class:small title={small ? 'Wake' : undefined} onclick={wake} disabled={disabled || busy} aria-busy={busy} {@attach press()}>
+    <Icon name="carbon:connect" size={small ? 'sm' : undefined} />
+    <span class:label={small}>Wake</span>
   </button>
   <p class="status" role="status">
     {#key text}
@@ -65,6 +67,21 @@
     color: var(--surface-base);
     font: inherit;
     transition: background-color var(--duration-press) var(--ease-enter);
+  }
+
+  .small {
+    justify-content: center;
+    inline-size: var(--control-sm);
+    min-block-size: var(--control-sm);
+    padding: 0;
+  }
+
+  /* The name stays for a screen reader. */
+  .label {
+    position: absolute;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   button:active {

@@ -1,0 +1,69 @@
+{
+  "gui": {
+    "iso_sha256": "637c0d4f2fd27a5a8fa51cd91e1cc98eadbc6d8e54257baf0c35af36e636fe2f",
+    "results": [
+      {
+        "case": "graphical-multidrive-install-and-authorization-reset",
+        "result": "Passed"
+      },
+      {
+        "case": "installed-login-readonly-network-keyboard-data-volume-persistence",
+        "result": "Passed"
+      },
+      {
+        "case": "unselected-disk",
+        "result": "Passed"
+      }
+    ]
+  },
+  "cli": {
+    "iso_sha256": "637c0d4f2fd27a5a8fa51cd91e1cc98eadbc6d8e54257baf0c35af36e636fe2f",
+    "results": [
+      {
+        "case": "wifi-supplicant-dbus-activation",
+        "result": "Passed"
+      },
+      {
+        "case": "mounted-child-excluded",
+        "result": "Passed"
+      },
+      {
+        "case": "iso-uefi-live",
+        "result": "Passed"
+      },
+      {
+        "case": "cancel-before-erase",
+        "result": "Passed"
+      },
+      {
+        "case": "offline-install",
+        "result": "Passed"
+      },
+      {
+        "case": "installed-login-readonly-runtime",
+        "result": "Passed"
+      },
+      {
+        "case": "rootless-isolated-app-and-job",
+        "result": "Passed",
+        "limitation": "Local Podman only, not Anima orchestration or an agent run"
+      },
+      {
+        "case": "installed-persistence",
+        "result": "Passed"
+      },
+      {
+        "case": "unselected-disk",
+        "result": "Passed"
+      }
+    ]
+  },
+  "python_regressions": {
+    "passed": 17
+  },
+  "limitations": [
+    "Physical RTL8821CE Wi-Fi and panel/touch orientation remain unqualified.",
+    "Visual acceptance remains with the operator.",
+    "Experimental x86-64 UEFI preview; existing product limitations remain."
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "image_sha256": "40825ede35a7f372aac17920de28823fb5600dc8332265631dc12252315f85bb",
+  "results": [
+    {
+      "case": "uefi-boot",
+      "result": "Passed",
+      "seconds": 10.635030307999841
+    },
+    {
+      "case": "btrfs-read-only-and-principals",
+      "result": "Passed"
+    },
+    {
+      "case": "persistent-reboot-1",
+      "result": "Passed"
+    },
+    {
+      "case": "persistent-reboot-2",
+      "result": "Passed"
+    },
+    {
+      "case": "persistent-reboot-3",
+      "result": "Passed"
+    },
+    {
+      "case": "persistent-reboot-4",
+      "result": "Passed"
+    },
+    {
+      "case": "persistent-reboot-5",
+      "result": "Passed"
+    },
+    {
+      "case": "healthy-candidate-1",
+      "result": "Passed"
+    },
+    {
+      "case": "healthy-candidate-2",
+      "result": "Passed"
+    },
+    {
+      "case": "healthy-candidate-3",
+      "result": "Passed"
+    },
+    {
+      "case": "health-fallback-1",
+      "result": "Passed"
+    },
+    {
+      "case": "health-fallback-2",
+      "result": "Passed"
+    },
+    {
+      "case": "health-fallback-3",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed",
+      "before": "8200fb200342010970ca77019d67bcaf93bfbce266f76fc97eec86c97a1a63a6",
+      "after": "8200fb200342010970ca77019d67bcaf93bfbce266f76fc97eec86c97a1a63a6"
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "core/serial.log",
+      "sha256": "289e07fc7898ff6c3368ffa31afceb71f4fd65c8388dc9f69926d234d7e4a548"
+    }
+  ]
+}

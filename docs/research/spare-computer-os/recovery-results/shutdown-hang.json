@@ -1,0 +1,40 @@
+{
+  "image_sha256": "40825ede35a7f372aac17920de28823fb5600dc8332265631dc12252315f85bb",
+  "results": [
+    {
+      "case": "shutdown-hang",
+      "result": "Passed",
+      "harness_reset": false,
+      "recovery_seconds": 76.40497864899953,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "shutdown-hang",
+      "result": "Passed",
+      "harness_reset": false,
+      "recovery_seconds": 75.44554369899924,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "shutdown-hang",
+      "result": "Passed",
+      "harness_reset": false,
+      "recovery_seconds": 78.26432411600035,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "shutdown-hang/1/serial.log",
+      "sha256": "94ba68c67d17aeb112c8f785fc9e5325424158daffc78f50a7b62018e377f897"
+    },
+    {
+      "path": "shutdown-hang/2/serial.log",
+      "sha256": "24ae8a4191e6ac2656de230f34f3349e366a8eca49b7c67644dc2c6cc4d59512"
+    },
+    {
+      "path": "shutdown-hang/3/serial.log",
+      "sha256": "8585ede74a928a1a4cc3be7594e90d6f3d893a46f4c5c8c8d62460195071032c"
+    }
+  ]
+}

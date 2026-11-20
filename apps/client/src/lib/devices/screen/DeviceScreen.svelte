@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import { COLLAPSED } from '$lib/events/resize/resize';
@@ -28,7 +29,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import Tally from '../list/Tally.svelte';
-  import { tallyOf, type Tally as Counts } from '../list/look';
+  import { grouped, tallyOf, type Tally as Counts } from '../list/look';
 
   interface Props {
     /** The query in the URL. */
@@ -68,10 +69,15 @@
         },
   );
 
+  /** Which face the results show; a change of face cross-fades, a change inside one does not. */
+  const face = $derived(listing.skeleton ? 'skeleton' : list === null ? 'none' : phoneLayout() ? 'phone' : query.view);
+
   /** The counts are of every device: while a count filters the list, they keep the last unfiltered ones (D18). */
-  let tally = $state<Counts>({ total: 0, parts: [] });
+  const NO_COUNTS: Counts = { total: 0, parts: [] };
+  let tally = $state<Counts | null>(null);
   $effect(() => {
-    if (list !== null && query.statuses.length === 0) tally = tallyOf(list.devices);
+    // The first list gives the first counts, also when it is filtered: no count is better than "0 devices".
+    if (list !== null && (query.statuses.length === 0 || untrack(() => tally) === null)) tally = tallyOf(list.devices);
   });
 
   $effect(() => {
@@ -89,13 +95,13 @@
 
 <!-- The phone layout has its own head and rows (mockup 4): one add button, the counts, the search, and no menus. -->
 {#if phoneLayout()}
-  <PhoneHead {tally} {query} {onQueryChange} {onAddDevice} />
+  <PhoneHead tally={tally ?? NO_COUNTS} {query} {onQueryChange} {onAddDevice} />
 {:else}
 <div class="head" {@attach entrance()}>
   <PageHeader title="Devices">
     {#snippet actions()}<FormButton tone="primary" icon="carbon:add" onclick={onAddDevice}>Add device</FormButton>{/snippet}
   </PageHeader>
-  <Tally {tally} {query} {onQueryChange} />
+  <Tally {tally} waiting={listing.error === null} {query} {onQueryChange} />
   <Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} />
 </div>
 {/if}
@@ -116,12 +122,16 @@
   </div>
 {/if}
 
+<!-- One layer for each face: the skeleton, the list, the grid or the phone rows. A new face cross-fades over the old one
+     in the same place (5.7.3, Loading); data that changes in a face stays in its layer and moves by its rows. -->
 <div class="results" aria-busy={listing.skeleton}>
-  {#if listing.skeleton}
-    <div class="layer" transition:crossFade><Skeleton view={query.view} /></div>
-  {:else if list !== null}
+  {#key face}
     <div class="layer" transition:crossFade>
-      {#if list.devices.length === 0}
+      {#if listing.skeleton}
+        <Skeleton view={query.view} grouped={grouped(query)} />
+      {:else if list === null}
+        <!-- Nothing has loaded yet, and the skeleton waits for its threshold. -->
+      {:else if list.devices.length === 0}
         <div class="empty">
           {#if isFiltered(query)}
             <p>No devices match</p>
@@ -145,7 +155,7 @@
       {:else}
         <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
       {/if}
-      {#if list.hasNextPage}
+      {#if !listing.skeleton && list?.hasNextPage === true}
         <div class="more">
           {#if listing.moreError !== null}<p role="alert">{listing.moreError.message}</p>{/if}
           <button
@@ -160,7 +170,7 @@
         </div>
       {/if}
     </div>
-  {/if}
+  {/key}
 </div>
 
 <!-- In the phone layout the logs are a page of the bar, not a panel over the list (MOB-013). -->
