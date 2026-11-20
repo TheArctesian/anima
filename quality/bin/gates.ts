@@ -1,11 +1,14 @@
 import { existsSync } from "node:fs";
+import { cpus, loadavg } from "node:os";
 import { compileCache } from "../src/gates/cache.ts";
 import { formatGateEvent, gateList, GROUPS, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
 import { changedPaths, readLayout } from "../src/gates/layout.ts";
-import { choose, describeChoice, fastGates } from "../src/gates/tier.ts";
+import { choose, describeChoice, fastGates, isBusy, macOnly } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
-const USAGE = "usage: bun quality/bin/gates.ts [--fast] [--group rust,go,bun,quality] [--gate name,name]";
+const USAGE = "usage: bun quality/bin/gates.ts [--fast [--whole]] [--group rust,go,bun,quality] [--gate name,name]";
+/** The last line of a fast run that left tests out. */
+let leftOut: string | undefined;
 
 /** The value of `--name value` in the arguments, when it is there. */
 function option(name: string): string | undefined {
@@ -32,12 +35,30 @@ function fastList(full: Gate[]): Gate[] {
     console.log(`fast tier: full; ${base} is not a commit here (run \`git fetch origin\`)`);
     return full;
   }
-  const choice = choose(paths, readLayout(REPO_ROOT));
+  const layout = readLayout(REPO_ROOT);
+  const choice = choose(paths, layout);
   console.log(describeChoice(choice));
-  return fastGates(choice, full);
+  // R-NEW-fastbusy: a busy machine leaves the broad tests to the run on GitHub. `FAST_BUSY_LOAD` sets the limit.
+  const load = loadavg()[0] ?? 0;
+  const limit = Number(process.env["FAST_BUSY_LOAD"]) || cpus().length;
+  if (choice.tier !== "code" || process.argv.includes("--whole") || !isBusy(load, limit)) return fastGates(choice, full);
+  const mac = macOnly(paths);
+  if (mac.length > 0) {
+    console.log(`fast tier: the machine is busy (load ${load.toFixed(0)}, limit ${limit}), but no test is left out: only a Mac tests ${mac[0] ?? ""}${mac.length > 1 ? ` and ${mac.length - 1} more` : ""}`);
+    return fastGates(choice, full);
+  }
+  const whole = fastGates(choice, full);
+  const light = fastGates(choice, full, { paths, packages: layout.packages });
+  const gone = whole.map((gate) => gate.name).filter((name) => !light.some((gate) => gate.name === name));
+  const narrowed = light.filter((gate) => gate.name === "test" && !whole.some((each) => each.argv.join(" ") === gate.argv.join(" "))).map((gate) => `\`${gate.argv.join(" ")}\``);
+  const what = [gone.length > 0 ? `left out ${gone.join(", ")}` : "", narrowed.length > 0 ? `the bun tests are only ${narrowed.join(" and ")}` : ""].filter((part) => part !== "");
+  console.log(`fast tier: the machine is busy (load ${load.toFixed(0)}, limit ${limit}): ${what.join("; ") || "nothing is left out for this change"}. \`--whole\` runs each test of the tier`);
+  if (what.length === 0) return light;
+  leftOut = "fast tier: tests were left out on a busy machine. This run is not the gate: the run of the workflow `gates` on GitHub is (R-254)";
+  return light;
 }
 
-const unknown = process.argv.slice(2).filter((each, at, all) => each.startsWith("--") ? !["--fast", "--group", "--gate"].includes(each) : !["--group", "--gate"].includes(all[at - 1] ?? ""));
+const unknown = process.argv.slice(2).filter((each, at, all) => each.startsWith("--") ? !["--fast", "--whole", "--group", "--gate"].includes(each) : !["--group", "--gate"].includes(all[at - 1] ?? ""));
 if (unknown.length > 0) {
   console.error(`gates: unknown argument: ${unknown.join(" ")}\n${USAGE}`);
   process.exit(2);
@@ -72,4 +93,5 @@ const outcome = runGates(
     console.log(formatGateEvent(event));
   },
 );
+if (leftOut !== undefined) console.log(leftOut);
 process.exit(outcome.exitCode);

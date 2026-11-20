@@ -260,7 +260,11 @@ bun run gates:fast                 # while you work: only what your changed path
 only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
 touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
 runs the full list. It does not test the packages that depend on yours and it runs no doctest: the run
-on GitHub does. Its first line says what it chose and why.
+on GitHub does. Its first line says what it chose and why. On a busy machine (a load above the number of
+processor cores; `FAST_BUSY_LOAD` sets a different limit) it leaves out the tests of whole packages and
+runs only the tests that your change names, and says so in its first and its last line: that run is not a
+gate, the run on GitHub is (R-NEW-fastbusy). It leaves nothing out for a change that only a Mac tests.
+`bun run gates:fast -- --whole` runs each test of the tier.
 
 The workflow `.github/workflows/gates.yml` runs the full list on Linux machines of GitHub for each pushed
 branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no

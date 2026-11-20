@@ -67,6 +67,24 @@ The rule is `choose` in `src/gates/tier.ts`; `tests/gates/tier.test.ts` tests it
 | `.github/` | The tests of `@anima/deploy`, which read the workflow files |
 | A path that no rule knows | The full list |
 
+On a busy machine (R-NEW-fastbusy). When the load average of one minute is above the number of processor
+cores (`FAST_BUSY_LOAD` sets a different limit), the fast tier of a code change is smaller, and its first
+lines and its last line say so: that run is not a gate, the run on GitHub is (R-254).
+
+| What the change names | Not busy | Busy |
+| --- | --- | --- |
+| A crate | `fmt`, `clippy`, `rust-test` for the crate | The same |
+| Each Rust package | The whole Rust group | `fmt` and `clippy`; no `rust-test`, `doctest`, `pinning` |
+| A bun package | `lint`, `check`, `test` of the package | `lint`, `check`; the changed test files of the package, or its tests when no test file changed |
+| Each bun package | The whole bun group | `install`, `lint`, `check`; no `test`, no `build` |
+| `.github/` | The tests of `@anima/deploy` | The test files whose name has "workflow" |
+| `link/`, and the five quality gates | Run | Run |
+
+A change of a path that only a Mac tests leaves nothing out (`macOnly` in `src/gates/tier.ts`): the desktop
+shell, the Keychain stores and the units of the daemon, `link/statedir`, and the tests of `check-mach-o.sh`
+and `trial-bundle.sh`. `bun run gates:fast -- --whole` runs each test of the tier. Measured on 2026-11-20:
+the tests of `@anima/deploy` took 124 seconds at a load of 8 to 13 and 864 seconds at a load of 24 to 35.
+
 Measured on 2026-11-19 on the Mac of the operator, at a load of 8 to 12 (the full list takes about 13
 minutes on the same Mac when it is quiet: Rust tests 7, bun tests 3.5, Go tests 2):
 
