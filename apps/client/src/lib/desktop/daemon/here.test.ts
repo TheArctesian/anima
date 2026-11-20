@@ -20,7 +20,7 @@ const ORIGIN = 'http://127.0.0.1:41001';
 const ok = <T>(value: T): HubResult<T> => ({ ok: true, value });
 const denied: HubResult<never> = { ok: false, error: { code: 'FORBIDDEN', message: 'x' } satisfies HubError };
 
-type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
+type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin' | 'wait'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
 
 /** A hosted hub that lists this Mac with no daemon, and a build that carries the daemon. */
 function parts(answers: Answers = {}) {
