@@ -9,7 +9,8 @@ use uuid::Uuid;
 use super::{
     Claimed, Error, Queue, ended, lifecycle,
     model::{Job, Machine},
-    placement, store, trail,
+    placement::{self, Around, Offer},
+    store, trail,
 };
 use crate::{
     fleet::events::{Bus, ClientAddr},
@@ -50,8 +51,10 @@ async fn claim_in(
         first_on_at: known
             .and_then(|old| old.first_on_at)
             .or(first_on.then_some(now)),
+        excluded: known.is_some_and(|old| old.excluded),
     };
     store::save_machine(conn, &machine, now).await?;
+    store::save_said(conn, (device, name), claim).await?;
     if first_on {
         trail::first_claim(conn, bus, (device, name), now).await?;
     }
@@ -73,16 +76,46 @@ async fn claim_in(
             trail::attempt_ended(conn, &back, (device, "answer_lost"), (client, now)).await?;
         }
     }
-    if holds_one {
+    if holds_one || !placement::can_take(claim) {
         return Ok(Claimed::Nothing);
     }
+    let offer = Offer::of(claim, &machine);
+    place(conn, (&offer, name), (client, now)).await
+}
+
+/// Decides each queued job for the machine of `offer`, records each decision, and gives the
+/// machine the job that the placement chooses, with the audit entry of the decision (ROU-005).
+async fn place(
+    conn: &mut PgConnection,
+    (offer, name): (&Offer, &str),
+    (client, now): (ClientAddr, DateTime<Utc>),
+) -> Result<Claimed, Error> {
     let queued = store::oldest_queued(conn).await?;
-    let Some(chosen) = placement::choose(&queued, device, claim) else {
+    let pins = store::pins(conn).await?;
+    let asking = (now - placement::FRESH, now);
+    let others = store::others_asking(conn, offer.device, asking).await?;
+    let around = Around {
+        pins: &pins,
+        others: &others,
+        now,
+    };
+    let verdicts: Vec<_> = queued
+        .iter()
+        .map(|job| placement::verdict(job, offer, &around))
+        .collect();
+    let decided: Vec<_> = queued
+        .iter()
+        .map(|job| job.id)
+        .zip(verdicts.iter().copied())
+        .collect();
+    store::save_decisions(conn, (offer, name), &decided, now).await?;
+    let Some(chosen) = placement::choose(&queued, &verdicts, offer.device) else {
         return Ok(Claimed::Nothing);
     };
-    let job = lifecycle::claimed(chosen, device, now);
+    let job = lifecycle::claimed(chosen, offer.device, now);
     store::save(conn, &job).await?;
-    trail::attempt_started(conn, &job, device, (client, now)).await?;
+    let decisions = store::decisions_of(conn, job.id).await?;
+    trail::attempt_started(conn, &job, (offer.device, &decisions), (client, now)).await?;
     Ok(Claimed::Job(Box::new(wire_job(&job))))
 }
 

@@ -100,6 +100,8 @@ pub struct NewJob {
     /// The purposes of the secrets that the job needs; never a value.
     pub secrets: Vec<String>,
     pub limits: Limits,
+    /// The one machine that may get the job; no different machine ever gets it (ROU-006).
+    pub machine: Option<DeviceId>,
 }
 
 /// One job, as the hub holds it.
@@ -142,6 +144,8 @@ pub struct Machine {
     pub off_until: Option<DateTime<Utc>>,
     /// The first claim with the switch on (USE-008).
     pub first_on_at: Option<DateTime<Utc>>,
+    /// The operator excluded the machine: it gets only work that names it (ROU-006).
+    pub excluded: bool,
 }
 
 /// A job that a machine refused or lost.

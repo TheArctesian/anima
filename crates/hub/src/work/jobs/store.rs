@@ -3,6 +3,7 @@
 
 mod logs;
 mod machines;
+mod placements;
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{
@@ -12,6 +13,10 @@ use sqlx::PgConnection;
 
 pub(super) use logs::{append_log, log_of};
 pub(super) use machines::{add_fault, machine_locked, save_machine, set_off_until};
+pub(super) use placements::{
+    decisions_of, offer_of, others_asking, pin, pins, save_decisions, save_said, set_excluded,
+    unpin,
+};
 
 use super::{
     Error,
@@ -26,7 +31,7 @@ const SELECT_JOB: &str = "SELECT id, work_type, kind, os, architecture, project_
      name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
      limit_disk_bytes, limit_orphan_seconds, state, attempt, lost, device_id, last_device_id, \
      refused_by, lease_ends_at, claimed_at, stop_reason, reason, result, log_end, created_at, \
-     state_changed_at, ended_at FROM jobs.jobs ";
+     state_changed_at, ended_at, machine_id FROM jobs.jobs ";
 
 #[derive(sqlx::FromRow)]
 struct JobRow {
@@ -61,6 +66,7 @@ struct JobRow {
     created_at: DateTime<Utc>,
     state_changed_at: DateTime<Utc>,
     ended_at: Option<DateTime<Utc>>,
+    machine_id: Option<DeviceId>,
 }
 
 /// A word of the contract as the database holds it: the JSON string of its type.
@@ -76,7 +82,7 @@ pub(super) fn read_word<T: serde::de::DeserializeOwned>(text: &str) -> Result<T,
         .map_err(|_| Error::Unreadable)
 }
 
-fn count(value: i64) -> Result<u64, Error> {
+pub(super) fn count(value: i64) -> Result<u64, Error> {
     u64::try_from(value).map_err(|_| Error::Unreadable)
 }
 
@@ -110,6 +116,7 @@ impl JobRow {
                 disk_bytes: count(self.limit_disk_bytes)?,
                 orphan_seconds: count(self.limit_orphan_seconds)?,
             },
+            machine: self.machine_id,
         })
     }
 }
@@ -214,9 +221,9 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     sqlx::query(
         "INSERT INTO jobs.jobs (id, work_type, kind, os, architecture, project_id, forge, owner, \
          name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
-         limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at) \
+         limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at, machine_id) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, \
-         $18, $18)",
+         $18, $18, $19)",
     )
     .bind(job.id)
     .bind(word(&asked.work_type)?)
@@ -236,6 +243,7 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     .bind(stored(asked.limits.orphan_seconds)?)
     .bind(job.state.as_str())
     .bind(job.created_at)
+    .bind(asked.machine)
     .execute(conn)
     .await?;
     Ok(())
