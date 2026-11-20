@@ -16,6 +16,9 @@ const EXAMPLE: &str = r#"{
   "last": { "version": "0.3.0", "result": "rolled_back", "cause": "no_check", "tries": 1 }
 }"#;
 
+/// A change of the example member.
+type Change = fn(&mut BatchUpdate);
+
 fn example() -> BatchUpdate {
     serde_json::from_str(EXAMPLE).unwrap()
 }
@@ -70,7 +73,7 @@ fn r_139_a_target_of_its_form_that_the_hub_does_not_know_is_accepted() {
 #[test]
 fn r_139_an_update_member_that_breaks_its_rules_is_malformed() {
     let installed = |cause| Some(tried(TryResult::Installed, cause, 1));
-    let cases: [(&str, fn(&mut BatchUpdate)); 9] = [
+    let cases: [(&str, Change); 9] = [
         ("an empty target", |u| u.target = String::new()),
         ("a target with a space", |u| u.target = "linux x86".into()),
         ("a target over 64 bytes", |u| u.target = "a".repeat(65)),
@@ -123,7 +126,10 @@ fn r_139_accepted_carries_the_version_to_have() {
     );
     assert_eq!(told.keys, None);
     let quiet = serde_json::to_string(&PushAccepted::default()).unwrap();
-    assert_eq!(quiet, "{}", "no member is written that the hub does not tell");
+    assert_eq!(
+        quiet, "{}",
+        "no member is written that the hub does not tell"
+    );
 }
 
 #[test]
@@ -141,8 +147,7 @@ fn r_139_the_update_routes_name_a_version_and_a_target_only() {
 fn r_139_a_release_record_crosses_as_base64_within_its_limits() {
     let bytes = [0, 255, b'{', b'\n'];
     let body = ReleaseRecord::new(&bytes, "untrusted comment: x\nRW...").unwrap();
-    let read: ReleaseRecord =
-        serde_json::from_str(&serde_json::to_string(&body).unwrap()).unwrap();
+    let read: ReleaseRecord = serde_json::from_str(&serde_json::to_string(&body).unwrap()).unwrap();
     let (record, signature) = read.parts().unwrap();
     assert_eq!(record, bytes);
     assert_eq!(signature, "untrusted comment: x\nRW...");

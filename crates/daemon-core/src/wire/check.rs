@@ -10,8 +10,8 @@ use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
 use super::{
-    Batch, BatchDrive, BatchGpu, BatchUpdate, BatchPoint, BatchSeries, GpuVendor, KeyVersion, RefusalCode,
-    versions_fit,
+    Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor, KeyVersion,
+    RefusalCode, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
 use crate::inventory::Inventory;
