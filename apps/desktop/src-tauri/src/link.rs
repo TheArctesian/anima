@@ -15,6 +15,8 @@ mod joining;
 mod kept;
 mod printed;
 mod restarts;
+#[cfg(unix)]
+mod repair;
 mod state;
 
 #[cfg(all(test, unix))]

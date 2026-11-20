@@ -12,12 +12,16 @@ use std::{
     time::Duration,
 };
 
-use std::{sync::Arc, thread, time::Instant};
+use std::{
+    sync::{Arc, Mutex, PoisonError},
+    thread,
+    time::Instant,
+};
 
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
-use super::{LinkError, device::DeviceLink, folder, folders, launch, printed};
+use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 use crate::daemon::{placement, this_user};
 
@@ -156,10 +160,46 @@ impl Kept {
         }
     }
 
-    /// Has the app watch the running link.
+    /// Installs and starts the unit again. The copy of the link program is made again from
+    /// `carried` when it is gone. False when the folder of the link is not marked for a unit,
+    /// when there is no program to run, or when the link program refuses the unit.
+    pub fn put_back(&self, carried: Option<&Path>, home: Option<&Path>) -> bool {
+        if !folder::wants_unit(&self.folder) {
+            return false;
+        }
+        let placed = self.program.is_file()
+            || carried
+                .zip(home)
+                .is_some_and(|(carried, home)| place(carried, home).is_ok());
+        placed && self.install().is_ok()
+    }
+
+    /// Has the app watch the running link, and put the unit back when the link stays down
+    /// (something outside the app removed the unit or ended its link).
     pub fn watch(self, device: &DeviceLink) {
         let port = self.port;
-        device.watch(port, move || self.serving());
+        let repair = Mutex::new(Repair::default());
+        device.watch(port, move || {
+            let serving = self.serving();
+            let due = repair
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .due(serving.is_some());
+            if due {
+                let carried = crate::carried::program(super::PROGRAM);
+                let home = crate::user_folders::home();
+                if self.put_back(carried.as_deref(), home.as_deref()) {
+                    log::warn!(
+                        "the device link of the unit did not answer: the unit was installed and started again"
+                    );
+                } else {
+                    log::warn!(
+                        "the device link of the unit did not answer, and the unit could not be put back"
+                    );
+                }
+            }
+            serving
+        });
     }
 }
 
@@ -238,17 +278,28 @@ fn answers(link: &Kept, limit: Duration) -> bool {
 /// Hands the link of `folder` to a unit of the user (HMD-058): the program is copied out of the
 /// app, the child of the app stops, the unit starts, and the app watches it once it answers. A
 /// unit whose link does not answer is removed again.
-fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result<(), LinkError> {
-    let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
+///
+/// # Errors
+/// The step that stopped it, in fixed words for the log.
+fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result<(), &'static str> {
+    let home = crate::user_folders::home().ok_or("no home folder")?;
+    let placed =
+        place(program, &home).map_err(|_| "the link program was not copied to ~/.local/bin")?;
     let link = Kept {
-        program: place(program, &home)?,
-        ..at(folder, port)?
+        program: placed,
+        ..at(folder, port).map_err(|_| "no home folder")?
     };
+    if link.daemon_socket.is_none() {
+        log::warn!("the folder of the daemon is not a private one: the unit gets no socket for it");
+    }
     device.stop();
-    let started = link.install();
-    if started.is_err() || !answers(&link, READY_LIMIT) {
+    if link.install().is_err() {
         let _ = link.remove();
-        return Err(started.err().unwrap_or(LinkError::Failed));
+        return Err("`anima-link unit install` failed");
+    }
+    if !answers(&link, READY_LIMIT) {
+        let _ = link.remove();
+        return Err("the link of the unit did not answer on its port");
     }
     link.watch(device);
     Ok(())
@@ -257,32 +308,57 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
 /// Hands the link to a unit of the user; when that fails, the app runs the link again, so it
 /// works while the app is open.
 pub fn keep_or_run(device: &DeviceLink, program: PathBuf, folder: &Path, port: u16) {
-    if keep(device, &program, folder, port).is_err() {
-        log::warn!("the device link was not handed to a unit of the user");
-        device.start(launch(program, folder, port));
+    match keep(device, &program, folder, port) {
+        Ok(()) => log::info!("a unit of the user keeps the device link"),
+        Err(step) => {
+            log::warn!("the device link was not handed to a unit of the user: {step}");
+            device.start(launch(program, folder, port));
+        }
     }
 }
 
 /// Hands the link that the app runs for `folder` to a unit of the user, unless one keeps it.
 pub fn hand_over(device: &DeviceLink, program: PathBuf, folder: &Path) {
     let Some(port) = folder::read_port(folder) else {
+        log::warn!("the device link has no saved port: no unit of the user is made");
         return;
     };
     if now(folder, port).is_none() {
+        log::info!("the device link goes to a unit of the user");
         keep_or_run(device, program, folder, port);
     }
 }
 
-/// A hosted hub gave this device its access (HMD-058): from now a unit of the user keeps the
-/// link of this device. A join that follows hands the link over. With `joined`, the device is
-/// on the link of the hub already: its folder is marked, and the next start of the app hands
-/// the link over, so that the sign-in of now is not cut.
+/// How long after a hosted hub gave its access the link of a computer that was joined already
+/// is handed to a unit: after the sign-in of that moment, which uses the link, has ended.
+const HAND_OVER_AFTER: Duration = Duration::from_secs(45);
+
+/// The hub of this run is a hosted one (HMD-058): from now a unit of the user keeps the link of
+/// this device. The shell learns it in two places: the cloud gives this device its access (a
+/// sign-in), and the client asks for this computer as a hosted hub lists it (each start of an
+/// app that is signed in already; it asks so only for a hosted hub). A join that follows hands
+/// the link over. With `joined`, the device is on the link of the hub already: its folder is
+/// marked, and the link is handed over a short time later, so that a sign-in of now is not cut.
+/// If the app stops before that, its next start hands the link over.
 pub fn hosted_hub_opened<R: Runtime>(webview: &Webview<R>, joined: bool) {
-    webview.state::<Arc<DeviceLink>>().keep_in_background();
-    if joined
-        && let Ok(folders) = folders()
-        && folder::want_unit(&folders.device).is_err()
-    {
+    let device = Arc::clone(&webview.state::<Arc<DeviceLink>>());
+    let first = !device.in_background();
+    device.keep_in_background();
+    let Ok(folders) = folders() else { return };
+    if !joined {
+        return;
+    }
+    if folder::want_unit(&folders.device).is_err() {
         log::warn!("the folder of the device link could not be marked for a unit");
+    }
+    if first {
+        log::info!("this hub is a hosted one: a unit of the user will keep the device link");
+    }
+    // Once for each run of the app: a second answer of the cloud starts no second hand-over.
+    if let Some(program) = crate::carried::program(super::PROGRAM).filter(|_| first) {
+        thread::spawn(move || {
+            thread::sleep(HAND_OVER_AFTER);
+            hand_over(&device, program, &folders.device);
+        });
     }
 }

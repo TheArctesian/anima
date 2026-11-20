@@ -824,6 +824,8 @@ pub async fn image_updates(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc
 
 This is the one outbound path of the domain that does not go to a device: HTTPS to the fixed hosts of four public registries (`updates/registry.rs`), each resolved once with `targets::resolve_checked` and reached only at those addresses, with no redirect, no credential and no body read but the token (`updates/egress.rs`, as `checks/probe/rdap/egress.rs`).
 
+The list of the containers also asks Docker for two more labels of Compose, the folder and the files of the project of a container (R-211, task H15); `Container` has them as `compose_working_dir` and `compose_files`.
+
 Each read is one fixed command line of `docker` words that only read (`container inspect`, `top`, `system df`, `network ls`, `ps`), joined with `&&`. The only operator value in one is the container identifier.
 
 `ssh` gains for this domain (same ruling): `HexDigits` (1 to 64 hex digits kept as values), `FixedCommand::hex(self, &HexDigits)` and `FixedCommand::number(self, u32)`. Both render from values, so operator text still cannot enter a command.

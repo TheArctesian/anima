@@ -13,6 +13,14 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "the Anima.ing cloud only: takes the cloud key, a secret (R-129)",
     ),
     (
+        "Mutation.hostedBrowserTicket",
+        "the Anima.ing cloud only: takes the cloud key, a secret (HMD-061)",
+    ),
+    (
+        "Mutation.hostedBrowserSignIn",
+        "the gateway of the pool only: sets the __Host-anima cookie for a browser (HMD-061)",
+    ),
+    (
         "Mutation.claimDeviceToken",
         "the desktop app's silent join through the link only: returns a token (R-129, HMD-037)",
     ),

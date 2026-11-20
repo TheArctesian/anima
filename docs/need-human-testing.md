@@ -79,14 +79,17 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
+| HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
 
@@ -98,6 +101,35 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-066: a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26)
+
+Built: on the branch `hosted/hm-t26-browser-session`. A hosted hub gives the Anima.ing cloud a
+one-time ticket (`hostedBrowserTicket`), and trades it for its own session cookie when the request
+comes from its public origin (`hostedBrowserSignIn`). The session ends 12 hours after the sign-in,
+or after 30 minutes with no request.
+
+The tests cover, through the routes of the hub as it serves them: the ticket only for the key of the
+cloud; the trade only from the public origin, once; the cookie and its attributes; a request with
+that cookie that is signed in; a foreign host name or origin, refused; a hub that is not hosted;
+the rule of the 30 minutes as a rule of time. Not covered: a real gateway and a real browser, a
+session that ends after 30 minutes on a real hub, a terminal that stays open for longer than that,
+and the web client on a hosted hub (task HM-T27).
+
+It needs: the gateway of the pool, and a hub of the pool whose image has this build. The steps are
+for the time when both exist.
+
+1. In a browser with no session, open `https://hub.anima.ing`. Sign in with the account. Expected:
+   the hub of the account opens. No password of a hub is asked.
+2. In the tools of the browser, look at the cookies of `hub.anima.ing`. Expected: `__Host-anima`,
+   with `Secure`, `HttpOnly` and `SameSite=Strict`, that ends in 12 hours.
+3. Leave the tab with no page that updates (for example a settings page) for 31 minutes. Press a
+   link. Expected: the gateway asks the hub for a new session with no question, or the sign-in of
+   the account shows; no page of the hub shows with the old session.
+4. Open a terminal session to a device and leave it open for 40 minutes with no key pressed. Press
+   a key. Expected: the session still works.
+5. In a second browser profile, open `https://hub.anima.ing/graphql` with no session. Expected: no
+   data of a hub.
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -911,6 +943,60 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
+### HT-061: sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19)
+
+Built: on the branches `hosted/hm-t17-daemon-socket` (the unit of the link makes the socket of the
+daemon; the shell enrols the daemon at that socket) and `hosted/hm-t19-daemon-at-sign-in` (the
+application enrols and installs the daemon when it opens a hosted hub). They need
+the branch `hosted/hm-t24b-shell-link-unit` (the link as a unit that the application watches).
+
+The tests cover: the folder and the socket of the daemon, the arguments of the unit, the origin
+`unix:<socket>` for the local address of the link, the search of this computer among the devices,
+the one code for each try, the wait for the socket, and each case in which no code is made. Not
+covered: a real link, a real daemon, the Keychain and the `LaunchAgent` on a Mac, the user unit and
+its sandbox on Linux, the hub of the pool that takes an enrolment and a batch through the link, and
+the time until the first numbers show.
+
+It needs: an application of this build on each computer (a trial bundle of this build carries both
+programs), and the sign-in to the hosted hub.
+
+On this Mac:
+
+1. Open the application and wait until the Devices page shows. Leave it open for 3 minutes. Nothing
+   asks for a password or a question. Expected: after at most 3 minutes the row of this Mac shows
+   numbers (processor, memory, disk) in the place of "No metrics".
+2. Run `ls -l ~/Library/LaunchAgents/ | grep anima`. Expected: `ing.anima.link.plist` and
+   `ing.anima.daemon.plist`.
+3. Run `ls -l "$HOME/Library/Application Support/anima-daemon/"`. Expected: `link.sock` (its line
+   starts with `srw-------`) and `daemon.json`.
+4. Open the device of this Mac, Settings, the panel "Daemon". Expected: "Metrics come from the daemon
+   on ...", with a time of the last report that is less than 2 minutes old.
+5. Quit the application. Wait 5 minutes. Open it again. Expected: the chart of this Mac has no hole
+   for those 5 minutes: the link and the daemon ran with the application closed.
+6. Open Agent usage after you used Claude Code or Codex on this Mac. Expected: the page shows counts
+   for this Mac (this is also HT-026 on a hosted hub).
+
+On the Linux computer: steps 1, 4 and 5 as written. For step 2 run
+`systemctl --user status anima-link.service anima-daemon.service`: both are "active (running)". For
+step 3 run `ls -l ~/.config/anima-daemon/`.
+
+Observation (2026-11-19, 19:50 local time; the orchestrating session on the Mac of the operator, a local build 0.8.17 of the first form of these branches, the application already signed in; not a result of the operator): four minutes after the start the link was still the child of the application, with no socket for the daemon; no unit, no copy in `~/.local/bin`, no daemon, and no line in the log. Cause: the hand-over of the link ran only after a sign-in, and the application was signed in already. Corrected on the branch `hosted/hm-t19-daemon-at-sign-in`: the hand-over also runs at each start, and each step writes a line to the log.
+
+Observation (2026-11-20, 04:03 to 04:08 UTC; the orchestrating session on the Mac of the operator, a local build 0.8.17 with the corrected branch, the application already signed in; not a result of the operator): the log said at 04:03:37 "this hub is a hosted one: a unit of the user will keep the device link"; at 04:04:22 "the device link goes to a unit of the user" and "a unit of the user keeps the device link"; `ing.anima.link.plist` was loaded, and the link ran from `~/.local/bin/anima-link` with `-daemon-socket`. At 04:07:31 the log said "the daemon was installed on this computer" and "the daemon of this computer: try 1 of 5: installed"; `ing.anima.daemon.plist` was loaded, and `~/.local/bin/anima-daemon run` ran and was still up a minute later, with the exit status 0 in `launchctl list`. This agrees with steps 2 and 3 on the Mac. Not known at that time: whether the hub received an enrolment and a batch, so step 1 (the numbers on the row) and steps 4 to 6 are open. The first try came about three minutes after the start, later than the plan of this entry: not explained yet.
+
+Observation (2026-11-20; the operator, first-hand to the orchestrating session, with a picture of the Devices page of his hosted hub; relayed to the session that writes this; not a result, only he sets Passed or Failed): his words: "mac os metrics are back". The row of his Mac showed Up, an uptime of 100.00 %, and CPU 85 %, Memory 59 %, Disk 95 %. So the hub of the pool took an enrolment and batches of the daemon through the link. This agrees with step 1 on the Mac. Steps 4 to 6 were not reported. The row of the Linux computer `pop-os` still said "No metrics": it ran an older build, and no Linux build with these branches exists yet, so the Linux part of this entry is not started.
+
+Where to look, with no change of the system: the daemon and the link write their lines to standard error, and a `LaunchAgent` of this build names no file for it, so on a Mac those lines are lost. A push that succeeded shows only at the hub: the row of the device has numbers, and Settings > Daemon of the device says "Metrics come from the daemon" with the time of the last report. `launchctl print gui/$(id -u)/ing.anima.daemon` shows the state, the count of starts and the last exit of the unit; a count of starts that grows means that the daemon ends and is started again. On Linux `journalctl --user -u anima-daemon.service` has the lines.
+
+What the log says when it works (`~/Library/Logs/ing.anima.desktop/Anima.log`), in this order: "this hub is a hosted one: a unit of the user will keep the device link"; about 45 seconds later "the device link goes to a unit of the user" and "a unit of the user keeps the device link"; lines "the daemon of this computer: try N of 5: ...", the last of them "installed"; and "the daemon was installed on this computer".
+
+A cleaning tool can delete a launch agent that it does not know (seen on the Mac of the operator, 2026-11-20: after a clean-up of the disk, `ing.anima.link.plist` was gone and no `anima-link` ran; the log of the application has no line of a removal, so the application did not do it; which tool did it is not known). If numbers stop and `ls ~/Library/LaunchAgents/ | grep anima` does not show both files: an application that holds task HM-T37 puts the unit of the link back after about 30 seconds and writes "the device link of the unit did not answer: the unit was installed and started again"; an older one does it at its next start. The unit of the daemon is not put back while the application runs: start the application again.
+
+If step 1 shows no numbers after 3 minutes: quit the application, open it again and wait 3 minutes
+more (a start of the application tries once). If there are still none, write here what
+`tail -20 ~/Library/Logs/ing.anima.desktop/*.log` says about the device link and the daemon, and the
+output of step 2.
+
 ### HT-059: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
 
 Built: on the branch `hosted/hm-t24b-shell-link-unit` (task HM-T24 of
@@ -947,6 +1033,8 @@ double quotes in a command, because the path has a space.
 7. Only if you want to leave the hub on this Mac: leave it in the application (Settings). Run
    `~/.local/bin/anima-link unit show`. Expected: the file is gone ("No such file"), and
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
+The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
+
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1406,6 +1494,10 @@ step 4 were not possible (OD-25).
     image, of a volume or of a network, no label and no name of an environment variable (LOG-007).
 12. On the device, run `docker ps -a`, `docker image ls` and `docker volume ls` again. Expected:
     nothing changed because of the steps.
+13. Added with task H15 (R-211): run `anima containers projects <device>`. Expected: one row for
+    each Compose project, with its state, its running count, and the folder and the files from
+    which it was started; the paths agree with `docker compose ls` on the device. Anima changed no
+    file.
 
 Result: Open.
 
@@ -1651,6 +1743,44 @@ memory headroom, and available storage. Open Technical report and expect the pla
 observation time, and discovery data. Disconnect or reconnect power, wait for iOS to update
 the battery state, and tap Refresh. Expect a new observation time and the updated power state.
 Verify that the browser client has no report entry.
+### HT-065: the measurements of the isolation design on Linux (task W2, R-188, R-264)
+
+Built: the script [linux-job.sh](research/work-isolation/linux-job.sh) of the record
+[w2-isolation.md](research/work-isolation/w2-isolation.md) (task W2 of
+[projects-and-builds-plan.md](plans/projects-and-builds-plan.md)). It is throwaway code of a prototype. It
+runs small containers with Podman and no root right, with the flags that the design gives a job, and
+writes what it measured to `~/w2-linux.log`. It installs nothing, uses no `sudo`, changes no setting and
+removes each container that it made. Two images stay on the disk (`alpine:3` and `docker:dind-rootless`):
+about 500 MB.
+
+Not covered by a test: all of it. No session can reach `pop-os`, and the script was not run on a Linux
+computer when it was written: only its syntax was checked. If a step gives an error, send the error; do
+not try to correct it.
+
+It needs: the computer `pop-os`, a terminal as your own user (not root), the internet, and about
+10 minutes. Step 1 is the only step with `sudo`.
+
+1. Install Podman: `sudo apt update && sudo apt install -y podman`. Then run
+   `podman run --rm docker.io/library/alpine:3 id`. Expected: after the download of the image, one line
+   that starts with `uid=0(root)`. Then run `podman info --format '{{.Host.Security.Rootless}}'`.
+   Expected: `true`. If the first command says that `newuidmap` is missing, run
+   `sudo apt install -y uidmap slirp4netns` and try again.
+2. Get the script:
+   `curl -fsSLO https://raw.githubusercontent.com/TheArctesian/anima.ing/dev/docs/research/work-isolation/linux-job.sh`.
+   Expected: no output, and `ls linux-job.sh` shows the file. Read it if you want to: it has about 120 lines.
+3. Close programs that use much processor time, then run `bash linux-job.sh`. Expected: lines appear for
+   3 to 8 minutes, in six parts with the titles `== E1` to `== E6`; the last lines are `== done` and
+   `The log is /home/<you>/w2-linux.log`. A line that starts with `WARNING` or says `nothing measured`
+   is a result too: send the log as it is.
+4. Look at the log: `cat ~/w2-linux.log`. Expected: it holds no address and no name of the computer; it
+   holds the name of the system, the kernel, the number of processors and the memory. If it holds a
+   thing that you do not want in a public repository, remove that line.
+5. Send the log: paste the whole text of `~/w2-linux.log` into the chat of the orchestrating session.
+   Expected: a session writes the results into Section 3 of the record and tells you what they mean
+   for the design.
+
+After the check you can remove everything again: `podman system reset` removes the images and the
+containers of your user, and `sudo apt remove podman` removes the program.
 
 ## Not built yet
 

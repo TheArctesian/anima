@@ -18,6 +18,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0010–0029 (Phase 3) | access (WP-43) | `access` | `api_tokens.kind text not null default 'login' check (kind in ('login','browser','api_key'))`; `api_tokens.name text null` (required and unique for `api_key`, 1..64 characters); `api_tokens.display_prefix text null` (12 characters, `api_key` only); a check that `browser` and `login` rows have scope `write`; index `(kind, operator_id)`. Prune: expired `login` and `browser` rows at once, expired `api_key` rows 30 days after expiry |
 | 0011 (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) | access | `access` | `api_tokens.made_for text null check (made_for in ('user','agent'))`, required exactly for kind `api_key` (`api_tokens_made_for_keys`); existing `api_key` rows become `user`; a trigger refuses any change of `made_for` (LOG-015) |
 | 0030 (Phase 3, WP-36, R-107) | access (WP-36) | `access` | Builder tokens (D-1, BLD-022): `api_tokens.kind` check adds `builder`; `api_tokens.scope` check adds `builder`; a check that a row has kind `builder` exactly when it has scope `builder`; `api_tokens_signed_in_write` lets `api_key` and `builder` rows skip scope `write`. Prune: expired `builder` rows at once (deleting the token deletes its `builds.builders` row) |
+| 0031 (R-266; hosted-mode.md HMD-062) | access | `access` | `api_tokens.idle_seconds integer null check (idle_seconds > 0)`: when set, the token is refused once that many seconds have passed since `last_used_at`. Only the browser session of a hosted hub has it (1800). Its insert writes `last_used_at`, and an open socket writes it at each check of its lease. |
 | 0100–0199 | devices (WP-06) | `devices` | `sites`, `devices`, `device_tags`, `ssh_settings` |
 | 0110–0199 (Phase 2) | devices (WP-21) | `devices` | `rdp_settings`, `vnc_settings` (device_id pk fk cascade, columns as K1, defaults in the schema, DB-011); `devices.mac_address macaddr null`, `devices.metrics_source text check in ('none','ssh') default 'none'`, `devices.transfer_upload`, `_download`, `_copy`, `_paste bool default true`; `sites.wake_relay_device_id uuid null fk -> devices.devices on delete set null` |
 | 0120–0129 (Phase 3) | devices (WP-47) | `devices` | `devices.session_limit int null check (session_limit between 1 and 100)`. `devices.record_sessions` (0120) is removed (R-113): 0121 drops the column |
@@ -81,7 +82,7 @@ access.operators          id uuid pk, username text unique, password_hash text (
                           totp_secret_enc bytea null, created_at timestamptz
 access.api_tokens         id uuid pk, operator_id uuid fk, token_hash bytea, scope text
                           check (scope in ('read','write','builder')), expires_at, created_at,
-                          last_used_at
+                          last_used_at, idle_seconds
 access.login_attempts     id uuid pk, at timestamptz, username text, client_addr inet, ok bool
 access.permitted_networks id uuid pk, cidr cidr unique, label text
 
