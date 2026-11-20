@@ -947,3 +947,86 @@ R-247 asks for the test of Arcane by hand first. It needs a container that holds
 engine, so it gives the image of a different publisher the control of that engine. This session
 did not run it on the build machine: it was told to install nothing and change no setting there.
 It is a step for the operator, or for a session on a machine that he names for it.
+
+## 11. The port of an application through the link: design options (task H35, R-250)
+
+This section is a design with options. It adds no approved requirement and no code exists for
+it. The facts about the link are from the session that built task HM-T12 of
+[hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049; tasks HM-T13 and HM-T14 are not started;
+the unit of the link is HMD-058, task HM-T24). This session did not read that code again:
+each fact of Section 11.1 is a claim of that session.
+
+### 11.1 What the link does today
+
+- **The list.** One file `open-ports` in the state folder of the link on the computer: a list
+  of port numbers. A fixed rule in the program permits only 22, 5900, and 3389 on Windows; a
+  different port in the file is ignored. The link reads the file at each request.
+- **Who can write it.** The user that runs the link. Since R-240 that is the logged-in user,
+  the same user as the daemon. So "the hub cannot change the list" holds against the network.
+  It does not hold against a program of that user, the daemon included.
+- **What it dials.** Only `127.0.0.1:<port>` of its own computer, and only for a port of the
+  list. That is the address at which an installed application listens (R-229).
+- **Who can ask at the hub.** Each process of the user of the hub can open the socket of the
+  link, and one hub function connects for SSH, the checks and the sessions alike. The link
+  does not know who asked. Today a TCP check to an open port passes for each caller that may
+  make a check.
+- **What protects the bytes.** The tunnel of the link, between the computer and the hub. In
+  the hub they are plain. No certificate of the application is checked: there is none.
+
+### 11.2 The proposed design
+
+1. **A second kind of entry.** The list gains entries "port of an application". Each names the
+   identifier of an application and the port that the applications program recorded for it at
+   its install. The fixed rule becomes: 22, 5900, 3389 on Windows, or a port that the record
+   of the applications program names at the time of the request.
+2. **Checked at each request.** The link refuses a port that the record does not name now.
+   An application that is removed takes its entry with it, so a different program that takes
+   the port later is not reachable. "Manage applications" off removes each such entry.
+3. **Where the entry is kept** is the question OD-HOST-29 below.
+4. **The limit is in the hub, not in the link.** An open entry says only "the hub may reach
+   this port". Who may use it is a rule of the hub function that opens it. The proposed rule:
+   the web page of an application opens only for a person with a login or a browser session;
+   no API key and no MCP tool gets bytes of it; a check of the health of an application
+   (HOST-008) reads only "answers" or "does not answer" and returns no byte of the answer.
+   A hub function that sends to an application by itself (events to an analytics stack) is a
+   named function with its own requirement, not a general path.
+5. **The page of a different publisher is not served under the origin of the hub.** Served
+   under the origin of the hub, such a page can use the session of the person at the hub.
+   With one gateway for all hosted hubs (R-239) it could reach each hub of that person. The
+   proposed rule: each application gets an origin of its own (a name of its own below a
+   domain that holds no session of a hub), and the hub sends none of its cookies to it. How
+   that name is made is the question OD-HOST-30.
+6. **The switch** is on the page of the application, with one store behind it and the screen
+   of the open ports (task HM-T13), which shows such an entry with the name of the
+   application and does not change it.
+
+### 11.3 What this design does not protect
+
+- A person who controls the hub reaches each port that is open at a machine. That is what
+  "open" means, and it is the same as for port 22.
+- Until the limit of point 4 is built and tested in the hub, an open application port is
+  reachable by each hub caller that can make a TCP check. Thus the entry of the second kind
+  must not be built before the hub rule.
+- An application with the socket of the engine (Section 10) behind an open port: a person who
+  reaches its web interface and can sign in to it is the administrator of that machine.
+
+### 11.4 Questions for the operator
+
+- **OD-HOST-29: who can turn on the port of an application at the machine?**
+  A: only the administrator, in the file of the machine settings that the applications
+  program reads (as "Manage applications"); the link asks that record and does not use its
+  own file for such an entry. B: the user, in the file of the link, as for port 22.
+  Recommendation: A. With B, the daemon, which runs as the same user and takes requests from
+  the hub, could open the port of each application by itself; with A, a hub that controls
+  the daemon cannot. Against A: on a Mac he is asked for the administrator one time more for
+  each application whose page he wants in the hub.
+- **OD-HOST-30: under which name does the hub serve the page of an application?**
+  A: a name of its own for each application below a separate domain that holds no session of
+  a hub (needs a domain or a sub-domain with a wildcard certificate; a change of DNS that
+  only he can make). B: no page in the hub in the first version; the hub shows the state and
+  the health of the application, and he opens its page in a session to the machine. C: under
+  the origin of the hub with the cookies removed. Recommendation: B first, then A. C is not
+  safe enough: a script of the page still runs in the origin of the hub.
+
+A security review by a separate reviewer reads this section before it becomes a plan.
+
