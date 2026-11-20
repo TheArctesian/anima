@@ -17,6 +17,7 @@ mod error;
 mod folder;
 mod joining;
 mod kept;
+pub mod open_ports;
 mod printed;
 mod repair;
 mod restarts;
