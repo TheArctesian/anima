@@ -13,6 +13,7 @@ mod folder;
 mod joining;
 mod kept;
 mod printed;
+mod repair;
 mod state;
 
 #[cfg(test)]
