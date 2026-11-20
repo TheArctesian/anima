@@ -1,4 +1,4 @@
-//! The intake of the Dawarich pull (K-E4 Section 11; K-E1 Section 3; R-210): each point of a
+//! The intake of the Dawarich pull (K-E4 Section 11; K-E1 Section 3; R-NEW-dawarichkey): each point of a
 //! page is one location sample of the provider `dawarich`, stored through the one storing path.
 //! The intake is of the engine, so its consumer is the entry that is always on; the operator
 //! stops the pull with the pause of the account.

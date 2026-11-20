@@ -214,7 +214,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let hosted = upkeep::hosted(&config, &pool, &bus, &clock).await;
     let feed = metrics::Feed::new();
     // The sources reach only their declared API bases, through the same deny list (K-E1).
-    // The Dawarich pull stores its points with the sealing keys of the positions (R-210).
+    // The Dawarich pull stores its points with the sealing keys of the positions (R-NEW-dawarichkey).
     let positions = locations::Seal::new(files.sealing_keys().clone());
     let intakes = vec![projects::intake(), locations::dawarich_intake(positions)];
     let sources = anima_hub::source_reach(intakes, policy.clone())?;

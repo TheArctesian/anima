@@ -1,4 +1,4 @@
-//! The request of a source whose server is of the operator (K-E1 Section 7b, R-210): the URL
+//! The request of a source whose server is of the operator (K-E1 Section 7b, R-NEW-dawarichkey): the URL
 //! is the base of the account plus the path, and the host of the base is resolved one time and
 //! checked with the address policy of the hub before the key is sent. The policy is the one of
 //! each outbound connection: it permits private and VPN ranges and refuses loopback,

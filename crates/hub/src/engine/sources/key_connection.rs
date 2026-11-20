@@ -1,5 +1,5 @@
 //! Connecting an account whose server is of the operator, with a key of that server (K-E1
-//! Section 7b, R-210): the base and the key are checked, the key is proved with one read at
+//! Section 7b, R-NEW-dawarichkey): the base and the key are checked, the key is proved with one read at
 //! the server, then the account and its sealed key are stored, audited and published. A bad
 //! address, a refused key or a server that does not answer stores nothing.
 

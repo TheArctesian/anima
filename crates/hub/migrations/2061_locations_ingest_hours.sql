@@ -1,4 +1,4 @@
--- The count of the fixes that each ingest token stored in each hour (R-209; K-E4 Section 13).
+-- The count of the fixes that each ingest token stored in each hour (R-NEW-locationhours; K-E4 Section 13).
 -- A stored fix writes no event and no audit entry of its own: when an hour has ended, the hub
 -- writes one audit entry for the token and the hour with this count, and deletes the row.
 -- `client` is the address of the last post of the hour, for that entry.

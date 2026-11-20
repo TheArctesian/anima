@@ -6,14 +6,12 @@
   import AgentUsageScreen from '$lib/agent-usage/AgentUsageScreen.svelte';
   import { parseUsageQuery, usageRequest, writeUsageQuery, type UsageQuery } from '$lib/agent-usage/query';
   import { UsageStore } from '$lib/agent-usage/store.svelte';
-  import { browserStorage } from '$lib/devices/add/this-machine';
-  import { isHostedHub } from '$lib/hosted/mark';
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
 
   const hub = useHub();
   const api = agentUsageApi(hub);
-  const storage = browserStorage();
-  const hosted = storage !== null && isHostedHub(storage, hub.address.origin);
+  const hosted = hubIsHosted(hub.address.origin);
   const store = new UsageStore(api.read);
   const query = $derived(parseUsageQuery(page.url.searchParams));
 

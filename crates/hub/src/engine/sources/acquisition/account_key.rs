@@ -1,5 +1,5 @@
 //! A key of the account: the base address of the operator's server and the key that the
-//! server gave (K-E1 Section 7b, R-210). The base rule and the sealed layout are pure; `held`
+//! server gave (K-E1 Section 7b, R-NEW-dawarichkey). The base rule and the sealed layout are pure; `held`
 //! opens the stored key for one request and keeps it in no cache.
 
 use reqwest::Url;

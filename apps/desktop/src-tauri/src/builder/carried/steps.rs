@@ -82,7 +82,7 @@ impl Workshop<'_> {
         self.run(&link::build(&self.clone)).await
     }
 
-    /// Builds the five Rust programs with the release version (INS-002, OD-17).
+    /// Builds the six Rust programs with the release version (INS-002, OD-17).
     pub async fn rust_programs(
         &self,
         target: Target,

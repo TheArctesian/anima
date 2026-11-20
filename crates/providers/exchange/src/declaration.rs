@@ -43,7 +43,7 @@ impl Declaration {
 pub enum Acquisition {
     TokenPull(Minting),
     /// A key that the server of the operator gave: the account holds the base address and the
-    /// key, and the source has no API base of its own (K-E1 Section 7b, R-210).
+    /// key, and the source has no API base of its own (K-E1 Section 7b, R-NEW-dawarichkey).
     AccountKey(AccountKey),
 }
 

@@ -20,6 +20,7 @@ mod store;
 mod tests;
 mod throttle;
 mod turns;
+mod work;
 
 use chrono::TimeDelta;
 use zeroize::Zeroizing;
@@ -60,6 +61,8 @@ pub(super) enum Error {
     AgentUsage(#[from] agent_usage::Error),
     #[error("the operational key cannot be given")]
     Keys(#[source] crate::fleet::credentials::operational::Error),
+    #[error("the job cannot be given or changed")]
+    Jobs(#[source] crate::work::jobs::Error),
 }
 
 impl From<devices::Error> for Error {

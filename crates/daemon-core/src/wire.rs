@@ -16,6 +16,7 @@ mod secrets;
 #[cfg(test)]
 mod tests;
 mod times;
+mod work;
 
 pub use agent_usage::{BatchAgentUsage, BatchModel, BatchSessionDay};
 pub use batch::{
@@ -32,3 +33,8 @@ pub use keys::{
 };
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{CODE_BYTES, CodeHash, DaemonToken, EnrolmentCode, TOKEN_BYTES, TokenHash};
+pub use work::{
+    Claim, Cleanup, Free, Held, Lease, Limits, LogPart, MAX_LOG_PART_BYTES, Reported,
+    SecretRequest, StopOrder, StopReason, Switch, WorkArchitecture, WorkJob, WorkKind, WorkOs,
+    WorkReport, WorkRepository, WorkResult, WorkState, WorkType,
+};

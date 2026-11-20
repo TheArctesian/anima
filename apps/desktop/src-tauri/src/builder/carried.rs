@@ -1,5 +1,5 @@
 //! What a release carries for a hub on this computer (INS-002, OD-16, S12 packaging Section 2.1):
-//! six programs beside the app's own executable and the PostgreSQL tree in its resources, each
+//! seven programs beside the app's own executable and the PostgreSQL tree in its resources, each
 //! built from the job's commit in the clone. Tauri needs `binaries/<program>-<triple>` for each
 //! Rust target it compiles, and for the universal bundle `binaries/<program>-universal-apple-darwin`,
 //! which `lipo` makes from the two halves, as Tauri makes the app's own universal binary. A missing
@@ -22,7 +22,7 @@ use super::{
 };
 
 /// The programs beside the app's own executable, as `bundle.externalBin` names them under
-/// `binaries/`: the five Rust programs, then `anima-link`.
+/// `binaries/`: the six Rust programs, then `anima-link`.
 pub fn programs() -> impl Iterator<Item = &'static str> {
     rust_programs::PROGRAMS
         .iter()
@@ -35,7 +35,7 @@ const UNIVERSAL: &str = "universal-apple-darwin";
 const LINUX_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 const MAC_TRIPLES: [&str; 2] = ["aarch64-apple-darwin", "x86_64-apple-darwin"];
 
-/// The `bundle` settings that make Tauri carry the six programs and the tree, whose folder
+/// The `bundle` settings that make Tauri carry the seven programs and the tree, whose folder
 /// `apps/desktop/src-tauri/database` becomes `database` in the resources.
 pub fn bundle_settings() -> serde_json::Value {
     let programs: Vec<String> = programs()

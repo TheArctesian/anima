@@ -206,7 +206,7 @@ One attempt exists at a time, in hub memory only (`Attempts`: one `Arc<Mutex<Opt
 
 **GitHub has no `DELETE /app`.** The hub cannot delete an App it made and no longer uses; `appSettingsUrl` (`https://github.com/settings/apps/<slug>/advanced`, or the organisation form; the Apps list without a slug) lets the operator do it.
 
-## 7b. Acquisition with a key of the account (R-210; `engine/sources/acquisition/account_key.rs`)
+## 7b. Acquisition with a key of the account (R-NEW-dawarichkey; `engine/sources/acquisition/account_key.rs`)
 
 A source whose server is of the operator (Dawarich) has no one API base and no App. Its account holds the address of the server and a key that the server gave the operator.
 
@@ -274,7 +274,7 @@ The installation is verified before `establish`: `GET /app/installations/{N}` wi
 
 ## 11. Scope
 
-- **In now:** SRC-001; SRC-002 (the token-pull App-key variant, and the key of the account of Section 7b, R-210); SRC-003 to SRC-009; SRC-010 (through `write_reason`; GitHub states the PRJ-017 exception); SRC-011 and SRC-012; SRC-021 (poll part); KEY-001; KEY-002 (as `credentialStored`); ITG-001 to ITG-004 for the Sources list; the single-database claim and stale-owner rejection from issue 5.
+- **In now:** SRC-001; SRC-002 (the token-pull App-key variant, and the key of the account of Section 7b, R-NEW-dawarichkey); SRC-003 to SRC-009; SRC-010 (through `write_reason`; GitHub states the PRJ-017 exception); SRC-011 and SRC-012; SRC-021 (poll part); KEY-001; KEY-002 (as `credentialStored`); ITG-001 to ITG-004 for the Sources list; the single-database claim and stale-owner rejection from issue 5.
 - **Deferred:** OAuth pull and SRC-020; collector push; file upload and ITG-005; the webhook half of SRC-021 and WHK-*; ITG-007 (24 h reminder; needs reminders); the Outputs tab; issue 5's two-server identity, preferred server and failover.
 
 ## 12. Dependencies (K3)

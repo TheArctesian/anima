@@ -1,4 +1,4 @@
-//! The Dawarich pull through the hub, against a loopback stub of the server (R-210; K-E1
+//! The Dawarich pull through the hub, against a loopback stub of the server (R-NEW-dawarichkey; K-E1
 //! Section 7b; K-E4 Section 11).
 
 use std::{sync::Arc, time::Duration};
@@ -131,7 +131,7 @@ fn two_points() -> Value {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_210_a_connected_dawarich_account_pulls_its_points_one_time(pool: PgPool) {
+async fn dawarich_key_a_connected_dawarich_account_pulls_its_points_one_time(pool: PgPool) {
     let kit = Kit::new(&pool).await;
     kit.points(&two_points());
     let connected = kit.connect(&kit.base(), KEY).await;
@@ -205,7 +205,7 @@ async fn r_210_a_connected_dawarich_account_pulls_its_points_one_time(pool: PgPo
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_210_a_bad_address_or_a_refused_key_stores_nothing(pool: PgPool) {
+async fn dawarich_key_a_bad_address_or_a_refused_key_stores_nothing(pool: PgPool) {
     let kit = Kit::new(&pool).await;
     kit.points(&two_points());
     for base in [
@@ -257,7 +257,7 @@ async fn r_210_a_bad_address_or_a_refused_key_stores_nothing(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_210_a_server_that_does_not_answer_is_unavailable_in_plain_words(pool: PgPool) {
+async fn dawarich_key_a_server_that_does_not_answer_is_unavailable_in_plain_words(pool: PgPool) {
     let stub = Stub::start(&pool).await;
     let kit = Kit::with(&pool, stub, unreachable()).await;
     let refused = kit.connect("http://127.0.0.1:9", KEY).await;

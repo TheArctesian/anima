@@ -20,6 +20,7 @@ use anima_hub::{
         vpn,
     },
     schema::Dependencies,
+    work::jobs,
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -106,6 +107,11 @@ pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::Jo
     jobs.push(tokio::spawn(publishing(
         builds.clone(),
         dependencies.bucket.clone(),
+    )));
+    jobs.push(tokio::spawn(job_leases(
+        pool.clone(),
+        dependencies.bus.clone(),
+        clock.clone(),
     )));
     jobs.push(tokio::spawn(build_leases(builds)));
     jobs.extend(loops(dependencies));
@@ -233,7 +239,7 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
         .map(drop)
         .map_err(|_| "credentials");
     // Each hour of an ingest token that ended gets its audit entry, also when the phone sent
-    // nothing after it (R-209).
+    // nothing after it (R-NEW-locationhours).
     let fix_hours = locations::audit_ended_hours(db, now)
         .await
         .map(drop)
@@ -257,6 +263,21 @@ async fn build_leases(builds: Builds) {
         if let Err(error) = builds::expire_leases(builds.queue(), builds.clock.now()).await {
             let fault = error.fault().unwrap_or("builds");
             tracing::warn!(job = "build_leases", fault, "scheduled job failed");
+        }
+    }
+}
+
+/// Every 30 seconds, ends the leases of the jobs of the work route that ran out and the
+/// attempts that hold a job for longer than its limit (K10 Section 7). A failure is written to
+/// the process log by a fixed word only, and the next tick tries again.
+async fn job_leases(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) {
+    let mut ticks = tokio::time::interval(jobs::LEASE_SWEEP);
+    ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    loop {
+        ticks.tick().await;
+        let queue = jobs::Queue { db: &db, bus: &bus };
+        if jobs::end_lost(queue, clock.now()).await.is_err() {
+            tracing::warn!(job = "job_leases", fault = "jobs", "scheduled job failed");
         }
     }
 }

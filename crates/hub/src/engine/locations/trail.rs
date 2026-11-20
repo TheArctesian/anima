@@ -20,7 +20,7 @@ fn entry(action: AuditAction, target: AuditTarget, message: String, change: Valu
 }
 
 /// What the audit entry of a batch of an Anima phone app holds: the counts and the name of the
-/// operator, never a position. A stored sample writes no event (R-209).
+/// operator, never a position. A stored sample writes no event (R-NEW-locationhours).
 pub(super) fn recorded_change(origin: &Origin, origin_name: &str, stored: Stored) -> Value {
     json!({
         "provider": origin.provider.as_str(),
@@ -30,7 +30,7 @@ pub(super) fn recorded_change(origin: &Origin, origin_name: &str, stored: Stored
     })
 }
 
-/// What the audit entry of one hour of one ingest token holds (R-209): the name of the token,
+/// What the audit entry of one hour of one ingest token holds (R-NEW-locationhours): the name of the token,
 /// the start of the hour and the count of the fixes that the hub stored in it.
 pub(super) fn hour_change(name: &str, hour: DateTime<Utc>, fixes: i32) -> Value {
     json!({ "name": name, "provider": "owntracks", "hour": hour, "fixes": fixes })

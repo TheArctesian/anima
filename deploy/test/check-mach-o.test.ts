@@ -34,7 +34,7 @@ function machOCheck(app: string): { exitCode: number; errors: string } {
   return { exitCode: result.exitCode, errors: result.stderr.toString() };
 }
 
-const PROGRAMS = ["anima", "anima-database", "anima-desktop", "anima-gateway", "anima-hub", "anima-link", "anima-local-hub"];
+const PROGRAMS = ["anima", "anima-daemon", "anima-database", "anima-desktop", "anima-gateway", "anima-hub", "anima-link", "anima-local-hub"];
 
 // The checked programs are of macOS (codesign, lipo); the pinning gate is skipped elsewhere in the same way.
 describe.skipIf(process.platform !== "darwin")("check-mach-o.sh (UPD-011)", () => {

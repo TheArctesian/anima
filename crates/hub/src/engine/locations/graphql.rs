@@ -3,7 +3,7 @@
 //! `Mutation.createLocationIngestToken` and `Mutation.revokeLocationIngestToken`.
 //!
 //! A change of an ingest token writes its row, one audit entry and one event in one
-//! transaction. A stored sample writes no event (R-209). A read of samples writes one audit
+//! transaction. A stored sample writes no event (R-NEW-locationhours). A read of samples writes one audit
 //! entry with the span and the count. No entry holds a position.
 
 mod views;
@@ -152,7 +152,7 @@ impl Mutation {
             .await
             .map_err(refused)?;
         if stored.added > 0 {
-            // One audit entry for the batch, and no event: a stored fix writes none (R-209).
+            // One audit entry for the batch, and no event: a stored fix writes none (R-NEW-locationhours).
             let entry = NewAudit {
                 operator: operator.clone(),
                 action: AuditAction::Create,

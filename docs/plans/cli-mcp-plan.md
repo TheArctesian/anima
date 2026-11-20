@@ -216,7 +216,8 @@ Not in the command line, with the reason:
 - **MCP-002.** Each tool has one state: `allow` (listed; the agent may call it), `ask` (listed;
   each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
   without a hub request). With nothing saved, every read tool and every change tool is `allow`:
-  the server is fully automatic (operator ruling R-120, 2026-11-16; MCP-024). The switch "Ask
+  the server is fully automatic (operator ruling R-120, 2026-11-16; MCP-024). A tool that starts
+  routed work follows these states and routes with no question when it is `allow` (R-243, ROU-009). The switch "Ask
   before destructive actions" (MCP-025) puts the destructive tools in state `ask`. Before R-120, a
   change tool was `off` with nothing saved.
 - **MCP-003.** The hub token is the real limit. The server shows only the tools that its token
@@ -228,7 +229,11 @@ Not in the command line, with the reason:
   so such a check may hold a secret that a new config would drop.
 - **MCP-005.** No tool makes a trust decision: accept a host key or a certificate. A person does
   that, in the client or with the command line.
-- **MCP-006.** No tool opens a session or runs a command on a device. (Open point 1.)
+- **MCP-006.** No tool opens a session or runs a command on a device. (Open point 1.) Exception
+  (R-243, "Multiplexer Q2: automatic for all work."): a tool may start work of a fixed type, or an
+  agent run, on the machine that routing picks (ROU-001 to ROU-014 of
+  [jobs.md](../proposals/jobs.md)). R-244 (OD-ROU1) adds routed sessions and command lines
+  (ROU-015, ROU-016). Not approved; no effect before the security review RT7.
 - **MCP-007.** A tool that deletes takes `confirm`, which must be the name of the thing.
 - **MCP-008.** Text that comes from a device or a check (names, log lines, messages) is data. Each
   result gives it in named fields with a length limit, and the server instructions tell the agent
@@ -389,7 +394,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 | `link` (FRN-009) | `anima_link_devices` | None: `createLinkInvite` returns a secret (MCP-004) and `revokeLinkDevice` is a trust decision (MCP-005). The command line has both (`anima link invite`, `anima link revoke`) |
 | `extensions` | `anima_extensions_list` | `anima_extension_set` L |
 | `timeline` | `anima_timeline_list` | |
-| `records` | `anima_record_links_list`, `anima_files_list`, `anima_extractions_list`, `anima_locations_list`, `anima_location_context`, `anima_reminders_list`, `anima_reminder_get`, `anima_reminder_firings` | `anima_location_import`, `anima_reminder_add`, `anima_reminder_set`, `anima_reminder_remove`, `anima_reminder_set_enabled`, `anima_reminder_test`, `anima_reminder_snooze`, `anima_reminder_ack`. The three `anima location token` commands have no tool: an ingest token is a secret (K-E4 Section 13). `anima source connect dawarich` has no tool: it takes the API key of the server (R-210). `anima_record_link_add`, `anima_record_link_remove`, `anima_file_remove`, `anima_file_archive_add`, `anima_file_archive_remove`, `anima_extraction_propose`, `anima_extraction_confirm`, `anima_extraction_reject`. `anima file upload` and `anima file download` have no tool: a tool does not carry the bytes of a file (K-E4 Section 13) |
+| `records` | `anima_record_links_list`, `anima_files_list`, `anima_extractions_list`, `anima_locations_list`, `anima_location_context`, `anima_reminders_list`, `anima_reminder_get`, `anima_reminder_firings` | `anima_location_import`, `anima_reminder_add`, `anima_reminder_set`, `anima_reminder_remove`, `anima_reminder_set_enabled`, `anima_reminder_test`, `anima_reminder_snooze`, `anima_reminder_ack`. The three `anima location token` commands have no tool: an ingest token is a secret (K-E4 Section 13). `anima source connect dawarich` has no tool: it takes the API key of the server (R-NEW-dawarichkey). `anima_record_link_add`, `anima_record_link_remove`, `anima_file_remove`, `anima_file_archive_add`, `anima_file_archive_remove`, `anima_extraction_propose`, `anima_extraction_confirm`, `anima_extraction_reject`. `anima file upload` and `anima file download` have no tool: a tool does not carry the bytes of a file (K-E4 Section 13) |
 | `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007), `anima_github_connect_start` L, `anima_github_connect_cancel` L, and the read tool `anima_github_connect_state` (any token; phase, failure, message, `appSlug`, `ownerLogin`, `installUrl`, `appSettingsUrl`, and the account id, label and health). The start tool returns `{ attempt: { id, phase, expiresAt }, link }` where `link` is the fixed `https://<hub>/connect/github`: no state, no ticket, no attempt id. Alone it does nothing until a signed-in operator presses Continue. The start tool's description tells the agent to give the link to the operator and not to open it. `appSlug`, `ownerLogin` and the label go through `mcp/untrusted.rs` (operator, 2026-11-14; ruling number to be assigned) |
 | `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
 | `repositories` (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14) | `anima_pull_requests_list` (`pullRequests`; `detail: true` adds mergeability and checks), `anima_pull_request_get` (`pullRequest`, `issueComments`), `anima_issues_list` (`issues`), `anima_issue_get` (`issue`, `issueComments`), `anima_workflows_list` (`workflows`), `anima_workflow_runs_list` (`workflowRuns`), `anima_workflow_run_get` (`workflowRun`, with jobs), `anima_commits_list` (`commits`), `anima_branches_list` (`branches`), `anima_repository_releases_list` (`repositoryReleases`), `anima_code_directory_list` (`codeDirectory`; names only) | `anima_issue_create` (`createIssue`), `anima_issue_comment_add` (`addIssueComment`), `anima_issue_set_open` (`setIssueOpen`). A write key may call them; they return the issue or the comment without its body. The other GitHub changes have no tool (below) |

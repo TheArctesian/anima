@@ -137,7 +137,7 @@ async fn r_145_the_owntracks_path_refuses_a_wrong_a_revoked_and_a_login_token(po
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_209_a_stored_fix_writes_no_event_and_each_ended_hour_one_audit_entry(pool: PgPool) {
+async fn a_stored_fix_writes_no_event_and_each_ended_hour_one_audit_entry(pool: PgPool) {
     let hub = LocationHub::new(&pool).await;
     let (_, token) = hub.ingest_token("Phone").await;
     for tst in [NOW - 30, NOW - 20, NOW - 20] {

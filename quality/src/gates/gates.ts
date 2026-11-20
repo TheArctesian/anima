@@ -7,9 +7,14 @@ export interface Requirement {
   folder: string;
 }
 
-/** One local gate: a name, the argv that runs it from the repository root, and what it needs on `PATH`. */
+/** The part of the repository a gate checks. A job on GitHub runs one or more groups (`--group`). */
+export type Group = "rust" | "go" | "bun" | "quality";
+export const GROUPS: readonly Group[] = ["rust", "go", "bun", "quality"];
+
+/** One local gate: a name, its group, the argv that runs it from the repository root, and what it needs on `PATH`. */
 export interface Gate {
   name: string;
+  group: Group;
   argv: string[];
   requires?: Requirement[];
 }
@@ -42,7 +47,7 @@ const GOFMT: Requirement = { ...GO, executable: "gofmt" };
 const GO_MODULE = "link";
 
 function goGate(name: string, ...args: string[]): Gate {
-  return { name, argv: ["go", "-C", GO_MODULE, ...args], requires: [GO] };
+  return { name, group: "go", argv: ["go", "-C", GO_MODULE, ...args], requires: [GO] };
 }
 
 /**
@@ -52,35 +57,41 @@ function goGate(name: string, ...args: string[]): Gate {
  */
 export function gateList(baseRef: string): Gate[] {
   return [
-    { name: "fmt", argv: ["cargo", "fmt", "--check"] },
-    { name: "clippy", argv: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"] },
+    { name: "fmt", group: "rust", argv: ["cargo", "fmt", "--check"] },
+    { name: "clippy", group: "rust", argv: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"] },
     // Rust tests run against a throwaway PostgreSQL unless DATABASE_URL is set (R-009).
     {
       name: "rust-test",
+      group: "rust",
       argv: ["bun", "quality/bin/with-postgres.ts", "cargo", "nextest", "run", "--workspace"],
       requires: [NEXTEST],
     },
-    { name: "doctest", argv: ["cargo", "test", "--workspace", "--doc"] },
+    { name: "doctest", group: "rust", argv: ["cargo", "test", "--workspace", "--doc"] },
     // `harness = false`, so not listable by nextest (.config/nextest.toml); `--workspace` keeps gate 3's build.
-    { name: "pinning", argv: ["cargo", "test", "--workspace", "--test", "pinning"] },
-    { name: "go-fmt", argv: ["bun", "quality/bin/go-format.ts"], requires: [GOFMT] },
+    { name: "pinning", group: "rust", argv: ["cargo", "test", "--workspace", "--test", "pinning"] },
+    { name: "go-fmt", group: "go", argv: ["bun", "quality/bin/go-format.ts"], requires: [GOFMT] },
     goGate("go-vet", "vet", "./..."),
     goGate("go-staticcheck", "tool", "staticcheck", "./..."),
     goGate("go-revive", "tool", "revive", "-config", "revive.toml", "-set_exit_status", "./..."),
     goGate("go-test", "test", "-race", "./..."),
     // `-o /dev/null`: with one main package, a plain `go build` writes the program into `link/`.
     goGate("go-build", "build", "-o", "/dev/null", "./..."),
-    { name: "install", argv: ["bun", "install", "--frozen-lockfile"] },
-    { name: "lint", argv: ["bun", "run", "lint"] },
-    { name: "check", argv: ["bun", "run", "check"] },
-    { name: "test", argv: ["bun", "run", "test"] },
-    { name: "build", argv: ["bun", "run", "--cwd", "apps/client", "build"] },
-    { name: "limits", argv: ["bun", "run", "quality:limits"] },
-    { name: "names", argv: ["bun", "run", "quality:names"] },
-    { name: "imports", argv: ["bun", "run", "quality:imports"] },
-    { name: "documents", argv: ["bun", "run", "quality:documents"] },
-    { name: "baseline", argv: ["bun", "run", "quality:baseline", "--", "--base", baseRef] },
+    { name: "install", group: "bun", argv: ["bun", "install", "--frozen-lockfile"] },
+    { name: "lint", group: "bun", argv: ["bun", "run", "lint"] },
+    { name: "check", group: "bun", argv: ["bun", "run", "check"] },
+    { name: "test", group: "bun", argv: ["bun", "run", "test"] },
+    { name: "build", group: "bun", argv: ["bun", "run", "--cwd", "apps/client", "build"] },
+    { name: "limits", group: "quality", argv: ["bun", "run", "quality:limits"] },
+    { name: "names", group: "quality", argv: ["bun", "run", "quality:names"] },
+    { name: "imports", group: "quality", argv: ["bun", "run", "quality:imports"] },
+    { name: "documents", group: "quality", argv: ["bun", "run", "quality:documents"] },
+    { name: "baseline", group: "quality", argv: ["bun", "run", "quality:baseline", "--", "--base", baseRef] },
   ];
+}
+
+/** The gates of `groups`, in the order of the list. A job on GitHub runs a part of the list this way. */
+export function ofGroups(gates: Gate[], groups: readonly Group[]): Gate[] {
+  return gates.filter((gate) => groups.includes(gate.group));
 }
 
 /** Run gates in order and stop at the first failure. A runner that throws is a failure, never a skip (CQ-024). */

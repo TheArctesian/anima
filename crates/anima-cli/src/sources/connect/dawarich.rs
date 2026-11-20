@@ -1,5 +1,5 @@
 //! `anima source connect dawarich`: connects a Dawarich server with an API key of its account
-//! (R-210). The key is the secret: it is asked for at the terminal with no echo, or comes from
+//! (R-NEW-dawarichkey). The key is the secret: it is asked for at the terminal with no echo, or comes from
 //! a private file (mode 0600) or from standard input, never from an argument, and is wiped
 //! after the request. It is never printed (CMD-014, CMD-025).
 

@@ -1,5 +1,5 @@
 //! Dawarich as a source of location points (K-E4 Section 11; K-E1 Sections 2 and 7b; R-145,
-//! R-210). Pure: it names the request it wants and reads the reply that the engine hands
+//! R-NEW-dawarichkey). Pure: it names the request it wants and reads the reply that the engine hands
 //! back. The wire form is built from the documents of Dawarich; no code of it is copied.
 
 mod point;

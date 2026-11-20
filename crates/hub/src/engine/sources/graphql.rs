@@ -202,7 +202,7 @@ impl Mutation {
         view(&s, established.id).await
     }
 
-    /// Reads one point of the Dawarich server with the key before it stores it (R-210, K-E1
+    /// Reads one point of the Dawarich server with the key before it stores it (R-NEW-dawarichkey, K-E1
     /// Section 7b). Login or browser token only.
     #[graphql(guard = "Authenticated")]
     async fn connect_dawarich(

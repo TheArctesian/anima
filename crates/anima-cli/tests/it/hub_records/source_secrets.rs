@@ -270,7 +270,7 @@ fn dawarich_account() -> Value {
 }
 
 #[tokio::test]
-async fn r_210_connect_dawarich_reads_the_key_from_standard_input_and_never_prints_it() {
+async fn connect_dawarich_reads_the_key_from_standard_input_and_never_prints_it() {
     let hub = FakeHub::start().await;
     hub.answer(
         "SourceConnectDawarich",
@@ -301,7 +301,7 @@ async fn r_210_connect_dawarich_reads_the_key_from_standard_input_and_never_prin
 }
 
 #[tokio::test]
-async fn r_210_connect_dawarich_takes_no_flag_that_carries_the_key() {
+async fn connect_dawarich_takes_no_flag_that_carries_the_key() {
     let hub = FakeHub::start().await;
     let run = signed_in()
         .run(&[

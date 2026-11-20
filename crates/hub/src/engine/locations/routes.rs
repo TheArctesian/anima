@@ -105,7 +105,7 @@ async fn owntracks_post(State(intake): State<Intake>, request: Parts, body: Byte
 /// Stores the sample of `body` for the token `presented`; `false` when no token that is not
 /// revoked has this value. A stored fix writes no event and no audit entry of its own: it is
 /// counted for its token and its hour, and each hour that ended gets its one audit entry now
-/// (R-209).
+/// (R-NEW-locationhours).
 async fn taken(
     intake: &Intake,
     client: ClientAddr,

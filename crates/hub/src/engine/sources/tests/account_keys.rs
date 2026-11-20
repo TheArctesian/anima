@@ -1,11 +1,11 @@
-//! The base of an account and its sealed key (K-E1 Section 7b, R-210).
+//! The base of an account and its sealed key (K-E1 Section 7b, R-NEW-dawarichkey).
 
 use crate::engine::sources::acquisition::account_key::{
     Refusal, base, from_secret, instance_key, key, to_secret,
 };
 
 #[test]
-fn r_210_a_base_is_an_https_origin_and_nothing_more() {
+fn dawarich_key_a_base_is_an_https_origin_and_nothing_more() {
     let origin = |text: &str| base(text, false).map(|url| instance_key(&url));
     assert_eq!(
         origin(" https://Dawarich.Example "),
@@ -38,7 +38,7 @@ fn r_210_a_base_is_an_https_origin_and_nothing_more() {
 }
 
 #[test]
-fn r_210_a_key_is_one_word_of_at_most_512_characters() {
+fn dawarich_key_a_key_is_one_word_of_at_most_512_characters() {
     assert_eq!(key(" abc123 "), Ok("abc123"));
     for refused in ["", "   ", "two words", "line\nbreak", &"k".repeat(513)] {
         assert_eq!(key(refused), Err(Refusal::Key));
@@ -46,7 +46,7 @@ fn r_210_a_key_is_one_word_of_at_most_512_characters() {
 }
 
 #[test]
-fn r_210_a_stored_key_opens_only_for_the_base_of_its_account() {
+fn dawarich_key_a_stored_key_opens_only_for_the_base_of_its_account() {
     let url = base("https://dawarich.example", false).unwrap();
     let secret = to_secret(&url, "the-key");
     let (opened, api_key) = from_secret(&secret, "https://dawarich.example", false).unwrap();
