@@ -375,6 +375,7 @@ dependencies = [
  "updater-signature",
  "uuid",
  "x509-parser",
+ "yaml-rust2",
  "zeroize",
 ]
 

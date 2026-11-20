@@ -171,6 +171,12 @@ that owns the area.
 | SF-140 | The settings file is checked for its owner and mode only. Low | The applications program (task H31, part 1) | Open |
 | SF-133 | Forms that compose-rules accepted: carriage returns, `=` in a name, two texts for one target. Low | The applications program (task H31, part 1) | Open |
 | SF-135 | One origin of a hub could have two texts. Low | The applications program (task H31, part 1) | Open |
+| SF-144 | The converter writes each network alias for each network, so a small command makes a very large file. High | Compose file check and `docker run` converter (task H29) | Open |
+| SF-141 | One request can hold about 250 checks of the largest file. Medium | Compose file check and `docker run` converter (task H29) | Open |
+| SF-146 | The writer of the converter leaves characters that YAML does not print. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2038,6 +2044,69 @@ Effect, and who can cause it: no attacker; a daemon that writes the origin in a 
 Mitigation now: one text for each address: an IPv6 address only in its canonical short form (RFC 5952), no IPv4 address written as IPv6, an IPv4 address only in its usual form, and a name with no empty label and a last label that is not all digits. `unix:<path>`, the origin of a hosted hub, stays refused; an open decision of the hosted applications plan asks for it.
 
 State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+### SF-144: The converter writes each network alias for each network, so a small command makes a very large file. High
+
+Requirements: HOST-022, R-150; task H29 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+
+What it is: `networks()` in `crates/hub/src/work/containers/compose_file/draft.rs` gave each network the whole list of the network aliases, so the size of the file was the number of networks times the number of aliases. A command of 65,515 bytes (about 2,800 `--net` options and aliases) made a `composeFile` of 92.6 MB, with 572 MB of memory in the hub. With aliases of GraphQL, one request could ask for tens of GB.
+
+Who can cause it: each signed-in caller and each API key, also a read key.
+
+The correction: a command has at most 32 networks and at most 32 network aliases; more is the refusal `TOO_MANY_NETWORKS`. A file larger than 256 KiB, the most that the check reads, is the refusal `FILE_TOO_LARGE`, so the converter never makes a file that its own check refuses. No other option is written to more than one place more than a fixed number of times. Tests: `tests/refused.rs` (`host_022_more_than_32_networks_or_aliases_is_refused`, `host_022_a_file_larger_than_the_check_reads_is_refused`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-141: One request can hold about 250 checks of the largest file. Medium
+
+Requirements: HOST-022, API-004; task H29.
+
+What it is: `composeFileCheck` and `composeFromDockerRun` had the complexity 1. One request of 1 MiB could ask for about 250 checks of a file of 256 KiB through one variable, about 4 seconds of a worker of the runtime.
+
+Who can cause it: each signed-in caller and each API key.
+
+The correction: each of the two fields has the complexity 100 with the limit of 500 of the schema, so one request holds at most four. Each check and each conversion runs on a thread for blocking work (`spawn_blocking`), under the log and the span of the request, so the test of the log still reads its lines. Test: `crates/hub/tests/it/containers/compose_file.rs` (`host_022_one_request_holds_at_most_four_checks_or_conversions`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-146: The writer of the converter leaves characters that YAML does not print. Low
+
+Requirements: HOST-022; task H29.
+
+What it is: `quoted` in `compose_file/writer.rs` escaped the control characters and three more, but wrote U+FFFE, U+FFFF and other characters outside the printable set of YAML as they are. The reader of Compose refuses such a file.
+
+The correction: the writer escapes each character outside the printable set of YAML 1.2, and also U+0085, U+2028, U+2029 and U+FEFF. Test: `tests/written.rs` (`host_022_each_character_that_yaml_does_not_print_is_an_escape`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-145: The reader of shell words keeps as text an expansion that a shell does. Low
+
+Requirements: HOST-022; task H29.
+
+What it is: the reader of shell words (`compose_file/words.rs`) kept as text a brace expansion (`{80,443}`), a `~` at the start of a word, `*`, `?` and `[` out of quotes, `$[1+2]` and a quote in `${A:-'x'}`, and read a carriage return alone as a space. A shell changes each of these, so the file did not hold what the command does.
+
+The correction: each is refused with a fixed code: `BRACE_EXPANSION`, `TILDE_EXPANSION` (also after `=` or `:`), `PATTERN`, `ARITHMETIC_EXPANSION`, `VARIABLE_NOT_KEPT` for a quote in a kept variable, and `CONTROL_CHARACTER` for a carriage return that is not part of a line end. In quotes, each stays as text. Test: `tests/refused.rs` (`host_022_each_expansion_of_a_shell_with_no_dollar_is_refused`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-142: A problem of the check shows a secret that the operator wrote in the place of a key. Low
+
+Requirements: HOST-022, LOG-007; task H29.
+
+What it is: a problem of the check showed a name of a key or of a service when it was made of safe characters. A secret written in the place of a key (`hunter2: 1`) or as the name of a service (a token of GitHub) was shown in the problem, in the output of the command and in the result of the MCP tool. The text of the first commit said that a problem holds "never a value of the file"; that was not true for such a name.
+
+The correction: a problem gives a key by its name only when Compose defines that name, and a service by its number in `services` (`serviceNumber` in K1 in place of `service`). An unknown key, an extension and the name of a service are not shown. The list of the options that are not converted names an option that Docker does not have as `(an unknown option)`. Test: `tests/secrecy.rs` (`host_022_a_problem_names_only_a_key_that_compose_defines_and_a_service_by_its_number`) and the hub test with a secret as a key and as the name of a service.
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-143: The MCP cleaning can change the Compose file that an agent gets. Low
+
+Requirements: HOST-022, MCP-008; task H29.
+
+What it is: `mcp/untrusted.rs` gave the cap of 4,000 characters with kept lines to each field named `composeFile` in each result of each tool. The cleaning also removes invisible characters, so an agent could get a Compose file that is different from the file of the hub, with no sign of it.
+
+The correction: only the top-level field `composeFile` of `anima_compose_from_run` keeps its lines (`cleaned_result`). The tool gives the file only when the cleaning does not change it; else `composeFile` is null, `withheld` says why, and `fileLength` gives the length of the whole file. The description of the tool says that an agent must not install a file from the result without a person reading it. Tests: `mcp_008_only_the_file_of_the_compose_tool_keeps_its_lines` and `mcp_008_a_file_that_the_cleaning_would_change_is_withheld`.
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
 
 ## Closed
 
