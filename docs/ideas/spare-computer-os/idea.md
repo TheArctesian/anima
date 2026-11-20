@@ -36,6 +36,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 14: root behavior | Decided | C: read-only system root during normal operation, with designated writable state for settings, device identity, logs, application data and job workspaces. Updates and repairs use a controlled maintenance path. Keep optional administrator access for diagnostics and recovery. This does not make workload storage read-only or select a separate physical disk. Exact NixOS implementation, writable mounts and compatibility need validation. Reset-on-every-boot root is not selected. |
 | Decision 15: automatic OS-update recovery | Decided | A: attempt the previous known-good system when the new OS fails boot or required local health checks. Bound retries and enter recovery if both versions fail. Hub unreachability alone does not trigger rollback. Check the daemon and local network configuration; report reconnection failure through available channels and retain manual rollback. Do not silently revert workload data. Bootloader support, watchdog behavior, health criteria and retry limits require implementation and tests. |
 | Decision 16: workload and host dependencies | Decided | A + B + C: separate workload environments by default; curated host integrations; supported custom host packages and services through a controlled configuration mechanism. This expands the supported customization scope beyond curated profiles. Keep the normal system root read-only; do not infer unrestricted imperative host writes or blanket agent authority. Custom configuration must participate in update, validation and recovery design. Exact accepted configuration surface and authorization remain open. |
+| Decision 17: agent authority for host changes | Decided | A by default, with B available: owner approval for each host change unless an explicit bounded standing grant covers it. Grants must have precise scope and be revocable. Broad administrator-agent mode C is not selected. Use the existing Anima permission/execution model; do not create a separate OS permission system or infer bypass of maintenance windows. Reconcile the proposal with existing owner requirements before implementation. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -72,7 +73,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 17: who can authorize custom host configuration changes? Alternatives/combinations: owners approve each proposed change; owners grant bounded standing permission for specified host changes; an explicitly enabled administrator agent role has broad host-configuration authority. Recommendation: per-change approval by default plus optional bounded grants, subject to existing execution/approval owners. Support for custom packages/services does not itself authorize agents to change the host. No answer yet. Exact configuration surface remains open; arbitrary writable host drift is not implied.
+2. Decision 18: what should the machine prioritize when workload demand exceeds capacity? Alternatives: protect hosted applications and queue/throttle jobs; prioritize jobs; fair sharing; owner-defined profiles per machine. Recommendation: protect hosted apps by default with an optional worker profile. Reserve capacity for OS/Anima and recovery under every profile. Exact admission control, resource limits and scheduling remain with existing work/hosting owners. No selection yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -149,6 +150,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 15 accepted A: bounded automatic rollback on local boot/core-service failures, not hub unreachability alone. Next: workload dependency boundary on the appliance host.
 
 - 2026-11-19: Decision 16 accepted A + B + C, explicitly including supported custom host dependencies. This supersedes the narrower recommendation to support only curated host changes. Preserve read-only normal operation through controlled configuration; host-change authorization is still undecided. Next: owner approval and agent grants.
+
+- 2026-11-19: Decision 17 accepted the recommendation: per-change owner approval by default, optional bounded standing grants. Broad administrator-agent mode is not selected. Next: workload priorities under resource contention.
 
 ## Source text
 
@@ -241,3 +244,7 @@ In response to Decision 15:
 In response to Decision 16:
 
 > Yeah I think A B & C
+
+In response to Decision 17 (recommendation A default, B available):
+
+> Yeah I agree
