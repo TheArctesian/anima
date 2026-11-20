@@ -23,14 +23,14 @@ use serde_json::json;
 use sqlx::PgPool;
 use zeroize::Zeroizing;
 
-use super::{Error, Origin, Provider, Seal, admit, owntracks, store_samples, trail};
+use super::{
+    Error, Origin, Provider, Seal, admit, audit_closed_hours, count_stored, owntracks,
+    store_samples,
+};
 use crate::{
     clock::Clock,
     engine::sealing_keys::SealingKeys,
-    fleet::{
-        access,
-        events::{Bus, ClientAddr, Operator, Trail},
-    },
+    fleet::{access, events::ClientAddr},
 };
 
 /// The largest body of one post.
@@ -39,19 +39,17 @@ const MAX_BODY: usize = 1024 * 1024;
 #[derive(Clone)]
 struct Intake {
     db: PgPool,
-    bus: Bus,
     clock: Arc<dyn Clock>,
     seal: Seal,
 }
 
 /// The route of the OwnTracks path.
-pub fn router(db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>, keys: &SealingKeys) -> Router {
+pub fn router(db: &PgPool, clock: &Arc<dyn Clock>, keys: &SealingKeys) -> Router {
     Router::new()
         .route("/locations/v1/owntracks", post(owntracks_post))
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .with_state(Intake {
             db: db.clone(),
-            bus: bus.clone(),
             clock: clock.clone(),
             seal: Seal::new(keys.clone()),
         })
@@ -105,8 +103,9 @@ async fn owntracks_post(State(intake): State<Intake>, request: Parts, body: Byte
 }
 
 /// Stores the sample of `body` for the token `presented`; `false` when no token that is not
-/// revoked has this value. A stored sample writes one audit entry and one event, which hold
-/// the name of the token and no position.
+/// revoked has this value. A stored fix writes no event and no audit entry of its own: it is
+/// counted for its token and its hour, and each hour that ended gets its one audit entry now
+/// (R-262).
 async fn taken(
     intake: &Intake,
     client: ClientAddr,
@@ -126,12 +125,9 @@ async fn taken(
             account: token.id.to_string(),
         };
         let stored = store_samples(&mut tx, &intake.seal, (&origin, &[sample]), now).await?;
-        if stored.added > 0 {
-            let change = Trail::new(&intake.bus, (Operator::hub(), client), now);
-            let entry = trail::recorded(&origin, &token.name, stored);
-            change.write(&mut tx, entry).await?;
-        }
+        count_stored(&mut tx, token.id, stored, (now, client)).await?;
     }
+    audit_closed_hours(&mut tx, now).await?;
     tx.commit().await?;
     Ok(true)
 }

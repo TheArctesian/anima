@@ -9,7 +9,11 @@ use daemon_core::wire::StopReason;
 use serde_json::json;
 use sqlx::PgConnection;
 
-use super::{Asker, Error, model::Job};
+use super::{
+    Asker, Error,
+    model::Job,
+    reasons::{self, Decision},
+};
 use crate::{
     fleet::events::{
         self, ActorKind, AuditAction, AuditTarget, Bus, ClientAddr, NewAudit, NewEvent, Operator,
@@ -69,14 +73,42 @@ pub(super) async fn queued(
     .await
 }
 
-/// A machine got the job: one attempt started.
+/// A machine got the job: one attempt started. The entry is the record of the placement
+/// decision (ROU-005): what the job asked of a machine, the reason as one line, and each
+/// machine that was refused with its reason. It holds codes, numbers and names of machines;
+/// no secret and no parameter of the job.
 pub(super) async fn attempt_started(
     conn: &mut PgConnection,
     job: &Job,
-    device: DeviceId,
+    (device, decisions): (DeviceId, &[Decision]),
     (client, now): (ClientAddr, DateTime<Utc>),
 ) -> Result<(), Error> {
-    let change = json!({ "attempt": job.attempt, "device": device });
+    let wanted = &job.asked;
+    let refused: Vec<_> = decisions
+        .iter()
+        .filter(|decision| decision.device != device)
+        .map(|decision| {
+            json!({
+                "device": decision.device,
+                "machine": decision.machine,
+                "why": decision.verdict.as_str(),
+                "freeMemoryBytes": decision.memory_bytes,
+                "freeDiskBytes": decision.disk_bytes,
+                "at": decision.at,
+            })
+        })
+        .collect();
+    let change = json!({
+        "attempt": job.attempt,
+        "device": device,
+        "asked": {
+            "type": wanted.work_type, "kind": wanted.kind, "os": wanted.os,
+            "architecture": wanted.architecture, "memoryBytes": wanted.limits.memory_bytes,
+            "diskBytes": wanted.limits.disk_bytes, "machine": wanted.machine,
+        },
+        "reason": reasons::line(job, decisions),
+        "refused": refused,
+    });
     let asker = (Operator::hub(), client);
     audit(conn, job, (AuditAction::Start, change), (asker, now)).await
 }
@@ -98,6 +130,24 @@ pub(super) async fn attempt_ended(
     });
     let asker = (Operator::hub(), client);
     audit(conn, job, (AuditAction::End, change), (asker, now)).await
+}
+
+/// The operator pinned a machine for a project, removed the pin, or changed the exclusion of a
+/// machine (ROU-006).
+pub(super) async fn placement_set(
+    conn: &mut PgConnection,
+    (device, change): (DeviceId, serde_json::Value),
+    ((operator, client), now): (Asker, DateTime<Utc>),
+) -> Result<(), Error> {
+    let entry = NewAudit {
+        operator,
+        action: AuditAction::Update,
+        target: AuditTarget::Device(device),
+        client,
+        change,
+    };
+    events::audit(conn, now, entry).await?;
+    Ok(())
 }
 
 /// A stop was asked for.

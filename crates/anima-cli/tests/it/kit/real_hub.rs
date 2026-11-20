@@ -104,6 +104,7 @@ async fn dependencies(pool: &PgPool, vault: Vault, sources: Option<Reach>) -> De
                 .expect("the source transport")
         }),
         files: anima_hub::engine::files::Store::off(),
+        reminders: anima_hub::engine::reminders::Live::default(),
     }
 }
 

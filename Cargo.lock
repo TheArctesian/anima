@@ -159,6 +159,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tauri-plugin-process",
+ "tauri-plugin-runner",
  "tauri-plugin-updater",
  "tempfile",
  "thiserror 2.0.21",
@@ -183,6 +184,7 @@ dependencies = [
  "clap_complete",
  "crossterm",
  "futures-util",
+ "getrandom 0.4.3",
  "graphql-parser",
  "graphql_client",
  "hmac 0.13.0",
@@ -325,6 +327,7 @@ dependencies = [
  "minisign",
  "nix 0.31.3",
  "proptest",
+ "provider-dawarich",
  "provider-github",
  "rand 0.10.3",
  "rcgen",
@@ -465,6 +468,12 @@ dependencies = [
  "password-hash",
  "zeroize",
 ]
+
+[[package]]
+name = "arraydeque"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 
 [[package]]
 name = "asn1-rs"
@@ -1450,6 +1459,14 @@ checksum = "4356eba6976435498d05a311ee9fc486da3bc81c200d3f0d7dd9703b41913f92"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "compose-rules"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+ "yaml-rust2",
 ]
 
 [[package]]
@@ -3159,6 +3176,9 @@ name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+dependencies = [
+ "foldhash 0.2.0",
+]
 
 [[package]]
 name = "hashlink"
@@ -3167,6 +3187,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7382cf6263419f2d8df38c55d7da83da5c18aef87fc7a7fc1fb1e344edfe14c1"
 dependencies = [
  "hashbrown 0.15.5",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a596f1b20ed2cc5ecac41a164aaebc7258057060f06c0cf7a2ba3991ee7990fb"
+dependencies = [
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
@@ -5924,6 +5953,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "provider-dawarich"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "source-exchange",
+]
+
+[[package]]
 name = "provider-github"
 version = "0.1.0"
 dependencies = [
@@ -7516,7 +7555,7 @@ dependencies = [
  "futures-io",
  "futures-util",
  "hashbrown 0.15.5",
- "hashlink",
+ "hashlink 0.10.0",
  "indexmap 2.14.2",
  "ipnet",
  "log",
@@ -8335,6 +8374,15 @@ version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74ae3d8549ae564c0397377373e262f340908eb23a5b9fbe03f2a00007dc0038"
 dependencies = [
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
+name = "tauri-plugin-runner"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
  "tauri",
  "tauri-plugin",
 ]
@@ -10027,6 +10075,16 @@ checksum = "ec1cdab258fb55c0da61328dc52c8764709b249011b2cad0454c72f0bf10a1f6"
 dependencies = [
  "libc",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "yaml-rust2"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e5b818a27a4cd30884ea380857a5e56f7ec3ba24a3990a3cc0b95af3238e18"
+dependencies = [
+ "arraydeque",
+ "hashlink 0.12.2",
 ]
 
 [[package]]

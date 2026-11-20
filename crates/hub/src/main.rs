@@ -16,7 +16,7 @@ use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::SystemClock,
     config::{self, Config},
-    engine::{files, sealing_keys::SealingKeys},
+    engine::{files, locations, reminders, sealing_keys::SealingKeys},
     fleet::{
         access::{self, listen},
         builds,
@@ -214,7 +214,10 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let hosted = upkeep::hosted(&config, &pool, &bus, &clock).await;
     let feed = metrics::Feed::new();
     // The sources reach only their declared API bases, through the same deny list (K-E1).
-    let sources = anima_hub::source_reach(vec![projects::intake()], policy.clone())?;
+    // The Dawarich pull stores its points with the sealing keys of the positions (R-261).
+    let positions = locations::Seal::new(files.sealing_keys().clone());
+    let intakes = vec![projects::intake(), locations::dawarich_intake(positions)];
+    let sources = anima_hub::source_reach(intakes, policy.clone())?;
     let dependencies = Dependencies {
         vpn_broker: config.vpn_broker.clone().map(vpn::Broker::new),
         config,
@@ -230,6 +233,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vpn_feed: vpn::Feed::new(),
         sources,
         files,
+        reminders: reminders::Live::default(),
     };
     let background = upkeep::spawn(&dependencies, hosted);
     // Every route is behind the same permitted-networks check (K3, NET-002).

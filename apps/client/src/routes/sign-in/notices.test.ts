@@ -82,7 +82,7 @@ it('UI-030: a field error is named by aria-describedby and marks the field aria-
 it('NAV-005: tab order follows the page: user name, password, Continue, Change', () => {
   const target = open({});
   const order = [...target.querySelectorAll<HTMLElement>('input, button')].map((element) => element.id || element.textContent.trim());
-  expect(order).toEqual(['username', 'password', 'Continue', 'Change']);
+  expect(order).toEqual(['username', 'password', 'Continue', 'Change hub address']);
 });
 
 it('NAV-009: focus starts in User name', () => {

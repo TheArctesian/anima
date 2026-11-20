@@ -67,6 +67,24 @@ The rule is `choose` in `src/gates/tier.ts`; `tests/gates/tier.test.ts` tests it
 | `.github/` | The tests of `@anima/deploy`, which read the workflow files |
 | A path that no rule knows | The full list |
 
+On a busy machine (R-268). When the load average of one minute is above the number of processor
+cores (`FAST_BUSY_LOAD` sets a different limit), the fast tier of a code change is smaller, and its first
+lines and its last line say so: that run is not a gate, the run on GitHub is (R-254).
+
+| What the change names | Not busy | Busy |
+| --- | --- | --- |
+| A crate | `fmt`, `clippy`, `rust-test` for the crate | The same |
+| Each Rust package | The whole Rust group | `fmt` and `clippy`; no `rust-test`, `doctest`, `pinning` |
+| A bun package | `lint`, `check`, `test` of the package | `lint`, `check`; the changed test files of the package, or its tests when no test file changed |
+| Each bun package | The whole bun group | `install`, `lint`, `check`; no `test`, no `build` |
+| `.github/` | The tests of `@anima/deploy` | The test files whose name has "workflow" |
+| `link/`, and the five quality gates | Run | Run |
+
+A change of a path that only a Mac tests leaves nothing out (`macOnly` in `src/gates/tier.ts`): the desktop
+shell, the Keychain stores and the units of the daemon, `link/statedir`, and the tests of `check-mach-o.sh`
+and `trial-bundle.sh`. `bun run gates:fast -- --whole` runs each test of the tier. Measured on 2026-11-20:
+the tests of `@anima/deploy` took 124 seconds at a load of 8 to 13 and 864 seconds at a load of 24 to 35.
+
 Measured on 2026-11-19 on the Mac of the operator, at a load of 8 to 12 (the full list takes about 13
 minutes on the same Mac when it is quiet: Rust tests 7, bun tests 3.5, Go tests 2):
 
@@ -131,6 +149,10 @@ each train with its state and the branches of the next one.
   not a document is the one that the gates tested (`src/merge/carry.ts`). If one is different, or a branch
   does not merge again, it says which and lands nothing. When `dev` moved in code, the train is made again
   on the new `dev` and its gates run one more time.
+- **Each branch has a reason.** `bun quality/bin/train.ts --plan` names each branch that is not in `dev`:
+  ready, or why it is not taken (its gates still run, ended with a failure, passed for an older commit, did
+  not run, it failed alone in a train), or the documents in which it has a conflict with `dev`. The
+  conductor writes the same lines into the summary of its run, apart from branches that never had a run.
 - **A failure.** The next train holds the first half of the failed one, in the same order. A branch that
   fails alone is refused: a note on its tip (`refs/notes/train`) keeps it out until the branch moves or its
   own gates pass again (`gh run rerun`). A cancelled run is no verdict: the train is built again.
@@ -143,11 +165,28 @@ rules are `src/merge/train.ts`, the git work is `src/merge/stack.ts`, the end of
 `src/merge/finish.ts` and `src/merge/commit.ts`: the merge commit comes first and the document gates run on
 it, because the mockup check counts the layout files of a branch as changed while its merge is not committed.
 
+The documents that each branch adds to. A conflict in a document leaves a branch out of a train, and its
+session must merge `dev` into the branch. Five documents merge by union (`.gitattributes`): the rulings, the
+human checks, the decisions table, the list of security findings and the table of owners; the documents gate
+finds an entry that a union kept two times (`decision-row-twice`, `finding-twice`, `owner-row-twice`). Two
+hot documents cannot take the union rule, because branches change the same lines of them:
+`docs/mockup/README.md` (each interface branch writes the cell "Compared" of its row again) and
+`docs/proposals/hosted-mode.md` (each task of the hosted work changes the version line, the header and the
+row of its task). They need one file for each entry, as the claims have: one record for each mockup, one
+file for each task. Not built: the two documents have owners.
+
 What works from where. GitHub takes `merge-to-dev.yml` from the default branch, `main`; the checkout is
 `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`. With the old file on `main` the train works,
-but the workflow starts only when the gates of a pushed branch pass: a train lands, or is split, at the next
-such start, so the last train of a quiet hour waits. The new file also starts at the end of the gates of a
-train and each 20 minutes. GitHub has a merge queue for this work only for a repository of an organization;
+and the file of `main` is now the file of `dev`. What wakes the conductor: the end of the gates of a pushed
+branch, and the conductor itself. Seen on 2026-11-20 for three trains: when the gates of a train end, GitHub
+starts nothing, because the token of the workflow started those gates and GitHub sends no event for the end
+of such a run; the train of 09:42 UTC waited until a session called the conductor. On the same day the
+clock of the file (each 20 minutes) started the workflow not one time. So `merge-to-dev.sh` does not wait
+for an event: while a train is on the way it stays, does a step each minute for 10 minutes, and then starts
+`merge-to-dev` again, which GitHub permits for the token of a workflow. The script is that of `dev`, so
+this needs nothing on `main`. One fault stays possible: the start waits behind the run that made it, and a
+later start whose job is skipped can take its place in those seconds; then the next branch whose gates
+pass wakes the conductor. A session runs `bun quality/bin/train.ts` in a clean checkout of `dev` only when a train is stuck. GitHub has a merge queue for this work only for a repository of an organization;
 this repository belongs to a personal account.
 
 Seen on GitHub on 2026-11-20, after this was in `dev`: the conductor made three trains (the third with nine

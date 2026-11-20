@@ -23,7 +23,7 @@ const GROUP = /^[0-9a-f]{1,4}$/;
  * A host in the one form that compares: an IPv6 address as its eight groups with no leading zeros, in lower case and
  * without brackets, so `FD41:4E49:4D41:0:0:0:0:7` is `fd41:4e49:4d41::7`. Any other host is its lower-case text.
  */
-function comparable(host: string): string {
+export function comparable(host: string): string {
   const text = normalizeHost(host).toLowerCase();
   const [head = '', tail, extra] = text.split('::');
   if (!text.includes(':') || extra !== undefined) return text;

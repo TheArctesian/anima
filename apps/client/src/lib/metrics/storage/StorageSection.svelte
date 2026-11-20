@@ -30,6 +30,9 @@
       <p class="quiet">No drives yet</p>
     {:else}
       <p class="summary">{summary}</p>
+      <!-- On a wide card the rows are a table: this line names its columns. The rows keep their own words for a
+           screen reader, so the line is not read (R-224). -->
+      <div class="columns" aria-hidden="true"><span>Drive</span><span>Kind</span><span>Size</span><span>Mounted at, used</span><span>Read, write, busy</span></div>
       <ul class="rows">
         {#each rows as row (row.key)}
           <li class="drive" class:unmounted={!row.mounted}>
@@ -72,7 +75,71 @@
 
 <style>
   .storage {
-    margin-block-start: var(--space-4);
+    container-type: inline-size;
+  }
+
+  .columns {
+    display: none;
+  }
+
+  /* From 36rem the drives are the rows of a table: one line for a drive with one mount, and a drive with several
+     mounts has one line for each under its name. A drive that is not mounted says so where its mount would be. */
+  @container (min-inline-size: 36rem) {
+    .columns,
+    .rows .drive {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--space-16) - var(--space-2)) calc(var(--space-16) + var(--space-4)) minmax(0, 1.8fr) minmax(0, 1.6fr);
+      column-gap: var(--space-3);
+      align-items: baseline;
+    }
+
+    .columns {
+      color: var(--text-tertiary);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-medium);
+      letter-spacing: var(--tracking-label);
+      text-transform: uppercase;
+    }
+
+    .columns > :last-child {
+      text-align: end;
+    }
+
+    .rows {
+      gap: 0;
+    }
+
+    .rows .drive {
+      padding-block: var(--space-2);
+      border-block-start: var(--border-thin) solid var(--border-subtle);
+    }
+
+    .rows .title {
+      display: contents;
+    }
+
+    .rows .name {
+      grid-column: 1;
+    }
+
+    .rows .kind {
+      grid-column: 2;
+    }
+
+    .rows .size {
+      grid-column: 3;
+    }
+
+    .rows .mount,
+    .rows .drive > .quiet {
+      grid-column: 4;
+    }
+
+    .rows .activity {
+      grid-column: 5;
+      grid-row: 1;
+      text-align: end;
+    }
   }
 
   p {

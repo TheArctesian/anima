@@ -136,11 +136,82 @@ function bunGates(full: Gate[], touched: Touched): Gate[] {
 }
 
 /**
+ * The paths whose tests a Linux machine of GitHub does not run or prove (R-254 item 3): the
+ * desktop shell with `check-mach-o.sh`, `trial-bundle.sh` and the trust hook of `pinning`, the
+ * Keychain stores and the LaunchAgent of the daemon, and the access control of `link/statedir`.
+ */
+const MAC_ONLY = [
+  "apps/desktop/src-tauri/",
+  "crates/daemon/src/keys/",
+  "crates/daemon/src/token_store",
+  "crates/daemon/src/units/",
+  "link/statedir/",
+  "deploy/test/check-mach-o",
+  "deploy/test/trial-bundle",
+];
+
+/** The changed paths that only a Mac tests. With one of them, a busy machine leaves no test out. */
+export function macOnly(paths: string[]): string[] {
+  return paths.filter((path) => MAC_ONLY.some((prefix) => path.startsWith(prefix)));
+}
+
+/** A machine is busy when its load is above the limit: more work waits than the limit says. */
+export function isBusy(load: number, limit: number): boolean {
+  return load > limit;
+}
+
+const TEST_FILE = /\.test\.[cm]?[jt]sx?$/;
+
+/**
+ * The test gates of the bun packages on a busy machine. For each package: when the change has
+ * test files of that package, only those files; when it changed the package and no test file,
+ * the tests of the package. A change of a workflow file runs the tests whose name has "workflow".
+ */
+function narrowBunTests(touched: string[], paths: string[], packages: Member[]): Gate[] {
+  const files: string[] = [];
+  const whole: string[] = [];
+  for (const name of touched) {
+    const folder = packages.find((member) => member.name === name)?.folder;
+    const inPackage = folder === undefined ? [] : paths.filter((path) => path.startsWith(`${folder}/`));
+    const tests = inPackage.filter((path) => TEST_FILE.test(path));
+    if (tests.length > 0) files.push(...tests);
+    else if (inPackage.length > 0) whole.push(name);
+  }
+  const filters = [...files, ...(paths.some((path) => path.startsWith(WORKFLOWS)) ? ["workflow"] : [])];
+  return [
+    ...(filters.length > 0 ? [{ name: "test", group: "bun" as const, argv: ["bun", "test", ...filters] }] : []),
+    ...(whole.length > 0 ? [{ name: "test", group: "bun" as const, argv: ["bun", "run", ...whole.flatMap((name) => ["--filter", name]), "test"] }] : []),
+  ];
+}
+
+/** The gate names that a busy machine leaves out when a change names each package of a language. */
+const BROAD = ["rust-test", "doctest", "pinning", "test", "build"];
+
+/**
+ * The fast tier of a busy machine (R-268): format, lint and the checks of types stay;
+ * the tests of each package of a language are left out; the tests of a named crate stay; the
+ * tests of a named bun package are narrowed (`narrowBunTests`). Go and the quality gates stay.
+ */
+function busyGates(choice: Extract<Choice, { tier: "code" }>, full: Gate[], busy: Busy): Gate[] {
+  const light = (gates: Gate[]) => gates.filter((gate) => !BROAD.includes(gate.name));
+  const rust = choice.rust === "all" ? light(rustGates(full, "all")) : rustGates(full, choice.rust);
+  const bun = choice.bun === "all" ? light(bunGates(full, "all")) : [...light(bunGates(full, choice.bun)), ...narrowBunTests(choice.bun, busy.paths, busy.packages)];
+  return [...rust, ...(choice.go ? full.filter((gate) => gate.group === "go") : []), ...bun, ...full.filter((gate) => gate.group === "quality")];
+}
+
+/** What the fast tier needs to know to leave tests out on a busy machine: the changed paths and the bun packages. */
+export interface Busy {
+  paths: string[];
+  packages: Member[];
+}
+
+/**
  * The gates of the fast tier for `choice`, taken from the full list `full` so that a gate has one
  * definition. The quality gates run for each code change: they take seconds. The doctests run only
  * with each Rust package, and the dependents of a touched package are not tested: the full list does that.
+ * With `busy`, the tier of a busy machine. A change that only a Mac tests never gets it.
  */
-export function fastGates(choice: Choice, full: Gate[]): Gate[] {
+export function fastGates(choice: Choice, full: Gate[], busy?: Busy): Gate[] {
   switch (choice.tier) {
     case "nothing":
       return [];
@@ -149,6 +220,7 @@ export function fastGates(choice: Choice, full: Gate[]): Gate[] {
     case "full":
       return full;
     case "code":
+      if (busy !== undefined && macOnly(busy.paths).length === 0) return busyGates(choice, full, busy);
       return [
         ...rustGates(full, choice.rust),
         ...(choice.go ? full.filter((gate) => gate.group === "go") : []),

@@ -326,7 +326,11 @@ async fn lapse(access: &SocketAccess, lease: Lease) -> Closing {
             return Closing::Forbidden;
         }
         match store::token_exists(&access.db, lease.token).await {
-            Ok(true) => {}
+            // An open socket is use of its token: a session with an idle rule (HMD-062) does
+            // not end under a person who watches a terminal. A failed write changes nothing.
+            Ok(true) => {
+                let _ = store::touch_token(&access.db, lease.token, access.clock.now()).await;
+            }
             Ok(false) => return Closing::Forbidden,
             Err(error) => {
                 Error::from(error).log();

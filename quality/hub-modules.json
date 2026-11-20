@@ -140,7 +140,9 @@
     "locations": [
       "places",
       "events",
-      "access"
+      "access",
+      "sources",
+      "extensions"
     ],
     "reminders": [
       "places",

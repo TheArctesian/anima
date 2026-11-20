@@ -180,7 +180,8 @@ it('MET-011: an DAEMON device has metrics: the range control shows and "Metrics 
 it('MET-029: the Storage section follows Metrics with a row per drive; it is absent when metrics are off', () => {
   show({ ...LOADED, view: { ...LOADED.view, drives: POP_OS } as Shown['view'] });
   const headings = [...document.querySelectorAll('section h2')].map((one) => words(one));
-  expect(headings.slice(headings.indexOf('Metrics'))).toEqual(['Metrics', 'Storage']);
+  // The cards beside the Overview follow the main column in the page (R-224).
+  expect(headings.slice(headings.indexOf('Metrics'), headings.indexOf('Metrics') + 2)).toEqual(['Metrics', 'Storage']);
   expect(words(card('Storage'))).toContain('Not mounted');
   if (app) void unmount(app);
   show(WAITING, 'NONE');

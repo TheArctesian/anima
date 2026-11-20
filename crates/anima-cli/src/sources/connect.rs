@@ -7,6 +7,7 @@
 //! (MCP-004, LOG-007).
 
 pub mod attempt;
+pub mod dawarich;
 pub mod documents;
 pub mod flow;
 mod lines;
@@ -31,6 +32,9 @@ pub enum ConnectCommand {
     /// Connect a GitHub account: the hub makes the App and you press Create and Install on
     /// GitHub, or give an App's private key with `--from-file`.
     Github(GithubArgs),
+    /// Connect a Dawarich server with an API key of its account: the hub then pulls its
+    /// location points.
+    Dawarich(dawarich::DawarichArgs),
 }
 
 #[derive(clap::Args)]
@@ -94,6 +98,7 @@ impl ConnectCommand {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::Github(args) => args.run(invocation).await,
+            Self::Dawarich(args) => args.run(invocation).await,
         }
     }
 }

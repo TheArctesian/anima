@@ -24,6 +24,26 @@ pub enum Cause {
     Status(u16),
     #[error("the hub's answer did not read")]
     Unreadable,
+    /// The gateway of the hosted hubs answered in place of a hub (HMD-059, HM-T31).
+    #[error(
+        "this address is the hosted Anima.ing hub in a browser, not a hub for a daemon: enrol again with --hub and the address of your own hub, or sign in with the Anima.ing application, which installs the daemon for a hosted hub"
+    )]
+    HostedAddress,
+}
+
+/// Whether `body` is the refusal of the gateway of the hosted hubs for a request with no
+/// session of a browser: `{ "error": { "code": "sign_in_needed" } }`.
+fn from_gateway(body: &[u8]) -> bool {
+    #[derive(serde::Deserialize)]
+    struct Gateway {
+        error: Code,
+    }
+    #[derive(serde::Deserialize)]
+    struct Code {
+        code: String,
+    }
+    serde_json::from_slice::<Gateway>(body)
+        .is_ok_and(|gateway| gateway.error.code == "sign_in_needed")
 }
 
 /// The meaning of `status` and `body`. `ok_status` is the success status of the route and
@@ -39,6 +59,7 @@ pub fn answer<T>(
     }
     match serde_json::from_slice::<Refusal>(body) {
         Ok(Refusal { error }) if error.status() == status => Answer::Refused(error),
+        _ if status == 401 && from_gateway(body) => Answer::Failed(Cause::HostedAddress),
         _ => Answer::Failed(Cause::Status(status)),
     }
 }
@@ -80,6 +101,17 @@ mod tests {
         for (status, body) in cases {
             assert_eq!(push(status, body), Answer::Failed(Cause::Status(status)));
         }
+    }
+
+    #[test]
+    fn hm_t31_the_gateway_of_the_hosted_hubs_is_told_apart_from_a_hub_that_refuses() {
+        let gateway = r#"{"error":{"code":"sign_in_needed","message":"words"}}"#;
+        assert_eq!(push(401, gateway), Answer::Failed(Cause::HostedAddress));
+        assert!(Cause::HostedAddress.to_string().contains("--hub"));
+        // The same body with a different status, and a different code, go by the status.
+        assert_eq!(push(403, gateway), Answer::Failed(Cause::Status(403)));
+        let other = r#"{"error":{"code":"hub_not_ready","message":"words"}}"#;
+        assert_eq!(push(401, other), Answer::Failed(Cause::Status(401)));
     }
 
     #[test]

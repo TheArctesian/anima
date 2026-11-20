@@ -14,6 +14,7 @@ mod feed;
 pub mod graphql;
 mod health;
 mod intake;
+mod key_connection;
 mod live;
 mod model;
 mod registration;
@@ -47,6 +48,7 @@ pub use connect::{Connection, Established, establish};
 pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};
+pub use key_connection::{KeyConnection, connect_with_key};
 pub use live::{Keep, LiveFailure, Reply, Reserve, Standing, ask, change, forget, standing};
 pub use model::{Account, ErrorKind, Health, Outcome, PauseReason, Trigger};
 pub use registration::{
@@ -147,6 +149,14 @@ pub enum Error {
     KeyRefused,
     #[error("the source could not be reached")]
     Unreachable,
+    #[error("the address is not https://host[:port]")]
+    Base,
+    #[error("the address is one that the hub does not connect to")]
+    AddressRefused,
+    #[error("the key is not 1 to 512 characters")]
+    ApiKey,
+    #[error("the server refused the key")]
+    ApiKeyRefused,
 }
 
 impl Error {
@@ -173,6 +183,21 @@ impl Error {
                 "privateKey",
                 "The source refused this key for this App and installation.",
             )]),
+            Self::Base => invalid(&[FieldError::new(
+                "baseUrl",
+                "Give the address as https://host or https://host:port, with no path.",
+            )]),
+            Self::AddressRefused => invalid(&[FieldError::new(
+                "baseUrl",
+                "The hub does not connect to this address.",
+            )]),
+            Self::ApiKey => invalid(&[FieldError::new(
+                "apiKey",
+                "Give the key as the server shows it: 1 to 512 characters.",
+            )]),
+            Self::ApiKeyRefused => {
+                invalid(&[FieldError::new("apiKey", "The server refused this key.")])
+            }
             Self::Unreachable => coded(
                 "The source cannot be reached. Try again later.",
                 ErrorCode::Unavailable,

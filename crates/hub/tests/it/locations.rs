@@ -23,6 +23,7 @@ use sqlx::PgPool;
 use tower::ServiceExt as _;
 
 mod context;
+mod dawarich;
 mod owntracks;
 
 use crate::hub::{CLIENT, Hub, dependencies, error, set_operator, start};

@@ -26,7 +26,7 @@ use crate::{
     logs::Capture,
 };
 
-const CLOUD_KEY: &str = "cloud-key-of-the-test-hub-0123456789abcdef";
+pub const CLOUD_KEY: &str = "cloud-key-of-the-test-hub-0123456789abcdef";
 const DEVICE: &str = "[fd41:4e49:4d41::7]";
 const INVITE_CALL: &str = "mutation($k: String!, $n: String!) { \
     hostedDeviceInvite(cloudKey: $k, name: $n) { invite claim expiresAt } }";
@@ -51,7 +51,7 @@ fn hosted_link() -> FakeLink {
 }
 
 /// The parts of a hub in the hosted mode over `link`, with the cloud key in a file of `folder`.
-fn hosted_parts(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) -> Dependencies {
+pub fn hosted_parts(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) -> Dependencies {
     let key_file = folder.path().join("cloud_key");
     std::fs::write(&key_file, format!("{CLOUD_KEY}\n")).unwrap();
     let env = BTreeMap::from([

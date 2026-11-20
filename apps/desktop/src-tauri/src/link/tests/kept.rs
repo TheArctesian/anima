@@ -10,6 +10,7 @@ use std::{
 };
 
 use super::super::{
+    copy,
     device::DeviceLink,
     kept::{self, Kept},
     printed,
@@ -18,20 +19,21 @@ use super::super::{
 use super::runs::{stand_in, until};
 
 /// `anima-link` as the shell asks it: `unit install` makes the mark `unit` in the state folder,
-/// `unit remove` deletes it, `unit show` and `ctl status` answer from it. Each call is noted.
+/// `unit remove` deletes it, `unit show` and `ctl status` answer from it. The file of the unit
+/// is `unit.file` beside it. Each call is noted.
 const UNIT_LINK: &str = r#"
 here=$(dirname "$0")
 echo "$*" >> "$here/calls"
 case "$1 $2" in
-"unit install") [ "$3 $5" = "-state -listen" ] || exit 9; echo "$6" > "$here/unit" ;;
-"unit remove") rm -f "$here/unit" ;;
-"unit show") if [ -f "$here/unit" ]; then echo '{"installed":true,"file":"/x"}'; else echo '{"installed":false,"file":"/x"}'; fi ;;
+"unit install") [ "$3 $5" = "-state -listen" ] || exit 9; echo "$6" > "$here/unit"; echo "<string>$4</string>" > "$here/unit.file" ;;
+"unit remove") rm -f "$here/unit" "$here/unit.file" ;;
+"unit show") if [ -f "$here/unit" ]; then echo "{\"installed\":true,\"file\":\"$here/unit.file\"}"; else echo "{\"installed\":false,\"file\":\"$here/unit.file\"}"; fi ;;
 "ctl -state") [ -f "$here/unit" ] || exit 1; echo "{\"role\":\"device\",\"local\":\"$(cat "$here/unit")\",\"path\":\"direct\",\"latencyMs\":1}" ;;
 *) exit 9 ;;
 esac
 "#;
 
-fn kept_in(folder: &std::path::Path, port: u16) -> Kept {
+pub fn kept_in(folder: &std::path::Path, port: u16) -> Kept {
     Kept {
         program: stand_in(folder, UNIT_LINK),
         folder: folder.to_path_buf(),
@@ -46,13 +48,13 @@ fn hmd_058_the_unit_is_installed_for_the_folder_and_the_port_then_asked_and_remo
     let folder = tempfile::tempdir().unwrap();
     let link = kept_in(folder.path(), 41001);
 
-    assert!(!link.installed());
+    assert!(!link.keeps_this_folder());
     assert_eq!(link.serving(), None, "no link runs before the unit");
     link.install().unwrap();
-    assert!(link.installed());
+    assert!(link.keeps_this_folder());
     assert_eq!(link.serving(), Some(41001));
     link.remove().unwrap();
-    assert!(!link.installed());
+    assert!(!link.keeps_this_folder());
 
     let state = folder.path().display();
     let calls = fs::read_to_string(folder.path().join("calls")).unwrap();
@@ -71,12 +73,61 @@ fn hmd_058_the_unit_is_installed_for_the_folder_and_the_port_then_asked_and_remo
 }
 
 #[test]
+fn hmd_058_a_unit_that_runs_a_different_folder_is_not_the_unit_of_this_one() {
+    let folder = tempfile::tempdir().unwrap();
+    let link = kept_in(folder.path(), 41001);
+    assert!(!link.keeps_this_folder(), "no unit yet");
+    link.install().unwrap();
+    assert!(link.keeps_this_folder());
+
+    // The same unit file and program, asked for the folder of a different copy of the app.
+    let other = Kept {
+        folder: folder.path().join("other"),
+        ..link.clone()
+    };
+    assert!(folder.path().join("unit.file").is_file());
+    assert!(!other.keeps_this_folder());
+    let longer = Kept {
+        folder: folder.path().with_extension("old"),
+        ..link
+    };
+    assert!(
+        !longer.keeps_this_folder(),
+        "a longer path is a different one"
+    );
+}
+
+#[test]
+fn the_folder_of_a_unit_is_one_whole_argument_of_its_file() {
+    let agent = "<array>\n<string>/a/device</string>\n</array>";
+    assert!(printed::unit_runs_folder(agent, "/a/device"));
+    assert!(!printed::unit_runs_folder(agent, "/a"));
+    assert!(!printed::unit_runs_folder(agent, "/a/dev"));
+    let systemd =
+        r#"ExecStart="/b/anima-link" "device" "-state" "/a/device" "-listen" "127.0.0.1:1""#;
+    assert!(printed::unit_runs_folder(systemd, "/a/device"));
+    assert!(!printed::unit_runs_folder(systemd, "/a/device.old"));
+    assert_eq!(
+        printed::unit_file(br#"{"installed":false,"file":"/x"}"#),
+        None
+    );
+    assert_eq!(
+        printed::unit_file(br#"{"installed":true,"file":"x"}"#),
+        None
+    );
+    assert_eq!(
+        printed::unit_file(br#"{"installed":true,"file":"/x"}"#),
+        Some("/x".into())
+    );
+}
+
+#[test]
 fn hmd_058_a_link_program_that_refuses_the_unit_gives_an_error_and_no_unit() {
     let folder = tempfile::tempdir().unwrap();
     let mut link = kept_in(folder.path(), 41001);
     link.program = stand_in(folder.path(), "echo 'unit: refused' >&2; exit 1");
     assert!(link.install().is_err());
-    assert!(!link.installed());
+    assert!(!link.keeps_this_folder());
     assert_eq!(link.serving(), None);
 }
 
@@ -93,7 +144,10 @@ fn hmd_058_the_app_watches_a_kept_link_and_its_stop_does_not_end_the_link() {
 
     device.stop();
     assert_eq!(device.state().phase, Phase::Stopped);
-    assert!(link.installed(), "the unit stays when the app stops");
+    assert!(
+        link.keeps_this_folder(),
+        "the unit stays when the app stops"
+    );
     assert_eq!(link.serving(), Some(41001));
 }
 
@@ -162,10 +216,33 @@ fn the_unit_commands_get_the_home_and_the_session_of_the_user_and_nothing_else()
             ("XDG_RUNTIME_DIR", "/run/user/1000".into())
         ]
     );
+}
+
+#[test]
+fn the_copy_of_the_link_is_in_the_folder_of_the_app_and_a_unit_of_an_earlier_app_is_found() {
+    let root = tempfile::tempdir().unwrap();
+    let (application, home) = (root.path().join("app"), root.path().join("home"));
+    let new_copy = application.join("link/program/anima-link");
+    let earlier = home.join(".local/bin/anima-link");
+    assert_eq!(copy::destination(&application), new_copy);
+    assert_eq!(copy::earlier_copy(&home), earlier);
     assert_eq!(
-        kept::destination(std::path::Path::new("/home/me")),
-        std::path::Path::new("/home/me/.local/bin/anima-link")
+        copy::current_copy(&application, &home),
+        new_copy,
+        "no copy yet"
     );
+
+    fs::create_dir_all(earlier.parent().unwrap()).unwrap();
+    fs::write(&earlier, b"link").unwrap();
+    assert_eq!(
+        copy::current_copy(&application, &home),
+        earlier,
+        "a unit of an earlier app runs ~/.local/bin/anima-link"
+    );
+
+    fs::create_dir_all(new_copy.parent().unwrap()).unwrap();
+    fs::write(&new_copy, b"link").unwrap();
+    assert_eq!(copy::current_copy(&application, &home), new_copy);
 }
 
 #[test]

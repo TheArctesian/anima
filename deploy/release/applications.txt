@@ -36,6 +36,7 @@ cli out contracts/
 cli out crates/anima-database/
 cli out crates/anima-gateway/
 cli out crates/anima-local-hub/
+cli out crates/compose-rules/
 cli out crates/daemon/
 cli out crates/daemon-core/
 cli out crates/guac-protocol/
@@ -67,6 +68,7 @@ ios out deploy/
 ios out crates/anima-database/
 ios out crates/anima-gateway/
 ios out crates/anima-local-hub/
+ios out crates/compose-rules/
 ios out crates/daemon/
 ios out crates/daemon-core/
 ios out crates/guac-protocol/

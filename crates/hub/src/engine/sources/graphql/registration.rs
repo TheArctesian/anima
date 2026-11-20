@@ -14,7 +14,7 @@ use ring::rand::SystemRandom;
 use tokio::sync::broadcast::error::RecvError;
 use uuid::Uuid;
 
-use self::view::{AttemptView, Link, Pages, StartGithubConnectInput, checked};
+use self::view::{AttemptView, Link, Pages, StartGithubConnectInput, browser_can_open, checked};
 use super::scheduling;
 use crate::{
     api_errors::{ErrorCode, begin, coded, commit, internal, schema_dependency},
@@ -92,6 +92,7 @@ impl Mutation {
         ctx: &Context<'_>,
         input: Option<StartGithubConnectInput>,
     ) -> Result<AttemptView> {
+        browser_can_open(ctx)?;
         let s = scheduling(ctx)?;
         let pages = Pages::of(ctx, &s)?;
         let (label, organisation) = checked(input.unwrap_or_default(), &pages.registration)?;
@@ -140,6 +141,7 @@ impl Mutation {
     )]
     #[graphql(guard = "Authenticated")]
     async fn open_github_connect(&self, ctx: &Context<'_>, id: ID) -> Result<Link> {
+        browser_can_open(ctx)?;
         let operator = schema_dependency::<Operator>(ctx)?;
         if operator.actor.kind() == ActorKind::Agent {
             return Err(coded(

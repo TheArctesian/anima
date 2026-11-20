@@ -30,6 +30,11 @@ pub(super) const LOGIN_LIFETIME: TimeDelta = TimeDelta::days(30);
 /// A browser token is valid this long, with no refresh (D-3).
 pub(super) const BROWSER_LIFETIME: TimeDelta = TimeDelta::days(7);
 
+/// The browser session of a hosted hub ends at the latest this long after the sign-in, and
+/// after this long with no request (HMD-062). An open socket counts as a request.
+pub(super) const HOSTED_BROWSER_LIFETIME: TimeDelta = TimeDelta::hours(12);
+pub(super) const HOSTED_BROWSER_IDLE: TimeDelta = TimeDelta::minutes(30);
+
 /// A builder token is valid this long: the VPN client key period (BLD-022, VPN-003).
 pub(super) const BUILDER_LIFETIME: TimeDelta = TimeDelta::days(180);
 
@@ -252,6 +257,19 @@ fn spelled(presented: &str, prefix: &str, chars: usize) -> bool {
 /// A token is usable until, not at, its expiry.
 pub(super) fn usable(expires_at: DateTime<Utc>, now: DateTime<Utc>) -> bool {
     now < expires_at
+}
+
+/// Whether a token with an idle rule of `idle_seconds` had no request for that long at `now`.
+/// A token with no rule never idles out; one with a rule and no use on record does, since its
+/// insert writes the first use.
+pub(super) fn idled_out(
+    idle_seconds: Option<i32>,
+    last_used_at: Option<DateTime<Utc>>,
+    now: DateTime<Utc>,
+) -> bool {
+    idle_seconds.is_some_and(|seconds| {
+        last_used_at.is_none_or(|last| now - last >= TimeDelta::seconds(i64::from(seconds)))
+    })
 }
 
 /// Whether `last_used_at` is old enough to be written again (at most once a minute).

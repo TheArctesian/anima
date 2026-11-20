@@ -21,8 +21,8 @@
     label: string;
     /** A small-caps heading over the links, for example "On this page". */
     heading?: string | undefined;
-    /** Below a wide window: a scrolling row of links above the sections, or no index at all. */
-    narrow?: 'row' | 'hidden';
+    /** Below a wide window: a scrolling row, a vertical list, or a hidden index. */
+    narrow?: 'row' | 'hidden' | 'stacked';
   }
 
   const { entries, label, heading, narrow = 'row' }: Props = $props();
@@ -53,9 +53,8 @@
   });
 </script>
 
-<!-- A page's sections (UR-7, SET-001, D17): sticky beside them on a wide window; on a narrow one a scrolling row above
-     them, or nothing. -->
-<nav aria-label={label} class:hidden={narrow === 'hidden'}>
+<!-- The index stays alongside the sections when the layout is wide (UR-7, SET-001, D17). -->
+<nav aria-label={label} class:hidden={narrow === 'hidden'} class:stacked={narrow === 'stacked'}>
   {#if heading !== undefined}<span class="heading"><SmallCaps>{heading}</SmallCaps></span>{/if}
   {#each entries as entry, at (entry.id)}
     {#if entry.group !== undefined && entry.group !== entries[at - 1]?.group}<span class="group"><SmallCaps>{entry.group}</SmallCaps></span>{/if}
@@ -122,6 +121,18 @@
       gap: var(--space-1);
       overflow-x: auto;
       scrollbar-width: none;
+    }
+
+    nav.stacked {
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    .stacked a {
+      min-block-size: var(--target-min-touch);
+      block-size: auto;
+      padding-block: var(--space-2);
+      white-space: normal;
     }
 
     .heading,

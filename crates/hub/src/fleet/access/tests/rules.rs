@@ -93,6 +93,32 @@ fn sec_002_d_7_token_is_usable_until_its_expiry_and_touched_once_a_minute() {
 }
 
 #[test]
+fn hmd_062_a_token_with_an_idle_rule_ends_after_that_time_with_no_request() {
+    let now = now();
+    let half_hour = Some(1800);
+    assert!(!tokens::idled_out(None, None, now), "no rule, never used");
+    assert!(!tokens::idled_out(
+        None,
+        Some(now - TimeDelta::days(20)),
+        now
+    ));
+    assert!(!tokens::idled_out(
+        half_hour,
+        Some(now - TimeDelta::minutes(29)),
+        now
+    ));
+    assert!(tokens::idled_out(
+        half_hour,
+        Some(now - TimeDelta::minutes(30)),
+        now
+    ));
+    assert!(
+        tokens::idled_out(half_hour, None, now),
+        "a rule and no use on record"
+    );
+}
+
+#[test]
 fn api_003_bearer_header_is_read_once_case_insensitively() {
     let token = Token::from_random([9; tokens::TOKEN_BYTES]);
     let mut headers = HeaderMap::new();

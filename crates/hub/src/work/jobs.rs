@@ -9,7 +9,9 @@
 mod claiming;
 mod lifecycle;
 mod model;
+mod pinning;
 mod placement;
+mod reasons;
 mod reporting;
 mod results;
 mod store;
@@ -24,6 +26,9 @@ use uuid::Uuid;
 
 pub use claiming::claim;
 pub use model::{Fault, Job, Machine, NewJob, State};
+pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
+pub use placement::{Unfit, Verdict};
+pub use reasons::Decision;
 pub use reporting::{end_lost, report};
 
 use crate::{
@@ -40,6 +45,10 @@ pub enum Error {
     /// The job that a caller wants in the queue breaks a rule of K10; the text names the rule.
     #[error("the job is not valid: {0}")]
     Invalid(&'static str),
+    /// The machine that the job names, or that is pinned for its project, can never run it;
+    /// the text is the reason. No different machine is taken in its place (ROU-006, JOB-014).
+    #[error("the job names a machine that cannot run it: {0}")]
+    NoFit(String),
     #[error("database error")]
     Database(#[from] sqlx::Error),
     /// A stored row is not in a form this version reads.
@@ -145,8 +154,8 @@ fn validate(job: &NewJob) -> Result<(), Error> {
 /// functions of the hub that make work: the runners of a project and the builds.
 ///
 /// # Errors
-/// [`Error::Invalid`] for a job that breaks a rule of K10; `Database` or `Events` when it
-/// cannot be written.
+/// [`Error::Invalid`] for a job that breaks a rule of K10; [`Error::NoFit`] for a job whose
+/// named or pinned machine can never run it; `Database` or `Events` when it cannot be written.
 pub async fn enqueue(
     queue: Queue<'_>,
     wanted: NewJob,
@@ -175,6 +184,7 @@ pub async fn enqueue(
     };
     let mut tx = queue.db.begin().await?;
     let outcome = async {
+        pinning::named_can_run(&mut tx, &job, now).await?;
         store::insert(&mut tx, &job).await?;
         trail::queued(&mut tx, &job, asker, now).await
     }
