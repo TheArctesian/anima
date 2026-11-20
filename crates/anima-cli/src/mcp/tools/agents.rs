@@ -118,6 +118,7 @@ mod tests {
             model: None,
             started: None,
             last: None,
+            tail: "open",
         }
     }
 

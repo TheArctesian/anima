@@ -1,18 +1,23 @@
 <script lang="ts">
+  import { HeldOrder } from '$lib/devices/list/held.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import Icon from '$lib/icons/Icon.svelte';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import QuietLabel from '$lib/page/QuietLabel.svelte';
-  import { ago, changedNow, folderName, groups, programName, type Program, type ThreadRow } from './thread';
+  import { orderedThreads, STATE_MARKS, type Seen, type StatedRow } from '../state';
+  import { ago, folderName, programName, type Program, type ThreadRow } from '../thread';
 
   type Choice = 'all' | Program;
 
   interface Props {
-    /** The rows after the search and the choice of a program, the last changed first. */
+    /** The rows after the search and the choice of a program. */
     rows: readonly ThreadRow[];
     chosen: string | null;
     program: Program | null;
     search: string;
     now: Date;
+    /** When the person last opened each thread. */
+    seen: Seen;
     onChoose: (id: string) => void;
     onProgram: (program: Program | null) => void;
     onSearch: (search: string) => void;
@@ -20,17 +25,25 @@
     field?: HTMLInputElement | undefined;
   }
 
-  let { rows, chosen, program, search, now, onChoose, onProgram, onSearch, field = $bindable() }: Props = $props();
+  let { rows, chosen, program, search, now, seen, onChoose, onProgram, onSearch, field = $bindable() }: Props = $props();
   const choice = $derived<Choice>(program ?? 'all');
   const OPTIONS: readonly { value: Choice; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'claude_code', label: 'Claude Code' },
     { value: 'codex', label: 'Codex' },
   ];
+  /** While the pointer is on the list a row keeps its place; a search or a choice of a program applies at once (5.7.3, Reorder). */
+  const held = new HeldOrder<StatedRow>(
+    () => orderedThreads(rows, now, seen),
+    () => `${program ?? 'all'}\n${search}`,
+  );
+  const items = $derived(held.items);
+  const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
-<!-- The threads of this computer in three groups, the last changed first (THR-013). A row is a button: it opens its
-     thread beside the list. The dot marks a file that changed in the last 2 minutes; it is not a state of the agent. -->
+<!-- The threads of this computer (THR-013, THR-056): those that need the person at the top, those that work at the bottom,
+     the others between. A row is a button: it opens its thread beside the list. Each row has the state that its session
+     file gives, as an icon with a word. While the pointer is on the list no row moves. -->
 <div class="list">
   <label class="search">
     <Icon name="carbon:search" size="sm" />
@@ -55,30 +68,29 @@
       onProgram(value === 'all' ? null : value);
     }}
   />
-  {#each groups(rows, now) as group (group.name)}
-    <section aria-label={group.name}>
-      <div class="head"><QuietLabel>{group.name}</QuietLabel><span class="count">{group.rows.length}</span></div>
-      <ul>
-        {#each group.rows as row (row.id)}
-          <li>
-            <button type="button" class="row" aria-current={row.id === chosen ? 'true' : undefined} data-thread={row.id} onclick={() => { onChoose(row.id); }}>
-              <span class="title">
-                <span class="dot" class:live={changedNow(row, now)} title={changedNow(row, now) ? 'Changed in the last 2 minutes' : undefined}></span>
-                <span class="words">{row.title ?? 'Untitled thread'}</span>
-              </span>
-              <span class="facts">
-                <span>{programName(row.program)}</span>
-                <span class="folder">{folderName(row.folder)}</span>
-                <span class="ago">{ago(row.last, now)}</span>
-              </span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </section>
-  {:else}
-    <p class="none">{search === '' && program === null ? 'No session of Claude Code or Codex is on this computer.' : 'No thread has these words.'}</p>
-  {/each}
+  <ul {@attach held.hold}>
+    {#each items as item (item.key)}
+      {#if item.kind === 'group'}
+        <li class="head" {@attach track(item.key)}><QuietLabel>{item.title}</QuietLabel><span class="count">{item.count}</span></li>
+      {:else}
+        {@const row = item.device.row}
+        {@const mark = STATE_MARKS[item.device.state]}
+        <li {@attach track(item.key)}>
+          <button type="button" class="row" aria-current={row.id === chosen ? 'true' : undefined} data-thread={row.id} data-state={item.device.state} onclick={() => { onChoose(row.id); }}>
+            <span class="title"><span class="words">{row.title ?? 'Untitled thread'}</span></span>
+            <span class="facts">
+              <span class="state" title={mark.detail}><Icon name={mark.icon} size="sm" />{mark.words}</span>
+              <span>{programName(row.program)}</span>
+              <span class="folder">{folderName(row.folder)}</span>
+              <span class="ago">{ago(row.last, now)}</span>
+            </span>
+          </button>
+        </li>
+      {/if}
+    {:else}
+      <li class="none">{search === '' && program === null ? 'No session of Claude Code or Codex is on this computer.' : 'No thread has these words.'}</li>
+    {/each}
+  </ul>
 </div>
 
 <style>
@@ -127,7 +139,24 @@
   .head {
     display: flex;
     justify-content: space-between;
-    padding-inline: var(--space-2);
+    padding: var(--space-2) var(--space-2) 0;
+  }
+
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    white-space: nowrap;
+  }
+
+  [data-state='may_wait'] .state,
+  [data-state='your_turn'] .state {
+    color: var(--status-degraded-text);
+    font-weight: var(--weight-medium);
+  }
+
+  [data-state='working'] .state {
+    color: var(--text);
   }
 
   .count,
@@ -192,18 +221,6 @@
   .words {
     flex: 1;
     min-inline-size: 0;
-  }
-
-  .dot {
-    flex: none;
-    inline-size: var(--space-2);
-    block-size: var(--space-2);
-    border-radius: var(--radius-pill);
-    background: var(--status-unknown);
-  }
-
-  .dot.live {
-    background: var(--accent);
   }
 
   .facts {

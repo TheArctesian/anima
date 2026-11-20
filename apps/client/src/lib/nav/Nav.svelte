@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NeedsYouCount from '$lib/agent-threads/NeedsYouCount.svelte';
   import type { Snippet } from 'svelte';
   import { asset, resolve } from '$app/paths';
   import { hubIsHosted } from '$lib/hosted/mark';
@@ -67,6 +68,8 @@
   >
     <Icon name={item.icon} />
     <span class="words">{item.label}</span>
+    <!-- How many threads need the person (THR-057); the item is there only in the desktop application. -->
+    {#if item === THREADS && !iconOnly}<NeedsYouCount />{/if}
   </a>
 {/snippet}
 
