@@ -70,7 +70,7 @@ it('MOT-007: a row of the list has one line: a small Wake only while the device 
     void unmount(table);
     return cell;
   };
-  const on = { enabled: true };
+  const on = { enabled: true, username: null };
   const two = row({ status: 'UP', rdp: on, vnc: on });
   expect(two?.textContent).not.toContain('Wake');
   expect([...(two?.querySelectorAll('.device-action') ?? [])].map((button) => button.textContent.trim())).toEqual(['RDP', 'VNC']);

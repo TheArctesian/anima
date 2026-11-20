@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it } from 'vitest';
 import { DEFAULT_QUERY } from '../query';
+import type { Tally as Counts } from './look';
 import Tally from './Tally.svelte';
 
 let app: ReturnType<typeof mount> | undefined;
@@ -12,7 +13,7 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-function show(props: Record<string, unknown>): void {
+function show(props: { tally: Counts | null; waiting?: boolean }): void {
   app = mount(Tally, { target: document.body, props: { query: DEFAULT_QUERY, onQueryChange: () => undefined, ...props } });
   flushSync();
 }
