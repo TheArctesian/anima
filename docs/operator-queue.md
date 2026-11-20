@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (152)
+## 2. Open decisions (151)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -49,7 +49,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
 | OD-W50 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the jobs of the work route? K1 changes only by a ruling (CON-001). Part 1 of task… | Open. Recommendation: approve the five fields as proposed; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-W51 | Can a branch that changes only documents land in `dev` with the document gates alone, with no run of the full list on GitHub? R-254 says that the full list of 2… | Open. Recommendation: yes, for a branch whose changed paths are all documents by the rule of the fast tier (`quality/src/gates/tier.ts`); the job `base` of `gat… | [plan/decisions.md](plan/decisions.md) |
-| OD-W52 | Can a merge train whose gates passed land when `dev` moved under it only in documents? R-252 item 2 says: "when `dev` moved after the run, the gates run again b… | Open. Recommendation: yes. It is the reasoning of the local rule for a change of documents only: the full list reads no document as code, and the documents of t… | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
