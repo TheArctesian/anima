@@ -77,6 +77,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-NEW-linkunitapp | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-NEW-daemonathostedhub | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
@@ -904,6 +905,48 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.
+
+### HT-NEW-daemonathostedhub: sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19)
+
+Built: on the branches `hosted/hm-t17-daemon-socket` (the unit of the link makes the socket of the
+daemon; the shell enrols the daemon at that socket) and `hosted/hm-t19-daemon-at-sign-in` (the
+application enrols and installs the daemon when the Devices page of a hosted hub opens). They need
+the branch `hosted/hm-t24b-shell-link-unit` (the link as a unit that the application watches).
+
+The tests cover: the folder and the socket of the daemon, the arguments of the unit, the origin
+`unix:<socket>` for the local address of the link, the search of this computer among the devices,
+the one code for each try, the wait for the socket, and each case in which no code is made. Not
+covered: a real link, a real daemon, the Keychain and the `LaunchAgent` on a Mac, the user unit and
+its sandbox on Linux, the hub of the pool that takes an enrolment and a batch through the link, and
+the time until the first numbers show.
+
+It needs: an application of this build on each computer (a trial bundle of this build carries both
+programs), and the sign-in to the hosted hub.
+
+On this Mac:
+
+1. Open the application and wait until the Devices page shows. Leave it open for 3 minutes. Nothing
+   asks for a password or a question. Expected: after at most 3 minutes the row of this Mac shows
+   numbers (processor, memory, disk) in the place of "No metrics".
+2. Run `ls -l ~/Library/LaunchAgents/ | grep anima`. Expected: `ing.anima.link.plist` and
+   `ing.anima.daemon.plist`.
+3. Run `ls -l "$HOME/Library/Application Support/anima-daemon/"`. Expected: `link.sock` (its line
+   starts with `srw-------`) and `daemon.json`.
+4. Open the device of this Mac, Settings, the panel "Daemon". Expected: "Metrics come from the daemon
+   on ...", with a time of the last report that is less than 2 minutes old.
+5. Quit the application. Wait 5 minutes. Open it again. Expected: the chart of this Mac has no hole
+   for those 5 minutes: the link and the daemon ran with the application closed.
+6. Open Agent usage after you used Claude Code or Codex on this Mac. Expected: the page shows counts
+   for this Mac (this is also HT-026 on a hosted hub).
+
+On the Linux computer: steps 1, 4 and 5 as written. For step 2 run
+`systemctl --user status anima-link.service anima-daemon.service`: both are "active (running)". For
+step 3 run `ls -l ~/.config/anima-daemon/`.
+
+If step 1 shows no numbers after 3 minutes: quit the application, open it again and wait 3 minutes
+more (a start of the application tries once). If there are still none, write here what
+`tail -20 ~/Library/Logs/ing.anima.desktop/*.log` says about the device link and the daemon, and the
+output of step 2.
 
 ### HT-NEW-linkunitapp: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
 

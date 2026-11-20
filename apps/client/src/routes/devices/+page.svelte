@@ -15,6 +15,7 @@
   import type { DeviceFormValues, SiteOption } from '$lib/devices/form/values';
   import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
   import { readCloudDevice } from '$lib/desktop/cloud/device';
+  import { installDaemonOnThisComputer } from '$lib/desktop/daemon/here';
   import { hubIsHosted } from '$lib/hosted/mark';
   import { addThisComputer } from '$lib/hosted/this-computer';
   import { linkApi } from '$lib/link/api';
@@ -127,6 +128,8 @@
       createDevice: (input) => devices.create(input),
     });
     if (added) listVersion += 1;
+    // The daemon of this computer, with no question (HMD-053): once for each start, quiet when it cannot run yet.
+    void installDaemonOnThisComputer(hub);
   }
 
   // Once, when the page mounts; nothing the prompt reads should run it again.

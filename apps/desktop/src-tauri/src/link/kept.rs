@@ -273,16 +273,31 @@ pub fn hand_over(device: &DeviceLink, program: PathBuf, folder: &Path) {
     }
 }
 
+/// How long after a hosted hub gave its access the link of a computer that was joined already
+/// is handed to a unit: after the sign-in of that moment, which uses the link, has ended.
+const HAND_OVER_AFTER: Duration = Duration::from_secs(45);
+
 /// A hosted hub gave this device its access (HMD-058): from now a unit of the user keeps the
 /// link of this device. A join that follows hands the link over. With `joined`, the device is
-/// on the link of the hub already: its folder is marked, and the next start of the app hands
-/// the link over, so that the sign-in of now is not cut.
+/// on the link of the hub already: its folder is marked, and the link is handed over a short
+/// time later, so that the sign-in of now is not cut. If the app stops before that, its next
+/// start hands the link over.
 pub fn hosted_hub_opened<R: Runtime>(webview: &Webview<R>, joined: bool) {
-    webview.state::<Arc<DeviceLink>>().keep_in_background();
-    if joined
-        && let Ok(folders) = folders()
-        && folder::want_unit(&folders.device).is_err()
-    {
+    let device = Arc::clone(&webview.state::<Arc<DeviceLink>>());
+    let first = !device.in_background();
+    device.keep_in_background();
+    let Ok(folders) = folders() else { return };
+    if !joined {
+        return;
+    }
+    if folder::want_unit(&folders.device).is_err() {
         log::warn!("the folder of the device link could not be marked for a unit");
+    }
+    // Once for each run of the app: a second answer of the cloud starts no second hand-over.
+    if let Some(program) = crate::carried::program(super::PROGRAM).filter(|_| first) {
+        thread::spawn(move || {
+            thread::sleep(HAND_OVER_AFTER);
+            hand_over(&device, program, &folders.device);
+        });
     }
 }
