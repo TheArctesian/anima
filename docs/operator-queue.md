@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (170)
+## 2. Open decisions (190)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -129,6 +129,26 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| OD-AGL1 | Where is the list? | A. One place for agents; the mockup of v2 already asks this question. It changes AXT-046 | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL2 | Does the hub hold a row for each live agent (a state and times), where today it holds only sums? | A. It is the layer itself. It is the dashed box of the v2 mockup | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL3 | Does a branch name leave a device? | A. The limit of characters of AGL-017 stops an injection, not a disclosure: a name such as `fix/acme-breach-ticket-812` passes whole, and each agent that reads… | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL4 | Who writes the hooks into the configuration of an agent program? | A. B changes a file of a different program with no word of the person, on each computer that signs in | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL5 | Is the repository name in the alert? | A for a channel of a different party (ntfy, a webhook); B can be a setting later | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL6 | Which programs first? | A. The research says that Codex has no reliable waiting signal | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL7 | How is a session kept? | A on a hub of Anima.ing, where the hub has no SSH login of the person; B stays for a hub with SSH. C is the smallest and loses the fourth part of the direction | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL8 | Can a start of a kept session take an argument or a first prompt? | A. A prompt through the hub is text of a session at the hub, and a free argument is a command line | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL9 | Is the layer on for a hub that Anima.ing runs? | B until HM-T23 | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL10 | Does the alert reach the phone application? | A. The phone application is on a branch | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL11 | When does the build start? | B. AL0 is a record of one day and tells if the core of the layer can work | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL12 | Which Herdr does Anima host (R-196), now that there are two? | A, and it is a question for the owner of AXT-020; it does not block this layer | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL13 | Can a kept session be reached through a hub of Anima.ing? (SF-114) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL14 | How does a start of a kept session reach the machine? (SF-115) | A first; B when the device key exists (task W7). Not C: a person who controls the hub then starts an agent in each repository of each machine whose setting is o… | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL15 | Is a unit with no sandbox, beside the daemon, accepted for the kept sessions? (SF-116) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL16 | Is it accepted that each program of the same user, also a coding agent with a shell, can write a false state, set the two settings of the machine, type into a k… | A for his own machines. B is the measure that would close it, and it is the work of W2 | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL17 | Which environment does an agent in a kept session get? (SF-118) | A if OD-AGL14 is A or B; with C only B | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL18 | Which identifier does a row have at the hub? (SF-122) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -213,7 +233,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (28)
+## 3. Documents that wait for an approval (29)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -222,6 +242,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/one-click/s4-spec-delta.md](plans/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft |
 | [plans/one-click/s6-spec-delta.md](plans/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft |
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Deferred; partly built |
+| [proposals/agent-layer.md](proposals/agent-layer.md) | Proposal | Direction decided |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) | Proposal, with a task table | Direction decided |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
