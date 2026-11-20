@@ -32,6 +32,9 @@ pub(super) enum Route {
     Push,
     Renew,
     KeysFetch,
+    WorkClaim,
+    WorkReport,
+    WorkSecret,
 }
 
 impl Route {
@@ -41,6 +44,9 @@ impl Route {
             Self::Push => "a daemon push",
             Self::Renew => "a daemon token renewal",
             Self::KeysFetch => "a daemon key fetch",
+            Self::WorkClaim => "a claim of work",
+            Self::WorkReport => "a report of work",
+            Self::WorkSecret => "a request for a secret of a job",
         }
     }
 }

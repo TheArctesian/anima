@@ -33,7 +33,7 @@ export function signInChoice(place: ChoicePlace, inApp: boolean): Choice {
     line: 'With your Anima.ing account.',
     href: '/welcome/hosted',
     // The phone app is the app; it signs in once it has the link and the cloud commands (mobile plan M3-1).
-    off: place.deviceLink && place.cloudAccount ? null : inApp ? 'Not on phones yet.' : 'Needs the Anima.ing app.',
+    off: place.deviceLink && place.cloudAccount ? null : inApp ? 'Coming soon on phones.' : 'Needs the Anima.ing app.',
   };
 }
 

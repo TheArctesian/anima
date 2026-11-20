@@ -3,7 +3,7 @@
 # packaging 2.3, D-3 to D-5), for the release workflow (.github/workflows/release.yml, R-179).
 # It runs the commands of the release builder (src/builder/carried/mach_o.rs and
 # src/builder/artifact.rs) and decides on their output in the same way:
-#   - Contents/MacOS holds exactly the application's own program and the six carried programs;
+#   - Contents/MacOS holds exactly the application's own program and the seven carried programs;
 #   - `codesign --verify --deep --strict` accepts the application;
 #   - each Mach-O file of the application (by its first bytes, never by its name) holds exactly
 #     x86_64 and arm64, has a Developer ID Application signature of the team, the hardened
@@ -15,7 +15,7 @@ set -eu
 
 APP=${1:?give the path of the application}
 TEAM=${2:?give the Team ID}
-PROGRAMS="anima anima-database anima-desktop anima-gateway anima-hub anima-link anima-local-hub"
+PROGRAMS="anima anima-daemon anima-database anima-desktop anima-gateway anima-hub anima-link anima-local-hub"
 
 fail() { echo "check-mach-o: $1" >&2; exit 1; }
 
@@ -70,5 +70,5 @@ while IFS= read -r file; do
         count=$((count + 1))
     fi
 done <"$list"
-[ "$count" -ge 7 ] || fail "only $count Mach-O files were found"
+[ "$count" -ge 8 ] || fail "only $count Mach-O files were found"
 echo "check-mach-o: $count Mach-O files of $APP pass"

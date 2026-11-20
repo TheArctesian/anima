@@ -1,4 +1,4 @@
-//! The six programs in the release (INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2): their
+//! The seven programs in the release (INS-002, INS-003, OD-16, OD-17, S12 2.1 and 2.2): their
 //! build, where each is put for the bundle, the set the signed app may hold, and the Rust targets
 //! a universal build needs before a job is claimed (BLD-028).
 
@@ -20,7 +20,7 @@ use crate::builder::{
 };
 
 #[test]
-fn ins_003_the_five_rust_programs_are_built_in_one_cargo_run_with_the_release_version() {
+fn ins_003_hmd_052_the_six_rust_programs_are_built_in_one_cargo_run_with_the_release_version() {
     let version = Version::parse("0.1.12").unwrap();
     let linux = rust_programs::build(Path::new("/c"), Target::LinuxX86_64, &version);
     assert_eq!(linux.program, Program::Cargo);
@@ -51,13 +51,17 @@ fn ins_003_the_five_rust_programs_are_built_in_one_cargo_run_with_the_release_ve
             "anima-gateway",
             "--bin",
             "anima-gateway",
+            "--package",
+            "anima-daemon",
+            "--bin",
+            "anima-daemon",
         ]
     );
     assert_eq!(linux.env, [("ANIMA_VERSION", "0.1.12".to_owned())]);
     let mac = rust_programs::build(Path::new("/c"), Target::DarwinUniversal, &version);
-    assert_eq!(args(&mac)[..23], args(&linux)[..]);
+    assert_eq!(args(&mac)[..27], args(&linux)[..]);
     assert_eq!(
-        args(&mac)[23..],
+        args(&mac)[27..],
         [
             "--target",
             "aarch64-apple-darwin",
@@ -72,7 +76,7 @@ fn ins_003_the_five_rust_programs_are_built_in_one_cargo_run_with_the_release_ve
 fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
     let clone = Path::new("/c");
     let linux = rust_programs::copies(clone, Target::LinuxX86_64);
-    assert_eq!(linux.len(), 5);
+    assert_eq!(linux.len(), 6);
     assert_eq!(
         linux[0],
         (
@@ -86,7 +90,7 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
     );
     assert!(carried::joined(clone, Target::LinuxX86_64, "anima").is_none());
     let halves = rust_programs::copies(clone, Target::DarwinUniversal);
-    assert_eq!(halves.len(), 10);
+    assert_eq!(halves.len(), 12);
     assert_eq!(
         halves[3],
         (
@@ -113,7 +117,7 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
 }
 
 #[test]
-fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
+fn ins_002_hmd_052_the_bundle_names_the_seven_programs_and_the_tree() {
     let bins: Vec<&str> = rust_programs::PROGRAMS
         .iter()
         .map(|(_, binary)| *binary)
@@ -128,12 +132,13 @@ fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
             "anima-hub",
             "anima-database",
             "anima-gateway",
+            "anima-daemon",
             "anima-link"
         ]
     );
     assert_eq!(
         carried::bundle_settings().to_string(),
-        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"],"resources":{"database":"database"}}"#
+        r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"],"resources":{"database":"database"}}"#
     );
 }
 
@@ -164,14 +169,14 @@ fn ins_002_only_a_64_bit_x86_64_elf_file_is_a_linux_program() {
 }
 
 #[test]
-fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_six_programs() {
+fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_seven_programs() {
     let root = tempfile::tempdir().unwrap();
     let clone = fs::canonicalize(root.path()).unwrap();
     let app = clone.join("Anima.app");
     let macos = app.join("Contents/MacOS");
     fs::create_dir_all(&macos).unwrap();
     fs::write(macos.join("anima-desktop"), b"app").unwrap();
-    for program in carried::programs().take(5) {
+    for program in carried::programs().take(6) {
         fs::write(macos.join(program), b"program").unwrap();
     }
     assert_eq!(
@@ -184,7 +189,7 @@ fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_six_programs() {
         artifact::mac_executable(&clone, &app),
         Ok(macos.join("anima-desktop"))
     );
-    fs::write(macos.join("anima-daemon"), b"other").unwrap();
+    fs::write(macos.join("anima-extra"), b"other").unwrap();
     assert_eq!(
         artifact::mac_executable(&clone, &app),
         Err(BuilderError::Bundle)

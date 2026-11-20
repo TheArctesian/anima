@@ -72,6 +72,10 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
 | HT-NEW-gatesci | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
+| HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
+| HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
+| HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
+| HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 
 ### What a check on the hosted hub needs
 
@@ -896,6 +900,59 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
+### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
+
+Built: on the branch `hosted/hm-t24-link-unit` (task HM-T24 of
+[hosted-mode.md](proposals/hosted-mode.md), part a; R-240). `anima-link unit install` writes a
+`LaunchAgent` (macOS) or a systemd user unit (Linux) that runs `anima-link device`, and starts it;
+`unit remove` stops it and deletes the file; `unit show` says whether it is there (`link/unit`). The
+application does not use the command yet.
+
+The tests cover: the text of the two unit files, the commands and their order, the refusal of a value
+that could break out of a unit file, of a program inside an application, and of a program that other
+users can replace; the writing and the removal of the file with commands that are not run. Not
+covered: `launchctl` and `systemctl` themselves, a login, and a link that runs from the unit.
+
+It needs: a computer with a device link that joined a hub (Section 3 of
+[link.md](procedures/setup/link.md)); `<DIR>` is its state directory and `<PORT>` a free port, for
+example 41001. Stop each `anima-link device` and the Anima.ing application first.
+
+1. Copy the program to a folder that stays: `mkdir -p ~/.local/bin && install -m 0755 <anima-link of
+   this build> ~/.local/bin/anima-link`.
+2. Run `~/.local/bin/anima-link unit install -state <DIR> -listen 127.0.0.1:<PORT>`. Expected: no
+   output and exit code 0. No password is asked.
+3. Run `~/.local/bin/anima-link unit show`. Expected: `{"installed":true,"file":"..."}`.
+4. Run `~/.local/bin/anima-link ctl -state <DIR> status`. Expected: a JSON answer with
+   `"role":"device"` and `"local":"127.0.0.1:<PORT>"`.
+5. Log out and log in again (or start the computer again). Do not open the application. Run step 4
+   again. Expected: the same answer. On the hub, the device shows as connected.
+6. Run the command of step 2 from the application: `/Applications/Anima.ing.app/Contents/MacOS/anima-link
+   unit install -state <DIR> -listen 127.0.0.1:<PORT>`. Expected: a refusal that says that the program
+   is inside an application.
+7. Run `~/.local/bin/anima-link unit remove`, then steps 3 and 4. Expected: `"installed":false`, and
+   step 4 fails because no link runs.
+
+### HT-049: the application carries `anima-daemon` (HMD-052, task HM-T16)
+
+Built: on the branch `hosted/hm-t16-daemon-in-bundle` (task HM-T16 of
+[hosted-mode.md](proposals/hosted-mode.md); R-206). `apps/desktop/src-tauri/trial-bundle.sh` and the
+bundle step of the builder (`apps/desktop/src-tauri/src/builder/carried/rust_programs.rs`) build
+`anima-daemon` and name it in `bundle.externalBin`; `check-mach-o.sh` and the check of the AppImage in
+the release workflow expect it.
+
+The tests cover: the lists of programs of the builder and of the Mach-O check. Not covered: a real
+bundle. No bundle was made with this change, so nothing shows that Tauri takes the seventh program,
+that the signature and the notary service accept it, or that the shell finds it.
+
+1. Run `apps/desktop/src-tauri/trial-bundle.sh`. Expected: it ends with the place of the
+   application, with no error.
+2. Run `ls <place>/Anima.ing.app/Contents/MacOS`. Expected: eight files, and `anima-daemon` is one.
+3. Run `<place>/Anima.ing.app/Contents/MacOS/anima-daemon --help` (or with no argument). Expected:
+   the usage text of the daemon, not an error of the system.
+4. After the next release from `main`: the jobs `macos` and `linux` of the release workflow pass
+   their checks of the carried programs, and the notary step accepts the application. Expected: the
+   release is published. If a check fails, write its message here.
+
 ### HT-044: the application does not start Tailscale on a hosted hub (DEF-005)
 
 Built: on the branch `fix/install-daemon-link` ([DEF-005](work-items/defects/DEF-005.md)). For a hub at a
@@ -1700,3 +1757,41 @@ Result: Passed. On 2026-11-19 the operator reported that the Linux preview worke
 signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, and `Hub` Up.
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
+
+### HT-047: the Devices page after the interface review (R-224)
+
+Built on the branch `ui/v2-devices` (`132e03b3`): in `apps/client/src/lib/devices/card/DeviceTable.svelte` the name is the
+first column and the status the second; the connect buttons of the list show the name of their protocol
+(`lib/devices/actions/DeviceActions.svelte`); the logs panel of the Devices page starts as one line
+(`lib/devices/screen/DeviceScreen.svelte`); the foot of the bar names the hub (`lib/nav/status/HubStatus.svelte`).
+The tests cover the order of the columns, the name of the hub and the start of the panel. The page was looked at only
+in pictures of the gallery tool, at 1280 px, in the dark and the light appearance, with sample devices. No person saw it
+in the desktop application, with real devices, at a narrow window or with a device that is down.
+
+1. Open the application and look at Devices in the list view.
+   Expected: each row starts with the name and the address, then the status. A device that needs a look has its reason
+   beside the status.
+2. Look at the column "Connect".
+   Expected: each way in is a button with an icon and a word (SSH, RDP, VNC, Web). Two buttons fit on one line.
+3. Look at the foot of the page.
+   Expected: the logs are one line with the newest event. A click on the line opens the panel; a second click closes it.
+4. Look at the foot of the bar.
+   Expected: on a hosted hub the line above "Connected" reads "Hosted by Anima.ing"; on a different hub it is the host name.
+5. Make the window narrow (below 1100 px) and look again, in the light and the dark appearance.
+   Expected: no text is cut in a way that hides its meaning, and no button lies over another part.
+### HT-048: the tab Overview of a device after the interface review (R-224)
+
+Built on the branch `ui/v2-device-overview` (`f3d25339`): `apps/client/src/routes/devices/[id]/overview/geometry.css` draws
+the four facts cards (Status, Uptime, Checks, SSH host key) in one row from a panel width of 56rem, and a card has no
+border. No test reads a layout. The page was looked at only in pictures of the gallery tool, at 1280 px, in the dark and
+the light appearance, with one sample device. No person saw it in the desktop application, at other widths, with a long
+host key, with many check states or while it loads.
+
+1. Open a device in the application, in a window about 1280 px wide.
+   Expected: Status, Uptime, Checks and SSH host key are one row. The three uptime figures are on one line. No card has a border.
+2. Make the window narrow, then wide, in the light and the dark appearance.
+   Expected: the cards go to two columns and then to one, and back; no text lies over another part; the whole host key shows.
+3. Reload the page and watch the first second.
+   Expected: the loading shapes are where the cards then are; nothing moves when the values arrive.
+
+Result: Open.

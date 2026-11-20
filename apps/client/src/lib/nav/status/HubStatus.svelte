@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
-  import { statusLabel } from '../nav';
+  import { hubName, statusLabel } from '../nav';
 
   interface Props {
     /** The bar shows icons only: the dot stands in for the words, which stay as the tooltip and the accessible name. */
@@ -12,14 +13,16 @@
   const connected = $derived(hub.status.current.connection === 'connected');
 </script>
 
-<!-- The hub connection at the foot of the bar, above Settings (NAV-002). -->
+<!-- Which hub this is, then its connection, at the foot of the bar above Settings (NAV-002, R-224). -->
+<p class="hub-name" title={iconOnly ? undefined : hub.address.origin}><span class="words">{hubName(hub.address.origin, hubIsHosted(hub.address.origin))}</span></p>
 <p class="status" title={iconOnly ? statusLabel(hub.status.current) : undefined}>
   <span class="dot" class:connected aria-hidden="true"></span><span class="words">{statusLabel(hub.status.current)}</span>
 </p>
 
 <style>
   /* One line with a height set from tokens, so the font swap cannot move the divider (MOT-007). */
-  .status {
+  .status,
+  .hub-name {
     flex: none;
     margin: 0;
     padding: 0 var(--space-3);
@@ -35,6 +38,11 @@
    * Connected is a filled dot and anything else a ring, so the state is a shape and not a colour alone (UI-003). The
    * outline keeps 3:1 against the bar; under forced colours the system colours take over.
    */
+  .hub-name {
+    color: var(--text-secondary);
+    text-overflow: ellipsis;
+  }
+
   .dot {
     display: none;
     flex: none;

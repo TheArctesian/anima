@@ -64,6 +64,21 @@ that owns the area.
 | SF-031 | An image is named by a tag, and a file can start each image that the machine has or can pull | Container work types (proposed text for contract K10, not built) | Open |
 | SF-032 | The log of the machine has no members for the container types | Container work types (proposed text for contract K10, not built) | Open |
 | SF-033 | Points that an implementer must guess | Container work types (proposed text for contract K10, not built) | Open |
+| SF-034 | Section 4.5: three rules are on the final form, where they cannot apply, and a variable passes the check before the reader | Container work types (proposed text for contract K10, not built) | Open |
+| SF-035 | Section 4.1: an administrator program runs `docker` and the Compose plug-in, and no rule says who can write them | Container work types (proposed text for contract K10, not built) | Open |
+| SF-036 | Section 4.5: "at any level" with a list of two levels | Container work types (proposed text for contract K10, not built) | Open |
+| SF-037 | Section 4.5, top level: `networks` and `volumes` are "no X" lists again | Container work types (proposed text for contract K10, not built) | Open |
+| SF-038 | `secrets` and `configs`: three sentences that do not agree | Container work types (proposed text for contract K10, not built) | Open |
+| SF-039 | Section 4.2: the binding to the origin and the device has no mechanism; Section 4.1 does not say what the socket gives | Container work types (proposed text for contract K10, not built) | Open |
+| SF-040 | Section 4.9: "or the user that owned it at the adoption" | Container work types (proposed text for contract K10, not built) | Open |
+| SF-041 | Images: "no login" has no way, and an image that is on the machine can be started | Container work types (proposed text for contract K10, not built) | Open |
+| SF-042 | The environment: the prefix rule is a list of refused names | Container work types (proposed text for contract K10, not built) | Open |
+| SF-043 | `labels` | Container work types (proposed text for contract K10, not built) | Open |
+| SF-044 | Values with no upper limit | Container work types (proposed text for contract K10, not built) | Open |
+| SF-045 | Section 4.12, "All containers" on | Container work types (proposed text for contract K10, not built) | Open |
+| SF-046 | Section 4.14: "where the table says 'User only', the settings at the machine are the second control" | Container work types (proposed text for contract K10, not built) | Open |
+| SF-047 | Contradictions with K10 0.3 that Section 4.3 does not change | Container work types (proposed text for contract K10, not built) | Open |
+| SF-048 | Points that an implementer must guess | Container work types (proposed text for contract K10, not built) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -316,7 +331,7 @@ The reviewer found 19 weaknesses: 7 of severity High, 10 Medium and 2 Low. The l
 
 Two facts of Docker were checked by the reviewer against public documentation (a named volume of the `local` driver calls `mount` with the options of the file; `--volumes-from` copies the volume definitions of a different container). Each other behaviour of Docker or Compose in the entries is marked "not verified" where it was not checked.
 
-Eight choices need the operator. They are the open decisions OD-HOST-14 to OD-HOST-21 of [hosted-applications-plan.md](plans/hosted-applications-plan.md), each with the options and the recommendation of the reviewer. The text of the reviewer for them:
+The operator answered the eight choices on 2026-11-19 (R-226 to R-233), and each entry has an "Update" in its State line. The session that wrote the corrected text then wrote here that no entry had a finding that he had not decided. A second read by a separate reviewer on the same day says that this is not true: see "The second read of the container work types" below. SF-019, SF-020 with SF-033, and SF-031 still have a part that he has not decided, and the corrected text has new weaknesses (SF-034 to SF-048). Two parts are Accepted against the recommendation: the update of an adopted stack (SF-019, R-232) and the secrets of an application before the key of the device (SF-026, R-231). Before his answers this paragraph said: eight choices need the operator. They were the open decisions OD-HOST-14 to OD-HOST-21 of [hosted-applications-plan.md](plans/hosted-applications-plan.md), each with the options and the recommendation of the reviewer. The text of the reviewer for them:
 
 1. **SF-018, how the daemon holds the right to use Docker.** Options: (A) the user of the daemon is in the group `docker`: simple; a compromise of that user or of the daemon is a compromise of the machine, and the profile protects only against an honest daemon. (B) a small helper that runs as root, holds the profile, the switch and the lists, does the check of 6.4.3 and is the only program that speaks to Docker; the daemon that speaks to the hub has no right to Docker. (C) rootless Docker for Anima's applications only: the limit is the kernel, but adopted projects and other containers are out of reach. Recommendation: B. With A, write in Section 3 that the switch makes the user of the daemon an administrator, and do not offer the profile as a control against a hub that is not trusted.
 2. **SF-020, SF-021, SF-022, the scope of the container types.** Options: (A) each container of the machine, as the text; (B) only applications of Anima and adopted projects, with a setting "All containers" at the machine, off by default. Recommendation: B. The adopted list has no meaning with A.
@@ -372,7 +387,7 @@ Correct the sentence of Section 3 only after this change.
 
 Confirmed from the text; each named way depends on Docker behaviour as marked.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-228: no profile `full` in the first version. The list of refused things is replaced by a list of permitted things (Section 4.5). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: corrected in part: SF-034, SF-036, SF-037, SF-038.
 
 ### SF-016: A bind path below the folder of the application passes the rule with a symbolic link, and a container can write the Compose file that the daemon will start
 
@@ -390,7 +405,7 @@ Proposed change: Section 6.4.4: "The folder of an application has two parts. `fi
 
 (a) depends on Docker following a link in a bind source: not verified, but well known. (b) and (c) are confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The folder has `files/` and `binds/` (Section 4.6). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: corrected in part: SF-038.
 
 ### SF-017: The check and the start do not read the same input
 
@@ -415,7 +430,7 @@ Proposed change: Section 6.4.3: "The daemon makes the final form one time, with 
 
 Confirmed from the text; the single ways depend on Compose behaviour as marked.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): One final form, made one time; the start reads only it (Section 4.5). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: corrected in part: SF-034, SF-042.
 
 ### SF-018: The right to use Docker makes the user of the daemon an administrator of the machine, and the profile is a restraint of the same program
 
@@ -433,7 +448,7 @@ Proposed change: Decide W1-P6 before the contract is accepted, not in W2; the co
 
 Confirmed from the text and from K8. The statement on the group `docker` is general Docker knowledge.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-14 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-14 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-226: a separate program with the rights of the administrator is the only one that talks to Docker; the settings are bound to the hub and the device (Sections 4.1 and 4.2). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: each program of the user of the daemon can ask the applications program with no hub (SF-039); OD-HOST-24.
 
 ### SF-019: `adopted_apply` takes the path of the file from labels that each user of Docker can write, and runs it with no profile
 
@@ -451,7 +466,7 @@ Proposed change: "At adoption the daemon records, for each project, the real pat
 
 (a), (c) and (d) are confirmed from the text. (b) depends on Compose behaviour that I did not verify.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-17 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-17 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The paths are recorded at the adoption, `up` never builds, and a file that others can write is refused (Section 4.9). The part `pull` is decided by R-232: the operator accepts that the hub can make an adopted stack get and start new images. For that part the state is Accepted (R-232, 2026-11-19), with his reason: no setting for each stack; the screen says what an update does. The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: ways (a) and (d) are not corrected: a user who is not the administrator can still change the file of an adopted project (SF-040); OD-HOST-23. R-235 (2026-11-19): for ways (a) and (d) the state is Accepted: Anima does not check if the file of an adopted stack changed.
 
 ### SF-020: `container_action` works on each container of the machine, so the adopted list does not limit it, and an API key can stop the things that the daemon and the hub need
 
@@ -469,7 +484,7 @@ Proposed change: The owner chooses the scope (list below). My proposal: "`contai
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-15 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-15 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-227: only applications of Anima and adopted projects, with "All containers" at the machine; protected containers; the rule for `start` (Sections 4.7 and 4.8). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: which actor may ask for each type is not decided: OD-HOST-22. R-234 (2026-11-19) decides which actor may ask for each type.
 
 ### SF-021: `docker_prune` and `application_remove` let an API key delete each container of the machine, and the rule for volumes is only in the hub
 
@@ -487,7 +502,7 @@ Proposed change: "`docker_prune` removes only things that have the project label
 
 Confirmed from the text; the meaning of the Docker commands is the undefined point.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-16 (and OD-HOST-15) of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-16 (and OD-HOST-15) of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-227 and R-230: the prune reaches only things of Anima; a volume goes only with its application and only with the setting "The hub may delete volumes" at the machine; the signature of the operator with task W7 (Sections 4.10 and 4.12). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-022: `container_follow` gives the hub the log of each container of the machine
 
@@ -505,7 +520,7 @@ Proposed change: "`container_follow` works on the containers that `container_act
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-15 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-15 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-227: the scope of Section 4.7; `tail` has a limit; only a login or a browser session (Section 4.13). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-023: The check of the hub reads the files and the addresses of the hub
 
@@ -523,7 +538,7 @@ Proposed change: "The hub checks the text of the file only. It refuses, before i
 
 Confirmed from the text; it depends on how the hub makes the final form.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The hub checks the text only and opens no file (Section 4.5). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-024: The reader opens files outside the folder before a rule refuses them, and the text does not say what the log of an `application_apply` holds
 
@@ -541,7 +556,7 @@ Proposed change: Section 7: "For a container type other than `container_follow`,
 
 Confirmed from the text; the content of the error text is not verified.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): No output of Docker in the log of an item; no path outside `files/` is opened (Sections 4.3 and 4.5). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: corrected in part: SF-034.
 
 ### SF-025: `application_back` starts a file that the profile of today did not check, and the text does not say how it sets the images
 
@@ -559,7 +574,7 @@ Proposed change: "`application_back` applies the rules of the profile of the mac
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The rules are applied again, one step back, by identifier (Section 4.11). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-026: The environment file breaks three rules of Section 8, and the device list of SF-006 does not protect it
 
@@ -577,7 +592,7 @@ Proposed change: Section 8: "For an item of the kind `host`, the rules 'no file 
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-21 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-21 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The text says the true life of the two files and what a stolen token gets (Section 4.3). The part "before task W7" is decided by R-231: the operator accepts that, until task W7, a stolen daemon token of a machine yields the secrets of the applications of that machine. For that part the state is Accepted (R-231, 2026-11-19); task W7 is the planned correction. The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-027: A published port and the network of a container are permitted with no rule
 
@@ -595,7 +610,7 @@ Proposed change: "With `contained`, a published port names a port of the machine
 
 Confirmed from the text; the firewall behaviour is not verified.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-18 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-18 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-229: a port only on the machine itself unless "Open to the network" is set at the machine; no `NET_RAW` (Section 4.5). The operator was told that a container can reach what the machine can reach on the local network and on the network of Anima, and selected with that sentence in front of him (R-229). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-028: The project name is the first 12 characters of a UUID, and the form of the UUID has no rule
 
@@ -613,7 +628,7 @@ Proposed change: "`application` is a UUID in the form of 36 characters, lowercas
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The form of the UUID and a project name of all 32 digits (Section 4.8). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-029: The limits of an item do not apply to the containers that it starts, and one item holds the one slot of the machine
 
@@ -631,7 +646,7 @@ Proposed change: "An item of a container type does not use the slot of jobs. A m
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): No job slot; limits of memory and processes; the free disk; `stop` is never refused for the policy (Sections 4.3 and 4.5). The change of the slot is a change of Section 4 of K10, which the owner of that contract must take. The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: corrected in part: SF-044, SF-047.
 
 ### SF-030: To set the switch off, or the profile back to `contained`, does not change what runs
 
@@ -649,7 +664,7 @@ Proposed change: "When the owner sets the switch off, or the profile from `full`
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The text says that a container continues, and the machine asks (Section 4.2). The part about `full` no longer applies (R-228). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-031: An image is named by a tag, and a file can start each image that the machine has or can pull
 
@@ -667,7 +682,7 @@ Proposed change: "A recipe of the catalogue names each image with a digest. The 
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-20 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-20 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-233: a digest for each recipe of the catalogue. The digest of each image in the log of the machine; a pull with no login unless the owner named the registry; the sentence of K10 Section 3 is corrected (Sections 4.3 and 4.8). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: way (b), an image that is already on the machine, is not corrected; the text change of SF-041 corrects it.
 
 ### SF-032: The log of the machine has no members for the container types
 
@@ -685,7 +700,7 @@ Proposed change: "For a container type the entry has: the type; the container id
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The members of the entry are listed (Section 4.3). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it.
 
 ### SF-033: Points that an implementer must guess
 
@@ -712,7 +727,223 @@ Proposed change: One sentence for each point in the section named. For the first
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it.
+State: Open. The text is a proposal and no code exists. The proposed change is a change of the text, for the session that writes version 0.4; it needs no decision of the operator unless that session cannot make it. Update, 2026-11-19, after the answers of the operator (R-226 to R-233): Each point has its sentence (Sections 4.1, 4.3, 4.8 to 4.14). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: the actor table is not decided (OD-HOST-22) and the engine on a Mac is left open (SF-035, OD-HOST-25).
+
+## The second read of the container work types (task H14, 2026-11-19)
+
+After R-226 to R-233 the text was written again (version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4). A second separate reviewer agent read the new text against the entries SF-015 to SF-033 and the rulings. It got Sections 4.1 to 4.3 and 4.5 to 4.15 as one file, and not Section 4.4, which is the claim of the writer of where each finding is corrected. No code exists. The behaviour of Docker and Compose in these entries is from the knowledge of the reviewer and was not run; each such point is marked "not verified" by the reviewer.
+
+The judgement of the reviewer, in its words: "Yes: SF-019 (ways a and d), SF-020 with the last point of SF-033 (which actor may ask for each type, Section 4.14), and SF-031 (way b, an image already on the machine). SF-018 has the consequence of SF-039 that no ruling states. SF-015, SF-016, SF-017, SF-024 and SF-029 are corrected only in part, but they need changes of the text (SF-034, SF-036, SF-037, SF-038, SF-042, SF-044, SF-047), not a decision."
+
+The operator answered the five points on 2026-11-19 (R-234 to R-238). By R-237 the text does not become version 0.4 until the design of task H30 for a Mac exists and he has approved it. Before his answers this paragraph said: thus the condition of R-209 is not met: the text is not version 0.4 of the contract. Five points need the operator; they were the open decisions OD-HOST-22 to OD-HOST-26 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Two points that the reviewer put to the owner (an image that is already on the machine, SF-041; the labels of a file, SF-043) are taken as changes of the text, as the reviewer proposes, and need no decision unless he wants the wider form.
+
+How the reviewer judged each first finding:
+
+| Finding | Result | The sentence that corrects it, or what is missing |
+| --- | --- | --- |
+| SF-015 | In part (R-228 removes `full`) | "The applications program refuses a file whose final form has a key, at any level, that is not in this list, or a value that breaks its rule." Missing: the list has two levels only, so the keys below a permitted key are a guess (SF-036). The top-level `volumes` and `networks` rows are again written as "no X" (SF-037). Service keys `secrets` and `configs` are not in the service row, yet the top level permits them (SF-038). |
+| SF-016 | In part | "A bind mount names exactly `binds/<name>` … Directly before the start it checks, without following a link, that it is a real folder below a real `binds/`." and "`files/` … No mount can name it." Missing: the top-level row permits `secrets`/`configs` with "`file` below `files/`", which is a mount that names `files/` (SF-038). |
+| SF-017 | In part | "makes the final form one time … starts the project from that final form only … Thus the check and the start read one input." Missing: `include`, `extends` with a file and `env_file` cannot be refused on a final form, and a variable can carry a path past the check before the reader (SF-034). Compose reads `.env` of the folder at the start by default (SF-042). |
+| SF-018 | In part (R-226) | "It has no right to use Docker, and is in no group that has it." and "Only the administrator of the machine can set them." Missing: the binding to the origin and the device has no way to be true (SF-039); the programs that the administrator program runs have no rule (SF-035). |
+| SF-019 | In part; `pull` accepted (R-232) | "`adopted_apply` uses the recorded paths, never the labels at the time of the item." and "`up` never builds an image." Not corrected: way (a), because the text permits "the user that owned it at the adoption" to write the file where the reviewer wrote "the user that adopted it" (SF-040). Not corrected: way (d), `up` still applies a file that the owner changed. R-232 does not speak of (a) or (d). |
+| SF-020 | Corrected in the text (R-227); the actor rule is not decided | "Each other container is refused (`not_adopted`)." and "`start` is permitted only for a container of an application that Anima installed, or whose restart policy is not `no`." The table of Section 4.14 gives each type to an API key and an MCP tool; no ruling decides that (Needs the owner, 1). |
+| SF-021 | Corrected (R-227, R-230) | "`containers`: the stopped containers that have the project label of an application that Anima installed." and "The applications program refuses it unless 'The hub may delete volumes' is on." New contradiction: SF-045. |
+| SF-022 | Corrected (R-227) | "`tail` is 0 to 1,000." and "The hub makes the item only for an act with a login or a browser session." New contradiction in Section 4.14: SF-046. |
+| SF-023 | Corrected | "The hub checks the text of the file only: it opens no file and no address … and it shows no text of an error of a reader." |
+| SF-024 | In part | "It holds no output of the Docker program and no text of a file." Missing: the check "before the reader opens anything" passes a path that a variable supplies (SF-034). The reader now runs as the administrator, so it can open more files than before. |
+| SF-025 | Corrected | "applies the rules of Section 6.4.5 of today to the kept file" and "It sets no tag on an image." and "A second `application_back` is refused until the next `application_apply`." Kept images with "All containers" on: SF-045. |
+| SF-026 | Corrected in the text; the part before W7 accepted (R-231) | "the machine keeps the files for the life of the application" and "The values of an environment file can also be read by each user of the machine who can use Docker." Wrong reference: Section 8 names "Section 6.4.4"; the files are in 6.4.6. |
+| SF-027 | Corrected (R-229) | "With 'Open to the network' off, the address of the machine is `127.0.0.1`; a file that names a different address, or none, is refused." and "adds to each service `cap_drop: [NET_RAW]`". |
+| SF-028 | Corrected | "The project name is `anima-` and the 32 hexadecimal digits of that UUID. The applications program refuses the item when a project of that name exists with a different folder." |
+| SF-029 | In part | "An item of a container type does not use the slot of jobs." Missing: `mem_limit` and `pids_limit` are set only "when the service has none", so a file sets its own high value. `logging` has no size limit. An `application_apply` that waits for health for `limits.seconds` holds the one place for an item that changes Docker, so a `stop` waits. Contradictions with K10 0.3: SF-047. |
+| SF-030 | Corrected | "To set 'Manage applications' off does not stop a container. … the applications program shows each application that Anima installed and asks if it stops them." The automatic reset at a new enrolment has no such question (Low). |
+| SF-031 | In part (R-233) | "A recipe of the catalogue of Anima names each image by a digest" and "The pull uses no login of the machine, unless the owner named the registry at the machine." Missing: no way is named for "no login" (SF-041). Way (b) stays: a file can start an image that is already on the machine (SF-041). |
+| SF-032 | Corrected | "For a container type the entry of the log of the machine has: the type; the container identifier and the action; … The applications program writes this log; the daemon and the hub cannot change it." |
+| SF-033 | In part | Each point has a sentence, apart from two. The engine on a Mac is left open: "Task H30 says what the applications program is there." The actor table exists and is not decided (Needs the owner, 1). |
+
+What the reviewer says needs the owner:
+
+1. **The column "An API key or an MCP tool" of Section 4.14.** No ruling R-226 to R-233 decides it. It lets an agent, which can be led by text that is not trusted (SF-020 e), send a Compose file of its choice (`application_apply`), stop containers, prune, and make an adopted stack get new images. For the last, the table names R-232. R-232 speaks of "the hub" and has the condition that "the screen says" the sentence at each update; an API key has no screen.
+2. **SF-019 way (d), and way (a) if SF-040 is not taken.** `up` applies a changed file of an adopted project with no rule. R-232 accepts `pull` and "no profile", not this.
+3. **SF-039.** With R-226 B, each program of the user of the daemon can do what the rules permit with no hub and outside the rules for actors. The reviewer's text for option B said "the daemon that speaks to the hub has no right to Docker". That sentence is still true, but the effect is not stated in a ruling.
+4. **SF-041, if the text is not changed.** The hub can start an image that is on the machine.
+5. **SF-043, if the text is not changed.** A label of a file from the hub can give orders to a reverse proxy or an updater of the owner.
+6. **A Mac with Docker Desktop (SF-035).** The contract would become version 0.4 while the limit on that platform is left to task H30.
+7. **"The hub may delete volumes" off does not protect the data.** A file from the hub runs a command of its choice with the volume of its own application mounted, and can empty it. R-230 decides the removal of a volume, not this. One sentence in Section 3 of K10 and his acceptance are needed.
+
+### SF-034: Section 4.5: three rules are on the final form, where they cannot apply, and a variable passes the check before the reader
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: High.
+
+- Way: `env_file: ${P}`, with `P=/path/of/a/file` in the environment file. The text of the file has no absolute path and no `..`. The reader, which now runs as the administrator, opens the file and puts its `KEY=VALUE` lines into `environment` of the final form. The final form then has only permitted keys (not verified: that Compose drops `env_file` from its output). The container sends the values out. Targets: the environment file of a different application, `/etc/environment`, files in `/etc/default`.
+- `include` and `extends` with a file are resolved before the final form in the same way. Only the hub refuses them by text, and the hub is not the control.
+- Who: a person who controls the hub; an API key or MCP tool (Section 4.14).
+- Change: "The applications program applies the list of keys two times: to the file as it came, before a variable is filled, and to the final form. In the file as it came it refuses `env_file`, `include` and `extends` at any level. It fills the variables itself, and after that, before a reader opens anything, it refuses a value of `file` or of a `volumes` source that is absolute or has `..`."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-035: Section 4.1: an administrator program runs `docker` and the Compose plug-in, and no rule says who can write them
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: High on a Mac and with a rootless engine; Low on Linux with the system engine.
+
+- Way: with Docker Desktop the command line, the plug-in folder `~/.docker/cli-plugins` and the socket belong to the user. A program of that user replaces the plug-in, sends one request on the Unix socket, and its code runs as the administrator.
+- The text gives this to task H30; the contract would be accepted with this limit not written.
+- Who: each program of the user of the daemon.
+- Change: "The applications program runs `docker` and its Compose plug-in only at paths that are fixed in the program. It refuses to start when one of them, or a folder above, can be written by a user other than the administrator. Where the engine or its command line belongs to a user (Docker Desktop, rootless), the applications program runs as that user and not as the administrator, and this version gives such a machine no container work until task H30 is accepted by a ruling."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-237 (2026-11-19): not accepted. Version 0.4 waits for the design of task H30 for a Mac and for a rootless Docker.
+
+### SF-036: Section 4.5: "at any level" with a list of two levels
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Medium.
+
+- The members below a permitted key have no rule: `healthcheck`, `logging.options`, the long forms of `ports`, `volumes` (`bind.propagation`, `bind.selinux`, `volume.subpath`), `networks` of a service (`ipv4_address`, `mac_address`, `aliases`, `driver_opts`) and `depends_on`.
+- A final form that Compose writes always has a top-level `name`, a `name` on each network, absolute bind paths and long forms (not verified). Read exactly, the list refuses each file; an implementer will then permit by guess.
+- The text does not say if the final form is made by `docker compose config` or by code of the program.
+- Who: the implementer; then a person who controls the hub.
+- Change: name the reader. List the permitted members below each key. Add: "the members that the reader adds are permitted only with these exact values: top-level `name` equal to the project name; `name` of a network equal to `<project>_<key>`; a bind source equal to the real path of `binds/<name>`."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-037: Section 4.5, top level: `networks` and `volumes` are "no X" lists again
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Medium.
+
+- Way: `ipam` with a subnet of the local network, of the network of Anima or of the address of the hub. The machine then sends that range to the bridge: it loses the hub until a person is at the machine, or a container answers for a local address.
+- Who: a person who controls the hub; an API key.
+- Change: "A top-level volume has no member. A top-level network has only `driver: bridge` and `internal`. `ipam`, `enable_ipv6`, `attachable`, `labels` and each other member are refused."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-038: `secrets` and `configs`: three sentences that do not agree
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Medium.
+
+- The service row does not permit `secrets` or `configs`, so the top-level permission has no use, or the implementer adds the service key with no rule.
+- "`file` below `files/`" can name only the final form, the environment file and the kept files. It contradicts "No mount can name it" in Section 4.6. If Compose mounts the file writable (not verified), SF-016 (b) is open again.
+- Change: "`secrets` and `configs` at the top level have `content` only; `file`, `environment`, `external` and `name` are refused. A service may have `secrets` and `configs` with `source`, `target` and `mode` only."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-039: Section 4.2: the binding to the origin and the device has no mechanism; Section 4.1 does not say what the socket gives
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Medium.
+
+- The applications program "never talks to the hub" and "does not trust the daemon". It can learn the origin only from the daemon or from a file of the user of the daemon.
+- Way: a local user who runs the daemon (SF-018 c), or each program of that user, sends requests on the socket with no hub. The actor table, the audit log of the hub, the rule "User only" for `container_follow` and for `volumes` true, and the sentence of R-232 do not apply to such a request.
+- With "All containers" on, that program stops each container and reads each log. With "The hub may delete volumes" on, it deletes the data.
+- A different local user can make a socket at the path if the folder permits, and the daemon then gives it the environment file.
+- Changes:
+- Section 3 of K10: "On a machine whose setting is on, each program of the user of the daemon can do, with no hub, each thing that this paragraph gives to a person who controls the hub; the rules for actors are rules of the hub and do not limit it."
+- Section 4.2: "The binding protects against a change of the hub by the owner; it does not limit a program of the user of the daemon."
+- Section 4.1: "The socket is in a folder that only the administrator can write. The daemon checks that the peer is the administrator. No request on the socket changes a setting."
+- Section 4.10: "The applications program checks the signature of the operator (task W7)."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-236 (2026-11-19): Accepted until task W7; the contract says it.
+
+### SF-040: Section 4.9: "or the user that owned it at the adoption"
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: High.
+
+- Way: the administrator started one time a stack whose file is in the home folder of a user who has no right to Docker, and adopted it. That user adds `privileged` or a mount of `/`, then waits for the next `up`. This is way (a) of SF-019.
+- The check also covers only the Compose files and the folders above them. It does not cover `.env`, an `env_file`, or a file that `include` or `extends` names.
+- `adopted_apply` also does not say with which environment and which login Compose runs. With an empty environment, a file with `${X:-default}` gives a different stack than the owner started.
+- Who: a local user who is not the administrator.
+- Change: "… can be written by a user other than the administrator. At the adoption the applications program records the SHA-256 of each file that the reader opens for the project. `adopted_apply` with `up` refuses the item when one is different (`not_adopted`), until the owner adopts the project again at the machine." This also corrects way (d).
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-235 (2026-11-19): Accepted. Anima does not check the file and starts it as it is; no fingerprint is built. The text must say that Anima does not check, not that the owner of the file may change it.
+
+### SF-041: Images: "no login" has no way, and an image that is on the machine can be started
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Medium.
+
+- With an empty environment the `docker` program reads the configuration of the home folder of the administrator, with its logins and helper programs (not verified).
+- A file from the hub with `pull` false, or with a name that the engine has, starts a private image of the owner or of an adopted project, with an `entrypoint` of the hub and a network. This is way (b) of SF-031.
+- Who: a person who controls the hub; an API key.
+- Change: "The applications program gives `docker` a configuration folder of its own (`--config`) that holds no login. A login of a registry that the owner named is put there by the owner at the machine. `application_apply` starts only an image that the applications program pulled for this application, by the digest of that pull; it never starts an image that was on the machine for a different reason."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-042: The environment: the prefix rule is a list of refused names
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Low to Medium.
+
+- "It refuses an environment file that sets a name that starts with `COMPOSE_` or `DOCKER_`" leaves `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, `HOME`, `PATH`, `BUILDKIT_*`. Not verified: whether a Compose version puts the variables of the file into its own process.
+- The environment file is in `files/`. If its name is `.env`, Compose reads it again at the start.
+- A value of the final form that holds `${…}` is filled a second time at the start.
+- An empty environment has no `PATH` and no `HOME`; the text does not say that the program gives each path as an argument.
+- Change: "The applications program fills the variables itself. The environment file is never given to Compose and has a name that Compose does not read. The final form holds no `$` that a reader fills (each is written `$$`). Each path that `docker` needs is an argument."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-043: `labels`
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Medium, when the machine has a program that reads labels.
+
+- Only `com.docker.` is refused. Traefik, caddy-docker-proxy, Watchtower and similar programs take orders from the labels of each container.
+- Way: a label makes a route in the reverse proxy of the owner for a name of the owner, or opens the service to the internet with "Open to the network" off.
+- Who: a person who controls the hub; an API key.
+- Change: "`labels` is permitted only for a key whose prefix the owner named at the machine; after the install no prefix is named." Or say the power in Section 3 and let the owner accept it.
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-044: Values with no upper limit
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Low.
+
+- `mem_limit` and `pids_limit` of a file (a very high number, `-1`); `stop_grace_period`, which holds the one place for an item that changes Docker; the `interval` of a `healthcheck`; the size of a `tmpfs`; `logging` with no `max-size`; the count of services.
+- Change: "The applications program uses the lower of the value of the file and its own limit for `mem_limit`, `pids_limit` and `stop_grace_period`, sets `max-size` and `max-file` of the log, and refuses a file with more services than its limit."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-045: Section 4.12, "All containers" on
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Low.
+
+- `docker image prune` removes images with no tag. An image that `keep` holds by identifier can have no tag, so it is removed. This contradicts "never an image that `keep` holds".
+- Change: put "never an image that `keep` holds" in a sentence that applies to both cases.
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-046: Section 4.14: "where the table says 'User only', the settings at the machine are the second control"
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Low.
+
+- This is false for `container_follow`: no setting of Section 4.2 is for logs.
+- Change: "… for `application_remove` with `volumes` true, the setting at the machine is the second control. `container_follow` has no second control: a person who controls the hub, and a program of the user of the daemon, read the logs that Section 6.4.3 permits."
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-047: Contradictions with K10 0.3 that Section 4.3 does not change
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Low.
+
+- Section 3, the row of the switch: "If the hub answers such a claim with an `Item`, the daemon drops the answer and starts nothing." The new text gives container items to a machine with `switch` `off`.
+- Section 4: a claim each 10 seconds only "while its switch is on", and one in each hour when off. A machine with `switch` `off` and `applications` `on` then gets a `stop` after as much as one hour.
+- Section 4: "`unclean` … The hub gives no item to such a machine." The sentence "`stop` is never refused for `policy` or `unclean`" then has no effect.
+- Section 11, `WORK_OFF` after 5 refused items: 5 refusals of a file take the machine out of each work, also a `stop`.
+- Section 6, first lines: "There is no type that runs a command which the hub names", and "The list is fixed in the daemon program."
+- Section 7: `NOT_HOLDER`, `TOKEN_REFUSED`, a stop and `expired` "end the job at once, for each type". The new text does not say what that is in the middle of an `up`.
+- `types` and `free.slots` of the claim for container types are not said.
+- Change: one sentence in each of these places.
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+
+### SF-048: Points that an implementer must guess
+
+Requirements: task H14; the text of the container work types, version 3 of the proposal, Section 4. Severity: Low.
+
+- What "an address" is in "a file that names … an address": an image name holds a registry address.
+- What "a path that is absolute" covers: `working_dir`, `tmpfs` and the target of a volume are absolute paths in the container.
+- How a protected container is named (an identifier changes at each new make), and if `adopted_apply` and `application_apply` respect the list. Section 4.2 says "no item"; Section 4.7 names two types.
+- If the adoption of a project whose name starts with `anima-` is refused.
+- The limit of the YAML reader has no numbers.
+- 256 KiB in a JSON string can be more than 512 KiB.
+- "With all profiles on" while `profiles` is not a permitted key.
+- The final form holds the values of the environment file; Section 4.6 says "The owner can read it" and gives the rule of access only for the environment file.
+- The numbers 6.4.7 and 6.4.8 do not exist.
+
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
 
 ## Closed
 

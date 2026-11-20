@@ -80,6 +80,8 @@ entity_id! {
     BuildJobId,
     /// A computer the operator enrolled to build releases.
     BuilderId,
+    /// A job of the work route: what the hub gives to the daemon of a machine (K10).
+    JobId,
     /// A connection to an outside source, such as one GitHub App installation.
     SourceAccountId,
     /// The sealed credential of a source account.
