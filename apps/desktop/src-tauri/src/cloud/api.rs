@@ -32,6 +32,13 @@ pub struct HubAccess {
     claim: String,
 }
 
+impl HubAccess {
+    /// Whether this device is on the link of the hub already: the cloud then gives no invite.
+    pub fn is_joined(&self) -> bool {
+        self.invite.is_none()
+    }
+}
+
 impl Drop for HubAccess {
     fn drop(&mut self) {
         if let Some(invite) = self.invite.as_mut() {

@@ -75,6 +75,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-051 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 
 ### What a check on the hosted hub needs
 
@@ -898,6 +899,43 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.
+
+### HT-051: the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c)
+
+Built: on the branch `hosted/hm-t24b-shell-link-unit` (task HM-T24 of
+[hosted-mode.md](proposals/hosted-mode.md), parts b and c; R-240). After a hosted hub gives this
+computer its access, the shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies `anima-link` to
+`~/.local/bin`, has it install the unit of the user, and watches the running link in place of a
+child of its own. A computer that is on the link already is handed over at the next start of the
+application. When the unit cannot be made, the application runs the link itself as before.
+
+The tests cover: the calls of `anima-link unit` and `ctl status` with a stand-in link, the watch of
+a kept link (up, down, up again, and a stop of the application that leaves the unit), the mark of
+the folder. Not covered: the copy to the real home folder, `launchctl`, the hand-over inside a real
+sign-in, the start of the application with a unit that runs, and an update of the application.
+
+It needs: this Mac with the application of this build (a trial bundle is enough), signed in to the
+hosted hub. `<DIR>` is `~/Library/Application Support/ing.anima.desktop/link/device`; put it in
+double quotes in a command, because the path has a space.
+
+1. Open the application and sign in (or let it open the hosted hub as before). Use it for a minute.
+   Expected: the hub opens as before. Nothing asks for a password.
+2. Quit the application and open it again. Wait 30 seconds. Run `~/.local/bin/anima-link unit show`.
+   Expected: `{"installed":true,...}`. The hub opens in the application.
+3. Quit the application. Run `~/.local/bin/anima-link ctl -state <DIR> status`. Expected: a JSON
+   answer with `"role":"device"`: the link runs with the application closed. On the hub (in a
+   browser later, or after you open the application again) the check `Connected` of this Mac did not
+   go Down while the application was closed.
+4. Log out of the Mac and log in again. Do not open the application. Run step 3's command.
+   Expected: the same answer.
+5. Open the application. Expected: the hub opens at once; the application log has no line "the
+   device link was not handed to a unit of the user".
+6. Install a newer build of the application and open it. Run
+   `cmp ~/.local/bin/anima-link /Applications/Anima.ing.app/Contents/MacOS/anima-link`. Expected: no
+   output (the copy is the program of the new application), and the hub still opens.
+7. Only if you want to leave the hub on this Mac: leave it in the application (Settings). Run
+   `~/.local/bin/anima-link unit show`. Expected: the file is gone ("No such file"), and
+   `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 

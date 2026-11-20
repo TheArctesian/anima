@@ -1,5 +1,6 @@
 //! This device's link to a hub (one-click plan S6, 2.6): the shell joins with an invite, runs
-//! `anima-link device` while the app runs, and reports its state. The client then reaches the
+//! `anima-link device` while the app runs, and reports its state. For a hosted hub a unit of
+//! the user keeps the link running with the app closed, and the shell watches it (HMD-058). The client then reaches the
 //! hub at `http://127.0.0.1:<port>`. No rule of the link is here (REPO-003).
 //!
 //! Only the main web view may ask (WEB-007). The invite is the one value that comes from the
@@ -10,6 +11,7 @@ mod device;
 mod error;
 mod folder;
 mod joining;
+mod kept;
 mod printed;
 mod state;
 
@@ -23,6 +25,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    thread,
     time::Duration,
 };
 
@@ -35,6 +38,7 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
+pub use kept::hosted_hub_opened;
 pub use state::{DeviceState, Event};
 use state::{Phase, Reason};
 
@@ -111,12 +115,19 @@ fn launch(program: PathBuf, folder: &Path, port: u16) -> Launch {
 
 /// Starts the device link when this device has joined a hub. Called once at the app's start.
 /// A join that stopped half way is undone first: the folder before it is put back.
-pub fn start(device: &DeviceLink) {
+pub fn start(device: &Arc<DeviceLink>) {
     let Ok(folders) = folders() else { return };
     if folders.recover().is_err() {
         log::warn!("the device link's folder before a join could not be put back");
     }
-    resume(device, crate::carried::program(PROGRAM), &folders);
+    let program = crate::carried::program(PROGRAM);
+    resume(device, program.clone(), &folders);
+    // A link that the app runs for a hosted hub goes to a unit of the user (HMD-058), off this
+    // thread: the start of the app does not wait for it.
+    if let Some(program) = program.filter(|_| folder::wants_unit(&folders.device)) {
+        let device = Arc::clone(device);
+        thread::spawn(move || kept::hand_over(&device, program, &folders.device));
+    }
 }
 
 /// Runs the device link of `folders.device` on its saved port, when this device has joined.
@@ -128,6 +139,14 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
         device.record(Event::Unable(Reason::NoPort));
         return;
     };
+    if let Some(link) = kept::now(&folders.device, port) {
+        // The unit runs the copy of an earlier app: it gets the program of this app (HMD-055).
+        if let Some(carried) = &program {
+            link.refresh(carried);
+        }
+        link.watch(device);
+        return;
+    }
     match program {
         Some(program) => device.start(launch(program, &folders.device, port)),
         None => device.record(Event::Unable(Reason::NotCarried)),
@@ -144,6 +163,12 @@ fn replace(
     port: u16,
 ) -> Result<(), LinkError> {
     device.stop();
+    // A unit of the join before must not run while its folder is swapped.
+    if let Some(before) = kept::now(&folders.device, port)
+        && before.remove().is_err()
+    {
+        log::warn!("the unit of the device link before the join was not removed");
+    }
     if folders.take_next().is_err() {
         resume(device, Some(program), folders);
         let _ = folders.prepare_next();
@@ -165,7 +190,8 @@ async fn blocking<T: Send + 'static>(
 }
 
 /// Joins this device to the hub of `invite`, replaces the link of an earlier join, and starts
-/// the device link. Returns the device key's fingerprint and the local port.
+/// the device link. On a hosted hub a unit of the user then keeps the link running with the app
+/// closed (HMD-058); when the unit cannot be made, the app runs the link itself as before. Returns the device key's fingerprint and the local port.
 #[tauri::command]
 pub async fn link_join<R: Runtime>(
     webview: Webview<R>,
@@ -185,7 +211,11 @@ pub async fn link_join<R: Runtime>(
         let folders = folders()?;
         let env = environment(|name| std::env::var_os(name));
         let joined = joining::join(&program, &folders, &line, &env)?;
-        replace(&device, program, &folders, joined.port)?;
+        replace(&device, program.clone(), &folders, joined.port)?;
+        if device.in_background() {
+            let _ = folder::want_unit(&folders.device);
+            kept::keep_or_run(&device, program, &folders.device, joined.port);
+        }
         Ok(joined)
     })
     .await;
@@ -254,6 +284,10 @@ pub async fn link_leave<R: Runtime>(
         let _claim = claim;
         let folders = folders()?;
         device.stop();
+        if let Some(link) = kept::now(&folders.device, 0) {
+            link.remove()?;
+            kept::unplace(&link.program);
+        }
         folders.remove().map_err(|_| LinkError::Folder)
     })
     .await;

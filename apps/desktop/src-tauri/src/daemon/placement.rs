@@ -48,7 +48,8 @@ pub fn bundled_beside(executable: &Path) -> Option<PathBuf> {
 }
 
 /// Makes the destination folder through checked folders only, then copies `source` beside the
-/// destination under a fresh name and renames it into place. Returns the real path of the
+/// destination under a fresh name and renames it into place, under the file name of
+/// `destination` (the daemon, or the link program that a unit of the user runs, HMD-058). Returns the real path of the
 /// installed binary: the path that was checked, and the one to run.
 ///
 /// # Errors
@@ -56,8 +57,9 @@ pub fn bundled_beside(executable: &Path) -> Option<PathBuf> {
 pub fn place(source: &Path, destination: &Path, by: User) -> Result<PathBuf, PlacementError> {
     let folder = make_folder(destination.parent().ok_or(PlacementError::Write)?, by)?;
     let mut input = open_source(source)?;
+    let name = destination.file_name().ok_or(PlacementError::Write)?;
     let part = folder.join(part_name()?);
-    let installed = folder.join(DAEMON_FILE);
+    let installed = folder.join(name);
     let copied = copy_to(&mut input, &part).and_then(|()| {
         fs::rename(&part, &installed)?;
         File::open(&folder)?.sync_all()

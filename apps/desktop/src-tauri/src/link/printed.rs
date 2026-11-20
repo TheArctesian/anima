@@ -79,6 +79,25 @@ pub fn device_line(line: &str) -> Option<DeviceLine> {
     (address.ip().is_loopback() && address.port() != 0).then_some(DeviceLine::Ready(address.port()))
 }
 
+/// The loopback port in `ctl status`'s answer of a running device link: `{ role: "device",
+/// local: "127.0.0.1:<port>" }`.
+pub fn link_local(printed: &[u8]) -> Option<u16> {
+    let status: serde_json::Value = serde_json::from_slice(printed).ok()?;
+    if status.get("role")?.as_str()? != "device" {
+        return None;
+    }
+    let address: SocketAddr = status.get("local")?.as_str()?.parse().ok()?;
+    (address.ip().is_loopback() && address.port() != 0).then_some(address.port())
+}
+
+/// Whether `unit show` says that the unit of the user is installed: `{ installed: true }`.
+pub fn unit_installed(printed: &[u8]) -> bool {
+    serde_json::from_slice::<serde_json::Value>(printed)
+        .ok()
+        .and_then(|shown| shown.get("installed")?.as_bool())
+        .unwrap_or(false)
+}
+
 /// The path and latency in `ctl status`'s answer: `{ role: "device", path, latencyMs }`.
 pub fn link_path(printed: &[u8]) -> Option<(String, f64)> {
     let status: serde_json::Value = serde_json::from_slice(printed).ok()?;
