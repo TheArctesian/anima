@@ -1642,6 +1642,15 @@ Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-
 
 State: Open.
 
+### HT-064. Read the native capability report in Anima.ing Settings
+
+Open the integrated iOS build on a physical device with a test hub. In Settings, open Runner
+capabilities and tap Read capabilities. Expect the current power state, thermal state, app
+memory headroom, and available storage. Open Technical report and expect the platform, OS,
+observation time, and discovery data. Disconnect or reconnect power, wait for iOS to update
+the battery state, and tap Refresh. Expect a new observation time and the updated power state.
+Verify that the browser client has no report entry.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list

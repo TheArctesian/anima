@@ -6,10 +6,13 @@ use tauri::RunEvent;
 
 use crate::{cloud, memory_tokens, phone_browser, phone_link};
 
+mod runner;
+
 /// Starts the mobile application. iOS and Android call it; it returns when the application ends.
 #[tauri::mobile_entry_point]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_runner::init())
         .plugin(tauri_plugin_keyboard::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_account_session::init())
@@ -33,6 +36,7 @@ pub fn run() {
             cloud::cloud_hub,
             cloud::cloud_hub_access,
             phone_browser::system_browser_open,
+            runner::runner_capabilities_read,
         ])
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")

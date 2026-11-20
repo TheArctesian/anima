@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "runner",
+  "description": "Read the local mobile runner capability report. The command takes no arguments. Main web view only.",
+  "platforms": ["iOS", "android"],
+  "webviews": ["main"],
+  "permissions": ["allow-runner-capabilities-read"]
+}

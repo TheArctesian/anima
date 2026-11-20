@@ -23,7 +23,10 @@ const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, dev
 export function shellCapabilities(agent: Agent = navigator): Capabilities | null {
   if (!isTauri()) return null;
   // The iPhone app shows the sign-in page of the account inside the app (mobile plan M3-5).
-  if (isMobile(agent)) return { ...MOBILE_SHELL, accountSession: isApple(agent) };
+  if (isMobile(agent)) {
+    const apple = isApple(agent);
+    return { ...MOBILE_SHELL, accountSession: apple, runnerReport: true };
+  }
   const { userAgent } = agent;
   return {
     keyStore: true,
@@ -41,6 +44,7 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     deviceLink: true,
     cloudAccount: true,
     accountSession: false,
+    runnerReport: false,
     overlayTitleBar: isMac(userAgent),
     recentCopy: true,
   };
