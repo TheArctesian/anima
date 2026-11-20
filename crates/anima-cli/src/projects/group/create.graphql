@@ -1,8 +1,0 @@
-mutation ProjectGroupCreate($name: String!, $projects: [ID!]!) {
-  createProjectGroup(name: $name, projects: $projects) {
-    id
-    name
-    projectCount
-    createdAt
-  }
-}

@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use super::session::{Desk, LOGIN_TOKEN, Session, hub};
 use crate::kit::fake_hub::{FakeHub, data};
 
-pub const TOOLS: [&str; 15] = [
+pub const TOOLS: [&str; 10] = [
     "anima_extensions_list",
     "anima_extension_set",
     "anima_sources_overview",
@@ -21,11 +21,6 @@ pub const TOOLS: [&str; 15] = [
     "anima_project_get",
     "anima_repository_set_left_out",
     "anima_project_resource_confirm",
-    "anima_project_groups_list",
-    "anima_project_group_create",
-    "anima_project_group_rename",
-    "anima_project_group_delete",
-    "anima_projects_set_group",
 ];
 
 pub async fn writing(hub: &FakeHub, desk: &Desk) -> Session {
@@ -164,11 +159,6 @@ async fn mcp_002_the_change_tools_of_the_three_sets_are_off_until_allowed() {
         ("anima_project_get", false),
         ("anima_repository_set_left_out", true),
         ("anima_project_resource_confirm", true),
-        ("anima_project_groups_list", false),
-        ("anima_project_group_create", true),
-        ("anima_project_group_rename", true),
-        ("anima_project_group_delete", true),
-        ("anima_projects_set_group", true),
     ] {
         assert_eq!(names.contains(&tool.to_owned()), !change, "{tool}");
     }

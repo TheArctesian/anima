@@ -32,10 +32,6 @@ query ProjectList($leftOut: Boolean, $first: Int, $after: String, $browse: Proje
           confirmedAt
         }
         syncedAt
-        group {
-          id
-          name
-        }
       }
     }
     pageInfo {

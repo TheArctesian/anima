@@ -7,7 +7,16 @@ const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anim
     already the API key noun (INT-003, `key list|create|revoke`); the noun waits for a ruling \
     (E0-6 T3)";
 
+/// The project groups of task G1 have their command and MCP tools in task G2, the next branch.
+const GROUPS_IN_G2: &str = "no command yet: `anima project group` comes with task G2 of \
+    projects-and-builds-plan.md (PRO-059 to PRO-063)";
+
 pub const EXCEPTIONS: &[(&str, &str)] = &[
+    ("Query.projectGroups", GROUPS_IN_G2),
+    ("Mutation.createProjectGroup", GROUPS_IN_G2),
+    ("Mutation.renameProjectGroup", GROUPS_IN_G2),
+    ("Mutation.deleteProjectGroup", GROUPS_IN_G2),
+    ("Mutation.setProjectsGroup", GROUPS_IN_G2),
     (
         "Mutation.hostedDeviceInvite",
         "the Anima.ing cloud only: takes the cloud key, a secret (R-129)",

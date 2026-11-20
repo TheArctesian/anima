@@ -1,5 +1,0 @@
-query ProjectIdBySlug($slug: String!) {
-  project(slug: $slug) {
-    id
-  }
-}

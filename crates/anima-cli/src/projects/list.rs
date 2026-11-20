@@ -49,12 +49,6 @@ pub(crate) struct Browse {
     /// Maximum repository size in KiB.
     #[arg(long)]
     pub max_size_kib: Option<i32>,
-    /// Only the projects of this group: its name or ID (`anima project group list`).
-    #[arg(long, conflicts_with = "ungrouped")]
-    pub group: Option<String>,
-    /// Only the projects in no group.
-    #[arg(long)]
-    pub ungrouped: bool,
 }
 
 impl Browse {
@@ -63,8 +57,6 @@ impl Browse {
             && self.language.is_none()
             && self.min_size_kib.is_none()
             && self.max_size_kib.is_none()
-            && self.group.is_none()
-            && !self.ungrouped
         {
             return None;
         }
@@ -79,8 +71,8 @@ impl Browse {
             language: self.language.clone(),
             min_size_kib: self.min_size_kib.map(i64::from),
             max_size_kib: self.max_size_kib.map(i64::from),
-            group: self.group.clone(),
-            ungrouped: self.ungrouped.then_some(true),
+            group: None,
+            ungrouped: None,
         })
     }
 }
@@ -110,18 +102,12 @@ impl ListArgs {
                     .max_size_kib
                     .map(|size| size.to_string())
                     .as_deref(),
-            )
-            .flag("--group", self.browse.group.as_deref())
-            .switch("--ungrouped", self.browse.ungrouped);
+            );
         let hub = invocation.hub()?;
-        let mut browse = self.browse;
-        if let Some(group) = &browse.group {
-            browse.group = Some(super::group::lookup::group_id(&hub, group).await?);
-        }
         let first = Some(page_size(self.limit, self.all, MAX_PAGE));
         let left_out = Some(self.left_out);
         let hub = &hub;
-        let browse = &browse;
+        let browse = &self.browse;
         let projects = fetch(self.after, self.all, move |after| async move {
             let variables = project_list::Variables {
                 left_out,

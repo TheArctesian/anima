@@ -1,8 +1,0 @@
-query ProjectGroups {
-  projectGroups {
-    id
-    name
-    projectCount
-    createdAt
-  }
-}

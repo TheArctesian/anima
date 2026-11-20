@@ -73,20 +73,12 @@ fn resource_line(resource: &Value) -> String {
 #[must_use]
 pub fn list<T: Serialize>(projects: &T) -> Table {
     let projects = serde_json::to_value(projects).unwrap_or_default();
-    let mut table = Table::new(vec![
-        "SLUG",
-        "NAME",
-        "GROUP",
-        "REPOSITORIES",
-        "RESOURCES",
-        "SYNCED",
-    ]);
+    let mut table = Table::new(vec!["SLUG", "NAME", "REPOSITORIES", "RESOURCES", "SYNCED"]);
     for edge in many(&projects, "edges") {
         let project = &edge["node"];
         table.row(vec![
             text(project, "slug").into(),
             text(project, "name").into(),
-            text(&project["group"], "name").into(),
             many(project, "repositories").len().to_string().into(),
             many(project, "resources").len().to_string().into(),
             text(project, "syncedAt").into(),
@@ -103,7 +95,6 @@ pub fn record<T: Serialize>(project: &T) -> Table {
     table.pair("Slug", text(&project, "slug"));
     table.pair("Name", text(&project, "name"));
     table.pair("ID", text(&project, "id"));
-    table.pair("Group", text(&project["group"], "name"));
     table.pair("Synced", text(&project, "syncedAt"));
     for repository in many(&project, "repositories") {
         table.pair("Repository", repository_line(repository));
