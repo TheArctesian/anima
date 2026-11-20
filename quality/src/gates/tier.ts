@@ -36,7 +36,8 @@ const WORKFLOW_TESTS = "@anima/deploy";
 /** Files of the root that no build and no test reads. */
 const NEUTRAL = [".gitattributes", "LICENSE"];
 
-function isDocument(path: string): boolean {
+/** If the fast tier takes the path as a document: only the document gates read it. */
+export function isDocument(path: string): boolean {
   return path.startsWith("docs/") || (!path.includes("/") && path.endsWith(".md")) || NEUTRAL.includes(path);
 }
 
