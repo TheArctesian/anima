@@ -107,6 +107,16 @@ fn the_folder_of_a_unit_is_one_whole_argument_of_its_file() {
         r#"ExecStart="/b/anima-link" "device" "-state" "/a/device" "-listen" "127.0.0.1:1""#;
     assert!(printed::unit_runs_folder(systemd, "/a/device"));
     assert!(!printed::unit_runs_folder(systemd, "/a/device.old"));
+    let task = r"<Arguments>&#34;device&#34; &#34;-state&#34; &#34;C:\Users\Ada &amp; Bob\device&#34;</Arguments>";
+    assert!(printed::unit_runs_folder(
+        task,
+        r"C:\Users\Ada & Bob\device"
+    ));
+    assert!(!printed::unit_runs_folder(task, r"C:\Users\Ada & Bob"));
+    assert!(!printed::unit_runs_folder(
+        task,
+        r"C:\Users\Ada & Bob\device.old"
+    ));
     assert_eq!(
         printed::unit_file(br#"{"installed":false,"file":"/x"}"#),
         None

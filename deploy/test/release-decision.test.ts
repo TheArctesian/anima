@@ -88,6 +88,8 @@ describe.skipIf(process.platform === "win32")("which change affects the desktop 
     ["the lock file", ["Cargo.lock"], "cli\ndesktop\nios"],
     ["the release workflow", [".github/workflows/release.yml"], "cli\ndesktop\nios"],
     ["the version command, which is below a folder that is out", ["deploy/bin/commit-version"], "cli\ndesktop\nios"],
+    ["Windows packaging", ["deploy/bin/windows-bundle.ps1"], "cli\ndesktop"],
+    ["Windows publisher signing", ["deploy/windows/sign.ps1"], "cli\ndesktop"],
     ["the map itself", ["deploy/release/applications.txt"], "cli\ndesktop\nios"],
     ["a folder that the map does not know", ["newthing/file.txt"], "cli\ndesktop\nios"],
   ])("%s releases what carries it", (_name, paths, expected) => {

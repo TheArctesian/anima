@@ -18,6 +18,7 @@ interface Step {
   with?: Record<string, string | boolean | number>;
 }
 interface Job {
+  uses?: string;
   "runs-on": string;
   if?: string;
   needs?: string[];
@@ -32,9 +33,9 @@ interface Workflow {
 }
 
 const workflow = Bun.YAML.parse(RAW) as Workflow;
-const jobs = Object.entries(workflow.jobs);
+const jobs = Object.entries(workflow.jobs).map(([name, job]) => [name, { ...job, steps: job.steps ?? [] }] as const);
 const steps = jobs.flatMap(([, job]) => job.steps);
-const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base");
+const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base" && name !== "windows");
 
 /** The gates that the `run` scripts of the workflow select, in the way `quality/bin/gates.ts` selects them. */
 function gatesThatRun(): string[] {
@@ -75,7 +76,8 @@ describe("the gates workflow (gates.yml)", () => {
     expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_call", "workflow_dispatch"]);
     expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main", "train/**"] });
     for (const [name, job] of jobs) {
-      expect(job["runs-on"], name).toBe("ubuntu-24.04");
+      if (name === "windows") expect(job.uses).toBe("./.github/workflows/windows-trial.yml");
+      else expect(job["runs-on"], name).toBe("ubuntu-24.04");
     }
   });
 
@@ -103,7 +105,7 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("the job `passed` waits for each job and fails when one did not pass", () => {
     const passed = workflow.jobs["passed"];
-    expect(passed?.needs?.sort()).toEqual(["base", ...gateJobs.map(([name]) => name)].sort());
+    expect(passed?.needs?.sort()).toEqual(["base", "windows", ...gateJobs.map(([name]) => name)].sort());
     expect(passed?.if).toBe("always()");
   });
 

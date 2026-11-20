@@ -25,12 +25,14 @@ use super::copy::{current_copy, destination, earlier_copy, place, same, unplace}
 use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 #[cfg(unix)]
-use std::os::unix::fs::FileTypeExt;
+use unix::socket_present;
 #[cfg(windows)]
 #[path = "kept/windows.rs"]
 mod windows;
 #[cfg(windows)]
-use windows::environment;
+pub use windows::owns_background;
+#[cfg(windows)]
+use windows::{environment, socket_present};
 #[cfg(unix)]
 #[path = "kept/unix.rs"]
 mod unix;
@@ -145,16 +147,7 @@ impl Kept {
 
     /// Whether the link of the unit made the socket of the daemon.
     fn has_daemon_socket(&self) -> bool {
-        self.daemon_socket.as_deref().is_some_and(|socket| {
-            #[cfg(unix)]
-            {
-                fs::symlink_metadata(socket).is_ok_and(|found| found.file_type().is_socket())
-            }
-            #[cfg(windows)]
-            {
-                anima_windows::socket::private(socket).unwrap_or(false)
-            }
-        })
+        self.daemon_socket.as_deref().is_some_and(socket_present)
     }
 
     /// Gives the unit the link program of this app when its copy holds different bytes or is
@@ -391,15 +384,4 @@ pub fn hosted_hub_opened<R: Runtime>(webview: &Webview<R>, joined: bool) {
             hand_over(&device, program, &folders.device);
         });
     }
-}
-
-/// Whether a Windows listener belongs to this user's protected persistent link executable.
-#[cfg(windows)]
-pub fn owns_background(pid: u32) -> bool {
-    let Some(application) = crate::user_folders::of_this_user() else {
-        return false;
-    };
-    let program = destination(&application);
-    anima_cli::mcp::install::setup::check_command(&program, 0).is_ok()
-        && anima_windows::process::matches(pid, &program).unwrap_or(false)
 }

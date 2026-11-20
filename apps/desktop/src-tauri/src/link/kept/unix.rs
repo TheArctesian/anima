@@ -3,7 +3,7 @@ use super::{DAEMON_SOCKET, LONGEST_SOCKET};
 use std::{
     ffi::OsString,
     fs::{self, DirBuilder},
-    os::unix::fs::{DirBuilderExt, MetadataExt},
+    os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt},
     path::{Path, PathBuf},
 };
 
@@ -42,4 +42,8 @@ pub fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str
         .into_iter()
         .filter_map(|name| Some((name, read(name).filter(|value| !value.is_empty())?)))
         .collect()
+}
+
+pub(super) fn socket_present(socket: &Path) -> bool {
+    fs::symlink_metadata(socket).is_ok_and(|found| found.file_type().is_socket())
 }

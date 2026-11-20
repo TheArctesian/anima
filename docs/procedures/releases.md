@@ -99,11 +99,15 @@ The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testi
 
 ### Windows builds and releases (WIN2)
 
-Each push to `dev` starts `.github/workflows/windows-trial.yml`. The Actions run produces
+The `gates` workflow calls `.github/workflows/windows-trial.yml` for `dev` and each merge
+train, and refuses a train whose native checks fail. This also builds artifacts when the
+merge train advances dev with GitHub's workflow token (which does not trigger push workflows).
+The Actions gates run produces
 `windows-trial` (the per-user NSIS installer, SHA256SUMS and source commit) and
 `windows-trial-cli` (the standalone command). Download and extract the artifact, then run
 `Anima_0.0.1_x64-setup.exe`. These trials are unsigned and have automatic updates disabled.
-A manual run of this workflow checks the selected branch. Artifacts last 14 days.
+Run the existing `gates` workflow manually on `dev` to make a new trial. After the new
+workflow is on the default branch, it can also be run directly by hand. Artifacts last 14 days.
 
 The Windows job builds on `windows-2025` with MSVC, runs all native gates, checks compiler
 discovery, installs the package silently and compares all seven installed sidecars with

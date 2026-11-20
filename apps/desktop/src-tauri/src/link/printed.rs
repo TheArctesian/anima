@@ -109,7 +109,18 @@ pub fn unit_file(printed: &[u8]) -> Option<PathBuf> {
 /// of it, a `<string>` of a launch agent or a quoted word of a systemd unit. A unit of a
 /// different folder (a second copy of the app, a test) is not the unit of this one.
 pub fn unit_runs_folder(unit: &str, folder: &str) -> bool {
-    unit.contains(&format!("<string>{folder}</string>")) || unit.contains(&format!("\"{folder}\""))
+    let task_folder = folder
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('\"', "&#34;")
+        .replace('\'', "&#39;")
+        .replace('\r', "&#xD;")
+        .replace('\n', "&#xA;")
+        .replace('\t', "&#x9;");
+    unit.contains(&format!("<string>{folder}</string>"))
+        || unit.contains(&format!("\"{folder}\""))
+        || unit.contains(&format!("&#34;{task_folder}&#34;"))
 }
 
 /// The path and latency in `ctl status`'s answer: `{ role: "device", path, latencyMs }`.

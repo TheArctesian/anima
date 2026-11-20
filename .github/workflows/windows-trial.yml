@@ -1,8 +1,17 @@
 name: windows-trial
 
 on:
-  push:
-    branches: [dev]
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ""
+      dev_sha:
+        type: string
+        default: ""
+      base_ref:
+        type: string
+        default: "origin/phase-2"
   workflow_dispatch:
 
 concurrency:
@@ -14,6 +23,7 @@ permissions: {}
 env:
   BUN_VERSION: "1.3.14"
   CI: "true"
+  BASE_REF: ${{ inputs.base_ref || 'origin/phase-2' }}
 
 jobs:
   windows:
@@ -41,10 +51,16 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ inputs.ref }}
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
+      - name: Merge the dev of this run into the checkout
+        shell: bash
+        env:
+          DEV_SHA: ${{ inputs.dev_sha }}
+        run: sh .github/workflows/gates-merge.sh
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: link/go.mod
@@ -78,7 +94,7 @@ jobs:
           $digest = (Get-FileHash "out/$installer" -Algorithm SHA256).Hash.ToLowerInvariant()
           "updater_sha256=$digest" >> $env:GITHUB_OUTPUT
           "$digest  $installer" | Set-Content out/SHA256SUMS
-          "Commit: $env:GITHUB_SHA`nUnsigned Windows trial. Updates disabled. Version 0.0.1." | Set-Content out/README.txt
+          "Commit: $(git rev-parse HEAD)`nUnsigned Windows trial. Updates disabled. Version 0.0.1." | Set-Content out/README.txt
           $cli = "target/x86_64-pc-windows-msvc/release/anima.exe"
           if ((& $cli --version) -ne "anima $env:VERSION" -or $LASTEXITCODE -ne 0) { throw 'The standalone CLI did not start at the release version' }
           New-Item -ItemType Directory out-cli | Out-Null
