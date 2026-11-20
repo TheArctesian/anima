@@ -1,5 +1,5 @@
 // Package unit is the unit of the user that keeps the device link running
-// with no application open (HMD-058, R-208): a LaunchAgent on macOS, a
+// with no application open (HMD-058, R-240): a LaunchAgent on macOS, a
 // systemd user unit on Linux. It writes the file, starts it and removes it.
 // Nothing here runs as root, and nothing asks for a password.
 //

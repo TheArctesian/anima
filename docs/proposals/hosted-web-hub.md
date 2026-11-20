@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided: R-207 (operator, 2026-11-19, relayed) holds his eight answers: one front door at `hub.anima.ing` in the form A1, no second factor at first, a security review before other people, each hosted plan, the name moves straight away, GitHub connected once, a browser session counts as use, a browser may be first. The requirements are HMD-059 to HMD-070 of hosted-mode.md, proposed and not approved. Nothing is built and nothing here is verified on a server.
+evidence: Direction decided: R-239 (operator, 2026-11-19, relayed) holds his eight answers: one front door at `hub.anima.ing` in the form A1, no second factor at first, a security review before other people, each hosted plan, the name moves straight away, GitHub connected once, a browser session counts as use, a browser may be first. The requirements are HMD-059 to HMD-070 of hosted-mode.md, proposed and not approved. Nothing is built and nothing here is verified on a server.
 ---
 
 # Proposal: a hosted hub in a browser at `hub.anima.ing`
@@ -9,8 +9,8 @@ evidence: Direction decided: R-207 (operator, 2026-11-19, relayed) holds his eig
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 From: the session that recorded the defects of the first use of a hosted hub (DEF-002 to DEF-005), on the word of the orchestrating session, 2026-11-19.
-Version: 3. Date: 2026-11-19. Version 3 records R-207: Section 7 has his answers, Section 6 the task lists for the other repositories and what comes off the old hub before the name moves. Version 2 added his agreement to the shape and Section 4, the flow.
-Status: the header of this document holds the state (PLN-020). History: Draft; Direction decided (R-207). It is a proposal: build only a task of [hosted-mode.md](hosted-mode.md) Section 8 whose requirement is approved (PLN-007).
+Version: 3. Date: 2026-11-19. Version 3 records R-239: Section 7 has his answers, Section 6 the task lists for the other repositories and what comes off the old hub before the name moves. Version 2 added his agreement to the shape and Section 4, the flow.
+Status: the header of this document holds the state (PLN-020). History: Draft; Direction decided (R-239). It is a proposal: build only a task of [hosted-mode.md](hosted-mode.md) Section 8 whose requirement is approved (PLN-007).
 Map: [work-plan.md](../work-plan.md), row 4.17 (the hosted mode and the shared pool). Parent: [hosted-mode.md](hosted-mode.md). It adds no requirement identifier: the requirements are HMD-059 to HMD-070 of the parent (its Section 6.9), and the tasks of this repository are HM-T25 to HM-T32 there.
 
 ## 1. The direction
@@ -19,7 +19,7 @@ The operator, 2026-11-19: "I still would love a web hub like the old app so we c
 
 Thus he wants: a person opens `https://hub.anima.ing` in a browser, signs in with the Anima.ing account, and uses the hosted hub of that account, as he used his own hub on the VPS. It is a wish and a direction. It is not a ruling on a design.
 
-The same day the orchestrating session put the shape to him: one front door at `hub.anima.ing`, the sign-in with the Anima.ing account, and the browser passed through to the hub of the account. His answer: "yeah thats fine." On the flow: "It should be you have to sign in or when you sign in/up you are redirected to hub.anima.ing does that makes sense". That agrees with option A of Section 3. He did not choose between its forms A1 and A2, and did not answer the questions of Section 7. R-207 records these words and his eight answers to the questions of Section 7.
+The same day the orchestrating session put the shape to him: one front door at `hub.anima.ing`, the sign-in with the Anima.ing account, and the browser passed through to the hub of the account. His answer: "yeah thats fine." On the flow: "It should be you have to sign in or when you sign in/up you are redirected to hub.anima.ing does that makes sense". That agrees with option A of Section 3. He did not choose between its forms A1 and A2, and did not answer the questions of Section 7. R-239 records these words and his eight answers to the questions of Section 7.
 
 ## 2. What exists
 
@@ -97,7 +97,7 @@ Each hub gets a name, for example `https://<hub>.hub.anima.ing`. The pool routes
 
 ### Recommendation, and what he decided
 
-Decided (R-207): option A in the form A1. The text below is the recommendation as it was put to him. He did not take one part of it: the second factor at each browser sign-in (Section 7, answer 2).
+Decided (R-239): option A in the form A1. The text below is the recommendation as it was put to him. He did not take one part of it: the second factor at each browser sign-in (Section 7, answer 2).
 
 A1: one address, the gateway routes and each hub authenticates. It is the only option that gives him the name he asked for, and with A1 it keeps two checks as B does. Three conditions before it is turned on for a person other than the operator: HMD-006 is built and a browser sign-in always needs the second factor; the gateway keeps no body of a request and gives the staff no session (HM-R8); and a review of the security of the gateway and of the browser session of the hub, by a person or a second model, although R-159 chose no review for the pool: this is the first public door.
 
@@ -123,7 +123,7 @@ Then, at `hub.anima.ing`, with a session of the gateway, one of these:
 | A paid account that is past due (R-159 e; HMD-051, proposed) | The hub, with the notice to pay and a link to the account site, until the hub is deleted after 30 days; then the page of the row above | HMD-018: slow down, do not delete data, above the usage line |
 | No session of the hub can be made (the hub does not start, the pool does not answer) | A page with plain words and "Try again" | It names no server and shows no detail of the pool |
 
-The second factor in this path (R-207, answer 2: "later password and SSO for now"):
+The second factor in this path (R-239, answer 2: "later password and SSO for now"):
 
 - At first a browser sign-in is by password or by the sign-on provider, with no second factor. The first sign-up in a browser is: sign up, "Your hub is starting", the hub.
 - What stays in the design, because it costs a person no step (HMD-062): a session ends after 30 minutes with no request and at the latest after 12 hours; the account page lists the open sessions with "Sign out"; the sign-in limits the attempts.
@@ -179,7 +179,7 @@ For their owners. Nothing there is changed by this proposal; the orchestrating s
 
 ### 6.4 The old hub on the VPS, before the name moves
 
-R-207, answer 5: "B: move it straight away". The releases are signed in the release workflow of GitHub now ([releases.md](../procedures/releases.md), "The release workflow"), so that reason to wait is gone. For the operator, what must be taken off the old hub first; the session that wrote this did not look at the server:
+R-239, answer 5: "B: move it straight away". The releases are signed in the release workflow of GitHub now ([releases.md](../procedures/releases.md), "The release workflow"), so that reason to wait is gone. For the operator, what must be taken off the old hub first; the session that wrote this did not look at the server:
 
 1. The copy of the updater key that the old hub holds: make sure that the business vault has the key, then remove it from the hub.
 2. His data: an export or a backup of the database of the hub and of its key file, if he wants any of it (devices, credentials, checks, projects, events). A hosted hub has no import of it today.
@@ -192,7 +192,7 @@ R-207, answer 5: "B: move it straight away". The releases are signed in the rele
 
 The tasks HM-T25 to HM-T32 of [hosted-mode.md](hosted-mode.md) Section 8. Not free today: each waits for the approval of its text (Section 6.10 there), and the contract of the browser session (HM-T25) needs it by CON-001.
 
-## 7. The questions, and his answers (R-207)
+## 7. The questions, and his answers (R-239)
 
 Each question was put to him on 2026-11-19 with the recommendation of the session that wrote this. The answers are relayed, not first-hand to that session.
 

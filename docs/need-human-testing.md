@@ -69,8 +69,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
-| HT-045 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
-| HT-046 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
+| HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
+| HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 
 ### What a check on the hosted hub needs
 
@@ -881,10 +881,10 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 
 Result: Open.
 
-### HT-046: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
+### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
 Built: on the branch `hosted/hm-t24-link-unit` (task HM-T24 of
-[hosted-mode.md](proposals/hosted-mode.md), part a; R-208). `anima-link unit install` writes a
+[hosted-mode.md](proposals/hosted-mode.md), part a; R-240). `anima-link unit install` writes a
 `LaunchAgent` (macOS) or a systemd user unit (Linux) that runs `anima-link device`, and starts it;
 `unit remove` stops it and deletes the file; `unit show` says whether it is there (`link/unit`). The
 application does not use the command yet.
@@ -913,7 +913,7 @@ example 41001. Stop each `anima-link device` and the Anima.ing application first
 7. Run `~/.local/bin/anima-link unit remove`, then steps 3 and 4. Expected: `"installed":false`, and
    step 4 fails because no link runs.
 
-### HT-045: the application carries `anima-daemon` (HMD-052, task HM-T16)
+### HT-049: the application carries `anima-daemon` (HMD-052, task HM-T16)
 
 Built: on the branch `hosted/hm-t16-daemon-in-bundle` (task HM-T16 of
 [hosted-mode.md](proposals/hosted-mode.md); R-206). `apps/desktop/src-tauri/trial-bundle.sh` and the
