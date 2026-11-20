@@ -105,6 +105,8 @@ it('PRO-001: with no projects the empty state links to the Integrations section'
   await openList();
   expect(text()).toContain('Connect GitHub.');
   expect(document.querySelector('a')?.getAttribute('href')).toBe('/settings#settings-integrations');
+  // Nothing to sort or to filter: the page draws no Sort, Language or Size control.
+  expect(document.querySelector('select')).toBeNull();
 });
 
 it('PRO-004: a proposal says Found in the repository with its sign until confirmed, then says Confirmed', async () => {

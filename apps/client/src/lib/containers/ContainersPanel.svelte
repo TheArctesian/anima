@@ -26,6 +26,16 @@
   let view = $state<View>('containers');
   const selected = $derived(store.containers.find((container) => container.id === store.selected) ?? null);
   const lineOptions = LINE_CHOICES.map((value) => ({ value, label: value }));
+  const SHOWN = [
+    { value: 'log', label: 'Log' },
+    { value: 'detail', label: 'Details' },
+  ] as const;
+
+  /** The pane of the selected container shows its log or its details; the switch reads the other one (R-224). */
+  function showOther(next: (typeof SHOWN)[number]['value']): void {
+    if (store.selected === null) return;
+    void (next === 'log' ? store.select(store.selected) : store.inspect(store.selected));
+  }
 
   /**
    * The lists of HOST-020 are read when the operator first opens one: the read of the sizes is slow. An arrow key only
@@ -46,6 +56,7 @@
       <section class="below log" aria-label="Log of {selected.name}">
         <header class="bar">
           <h3>Log of {selected.name}</h3>
+          <Segmented label="What to show of {selected.name}" size="sm" arrowsChoose={false} options={[...SHOWN]} value={store.shown} onchange={showOther} />
           <Segmented label="Lines" size="sm" arrowsChoose={false} options={lineOptions} value={store.lines} onchange={(lines) => void store.setLines(lines)} />
           <FormButton size="sm" icon="carbon:renew" busy={store.logStatus === 'loading'} onclick={() => void store.readLog()}>Refresh</FormButton>
           <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the log" onclick={() => { store.close(); }} />
@@ -62,6 +73,7 @@
       <section class="below detail" aria-label="Details of {selected.name}">
         <header class="bar">
           <h3>Details of {selected.name}</h3>
+          <Segmented label="What to show of {selected.name}" size="sm" arrowsChoose={false} options={[...SHOWN]} value={store.shown} onchange={showOther} />
           <FormButton size="sm" icon="carbon:renew" busy={store.detailStatus === 'loading'} onclick={() => void store.readDetail()}>Refresh</FormButton>
           <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the details" onclick={() => { store.close(); }} />
         </header>
@@ -109,11 +121,15 @@
     white-space: nowrap;
   }
 
+  /* The pane of the selected container is one raised card under the table, for its log and for its details (R-224). */
   .below {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-3);
     min-inline-size: 0;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
   }
 
   .reading {

@@ -45,10 +45,13 @@
       <Segmented label="Which projects" size="sm" options={VIEWS} bind:value={showing} />
     {/snippet}
   </PageHeader>
-  <div class="tools">
-    {#if grouped && projects.length > 0}<Segmented label="Which group" size="sm" options={choices} bind:value={only} />{/if}
-    <ProjectBrowse {store} />
-  </div>
+  <!-- With no project and no filter there is nothing to sort or to filter, so the controls are not drawn. -->
+  {#if projects.length > 0 || store.filtered || !store.byName}
+    <div class="tools">
+      {#if grouped && projects.length > 0}<Segmented label="Which group" size="sm" options={choices} bind:value={only} />{/if}
+      <ProjectBrowse {store} />
+    </div>
+  {/if}
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />
   {/if}

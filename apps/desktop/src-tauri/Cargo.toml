@@ -35,8 +35,20 @@ tauri-plugin-keyboard = { path = "../keyboard" }
 serde.workspace = true
 thiserror.workspace = true
 zeroize.workspace = true
+# The sign-in to the Anima.ing account on a phone (mobile plan M3-4): the calls of WorkOS and of the cloud,
+# the waits between them, the random part of the phone's device name, and the page of the sign-in in the
+# browser of the phone.
+reqwest.workspace = true
+tokio.workspace = true
+getrandom = "0.3"
+tauri-plugin-opener = "2"
+# The sign-in inside the iPhone app (mobile plan M3-5): the page of iOS, the code challenge (PKCE) and the
+# listener at the loopback return address.
+tauri-plugin-account-session = { path = "../account-session" }
+sha2.workspace = true
+base64.workspace = true
 
-# The dependencies of the desktop application. A phone has the window and the access token only, so it
+# The dependencies of the desktop application. A phone has the window, the access token, the link and the account sign-in only, so it
 # builds none of them (MOB-002, MOB-003).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 # The Settings panel for `anima mcp` reads and saves permissions through the command line's own library (MCP-018).

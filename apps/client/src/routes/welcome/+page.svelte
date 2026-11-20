@@ -7,9 +7,9 @@
   import Doors from '../sign-in/doors/Doors.svelte';
   import { signInChoice } from './welcome';
 
-  const { localHub, deviceLink, cloudAccount, keyStore } = capabilities();
+  const { localHub, deviceLink, cloudAccount } = capabilities();
   // Only the hosted sign-in decides this screen; the build's hub programs matter on the page behind "Join a hub".
-  const signIn = $derived(signInChoice({ deviceLink, cloudAccount, localHub, carried: false }, keyStore));
+  const signIn = $derived(signInChoice({ deviceLink, cloudAccount, localHub, carried: false }));
   let title: HTMLElement | undefined = $state();
 
   onMount(() => {

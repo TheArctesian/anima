@@ -36,20 +36,22 @@
   <table>
     <caption>The containers of this device, by Compose project</caption>
     <thead>
-      <tr><th scope="col">Name</th><th scope="col">State</th><th scope="col">Status</th><th scope="col">Image</th><th scope="col">Ports</th><th scope="col"><span class="hidden">Details and log</span></th></tr>
+      <tr><th scope="col">Container</th><th scope="col">State</th><th scope="col">Image</th><th scope="col">Ports</th><th scope="col"><span class="hidden">Details and log</span></th></tr>
     </thead>
     {#each groups as group (group.project)}
       <tbody>
         <tr class="group">
-          <th scope="rowgroup" colspan="6">
+          <th scope="rowgroup" colspan="5">
             {group.project}{#if group.state !== ''}<span class="state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>{/if}<span class="summary">{group.summary}</span>
           </th>
         </tr>
         {#each group.rows as row (row.id)}
           <tr class:selected={row.id === store.selected}>
             <th scope="row" class="text" title={row.name}>{row.name}<span class="id">{row.shortId}</span></th>
-            <td><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span></td>
-            <td class="text" title={row.status}>{row.status}</td>
+            <!-- The state word and Docker's own status text are one fact, so they share one cell (R-224). -->
+            <td title={row.status}>
+              <span class="both"><span class="state {row.tone}"><span class="dot" aria-hidden="true"></span>{row.state}</span><span class="text status">{row.status}</span></span>
+            </td>
             <td title={row.image}>
               <span class="image"><span class="text mono">{row.image}</span>{#if row.update !== null}<span class="mark" class:newer={row.update.newer}>{row.update.words}</span>{/if}</span>
             </td>
@@ -120,22 +122,18 @@
   }
 
   thead th:nth-child(1) {
-    inline-size: 21%;
+    inline-size: 22%;
   }
 
   thead th:nth-child(2) {
+    inline-size: 23%;
+  }
+
+  thead th:nth-child(4) {
     inline-size: 13%;
   }
 
-  thead th:nth-child(3) {
-    inline-size: 16%;
-  }
-
   thead th:nth-child(5) {
-    inline-size: 12%;
-  }
-
-  thead th:nth-child(6) {
     inline-size: calc(var(--control-lg) * 3 + var(--space-6));
   }
 
@@ -183,7 +181,8 @@
     white-space: nowrap;
   }
 
-  /* The image is cut with an ellipsis; the mark of a newer image keeps its full words. */
+  /* The state word keeps its full words; the status text beside it is cut with an ellipsis. */
+  .both,
   .image {
     display: flex;
     align-items: center;
@@ -191,8 +190,17 @@
     min-inline-size: 0;
   }
 
+  .both {
+    gap: var(--space-3);
+  }
+
+  .both .text,
   .image .text {
     min-inline-size: 0;
+  }
+
+  .status {
+    color: var(--text-secondary);
   }
 
   /* HOST-021: the mark is a word, with a border that repeats it (MAT-005). */

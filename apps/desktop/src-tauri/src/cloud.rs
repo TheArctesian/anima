@@ -3,11 +3,27 @@
 //! token stays in the key store and never reaches script (HMD-034), and no browser rule (CORS)
 //! of `api.workos.com` or `cloud.anima.ing` decides whether a call may go. No token, device code
 //! or answer is logged (LOG-007).
+//!
+//! The desktop application and the phone application have the same commands (mobile plan M3-4). They
+//! differ in three places only: where the refresh token is kept, how the device is named, and
+//! `cloud_device`, which only a computer has (HMD-044).
 
 mod api;
+#[cfg(desktop)]
 mod device;
 mod error;
+#[cfg(mobile)]
+pub mod in_app;
+#[cfg(any(target_os = "ios", test))]
+mod loopback;
+#[cfg(any(mobile, test))]
+mod memory_session;
 mod name;
+#[cfg(any(mobile, test))]
+mod phone;
+#[cfg(any(target_os = "ios", test))]
+mod pkce;
+#[cfg(desktop)]
 mod session;
 #[cfg(test)]
 mod tests;
@@ -22,9 +38,13 @@ use serde::Serialize;
 use tauri::{State, Webview};
 use zeroize::Zeroizing;
 
+#[cfg(desktop)]
 use crate::this_machine::OperatingSystem;
+#[cfg(mobile)]
+use memory_session as session;
 
 pub use api::{HubAccess, HubState};
+#[cfg(desktop)]
 pub use device::CloudDevice;
 pub use error::CloudError;
 
@@ -89,8 +109,41 @@ fn client_id() -> Result<&'static str, CloudError> {
     }
 }
 
+#[cfg(desktop)]
 fn from_main(webview: &Webview) -> Result<(), CloudError> {
     crate::web_view::caller(webview.label()).map_err(|_| CloudError::Caller)
+}
+
+/// A phone has one web view; the capability names it, and this is the second wall.
+#[cfg(mobile)]
+fn from_main(webview: &Webview) -> Result<(), CloudError> {
+    (webview.label() == "main")
+        .then_some(())
+        .ok_or(CloudError::Caller)
+}
+
+/// The name of this computer on the link of the hub: from its computer name, which stays the same
+/// across sign-ins, so a second sign-in finds the device on the link.
+#[cfg(desktop)]
+fn device_name(_: &Webview) -> String {
+    name::device_name(&crate::this_machine::computer_name())
+}
+
+/// The name of this phone on the link of the hub: kept in the data folder of the app, so a second
+/// sign-in finds the device on the link.
+#[cfg(mobile)]
+fn device_name(webview: &Webview) -> String {
+    use tauri::Manager;
+    let kind = if cfg!(target_os = "ios") {
+        "iphone"
+    } else {
+        "android"
+    };
+    let folder = webview.path().app_local_data_dir().ok();
+    phone::device_name(folder.as_deref(), kind, || {
+        let mut random = [0_u8; 3];
+        getrandom::fill(&mut random).ok().map(|()| random)
+    })
 }
 
 impl Cloud {
@@ -223,16 +276,15 @@ pub async fn cloud_hub(webview: Webview, cloud: State<'_, Cloud>) -> Result<HubS
         .await
 }
 
-/// `POST /v1/hub/access` for this computer, named from its computer name, which stays the same
-/// across sign-ins, so a second sign-in finds the device on the link. While the hub is not
-/// ready, it asks `/v1/hub` again (which makes or wakes it) every 2 s, for up to 90 s.
+/// `POST /v1/hub/access` for this device, with its name on the link (`device_name`). While the hub
+/// is not ready, it asks `/v1/hub` again (which makes or wakes it) every 2 s, for up to 90 s.
 #[tauri::command]
 pub async fn cloud_hub_access(
     webview: Webview,
     cloud: State<'_, Cloud>,
 ) -> Result<HubAccess, CloudError> {
     from_main(&webview)?;
-    let device = name::device_name(&crate::this_machine::computer_name());
+    let device = device_name(&webview);
     let http = cloud.http.clone();
     let started = tokio::time::Instant::now();
     loop {
@@ -256,7 +308,9 @@ pub async fn cloud_hub_access(
 }
 
 /// This computer as the hosted hub lists it (HMD-044): the device name that `cloud_hub_access`
-/// sends, the computer name and the OS. It calls no network and reads no secret.
+/// sends, the computer name and the OS. It calls no network and reads no secret. A phone has no
+/// such command: the client adds only a computer to the devices of the hub.
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn cloud_device(webview: Webview) -> Result<CloudDevice, CloudError> {
     from_main(&webview)?;

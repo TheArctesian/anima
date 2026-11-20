@@ -3,15 +3,19 @@ import { hubChoices, signInChoice } from './welcome';
 
 describe('the first-run choices (FRN-001)', () => {
   it('HMD-022: the first screen has one choice, the hosted sign-in', () => {
-    expect(signInChoice({ deviceLink: true, cloudAccount: true, localHub: true, carried: true }, true)).toMatchObject({ title: 'Sign in', href: '/welcome/hosted', off: null });
+    expect(signInChoice({ deviceLink: true, cloudAccount: true, localHub: true, carried: true })).toMatchObject({ title: 'Sign in', href: '/welcome/hosted', off: null });
   });
 
   it('CLI-001: in a browser the hosted sign-in needs the app', () => {
-    expect(signInChoice({ deviceLink: false, cloudAccount: false, localHub: false, carried: false }, false).off).toBe('Needs the Anima.ing app.');
+    expect(signInChoice({ deviceLink: false, cloudAccount: false, localHub: false, carried: false }).off).toBe('Needs the Anima.ing app.');
   });
 
-  it('M3-1: a phone app with the link but no cloud commands says that sign-in is not on phones yet', () => {
-    expect(signInChoice({ deviceLink: true, cloudAccount: false, localHub: false, carried: false }, true).off).toBe('Coming soon on phones.');
+  it('M3-4: a phone app, which has the link and the cloud commands and no local hub, offers the hosted sign-in', () => {
+    expect(signInChoice({ deviceLink: true, cloudAccount: true, localHub: false, carried: false }).off).toBeNull();
+  });
+
+  it('R-129: a shell with the link but no cloud commands does not offer the hosted sign-in', () => {
+    expect(signInChoice({ deviceLink: true, cloudAccount: false, localHub: false, carried: false }).off).toBe('Needs the Anima.ing app.');
   });
 
   it('FRN-001, HMD-022: behind "Join a hub" are the invite, the hub address and the hub on this computer, in order', () => {
