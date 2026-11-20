@@ -5,22 +5,33 @@ import { fakeHub, ok } from '$lib/access/access.fixture';
 import { GATEWAY_KEPT } from '$lib/access/sign-out';
 import PhoneAccount from './PhoneAccount.svelte';
 
-// Sign out of the phone layout: in a phone browser behind the gateway it ends the session of the gateway too (HMD-059).
+// Sign out of the phone layout: in a phone browser behind the gateway it ends the session of the gateway too (HMD-059);
+// in the app of a phone it ends the Anima.ing account session (MOB-006).
 
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
   goToSignIn: vi.fn(),
+  goToWelcome: vi.fn(),
   loadClientAt: vi.fn(),
+  clearAccessToken: vi.fn(),
+  clearCloudSession: vi.fn(),
+  app: false,
   gateway: 'none' as 'none' | 'left' | 'kept',
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/platform/platform', async () => {
-  const { BROWSER } = await import('$lib/platform/answers.fixture');
-  return { capabilities: () => BROWSER };
+  const { BROWSER, MOBILE } = await import('$lib/platform/answers.fixture');
+  return { capabilities: () => (mocks.app ? MOBILE : BROWSER) };
 });
+vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
+vi.mock('$lib/desktop/cloud/shell', () => ({ clearCloudSession: mocks.clearCloudSession }));
 vi.mock('$lib/hosted/gateway/here', () => ({ signOutOfGateway: () => Promise.resolve(mocks.gateway) }));
-vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn, loadClientAt: mocks.loadClientAt }));
+vi.mock('$lib/access/navigation', () => ({
+  goToSignIn: mocks.goToSignIn,
+  goToWelcome: mocks.goToWelcome,
+  loadClientAt: mocks.loadClientAt,
+}));
 
 let app: ReturnType<typeof mount> | undefined;
 
@@ -39,7 +50,11 @@ async function signOut(): Promise<HTMLElement> {
 
 beforeEach(() => {
   mocks.goToSignIn.mockReset();
+  mocks.goToWelcome.mockReset();
   mocks.loadClientAt.mockReset();
+  mocks.clearAccessToken.mockReset().mockResolvedValue(undefined);
+  mocks.clearCloudSession.mockReset().mockResolvedValue(undefined);
+  mocks.app = false;
   mocks.gateway = 'none';
 });
 
@@ -66,4 +81,18 @@ it('HMD-059: a gateway that does not confirm the sign-out is told on the phone t
 it('E-4: with no gateway, a phone browser loads the sign-in as a new page', async () => {
   await signOut();
   expect(mocks.loadClientAt).toHaveBeenCalledExactlyOnceWith('/sign-in');
+});
+
+it('MOB-006: in the app of a phone, Sign out ends the Anima.ing account session and goes to Welcome, not to the gateway', async () => {
+  mocks.app = true;
+  mocks.gateway = 'left';
+  const agent = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 15; Phone)');
+  try {
+    await signOut();
+    expect(mocks.clearCloudSession).toHaveBeenCalledBefore(mocks.goToWelcome);
+    expect(mocks.goToWelcome).toHaveBeenCalledOnce();
+    expect(mocks.goToSignIn).not.toHaveBeenCalled();
+  } finally {
+    agent.mockRestore();
+  }
 });

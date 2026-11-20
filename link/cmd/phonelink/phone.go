@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -33,6 +35,8 @@ type linkStatus struct {
 	Local     string  `json:"local,omitempty"`
 	Path      string  `json:"path,omitempty"`
 	LatencyMS float64 `json:"latencyMs,omitempty"`
+	DeviceKey string  `json:"deviceKey,omitempty"`
+	PublicKey string  `json:"publicKey,omitempty"`
 }
 
 // failure is the answer of a call that failed: a stable code, never a path, a key or the invite.
@@ -42,9 +46,11 @@ type failure struct {
 
 // The one link of the app, and the directory that it holds while it runs.
 var (
-	guard   sync.Mutex
-	running *devicelink.Link
-	held    *statedir.Dir
+	guard     sync.Mutex
+	running   *devicelink.Link
+	held      *statedir.Dir
+	deviceKey string
+	publicKey string
 )
 
 // join uses the invite in line with the identity in the directory state, and saves the joined identity.
@@ -92,7 +98,9 @@ func start(state, listen string) (started, error) {
 		_ = dir.Close()
 		return started{}, err
 	}
-	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: listen, Save: func(renewed identity.Device) error {
+	key := device.Key.Public()
+	socket := metricsSocket(dir, key.Fingerprint())
+	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: listen, DaemonSocket: socket, Save: func(renewed identity.Device) error {
 		return renewed.Save(dir)
 	}})
 	if err != nil {
@@ -100,7 +108,19 @@ func start(state, listen string) (started, error) {
 		return started{}, err
 	}
 	running, held = link, dir
+	deviceKey = key.Fingerprint()
+	encoded, _ := key.MarshalText() // A populated public key always has a text form.
+	publicKey = string(encoded)
 	return started{Local: link.LocalAddr().String()}, nil
+}
+
+func metricsSocket(dir *statedir.Dir, fingerprint string) net.Listener {
+	if runtime.GOOS != "android" {
+		return nil
+	}
+	// Keep the UI link available even when Android cannot open the reporting socket.
+	socket, _ := dir.Listen("metrics-" + fingerprint + ".sock")
+	return socket
 }
 
 // status reads the link that runs, if one does.
@@ -114,6 +134,7 @@ func status() linkStatus {
 	return linkStatus{
 		Running: true, Local: running.LocalAddr().String(),
 		Path: string(path.Kind), LatencyMS: float64(path.Latency.Microseconds()) / 1000,
+		DeviceKey: deviceKey, PublicKey: publicKey,
 	}
 }
 
@@ -127,6 +148,8 @@ func stop() {
 	_ = running.Close()
 	_ = held.Close()
 	running, held = nil, nil
+	deviceKey = ""
+	publicKey = ""
 }
 
 // code is the stable code of err that the shell gives the client, as the desktop link's codes.

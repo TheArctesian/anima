@@ -14,10 +14,9 @@ mod device;
 mod error;
 #[cfg(mobile)]
 pub mod in_app;
+mod lifecycle;
 #[cfg(any(target_os = "ios", test))]
 mod loopback;
-#[cfg(any(mobile, test))]
-mod memory_session;
 mod name;
 #[cfg(any(mobile, test))]
 mod phone;
@@ -38,10 +37,10 @@ use serde::Serialize;
 use tauri::{State, Webview};
 use zeroize::Zeroizing;
 
+#[cfg(mobile)]
+use crate::mobile::account_session as session;
 #[cfg(desktop)]
 use crate::this_machine::OperatingSystem;
-#[cfg(mobile)]
-use memory_session as session;
 
 pub use api::{HubAccess, HubState};
 #[cfg(desktop)]
@@ -76,6 +75,7 @@ pub struct Cloud {
     http: reqwest::Client,
     pending: Mutex<Option<Zeroizing<String>>>,
     access: Mutex<Option<Zeroizing<String>>>,
+    session: tokio::sync::Mutex<()>,
 }
 
 impl Default for Cloud {
@@ -89,6 +89,7 @@ impl Default for Cloud {
             http,
             pending: Mutex::new(None),
             access: Mutex::new(None),
+            session: tokio::sync::Mutex::new(()),
         }
     }
 }
@@ -146,64 +147,6 @@ fn device_name(webview: &Webview) -> String {
     })
 }
 
-impl Cloud {
-    fn set_access(&self, token: Option<Zeroizing<String>>) {
-        *self.access.lock().unwrap_or_else(PoisonError::into_inner) = token;
-    }
-
-    fn access(&self) -> Option<Zeroizing<String>> {
-        self.access
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .clone()
-    }
-
-    /// Keeps the tokens of a sign-in or a refresh: the access token in memory, the refresh
-    /// token in the key store in place of the old one (HMD-034).
-    fn keep(&self, id: &str, tokens: &workos::Tokens) -> Result<(), CloudError> {
-        session::write(id, &tokens.refresh)?;
-        self.set_access(Some(tokens.access.clone()));
-        Ok(())
-    }
-
-    /// A new access token from the stored refresh token. A refused refresh token is deleted.
-    async fn refreshed(&self, id: &str) -> Result<(), CloudError> {
-        let Some(stored) = session::read(id)? else {
-            return Err(CloudError::Unauthenticated);
-        };
-        match workos::refresh(&self.http, id, &stored).await {
-            Ok(tokens) => self.keep(id, &tokens),
-            Err(CloudError::Unauthenticated) => {
-                session::clear(id)?;
-                self.set_access(None);
-                Err(CloudError::Unauthenticated)
-            }
-            Err(other) => Err(other),
-        }
-    }
-
-    /// Runs `call` with the access token; on `Unauthenticated` refreshes once and runs it again.
-    async fn with_access<T, F, R>(&self, call: F) -> Result<T, CloudError>
-    where
-        F: Fn(Zeroizing<String>) -> R,
-        R: std::future::Future<Output = Result<T, CloudError>>,
-    {
-        let id = client_id()?;
-        if self.access().is_none() {
-            self.refreshed(id).await?;
-        }
-        let token = self.access().ok_or(CloudError::Unauthenticated)?;
-        match call(token).await {
-            Err(CloudError::Unauthenticated) => {
-                self.refreshed(id).await?;
-                let token = self.access().ok_or(CloudError::Unauthenticated)?;
-                call(token).await
-            }
-            other => other,
-        }
-    }
-}
-
 /// Starts a sign-in: the short code to show and the page to open in the system browser.
 #[tauri::command]
 pub async fn cloud_sign_in_start(
@@ -242,7 +185,7 @@ pub async fn cloud_sign_in_poll(
         }
         workos::Poll::SignedIn(tokens) => {
             *cloud.pending.lock().unwrap_or_else(PoisonError::into_inner) = None;
-            cloud.keep(id, &tokens)?;
+            cloud.keep(&webview, id, &tokens).await?;
             Ok(true)
         }
     }
@@ -256,11 +199,25 @@ pub async fn cloud_sign_in_resume(
     cloud: State<'_, Cloud>,
 ) -> Result<bool, CloudError> {
     from_main(&webview)?;
-    match cloud.refreshed(client_id()?).await {
+    match cloud.refreshed(&webview, client_id()?).await {
         Ok(()) => Ok(true),
         Err(CloudError::Unauthenticated) => Ok(false),
         Err(other) => Err(other),
     }
+}
+
+/// Drops this phone's local Anima.ing account session.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn cloud_sign_out(webview: Webview, cloud: State<'_, Cloud>) -> Result<(), CloudError> {
+    from_main(&webview)?;
+    let _guard = cloud.session.lock().await;
+    cloud.set_access(None);
+    *cloud.pending.lock().unwrap_or_else(PoisonError::into_inner) = None;
+    if let Ok(id) = client_id() {
+        session::clear(&webview, id).await?;
+    }
+    Ok(())
 }
 
 /// `POST /v1/hub`: makes or wakes the hub of the account and says where it is.
@@ -269,7 +226,7 @@ pub async fn cloud_hub(webview: Webview, cloud: State<'_, Cloud>) -> Result<HubS
     from_main(&webview)?;
     let http = cloud.http.clone();
     cloud
-        .with_access(|token| {
+        .with_access(&webview, |token| {
             let http = http.clone();
             async move { api::hub(&http, CLOUD_URL, &token).await }
         })
@@ -289,7 +246,7 @@ pub async fn cloud_hub_access(
     let started = tokio::time::Instant::now();
     loop {
         let answered = cloud
-            .with_access(|token| {
+            .with_access(&webview, |token| {
                 let (http, device) = (http.clone(), device.clone());
                 async move { api::hub_access(&http, CLOUD_URL, &token, &device).await }
             })
@@ -303,7 +260,7 @@ pub async fn cloud_hub_access(
         }
         tokio::time::sleep(NOT_READY_WAIT).await;
         let _ = cloud
-            .with_access(|token| {
+            .with_access(&webview, |token| {
                 let http = http.clone();
                 async move { api::hub(&http, CLOUD_URL, &token).await }
             })

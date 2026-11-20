@@ -67,6 +67,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 | HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
+| HT-070 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
+| HT-075 | Android reports its memory and storage readings (M6-1) | A physical Android device joined to a hub, and another client to check the same device | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -1752,6 +1754,30 @@ The [Android build procedure](procedures/setup/android-apk.md) gives the steps t
 2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
 3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
 4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
+
+Result: Open.
+
+### HT-070: keep and clear a mobile session (M5-1)
+
+1. Join a test hub by invitation. Open Devices and confirm that a fresh read succeeds.
+2. Force-stop the application and open it again. Open Devices, request a fresh read, and check that the link and session still work without entering the invite or credentials again.
+3. In Settings, sign out. Force-stop the application and open it again. Confirm that a fresh read now requires sign-in.
+4. Repeat with an Anima.ing account and its hosted hub. After signing out, select Sign in again and confirm that the app starts a new browser sign-in instead of resuming locally.
+
+On 2026-11-20 a separate debug app on the Android tablet stored and replaced a synthetic hub token, refused access from another origin and from an unowned loopback port, restored the token after force-stop, and kept it cleared after a second force-stop. The record contained ciphertext in the app’s no-backup directory.
+
+An Android emulator joined an isolated hub by invitation through the relay after the Android interface enumeration fix. The app verified that it owned the loopback listener, reached the hub with the stored token before and after force-stop, and confirmed that clearing the token removed it. The hosted sign-in service issued a device code on the emulator. The physical tablet later joined the isolated hub, signed in to the hosted hub after returning manually from the browser, and made fresh authenticated requests to both hubs after force-stop. The wide Settings layout initially signed in again after Sign out. A UI test now covers clearing the account session from the wide row. The fixed build on the physical tablet used its compact layout and returned to Welcome with both sessions cleared. Both sessions stayed cleared after force-stop. The signed update check and runtime iOS Keychain check remain open.
+
+Result: Open.
+
+### HT-075: Android reports its memory and storage readings (M6-1)
+
+1. On a signed-in Android device that has joined the hub, open Devices, choose Add device, and choose to enroll this device. Confirm that its entry appears.
+2. On another signed-in client, open the same device. Confirm that Memory and Storage have recent values and that the metrics source is Daemon.
+3. Put Anima in the background on Android for 45 seconds. Confirm that the hub marks the values stale and does not turn the device Down. Return to Anima and confirm that the readings get a newer timestamp.
+4. In Android Settings, choose Sign out. Confirm that Anima returns to Welcome. Select Sign in again and check that it asks for a new approval.
+
+On 2026-11-20 the Samsung tablet was enrolled from the app. The hosted hub showed the tablet with source Daemon and new memory and storage readings. New readings reached the hub again after bringing the app back to the foreground. The background stale state still needs an independent client check.
 
 Result: Open.
 

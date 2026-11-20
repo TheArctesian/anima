@@ -1,0 +1,5 @@
+Anima.ing connects your Android phone or tablet to an Anima hub.
+
+See which devices are online, check their availability, and open SSH sessions through your hub. Review device activity in the app's logs.
+
+You can join a self-hosted hub by invitation or sign in with an Anima.ing account to reach your hosted hub.
