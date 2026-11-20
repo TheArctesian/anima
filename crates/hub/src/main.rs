@@ -16,7 +16,7 @@ use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::SystemClock,
     config::{self, Config},
-    engine::{files, locations, sealing_keys::SealingKeys},
+    engine::{files, locations, reminders, sealing_keys::SealingKeys},
     fleet::{
         access::{self, listen},
         builds,
@@ -233,6 +233,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vpn_feed: vpn::Feed::new(),
         sources,
         files,
+        reminders: reminders::Live::default(),
     };
     let background = upkeep::spawn(&dependencies, hosted);
     // Every route is behind the same permitted-networks check (K3, NET-002).
