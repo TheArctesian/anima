@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { carry, changed } from "../src/merge/carry.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { isDocument } from "../src/gates/tier.ts";
-import { parseMergeRule } from "../src/merge/rules.ts";
+import { conflictsForAHand, parseMergeRule } from "../src/merge/rules.ts";
 import { members, stack, type LeftOut } from "../src/merge/stack.ts";
 import { batch, firstHalf, leftOutSaid, oneLine, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
@@ -160,7 +160,7 @@ function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
 /** The paths in which the branch has a conflict with `dev` as it is now; no merge is made. */
 function conflictWithDev(tip: Tip): string[] {
   const tried = run(["git", "merge-tree", "--write-tree", "--name-only", "--no-messages", `origin/${INTO}`, tip.sha]);
-  return tried.ok ? [] : tried.out.split("\n").slice(1).filter((path) => path !== "");
+  return tried.ok ? [] : conflictsForAHand(tried.out.split("\n").slice(1).filter((path) => path !== ""));
 }
 
 /** Builds a train of `wanted` on the local `dev`, pushes it as a train branch and starts its gates. */
