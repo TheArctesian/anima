@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 2 (2026-11-20). The direction and the build of stage 1 before the launch are R-NEW-t3native (operator, relayed). R-NEW-agentreach, R-NEW-threadstree, R-NEW-threadsservers and R-NEW-threadsenhance (operator, relayed) add the principle of reach, orchestration, sub agents on other machines and models, and servers inside the subscription. The requirements THR-001 to THR-084 are not approved. Parity with the inventory of T3 Code: 100 functions; 15 built on a branch, 3 partly built, 76 not started, 5 owned by a different document, 1 not copied; of the 36 marked must, 9 are built. Only tasks TH1 to TH5 and TH8, which read and start no program, may be built and merged. Each task that starts or drives an agent waits for the approval of this proposal and of its security points (Section 8, OD-THR1 to OD-THR30). A separate reviewer read version 1 (28 findings, 8 High); the read of the new parts of version 2 is in Section 9.
+evidence: Version 2 (2026-11-20). The direction and the build of stage 1 before the launch are R-NEW-t3native (operator, relayed). R-NEW-agentreach, R-NEW-threadstree, R-NEW-threadsservers and R-NEW-threadsenhance (operator, relayed) add the principle of reach, orchestration, sub agents on other machines and models, and servers inside the subscription. The requirements THR-001 to THR-104 are not approved. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied; of the 36 marked must, 9 are built. Only tasks TH1 to TH5 and TH8, which read and start no program, may be built and merged. Each task that starts or drives an agent waits for the approval of this proposal and of its security points (Section 8, OD-THR1 to OD-THR34). A separate reviewer read version 1 (28 findings, 8 High); the read of the new parts of version 2 is in Section 9.
 ---
 
 # Proposal: agent threads (the behaviour of T3 Code, as a native part of Anima)
@@ -12,7 +12,7 @@ Version: 2. Date: 2026-11-20.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), categories Use and See, row 4.24 of [priorities.md](../plan/priorities.md).
 From: R-NEW-t3native, R-NEW-threadsnav, R-NEW-threadsphone, R-NEW-threadsorder, R-NEW-agentreach, R-NEW-threadstree, R-NEW-threadsservers, R-NEW-threadsenhance.
-Identifiers: THR-001 to THR-084, OD-THR1 to OD-THR30, tasks TH0 to TH96.
+Identifiers: THR-001 to THR-104, OD-THR1 to OD-THR34, tasks TH0 to TH96.
 Language: Simplified Technical English (design specification, Section 0).
 Mockup: [agent-threads/index.html](../mockup/agent-threads/index.html).
 Inventory of T3 Code: [t3-code-inventory.md](../research/agent-threads/t3-code-inventory.md) (a record; it adds no requirement).
@@ -37,10 +37,10 @@ The table of Section 6.9 has one row for each function of the inventory, with it
 | Built on a branch (read side; not merged) | 15 | 9 |
 | Partly built | 3 | 2 |
 | Held (built, waits for the approval) | 0 | 0 |
-| Not started | 76 | 25 |
+| Not started | 77 | 25 |
 | Owned by a different document of Anima | 5 | 0 |
 | Not copied (the telemetry of T3 Code; export, which T3 Code does not have) | 1 | 0 |
-| Total | 100 | 36 |
+| Total | 101 | 36 |
 
 What is built is a viewer of the sessions of this computer. Of the main loop of T3 Code (send a prompt, see the stream, approve, see the diff of the turn, commit) no step is built: each needs the drive side, which waits for the approval of Section 8.
 
@@ -291,6 +291,57 @@ The five ideas were framed when the direction was "agent tools in a pane" (R-196
 
 What the research on other tools says people choose a tool for (the feature list `agent-multiplexer-feature-list-2026-11-20.md` of the workspace, not in the repository), to hold the design against: the agents keep running when the window closes or the link drops (stage 1b, the runner in the daemon); the state can be trusted, the most praised and the most complained about (Section 5.1 says what stage 1a can and cannot tell); an answer from a different place, with a push (stages 3 and 6); a worktree for each agent with the diff and a pull request inside the tool (stage 4). The strong point of Anima that none of them has: each machine of the person in one place.
 
+### 4.12 What the research on other tools changes (R-NEW-threadsenhance)
+
+Three reports of a side session of the orchestrating session (2026-11-20) read the source of about 14 tools, user comments, and the issues and discussions of T3 Code. They are in the workspace of the operator, not in this repository. The researchers ran no tool, and they did not read Reddit, X or Discord. This section used the short form that the side session wrote of them, and checked one claim in the source of T3 Code; the session that wrote this proposal did not read the three reports in full. Ideas and behaviour are taken, never code; two of the tools have licences that do not permit a copy into this repository in any case (cmux: GPL-3.0; Claude Squad: AGPL-3.0).
+
+The main finding: T3 Code has most of the functions that its users love. What makes people leave a tool of this kind is a wrong state ("working" when the agent waits), a session that is lost or harmed by a reconnect, a heavy application, behaviour that differs from the command line of the agent itself (the strongest complaint about T3 Code), and a question that answers itself after a time. So "better than T3 Code" is: a state that is right, sessions that are never harmed, the behaviour of the real `claude` and `codex`, and better order. The requirements below are gates of the drive side, not additions for later.
+
+**State**
+
+- **THR-085.** The state of a thread has an order of trust for its sources: the end of the process; then the structured stream of the program (THR-020, THR-021); then hooks; then the session file; then the time of the last change. A weaker source never overrides a stronger one. The view names the source of a state in its help text.
+- **THR-086.** There is a state "Unknown". A thread whose state no source can tell is Unknown, never Working and never Idle (AXT-048). The state that waits for the person is sticky: only the answer, or a stronger source that says that the agent went on, clears it; a timer never clears it. In stage 1a, "May wait for you" and "Your turn" are cleared by the session file and by an opening of the thread, not by a timer, except the limit of 24 hours of THR-055, which moves a thread to "Earlier" and is said in the help text.
+- **THR-087.** A question or an approval is never answered by a timer. A request that nobody answers stays open until the person answers, the person stops the turn, or the process of the program ends; when the process ends, the runner clears the request and says so (THR-030).
+- **THR-088.** The runner chooses the session ID of a new Claude Code thread before the start, where the program permits it, so that a resume never takes the session of a different agent in the same folder (task TH10 measures the flag).
+- **THR-089.** Events of a sub agent do not change the state of its lead. A compaction can change the session ID of the program in the middle of a turn; the runner follows it and keeps the thread one thread.
+- **THR-090.** A session that the person started by hand in a terminal has no runner. Its state comes from the session file (Section 5.1), and from hooks when the person permits them: a file of hooks that Anima makes and gives to the program for that start, with the settings of the person not changed ([agent-layer.md](agent-layer.md) owns the hooks). Hooks alone are not trusted: a stop with Escape, a killed process and a bypass mode fire none.
+
+**The same behaviour as the command line of the agent**
+
+- **THR-091.** A thread of Anima behaves as the program does in a terminal of the person: the same skills, slash commands, MCP servers, permission rules and settings, because the runner runs the real `claude` and `codex` (THR-020, THR-021; OD-THR21). This is a gate with a check: a fixed list of cases (a skill, a slash command, a project MCP server, an allow rule, a hook) gives the same result in a terminal and in a thread. A difference is a defect.
+
+**Attention**
+
+- **THR-092.** Who gets an alert is decided one time, in one place (the runner for this computer; the hub from stage 2), from presence: each client says which thread it shows and when the person was last active there. If a client that is present shows the thread, no alert is sent. Else the alert goes to the client that was active last. A push to the phone is sent only when no client is present. Two devices never ring for one event.
+- **THR-093.** An item of "Needs you" closes by itself when the agent leaves the state that waits, wherever the answer was given. There is no "done" alert while a request is open or a message is queued. What is not opened yet stays so after a restart of the application.
+- **THR-094.** Keys: go to the newest thread that needs the person; and "done, go to the next". The quiet time of THR-061 is new design: no tool that was read has one.
+
+**Persistence**
+
+- **THR-095.** A reconnect of a client, a restart of the application and an update of the daemon must not harm a turn that runs. This is a measured gate of stage 1b: a test stops and starts the client, and the daemon, while a turn runs, and the turn ends as it would have. To make the update of the daemon possible, a small holder process can own the processes of the agents and the end of their output while the daemon restarts (OD-THR34).
+- **THR-096.** After a restart, the runner finds each thread by one scan of its store. It does not mark each running thread as failed. The event log is not cut so far that the view of a thread cannot be built again from it and from the session file of the program. The cursor of a client names the life of the store and the sequence, so that a client knows when its cursor is from an older store.
+
+**Worktrees and landing (stage 4)**
+
+- **THR-097.** A delete of a thread or of its worktree cannot lose work: the runner lists the files that are at risk, saves the work to a private ref first, and puts the thread back if the removal fails. A branch name that exists is never taken over in silence and never deleted in silence.
+- **THR-098.** A new worktree can get the files that git ignores and that a file of the repository names (a `.worktreeinclude` file), only when git ignores them on both sides; a set-up script of a repository runs only after the person trusted it, and the trust is for the content of the script (its hash). Each worktree can get a block of ports of its own, so that two threads can run the same dev server.
+- **THR-099.** Undo restores only the files that the turn changed and that nothing changed since; the checkpoints are pruned, with a limit of size. The results of CI and of a review of a pull request go back to the agent of the thread by themselves, as one message with the repeats removed and a limit of size, never one prompt for each comment.
+- **THR-100.** A comment of the person on a line of a diff goes to the agent with the file, the lines and the text of the diff. T3 Code has this (`apps/web/src/reviewCommentContext.ts`); the first inventory missed it, and the parity table has its row.
+- **THR-101.** A project can hold more than one repository (the most asked open request of the users of T3 Code). Its model is decided before task TH41 (OD-THR32).
+
+**Steering and orchestration (stage 7, with Section 4.11.1)**
+
+- **THR-102.** A sub agent is a real child thread, with its own view. A message of an agent to a thread steers it (it is taken at the next step); a message of the person interrupts. Queued prompts go as one turn. A stop also stops the queue and each wake-up that was planned. A retry never sends a prompt two times.
+- **THR-103.** The same prompt to more than one agent, each in its own worktree, with a thread that judges the results and recommends one, is a choice of the operator (OD-THR31).
+
+**Order (the gaps of T3 Code itself; stage 5)**
+
+- **THR-104.** Split view, a second window, groups of threads that fold, and a move of a thread to a different project. Each thread can be opened in a terminal, and a session of a terminal is shown as a thread (stage 1a does the second).
+
+Traps that the reports name, which the tasks must not repeat: a hook of Claude Code named `Notification` fires for more than a wait (only its kinds for a permission and for a question mean that the agent waits); the `notify` of Codex holds one program, which a different tool can own; a port taken from a hash alone collides; a folder path that can be renamed breaks the resume of the agent; submodules break a delete in three tools; a secret inside a QR code; a push text that is not encrypted.
+
+What one report judged not worth a copy (navigation in code and an editor in the application, a board of cards, sandboxes of a vendor in a cloud, voice, a browser in the application, the best of N): these are functions of other tools, and the report gives the opinion of users. None is decided here: OD-THR33.
+
 ## 5. Requirements of stage 1a (the read side)
 
 - **THR-003.** the crate `agent-threads` must read the lines of one session file of Claude Code (`~/.claude/projects/<project>/<id>.jsonl`) or Codex (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) into a thread: the prompts the person typed, the replies, the reasoning, the tool calls with their results and the patch of an edit, the ends of the turns and the compaction marks, in the order of the file. Lines of a sub-agent and lines that the program wrote for itself are not entries. It is pure; it reads no file.
@@ -369,7 +420,8 @@ Needs from W3, W4, W7: none.
 | TH12 | The local socket between the client and the runner on this computer, that only this user can open (as task W0) | TH11 | A test: a different user cannot open it | Not started (held) |
 | TH13 | `anima agents send` and `anima agents stop` on this computer; the MCP tool of OD-THR8 | TH11 | Tests | Not started (held) |
 | TH14 | The composer: model, effort, mode, send, stop; Enter sends, Shift+Enter makes a new line; the stream by paragraph | TH12 | Client tests; a human check | Not started (held) |
-| TH15 | Approvals and questions on this computer (THR-030 to THR-034) | TH11, OD-THR5 | Tests: a reply to a stale request is refused | Not started (held) |
+| TH15 | Approvals and questions on this computer (THR-030 to THR-034, THR-087) | TH11, OD-THR5 | Tests: a reply to a stale request is refused; no request is answered by a timer | Not started (held) |
+| TH16 | The gates of the drive side: the states with their order of trust, Unknown and the sticky wait (THR-085, THR-086, THR-089); a reconnect and a restart that harm no turn (THR-095, THR-096); the same behaviour as the command line (THR-091); who gets an alert (THR-092, THR-093) | TH11, TH14 | A measured record for each gate, and a human check side by side with a terminal | Not started (held) |
 
 Needs from W3, W4, W7: none on this computer. A human check for each program on a Mac and on `pop-os`.
 
@@ -400,9 +452,9 @@ Each task of this stage runs `git` or changes files of the person through the ru
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
 | TH40 | A folder of this computer as the project of a new thread, chosen in a window of the operating system (THR-041, THR-048) | TH14 | A test; a human check | Not started |
-| TH41 | A worktree for each thread: base branch, a name by the runner, a set-up report (inventory 6.1; THR-050) | TH11 | Tests in a made repository | Not started |
+| TH41 | A worktree for each thread: base branch, a name by the runner, a set-up report, the ignored files that the repository names, the trust in a set-up script, a block of ports (inventory 6.1; THR-050, THR-097, THR-098, THR-101) | TH11; OD-THR32 | Tests in a made repository | Not started |
 | TH42 | Checkpoints after each turn as hidden commits under a private ref of Anima (inventory 6.2) | TH41 | Tests: a checkpoint takes no file that git ignores; the branch of the person does not move | Not started |
-| TH43 | The diff of a turn and of the thread from two checkpoints, with its panel and find in the diff (inventory 2.9) | TH42 | Tests; client tests | Not started |
+| TH43 | The diff of a turn and of the thread from two checkpoints, with its panel, find in the diff, and a comment on a line that goes to the agent (inventory 2.9; THR-100) | TH42 | Tests; client tests | Not started |
 | TH44 | "Edit from here": cut the conversation, and revert the files only in a worktree of the runner (inventory 6.3) | TH42 | Tests: refused outside a worktree, and when a different thread uses the folder | Not started |
 | TH45 | Commit, push and a pull request through the forge domain of the hub; the state of the branch, fetch, pull (inventory 6.4, 6.5) | TH41 | Tests with a made remote; a human check on GitHub | Not started |
 | TH46 | The list: archive, delete, pin, rename, a title that a model writes, groups by project (inventory 1.4, 1.6, 1.7) | TH11 | Tests | Not started |
@@ -540,6 +592,7 @@ Each task starts or drives an agent, or starts a machine: none is built for the 
 | 2.8 | Plan mode and the proposed plan | should | 4 | TH48 | Not started |
 | 2.9 | The patch of each edit | must | 1a | TH1, TH4 | Built on a branch |
 | 2.9 | The diff of a turn and of the thread | must | 4 | TH43 | Not started |
+| 2.9 | A comment on a line of a diff, sent to the agent (found by the research; `apps/web/src/reviewCommentContext.ts`) | should | 4 | TH43 | Not started |
 | 2.10 | Errors with Retry | must | 1b | TH14 | Not started |
 | 2.11 | The context meter | should | 4 | TH48 | Not started |
 | 2.11 | The usage page with the estimate of the cost | later | — | Agent usage (AIS-018 to AIS-024); the link is TH4 | Owned by a different document |
@@ -734,6 +787,10 @@ Each row is one question for the operator with the options, the strength and the
 | OD-THR28 | How does a thread on a machine of the pool get to Claude or Codex (THR-083)? | (A) Only an API key that you set for this use. (B) You sign in on that machine each time. (C) Your login is copied there (BOT-020 forbids it today). | A, until the record TH96 says what the vendor terms permit |
 | OD-THR29 | How does the folder of a project get to a different machine (THR-075)? | (A) The daemon clones the repository from the forge into a folder of the runner. (B) The shared project folder (AXT-054 to AXT-078). (C) Both. | A first: it needs no sync and gives a clean worktree; B when that proposal is approved (OD-THR15) |
 | OD-THR30 | Which of the five ideas of Section 4.11.4 become a part of this proposal now? | (A) `needs-you-inbox` and `agent-state-hooks`, which R-NEW-threadsorder needs. (B) All five. (C) None yet. | A; the other three when their stage comes |
+| OD-THR31 | Do you want "the same prompt to several agents, then a thread that judges" (THR-103)? | (A) Yes, in stage 7. (B) No. The users' report ranks it low; your words on orchestration and reach favour it. | A, after the tree works |
+| OD-THR32 | A project with more than one repository (THR-101): which model? | (A) A project is a list of repositories; a thread gets one worktree for each repository that it names, in one folder of the thread. (B) A thread has one repository; a project only groups threads of several repositories. (C) Later. | B first (it needs nothing new in the runner), A when stage 4 works; decide before TH41 |
+| OD-THR33 | Functions of other tools that one research report judged not worth a copy: navigation in code and an editor, a board of cards, sandboxes of a vendor, voice, a browser in the application. Which do you want? | Each one yes or no. | None now: Anima has a terminal, the preview of AXT-079 to AXT-088 and Projects; ask again after stage 4 |
+| OD-THR34 | A small holder process that owns the agent processes, so that the daemon can update or stop while agents run (THR-095)? | (A) Yes, from stage 1b. (B) No: an update of the daemon waits until no thread runs, or stops them with a notice. | B for the launch, A after it: a second long-lived process is a second thing to secure and to update |
 | OD-THR14 | Do you approve the mockup [agent-threads/index.html](../mockup/agent-threads/index.html), frames 1 and 2, for stage 1a? | (A) Yes. (B) Changes. | A |
 
 ## 11. Changes that this proposal asks of other documents
@@ -764,13 +821,13 @@ Not made in this version; each needs the ruling named.
 - The events of `codex app-server` on this Mac; the version of Codex that has them (task TH10).
 - The format of the session files: read from the files of this Mac on 2026-11-20 (Claude Code and Codex of that day). The vendors change the format without notice; the reader ignores what it does not know (THR-006). Old Codex files without `event_msg` lines give no prompts in stage 1a.
 - Nobody put T3 Code and the page Threads side by side on the same session, with pictures. The page needs this human check before a person judges it.
-- The three research reports that R-NEW-threadsenhance names were not finished when version 2 was written; nothing of them is in this document.
+- The three research reports that R-NEW-threadsenhance names: Section 4.12 used their short form. The reports ran no tool, so each claim about Claude Code and Codex in Section 4.12 is a claim of the source of a different tool until task TH10 measures it.
 - The screens of T3 Code: nobody ran it. The layout ideas come from its source and documents.
 - How T3 Code shows a read and a search of Codex (inventory).
 
 ## 13. History
 
-- 2026-11-20, version 2. From the brief of a side session of the orchestrating session with the operator: the principle of reach (THR-065, R-NEW-agentreach); the parity count and the parity table (Sections 1.1 and 6.9); the order of the build by where the work runs; task rows for stages 4 and 5; approvals are stage 1b on this computer in each table; orchestration, a chosen machine and model, and servers inside the subscription (Section 4.11, THR-066 to THR-084, stages 7 and 8, R-NEW-threadstree, R-NEW-threadsservers); the ideas and where they would go (R-NEW-threadsenhance); the recommendations of OD-THR6, OD-THR7, OD-THR8 and OD-THR21 are turned; OD-THR25 to OD-THR30 are new; Markdown in the thread (THR-019, TH8).
+- 2026-11-20, version 2. From the brief of a side session of the orchestrating session with the operator: the principle of reach (THR-065, R-NEW-agentreach); the parity count and the parity table (Sections 1.1 and 6.9); the order of the build by where the work runs; task rows for stages 4 and 5; approvals are stage 1b on this computer in each table; orchestration, a chosen machine and model, and servers inside the subscription (Section 4.11, THR-066 to THR-084, stages 7 and 8, R-NEW-threadstree, R-NEW-threadsservers); the ideas and where they would go (R-NEW-threadsenhance); the recommendations of OD-THR6, OD-THR7, OD-THR8 and OD-THR21 are turned; OD-THR25 to OD-THR30 are new; Markdown in the thread (THR-019, TH8). Section 4.12 takes the findings of the research on other tools (THR-085 to THR-104, task TH16, OD-THR31 to OD-THR34), and the parity table has one more row (a comment on a line of a diff).
 
 - 2026-11-20, version 1, fifth part. R-NEW-threadsorder: the threads that need the person at the top and the threads that work at the bottom, and a notification (Section 5.1, THR-055 to THR-064, tasks TH5 to TH7, OD-THR24). TH5 is built on the branch `threads/needs-you`; the system notification and the watcher are not built. The reader is the crate `agent-threads` (the release map of `anima` alone and of the iOS application does not take the core of the daemon).
 - 2026-11-20, version 1, fourth part. R-NEW-threadsnav decides OD-THR10 (its own item of the bar); R-NEW-threadsphone puts Threads in the place of Sessions in the phone bar (THR-054, OD-THR23, the note for the mobile stream); each function of the inventory has a stage (Section 6.6, THR-053), after the words "should copy every feature they have".
