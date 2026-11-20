@@ -82,12 +82,12 @@ fn host_022_a_file_as_people_write_it_has_no_problem() {
     }
 }
 
-/// A file with one problem, and the problem: code, line, column, service, key.
+/// A file with one problem, and the problem: code, line, column, number of the service, key.
 type Case = (
     &'static str,
     ProblemCode,
     (u32, u32),
-    Option<&'static str>,
+    Option<u32>,
     Option<&'static str>,
 );
 
@@ -126,22 +126,22 @@ const ERRORS: [Case; 19] = [
         "services:\n  web:\n    image: a\n    [a, b]: c\n",
         ProblemCode::KeyNotText,
         (4, 5),
-        Some("web"),
+        Some(1),
         None,
     ),
     (
         "services:\n  web:\n    image: a\n    image: b\n",
         ProblemCode::DuplicateKey,
         (4, 5),
-        Some("web"),
+        Some(1),
         Some("image"),
     ),
     (
         "services:\n  web:\n    image: a\n  web:\n    image: b\n",
         ProblemCode::DuplicateKey,
         (4, 3),
+        Some(2),
         None,
-        Some("web"),
     ),
     ("name: app\n", ProblemCode::NoServices, (1, 1), None, None),
     (
@@ -176,35 +176,35 @@ const ERRORS: [Case; 19] = [
         "services:\n  web: nginx\n",
         ProblemCode::ServiceNotMapping,
         (2, 3),
-        Some("web"),
+        Some(1),
         None,
     ),
     (
         "services:\n  web:\n    ports: ['80:80']\n",
         ProblemCode::NoImageOrBuild,
         (2, 3),
-        Some("web"),
+        Some(1),
         None,
     ),
     (
         "services:\n  web:\n    image: a\n    ports: 80\n",
         ProblemCode::WrongType,
         (4, 5),
-        Some("web"),
+        Some(1),
         Some("ports"),
     ),
     (
         "services:\n  web:\n    image: a\n    restart: sometimes\n",
         ProblemCode::RestartNotKnown,
         (4, 5),
-        Some("web"),
+        Some(1),
         Some("restart"),
     ),
     (
         "services:\n  web:\n    image: a\n    restart: on-failure:x\n",
         ProblemCode::RestartNotKnown,
         (4, 5),
-        Some("web"),
+        Some(1),
         Some("restart"),
     ),
 ];
@@ -218,8 +218,8 @@ fn host_022_each_error_has_its_code_its_position_and_its_names() {
         };
         assert_eq!(problem.code, code, "{file}");
         assert_eq!(problem.place, Place { line, column }, "{file}");
-        assert_eq!(problem.service.as_deref(), service, "{file}");
-        assert_eq!(problem.key.as_deref(), key, "{file}");
+        assert_eq!(problem.service_number, service, "{file}");
+        assert_eq!(problem.key, key, "{file}");
         assert_eq!(code.severity(), Severity::Error);
         assert!(!found.syntax_valid(), "{file}");
     }
@@ -276,18 +276,18 @@ fn host_022_a_key_that_compose_does_not_know_and_version_are_warnings() {
         .iter()
         .map(|problem| {
             let place = (problem.place.line, problem.place.column);
-            (problem.code, place, problem.key.as_deref())
+            (problem.code, place, problem.key)
         })
         .collect();
     assert_eq!(
         seen,
         [
             (ProblemCode::VersionObsolete, (1, 1), None),
-            (ProblemCode::UnknownTopLevelKey, (2, 1), Some("servics")),
-            (ProblemCode::UnknownServiceKey, (7, 5), Some("imge")),
+            (ProblemCode::UnknownTopLevelKey, (2, 1), None),
+            (ProblemCode::UnknownServiceKey, (7, 5), None),
         ]
     );
-    assert_eq!(found.problems[2].service.as_deref(), Some("web"));
+    assert_eq!(found.problems[2].service_number, Some(1));
     assert!(
         found
             .problems

@@ -45,6 +45,29 @@ fn quoted(words: &[String]) -> String {
     words.iter().map(quote).collect::<Vec<_>>().join(" ")
 }
 
+/// The place in `words` of the character `at` (from 1) of [`quoted`]`(words)`: the number of
+/// the word and of the character in it, each from 1. A quote that the line adds is at the
+/// nearest character of its word.
+fn place_in_words(words: &[String], at: u32) -> Option<(usize, usize)> {
+    let mut places = Vec::new();
+    for (index, word) in words.iter().enumerate() {
+        let number = index + 1;
+        if index > 0 {
+            places.push((number, 1));
+        }
+        places.push((number, 1));
+        let mut last = 1;
+        for (character, text) in word.chars().enumerate() {
+            last = character + 1;
+            let width = if text == '\'' { 4 } else { 1 };
+            places.extend(std::iter::repeat_n((number, last), width));
+        }
+        places.push((number, last));
+    }
+    let index = usize::try_from(at).ok()?.checked_sub(1)?;
+    places.get(index).or_else(|| places.last()).copied()
+}
+
 /// Why the hub did not convert the command, as a sentence.
 #[must_use]
 pub fn refusal_sentence(refusal: &Refusal) -> &'static str {
@@ -64,13 +87,35 @@ pub fn refusal_sentence(refusal: &Refusal) -> &'static str {
         Refusal::REDIRECTION => "The command has a redirection (`<` or `>`). Remove it.",
         Refusal::SHELL_SYNTAX => "The command has round brackets or a comment. Remove them.",
         Refusal::VARIABLE_NOT_KEPT => {
-            "The command has a variable that cannot stay in a Compose file. Only `$NAME` and \
-             `${NAME}` can."
+            "The command has a variable that cannot stay in a Compose file. Only `$NAME`, \
+             `${NAME}` and `${NAME:-text}` with no quote can."
+        }
+        Refusal::ARITHMETIC_EXPANSION => {
+            "The command has `$[`, which a shell changes into the result of a sum. Write the \
+             result in its place."
+        }
+        Refusal::BRACE_EXPANSION => {
+            "The command has a list or a range in braces, such as `{80,443}`, which a shell \
+             makes into more than one word. Write each word, or put the braces in quotes."
+        }
+        Refusal::TILDE_EXPANSION => {
+            "The command has a `~`, which a shell changes into your home folder. Write the full \
+             path."
+        }
+        Refusal::PATTERN => {
+            "The command has `*`, `?` or `[` out of quotes, which a shell matches against the \
+             names of files. Put the word in quotes."
         }
         Refusal::UNCLOSED_QUOTE => "A quote in the command is not closed.",
         Refusal::CONTROL_CHARACTER => "The command holds a control character.",
         Refusal::OPTION_WITHOUT_VALUE => "The last option of the command needs a value.",
         Refusal::NO_IMAGE => "The command names no image.",
+        Refusal::TOO_MANY_NETWORKS => {
+            "The command has more than 32 networks or more than 32 network aliases."
+        }
+        Refusal::FILE_TOO_LARGE => {
+            "The Compose file would be larger than 256 KiB, the most that the check reads."
+        }
         Refusal::Other(_) => "The hub did not convert the command.",
     }
 }
@@ -110,6 +155,7 @@ impl FromRunArgs {
     /// [`Failure::Input`] when standard input cannot be read or is larger than 64 KiB; the
     /// hub's refusal; [`Failure::Usage`] for a command that the hub did not convert.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        let words = (!self.command.is_empty()).then_some(self.command.as_slice());
         let command = if self.command.is_empty() {
             let what = "the docker run command";
             let from = Path::new("-");
@@ -126,7 +172,7 @@ impl FromRunArgs {
             invocation.output.data(&converted, |_| Table::record())?;
         }
         let Some(file) = &converted.compose_file else {
-            return Err(refused(&converted));
+            return Err(refused(&converted, words));
         };
         if !invocation.output.json() {
             invocation.output.file(file)?;
@@ -146,14 +192,22 @@ impl FromRunArgs {
     }
 }
 
-fn refused(converted: &Converted) -> Failure {
+/// The failure of a command that the hub did not convert. The place is in the words that the
+/// operator gave after `--`, or in the line read from standard input.
+fn refused(converted: &Converted, words: Option<&[String]>) -> Failure {
     let sentence = converted
         .refusal
         .as_ref()
         .map_or("The hub did not convert the command.", refusal_sentence);
-    let place = converted
-        .refused_at
-        .map_or_else(String::new, |at| format!(" (character {at})"));
+    let at = converted.refused_at.and_then(|at| u32::try_from(at).ok());
+    let place = match (at, words) {
+        (Some(at), Some(words)) => place_in_words(words, at)
+            .map_or_else(String::new, |(word, character)| {
+                format!(" (word {word}, character {character})")
+            }),
+        (Some(at), None) => format!(" (character {at})"),
+        (None, _) => String::new(),
+    };
     Failure::Usage {
         message: format!("{sentence}{place}"),
         hint: Some(Hint::run("anima containers from-run --help")),
@@ -162,7 +216,7 @@ fn refused(converted: &Converted) -> Failure {
 
 #[cfg(test)]
 mod tests {
-    use super::quoted;
+    use super::{place_in_words, quoted};
 
     #[test]
     fn host_022_each_word_goes_to_the_hub_in_single_quotes() {
@@ -171,5 +225,19 @@ mod tests {
             quoted(&words),
             r"'docker' 'run' '-e' 'A=it'\''s $5' 'nginx'"
         );
+    }
+
+    #[test]
+    fn host_022_a_place_in_the_quoted_line_is_a_place_in_the_words() {
+        let words = ["docker", "run", "-e", "A=it's", "ng|nx"].map(str::to_owned);
+        let line = quoted(&words);
+        let at = |text: &str| u32::try_from(line.find(text).unwrap() + 1).unwrap();
+        assert_eq!(place_in_words(&words, 1), Some((1, 1)));
+        assert_eq!(place_in_words(&words, at("run")), Some((2, 1)));
+        assert_eq!(place_in_words(&words, at("s'")), Some((4, 6)));
+        assert_eq!(place_in_words(&words, at("|")), Some((5, 3)));
+        let end = u32::try_from(line.chars().count()).unwrap();
+        assert_eq!(place_in_words(&words, end), Some((5, 5)));
+        assert_eq!(place_in_words(&words, end + 10), Some((5, 5)));
     }
 }

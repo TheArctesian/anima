@@ -1185,7 +1185,7 @@ enum ComposeFileProblemSeverity {
   WARNING
 }
 
-"One problem of a Compose file (HOST-022). It never holds a value of the file: an environment value is a secret of the operator (LOG-007)."
+"One problem of a Compose file (HOST-022). It holds no text that the operator wrote, because a value, and also a name in the wrong place, can be a secret (LOG-007): a service has its number, and a key its name only when Compose defines that name."
 type ComposeFileProblem {
   code: ComposeFileProblemCode!
   severity: ComposeFileProblemSeverity!
@@ -1193,9 +1193,9 @@ type ComposeFileProblem {
   line: Int!
   "The column of the problem in its line, from 1."
   column: Int!
-  "The name of the service, when the problem is in one. Null when the name has a character that is not a letter, a digit, `.`, `_` or `-`. At most 64 characters."
-  service: String
-  "The name of the key, when the problem is about one. The same rule as service."
+  "The number of the service in the order of `services`, from 1, when the problem is in one."
+  serviceNumber: Int
+  "The name of the key, when the problem is about a key that Compose defines (such as `ports`). Null for an unknown key, an extension and the name of a service."
   key: String
 }
 
@@ -1215,8 +1215,12 @@ command is larger than 64 KiB. NO_COMMAND: the text is empty. NOT_DOCKER_RUN: th
 `docker container run` (an optional `sudo` first). COMMAND_SUBSTITUTION: `$(` or a backtick. PIPE. MORE_THAN_ONE_COMMAND:
 `;`, `&&`, `||`, `&`, or a line break with no backslash before it. REDIRECTION: `<` or `>`. SHELL_SYNTAX: a group in
 round brackets or a comment. VARIABLE_NOT_KEPT: a variable that cannot stay as text in a Compose file (`$1`, `$?`,
-`${NAME%x}`); `$NAME`, `${NAME}` and `${NAME:-text}` stay. UNCLOSED_QUOTE. CONTROL_CHARACTER. OPTION_WITHOUT_VALUE: the
-last option needs a value. NO_IMAGE: the command names no image.
+`${NAME%x}`, a quote in `${...}`); `$NAME`, `${NAME}` and `${NAME:-text}` stay. ARITHMETIC_EXPANSION: `$[`.
+BRACE_EXPANSION: a list or a range in braces out of quotes, such as `{80,443}`. TILDE_EXPANSION: a `~` out of quotes at the
+start of a word or after `=` or `:`. PATTERN: `*`, `?` or `[` out of quotes. UNCLOSED_QUOTE. CONTROL_CHARACTER (also a
+carriage return that is not part of a line end). OPTION_WITHOUT_VALUE: the last option needs a value. NO_IMAGE: the
+command names no image. TOO_MANY_NETWORKS: more than 32 networks or more than 32 network aliases. FILE_TOO_LARGE: the
+Compose file would be larger than 256 KiB, the most that composeFileCheck reads.
 """
 enum ComposeRunRefusal {
   TOO_LARGE
@@ -1228,10 +1232,16 @@ enum ComposeRunRefusal {
   REDIRECTION
   SHELL_SYNTAX
   VARIABLE_NOT_KEPT
+  ARITHMETIC_EXPANSION
+  BRACE_EXPANSION
+  TILDE_EXPANSION
+  PATTERN
   UNCLOSED_QUOTE
   CONTROL_CHARACTER
   OPTION_WITHOUT_VALUE
   NO_IMAGE
+  TOO_MANY_NETWORKS
+  FILE_TOO_LARGE
 }
 
 """
@@ -1264,7 +1274,7 @@ type ComposeFromDockerRun {
   "The position in the command where the converter stopped, in characters from 1. Null when refusal is null."
   refusedAt: Int
   notes: [ComposeRunNote!]!
-  "The options of the command that are not in the file, by name only (never a value), each one time. An option is not an error."
+  "The options of Docker in the command that are not in the file, by name only (never a value), each one time; an option that Docker does not have is `(an unknown option)`. An option is not an error."
   notConverted: [String!]!
 }
 
@@ -3493,9 +3503,9 @@ type Query {
   containerNetworks(deviceId: ID!): [ContainerNetwork!]!
   "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. Each read asks the registries again: the hub keeps no answer. The errors of containers apply. Open to a read key."
   containerImageUpdates(deviceId: ID!): [ContainerImageUpdate!]!
-  "The check of the syntax of a Compose file before an install (HOST-022): is the text YAML, and does it have the form of a Compose file. It is a check of the syntax only: it does not say that a machine accepts the file. The hub reaches no device, runs nothing and keeps nothing; it writes the text to no log, no event and no error (LOG-007), and a problem never holds a value of the file. A text of more than 256 KiB has the one problem TOO_LARGE. Open to a read key."
+  "The check of the syntax of a Compose file before an install (HOST-022): is the text YAML, and does it have the form of a Compose file. It is a check of the syntax only: it does not say that a machine accepts the file. The hub reaches no device, runs nothing and keeps nothing; it writes the text to no log, no event and no error (LOG-007), and a problem holds no text of the file. A text of more than 256 KiB has the one problem TOO_LARGE. Complexity 100: one request holds at most four. Open to a read key."
   composeFileCheck(file: String!): ComposeFileCheck!
-  "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Open to a read key."
+  "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
   composeFromDockerRun(command: String!): ComposeFromDockerRun!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)

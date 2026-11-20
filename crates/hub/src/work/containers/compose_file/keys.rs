@@ -137,24 +137,35 @@ const ANY: [&str; 31] = [
     "use_api_socket",
 ];
 
+/// The keys of a service, each with the forms of its value.
+const SERVICE: [(&[&str], Accepts); 8] = [
+    (&TEXT, Accepts::Text),
+    (&LIST, Accepts::List),
+    (&MAP, Accepts::Map),
+    (&TEXT_OR_LIST, Accepts::TextOrList),
+    (&TEXT_OR_MAP, Accepts::TextOrMap),
+    (&LIST_OR_MAP, Accepts::ListOrMap),
+    (&ANY, Accepts::Any),
+    (&["restart"], Accepts::Restart),
+];
+
 /// The forms of the value of `key` in a service; `None` for a key that Compose does not know.
 pub(super) fn service(key: &str) -> Option<Accepts> {
-    let lists: [(&[&str], Accepts); 7] = [
-        (&TEXT, Accepts::Text),
-        (&LIST, Accepts::List),
-        (&MAP, Accepts::Map),
-        (&TEXT_OR_LIST, Accepts::TextOrList),
-        (&TEXT_OR_MAP, Accepts::TextOrMap),
-        (&LIST_OR_MAP, Accepts::ListOrMap),
-        (&ANY, Accepts::Any),
-    ];
-    if key == "restart" {
-        return Some(Accepts::Restart);
-    }
-    lists
+    SERVICE
         .iter()
         .find(|(keys, _)| keys.contains(&key))
         .map(|(_, accepts)| *accepts)
+}
+
+/// `key` as a name that Compose defines, of the top level or of a service; `None` for each
+/// other text, also an extension, which is a name that the operator chose.
+pub(super) fn defined(key: &str) -> Option<&'static str> {
+    let service = SERVICE.iter().flat_map(|(keys, _)| keys.iter());
+    TOP_LEVEL
+        .iter()
+        .chain(service)
+        .find(|name| **name == key)
+        .copied()
 }
 
 /// Whether `policy` is a restart policy of Compose. A text with a variable passes: Compose

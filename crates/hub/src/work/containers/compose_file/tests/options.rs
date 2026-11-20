@@ -228,7 +228,8 @@ fn host_022_an_option_with_no_key_is_listed_and_is_not_an_error() {
 #[test]
 fn host_022_an_option_that_docker_does_not_have_is_read_as_one_with_no_value() {
     let done = converted("docker run --frobnicate --level=9 -Z nginx echo");
-    assert_eq!(done.not_converted, ["--frobnicate", "--level", "-Z"]);
+    // An option that Docker does not have is the operator's own text: it has no name here.
+    assert_eq!(done.not_converted, ["(an unknown option)"]);
     assert_eq!(done.notes, [Note::UnknownOptionReadAsFlag]);
     assert_eq!(
         of_service("docker run --frobnicate nginx echo", &["image"]),

@@ -14,7 +14,7 @@ use async_graphql::{Context, ID, Object, Result};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
-use self::compose_file::FromDockerRun;
+use self::compose_file::{FromDockerRun, TEXT_COMPLEXITY, off_the_runtime};
 pub(super) use self::sentences::to_graphql;
 use super::{
     Container, ContainerDetail, ContainerId, ContainerLog, ImageUpdate, LineCount, Network, Reach,
@@ -130,15 +130,21 @@ impl Query {
 
     /// The check of the syntax of a Compose file (HOST-022). It reaches no device and keeps
     /// nothing; the hub writes the text to no log (LOG-007).
-    #[graphql(guard = "Authenticated")]
-    async fn compose_file_check(&self, file: String) -> Check {
-        check(&file)
+    #[graphql(
+        guard = "Authenticated",
+        complexity = "TEXT_COMPLEXITY + child_complexity"
+    )]
+    async fn compose_file_check(&self, file: String) -> Result<Check> {
+        off_the_runtime(move || check(&file)).await
     }
 
     /// The Compose file of one `docker run` command (HOST-022). It runs nothing, reaches no
     /// device and keeps nothing; the hub writes the command to no log (LOG-007).
-    #[graphql(guard = "Authenticated")]
-    async fn compose_from_docker_run(&self, command: String) -> FromDockerRun {
-        FromDockerRun(convert(&command))
+    #[graphql(
+        guard = "Authenticated",
+        complexity = "TEXT_COMPLEXITY + child_complexity"
+    )]
+    async fn compose_from_docker_run(&self, command: String) -> Result<FromDockerRun> {
+        off_the_runtime(move || FromDockerRun(convert(&command))).await
     }
 }

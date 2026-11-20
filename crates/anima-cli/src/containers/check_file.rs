@@ -1,7 +1,8 @@
 //! `anima containers check-file <path>`: the check of the syntax of a Compose file (HOST-022).
 //! The hub reads the text and reaches no device. It is a check of the syntax only: it does
 //! not say that a machine accepts the file. A value of the file can be a secret, so a problem
-//! gives a code, a position and at most the name of a service and of a key.
+//! gives a code, a position, the number of its service and the name of a key that Compose
+//! defines; never a text that the operator wrote.
 
 use std::path::PathBuf;
 
@@ -92,21 +93,29 @@ fn words<T: serde::Serialize>(name: &T) -> String {
 
 fn table(check: &Check) -> Table {
     let mut table = Table::new(vec![
-        "LINE", "COLUMN", "SEVERITY", "PROBLEM", "SERVICE", "KEY",
+        "LINE",
+        "COLUMN",
+        "SEVERITY",
+        "PROBLEM",
+        "SERVICE NO.",
+        "KEY",
     ]);
     for problem in &check.problems {
         let tone = match problem.severity {
             Severity::ERROR => Tone::Bad,
             _ => Tone::Warning,
         };
-        let name = |name: &Option<String>| name.clone().unwrap_or_else(|| "-".to_owned());
+        let service = problem
+            .service_number
+            .map_or_else(|| "-".to_owned(), |number| number.to_string());
+        let key = problem.key.as_deref().unwrap_or("-");
         table.row(vec![
             problem.line.to_string().as_str().into(),
             problem.column.to_string().as_str().into(),
             Cell::toned(&words(&problem.severity), tone),
             words(&problem.code).as_str().into(),
-            name(&problem.service).as_str().into(),
-            name(&problem.key).as_str().into(),
+            service.as_str().into(),
+            key.into(),
         ]);
     }
     table

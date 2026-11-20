@@ -161,3 +161,25 @@ fn host_022_a_fixed_key_is_plain_and_a_name_is_in_quotes() {
         "bind"
     );
 }
+
+#[test]
+fn host_022_each_character_that_yaml_does_not_print_is_an_escape() {
+    // Not in the printable set of YAML 1.2, or a line break or a mark of the byte order.
+    let odd = [
+        '\u{7f}', '\u{85}', '\u{9f}', '\u{2028}', '\u{2029}', '\u{feff}', '\u{fffe}', '\u{ffff}',
+    ];
+    let text: String = odd.iter().flat_map(|c| [*c, 'x']).collect();
+    let mut file = Value::map();
+    file.set("odd", Value::text(&text));
+    let written = write(&file);
+    assert!(!written.chars().any(|c| odd.contains(&c)), "{written:?}");
+    assert!(
+        written.contains("\\ufffe") && written.contains("\\u0085"),
+        "{written}"
+    );
+    assert_eq!(super::text(&tree(&written), &["odd"]), text);
+    // A character that YAML prints stays as it is.
+    let mut file = Value::map();
+    file.set("kept", Value::text("é中😀"));
+    assert!(write(&file).contains("é中😀"));
+}

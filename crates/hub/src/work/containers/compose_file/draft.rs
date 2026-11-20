@@ -7,10 +7,14 @@ use super::{
     writer::Value,
 };
 
-/// The most characters of the name of an option in the list of what was not converted.
-const LONGEST_OPTION: usize = 40;
 /// The most characters of the name of the service.
 const LONGEST_SERVICE: usize = 63;
+/// The most networks, and the most aliases, of one command. Each alias is written for each
+/// network, so the two limits also limit the size of the file.
+pub(super) const MOST_NETWORKS: usize = 32;
+/// The name in the list of the options that are not converted of an option that Docker does
+/// not have: its name is the operator's own text, which can be a secret.
+pub(super) const UNKNOWN_OPTION: &str = "(an unknown option)";
 
 /// The keys of a service that come first in the file, in this order.
 const FIRST_KEYS: [&str; 11] = [
@@ -33,6 +37,8 @@ pub(super) struct Draft {
     networks: Vec<String>,
     aliases: Vec<Value>,
     volumes: Vec<String>,
+    /// More networks or aliases than [`MOST_NETWORKS`] were given.
+    too_many_networks: bool,
     pub notes: Vec<Note>,
     pub not_converted: Vec<String>,
 }
@@ -45,6 +51,7 @@ impl Default for Draft {
             networks: Vec::new(),
             aliases: Vec::new(),
             volumes: Vec::new(),
+            too_many_networks: false,
             notes: Vec::new(),
             not_converted: Vec::new(),
         }
@@ -91,20 +98,21 @@ impl Draft {
     }
 
     /// Records an option that is not in the file, by its name only: its value can be a secret.
+    /// It is only called for an option of Docker, whose name is fixed.
     pub(super) fn skip(&mut self, option: &str) {
-        let safe = |c: char| c.is_ascii_alphanumeric() || c == '-';
-        let name = if option.chars().all(safe) {
-            option.chars().take(LONGEST_OPTION).collect()
-        } else {
-            "(an option)".to_owned()
-        };
-        add(&mut self.not_converted, name);
+        add(&mut self.not_converted, option.to_owned());
     }
 
-    /// An option that Docker does not have. With no `=`, the converter cannot know whether
-    /// the next word is its value: it reads the option as one with no value, and says so.
-    pub(super) fn unknown(&mut self, option: &str, alone: bool) {
-        self.skip(option);
+    /// Whether the command has more networks or aliases than the file may have.
+    pub(super) const fn too_many_networks(&self) -> bool {
+        self.too_many_networks
+    }
+
+    /// An option that Docker does not have, listed with no name. With no `=`, the converter
+    /// cannot know whether the next word is its value: it reads the option as one with no
+    /// value, and says so.
+    pub(super) fn unknown(&mut self, alone: bool) {
+        add(&mut self.not_converted, UNKNOWN_OPTION.to_owned());
         if alone {
             self.note(Note::UnknownOptionReadAsFlag);
         }
@@ -147,6 +155,7 @@ impl Draft {
             Reads::Mount => self.mount(value),
             Reads::Network => self.network(value),
             Reads::NetworkAlias => {
+                self.too_many_networks |= self.aliases.len() >= MOST_NETWORKS;
                 self.aliases.push(Value::text(value));
                 true
             }
@@ -218,6 +227,7 @@ impl Draft {
             self.service.set("network_mode", Value::text(value));
         } else if is_name(value) && value != "default" {
             add(&mut self.networks, value.to_owned());
+            self.too_many_networks |= self.networks.len() > MOST_NETWORKS;
         } else {
             return false;
         }

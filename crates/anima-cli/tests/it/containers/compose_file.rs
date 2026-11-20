@@ -14,11 +14,11 @@ const FILE: &str = "version: '3'\nservices:\n  web:\n    ports: 80\n";
 fn found() -> Value {
     json!({ "composeFileCheck": { "syntaxValid": false, "cut": false, "problems": [
         { "code": "VERSION_OBSOLETE", "severity": "WARNING", "line": 1, "column": 1,
-          "service": null, "key": null },
+          "serviceNumber": null, "key": null },
         { "code": "NO_IMAGE_OR_BUILD", "severity": "ERROR", "line": 3, "column": 3,
-          "service": "web", "key": null },
+          "serviceNumber": 1, "key": null },
         { "code": "WRONG_TYPE", "severity": "ERROR", "line": 4, "column": 5,
-          "service": "web", "key": "ports" }
+          "serviceNumber": 1, "key": "ports" }
     ] } })
 }
 
@@ -35,8 +35,12 @@ fn converted() -> Value {
 }
 
 fn refused() -> Value {
+    refused_at(24)
+}
+
+fn refused_at(at: u32) -> Value {
     json!({ "composeFromDockerRun": { "composeFile": null, "service": null,
-        "refusal": "PIPE", "refusedAt": 24, "notes": [], "notConverted": [] } })
+        "refusal": "PIPE", "refusedAt": at, "notes": [], "notConverted": [] } })
 }
 
 async fn anima(hub: &FakeHub, words: &[&str], input: &str) -> crate::kit::Outcome {
@@ -132,13 +136,32 @@ async fn host_022_from_run_prints_the_file_and_the_notes_on_standard_error() {
 #[tokio::test]
 async fn host_022_from_run_says_why_a_command_was_not_converted() {
     let hub = FakeHub::start().await;
-    hub.answer("ComposeFromDockerRunRead", data(refused()));
+    hub.answer("ComposeFromDockerRunRead", data(refused()))
+        .answer("ComposeFromDockerRunRead", data(refused_at(25)));
     let line = "docker run nginx | tee out";
     let run = anima(&hub, &["containers", "from-run"], line).await;
     assert_eq!(run.code, 2, "{run:?}");
     assert_eq!(run.stdout, "");
     assert!(
         run.stderr.contains("The command has a pipe.") && run.stderr.contains("character 24"),
+        "{}",
+        run.stderr
+    );
+    // The words after `--` went to the hub in quotes: the place is in the words as typed.
+    let words = [
+        "containers",
+        "from-run",
+        "--",
+        "docker",
+        "run",
+        "-e",
+        "A=b|c",
+        "nginx",
+    ];
+    let run = anima(&hub, &words, "").await;
+    assert_eq!(run.code, 2, "{run:?}");
+    assert!(
+        run.stderr.contains("(word 4, character 4)"),
         "{}",
         run.stderr
     );
@@ -169,6 +192,8 @@ async fn host_022_the_compose_tools_give_the_problems_and_the_file() {
     let file = &called["structuredContent"];
     // The tool cuts the last line break, as it does for each text with lines.
     assert_eq!(file["composeFile"], COMPOSE.trim_end());
+    assert_eq!(file["fileLength"], COMPOSE.chars().count());
+    assert_eq!(file["withheld"], Value::Null);
     assert_eq!(file["notes"][0]["code"], "DETACH_NOT_NEEDED");
     assert_eq!(file["notConverted"], json!(["--cidfile"]));
     let (printed, stderr) = session.finish().await;

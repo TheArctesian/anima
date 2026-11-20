@@ -114,8 +114,7 @@ fn host_022_control_characters_and_broken_text_never_stop_the_check() {
     ];
     for text in texts {
         for problem in check(text).problems {
-            let names = [problem.service, problem.key];
-            let shown: String = names.into_iter().flatten().collect();
+            let shown = problem.key.unwrap_or_default();
             assert!(shown.chars().all(|c| c.is_ascii_graphic()), "{text:?}");
         }
     }

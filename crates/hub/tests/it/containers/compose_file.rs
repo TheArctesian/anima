@@ -14,7 +14,7 @@ use sqlx::PgPool;
 use crate::hub::{Hub, set_operator, start};
 
 const CHECK: &str = "query($file: String!) { composeFileCheck(file: $file) { syntaxValid cut \
-    problems { code severity line column service key } } }";
+    problems { code severity line column serviceNumber key } } }";
 
 const FROM_RUN: &str = "query($command: String!) { composeFromDockerRun(command: $command) { \
     composeFile service refusal refusedAt notes notConverted } }";
@@ -25,11 +25,12 @@ const CREATE_KEY: &str =
 /// A value that the operator must not find in a log, an event or a problem.
 const SECRET: &str = "s3cr3t-composeValue-41";
 
-/// A Compose file with errors and warnings, whose environment holds [`SECRET`].
+/// A Compose file with errors and warnings, with [`SECRET`] as a value, as the name of a
+/// service and as a key.
 fn file_with_secret() -> String {
     format!(
-        "version: '3'\nservices:\n  web:\n    environment:\n      PASSWORD: {SECRET}\n    \
-         ports: {SECRET}\n    labelz: 1\n"
+        "version: '3'\nservices:\n  {SECRET}:\n    environment:\n      PASSWORD: {SECRET}\n    \
+         ports: {SECRET}\n    {SECRET}: 1\n"
     )
 }
 
@@ -204,5 +205,39 @@ async fn log_007_the_text_of_the_caller_reaches_no_log_event_or_audit_entry(pool
     assert!(!text.contains(SECRET), "the text is in the process log");
     for table in ["events.event_log", "events.audit_log"] {
         assert_eq!(rows_with(&pool, table, SECRET).await, 0, "{table}");
+    }
+}
+
+/// `count` copies of one field under aliases, each with its own variable.
+fn copies(field: &str, argument: &str, selection: &str, count: usize) -> (String, Value) {
+    let mut variables = serde_json::Map::new();
+    let mut header = Vec::new();
+    let mut body = Vec::new();
+    for index in 0..count {
+        header.push(format!("$t{index}: String!"));
+        body.push(format!(
+            "c{index}: {field}({argument}: $t{index}) {selection}"
+        ));
+        variables.insert(format!("t{index}"), json!("docker run nginx"));
+    }
+    let document = format!("query({}) {{ {} }}", header.join(", "), body.join(" "));
+    (document, Value::Object(variables))
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn host_022_one_request_holds_at_most_four_checks_or_conversions(pool: PgPool) {
+    let (hub, token) = signed_in(&pool).await;
+    for (field, argument, selection) in [
+        ("composeFileCheck", "file", "{ syntaxValid }"),
+        ("composeFromDockerRun", "command", "{ service }"),
+    ] {
+        let (four, variables) = copies(field, argument, selection, 4);
+        let answer = hub.post(Some(&token), &four, variables).await;
+        assert_eq!(answer.get("errors"), None, "{answer}");
+        let (five, variables) = copies(field, argument, selection, 5);
+        let answer = hub.post(Some(&token), &five, variables).await;
+        assert_eq!(answer["data"], Value::Null, "{answer}");
+        let message = answer["errors"][0]["message"].as_str().unwrap_or_default();
+        assert!(message.contains("too complex"), "{answer}");
     }
 }

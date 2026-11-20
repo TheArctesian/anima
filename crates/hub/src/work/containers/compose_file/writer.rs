@@ -67,6 +67,22 @@ impl Value {
     }
 }
 
+/// Whether YAML may hold `character` as it is in a text in double quotes: the printable set
+/// of YAML 1.2 (`c-printable`), less the characters that a reader can take as a line break
+/// (U+0085, U+2028, U+2029) or as a mark of the order of the bytes (U+FEFF). Each other
+/// character is written as an escape.
+const fn printable(character: char) -> bool {
+    matches!(
+        character,
+        '\u{20}'..='\u{7E}'
+            | '\u{A0}'..='\u{2027}'
+            | '\u{202A}'..='\u{D7FF}'
+            | '\u{E000}'..='\u{FEFE}'
+            | '\u{FF00}'..='\u{FFFD}'
+            | '\u{10000}'..
+    )
+}
+
 /// A text in double quotes, as YAML reads it back to the same characters.
 fn quoted(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
@@ -78,12 +94,10 @@ fn quoted(text: &str) -> String {
             '\n' => out.push_str("\\n"),
             '\t' => out.push_str("\\t"),
             '\r' => out.push_str("\\r"),
-            other
-                if other.is_control() || matches!(other, '\u{2028}' | '\u{2029}' | '\u{feff}') =>
-            {
+            other if printable(other) => out.push(other),
+            other => {
                 let _ = write!(out, "\\u{:04x}", u32::from(other));
             }
-            other => out.push(other),
         }
     }
     out.push('"');

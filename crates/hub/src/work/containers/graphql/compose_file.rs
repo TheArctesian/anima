@@ -1,11 +1,29 @@
 //! The K1 object types of the check of a Compose file and of the `docker run` converter
 //! (HOST-022).
 
-use async_graphql::Object;
+use async_graphql::{Object, Result};
 
-use crate::work::containers::compose_file::{
-    Check, Converted, Note, Problem, ProblemCode, Refusal, RefusalCode, Severity,
+use crate::{
+    api_errors::internal,
+    work::containers::compose_file::{
+        Check, Converted, Note, Problem, ProblemCode, Refusal, RefusalCode, Severity,
+    },
 };
+
+/// The complexity of one check or one conversion. With the limit of the schema (500), one
+/// request holds at most four: each reads up to 256 KiB of the caller's text.
+pub(super) const TEXT_COMPLEXITY: usize = 100;
+
+/// Runs `work` on a thread for blocking work, so that a long text does not hold a worker of
+/// the runtime. The thread writes under the span and to the log of the request.
+pub(super) async fn off_the_runtime<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T> {
+    let dispatch = tracing::dispatcher::get_default(Clone::clone);
+    let span = tracing::Span::current();
+    let run = move || tracing::dispatcher::with_default(&dispatch, || span.in_scope(work));
+    tokio::task::spawn_blocking(run).await.map_err(internal)
+}
 
 #[Object(name = "ComposeFileProblem")]
 impl Problem {
@@ -27,12 +45,14 @@ impl Problem {
         self.place.column
     }
 
-    async fn service(&self) -> Option<&str> {
-        self.service.as_deref()
+    /// The number of the service in `services`, from 1, when the problem is in one.
+    async fn service_number(&self) -> Option<u32> {
+        self.service_number
     }
 
+    /// The name of the key, when the problem is about a key that Compose defines.
     async fn key(&self) -> Option<&str> {
-        self.key.as_deref()
+        self.key
     }
 }
 

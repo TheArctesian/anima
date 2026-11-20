@@ -101,7 +101,7 @@ impl Reader<'_> {
     fn outside(&mut self, character: char) -> Step {
         let following = self.characters.get(self.next + 1).copied();
         match character {
-            ' ' | '\t' | '\r' => {
+            ' ' | '\t' => {
                 self.end_word();
                 self.next += 1;
                 Ok(())
@@ -115,6 +115,9 @@ impl Reader<'_> {
             '\n' | ';' | '&' | '|' => self.refuse(RefusalCode::MoreThanOneCommand),
             '<' | '>' => self.refuse(RefusalCode::Redirection),
             '(' | ')' => self.refuse(RefusalCode::ShellSyntax),
+            '*' | '?' | '[' => self.refuse(RefusalCode::Pattern),
+            '~' if self.tilde_expands() => self.refuse(RefusalCode::TildeExpansion),
+            '{' if self.brace_expands() => self.refuse(RefusalCode::BraceExpansion),
             '#' if self.word.is_none() => self.refuse(RefusalCode::ShellSyntax),
             other if other.is_control() => self.refuse(RefusalCode::ControlCharacter),
             other => {
@@ -122,6 +125,35 @@ impl Reader<'_> {
                 Ok(())
             }
         }
+    }
+
+    /// Whether a shell would put the home folder in place of a `~` here: at the start of a
+    /// word, or after a `=` or a `:` in it.
+    fn tilde_expands(&self) -> bool {
+        self.word
+            .as_ref()
+            .is_none_or(|word| word.text.ends_with(['=', ':']))
+    }
+
+    /// Whether the `{` here starts a list (`{a,b}`) or a range (`{1..3}`) that a shell would
+    /// make into more than one word. A comma in quotes also counts: the converter refuses
+    /// more than a shell would, never less.
+    fn brace_expands(&self) -> bool {
+        let rest = &self.characters[self.next + 1..];
+        let mut depth = 1_usize;
+        for (index, character) in rest.iter().enumerate() {
+            match character {
+                '{' => depth += 1,
+                '}' if depth == 1 => {
+                    let inside: String = rest[..index].iter().collect();
+                    return inside.contains(',') || inside.contains("..");
+                }
+                '}' => depth -= 1,
+                ' ' | '\t' | '\n' => return false,
+                _ => {}
+            }
+        }
+        false
     }
 
     /// A text in single quotes: each character is itself.
@@ -199,6 +231,7 @@ impl Reader<'_> {
     fn dollar(&mut self, quoted: bool) -> Step {
         match self.characters.get(self.next + 1).copied() {
             Some('(') => self.refuse(RefusalCode::CommandSubstitution),
+            Some('[') => self.refuse(RefusalCode::ArithmeticExpansion),
             Some('{') => self.braced(),
             Some(start) if name_start(start) => {
                 self.word().push('$');
@@ -237,7 +270,8 @@ impl Reader<'_> {
         let operator = ["", ":-", "-", ":?", "?", ":+", "+"]
             .iter()
             .any(|operator| after.is_empty() == operator.is_empty() && after.starts_with(operator));
-        let plain = |c: char| !c.is_control() && !matches!(c, '$' | '`' | '{' | '\\');
+        // A quote in a variable that stays is refused: a shell removes it, and Compose does not.
+        let plain = |c: char| !c.is_control() && !matches!(c, '$' | '`' | '{' | '\\' | '\'' | '"');
         if !named || !operator || !inside.chars().all(plain) {
             return self.refuse(RefusalCode::VariableNotKept);
         }

@@ -24,7 +24,8 @@ fn host_022_quotes_and_backslashes_are_read_as_a_shell_reads_them() {
         ("\"a\\\nb\"", vec!["ab"]),
         ("'two\nlines'", vec!["two\nlines"]),
         (
-            "-e COLOR=#fff ~/x a*b {a,b} a=b",
+            // A shell expands `~`, `*` and `{a,b}` out of quotes, and keeps each in quotes.
+            "-e COLOR=#fff '~/x' \"a*b\" \\{a,b} a=b",
             vec!["-e", "COLOR=#fff", "~/x", "a*b", "{a,b}", "a=b"],
         ),
         (

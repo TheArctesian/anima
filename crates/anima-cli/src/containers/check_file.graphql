@@ -6,7 +6,7 @@ query ComposeFileCheckRun($file: String!) {
       severity
       line
       column
-      service
+      serviceNumber
       key
     }
     cut

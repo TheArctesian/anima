@@ -9,7 +9,7 @@
 use async_graphql::Enum;
 
 use super::{
-    LARGEST_COMMAND,
+    LARGEST_COMMAND, LARGEST_FILE,
     draft::Draft,
     options,
     words::{self, Word},
@@ -40,6 +40,16 @@ pub enum RefusalCode {
     ShellSyntax,
     /// The command has a variable that cannot stay as text in a Compose file.
     VariableNotKept,
+    /// The command has `$[`: a shell would put the result of a sum in its place.
+    ArithmeticExpansion,
+    /// The command has a list or a range in braces, such as `{80,443}`, that a shell would
+    /// make into more than one word.
+    BraceExpansion,
+    /// The command has a `~` that a shell would change into the home folder.
+    TildeExpansion,
+    /// The command has `*`, `?` or `[` out of quotes, which a shell would match against
+    /// the names of files.
+    Pattern,
     /// A quote is not closed.
     UnclosedQuote,
     /// The command holds a control character.
@@ -48,6 +58,10 @@ pub enum RefusalCode {
     OptionWithoutValue,
     /// The command names no image.
     NoImage,
+    /// The command has more than 32 networks or more than 32 network aliases.
+    TooManyNetworks,
+    /// The Compose file would be larger than 256 KiB, the most that the check reads.
+    FileTooLarge,
 }
 
 /// A command that the converter does not convert: the code, and the position in the command
@@ -151,8 +165,13 @@ pub fn convert(command: &str) -> Result<Converted, Refusal> {
     if split.dollars {
         draft.note(Note::DollarWritten);
     }
+    let compose_file = writer::write(&file);
+    if compose_file.len() > LARGEST_FILE {
+        let code = RefusalCode::FileTooLarge;
+        return Err(Refusal { code, at: 1 });
+    }
     Ok(Converted {
-        compose_file: writer::write(&file),
+        compose_file,
         service,
         notes: draft.notes,
         not_converted: draft.not_converted,
@@ -192,6 +211,10 @@ fn read_options<'a>(
         } else {
             return Ok(Some(text));
         }
+        if draft.too_many_networks() {
+            let code = RefusalCode::TooManyNetworks;
+            return Err(Refusal { code, at: word.at });
+        }
     }
     Ok(None)
 }
@@ -208,7 +231,7 @@ fn long_option(
     };
     let option = format!("--{name}");
     match options::long(name) {
-        None => draft.unknown(&option, given.is_none()),
+        None => draft.unknown(given.is_none()),
         Some(reads) if reads.takes_value() => {
             let value = match given {
                 Some(value) => value,
@@ -231,7 +254,7 @@ fn short_options(
     while let Some(letter) = rest.next() {
         let option = format!("-{letter}");
         match options::short(letter) {
-            None => draft.unknown(&option, true),
+            None => draft.unknown(true),
             Some(reads) if reads.takes_value() => {
                 let joined = rest.as_str();
                 let joined = joined.strip_prefix('=').unwrap_or(joined);

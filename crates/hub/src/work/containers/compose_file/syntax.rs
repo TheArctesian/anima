@@ -18,8 +18,6 @@ use super::{
 
 /// The most problems that one check gives.
 pub(super) const MOST_PROBLEMS: usize = 100;
-/// The most characters of a name of a service or of a key in a problem.
-const LONGEST_NAME: usize = 64;
 
 /// What is wrong, as a fixed code (K1 `ComposeFileProblemCode`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
@@ -84,15 +82,17 @@ pub enum Severity {
     Warning,
 }
 
-/// One problem of a Compose file. It holds no value of the file (LOG-007).
+/// One problem of a Compose file. It holds no text that the operator wrote (LOG-007): a
+/// service is given by its number, and a key by its name only when Compose defines that name.
+/// A name that the operator chose, or wrote in the wrong place, can be a secret.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
     pub code: ProblemCode,
     pub place: Place,
-    /// The name of the service, when the problem is in one and the name is safe to show.
-    pub service: Option<String>,
-    /// The name of the key, when the problem is about one and the name is safe to show.
-    pub key: Option<String>,
+    /// The number of the service in `services`, from 1, when the problem is in one.
+    pub service_number: Option<u32>,
+    /// The name of the key, when the problem is about a key that Compose defines.
+    pub key: Option<&'static str>,
 }
 
 impl Problem {
@@ -100,28 +100,31 @@ impl Problem {
         Self {
             code,
             place,
-            service: None,
+            service_number: None,
             key: None,
         }
     }
 
-    fn in_service(mut self, name: Option<&str>) -> Self {
-        self.service = name.and_then(shown);
+    const fn in_service(mut self, number: Option<u32>) -> Self {
+        self.service_number = number;
         self
     }
 
     fn of_key(mut self, name: &str) -> Self {
-        self.key = shown(name);
+        self.key = keys::defined(name);
         self
     }
 }
 
-/// A name as a problem shows it: letters, digits, `.`, `_` and `-` only, and cut to 64
-/// characters. A name with a different character is not shown: it can be a value that the
-/// operator wrote in the wrong place.
-fn shown(name: &str) -> Option<String> {
-    let safe = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-');
-    (!name.is_empty() && name.chars().all(safe)).then(|| name.chars().take(LONGEST_NAME).collect())
+/// Where the keys of a mapping are: what a key of it is.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Level {
+    /// The top level: each key is a key of Compose or an extension.
+    Top,
+    /// `services`: each key is the name of a service.
+    Services,
+    /// One service: each key is a key of Compose or an extension.
+    Service(u32),
 }
 
 /// The result of the check of one file.
@@ -159,23 +162,35 @@ struct Entry<'a> {
     value: &'a Node,
 }
 
+/// The number of the entry at `index`, from 1.
+fn number(index: usize) -> u32 {
+    u32::try_from(index + 1).unwrap_or(u32::MAX)
+}
+
 /// The entries of a mapping whose key is a text. A key that is not a text and a key that is
 /// there two times are problems. The merge key `<<` may be there more than one time.
-fn entries<'a>(
-    pairs: &'a [(Node, Node)],
-    service: Option<&str>,
-    check: &mut Check,
-) -> Vec<Entry<'a>> {
+fn entries<'a>(pairs: &'a [(Node, Node)], level: Level, check: &mut Check) -> Vec<Entry<'a>> {
     let mut seen = HashSet::new();
     let mut found = Vec::with_capacity(pairs.len());
-    for (key, value) in pairs {
+    for (index, (key, value)) in pairs.iter().enumerate() {
+        let service = match level {
+            Level::Top => None,
+            Level::Services => Some(number(index)),
+            Level::Service(number) => Some(number),
+        };
         let Shape::Text(name) = &key.shape else {
             check.add(Problem::at(ProblemCode::KeyNotText, key.place).in_service(service));
             continue;
         };
         if !seen.insert(name.as_str()) && name != "<<" {
-            let problem = Problem::at(ProblemCode::DuplicateKey, key.place);
-            check.add(problem.in_service(service).of_key(name));
+            let problem = Problem::at(ProblemCode::DuplicateKey, key.place).in_service(service);
+            // The name of a service is the operator's own text: only its number is given.
+            let problem = if level == Level::Services {
+                problem
+            } else {
+                problem.of_key(name)
+            };
+            check.add(problem);
         }
         found.push(Entry { name, key, value });
     }
@@ -213,16 +228,16 @@ fn top_level(root: Option<&Node>, check: &mut Check) {
         check.add(Problem::at(ProblemCode::TopLevelNotMapping, Place::START));
         return;
     };
-    let found = entries(pairs, None, check);
+    let found = entries(pairs, Level::Top, check);
     for entry in &found {
         match entry.name {
             "services" => services(entry, check),
             "version" => check.add(Problem::at(ProblemCode::VersionObsolete, entry.key.place)),
             known if keys::top_level(known) => {}
-            other => {
-                let problem = Problem::at(ProblemCode::UnknownTopLevelKey, entry.key.place);
-                check.add(problem.of_key(other));
-            }
+            _ => check.add(Problem::at(
+                ProblemCode::UnknownTopLevelKey,
+                entry.key.place,
+            )),
         }
     }
     // A file that only includes other files has its services there.
@@ -236,8 +251,8 @@ fn services(entry: &Entry<'_>, check: &mut Check) {
     let code = match &entry.value.shape {
         Shape::Alias => return,
         Shape::Map(pairs) if !pairs.is_empty() => {
-            for service in entries(pairs, None, check) {
-                one_service(&service, check);
+            for (index, service) in entries(pairs, Level::Services, check).iter().enumerate() {
+                one_service(service, number(index), check);
             }
             return;
         }
@@ -247,8 +262,8 @@ fn services(entry: &Entry<'_>, check: &mut Check) {
     check.add(Problem::at(code, entry.key.place));
 }
 
-fn one_service(service: &Entry<'_>, check: &mut Check) {
-    let name = Some(service.name);
+fn one_service(service: &Entry<'_>, number: u32, check: &mut Check) {
+    let name = Some(number);
     let pairs = match &service.value.shape {
         Shape::Alias => return,
         Shape::Map(pairs) => pairs,
@@ -258,7 +273,7 @@ fn one_service(service: &Entry<'_>, check: &mut Check) {
             return;
         }
     };
-    let found = entries(pairs, name, check);
+    let found = entries(pairs, Level::Service(number), check);
     for entry in &found {
         if entry.name.starts_with("x-") || entry.name == "<<" {
             continue;
