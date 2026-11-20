@@ -89,7 +89,7 @@ it('UI-003: an expired key says "Expired" in text, and a key never used says "Ne
 
 it('INT-003: with no keys the section says so and still offers Create', async () => {
   const target = await open({ ApiKeys: ok({ apiKeys: [] }) });
-  expect(target.querySelector('p.quiet')?.textContent).toBe("No API keys.");
+  expect(target.querySelector('p.quiet')?.textContent).toBe("No API keys");
   expect(button('Create API key')).toBeDefined();
 });
 

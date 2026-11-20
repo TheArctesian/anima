@@ -36,8 +36,8 @@ export function costText(sums: UsageSums): string {
 /** The one line over the table: sessions, tokens and the estimate, as text. */
 export function summaryLine(total: UsageSums): string {
   const sessions = `${String(total.sessions)} ${total.sessions === 1 ? 'session' : 'sessions'}`;
-  const cost = total.estimatedCostUsd == null ? 'no price' : `$${dollars(total.estimatedCostUsd)}`;
-  return `${sessions}, ${tokens(totalTokens(total))} tokens, estimated cost ${cost}`;
+  const cost = total.estimatedCostUsd == null ? 'no estimated cost' : `estimated cost $${dollars(total.estimatedCostUsd)}`;
+  return `${sessions}, ${tokens(totalTokens(total))} tokens, ${cost}`;
 }
 
 /** What the estimate is, and what it is not (AIS-021). */

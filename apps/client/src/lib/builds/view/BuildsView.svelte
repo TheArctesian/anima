@@ -35,7 +35,7 @@
         <p role="alert">Releases did not load.</p>
         <FormButton tabindex={0} onclick={() => view.loadReleases()}>Retry</FormButton>
       {:else if view.releases !== null && view.releases.length === 0}
-        <p class="quiet">No releases yet.</p>
+        <p class="quiet">No releases yet</p>
       {:else if view.releases !== null}
         <ReleaseList
           releases={view.ordered}

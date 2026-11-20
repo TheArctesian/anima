@@ -15,8 +15,19 @@
 # Each secret is in an environment of its own, so a job has only the secrets of its work:
 #   release           the Developer ID certificate and the notary credentials   job `macos`
 #   release-sign      the updater key                                           job `sign`
-#   release-publish   the token of the release bucket                           job `publish`
-# The jobs `commit`, `gates`, `tool`, `linux` and `trial` have no secret.
+#   release-publish   the token of the release bucket             jobs `bucket`, `publish`, `cli-publish`, `ios-record`
+#   release-tap       the key of the tap of the formula                         job `tap`
+#   release-crate     the token of crates.io                                    job `crate`
+#   release-ios       the iOS distribution certificate and the profile          job `ios`
+#   release-testflight  the key of App Store Connect                            job `ios-upload`
+# The jobs `commit`, `gates`, `tool`, `linux`, `cli` and `trial` have no secret.
+#
+# `anima` alone (Homebrew, crates.io) has a switch of its own, ANIMA_PUBLIC_CLI: its three
+# jobs that publish run only while both variables are `on`.
+# The iOS application has two: ANIMA_IOS_BUILD lets the job `ios` build and sign, in a trial
+# and for a push to `main`, and uploads nothing; ANIMA_PUBLIC_TESTFLIGHT, which only the
+# operator sets, lets a push to `main` also upload that build to TestFlight. They do not
+# depend on ANIMA_PUBLIC_RELEASES, so a TestFlight build can exist before a public release.
 #
 # No `run` script holds an expression: each value comes in through `env`.
 name: release
@@ -56,6 +67,8 @@ jobs:
       contents: read
     outputs:
       release: ${{ steps.read.outputs.release }}
+      release_cli: ${{ steps.read.outputs.release_cli }}
+      release_ios: ${{ steps.read.outputs.release_ios }}
       version: ${{ steps.read.outputs.version }}
       sha: ${{ steps.read.outputs.sha }}
       time: ${{ steps.read.outputs.time }}
@@ -73,6 +86,9 @@ jobs:
           BEFORE: ${{ github.event.before }}
           TRIAL_VERSION: ${{ inputs.version }}
           SWITCH: ${{ vars.ANIMA_PUBLIC_RELEASES }}
+          CLI_SWITCH: ${{ vars.ANIMA_PUBLIC_CLI }}
+          IOS_BUILD: ${{ vars.ANIMA_IOS_BUILD }}
+          IOS_SWITCH: ${{ vars.ANIMA_PUBLIC_TESTFLIGHT }}
           FEEDS: https://releases.anima.ing
         run: |
           set -eu
@@ -114,12 +130,52 @@ jobs:
               fi
               echo "Decision: $decided" >> "$GITHUB_STEP_SUMMARY"
               echo "$decided"
+              # `anima` alone (Homebrew, the crate) goes out only with the desktop application
+              # of the same run, because its files are taken from it, and only while its own
+              # switch is on.
+              release_cli=false
+              if [ "$release" = true ]; then
+                cli=$(published anima)
+                decided_cli=$(sh deploy/bin/release-decision "$sha" cli "$cli")
+                if [ "$decided_cli" = "release $version" ] && [ "$CLI_SWITCH" = on ]; then
+                  release_cli=true
+                elif [ "$decided_cli" = "release $version" ]; then
+                  decided_cli="nothing: this push is a release of $version, and the releases of anima alone are off (the variable ANIMA_PUBLIC_CLI is not \`on\`)"
+                fi
+                {
+                  echo "### anima alone"
+                  echo "Published now: $cli. Decision: $decided_cli"
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
+              # The iOS application (TestFlight) does not wait for the desktop application:
+              # it has its own two switches, and its own record of the last build that went up.
+              release_ios=false
+              if [ "$IOS_BUILD" = on ]; then
+                ios=$(published ios)
+                decided_ios=$(sh deploy/bin/release-decision "$sha" ios "$ios")
+                # With the build switch on, a push builds and signs. It goes to TestFlight only
+                # while the TestFlight switch is also on; the upload jobs read that switch.
+                if [ "$decided_ios" = "release $version" ]; then
+                  release_ios=true
+                  if [ "$IOS_SWITCH" != on ]; then
+                    decided_ios="build $version and sign it, and upload nothing: TestFlight is off (the variable ANIMA_PUBLIC_TESTFLIGHT is not \`on\`)"
+                  fi
+                fi
+                {
+                  echo "### The iOS application"
+                  echo "In TestFlight now: $ios. Decision: $decided_ios"
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
             workflow_dispatch:*)
               # A trial keeps the version of its input, so that it signs nothing with the
               # version of a release.
               version=$TRIAL_VERSION
               release=true
+              release_cli=true
+              # A trial builds and signs the iOS application only while its build switch is on.
+              release_ios=false
+              if [ "$IOS_BUILD" = on ]; then release_ios=true; fi
               echo "A trial of the version $version. It publishes nothing." >> "$GITHUB_STEP_SUMMARY"
               ;;
             *) echo "::error::Only a push to main or a run by hand starts a release."; exit 1 ;;
@@ -131,6 +187,8 @@ jobs:
           key=$(jq -er '.plugins.updater.pubkey' apps/desktop/src-tauri/tauri.conf.json)
           {
             echo "release=$release"
+            echo "release_cli=$release_cli"
+            echo "release_ios=$release_ios"
             echo "version=$version"
             echo "sha=$sha"
             echo "time=$(git show -s --format=%ct "$sha")"
@@ -141,7 +199,7 @@ jobs:
   # runs them before the job that signs; it is the one exception to R-005 and CQ-010.
   gates:
     needs: commit
-    if: needs.commit.outputs.release == 'true'
+    if: needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')
     runs-on: macos-15
     timeout-minutes: 150
     permissions:
@@ -164,18 +222,35 @@ jobs:
           cache: false
       # shellcheck: three tests of deploy/headscale fail when it is not on PATH. The image of
       # GitHub for macOS does not have it; the trial of 2026-11-18 stopped there.
-      - name: Install PostgreSQL 17, cargo-nextest and shellcheck
+      # sccache: the gates runner uses it when it is on PATH (quality/src/gates/cache.ts), as on
+      # the computer of the operator. It keeps compiler outputs by their inputs, so it changes
+      # no result of a gate.
+      - name: Install PostgreSQL 17, cargo-nextest, shellcheck and sccache
         run: |
           set -eu
-          brew install postgresql@17 cargo-nextest shellcheck
+          brew install postgresql@17 cargo-nextest shellcheck sccache
           shellcheck --version
+      # The compiler outputs of the last run of this job. Only this job has a cache: it holds
+      # no secret and nothing that it builds is shipped. The jobs that build the application
+      # or the tool compile from nothing. A run of `main` writes the cache that the next run
+      # of `main` reads; no other branch can write it.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/Mozilla.sccache
+          key: gates-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ needs.commit.outputs.sha }}
+          restore-keys: |
+            gates-sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
       - name: Run the gates
         env:
           BASE_REF: ${{ needs.commit.outputs.sha }}
+          SCCACHE_CACHE_SIZE: 4G
         run: |
           set -eu
           unset DATABASE_URL
           bun run gates
+      - name: Say how much of the compile came from the cache
+        if: always()
+        run: sccache --show-stats || true
 
   # The program that signs and publishes: `anima-hub release` of the release commit. The jobs
   # that hold a key run this file and compile nothing.
@@ -475,12 +550,39 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # The first minute of a release: does the token of the bucket open the bucket? It reads one
+  # object and writes nothing, with the `aws` program of the machine and no code of the
+  # repository. Without it, a wrong token, endpoint or environment rule shows only in the job
+  # `publish`, after each build. A trial never runs it: a trial has no token.
+  bucket:
+    needs: commit
+    if: needs.commit.outputs.release == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release-publish
+    permissions: {}
+    steps:
+      - name: Read the macOS feed from the bucket with the token
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+        run: |
+          set -eu
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          aws s3api head-object --endpoint-url "$ENDPOINT" --bucket anima-releases --key darwin-aarch64/latest.json > /dev/null
+          echo "The token reads the bucket anima-releases."
+
   # Only for a push to `main` that is a release, and only while the switch of the operator is
   # on. The checks that the hub makes for a queued job (BLD-002, BLD-064 to
   # BLD-069), by the same code: `anima-hub release publish`. It writes each feed last.
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'
-    needs: [commit, tool, macos, linux, sign]
+    needs: [commit, bucket, tool, macos, linux, sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: release-publish
@@ -550,6 +652,408 @@ jobs:
             curl -fsS "$ANIMA_RELEASES_PUBLIC_BASE/$feed/latest.json" | jq -e --arg version "$VERSION" '.version == $version' > /dev/null
             echo "$feed gives $VERSION"
           done
+
+  # `anima` alone (INS-010 to INS-012; R-217 to R-219; task B8h): the standalone files and the
+  # formula. It builds nothing: each `anima` is the program that the build job put in the
+  # application, the macOS one with its Developer ID signature. No secret. A trial runs it.
+  cli:
+    needs: [commit, macos, linux]
+    if: needs.commit.outputs.release_cli == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      macos_sha256: ${{ steps.files.outputs.macos_sha256 }}
+      linux_sha256: ${{ steps.files.outputs.linux_sha256 }}
+      formula_sha256: ${{ steps.files.outputs.formula_sha256 }}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos
+          path: macos
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux
+          path: linux
+      - id: files
+        name: Take anima out of the two applications and write the formula
+        env:
+          MACOS_SHA256: ${{ needs.macos.outputs.updater_sha256 }}
+          LINUX_SHA256: ${{ needs.linux.outputs.updater_sha256 }}
+          TIME: ${{ needs.commit.outputs.time }}
+        run: |
+          set -eu
+          {
+            echo "$MACOS_SHA256  macos/Anima.app.tar.gz"
+            echo "$LINUX_SHA256  linux/Anima_${VERSION}_amd64.AppImage"
+          } | sha256sum --check --strict
+          mkdir -p work/mac work/linux out
+          tar -xzf macos/Anima.app.tar.gz -C work/mac Anima.ing.app/Contents/MacOS/anima
+          mac=work/mac/Anima.ing.app/Contents/MacOS
+          file "$mac/anima" | grep -q 'Mach-O universal binary with 2 architectures'
+          chmod +x "linux/Anima_${VERSION}_amd64.AppImage"
+          (cd work/linux && "../../linux/Anima_${VERSION}_amd64.AppImage" --appimage-extract usr/bin/anima > /dev/null)
+          linux=work/linux/squashfs-root/usr/bin
+          # The Linux program must start with no file of the AppImage beside it.
+          ldd "$linux/anima"
+          [ "$("$linux/anima" --version)" = "anima $VERSION" ]
+          pack() {
+            tar --sort=name --mtime="@$TIME" --owner=0 --group=0 --numeric-owner --mode=0755 -cf - -C "$1" anima | gzip -n > "out/$2"
+          }
+          pack "$mac" anima-darwin-universal.tar.gz
+          pack "$linux" anima-linux-x86_64.tar.gz
+          macos_sha256=$(sha256sum out/anima-darwin-universal.tar.gz | cut -d ' ' -f 1)
+          linux_sha256=$(sha256sum out/anima-linux-x86_64.tar.gz | cut -d ' ' -f 1)
+          (cd out && sha256sum anima-darwin-universal.tar.gz anima-linux-x86_64.tar.gz > SHA256SUMS)
+          sh deploy/bin/cli-formula "$VERSION" "$macos_sha256" "$linux_sha256" > out/anima.rb
+          jq -n --arg version "$VERSION" '{version: $version}' > out/latest.json
+          {
+            echo "macos_sha256=$macos_sha256"
+            echo "linux_sha256=$linux_sha256"
+            echo "formula_sha256=$(sha256sum out/anima.rb | cut -d ' ' -f 1)"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cli
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+
+  # The files of `anima` alone go to the bucket, below `anima/<version>/`, after the desktop
+  # application is public. No code of the repository: the `aws` program of the machine. A file
+  # that the bucket already holds is kept when it has the same bytes and refused when it has
+  # not; `anima/latest.json` is written last.
+  cli-publish:
+    needs: [commit, cli, publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-publish
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cli
+          path: cli
+      - name: Put the two files, then the version file
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+          MACOS_SHA256: ${{ needs.cli.outputs.macos_sha256 }}
+          LINUX_SHA256: ${{ needs.cli.outputs.linux_sha256 }}
+          PUBLIC: https://releases.anima.ing
+        run: |
+          set -eu
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          cd cli
+          {
+            echo "$MACOS_SHA256  anima-darwin-universal.tar.gz"
+            echo "$LINUX_SHA256  anima-linux-x86_64.tar.gz"
+          } > expected
+          sha256sum --check --strict expected
+          cmp expected SHA256SUMS
+          bucket() { aws s3api "$@" --endpoint-url "$ENDPOINT" --bucket anima-releases; }
+          # put <file> <key> <content type> <cache control>
+          put() {
+            if bucket head-object --key "$2" > /dev/null 2>&1; then
+              bucket get-object --key "$2" held > /dev/null
+              if cmp -s held "$1"; then echo "$2 is there with the same bytes"; return 0; fi
+              echo "::error::The bucket holds $2 with other bytes."
+              return 1
+            fi
+            bucket put-object --key "$2" --body "$1" --content-type "$3" --cache-control "$4" > /dev/null
+            curl -fsS --retry 3 -o read-back "$PUBLIC/$2"
+            cmp read-back "$1"
+          }
+          put anima-linux-x86_64.tar.gz "anima/$VERSION/anima-linux-x86_64.tar.gz" application/gzip "public, max-age=31536000, immutable"
+          put anima-darwin-universal.tar.gz "anima/$VERSION/anima-darwin-universal.tar.gz" application/gzip "public, max-age=31536000, immutable"
+          put SHA256SUMS "anima/$VERSION/SHA256SUMS" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
+          bucket put-object --key anima/latest.json --body latest.json --content-type application/json --cache-control no-cache > /dev/null
+          curl -fsS --retry 3 "$PUBLIC/anima/latest.json" | jq -e --arg version "$VERSION" '.version == $version' > /dev/null
+          echo "anima $VERSION is in the bucket"
+
+  # The formula goes to the tap of the operator (R-218), with a key that can write only to
+  # that repository. No code of this repository: the formula is the file of the job `cli`.
+  tap:
+    needs: [commit, cli, cli-publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release-tap
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cli
+          path: cli
+      - name: Push the formula to TheArctesian/homebrew-anima
+        env:
+          TAP_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          FORMULA_SHA256: ${{ needs.cli.outputs.formula_sha256 }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$TAP_KEY" ]; then
+            echo "::error::HOMEBREW_TAP_DEPLOY_KEY is not set in the environment release-tap."
+            exit 1
+          fi
+          echo "$FORMULA_SHA256  cli/anima.rb" | sha256sum --check --strict
+          keys=$(mktemp -d "$RUNNER_TEMP/keys.XXXXXX")
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s\n' "$TAP_KEY" > "$keys/tap"
+          # The host key of github.com (docs.github.com, "GitHub's SSH key fingerprints").
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$keys/known"
+          export GIT_SSH_COMMAND="ssh -i $keys/tap -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$keys/known"
+          git clone --quiet --depth 1 git@github.com:TheArctesian/homebrew-anima.git tap
+          mkdir -p tap/Formula
+          cp cli/anima.rb tap/Formula/anima.rb
+          cd tap
+          git add Formula/anima.rb
+          if git diff --cached --quiet; then echo "The tap already has this formula."; exit 0; fi
+          git -c user.name="Anima release" -c user.email="release@anima.ing" commit --quiet -m "anima $VERSION"
+          git push --quiet origin HEAD:refs/heads/main
+          echo "The tap has the formula of $VERSION"
+
+  # The crate `anima-cli` on crates.io, with the version of the release (R-219). A version on
+  # crates.io is permanent: it runs last, after the files of the same version are public. The
+  # token is in one step only, and that step builds nothing (`--no-verify`): the package is
+  # built in the step before, with no token.
+  crate:
+    needs: [commit, cli, cli-publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on' && vars.ANIMA_PUBLIC_CLI == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: release-crate
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - name: Install the packages that the key store of anima needs to build
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libdbus-1-dev pkg-config
+      - id: package
+        name: Write the version and build the package, with no token
+        run: |
+          set -eu
+          if curl -fsS --retry 3 https://index.crates.io/an/im/anima-cli 2> /dev/null | jq -e --arg version "$VERSION" 'select(.vers == $version)' > /dev/null; then
+            echo "crates.io already has anima-cli $VERSION."
+            echo "there=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sh deploy/bin/crate-version "$VERSION"
+          cargo package -p anima-cli --locked --allow-dirty
+          echo "there=false" >> "$GITHUB_OUTPUT"
+      - name: Publish the crate
+        if: steps.package.outputs.there == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is not set in the environment release-crate."
+            exit 1
+          fi
+          cargo publish -p anima-cli --locked --allow-dirty --no-verify
+
+  # The iOS application for TestFlight (R-203; task B8i). Not run on GitHub, and the archive
+  # script that it calls is task M5-4 of the mobile plan: the job is off until the variable
+  # ANIMA_IOS_BUILD is `on`. It builds and signs; it uploads nothing. Its secrets are the
+  # distribution certificate and the profile, in the environment `release-ios`; it does not
+  # read the iOS secrets that are in `release`.
+  ios:
+    needs: commit
+    if: needs.commit.outputs.release_ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 120
+    environment: release-ios
+    permissions:
+      contents: read
+    outputs:
+      ipa_sha256: ${{ steps.digest.outputs.ipa_sha256 }}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.commit.outputs.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Install the Rust target of the phone and the packages
+        run: |
+          set -eu
+          rustup target add aarch64-apple-ios
+          brew install xcodegen
+          bun install --frozen-lockfile
+      - id: identity
+        name: Make the keychain of this job, import the certificate and install the profile
+        env:
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$IOS_DISTRIBUTION_P12_BASE64" ] || [ -z "$IOS_DISTRIBUTION_P12_PASSWORD" ] || [ -z "$IOS_PROVISIONING_PROFILE_BASE64" ]; then
+            echo "::error::The three iOS signing secrets are not set in the environment release-ios. They are not read from the environment release: see docs/procedures/releases.md, 'The iOS application'."
+            exit 1
+          fi
+          KEYCHAIN="$RUNNER_TEMP/ios.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          password=$(openssl rand -hex 24)
+          security create-keychain -p "$password" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$password" "$KEYCHAIN"
+          printf '%s' "$IOS_DISTRIBUTION_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/distribution.p12"
+          security import "$RUNNER_TEMP/distribution.p12" -f pkcs12 -P "$IOS_DISTRIBUTION_P12_PASSWORD" \
+            -k "$KEYCHAIN" -T /usr/bin/codesign > /dev/null
+          rm -f "$RUNNER_TEMP/distribution.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          identity=$(security find-identity -v -p codesigning "$KEYCHAIN" | sed -n 's/.*"\(Apple Distribution: [^"]*\)".*/\1/p' | head -n 1)
+          if [ -z "$identity" ]; then
+            echo "::error::The certificate of IOS_DISTRIBUTION_P12_BASE64 is not an Apple Distribution identity."
+            exit 1
+          fi
+          # The script checks the profile and puts it where Xcode reads it.
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          {
+            echo "identity=$identity"
+            echo "profile=$RUNNER_TEMP/profile.mobileprovision"
+          } >> "$GITHUB_OUTPUT"
+      - id: digest
+        name: Build and sign the archive
+        env:
+          IOS_SIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
+          IOS_PROFILE: ${{ steps.identity.outputs.profile }}
+        run: |
+          set -eu
+          if [ ! -f apps/desktop/src-tauri/ios-archive.sh ]; then
+            echo "::error::apps/desktop/src-tauri/ios-archive.sh is not in this commit (task M5-4 of the mobile plan)."
+            exit 1
+          fi
+          # The script sets the build number from the version (deploy/bin/phone-build-number):
+          # the count of the first line of main, so 0.8.15 gives 815 (R-201). Its last lines
+          # say what it made.
+          sh apps/desktop/src-tauri/ios-archive.sh "$VERSION" | tee "$RUNNER_TEMP/archive.log"
+          said() { sed -n "s/^$1=//p" "$RUNNER_TEMP/archive.log" | tail -n 1; }
+          if [ "$(said version)" != "$VERSION" ] || [ "$(said signed)" != yes ]; then
+            echo "::error::The archive script did not make a signed archive of $VERSION."
+            exit 1
+          fi
+          ipa=$(said ipa)
+          test -s "$ipa"
+          unzip -tq "$ipa" > /dev/null
+          mkdir -p out
+          cp "$ipa" out/Anima.ipa
+          echo "ipa_sha256=$(shasum -a 256 out/Anima.ipa | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          echo "Build number $(said build)"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios
+          path: out/Anima.ipa
+          if-no-files-found: error
+          retention-days: 7
+      - name: Delete the keychain of this job
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN:-}" ]; then security delete-keychain "$KEYCHAIN" || true; fi
+
+  # The upload to TestFlight: only for a push to `main`, after the gates, and only while the
+  # switch ANIMA_PUBLIC_TESTFLIGHT is on. A trial never runs it. It holds the key of App
+  # Store Connect, in an environment of its own, and reads no repository.
+  ios-upload:
+    needs: [commit, gates, ios]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'
+    runs-on: macos-15
+    timeout-minutes: 45
+    environment: release-testflight
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ios
+          path: ios
+      - name: Send the file to App Store Connect
+        env:
+          ASC_API_PRIVATE_KEY: ${{ secrets.ASC_API_PRIVATE_KEY }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          IPA_SHA256: ${{ needs.ios.outputs.ipa_sha256 }}
+        run: |
+          set -eu
+          umask 077
+          if [ -z "$ASC_API_PRIVATE_KEY" ] || [ -z "$ASC_API_KEY_ID" ] || [ -z "$ASC_API_ISSUER_ID" ]; then
+            echo "::error::The three App Store Connect secrets are not set in the environment release-testflight."
+            exit 1
+          fi
+          echo "$IPA_SHA256  ios/Anima.ipa" | shasum -a 256 --check --strict
+          keys="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$keys"
+          trap 'rm -f "$keys/AuthKey_$ASC_API_KEY_ID.p8"' EXIT
+          printf '%s\n' "$ASC_API_PRIVATE_KEY" > "$keys/AuthKey_$ASC_API_KEY_ID.p8"
+          xcrun altool --upload-app --type ios --file ios/Anima.ipa --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER_ID"
+
+  # The record of the build that went up, so that the next push can compare with it:
+  # `ios/latest.json` in the bucket. TestFlight has no feed that a job with no key can read.
+  ios-record:
+    needs: [commit, ios-upload]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_IOS_BUILD == 'on' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release-publish
+    permissions: {}
+    env:
+      VERSION: ${{ needs.commit.outputs.version }}
+    steps:
+      - name: Write the version that is in TestFlight
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
+        run: |
+          set -eu
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$ENDPOINT" ]; then
+            echo "::error::The bucket token or RELEASES_ENDPOINT is not set in the environment release-publish."
+            exit 1
+          fi
+          jq -n --arg version "$VERSION" '{version: $version}' > latest.json
+          aws s3api put-object --endpoint-url "$ENDPOINT" --bucket anima-releases --key ios/latest.json --body latest.json --content-type application/json --cache-control no-cache > /dev/null
+          echo "ios/latest.json gives $VERSION"
 
   # Only for a run by hand. Each check of `publish` that needs no bucket; no token, and
   # nothing is published.

@@ -2,7 +2,7 @@
 // describe, the Phase 2 additions included. It records every request. Close `hub` after each test.
 // No vitest import here.
 import { parse, type OperationDefinitionNode } from 'graphql';
-import { createHub, DEFAULT_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
+import { createHub, NO_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
 import { FAKE_WEBSOCKET } from '$lib/hub/socket/fake';
 import { sessionsApi, type SessionsApi, type ServerCertificate } from '../api';
 import type { SessionEndReason } from '../ending';
@@ -169,7 +169,7 @@ export function fakeHub(changes: Partial<FakeDevice> = {}) {
     if (request.operation.startsWith('Start')) issued += 1;
     return Promise.resolve(new Response(JSON.stringify(answer(device, request, issued))));
   };
-  const hub: Hub = createHub({ address: DEFAULT_HUB_ADDRESS, token: () => Promise.resolve('operator-token'), fetch, WebSocket: FAKE_WEBSOCKET });
+  const hub: Hub = createHub({ address: NO_HUB_ADDRESS, token: () => Promise.resolve('operator-token'), fetch, WebSocket: FAKE_WEBSOCKET });
   const api: SessionsApi = sessionsApi(hub);
   /** The requests named `operation`, in order. */
   const named = (operation: string) => sent.filter((request) => request.operation === operation);
