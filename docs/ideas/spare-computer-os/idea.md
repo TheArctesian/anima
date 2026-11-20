@@ -26,6 +26,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 6: setup surfaces | Decided in part | Add setup from within Anima after the machine boots and connects to the internet. Include an opt-in prepared, fully unattended setup path aligned with one-click installation. A standalone local-browser interface is not implied. Decision 7 provisionally selects graphical and text setup; a full desktop is not selected. Enrollment, network bootstrap, prepared-media identity and authorization to erase a disk remain open. |
 | Decision 6: distribution | Decided | Standard downloadable ISO written to USB with dd or a graphical flasher. No custom flasher is required by this choice. It does not settle prepared-media settings, enrollment or automatic disk erasure. Selected ARM boards may need board-specific image formats; do not assume one ISO boots every target. |
 | Decision 7: local interface | Provisional | A + B: graphical setup and installed status/recovery screen, plus text setup and recovery menus as a fallback. Setup through Anima remains in scope. The operator is discussing this in a side chat and asked to log the choice for now and revisit later. No interface framework or full desktop is selected. |
+| Decision 8: hub disconnection | Decided | A + B + D: approved applications keep running and may restart under their existing policy; already-running jobs and agents may continue within existing permissions and limits; authorized local administration remains available without a reachable hub. Do not start new queued or scheduled jobs while disconnected in the first version. Grant expiry, reconnect reconciliation and local authentication still need design. External-service dependencies can still prevent a workload from working. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -62,7 +63,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 8: what continues when the machine cannot reach its Anima hub? Options: keep approved apps running; let running jobs and agents continue within their grants; start already-authorized queued or scheduled work offline; allow local administration offline. Recommendation: keep apps and running work going, and retain local administration. Offline starts need an explicit policy. No choice yet. Internet-dependent workloads can still fail even when the OS allows them to continue.
+2. Decision 9: what recovery operations should the first version provide? Options can be combined: roll back OS configuration/software without intentionally reverting workload data; repair or reinstall the OS while preserving designated data; restore selected workload data from snapshots/backups; explicitly erase and reset the machine. Recommendation: all four as separate operations, with backup destination and automation decided later. No selection yet. These are proposed outcomes, not guarantees about filesystem or application compatibility.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -113,6 +114,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: The operator provisionally selected A + B for Decision 7 and asked to log it while discussing the subject in a side chat. Marked it for later review and paused the walkthrough. No side-chat conclusions have been imported.
 
 - 2026-11-19: The operator clarified that the walkthrough should continue. Decision 7 stays provisional for later review; the discussion is not paused. Next: behavior when disconnected from the Anima hub.
+
+- 2026-11-19: Decision 8 accepted as A + B + D. Recorded offline continuity for approved apps and running work, plus authorized local administration; new queued/scheduled jobs do not start offline. Next: recovery outcomes before filesystem and partition design.
 
 ## Source text
 
@@ -165,3 +168,7 @@ In response to Decision 7:
 After the pause interpretation:
 
 > No We can keep making desicons lets keep going
+
+In response to Decision 8:
+
+> lets do ABD
