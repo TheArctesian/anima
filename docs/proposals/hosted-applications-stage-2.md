@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. Section 4 of version 3 has the correction of each finding. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 3 (2026-11-19).
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. Section 4 of version 3 was written to correct each finding; a second read (2026-11-19) says that it does so only in part and found SF-034 to SF-048, and five points wait for the operator (OD-HOST-22 to OD-HOST-26 of the plan). The condition of R-209 is not met. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 3 (2026-11-19).
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -96,8 +96,11 @@ text keeps it. Section 4 is written for that.
 This is the text for version 0.4 of [work-route.md](../../contracts/work-route.md). Version 1 of
 this section was read by a security review on 2026-11-19, which found 19 weaknesses (SF-015 to
 SF-033 of [security-findings.md](../security-findings.md)). The operator decided the eight that
-needed him (R-226 to R-233). This version has the correction of each finding; Section 4.4 says
-where. The text that the review read is in the history of this file (commit `1c274d68`).
+needed him (R-226 to R-233). This version was written to correct each finding; Section 4.4 says
+where the writer put each correction. A second read by a separate reviewer on 2026-11-19 says
+that it corrects them only in part and has new weaknesses (SF-034 to SF-048), three of severity
+High. This text is thus not version 0.4 of the contract and must not be built. Five points wait
+for the operator (OD-HOST-22 to OD-HOST-26 of the plan). The text that the review read is in the history of this file (commit `1c274d68`).
 
 The owner of `contracts/work-route.md` is the session of
 [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md). This section is the text to
