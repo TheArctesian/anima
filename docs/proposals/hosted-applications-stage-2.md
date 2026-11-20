@@ -115,8 +115,10 @@ two programs.
 | The applications program, `anima-applications` | The administrator of the machine | Holds the settings of Section 4.2. Checks each request and each file by the rules of this section. It is the only program of Anima that talks to Docker. It makes no connection to a network and never talks to the hub. |
 
 - The daemon gives each container item to the applications program over a Unix socket. The
-  applications program accepts a connection only from the user of the daemon; it reads the user of
-  the peer from the operating system and refuses each other user.
+  applications program accepts a connection only from one user: the user that the administrator
+  named when he set "Manage applications" on. A computer can have a daemon for each of two
+  accounts (R-206, R-208); only the named one is accepted. The program reads the user of the peer
+  from the operating system and refuses each other user.
 - The applications program does not trust the daemon. It checks each member of each request by
   the rules below, as if the request came from the hub. A fault of the daemon, a program of the
   user of the daemon, or a stolen daemon token thus gets what the rules permit and no more.
@@ -144,10 +146,16 @@ daemon cannot (SF-007, SF-018).
 | Protected containers | None | Containers that no item can stop, start or restart. |
 | Registries with a login | None | The registries for which a pull may use the login of the machine. |
 
-- The settings are bound to the origin of the hub and to the device identifier at the time they
-  were set. When the daemon is enrolled at a different origin, or as a different device, the
-  applications program sets "Manage applications", "All containers", "Open to the network" and
-  "The hub may delete volumes" off and empties the three lists.
+- The settings are bound to the hub and to the device identifier at the time they were set. When
+  the daemon is enrolled at a different hub, or as a different device, the applications program
+  sets "Manage applications", "All containers", "Open to the network" and "The hub may delete
+  volumes" off and empties the three lists. Open point: the file that the enrolment writes belongs
+  to the user of the daemon, and for a hosted hub its origin is the same text for each hub. The
+  applications program can thus not learn the hub from that file in a way that the user cannot
+  forge. The proof must come from the hub. Task H30 must say how, or say that it waits for the key
+  of the device (task W7). Until then the limit is what Section 4.5 permits: a user who enrols the
+  daemon at a hub of their own gets what a file of the profile `contained` gets, and the update of
+  an adopted project.
 - There is one profile for a file from the hub, `contained` (Section 4.5). There is no profile
   `full` (R-228). A file that needs more is started by the owner at the machine and adopted.
 - To set "Manage applications" off does not stop a container. A container that an item started
