@@ -13,9 +13,9 @@ use std::{
 
 use super::trust::{self, Stat, User};
 
-/// The daemon's file name, in the app bundle and in the destination folder. The release config
-/// (`tauri.release.conf.json`) names the sidecar `binaries/anima-daemon`; Tauri drops the target
-/// triple and puts it beside the app's own executable.
+/// The daemon's file name, in the app bundle and in the destination folder. The bundle step
+/// names the sidecar `binaries/anima-daemon` with the other carried programs (HMD-052); Tauri
+/// drops the target triple and puts it beside the app's own executable.
 pub const DAEMON_FILE: &str = "anima-daemon";
 
 /// The installed binary's mode: the user runs it, everyone may read and run it.

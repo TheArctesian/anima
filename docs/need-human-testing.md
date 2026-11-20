@@ -73,6 +73,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
+| HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
+| HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 
 ### What a check on the hosted hub needs
 
@@ -896,6 +898,59 @@ viewer of the operating system, a real network, and a hub that runs as the insta
 6. Run `anima file remove <id>` for each file. Expected: the piece goes with the last file.
 
 Result: Open.
+
+### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
+
+Built: on the branch `hosted/hm-t24-link-unit` (task HM-T24 of
+[hosted-mode.md](proposals/hosted-mode.md), part a; R-240). `anima-link unit install` writes a
+`LaunchAgent` (macOS) or a systemd user unit (Linux) that runs `anima-link device`, and starts it;
+`unit remove` stops it and deletes the file; `unit show` says whether it is there (`link/unit`). The
+application does not use the command yet.
+
+The tests cover: the text of the two unit files, the commands and their order, the refusal of a value
+that could break out of a unit file, of a program inside an application, and of a program that other
+users can replace; the writing and the removal of the file with commands that are not run. Not
+covered: `launchctl` and `systemctl` themselves, a login, and a link that runs from the unit.
+
+It needs: a computer with a device link that joined a hub (Section 3 of
+[link.md](procedures/setup/link.md)); `<DIR>` is its state directory and `<PORT>` a free port, for
+example 41001. Stop each `anima-link device` and the Anima.ing application first.
+
+1. Copy the program to a folder that stays: `mkdir -p ~/.local/bin && install -m 0755 <anima-link of
+   this build> ~/.local/bin/anima-link`.
+2. Run `~/.local/bin/anima-link unit install -state <DIR> -listen 127.0.0.1:<PORT>`. Expected: no
+   output and exit code 0. No password is asked.
+3. Run `~/.local/bin/anima-link unit show`. Expected: `{"installed":true,"file":"..."}`.
+4. Run `~/.local/bin/anima-link ctl -state <DIR> status`. Expected: a JSON answer with
+   `"role":"device"` and `"local":"127.0.0.1:<PORT>"`.
+5. Log out and log in again (or start the computer again). Do not open the application. Run step 4
+   again. Expected: the same answer. On the hub, the device shows as connected.
+6. Run the command of step 2 from the application: `/Applications/Anima.ing.app/Contents/MacOS/anima-link
+   unit install -state <DIR> -listen 127.0.0.1:<PORT>`. Expected: a refusal that says that the program
+   is inside an application.
+7. Run `~/.local/bin/anima-link unit remove`, then steps 3 and 4. Expected: `"installed":false`, and
+   step 4 fails because no link runs.
+
+### HT-049: the application carries `anima-daemon` (HMD-052, task HM-T16)
+
+Built: on the branch `hosted/hm-t16-daemon-in-bundle` (task HM-T16 of
+[hosted-mode.md](proposals/hosted-mode.md); R-206). `apps/desktop/src-tauri/trial-bundle.sh` and the
+bundle step of the builder (`apps/desktop/src-tauri/src/builder/carried/rust_programs.rs`) build
+`anima-daemon` and name it in `bundle.externalBin`; `check-mach-o.sh` and the check of the AppImage in
+the release workflow expect it.
+
+The tests cover: the lists of programs of the builder and of the Mach-O check. Not covered: a real
+bundle. No bundle was made with this change, so nothing shows that Tauri takes the seventh program,
+that the signature and the notary service accept it, or that the shell finds it.
+
+1. Run `apps/desktop/src-tauri/trial-bundle.sh`. Expected: it ends with the place of the
+   application, with no error.
+2. Run `ls <place>/Anima.ing.app/Contents/MacOS`. Expected: eight files, and `anima-daemon` is one.
+3. Run `<place>/Anima.ing.app/Contents/MacOS/anima-daemon --help` (or with no argument). Expected:
+   the usage text of the daemon, not an error of the system.
+4. After the next release from `main`: the jobs `macos` and `linux` of the release workflow pass
+   their checks of the carried programs, and the notary step accepts the application. Expected: the
+   release is published. If a check fails, write its message here.
 
 ### HT-044: the application does not start Tailscale on a hosted hub (DEF-005)
 

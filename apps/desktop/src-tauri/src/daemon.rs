@@ -7,12 +7,10 @@
 //! or argument holds it (LOG-007). The shell wipes its own copy of the code (`Zeroizing`); the
 //! copies in the IPC message and in the web view are not wiped.
 //!
-//! Only a release build carries the daemon. The release build must build `anima-daemon` for the
-//! app's target triple from the same commit, place it at
-//! `apps/desktop/src-tauri/binaries/anima-daemon-<target-triple>`, and pass
-//! `--config tauri.release.conf.json` to `tauri build`, which adds it as a sidecar beside the
-//! app's executable. A debug build, or one built without that config, says it carries none, and
-//! the client shows the install command instead.
+//! A bundle carries the daemon with the other programs (HMD-052, R-206): the bundle step of the
+//! builder (`src/builder/carried/`) and `trial-bundle.sh` build `anima-daemon` from the same
+//! commit and name it in `bundle.externalBin`. A debug build carries none and says so, and the
+//! client shows the install command instead.
 
 mod error;
 mod installing;

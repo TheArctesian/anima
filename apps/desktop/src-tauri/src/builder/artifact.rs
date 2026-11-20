@@ -156,7 +156,7 @@ pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
         .ok_or(BuilderError::Bundle)
 }
 
-/// The app's own executable, once its `Contents/MacOS` holds exactly it and the six carried
+/// The app's own executable, once its `Contents/MacOS` holds exactly it and the seven carried
 /// programs (INS-002, S12 2.3). Any other set of files fails, so nothing unchecked is notarized
 /// and shipped.
 pub fn mac_executable(clone: &Path, app: &Path) -> Result<PathBuf, BuilderError> {
