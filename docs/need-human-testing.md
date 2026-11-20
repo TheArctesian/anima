@@ -80,6 +80,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-NEW-w2linux | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1558,6 +1559,45 @@ Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-
    the dev of this run into the checkout", and nothing is merged.
 
 State: Open.
+
+### HT-NEW-w2linux: the measurements of the isolation design on Linux (task W2, R-188, R-NEW-w2machine)
+
+Built: the script [linux-job.sh](research/work-isolation/linux-job.sh) of the record
+[w2-isolation.md](research/work-isolation/w2-isolation.md) (task W2 of
+[projects-and-builds-plan.md](plans/projects-and-builds-plan.md)). It is throwaway code of a prototype. It
+runs small containers with Podman and no root right, with the flags that the design gives a job, and
+writes what it measured to `~/w2-linux.log`. It installs nothing, uses no `sudo`, changes no setting and
+removes each container that it made. Two images stay on the disk (`alpine:3` and `docker:dind-rootless`):
+about 500 MB.
+
+Not covered by a test: all of it. No session can reach `pop-os`, and the script was not run on a Linux
+computer when it was written: only its syntax was checked. If a step gives an error, send the error; do
+not try to correct it.
+
+It needs: the computer `pop-os`, a terminal as your own user (not root), the internet, and about
+10 minutes. Step 1 is the only step with `sudo`.
+
+1. Install Podman: `sudo apt update && sudo apt install -y podman`. Then run
+   `podman run --rm docker.io/library/alpine:3 id`. Expected: after the download of the image, one line
+   that starts with `uid=0(root)`. Then run `podman info --format '{{.Host.Security.Rootless}}'`.
+   Expected: `true`. If the first command says that `newuidmap` is missing, run
+   `sudo apt install -y uidmap slirp4netns` and try again.
+2. Get the script:
+   `curl -fsSLO https://raw.githubusercontent.com/TheArctesian/anima.ing/dev/docs/research/work-isolation/linux-job.sh`.
+   Expected: no output, and `ls linux-job.sh` shows the file. Read it if you want to: it has about 120 lines.
+3. Close programs that use much processor time, then run `bash linux-job.sh`. Expected: lines appear for
+   3 to 8 minutes, in six parts with the titles `== E1` to `== E6`; the last lines are `== done` and
+   `The log is /home/<you>/w2-linux.log`. A line that starts with `WARNING` or says `nothing measured`
+   is a result too: send the log as it is.
+4. Look at the log: `cat ~/w2-linux.log`. Expected: it holds no address and no name of the computer; it
+   holds the name of the system, the kernel, the number of processors and the memory. If it holds a
+   thing that you do not want in a public repository, remove that line.
+5. Send the log: paste the whole text of `~/w2-linux.log` into the chat of the orchestrating session.
+   Expected: a session writes the results into Section 3 of the record and tells you what they mean
+   for the design.
+
+After the check you can remove everything again: `podman system reset` removes the images and the
+containers of your user, and `sudo apt remove podman` removes the program.
 
 ## Not built yet
 
