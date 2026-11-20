@@ -12,7 +12,7 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 
 ## Local gates
 
-`bun run gates` (from the repository root) is the only gate entry point. There is no CI; gates run on the machine that makes the change.
+`bun run gates` (from the repository root) is the gate entry point. The gates run on the machine that makes the change; the workflow `gates` runs the same list on GitHub (see "The gates on GitHub").
 It runs twenty-one gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
 
 1. `cargo fmt --check`
@@ -47,6 +47,106 @@ and names gates also measure `.go` files.
 
 `BASE_REF` is read from the environment and defaults to `phase-2` (a local branch; no remote needed).
 A missing executable is a failure, never a skip (CQ-024). The gate list and runner live in `src/gates/gates.ts`.
+
+### The fast tier: `bun run gates:fast`
+
+`bun quality/bin/gates.ts --fast` runs a part of the list, chosen by the paths that are different from the
+merge base with `origin/dev` (`FAST_BASE` names a different ref): committed, staged, not staged and new files.
+The rule is `choose` in `src/gates/tier.ts`; `tests/gates/tier.test.ts` tests it.
+
+| Changed paths | Gates |
+| --- | --- |
+| Nothing | None |
+| Only `docs/`, `*.md` files of the root, `.gitattributes`, `LICENSE` | `documents` |
+| A crate | `fmt`; `clippy` and `rust-test` with `-p` for each touched crate; `pinning` when the desktop shell is touched; the five quality gates |
+| `link/` | The six Go gates; the five quality gates |
+| A bun package | `install`; `lint`, `check` and `test` with `--filter` for each touched package; `build` when the client is touched; the five quality gates |
+| `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.config/`, `.cargo/` | The whole Rust group |
+| `package.json`, `bun.lock`, the lint and TypeScript settings of the root, `design/` | The whole bun group |
+| `contracts/` | The whole Rust group and the whole bun group |
+| `.github/` | The tests of `@anima/deploy`, which read the workflow files |
+| A path that no rule knows | The full list |
+
+Measured on 2026-11-19 on the Mac of the operator, at a load of 8 to 12 (the full list takes about 13
+minutes on the same Mac when it is quiet: Rust tests 7, bun tests 3.5, Go tests 2):
+
+| Change | Time of `bun run gates:fast` |
+| --- | --- |
+| One document | Less than 1 s |
+| One line in the daemon crate, in a new worktree | 33 s |
+| One more line in the same crate | 14 s |
+| One line in the bun package `@anima/dns` | 4 s |
+| One line in `link/` | 142 s (the Go tests with the race detector are 2 minutes of it) |
+
+What it does not do: it does not test a package that depends on a touched one, and it runs the doctests
+only with the whole Rust group. The full list does that. `--group rust,go,bun,quality` and
+`--gate name,name` run a part of the list by name; the jobs of the workflow use them.
+
+### The gates on GitHub
+
+`.github/workflows/gates.yml` runs the full list on `ubuntu-24.04` machines of GitHub for each pushed branch
+but `main` (R-254). No pull request starts it. The job `base` reads the commit of `dev`; then four
+jobs run at the same time, each on the branch as merged with that commit (`gates-merge.sh`): `rust-lint`
+(`fmt`, `clippy`), `rust-test` (`rust-test`, `doctest`, `pinning`), `go`, and `bun` (the bun gates and the
+quality gates). The job `passed` passes when each passed. A run for `dev`, and a run that a workflow calls
+with `ref`, tests the commit as it is. `deploy/test/gates-workflow.test.ts` checks that the jobs
+together run each gate one time, that the file holds no secret and no token that can write, that each
+action is pinned to a commit, and that no pull request starts it. A different workflow that needs the
+gates of a commit calls this one (`workflow_call`, inputs `ref` and `base_ref`).
+
+A Linux machine does not run these, so a Mac must (`bun run gates:fast` there): the tests of
+`check-mach-o.sh` and one test of `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the
+daemon and its LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
+shell, with the trust hook that `pinning` proves. No job on GitHub runs macOS: the trial of the release
+workflow measured 82 minutes for the gates on `macos-15`.
+
+Measured on 2026-11-19, the first run in which each job passed (run 44652644005, commit `152773ff`): 31.5
+minutes from the start of `base` to the end of `passed`. `go` 2 minutes, `bun` with the quality gates 6
+minutes, `rust-lint` 12 minutes, `rust-test` 31 minutes (the Rust tests on 4 processors are the longest
+part). An earlier run with a full build cache had `rust-lint` at 2 minutes. Five runs before it failed:
+two for the set-up of the machine (a wrapper script that `sh` of Ubuntu broke; PostgreSQL 17 for the tests
+of `deploy`), one for three tests of the daemon that run only on Linux and were stale, and two because
+`dev` had moved and the branch did not merge with it.
+
+### The merge into `dev` (R-252)
+
+`.github/workflows/merge-to-dev.yml` starts when a run of `gates` ends. For a push of a branch of this
+repository that passed, `merge-to-dev.sh` reads the rule of `dev`, makes sure that the branch and `dev` are
+still the commits that the gates tested (if `dev` moved, it starts the gates again), runs
+`bun quality/bin/merge.ts <branch> --push`, and starts the gates for the new `dev`. GitHub has a merge queue
+for this work only for a repository of an organization; this repository belongs to a personal account.
+GitHub takes this file from the default branch, so it works only when it is on `main`.
+
+### Settings of GitHub
+
+No session of the coding agents makes these; the orchestrating session or the operator does. `OWNER/REPO`
+is this repository.
+
+```sh
+# 1. Actions can run, and a workflow can ask for a token that writes (merge-to-dev asks for
+#    contents: write in its own file; the default stays read).
+gh api -X PUT repos/OWNER/REPO/actions/permissions -F enabled=true -f allowed_actions=all
+gh api -X PUT repos/OWNER/REPO/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
+# 2. A pull request of a fork needs an approval before a workflow runs (it is so today; make sure).
+gh api -X PUT repos/OWNER/REPO/actions/permissions/fork-pr-contributor-approval -f approval_policy=all_external_contributors
+# 3. Read the rules of dev and main. If a rule of `dev` refuses a push of GitHub Actions, the
+#    workflow merge-to-dev cannot push: permit it for `dev` only. Never for `main`.
+gh api repos/OWNER/REPO/rulesets
+gh api repos/OWNER/REPO/branches/dev/protection
+gh api repos/OWNER/REPO/branches/main/protection
+# 4. Optional, when dev has a rule: name the check of the gates as required for `dev`.
+#    The name of the check is `passed`.
+```
+
+The file `merge-to-dev.yml` must be on `main` before it runs: that is a merge of `dev` into `main`, a step
+of the operator (R-198).
+
+### Numbers at a merge
+
+`bin/numbers.ts --check` fails when a placeholder of a number (`R-NEW-` and a name; `src/merge/numbers.ts` has the series) is in the repository;
+`--assign` gives each its number. `bin/merge.ts <branch>` merges a branch into `dev` with them
+(`AGENTS.md`, "Numbers and generated files at a merge"). `merge-rule.json` holds the two rules
+of R-254 and R-252; the two are on.
 
 ### Rust tests: gates 3 to 5 (R-112)
 
@@ -94,6 +194,37 @@ Inline `mod { }` blocks, bare relative `use store::x;`, macro-generated `use`, p
 glob imports (`use crate::checks::*;` then a bare `store::x`), names re-bound by shadowing or `let`,
 and re-exports (`pub use` counts as a use at the re-exporting file only).
 Aliases bound by `use` (`use crate::checks as c; c::store::x`) are followed within the same file.
+
+## The build cache
+
+`.cargo/config.toml` gives each cargo command of each worktree the wrapper `quality/bin/rustc-cache.sh`:
+sccache when it is on `PATH`, the compiler alone when it is not. It also sets the size of the cache to
+40 GiB; the default of 10 GiB was full. The gates add `CARGO_INCREMENTAL=0` (`src/gates/cache.ts`); a
+cargo command of a session keeps incremental builds for the crates of the workspace, and sccache then
+caches only the dependencies. `RUSTC_WRAPPER=` (empty) runs a command without the cache.
+
+Measured on 2026-11-19 on the Mac of the operator (18 cores), while other sessions built (the load was
+12 to 29, so each time is too high and only the comparison counts). The command was
+`cargo check -p anima-hub -p anima-daemon -p anima-cli --all-targets`, 624 Rust compile steps, with a
+cache of its own so that other sessions did not change the counts.
+
+| Case | Time | What it shows |
+| --- | --- | --- |
+| New worktree, no cache | 170 s (114 s at a load of 12) | The start of today for a cargo command of a session |
+| New worktree, sccache, a cache that a different worktree filled | 122 s to 140 s; 438 steps from the cache, 186 compiled | The dependencies come from the cache; the crates of the workspace and what depends on their path do not |
+| The same with `SCCACHE_BASEDIRS` | The same 438 and 186 | That setting does not help Rust; it is not used |
+| The same folder again, cache full for that path | 66 s; 624 steps from the cache | What a second run in one worktree gets after `cargo clean` |
+| One `CARGO_TARGET_DIR` for two worktrees, one after the other | 127 s, then 1 s | The fastest start, and the reason below not to use it |
+| The same, two worktrees at the same time | Each build waited for the lock | Two sessions do not build at the same time |
+| The same, a second worktree with a fault in a source file that is older than the build | `cargo check` passed in 0.3 s; with its own `target/` it fails | cargo compares times, not contents: a session can pass with the build of a different branch |
+| One changed line in the hub, incremental builds on | 22 s | The work loop of a session |
+| One changed line in the hub, sccache with incremental builds off | 71 s | Why a session keeps incremental builds on |
+
+Thus: sccache for each cargo command, incremental builds on outside the gates, one `target/` for each
+worktree, and no shared `CARGO_TARGET_DIR`. When two sessions build at the same time, each compiles in its
+own `target/`; they share only the cache, which serves the two with no lock that a build waits for. If
+the two compile the same dependency in the same minute, each compiles it one time and the second write
+replaces the first with the same content.
 
 ## Machine requirements
 

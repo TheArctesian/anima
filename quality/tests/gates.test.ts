@@ -110,7 +110,7 @@ describe("missingRequirement", () => {
   });
 
   test("needs nothing for a gate without requirements", () => {
-    expect(missingRequirement({ name: "fmt", argv: ["cargo", "fmt"] }, "", () => false)).toBeUndefined();
+    expect(missingRequirement({ name: "fmt", group: "rust", argv: ["cargo", "fmt"] }, "", () => false)).toBeUndefined();
   });
 });
 

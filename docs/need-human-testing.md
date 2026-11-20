@@ -70,14 +70,15 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
+| HT-051 | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
-| HT-051 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
-| HT-052 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
-| HT-053 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-NEW-phoneaccount | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-NEW-iosarchive | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
+| HT-NEW-iphonesignin | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 
 ### What a check on the hosted hub needs
 
@@ -979,7 +980,7 @@ sign-in to the hosted hub.
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
-### HT-051: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+### HT-NEW-phoneaccount: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
 
 Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
 phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
@@ -1019,7 +1020,7 @@ Steps 1 to 4 need no real phone. Use the Android emulator with a route to the in
 
 Result: Open.
 
-### HT-052: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
+### HT-NEW-iosarchive: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
 
 Built: on the branch `mobile/account-sign-in`: `apps/desktop/src-tauri/ios-archive.sh` and
 `deploy/bin/phone-build-number` ([mobile-build.md](procedures/setup/mobile-build.md)). The tests cover the rule of the
@@ -1040,13 +1041,13 @@ the operator (MOB-006).
 3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
    shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
    about the icons or the export question).
-4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-051, step 5.
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-NEW-phoneaccount, step 5.
 5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
    higher.
 
 Result: Open.
 
-### HT-053: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
+### HT-NEW-iphonesignin: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
 
 Built: on the branch `mobile/native-sign-in`. On an iPhone "Sign in" shows the page of the Anima.ing account over the
 application (the web authentication session of iOS) and comes back by itself; there is no code and no browser to go
@@ -1056,7 +1057,7 @@ to. The shell uses the authorization code flow of WorkOS with PKCE and listens f
 The tests cover the code challenge (the example of RFC 7636), the address of the page, the listener with a real
 connection, the check of the state, a stopped sign-in, and the fields of the trade of the code. Not covered: the Swift
 part, the page on a screen, a real answer of WorkOS, the refresh after this flow, and the rest of the sign-in
-(HT-051). No build of this branch ran on a simulator or a phone.
+(HT-NEW-phoneaccount). No build of this branch ran on a simulator or a phone.
 
 1. In the WorkOS dashboard, in the production environment: Applications, the application of Anima.ing, the tab
    Redirects. Add `http://127.0.0.1:47113/sign-in`. Do not make it the default. Expected: the dashboard takes it. If it
@@ -1518,6 +1519,34 @@ built or signed the application, and nothing was sent to App Store Connect.
    published <version>", and no iOS job runs.
 
 Result: Open.
+
+### HT-051: the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252)
+
+Built: on the branch `quality/faster-gates`. `.github/workflows/gates.yml` runs the 21 gates on Linux
+machines of GitHub for each pushed branch, as merged with `dev`. `.github/workflows/merge-to-dev.yml`
+merges a branch whose run passed into `dev`.
+
+The tests cover the rules of the two files (no secret, pinned actions, no pull request, the order of the
+steps), the choice of the gates and the merge script, which was run in a clone with an origin of its own.
+Not covered: no run on GitHub. Nobody saw the packages install on `ubuntu-24.04`, the Rust tests pass on
+Linux with 4 processors, the time of a run, the cache, or a push by the workflow to `dev`. Expect that the
+first runs fail for a reason of the machine; each such fault is a correction of the workflow, not of the code.
+
+Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-gates` (not a result of this entry: only the operator sets it): the sixth run, 44652644005 on commit `152773ff`, passed each job in 31.5 minutes (`go` 2, `bun` 6, `rust-lint` 12, `rust-test` 31). The five runs before it failed for the reasons that [quality/README.md](../quality/README.md), "The gates on GitHub", lists; two of them were the step "Merge the dev of this run into the checkout" refusing a branch that did not merge with `dev`, as step 5 expects. Steps 3 and 4 were not run: `merge-to-dev.yml` is not on `main`.
+
+1. Push a branch that changes one document. Open the run `gates` of that branch on GitHub. Expected: the
+   job `base` prints "tested with dev at:" and a commit; the five other jobs pass; write the time of each job here.
+2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is
+   faster than the first (the cache).
+3. When `merge-to-dev.yml` is on `main` and the settings are made: push a branch with one changed document and
+   one placeholder of a number. Expected: after the gates, the run `merge-to-dev` merges it; `dev` has a merge
+   commit that names the number; the placeholder is gone; a run `gates` for `dev` starts.
+4. Push two such branches at the same time. Expected: the first merges; the gates of the second run again
+   with the new `dev`, and then it merges. `main` did not move.
+5. Push a branch that has a conflict with `dev` in a document. Expected: its gates fail in the step "Merge
+   the dev of this run into the checkout", and nothing is merged.
+
+State: Open.
 
 ## Not built yet
 

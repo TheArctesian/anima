@@ -36,7 +36,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-051 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-052 (the iOS archive with a signature) and HT-053 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-NEW-phoneaccount (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-NEW-iosarchive (the iOS archive with a signature) and HT-NEW-iphonesignin (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
 ## 2. Open decisions (150)
 
@@ -47,7 +47,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
-| OD-W47 | Which version does the crate `anima-cli` on crates.io have, now that the version of a release is the count of the first line of `main` and no file holds it (R-1… | Open. Recommendation: (C) for now, then (A). The Homebrew formula takes the version from the release with no file to change, and a version on crates.io can neve… | [plan/decisions.md](plan/decisions.md) |
+| OD-W50 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the jobs of the work route? K1 changes only by a ruling (CON-001). Part 1 of task… | Open. Recommendation: approve the five fields as proposed; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -225,7 +225,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (81)
+## 4. Checks that only the operator can do (79)
 
 | Check | What |
 | --- | --- |
@@ -260,9 +260,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |
-| HT-051 | the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4) |
-| HT-052 | the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4) |
-| HT-053 | the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043) |
 | HT-043 | a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010) |
 | HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |
@@ -274,6 +271,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-037 | the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004) |
 | HT-041 | the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d) |
 | HT-046 | the iOS application from the release workflow to TestFlight (R-203; task B8i) |
+| HT-051 | the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |
