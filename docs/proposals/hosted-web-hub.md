@@ -204,9 +204,11 @@ R-239, answer 5: "B: move it straight away". The releases are signed in the rele
 1. The copy of the updater key that the old hub holds: make sure that the business vault has the key, then remove it from the hub.
 2. His data: an export or a backup of the database of the hub and of its key file, if he wants any of it (devices, credentials, checks, projects, events). A hosted hub has no import of it today.
 3. The GitHub App of the old hub: its callbacks are at `hub.anima.ing`. Delete the App at GitHub, or it stays as an App whose address is now the gateway.
-4. Each client that has `https://hub.anima.ing` as the address of his own hub: his devices with the application, the command line and the daemons. After the move they reach the gateway. Sign them in to the hosted hub, or remove them, first.
+4. Each client that has `https://hub.anima.ing` as the address of his own hub: his devices with the application, the command line and the daemons. After the move they reach the gateway. Sign them in to the hosted hub, or remove them, first. Decided on 2026-11-20 (R-269): "Accept it". He started again on the hosted hub; a device that is still on the old hub loses its hub at the move, and this item does not hold the move.
 5. The other names of the VPS do not move with this one: the VPN login server (`hs.anima.ing`) and the push channel. Each device that is still on the VPN keeps working until he turns the VPS off.
 6. The tokens of the old hub at Cloudflare (DNS-01, and the publishing token if it has one): withdraw them.
+
+State on 2026-11-20 (R-269): the name may move now. The old hub stays up on the VPN, with a backup taken first (item 2), and nothing reaches it by name after the move. The gateway is merged in `anima-cloud` (`main` at `7dc7f46`, on his word "Yes, merge", relayed), and the list of the steps of the move is `docs/hub-move.md` there. What the clients of other people do with the default address is still HM-T31 of [hosted-mode.md](hosted-mode.md).
 
 ### 6.5 This repository
 
