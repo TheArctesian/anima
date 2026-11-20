@@ -1,11 +1,23 @@
 import { describe, expect, test } from "bun:test";
 import { checkDocuments, definedIdentifiers, linkTargets, parseKnown, type Document } from "../../src/documents/documents.ts";
+import { mockupTable, recordText, type Cells } from "../../src/documents/mockup-records.ts";
 import { placeholdersInScreens } from "../../src/documents/mockups.ts";
 import { registerRows, withRows } from "../../src/documents/register.ts";
 import { check } from "./kit.ts";
 
 const REGISTER = "docs/plan/register.md";
 const INDEX = "docs/work-items/README.md";
+/** The record of the mockup `a.html` for the devices screen, with the cells given. */
+function mockupRecord(more: Partial<Cells> = {}): Document {
+  const cells: Cells = { Mockup: "[a.html](a.html)", Owner: "owner", Screens: "[devices](../../apps/client/src/routes/devices)", State: "Built", Compared: "`abc1234`", Differences: "", ...more };
+  return { path: "docs/mockup/records/a.md", text: recordText(cells) };
+}
+
+/** The index of the mockups with the table that `records` give, and `extra` text after it. */
+function mockupIndex(records: Document[], extra = ""): Document {
+  return { path: "docs/mockup/README.md", text: `# Mockups\n\n## Index\n\n${mockupTable(records)}\n${extra}` };
+}
+
 const PLAN_TEXT = "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n# Plan\n";
 
 /** The register with the given text outside its generated list, and the list that agrees with `documents`. */
@@ -137,7 +149,7 @@ describe("PLN-019 mockups", () => {
   test("a mockup that the index does not name fails", () => {
     expect(
       check([
-        { path: "docs/mockup/README.md", text: "[a](index.html) [screen](../../apps/client/src/routes/devices)" },
+        mockupIndex([], "[a](index.html) [screen](../../apps/client/src/routes/devices)"),
         { path: "docs/mockup/index.html", text: "" },
         { path: "docs/mockup/mobile/index.html", text: "" },
         { path: "apps/client/src/routes/devices/+page.svelte", text: "" },
@@ -229,18 +241,16 @@ describe("PLN-022 one task, whichever plan", () => {
 });
 
 describe("PLN-019 a mockup agrees with the application", () => {
-  const index = (state: string, compared: string) => ({
-    path: "docs/mockup/README.md",
-    text: `# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | ${state} | ${compared} |  |\n`,
-  });
   const files = [
     { path: "docs/mockup/a.html", text: "" },
     { path: "apps/client/src/routes/devices/+page.svelte", text: "" },
   ];
-  const run = (state: string, compared: string, later: number | undefined) =>
-    checkDocuments([index(state, compared), ...files], () => true, new Set(), () => later).map((v) => `${v.signal} ${v.detail}`);
+  const run = (state: string, compared: string, later: number | undefined) => {
+    const record = mockupRecord({ State: state, Compared: compared });
+    return checkDocuments([mockupIndex([record]), record, ...files], () => true, new Set(), () => later).map((v) => `${v.signal} ${v.detail}`);
+  };
 
-  test("a screen with no commit after the comparison passes, with an empty last cell", () => {
+  test("a screen with no commit after the comparison passes, with an empty last field", () => {
     expect(run("Built", "`abc1234` (2026-11-17)", 0)).toEqual([]);
   });
 
@@ -255,34 +265,49 @@ describe("PLN-019 a mockup agrees with the application", () => {
   });
 
   test("a built mockup that names a commit and no screen fails", () => {
-    const bare = { path: "docs/mockup/README.md", text: index("Built", "`abc1234`").text.replace("[devices](../../apps/client/src/routes/devices)", "none") };
-    expect(checkDocuments([bare, files[0] ?? bare], () => true, new Set()).map((v) => v.signal)).toEqual(["mockup-without-screens"]);
+    const bare = mockupRecord({ Screens: "none" });
+    expect(checkDocuments([mockupIndex([bare]), bare, files[0] ?? bare], () => true, new Set()).map((v) => v.signal)).toEqual(["mockup-without-screens"]);
   });
 
   test("a mockup that is not built can wait for its first comparison; a built one cannot, and a day is not a commit", () => {
     expect(run("Approved", "Not compared", 5)).toEqual([]);
     expect(run("built", "2026-11-17", 0)).toEqual(["mockup-not-compared [a.html](a.html)"]);
   });
+
+  test("the index table is written from the records: a row changed by hand, or a table that is not generated, fails", () => {
+    const record = mockupRecord();
+    const index = mockupIndex([record]);
+    const byHand = { ...index, text: index.text.replace("`abc1234`", "`def5678`") };
+    const signals = (documents: Document[]) => checkDocuments([...documents, ...files], () => true, new Set(), () => 0).map((v) => v.signal);
+    expect(signals([index, record])).toEqual([]);
+    expect(signals([byHand, record])).toEqual(["mockup-table-stale"]);
+    expect(signals([{ ...index, text: "# Mockups\n\n[a.html](a.html)\n" }, record])).toEqual(["mockup-table-not-generated"]);
+  });
+
+  test("a record keeps the links of its row, written from its own folder", () => {
+    expect(mockupRecord().text).toContain("- Screens: [devices](../../../apps/client/src/routes/devices)");
+    expect(mockupIndex([mockupRecord()]).text).toContain("| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | Built | `abc1234` |  |");
+  });
 });
 
 describe("PLN-019 PLN-021 no number placeholder in a screen that a mockup watches", () => {
   // Made of two parts, so that the merge does not number it in this file.
   const placeholder = ["R-", "NEW-listlayout"].join("");
-  const index = "# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | Built | `abc1234` |  |\n";
+  const records = [mockupRecord()];
   const texts: Record<string, string> = {
     "apps/client/src/routes/devices/Layout.svelte": `<!-- the layout of ${placeholder} -->`,
     "apps/client/src/routes/devices/list.css": `/* ${placeholder} */`,
     "apps/client/src/routes/devices/list.ts": `// ${placeholder}`,
     "apps/client/src/routes/settings/Page.svelte": `<!-- ${placeholder} -->`,
   };
-  const found = (paths: string[]) => placeholdersInScreens(index, paths, (path) => texts[path] ?? "").map((v) => `${v.path}: ${v.signal}`);
+  const found = (paths: string[]) => placeholdersInScreens(records, paths, (path) => texts[path] ?? "").map((v) => `${v.path}: ${v.signal}`);
 
   test("a placeholder in a Svelte or CSS file of a listed screen fails, and says what to write", () => {
     expect(found(Object.keys(texts))).toEqual([
       "apps/client/src/routes/devices/Layout.svelte: number-placeholder-in-screen",
       "apps/client/src/routes/devices/list.css: number-placeholder-in-screen",
     ]);
-    expect(placeholdersInScreens(index, ["apps/client/src/routes/devices/list.css"], (path) => texts[path] ?? "")[0]?.detail).toContain("name the plan row");
+    expect(placeholdersInScreens(records, ["apps/client/src/routes/devices/list.css"], (path) => texts[path] ?? "")[0]?.detail).toContain("name the plan row");
   });
 
   test("a placeholder outside the layout files of a listed screen passes: the merge may number it", () => {
