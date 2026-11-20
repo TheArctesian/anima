@@ -3,6 +3,7 @@
 //! holds a key; with a fake `LocalAPI` proxy so the hub reads the broker's node list first
 //! (VPN-001, VPN-003, VP-7, VP-10, BD-9, LOG-007).
 
+use crate::local_socket::Listener as UnixListener;
 use std::{
     path::PathBuf,
     sync::{
@@ -24,7 +25,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader},
-    net::{TcpListener, UnixListener},
+    net::TcpListener,
 };
 
 use super::{
@@ -81,10 +82,11 @@ impl FakeBroker {
             keys: keys.clone(),
             auth_id,
         };
-        let listener = UnixListener::bind(fake.path()).unwrap();
+        crate::local_socket::protect(fake.folder.path());
+        let listener = UnixListener::bind(fake.path().as_path()).unwrap();
         let invites = Arc::new(AtomicUsize::new(0));
         tokio::spawn(async move {
-            while let Ok((stream, _)) = listener.accept().await {
+            while let Ok(stream) = crate::local_socket::accept(&listener).await {
                 let mut stream = BufReader::new(stream);
                 let mut line = String::new();
                 if stream.read_line(&mut line).await.is_ok() {

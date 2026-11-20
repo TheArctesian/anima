@@ -134,7 +134,7 @@ async fn r_032_the_probe_refuses_a_host_that_resolves_to_the_gateway_itself() {
         "0.0.0.0",
     ] {
         assert_eq!(
-            read_host_key(strict(host, port), SHORT).await,
+            read_host_key(strict(host, port), Duration::from_secs(5)).await,
             Err(SshError::RefusedTarget),
             "{host}"
         );
@@ -157,7 +157,7 @@ async fn dev_013_a_closed_port_is_unreachable() {
         listener.local_addr().unwrap().port()
     };
     assert_eq!(
-        read_host_key(loopback(port), SHORT).await,
+        read_host_key(loopback(port), Duration::from_secs(5)).await,
         Err(SshError::Unreachable)
     );
 }

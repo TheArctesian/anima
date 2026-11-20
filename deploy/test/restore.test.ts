@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,8 +8,8 @@ import {
   state, tearDownSample,
 } from "./backup-fixture.ts";
 
-beforeEach(resetSample);
-afterAll(tearDownSample);
+if (process.platform !== "win32") beforeEach(resetSample);
+if (process.platform !== "win32") afterAll(tearDownSample);
 
 const TABLES = [
   ["devices.sites", "1"],
@@ -24,7 +25,7 @@ async function expectLiveDatabaseIntact(): Promise<void> {
   expect(await databasesLike(`${DATABASE}_previous`)).toEqual([]);
 }
 
-describe("restore.sh arguments (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("restore.sh arguments (DB-007)", () => {
   test("DB-007: restore refuses without --yes and changes nothing", async () => {
     const path = await backUp();
     await owner("delete from devices.device_tags");
@@ -44,7 +45,7 @@ describe("restore.sh arguments (DB-007)", () => {
   });
 });
 
-describe("restore.sh --yes (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("restore.sh --yes (DB-007)", () => {
   test("DB-007: a full restore brings back every row, keeps the old database and prints how to drop it", async () => {
     const path = await backUp();
     await owner("delete from devices.devices where name = 'mac'");
@@ -81,7 +82,7 @@ describe("restore.sh --yes (DB-007)", () => {
   });
 });
 
-describe("restore.sh failures leave the live database alone (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("restore.sh failures leave the live database alone (DB-007)", () => {
   test.each([
     ["garbage", (path: string) => writeFileSync(path, "this is not a dump")],
     ["truncated", (path: string) => truncateSync(path, 9000)],

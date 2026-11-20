@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/TheArctesian/anima/link/testpath"
 	"io"
 	"net"
 	"net/http"
@@ -40,7 +41,7 @@ func (h *Hub) Named() int { return int(h.named.Load()) }
 func Start(t testing.TB) *Hub {
 	t.Helper()
 	// A socket's path is short, so the folder is not under t.TempDir().
-	folder, err := os.MkdirTemp("/tmp", "hub")
+	folder, err := testpath.MkdirTemp("hub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +51,7 @@ func Start(t testing.TB) *Hub {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(hub.Socket, 0o600); err != nil {
+	if err := testpath.Chmod(hub.Socket, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	server := &http.Server{Handler: http.HandlerFunc(hub.answer), ReadHeaderTimeout: 10 * time.Second}

@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 pub const STEP_DEADLINE: Duration = Duration::from_secs(30);
 
 /// The only search path a command gets: the caller's own environment is not passed on.
+#[cfg(unix)]
 const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
 
 /// How often a running command is looked at.
@@ -65,10 +66,39 @@ pub fn run_step(step: &Step, deadline: Duration) -> io::Result<bool> {
 }
 
 fn run_once(step: &Step, deadline: Duration) -> io::Result<bool> {
-    let mut child = Command::new(step.program)
+    #[cfg(unix)]
+    let program = std::path::PathBuf::from(step.program);
+    #[cfg(windows)]
+    let program = std::env::var_os("SystemRoot")
+        .map(std::path::PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or(io::ErrorKind::NotFound)?
+        .join("System32")
+        .join(step.program);
+    let mut command = Command::new(program);
+    command.env_clear();
+    #[cfg(unix)]
+    command.env("PATH", PATH);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        command.creation_flags(0x0800_0000);
+        for name in [
+            "SystemRoot",
+            "WINDIR",
+            "USERPROFILE",
+            "LOCALAPPDATA",
+            "APPDATA",
+            "TEMP",
+            "TMP",
+        ] {
+            if let Some(value) = std::env::var_os(name) {
+                command.env(name, value);
+            }
+        }
+    }
+    let mut child = command
         .args(&step.args)
-        .env_clear()
-        .env("PATH", PATH)
         .envs(step.env.iter().map(|(name, value)| (name, value)))
         .stdin(Stdio::null())
         .spawn()?;
@@ -92,7 +122,7 @@ fn run_once(step: &Step, deadline: Duration) -> io::Result<bool> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

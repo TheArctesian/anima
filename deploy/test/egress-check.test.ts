@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/egress-check against local listeners (NOT-002, D-17). A fake `docker` first on PATH
 // checks the `compose exec -T hub` prefix, records the call, and runs the rest on this machine, so
 // the real bash /dev/tcp command runs. macOS has no `timeout`, so the same temp dir holds a shim.
@@ -13,6 +14,7 @@ let calls = "";
 let timeouts = "";
 
 beforeAll(() => {
+  if (process.platform === "win32") return;
   dir = mkdtempSync(join(tmpdir(), "egress-"));
   calls = join(dir, "calls");
   timeouts = join(dir, "timeouts");
@@ -45,6 +47,7 @@ exec perl -e 'alarm shift; exec @ARGV' "$@"
 });
 
 afterAll(() => {
+  if (process.platform === "win32") return;
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -80,7 +83,7 @@ function closedPort(): number {
   return port;
 }
 
-describe("egress-check results", () => {
+describe.skipIf(process.platform === "win32")("egress-check results", () => {
   test("NOT-002 reports an open listener and exits 0", async () => {
     const server = listen();
     const result = await run([`127.0.0.1:${server.port}`]);
@@ -124,7 +127,7 @@ describe("egress-check results", () => {
 
 });
 
-describe("egress-check arguments and reasons", () => {
+describe.skipIf(process.platform === "win32")("egress-check arguments and reasons", () => {
   test("NOT-002 passes host and port as arguments, never inside the bash -c string", async () => {
     const result = await run(["example.com:587"], { FAKE_NO_CONNECT: "1" });
     expect(result.calls).toEqual([

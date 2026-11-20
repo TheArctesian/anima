@@ -118,6 +118,10 @@ entity_id! {
     ReminderRuleId,
     /// One firing of a reminder rule (K-E6 Section 3).
     FiringId,
+    /// A record that a client sealed (K-E5 Section 3).
+    SealedRecordId,
+    /// An offer of the vault key to a new client (K-E5 Section 3).
+    KeyOfferId,
 }
 
 #[cfg(test)]

@@ -41,7 +41,12 @@ pub enum KeyError {
 /// [`KeyError::Missing`] when the key is absent and the database is not new.
 pub fn prepare(path: &Path, database_is_new: bool) -> Result<(), KeyError> {
     match path.symlink_metadata() {
-        Ok(found) if found.is_file() => return Ok(()),
+        Ok(found) if found.is_file() => {
+            #[cfg(windows)]
+            anima_windows::files::read(path, true)
+                .map_err(|error| KeyError::Write(error.kind()))?;
+            return Ok(());
+        }
         Ok(_) => return Err(KeyError::NotAFile(path.display().to_string())),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(KeyError::Write(error.kind())),
@@ -64,10 +69,15 @@ fn write(path: &Path, text: &[u8]) -> io::Result<()> {
     let mut file = owner_only::new_file(being_written)?;
     file.write_all(text)?;
     file.sync_all()?;
-    std::fs::rename(being_written, path)?;
-    // The new name must survive a power cut as the database made after it does.
-    match path.parent() {
-        Some(folder) => std::fs::File::open(folder)?.sync_all(),
-        None => Ok(()),
+    #[cfg(windows)]
+    return anima_windows::files::rename_flushed(being_written, path);
+    #[cfg(unix)]
+    {
+        std::fs::rename(being_written, path)?;
+        // The new name must survive a power cut as the database made after it does.
+        match path.parent() {
+            Some(folder) => std::fs::File::open(folder)?.sync_all(),
+            None => Ok(()),
+        }
     }
 }

@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -50,7 +49,7 @@ func Open(path string) (*Dir, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(path, 0o700); err != nil {
+	if err := makeDirectory(path); err != nil {
 		return nil, fmt.Errorf("statedir: make the directory: %w", err)
 	}
 	if err := private(path); err != nil {
@@ -64,7 +63,7 @@ func Open(path string) (*Dir, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	if err := lockFile(lock); err != nil {
 		lock.Close()
 		return nil, fmt.Errorf("%w: %s", ErrInUse, path)
 	}
@@ -97,7 +96,7 @@ func (d *Dir) Close() error {
 // Read fills value from the JSON file name. It returns ErrAbsent when the
 // file was never written.
 func (d *Dir) Read(name string, value any) error {
-	file, err := os.OpenFile(filepath.Join(d.path, name), os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	file, err := readFile(filepath.Join(d.path, name))
 	if errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("%w: %s", ErrAbsent, name)
 	}
@@ -111,7 +110,7 @@ func (d *Dir) Read(name string, value any) error {
 	if err != nil {
 		return err
 	}
-	if !stat.Mode().IsRegular() || !ownerOnly(stat) {
+	if !stat.Mode().IsRegular() || !ownerOnly(stat, filepath.Join(d.path, name)) {
 		return fmt.Errorf("%w: %s", ErrExposed, name)
 	}
 	text, err := io.ReadAll(file)
@@ -162,7 +161,7 @@ func (d *Dir) sync() error {
 		return err
 	}
 	defer directory.Close()
-	return directory.Sync()
+	return syncDirectory(directory)
 }
 
 // Listen makes the Unix socket name in the directory. Only the owner can
@@ -214,7 +213,7 @@ func DialOwned(path string, limit time.Duration) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if stat.Mode().Type() != fs.ModeSocket || !ownerOnly(stat) {
+	if stat.Mode().Type() != fs.ModeSocket || !ownerOnly(stat, path) {
 		return nil, fmt.Errorf("%w: %s", ErrExposed, path)
 	}
 	return net.DialTimeout("unix", path, limit)
@@ -228,19 +227,40 @@ func private(path string) error {
 	if err != nil {
 		return err
 	}
-	if !stat.IsDir() || !ownerOnly(stat) {
+	if !stat.IsDir() || !ownerOnly(stat, path) {
 		return fmt.Errorf("%w: %s", ErrExposed, path)
 	}
 	return foldersAbove(path)
 }
 
-func ownedByRootOrThisUser(stat fs.FileInfo) bool {
-	owner, known := stat.Sys().(*syscall.Stat_t)
-	return !known || owner.Uid == 0 || int(owner.Uid) == os.Getuid()
-}
-
-// ownerOnly reports whether only this user can reach the file.
-func ownerOnly(stat fs.FileInfo) bool {
-	owner, known := stat.Sys().(*syscall.Stat_t)
-	return stat.Mode().Perm()&0o077 == 0 && (!known || int(owner.Uid) == os.Getuid())
+// ListenOwned makes a Unix socket at path for this user's other program,
+// for example the socket of a device link for the metrics daemon (K8
+// Section 1). Only the owner can connect to it. The socket's folder must
+// pass the same test as a state directory, so no other user can put a
+// socket of their own at the path. A socket that an earlier process left is
+// replaced; a path that holds a thing that is not a socket is refused.
+func ListenOwned(path string) (net.Listener, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(path) > maxSocketPath {
+		return nil, ErrLongPath
+	}
+	if err := private(filepath.Dir(path)); err != nil {
+		return nil, err
+	}
+	stat, err := os.Lstat(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+	case err != nil:
+		return nil, err
+	case stat.Mode().Type() != fs.ModeSocket || !ownerOnly(stat, path):
+		return nil, fmt.Errorf("%w: %s", ErrExposed, path)
+	default:
+		if err := os.Remove(path); err != nil {
+			return nil, err
+		}
+	}
+	return listenOwnerOnly(path)
 }

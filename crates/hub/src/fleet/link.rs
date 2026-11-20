@@ -11,10 +11,11 @@
 mod claims;
 pub mod graphql;
 mod model;
+#[cfg(unix)]
 mod owned;
 mod presence;
 mod socket;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 mod wire;
 

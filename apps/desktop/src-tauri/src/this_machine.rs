@@ -9,7 +9,7 @@ mod address;
 mod name;
 mod vpn_client;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::{net::Ipv4Addr, time::Duration};
@@ -27,6 +27,7 @@ const SSH_PORT: u16 = 22;
 pub enum OperatingSystem {
     Macos,
     Linux,
+    Windows,
 }
 
 impl OperatingSystem {
@@ -36,6 +37,8 @@ impl OperatingSystem {
             Some(Self::Macos)
         } else if cfg!(target_os = "linux") {
             Some(Self::Linux)
+        } else if cfg!(target_os = "windows") {
+            Some(Self::Windows)
         } else {
             None
         }

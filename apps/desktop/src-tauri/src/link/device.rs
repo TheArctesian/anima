@@ -11,7 +11,7 @@ use std::{
     process::{Child, ChildStderr, Command, Stdio},
     sync::{
         Arc, Mutex, PoisonError,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU32, Ordering},
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -19,7 +19,8 @@ use std::{
 
 use super::{
     printed::{self, DeviceLine},
-    state::{DeviceState, Event},
+    restarts::Restarts,
+    state::{DeviceState, Event, Reason},
 };
 
 const POLL: Duration = Duration::from_millis(50);
@@ -49,6 +50,7 @@ pub struct DeviceLink {
     /// Set once the hub of this run is a hosted one: a unit of the user then keeps the link
     /// running with the app closed (HMD-058).
     background: AtomicBool,
+    pid: Arc<AtomicU32>,
 }
 
 #[derive(Debug)]
@@ -58,6 +60,12 @@ struct Running {
 }
 
 impl DeviceLink {
+    /// The live child PID, for the Windows loopback listener ownership check.
+    #[cfg(windows)]
+    pub fn child_pid(&self) -> u32 {
+        self.pid.load(Ordering::Acquire)
+    }
+
     /// The state now.
     pub fn state(&self) -> DeviceState {
         *self.state.lock().unwrap_or_else(PoisonError::into_inner)
@@ -87,7 +95,9 @@ impl DeviceLink {
         let stop = Arc::new(AtomicBool::new(false));
         let state = Arc::clone(&self.state);
         let stop_seen = Arc::clone(&stop);
-        let thread = thread::spawn(move || supervise(&launch, &stop_seen, &state));
+        let pid = Arc::clone(&self.pid);
+        record(&self.state, Event::Starting { port: launch.port });
+        let thread = thread::spawn(move || supervise(&launch, &stop_seen, &state, &pid));
         *running = Some(Running { stop, thread });
     }
 
@@ -133,10 +143,19 @@ fn record(state: &Mutex<DeviceState>, event: Event) {
 }
 
 /// Starts the child, waits for its end, pauses and starts it again, until `stop`.
-fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>) {
+fn supervise(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>, pid: &AtomicU32) {
+    let mut restarts = Restarts::default();
     while !stop.load(Ordering::Acquire) {
+        let began = Instant::now();
         record(state, Event::Starting { port: launch.port });
-        run_once(launch, stop, state);
+        run_once(launch, stop, state, pid);
+        let port_taken =
+            state.lock().unwrap_or_else(PoisonError::into_inner).reason == Some(Reason::PortTaken);
+        if !stop.load(Ordering::Acquire) && !port_taken && !restarts.after(began.elapsed()) {
+            tauri_plugin_log::log::warn!("device link stopped after repeated early exits");
+            record(state, Event::Unable(Reason::RepeatedFailure));
+            return;
+        }
         let resume = Instant::now() + launch.restart_after;
         while !stop.load(Ordering::Acquire) && Instant::now() < resume {
             thread::sleep(POLL);
@@ -176,7 +195,7 @@ fn observe(
 }
 
 /// One run of the child, from its start to its end.
-fn run_once(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>) {
+fn run_once(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>, pid: &AtomicU32) {
     // A port another program holds is seen before the child would fail on it.
     if TcpListener::bind((Ipv4Addr::LOCALHOST, launch.port)).is_err() {
         record(state, Event::PortTaken);
@@ -186,11 +205,13 @@ fn run_once(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>)
         record(state, Event::Ended);
         return;
     };
+    pid.store(child.id(), Ordering::Release);
     let reader = child.stderr.take().map(|stderr| {
         let state = Arc::clone(state);
         thread::spawn(move || read_log(stderr, &state))
     });
     wait(&mut child, stop);
+    pid.store(0, Ordering::Release);
     if let Some(reader) = reader {
         let _ = reader.join();
     }
@@ -199,14 +220,23 @@ fn run_once(launch: &Launch, stop: &AtomicBool, state: &Arc<Mutex<DeviceState>>)
 
 fn start(launch: &Launch) -> std::io::Result<Child> {
     let listen = format!("127.0.0.1:{}", launch.port);
-    Command::new(&launch.program)
+    let mut command = Command::new(&launch.program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    #[cfg(unix)]
+    command.current_dir("/");
+    #[cfg(windows)]
+    command.current_dir(&launch.folder);
+    command
         .arg("device")
         .arg("-state")
         .arg(&launch.folder)
         .args(["-listen", &listen, "-stop-with-stdin"])
         .env_clear()
         .envs(launch.env.iter().map(|(name, value)| (name, value)))
-        .current_dir("/")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::piped())

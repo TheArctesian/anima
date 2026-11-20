@@ -41,12 +41,40 @@ fn cut(cleaned: String, cap: usize) -> String {
     format!("{kept}…[cut: {} more characters]", length - cap)
 }
 
+/// The one field of the result of a tool that keeps its line breaks and gets [`BODY_CAP`]:
+/// the Compose file of `anima_compose_from_run` (HOST-022), at the top level of its result.
+const LINES_KEPT: [(&str, &str); 1] = [("anima_compose_from_run", "composeFile")];
+
 /// `value` with every string cleaned and capped; the key `text` (a log line) gets the
 /// larger cap, and the key `body` (Markdown from GitHub) keeps its line breaks and gets
 /// [`BODY_CAP`].
 #[must_use]
 pub fn cleaned(value: Value) -> Value {
     cleaned_under(value, TEXT_CAP)
+}
+
+/// The result of the tool `tool`, cleaned as [`cleaned`] does; the field that [`LINES_KEPT`]
+/// names for the tool keeps its line breaks and gets [`BODY_CAP`].
+#[must_use]
+pub fn cleaned_result(tool: &str, value: Value) -> Value {
+    let kept = LINES_KEPT.iter().find(|(name, _)| *name == tool);
+    match (kept, value) {
+        (Some((_, key)), Value::Object(mut fields)) => {
+            let lines = fields.remove(*key);
+            let Value::Object(mut fields) = cleaned(Value::Object(fields)) else {
+                unreachable!("an object stays an object")
+            };
+            if let Some(lines) = lines {
+                let lines = match lines {
+                    Value::String(text) => Value::String(capped_lines(&text, BODY_CAP)),
+                    other => cleaned(other),
+                };
+                fields.insert((*key).to_owned(), lines);
+            }
+            Value::Object(fields)
+        }
+        (_, value) => cleaned(value),
+    }
 }
 
 fn cleaned_under(value: Value, cap: usize) -> Value {
@@ -195,5 +223,26 @@ mod tests {
         let fitted = fitted(huge);
         assert!(fitted.get("device").is_none());
         assert_eq!(fitted["truncated"], true);
+    }
+
+    #[test]
+    fn mcp_008_only_the_file_of_the_compose_tool_keeps_its_lines() {
+        let file = format!("services:\n  web:\n{}", "x".repeat(600));
+        let result = json!({ "composeFile": file, "service": "a\nb" });
+        let kept = cleaned_result("anima_compose_from_run", result.clone());
+        assert_eq!(kept["composeFile"], file);
+        assert_eq!(kept["service"], "a b");
+        // The same key in a different tool, or deeper in the result, is a plain text.
+        let other = cleaned_result("anima_device_get", result);
+        let text = other["composeFile"].as_str().unwrap_or_default();
+        assert!(
+            text.starts_with("services:   web:") && text.contains("[cut:"),
+            "{text}"
+        );
+        let deeper = cleaned_result(
+            "anima_compose_from_run",
+            json!({ "nested": { "composeFile": "a\nb" } }),
+        );
+        assert_eq!(deeper["nested"]["composeFile"], "a b");
     }
 }

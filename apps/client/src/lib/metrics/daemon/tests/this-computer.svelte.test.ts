@@ -69,6 +69,18 @@ describe('Install daemon on this computer, in the desktop app (MET-019, D-10 d)'
     expect(button('Show install command')).toBeDefined();
   });
 
+  it('WIN2: a Windows permission refusal gives Windows security steps without exposing the code', async () => {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Windows NT 10.0)' });
+    shellAnswers(() => Promise.reject({ code: 'untrusted', message: `raw ${CODE}` }));
+    await show(ENROLMENT, { host: HERE, shell: desktopShell() });
+    await click('Install on this computer');
+    const alert = document.querySelector('[role="alert"]')?.textContent ?? '';
+    expect(alert).toContain('Properties → Security');
+    expect(alert).not.toContain('chmod');
+    expect(text()).not.toContain(CODE);
+    expect(text()).not.toContain('raw');
+  });
+
   it('MET-019: a second press while the shell works does not make a second code', async () => {
     let finish: (value: unknown) => void = () => undefined;
     shellAnswers(() => new Promise((resolve) => { finish = resolve; }));

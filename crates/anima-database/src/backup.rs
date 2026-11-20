@@ -12,6 +12,7 @@
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, Write as _};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::Path;
 use std::process::{ExitStatus, Stdio};
@@ -22,7 +23,7 @@ use crate::cluster::SUPERUSER;
 use crate::urls::{self, DATABASE, UrlError};
 use crate::{Layout, Program, Role, Tree, owner_only};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 #[derive(Debug, thiserror::Error)]
@@ -69,19 +70,26 @@ pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupErro
     let folder = file
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty());
-    let folder = fs::metadata(folder.unwrap_or(Path::new(".")))
-        .map_err(io_error("look at the folder of the backup file"))?;
+    let folder_path = folder.unwrap_or(Path::new("."));
+    #[cfg(windows)]
+    if !anima_windows::files::secure(folder_path, false)
+        .map_err(io_error("check the backup folder"))?
+    {
+        return Err(BackupError::SharedFolder);
+    }
+    #[cfg(unix)]
+    let folder =
+        fs::metadata(folder_path).map_err(io_error("look at the folder of the backup file"))?;
+    #[cfg(unix)]
     if folder.permissions().mode() & 0o022 != 0 {
         return Err(BackupError::SharedFolder);
     }
+    let mut command = connection(tree, layout, Program::PgDump)?;
     let mut beside = file.to_path_buf().into_os_string();
     beside.push(".new");
     let beside = Path::new(&beside);
     let new = owner_only::new_file(beside).map_err(io_error("make the backup file"))?;
-    let dumped = tree
-        .command(Program::PgDump)
-        .arg("--host")
-        .arg(layout.socket_folder())
+    let dumped = command
         .args(["--username", SUPERUSER, "--format", "custom"])
         // `check` puts the `amcheck` extension into each database. It is a tool of this
         // program, not a part of the hub's database, so a backup does not carry it.
@@ -137,10 +145,8 @@ pub fn restore(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupEr
         .and_then(|mut new| new.write_all(line.as_bytes()))
         .map_err(io_error("write the password file of the restore"))
         .and_then(|()| {
-            tree.command(Program::PgRestore)
+            connection(tree, layout, Program::PgRestore)?
                 .env("PGPASSFILE", &password_file)
-                .arg("--host")
-                .arg(layout.socket_folder())
                 .args(["--username", Role::Owner.login(), "--dbname", DATABASE])
                 .args(["--exit-on-error", "--single-transaction"])
                 .arg(&file)
@@ -198,10 +204,7 @@ pub enum Checked {
 /// # Errors
 /// When `pg_amcheck` cannot run or could not check.
 pub fn check(tree: &Tree, layout: &Layout) -> Result<Checked, BackupError> {
-    let output = tree
-        .command(Program::PgAmcheck)
-        .arg("--host")
-        .arg(layout.socket_folder())
+    let output = connection(tree, layout, Program::PgAmcheck)?
         .args(["--username", SUPERUSER, "--all", "--install-missing"])
         .stdin(Stdio::null())
         .output()
@@ -230,4 +233,28 @@ fn damaged_in(report: &str) -> BTreeSet<String> {
             Some(named.split_once('"')?.0.to_owned())
         })
         .collect()
+}
+
+#[cfg_attr(
+    unix,
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "Windows must validate its private TLS endpoint before a client command can be built"
+    )
+)]
+fn connection(
+    tree: &Tree,
+    layout: &Layout,
+    program: Program,
+) -> Result<std::process::Command, BackupError> {
+    #[cfg(windows)]
+    return crate::windows::Endpoint::load(layout)
+        .map(|endpoint| endpoint.client_command(tree, program))
+        .map_err(io_error("read the database endpoint"));
+    #[cfg(unix)]
+    {
+        let mut command = tree.command(program);
+        command.arg("--host").arg(layout.socket_folder());
+        Ok(command)
+    }
 }

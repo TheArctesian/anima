@@ -12,6 +12,8 @@ use tauri::async_runtime::block_on;
 
 mod builder;
 mod retired;
+#[cfg(windows)]
+mod windows;
 
 use keyring::{
     Error as BackendError,

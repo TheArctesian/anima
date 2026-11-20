@@ -6,8 +6,7 @@ MOB-040 (task M1-3) and tasks M5-3 and M5-4. Source: `apps/desktop/src-tauri/` (
 
 **Status.** Written on 2026-11-19 from one run on the Mac of the operator. The archive with no
 signature was built there. The archive with a signature was not built: no agent uses a signing
-identity. The Android part of MOB-040 is not written yet (the workaround for Gradle, F21 of the plan, is
-its first line: use JDK 21, not JDK 27).
+identity. For MOB-040 on Android, use the [Android APK and F-Droid procedure](android-apk.md).
 
 ## 1. Tools
 
@@ -35,7 +34,9 @@ sh apps/desktop/src-tauri/ios-archive.sh
 Expected last lines: `version=`, `build=`, `signed=no` and `archive=` with the path of
 `apps/desktop/src-tauri/gen/apple/build/anima-app_iOS.xcarchive`. The script builds the link, makes the
 Xcode project again (`src-tauri/gen/` is not in the repository), builds the client and the shell, and
-checks the identifier, the version and the build number of the application in the archive.
+checks the identifier, the version, the build number, and the Anima icon for iPhone and iPad in the
+archive. The iOS icon uses the artwork in [`design/brand/app-icon.png`](../../../design/brand/app-icon.png)
+on a solid `#17191c` background.
 
 `sh apps/desktop/src-tauri/ios-archive.sh --plan 0.7.95` builds nothing and prints the version, the build
 number (795) and if the run signs.
@@ -59,6 +60,12 @@ sh apps/desktop/src-tauri/ios-archive.sh
 
 Expected last lines: `signed=yes`, `archive=` and `ipa=`. The script uploads nothing. The identity is in a
 keychain of the search list; the script reads no certificate file and no password.
+
+For the first operator install, open the signed archive in Xcode Organizer and choose **Distribute App**
+with **TestFlight Internal Only**. The App Store Connect app record must use `ing.anima.mobile`.
+Complete Apple's export compliance question if requested, assign the processed build to your internal
+group, and install it from TestFlight on an iPhone and an iPad. See [Apple's internal testing guide](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
+and [the release workflow setup](../releases.md#the-ios-application-testflight-r-203-task-b8i).
 
 ## 5. Known limits
 

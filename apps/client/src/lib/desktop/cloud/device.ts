@@ -15,7 +15,7 @@ function cloudDeviceFrom(answer: unknown): CloudDevice | null {
   if (typeof answer !== 'object' || answer === null) return null;
   const { name, computer, os } = answer as Record<string, unknown>;
   if (typeof name !== 'string' || name === '' || typeof computer !== 'string') return null;
-  if (os !== 'MACOS' && os !== 'LINUX') return null;
+  if (os !== 'MACOS' && os !== 'LINUX' && os !== 'WINDOWS') return null;
   return { name, computer, os };
 }
 

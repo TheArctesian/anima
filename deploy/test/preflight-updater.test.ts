@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/preflight on the updater key pair and the secret files' owner and group (R-117, D-44,
 // S-3, S-4, C-7, C-9). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
@@ -6,7 +7,7 @@ import { join } from "node:path";
 import { finish } from "./finished-process.ts";
 import { GROUP, OWNER, SCRIPT, pair, preflight, secrets, withFolder, withPair, write } from "./preflight-fixture.ts";
 
-describe("preflight updater key pair (R-117, D-44)", () => {
+describe.skipIf(process.platform === "win32")("preflight updater key pair (R-117, D-44)", () => {
   test.each([[pair], [pair.slice(0, 1)], [pair.slice(1)]])("D-44 warns but passes when %p is absent, for the hub starts with publishing off", async (absent) => {
     await withFolder(async (folder) => {
       withPair(folder);
@@ -50,7 +51,7 @@ describe("preflight updater key pair (R-117, D-44)", () => {
 
 });
 
-describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => {
+describe.skipIf(process.platform === "win32")("preflight updater folder rights and contents (S-3, C-7, D-44)", () => {
   test.skipIf(process.getuid?.() === 0)("S-3 refuses a folder it cannot search and says to run with sudo, never that the pair is absent", async () => {
     await withFolder(async (folder) => {
       withPair(folder);
@@ -106,7 +107,7 @@ describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => 
   });
 });
 
-describe("preflight secrets owner and group (S-4)", () => {
+describe.skipIf(process.platform === "win32")("preflight secrets owner and group (S-4)", () => {
   test("S-4 a .env sourced as the README does cannot move the folder, owner or hub group", async () => {
     await withFolder(async (folder) => {
       withPair(folder);
@@ -133,7 +134,7 @@ describe("preflight secrets owner and group (S-4)", () => {
   });
 });
 
-describe("preflight updater links (C-9)", () => {
+describe.skipIf(process.platform === "win32")("preflight updater links (C-9)", () => {
   test.each([
     ["the folder", (folder: string) => {
       renameSync(join(folder, "updater"), join(folder, "real"));

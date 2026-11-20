@@ -2,7 +2,6 @@
 //! GitHub App with a key from a 0600 file, syncs, lists the projects and leaves one out, and
 //! the MCP read tool sees the same projects. The hub reads a loopback GitHub, never GitHub.
 
-use std::os::unix::fs::PermissionsExt as _;
 use std::time::Duration;
 
 use rsa::{
@@ -23,7 +22,7 @@ fn key_file(folder: &tempfile::TempDir) -> std::path::PathBuf {
     let pem = key.to_pkcs1_pem(LineEnding::LF).expect("PEM");
     let path = folder.path().join("app.pem");
     std::fs::write(&path, pem.as_bytes()).expect("the key file");
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).expect("0600");
+    crate::kit::file_access::mode(&path, 0o600);
     path
 }
 

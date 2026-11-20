@@ -63,6 +63,7 @@ pub(super) fn client_program(os: OperatingSystem) -> Option<&'static str> {
     let places = match os {
         OperatingSystem::Macos => MACOS_CLIENTS,
         OperatingSystem::Linux => LINUX_CLIENTS,
+        OperatingSystem::Windows => return None,
     };
     places.into_iter().find(|place| Path::new(place).is_file())
 }

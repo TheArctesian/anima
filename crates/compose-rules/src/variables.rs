@@ -19,16 +19,19 @@ fn is_name(name: &str) -> bool {
 /// `#` are not read.
 ///
 /// # Errors
-/// `variable_not_permitted` for a line with no `=`, a name with a different character, and a
-/// name that is there two times.
+/// `variable_not_permitted` for a line with no `=`, also a line of only spaces, a line with a
+/// carriage return or a NUL, a name with a different character, and a name that is there two
+/// times.
 pub(crate) fn environment(text: &str) -> Result<BTreeMap<String, String>, Refusal> {
     let mut values = BTreeMap::new();
-    for line in text.lines() {
-        if line.trim().is_empty() || line.starts_with('#') {
-            continue;
-        }
+    // The lines are cut at the line feed only: a carriage return is a character of its line,
+    // and such a line is refused. A line of only spaces is not empty and has no `=`.
+    for line in text.split('\n') {
         if line.contains(['\r', '\0']) {
             return Err(REFUSED);
+        }
+        if line.is_empty() || line.starts_with('#') {
+            continue;
         }
         let (name, value) = line.split_once('=').ok_or(REFUSED)?;
         if !is_name(name) || values.insert(name.to_owned(), value.to_owned()).is_some() {

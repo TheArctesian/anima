@@ -97,6 +97,47 @@ The workflow is on `main`. HT-036 of [need-human-testing.md](../need-human-testi
 
 **The switch.** While the repository variable `ANIMA_PUBLIC_RELEASES` is not `on`, a push to `main` builds nothing and publishes nothing; the summary of the run says what it would release. The variable does not exist today, so public releases are off. "To switch public releases on" below has the steps.
 
+### Windows builds and releases (WIN2)
+
+The `gates` workflow calls `.github/workflows/windows-trial.yml` for `dev` and each merge
+train, and refuses a train whose native checks fail. This also builds artifacts when the
+merge train advances dev with GitHub's workflow token (which does not trigger push workflows).
+The Actions gates run produces
+`windows-trial` (the per-user NSIS installer, SHA256SUMS and source commit) and
+`windows-trial-cli` (the standalone command). Download and extract the artifact, then run
+`Anima_0.0.1_x64-setup.exe`. These trials are unsigned and have automatic updates disabled.
+Run the existing `gates` workflow manually on `dev` to make a new trial. After the new
+workflow is on the default branch, it can also be run directly by hand. Artifacts last 14 days.
+
+The Windows job builds on `windows-2025` with MSVC, runs all native gates, checks compiler
+discovery, installs the package silently and compares all seven installed sidecars with
+the packaged files. It also checks the installed CLI version and PostgreSQL payload.
+`windows-gates` keeps the native gate log even when a trial fails.
+
+The public `release` workflow builds the same package at the version of `main`. Its
+Windows job requires Authenticode signing; the installer and sidecars must have a valid,
+timestamped publisher signature. The isolated `sign` job then adds the Tauri updater
+signature after all platform jobs pass. The publish job checks hashes and signatures
+before it writes the versioned files, then writes `windows-x86_64/latest.json` last.
+Windows participates in the release decision, including recovery from a missing feed.
+
+Before a signed trial, the operator configures environment `release-windows` with
+`WINDOWS_CERTIFICATE` (base64 PFX containing one code-signing private key) and
+`WINDOWS_CERTIFICATE_PASSWORD`. Restrict that environment to `main`. The runner imports
+the PFX into its current-user certificate store, removes the temporary file immediately,
+and deletes the signing key at job end. A missing, expired, untrusted or untimestamped
+certificate fails the build; it never falls back to an unsigned public installer.
+Use a certificate whose provider permits this export/import method. A hardware-backed or
+cloud-only signing identity needs its provider integration before a public release.
+The configuration follows [Tauri's Windows signing procedure](https://v2.tauri.app/distribute/sign/windows/).
+The existing `release-sign` updater key and `release-publish` bucket credentials remain
+separate. No credentials or repository switches were changed by this implementation.
+
+A manual `release` run on `main` builds and signs but publishes nothing. Check its installer
+in the Windows VM, then exercise a private update from an older signed version before a
+public release. The Windows acceptance entry in [need-human-testing.md](../need-human-testing.md)
+records these checks. Merging into `dev` does not publish an update.
+
 ### The gates of a release (BLD-042, R-190)
 
 A release signs only after the gates passed for its content. Three jobs do this, and none holds a secret.
@@ -360,7 +401,7 @@ What is not known until the first run: if the Linux program starts on a computer
 
 ### The iOS application: TestFlight (R-203; task B8i)
 
-Built as three jobs of the release workflow, and never run: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` calls `apps/desktop/src-tauri/ios-archive.sh`, which is task M5-4 of the [mobile plan](../plans/mobile-plan.md) and does not exist yet.
+Built as three jobs of the release workflow: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` runs `apps/desktop/src-tauri/ios-archive.sh` on `macos-26` for the Xcode and SDK versions required by [App Store Connect](https://developer.apple.com/news/upcoming-requirements/). The first signed trial is open in [HT-046](../need-human-testing.md#ht-046-the-ios-application-from-the-release-workflow-to-testflight-task-b8i).
 
 **Two switches of its own.** `ANIMA_IOS_BUILD` lets the job `ios` run, in a trial and for a push to `main`: it builds and signs, and uploads nothing. While it is not `on`, no iOS job runs, and a trial is not red for it. `ANIMA_PUBLIC_TESTFLIGHT`, which only the operator sets, lets a push to `main` also send that build to TestFlight. Neither exists today, and they do not depend on `ANIMA_PUBLIC_RELEASES`.
 

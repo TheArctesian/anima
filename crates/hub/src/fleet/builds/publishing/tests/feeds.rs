@@ -216,3 +216,26 @@ fn bld_067_bld_068_feed_folders_follow_the_target() {
         ["darwin-aarch64", "darwin-x86_64"]
     );
 }
+
+#[test]
+fn windows_feed_names_only_the_windows_installer_and_platform() {
+    let installer = "Anima_0.1.12_x64-setup.exe";
+    let files = [file(installer, b"installer"), file("SHA256SUMS", b"sums")];
+    let expected = expected(Target::WindowsX86_64, &files, None);
+    let url = format!("{BASE}/windows-x86_64/0.1.12/{installer}");
+    let proposed = linux_feed(&json!({"windows-x86_64": entry(&url)}));
+    assert_eq!(
+        feed::check(&proposed, &expected).unwrap().updater,
+        installer
+    );
+    assert_eq!(
+        feed::updater_name(Target::WindowsX86_64, &files),
+        Some(installer)
+    );
+    let wrong = linux_feed(&json!({"linux-x86_64": entry(&url)}));
+    assert!(feed::check(&wrong, &expected).is_err());
+    let wrong = linux_feed(
+        &json!({"windows-x86_64": entry(&format!("{BASE}/linux-x86_64/0.1.12/{installer}"))}),
+    );
+    assert!(feed::check(&wrong, &expected).is_err());
+}

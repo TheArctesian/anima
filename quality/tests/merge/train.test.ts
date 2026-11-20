@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { commitThenCheck } from "../../src/merge/commit.ts";
 import { members, stack } from "../../src/merge/stack.ts";
-import { batch, firstHalf, MOST, standing, trainName, verdict, type GatesRun, type Tip } from "../../src/merge/train.ts";
+import { firstFault } from "../../src/merge/finish.ts";
+import { batch, firstHalf, leftOutSaid, MOST, standing, trainName, verdict, type GatesRun, type Tip } from "../../src/merge/train.ts";
 
 function gatesRun(headBranch: string, headSha: string, conclusion: string | null, updatedAt = "2026-11-20T04:00:00Z"): GatesRun {
   const event = headBranch.startsWith("train/") ? "workflow_dispatch" : "push";
@@ -147,4 +148,19 @@ describe("R-252 the commit of a train", () => {
     expect(made.merged.map((tip) => tip.branch)).toEqual(["docs/c"]);
     expect(made.leftOut).toEqual([{ branch: "hub/a", reason: "documents" }]);
   }, 60_000);
+});
+
+describe("R-252 a branch that a train left out says why, in one line", () => {
+  test("the reason of a failed check names its first fault, not the command that bun runs", () => {
+    const said = "$ bun quality/bin/documents.ts\ndocs/mockup/README.md: screen-changed-after-mockup apps/client/src/routes/devices has 1 layout file(s)\ndocuments: 1 violation(s)\n";
+    expect(firstFault(said)).toBe(": docs/mockup/README.md: screen-changed-after-mockup apps/client/src/routes/devices has 1 layout file(s)");
+    expect(firstFault("")).toBe("");
+  });
+
+  test("the note of a tip gives the time and the reason as one line; no note says nothing", () => {
+    expect(leftOutSaid("ui/list", "2026-11-20T18:19:00.000Z\n`bun run quality:documents` failed on the merge commit: a\nb")).toBe(
+      "ui/list was left out of the train at 2026-11-20T18:19:00.000Z: `bun run quality:documents` failed on the merge commit: a b",
+    );
+    expect(leftOutSaid("ui/list", undefined)).toBeUndefined();
+  });
 });
