@@ -70,7 +70,8 @@
 
   .figures {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    /* The estimate has its note, so its column is wider. */
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.6fr);
     gap: var(--space-4);
     margin: 0;
   }

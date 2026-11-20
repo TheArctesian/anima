@@ -150,7 +150,7 @@
 
   .columns {
     display: grid;
-    grid-template-columns: calc(var(--space-16) * 4) minmax(0, 1fr);
+    grid-template-columns: calc(var(--space-16) * 3.5) minmax(0, 1fr);
     gap: var(--space-6);
     align-items: start;
   }

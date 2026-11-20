@@ -117,7 +117,7 @@ it('AIS-024: each device that reports has a line; one whose daemon sends no coun
   const [box, mac, nas] = lines('By device');
   expect(box?.querySelector('th')?.textContent).toContain("gpu-box");
   expect(box?.querySelector('th')?.textContent).toContain("Turned off in the daemon's settings");
-  expect(cells(box)).toEqual(['', '', '', '']);
+  expect(cells(box)).toEqual([]);
   expect(mac?.querySelector('th')?.textContent).toContain('Reads sessions');
   expect(cells(mac)).toEqual(['17', '169', '19.3k', '$12.40']);
   expect(nas?.querySelector('th')?.textContent).toContain("Runs as a system unit: it cannot see a user's sessions");
@@ -128,8 +128,8 @@ it('the repositories stand newest use first with their last use, and a line limi
   const names = [...document.querySelectorAll('nav[aria-label="Repositories"] .line')].map((line) => [line.querySelector('.name')?.textContent, line.querySelector('.when')?.textContent]);
   expect(names).toEqual([
     ['All repositories', '30 days'],
-    ['github.com/acme/anima', 'last use today'],
-    ['github.com/acme/blog', 'last use 3 days ago'],
+    ['acme/anima', 'last use today'],
+    ['acme/blog', 'last use 3 days ago'],
     ['No repository', 'last use today'],
   ]);
   const buttons = [...document.querySelectorAll<HTMLButtonElement>('nav[aria-label="Repositories"] button')];
@@ -145,7 +145,8 @@ it('the list of repositories stays whole when one is chosen: it is read with no 
   expect(asked.filter['repository']).toBe('github.com/acme/blog');
   expect(asked.everything['repository']).toBeUndefined();
   const chosen = document.querySelector('nav[aria-label="Repositories"] [aria-current="true"] .name');
-  expect(chosen?.textContent).toBe('github.com/acme/blog');
+  expect(chosen?.textContent).toBe('acme/blog');
+  expect(chosen?.getAttribute('title')).toBe('github.com/acme/blog');
 });
 
 it('the repositories that the hub left out are counted, only when there are some', async () => {

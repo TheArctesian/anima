@@ -51,7 +51,7 @@
       {#each rows as row (row.key)}
         {@const sums = row.sums}
         <tr aria-selected={onPick === undefined ? undefined : picked === row.key}>
-          <th scope="row">
+          <th scope="row" colspan={sums === null ? 5 : undefined}>
             {#if onPick === undefined}
               <span class="name">{row.name}</span>
             {:else}
@@ -62,9 +62,7 @@
             {#if row.detail !== undefined}<span class="detail">{row.detail}</span>{/if}
             {#if row.state !== undefined}<span class="state" class:reads={row.state.reads}>{row.state.words}</span>{/if}
           </th>
-          {#if sums === null}
-            <td></td><td></td><td></td><td></td>
-          {:else}
+          {#if sums !== null}
             <td class="n">{whole(sums.sessions)}</td>
             <td class="n">{whole(sums.prompts)}</td>
             <td class="n">{tokens(totalTokens(sums))}</td>

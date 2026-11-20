@@ -118,3 +118,13 @@ export function shortDay(day: string): string {
   if (Number.isNaN(at.getTime())) return day;
   return `${String(at.getUTCDate())} ${at.toLocaleString('en', { month: 'short', timeZone: 'UTC' })}`;
 }
+
+/** The host that each named repository starts with, with its `/` (`github.com/`); empty when they do not share one. */
+export function sharedHost(lines: readonly Pick<RepositoryLine, 'repository'>[]): string {
+  const names = lines.flatMap((line) => (line.repository === null ? [] : [line.repository]));
+  const first = names[0];
+  const end = first?.indexOf('/') ?? -1;
+  if (first === undefined || end <= 0) return '';
+  const host = first.slice(0, end + 1);
+  return names.every((name) => name.startsWith(host) && name.length > host.length) ? host : '';
+}

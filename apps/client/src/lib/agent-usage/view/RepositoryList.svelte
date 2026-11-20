@@ -2,7 +2,7 @@
   import type { UsageSums } from '../api';
   import { costText, leftOutLine } from '../report/words';
   import { whole } from '../report/units';
-  import { lastUseWords, type RepositoryLine } from './shape';
+  import { lastUseWords, sharedHost, type RepositoryLine } from './shape';
 
   interface Props {
     lines: readonly RepositoryLine[];
@@ -21,6 +21,8 @@
 
   const { lines, everything, days, chosen, today, leftOut, onChoose }: Props = $props();
   const more = $derived(leftOutLine(leftOut));
+  /* When each repository is on one host the list leaves the host out; the tooltip has the whole name. */
+  const host = $derived(sharedHost(lines));
 </script>
 
 <!-- The repositories with use, newest use first. A line limits the page to its repository; the use that has no
@@ -41,7 +43,7 @@
     {:else}
       {@const repository = line.repository}
       <button type="button" class="line" aria-current={chosen === repository ? 'true' : undefined} onclick={() => { onChoose(repository); }}>
-        <span class="what"><span class="name" title={repository}>{repository}</span><span class="when">{when}</span></span>
+        <span class="what"><span class="name" title={repository}>{repository.slice(host.length)}</span><span class="when">{when}</span></span>
         <span class="counts"><span>{whole(line.sessions)}</span><span class="cost">{costText(line)}</span></span>
       </button>
     {/if}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ANSWER, sums } from '../agent-usage.fixture';
-import { countOf, dayBars, lastUseWords, repositoryLines, share, shortDay, tokenParts, totalTokens } from './shape';
+import { countOf, dayBars, lastUseWords, repositoryLines, share, sharedHost, shortDay, tokenParts, totalTokens } from './shape';
 
 describe('what Agent usage draws from the sums of the hub (AIS-020)', () => {
   it('there is one bar for each UTC day of the view, a day with no use included, and the tallest day is the whole height', () => {
@@ -44,6 +44,9 @@ describe('what Agent usage draws from the sums of the hub (AIS-020)', () => {
     expect(lines.map((line) => line.repository)).toEqual(['a', 'b', 'c']);
   });
 
+});
+
+describe('the words and the shares of Agent usage', () => {
   it('the last use is said in words from two UTC days', () => {
     expect(lastUseWords('2026-11-17', '2026-11-17')).toBe('last use today');
     expect(lastUseWords('2026-11-16', '2026-11-17')).toBe('last use yesterday');
@@ -58,6 +61,14 @@ describe('what Agent usage draws from the sums of the hub (AIS-020)', () => {
     expect([countOf(group, 'cost'), countOf(group, 'tokens'), countOf(group, 'sessions')]).toEqual([0, 10, 3]);
     expect(tokenParts(group).map((part) => [part.label, part.tokens])).toEqual([['Input', 1], ['Output', 2], ['Cache read', 3], ['Cache write', 4]]);
     expect([share(1, 4), share(5, 4), share(1, 0), share(-1, 4)]).toEqual([0.25, 1, 0, 0]);
+  });
+
+  it('the host that each repository shares is left out of the list; with two hosts, or a name with no host, none is', () => {
+    const named = (...names: (string | null)[]) => names.map((repository) => ({ repository }));
+    expect(sharedHost(named('github.com/acme/anima', null, 'github.com/acme/blog'))).toBe('github.com/');
+    expect(sharedHost(named('github.com/acme/anima', 'gitlab.com/acme/blog'))).toBe('');
+    expect(sharedHost(named('scratch', 'github.com/acme/blog'))).toBe('');
+    expect(sharedHost(named(null))).toBe('');
   });
 
   it('a day at an end of the chart is short', () => {

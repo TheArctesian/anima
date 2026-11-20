@@ -12,7 +12,7 @@ test.describe('signed in', () => {
     await page.getByRole('link', { name: 'Agent usage' }).click();
     await expect(page).toHaveURL(`${HUB_ORIGIN}/agents/usage`);
     await expect(page.getByRole('heading', { name: 'Agent usage', level: 1 })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Repositories' })).toContainText('github.com/example/anima');
+    await expect(page.getByRole('navigation', { name: 'Repositories' })).toContainText('example/anima');
     await expect(page.getByRole('region', { name: 'Totals' })).toContainText('not a bill');
     await expect(page.getByRole('list', { name: 'Estimated cost for each day (UTC)' }).getByRole('listitem')).toHaveCount(30);
     await expect(page.getByRole('table', { name: 'By program and model' })).toContainText('No price');
@@ -37,10 +37,10 @@ test.describe('signed in', () => {
   test('a repository of the list limits the page to it, and the list stays whole', async ({ page }) => {
     await page.goto(`${HUB_ORIGIN}/agents/usage`);
     const repositories = page.getByRole('navigation', { name: 'Repositories' });
-    await repositories.getByRole('button', { name: /github\.com\/example\/site/ }).click();
+    await repositories.getByRole('button', { name: /example\/site/ }).click();
     await expect(page).toHaveURL(/repository=github\.com%2Fexample%2Fsite/);
     await expect(page.getByRole('table', { name: 'By program and model' })).not.toContainText('claude-opus-4');
-    await expect(repositories).toContainText('github.com/example/anima');
+    await expect(repositories).toContainText('example/anima');
   });
 });
 
