@@ -133,3 +133,49 @@ fn mcp_034_a_file_or_a_folder_that_others_can_write_and_a_file_too_large_are_ref
         Err(FileError::NotAFile)
     ));
 }
+
+#[test]
+fn mcp_032_034_a_link_at_the_name_of_the_copy_is_refused_and_a_file_changed_meanwhile_is_not_overwritten()
+ {
+    let (home, user) = home();
+    let root = Root {
+        home: home.path(),
+        user,
+    };
+    fs::create_dir(home.path().join(".cursor")).expect("folder");
+    let path = home.path().join(".cursor/mcp.json");
+    fs::write(&path, "first").expect("file");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("mode");
+    symlink(home.path().join("nowhere"), copy_path(&path)).expect("link");
+    assert!(matches!(
+        replace(root, &path, Some("first"), "second"),
+        Err(FileError::Link)
+    ));
+    assert_eq!(fs::read_to_string(&path).expect("kept"), "first");
+    fs::remove_file(copy_path(&path)).expect("link");
+    // The agent saved the file after it was read.
+    fs::write(&path, "theirs").expect("file");
+    assert!(matches!(
+        replace(root, &path, Some("first"), "second"),
+        Err(FileError::Changed)
+    ));
+    assert_eq!(fs::read_to_string(&path).expect("kept"), "theirs");
+}
+
+#[test]
+fn mcp_034_a_file_of_the_private_group_of_the_user_is_not_shared() {
+    let (home, user) = home();
+    let path = home.path().join("file");
+    fs::write(&path, "{}").expect("file");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o664)).expect("mode");
+    let metadata = fs::metadata(&path).expect("metadata");
+    assert_eq!(
+        super::open_to_others(&metadata, user),
+        metadata.gid() != user
+    );
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o646)).expect("mode");
+    assert!(super::open_to_others(
+        &fs::metadata(&path).expect("metadata"),
+        user
+    ));
+}

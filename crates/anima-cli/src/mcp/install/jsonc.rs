@@ -1,6 +1,6 @@
 //! One member of a JSON object, set or removed in the text of a file, with every other byte kept
 //! (MCP-030). The files of other programs hold comments, trailing commas and an order that a
-//! parser and a writer would lose, so this module only finds the place and cuts the text there.
+//! parser and a writer would lose, so this module only finds the place; `edit` cuts the text there.
 
 use std::ops::Range;
 
@@ -20,24 +20,24 @@ pub enum JsoncError {
 /// The deepest nesting that is read: a hostile file cannot make the reader use the whole stack.
 const DEPTH_LIMIT: usize = 64;
 
-struct Member {
-    key: String,
+pub(super) struct Member {
+    pub(super) key: String,
     /// From the opening quote of the key to the end of the value.
-    span: Range<usize>,
-    value: Range<usize>,
+    pub(super) span: Range<usize>,
+    pub(super) value: Range<usize>,
     /// The index of the comma after the value, when there is one.
-    comma: Option<usize>,
+    pub(super) comma: Option<usize>,
 }
 
-struct Object {
+pub(super) struct Object {
     /// The index of `{` and of `}`.
-    open: usize,
-    close: usize,
-    members: Vec<Member>,
+    pub(super) open: usize,
+    pub(super) close: usize,
+    pub(super) members: Vec<Member>,
 }
 
-struct Scan<'a> {
-    bytes: &'a [u8],
+pub(super) struct Scan<'a> {
+    pub(super) bytes: &'a [u8],
 }
 
 impl Scan<'_> {
@@ -151,6 +151,9 @@ impl Scan<'_> {
             let end = self.value(start, depth + 1)?;
             let after = self.trivia(end)?;
             let comma = (self.bytes.get(after) == Some(&b',')).then_some(after);
+            if comma.is_none() && self.bytes.get(after) != Some(&b'}') {
+                return Err(JsoncError::Malformed);
+            }
             members.push(Member {
                 key,
                 span: at..end,
@@ -165,8 +168,18 @@ impl Scan<'_> {
     }
 }
 
+/// The member `key` of `object`, or `None`. A key that is there twice is refused: this program
+/// would change the first and the agent would read the last.
+pub(super) fn only<'a>(object: &'a Object, key: &str) -> Result<Option<&'a Member>, JsoncError> {
+    let mut found = object.members.iter().filter(|member| member.key == key);
+    match (found.next(), found.next()) {
+        (first, None) => Ok(first),
+        _ => Err(JsoncError::Malformed),
+    }
+}
+
 /// The object at `path` below the top level, or `None` when a key of the path is not there.
-fn object_at(scan: &Scan<'_>, path: &[&str]) -> Result<Option<Object>, JsoncError> {
+pub(super) fn object_at(scan: &Scan<'_>, path: &[&str]) -> Result<Option<Object>, JsoncError> {
     let start = scan.trivia(0)?;
     if scan.bytes.get(start) != Some(&b'{') {
         return Err(JsoncError::NotAnObject);
@@ -176,7 +189,7 @@ fn object_at(scan: &Scan<'_>, path: &[&str]) -> Result<Option<Object>, JsoncErro
         return Err(JsoncError::Malformed);
     }
     for key in path {
-        let Some(member) = object.members.iter().find(|member| member.key == *key) else {
+        let Some(member) = only(&object, key)? else {
             return Ok(None);
         };
         if scan.bytes.get(member.value.start) != Some(&b'{') {
@@ -196,141 +209,14 @@ pub fn member<'a>(text: &'a str, path: &[&str], name: &str) -> Result<Option<&'a
     let scan = Scan {
         bytes: text.as_bytes(),
     };
-    Ok(object_at(&scan, path)?
-        .and_then(|object| object.members.into_iter().find(|member| member.key == name))
-        .map(|member| &text[member.value]))
-}
-
-/// The white space at the start of the line that holds `at`.
-fn indent_of(text: &str, at: usize) -> &str {
-    let line = text[..at].rfind('\n').map_or(0, |newline| newline + 1);
-    let end = text[line..]
-        .find(|character: char| character != ' ' && character != '\t')
-        .map_or(text.len(), |end| line + end);
-    &text[line..end.min(at)]
-}
-
-/// `value` with each line after the first moved in by `indent`.
-fn indented(value: &str, indent: &str) -> String {
-    value.replace('\n', &format!("\n{indent}"))
-}
-
-/// `"name": value` put into `object` as its last member.
-fn insert(text: &str, object: &Object, name: &str, value: &str) -> String {
-    let key = serde_json::Value::from(name).to_string();
-    match object.members.last() {
-        None => {
-            let outer = indent_of(text, object.open);
-            let inner = format!("{outer}  ");
-            format!(
-                "{}\n{inner}{key}: {}\n{outer}{}",
-                &text[..=object.open],
-                indented(value, &inner),
-                &text[object.close..]
-            )
-        }
-        Some(last) => {
-            let inner = indent_of(text, last.span.start);
-            let member = format!("\n{inner}{key}: {}", indented(value, inner));
-            match last.comma {
-                // The file ends its members with a comma, so the new member does also.
-                Some(comma) => format!("{}{member},{}", &text[..=comma], &text[comma + 1..]),
-                None => format!(
-                    "{},{member}{}",
-                    &text[..last.span.end],
-                    &text[last.span.end..]
-                ),
-            }
-        }
-    }
-}
-
-/// The text with `name` in the object at `path` set to `value` (JSON text, as `serde_json` prints
-/// it with two spaces). An object of the path that is not there is made. Only that member changes.
-///
-/// # Errors
-/// [`JsoncError`] when the text is not an object, cannot be read, or holds a different kind of
-/// value at the path.
-pub fn set(text: &str, path: &[&str], name: &str, value: &str) -> Result<String, JsoncError> {
-    let text = if text.trim().is_empty() { "{}\n" } else { text };
-    let scan = Scan {
-        bytes: text.as_bytes(),
-    };
-    // The deepest object of the path that is there; the rest of the path is made inside the value.
-    for depth in (0..=path.len()).rev() {
-        let Some(object) = object_at(&scan, &path[..depth])? else {
-            continue;
-        };
-        if depth == path.len() {
-            if let Some(found) = object.members.iter().find(|member| member.key == name) {
-                let inner = indent_of(text, found.span.start);
-                return Ok(format!(
-                    "{}{}{}",
-                    &text[..found.value.start],
-                    indented(value, inner),
-                    &text[found.value.end..]
-                ));
-            }
-            return Ok(insert(text, &object, name, value));
-        }
-        let mut nested = format!(
-            "{{\n  {}: {}\n}}",
-            serde_json::Value::from(name),
-            indented(value, "  ")
-        );
-        for key in path[depth + 1..].iter().rev() {
-            nested = format!(
-                "{{\n  {}: {}\n}}",
-                serde_json::Value::from(*key),
-                indented(&nested, "  ")
-            );
-        }
-        return Ok(insert(text, &object, path[depth], &nested));
-    }
-    Err(JsoncError::NotAnObject)
-}
-
-/// The text with `name` taken out of the object at `path`, or `None` when it is not there. The
-/// objects of the path stay, also when they are then empty.
-///
-/// # Errors
-/// [`JsoncError`] when the text is not an object or cannot be read.
-pub fn remove(text: &str, path: &[&str], name: &str) -> Result<Option<String>, JsoncError> {
-    if text.trim().is_empty() {
-        return Ok(None);
-    }
-    let scan = Scan {
-        bytes: text.as_bytes(),
-    };
     let Some(object) = object_at(&scan, path)? else {
         return Ok(None);
     };
-    let Some(at) = object.members.iter().position(|member| member.key == name) else {
-        return Ok(None);
-    };
-    let found = &object.members[at];
-    let cut = match (
-        found.comma,
-        at.checked_sub(1).map(|before| &object.members[before]),
-    ) {
-        // A comma follows: the member goes with its comma and with the line break before it.
-        (Some(comma), _) => line_start(text, found.span.start)..comma + 1,
-        // The last member of several: it goes with the comma that the member before it then loses.
-        (None, Some(before)) => before.span.end..found.span.end,
-        // The only member: the object is then empty.
-        (None, None) => object.open + 1..object.close,
-    };
-    Ok(Some(format!("{}{}", &text[..cut.start], &text[cut.end..])))
+    Ok(only(&object, name)?.map(|member| &text[member.value.clone()]))
 }
 
-/// The index of the line break before `at` when only white space is between them, else `at`.
-fn line_start(text: &str, at: usize) -> usize {
-    let before = text[..at].trim_end_matches([' ', '\t']);
-    match before.strip_suffix('\n') {
-        Some(line) => line.strip_suffix('\r').map_or(line.len(), str::len),
-        None => at,
-    }
-}
+mod edit;
+pub use edit::{remove, set};
 
 #[cfg(test)]
 mod tests;

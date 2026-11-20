@@ -4,15 +4,19 @@ const ENTRY: &str =
     "{\n  \"command\": \"/usr/local/bin/anima\",\n  \"args\": [\n    \"mcp\"\n  ]\n}";
 const PATH: &[&str] = &["mcpServers"];
 
+/// The entry as it is written at the indent of the member `anima` in `after`.
+fn reindented(after: &str) -> String {
+    let at = after.rfind("\"anima\"").expect("member");
+    let line = after[..at].rfind('\n').map_or(0, |newline| newline + 1);
+    ENTRY.replace('\n', &format!("\n{}", &after[line..at]))
+}
+
 /// Setting, then removing, gives the file back byte for byte.
 fn round_trip(before: &str) -> String {
     let after = set(before, PATH, "anima", ENTRY).expect("set");
     assert_eq!(
         member(&after, PATH, "anima").expect("read"),
-        Some(&*super::indented(
-            ENTRY,
-            super::indent_of(&after, after.rfind("\"anima\"").expect("member"))
-        ))
+        Some(&*reindented(&after))
     );
     assert_eq!(
         remove(&after, PATH, "anima").expect("remove").as_deref(),
@@ -105,4 +109,71 @@ fn mcp_034_a_file_that_is_not_an_object_is_refused_and_not_changed() {
     );
     let deep = format!("{{\"a\":{}1{}}}", "[".repeat(200), "]".repeat(200));
     assert_eq!(set(&deep, PATH, "anima", "1"), Err(JsoncError::TooDeep));
+}
+
+#[test]
+fn mcp_030_removing_a_member_keeps_the_comments_and_the_members_beside_it() {
+    let joined = "{\n  \"mcpServers\": { // mine\n    \"anima\": {\"command\":\"/a\"}, \"other\": {\"command\":\"/keep\"}\n  }\n}";
+    let after = remove(joined, PATH, "anima")
+        .expect("remove")
+        .expect("there");
+    assert_eq!(
+        member(&after, PATH, "other"),
+        Ok(Some("{\"command\":\"/keep\"}"))
+    );
+    assert!(after.contains("{ // mine\n"));
+    let noted = "{\"mcpServers\":{\n  \"a\": 1, // about a\n  /* about anima */ \"anima\": 2\n}}";
+    let after = remove(noted, PATH, "anima")
+        .expect("remove")
+        .expect("there");
+    assert!(
+        after.contains("// about a")
+            && after.contains("/* about anima */")
+            && member(&after, PATH, "a") == Ok(Some("1"))
+    );
+    let held = "{\"mcpServers\": { // put servers here\n}}";
+    let with = set(held, PATH, "anima", "1").expect("set");
+    assert!(with.contains("// put servers here") && member(&with, PATH, "anima") == Ok(Some("1")));
+    assert!(
+        remove(&with, PATH, "anima")
+            .expect("remove")
+            .expect("there")
+            .contains("// put servers here")
+    );
+}
+
+#[test]
+fn mcp_030_a_file_with_windows_line_ends_keeps_them() {
+    let before = "{\r\n  \"mcpServers\": {\r\n    \"a\": 1\r\n  }\r\n}\r\n";
+    let after = set(before, PATH, "anima", ENTRY).expect("set");
+    assert!(!after.replace("\r\n", "").contains('\n'), "{after:?}");
+    assert_eq!(
+        remove(&after, PATH, "anima").expect("remove").as_deref(),
+        Some(before)
+    );
+}
+
+#[test]
+fn mcp_034_a_key_that_is_there_twice_and_a_missing_comma_are_refused() {
+    assert_eq!(
+        set(
+            "{\"mcpServers\": {\"anima\": 1}, \"mcpServers\": {\"x\": 2}}",
+            PATH,
+            "anima",
+            "1"
+        ),
+        Err(JsoncError::Malformed)
+    );
+    assert_eq!(
+        member(
+            "{\"mcpServers\": {\"anima\": 1, \"anima\": 2}}",
+            PATH,
+            "anima"
+        ),
+        Err(JsoncError::Malformed)
+    );
+    assert_eq!(
+        remove("{\"mcpServers\": {\"anima\":1 \"b\":2}}", PATH, "anima"),
+        Err(JsoncError::Malformed)
+    );
 }

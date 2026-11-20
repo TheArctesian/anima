@@ -15,7 +15,7 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
 use agents::{AGENTS, Agent, State, agent};
-use setup::{Action, Here, Step, apply, check_command, state, step};
+use setup::{Action, Checked, Here, Step, apply, check_command, state, steps};
 
 /// One agent as the list shows it (MCP-027).
 #[derive(Clone, Debug, Serialize)]
@@ -23,31 +23,33 @@ pub struct Row {
     pub id: &'static str,
     pub name: &'static str,
     pub state: State,
-    /// What a change would touch; absent for an agent that is not on this computer (MCP-029).
-    pub step: Option<Step>,
+    /// What a change would touch, in order; empty for an agent that is not on this computer (MCP-029).
+    pub steps: Vec<Step>,
     /// Why the last change of this agent failed, in words with no text of a file.
     pub problem: Option<String>,
 }
 
 /// Each known agent with its state and the step `action` would take.
 #[must_use]
-pub fn listing(here: &Here, anima: &Path, action: Action) -> Vec<Row> {
+pub fn listing(here: &Here, anima: &Checked, action: Action) -> Vec<Row> {
     AGENTS
         .iter()
-        .map(|agent| row(agent, here, anima, action))
+        .map(|agent| row(agent, here, anima.path(), action))
         .collect()
 }
 
 fn row(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Row {
     let state = state(agent, here, anima);
-    let step = (state != State::NotInstalled)
-        .then(|| step(agent, here, anima, action).ok())
-        .flatten();
+    let steps = if state == State::NotInstalled {
+        Vec::new()
+    } else {
+        steps(agent, here, anima, (action, state)).unwrap_or_default()
+    };
     Row {
         id: agent.id,
         name: agent.name,
         state,
-        step,
+        steps,
         problem: None,
     }
 }
@@ -74,8 +76,9 @@ pub struct Asked<'a> {
 /// Does `action` for each agent of `ids` (all when empty) that it has work for, and gives each
 /// agent as it is afterwards. One refused agent does not stop the others (MCP-034).
 #[must_use]
-pub fn change(here: &Here, anima: &Path, asked: &Asked<'_>) -> Vec<Row> {
+pub fn change(here: &Here, anima: &Checked, asked: &Asked<'_>) -> Vec<Row> {
     let Asked { action, ids, force } = *asked;
+    let anima = anima.path();
     AGENTS
         .iter()
         .filter(|agent| ids.is_empty() || ids.iter().any(|id| id == agent.id))
@@ -133,9 +136,18 @@ fn here() -> Result<Here, Failure> {
         .map(PathBuf::from)
         .filter(|home| home.is_absolute())
         .ok_or_else(|| usage("HOME is not set to a folder.".to_owned()))?;
-    let user = std::fs::metadata(&home)
-        .map_err(|_| usage("The home folder cannot be read.".to_owned()))?
+    // The user of this process is the owner of a file that it makes.
+    let user = tempfile::tempfile()
+        .and_then(|file| file.metadata())
+        .map_err(|_| usage("The user of this program is not known.".to_owned()))?
         .uid();
+    // A home folder of a different user (as under `sudo`) is not changed: its files would then
+    // belong to the wrong user.
+    if std::fs::metadata(&home).map_or(true, |metadata| metadata.uid() != user) {
+        return Err(usage(
+            "The home folder does not belong to the user that runs this program.".to_owned(),
+        ));
+    }
     let path = std::env::var_os("PATH")
         .map_or_else(Vec::new, |path| std::env::split_paths(&path).collect());
     Ok(Here {
@@ -146,7 +158,7 @@ fn here() -> Result<Here, Failure> {
     })
 }
 
-fn anima(command: Option<PathBuf>, here: &Here) -> Result<PathBuf, Failure> {
+fn anima(command: Option<PathBuf>, here: &Here) -> Result<Checked, Failure> {
     let anima = match command {
         Some(path) => path,
         None => std::env::current_exe().map_err(|_| {
@@ -154,22 +166,24 @@ fn anima(command: Option<PathBuf>, here: &Here) -> Result<PathBuf, Failure> {
         })?,
     };
     check_command(&anima, here.user)
-        .map_err(|error| usage(format!("{error}. Give the installed anima with --command.")))?;
-    Ok(anima)
+        .map_err(|error| usage(format!("{error}. Give the installed anima with --command.")))
 }
 
-fn touched(step: Option<&Step>) -> String {
-    match step {
-        None => String::new(),
-        Some(Step::Write {
-            file,
-            copy: Some(copy),
-        }) => format!("writes {}, keeps {}", file.display(), copy.display()),
-        Some(Step::Write { file, copy: None }) => format!("writes {}", file.display()),
-        Some(Step::Run { program, arguments }) => {
-            format!("runs {} {}", program.display(), arguments.join(" "))
-        }
-    }
+fn touched(steps: &[Step]) -> String {
+    let words: Vec<String> = steps
+        .iter()
+        .map(|step| match step {
+            Step::Write {
+                file,
+                copy: Some(copy),
+            } => format!("writes {}, keeps {}", file.display(), copy.display()),
+            Step::Write { file, copy: None } => format!("writes {}", file.display()),
+            Step::Run { program, arguments } => {
+                format!("runs {} {}", program.display(), arguments.join(" "))
+            }
+        })
+        .collect();
+    words.join("; then ")
 }
 
 fn table(rows: &Vec<Row>) -> Table {
@@ -183,7 +197,7 @@ fn table(rows: &Vec<Row>) -> Table {
             row.id.into(),
             row.name.into(),
             state.as_str().into(),
-            touched(row.step.as_ref()).as_str().into(),
+            touched(&row.steps).as_str().into(),
         ]);
     }
     table

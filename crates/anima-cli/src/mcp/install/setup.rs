@@ -36,7 +36,7 @@ impl Here {
 /// Why `anima` cannot be the program of an entry (MCP-033).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum CommandError {
-    #[error("the path of anima is not absolute")]
+    #[error("the path of anima is not an absolute path of plain text")]
     NotAbsolute,
     #[error("the path of anima is not a program that can be run")]
     NotAProgram,
@@ -44,33 +44,66 @@ pub enum CommandError {
     Replaceable,
 }
 
-/// Checks that `anima` is a fixed program that only this user or the system can replace.
+/// The path of `anima` after [`check_command`] accepted it: the only value an entry is made of.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Checked(PathBuf);
+
+impl Checked {
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+/// Whether a different user can replace what is at `path`: the thing itself or a folder above it,
+/// up to the root. The system's own folders (owned by root) count as fixed.
+fn replaceable(path: &Path, user: u32) -> bool {
+    path.ancestors().any(|part| {
+        fs::symlink_metadata(part).map_or(true, |metadata| {
+            let mode = metadata.permissions().mode();
+            let owned = metadata.uid() == user || metadata.uid() == 0;
+            // A link has no mode of its own; the folder that holds it decides who replaces it. A
+            // folder with the sticky bit (as /tmp) lets only the owner of an entry replace it.
+            let sticky = metadata.is_dir() && mode & 0o1000 != 0;
+            let open = !metadata.file_type().is_symlink()
+                && !sticky
+                && (mode & 0o002 != 0
+                    || (mode & 0o020 != 0 && metadata.gid() != user && metadata.gid() != 0));
+            !owned || open
+        })
+    })
+}
+
+/// Checks that `anima` is a fixed program that only this user or the system can replace, and
+/// that its path is text that no agent reads as a variable (MCP-033).
 ///
 /// # Errors
-/// [`CommandError`] when it is not absolute, not a runnable regular file, or writable by others.
-pub fn check_command(anima: &Path, user: u32) -> Result<(), CommandError> {
-    if !anima.is_absolute() {
+/// [`CommandError`] when it is not absolute, not a runnable regular file, or replaceable.
+pub fn check_command(anima: &Path, user: u32) -> Result<Checked, CommandError> {
+    let text = anima.to_str().ok_or(CommandError::NotAbsolute)?;
+    // `$` and braces are variables in the files of some agents; `..` names a different place.
+    let plain = !text
+        .chars()
+        .any(|character| character.is_control() || matches!(character, '$' | '{' | '}'));
+    if !anima.is_absolute()
+        || !plain
+        || anima
+            .components()
+            .any(|part| part == std::path::Component::ParentDir)
+    {
         return Err(CommandError::NotAbsolute);
     }
-    // The program may be a link that an installer made (INS-002); what it points at is checked.
+    // The program may be a link that an installer made (INS-002): the link and what it points at
+    // are both checked, each with every folder above it.
     let program = fs::metadata(anima).map_err(|_| CommandError::NotAProgram)?;
     if !program.is_file() || program.permissions().mode() & 0o111 == 0 {
         return Err(CommandError::NotAProgram);
     }
-    let folder = anima
-        .parent()
-        .and_then(|folder| fs::metadata(folder).ok())
-        .ok_or(CommandError::NotAProgram)?;
-    let link = fs::symlink_metadata(anima).map_err(|_| CommandError::NotAProgram)?;
-    for metadata in [&program, &link, &folder] {
-        let owned = metadata.uid() == user || metadata.uid() == 0;
-        // A link has no mode of its own on Linux (it reads 0777): its folder decides who replaces it.
-        let open = !metadata.file_type().is_symlink() && metadata.permissions().mode() & 0o022 != 0;
-        if !owned || open {
-            return Err(CommandError::Replaceable);
-        }
+    let real = fs::canonicalize(anima).map_err(|_| CommandError::NotAProgram)?;
+    if replaceable(anima, user) || replaceable(&real, user) {
+        return Err(CommandError::Replaceable);
     }
-    Ok(())
+    Ok(Checked(anima.to_path_buf()))
 }
 
 /// The first program named `name` in the folders of `PATH`, as an absolute path.
@@ -109,8 +142,11 @@ fn file_of(agent: &Agent, here: &Here) -> Option<PathBuf> {
 /// Runs an agent's own program with fixed arguments and no shell (MCP-035); `None` when it is not on `PATH`.
 fn run(here: &Here, name: &str, arguments: &[String]) -> Option<std::process::Output> {
     let program = program(here, name)?;
+    // In the home folder: an agent must not read the project configuration of the folder the
+    // person happens to be in.
     Command::new(program)
         .args(arguments)
+        .current_dir(&here.home)
         .stdin(Stdio::null())
         .output()
         .ok()
@@ -148,13 +184,26 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
             let Some(output) = run(here, program, &arguments(template, anima)) else {
                 return State::NotSetUp;
             };
-            let names_anima =
-                String::from_utf8_lossy(&output.stdout).contains(&*anima.to_string_lossy());
+            // The path as one whole word of the output, not as a part of a longer word: a
+            // server at `<anima>-other` is not this one. What else the entry holds is not read.
+            let output_text = String::from_utf8_lossy(&output.stdout);
+            let path = anima.to_string_lossy();
+            let words = |text: &str, word: &str| {
+                text.split(|character: char| {
+                    character.is_whitespace() || matches!(character, '"' | '\'' | ',' | '[' | ']')
+                })
+                .any(|part| part == word)
+            };
             match check {
                 Check::Get(_) if !output.status.success() => State::NotSetUp,
-                Check::Get(_) | Check::List(_) if names_anima => State::SetUp,
+                Check::Get(_) | Check::List(_) if words(&output_text, &path) => State::SetUp,
                 Check::Get(_) => State::Different,
-                // A list names no path for a server of a different program: it cannot be told apart.
+                // A list that names a server `anima` with a different program: not ours.
+                Check::List(_)
+                    if words(&output_text, NAME) || words(&output_text, &format!("{NAME}:")) =>
+                {
+                    State::Different
+                }
                 Check::List(_) => State::NotSetUp,
             }
         }
@@ -196,16 +245,24 @@ pub enum SetupError {
     ProgramFailed,
 }
 
-/// The step that `action` would take for `agent` (MCP-029). It reads only.
+/// The steps that `action` would take for `agent` in `state`, in order (MCP-029). It reads only.
 ///
 /// # Errors
 /// [`SetupError::NoProgram`] when an own way has no program on `PATH`.
-pub fn step(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result<Step, SetupError> {
+pub fn steps(
+    agent: &Agent,
+    here: &Here,
+    anima: &Path,
+    wanted: (Action, State),
+) -> Result<Vec<Step>, SetupError> {
+    let (action, state) = wanted;
     match agent.way {
         Way::File { .. } => {
             let file = file_of(agent, here).ok_or(SetupError::NoProgram)?;
-            let copy = (file.exists() && !copy_path(&file).exists()).then(|| copy_path(&file));
-            Ok(Step::Write { file, copy })
+            // `symlink_metadata`: a link at the name of the copy is not a copy.
+            let copy = (file.exists() && fs::symlink_metadata(copy_path(&file)).is_err())
+                .then(|| copy_path(&file));
+            Ok(vec![Step::Write { file, copy }])
         }
         Way::Own {
             program: name,
@@ -213,14 +270,16 @@ pub fn step(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result<
             remove,
             ..
         } => {
-            let template = if action == Action::Install {
-                add
-            } else {
-                remove
-            };
-            Ok(Step::Run {
-                program: program(here, name).ok_or(SetupError::NoProgram)?,
+            let program = program(here, name).ok_or(SetupError::NoProgram)?;
+            let run = |template: &[&str]| Step::Run {
+                program: program.clone(),
                 arguments: arguments(template, anima),
+            };
+            Ok(match (action, state) {
+                // The agents refuse a name that is there: the entry of a person is taken out first.
+                (Action::Install, State::Different) => vec![run(remove), run(add)],
+                (Action::Install, _) => vec![run(add)],
+                (Action::Uninstall, _) => vec![run(remove)],
             })
         }
     }
@@ -260,22 +319,21 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
             remove,
             ..
         } => {
-            // An entry that is there is taken out first: the agents refuse to add a name twice.
-            if action == Action::Install {
-                run(here, program, &arguments(remove, anima));
-            }
-            let template = if action == Action::Install {
-                add
+            let state = state(agent, here, anima);
+            for template in if action == Action::Install && state == State::Different {
+                vec![remove, add]
+            } else if action == Action::Install {
+                vec![add]
             } else {
-                remove
-            };
-            let output =
-                run(here, program, &arguments(template, anima)).ok_or(SetupError::NoProgram)?;
-            if output.status.success() {
-                Ok(())
-            } else {
-                Err(SetupError::ProgramFailed)
+                vec![remove]
+            } {
+                let output =
+                    run(here, program, &arguments(template, anima)).ok_or(SetupError::NoProgram)?;
+                if !output.status.success() {
+                    return Err(SetupError::ProgramFailed);
+                }
             }
+            Ok(())
         }
     }
 }

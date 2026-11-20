@@ -4,7 +4,9 @@
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read as _, Write as _};
-use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _, PermissionsExt as _};
+use std::os::unix::fs::{
+    DirBuilderExt as _, MetadataExt as _, OpenOptionsExt as _, PermissionsExt as _,
+};
 use std::path::{Path, PathBuf};
 
 /// The most a configuration file may hold: a hostile file cannot make the reader use more.
@@ -26,6 +28,8 @@ pub enum FileError {
     TooLarge,
     #[error("it is not UTF-8 text")]
     NotText,
+    #[error("a different program changed it at the same time; try again")]
+    Changed,
     #[error("{0}")]
     Io(#[from] io::Error),
 }
@@ -67,7 +71,7 @@ fn check_path(root: Root<'_>, path: &Path) -> Result<(), FileError> {
         if last != metadata.is_file() {
             return Err(FileError::NotAFile);
         }
-        if metadata.uid() != root.user || metadata.permissions().mode() & 0o022 != 0 {
+        if open_to_others(&metadata, root.user) {
             return Err(FileError::Shared);
         }
     }
@@ -82,7 +86,7 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
     check_path(root, path)?;
     let file = match OpenOptions::new()
         .read(true)
-        .custom_flags(libc_nofollow())
+        .custom_flags(no_follow())
         .open(path)
     {
         Ok(file) => file,
@@ -94,7 +98,7 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
     if !metadata.is_file() {
         return Err(FileError::NotAFile);
     }
-    if metadata.uid() != root.user || metadata.permissions().mode() & 0o022 != 0 {
+    if open_to_others(&metadata, root.user) {
         return Err(FileError::Shared);
     }
     let mut bytes = Vec::new();
@@ -108,12 +112,17 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
 }
 
 /// `O_NOFOLLOW`: the open fails when the last part of the path is a symbolic link.
-const fn libc_nofollow() -> i32 {
-    if cfg!(target_os = "macos") {
-        0x0100
-    } else {
-        0o400_000
-    }
+fn no_follow() -> i32 {
+    i32::try_from(rustix::fs::OFlags::NOFOLLOW.bits()).unwrap_or_default()
+}
+
+/// Whether a different user can change what `metadata` describes: a different owner, a write bit
+/// for all, or a write bit for a group that is not the private group of the user (the group
+/// with the user's own number, which the usual Linux systems give each user).
+#[must_use]
+pub fn open_to_others(metadata: &fs::Metadata, user: u32) -> bool {
+    let mode = metadata.permissions().mode();
+    metadata.uid() != user || mode & 0o002 != 0 || (mode & 0o020 != 0 && metadata.gid() != user)
 }
 
 /// The path of the copy of `path` as it was (MCP-032).
@@ -138,25 +147,16 @@ pub fn replace(
 ) -> Result<(), FileError> {
     check_path(root, path)?;
     let (folder, name) = parts(path)?;
-    fs::create_dir_all(folder)?;
+    // A folder that is made is private: the mask of the process does not decide (MCP-034).
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(folder)?;
     check_path(root, folder.join(name).as_path())?;
     let mode =
         fs::symlink_metadata(path).map_or(0o600, |metadata| metadata.permissions().mode() & 0o777);
     if let Some(before) = before {
-        // `create_new` follows no link and fails when a copy is there: the first copy is kept.
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(mode)
-            .open(copy_path(path))
-        {
-            Ok(mut copy) => {
-                copy.write_all(before.as_bytes())?;
-                copy.sync_all()?;
-            }
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(error.into()),
-        }
+        keep_copy(root, path, mode, before)?;
     }
     let mut temporary = tempfile::Builder::new()
         .prefix(".anima-")
@@ -164,12 +164,45 @@ pub fn replace(
         .tempfile_in(folder)?;
     temporary.write_all(text.as_bytes())?;
     temporary.as_file().sync_all()?;
+    // The file is as it was read, or nothing is written: a program that saved it in between keeps its text.
+    if read(root, path)?.as_deref() != before {
+        return Err(FileError::Changed);
+    }
     // A rename replaces the name and follows no link at it.
     temporary
         .persist(path)
         .map_err(|error| FileError::Io(error.error))?;
     File::open(folder).and_then(|folder| folder.sync_all()).ok();
     Ok(())
+}
+
+/// Keeps `before` beside `path` as the copy of MCP-032, unless a copy is there. A copy that is
+/// there must be a regular file of the user: a link or a file of a different user is refused, so
+/// that "a copy is kept" is never said of something else. The copy appears whole or not at all.
+fn keep_copy(root: Root<'_>, path: &Path, mode: u32, before: &str) -> Result<(), FileError> {
+    let (folder, _) = parts(path)?;
+    let copy = copy_path(path);
+    match fs::symlink_metadata(&copy) {
+        Ok(metadata) if metadata.is_file() && !open_to_others(&metadata, root.user) => {
+            return Ok(());
+        }
+        Ok(metadata) if metadata.file_type().is_symlink() => return Err(FileError::Link),
+        Ok(_) => return Err(FileError::Shared),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    let mut temporary = tempfile::Builder::new()
+        .prefix(".anima-")
+        .permissions(fs::Permissions::from_mode(mode))
+        .tempfile_in(folder)?;
+    temporary.write_all(before.as_bytes())?;
+    temporary.as_file().sync_all()?;
+    // A hard link fails when the name is there: a copy made in the meantime is kept.
+    match fs::hard_link(temporary.path(), &copy) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 
 #[cfg(test)]
