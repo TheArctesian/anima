@@ -2,18 +2,20 @@
 //! view cannot pin its certificate, the client shows the fingerprint and sends the operator
 //! here. Only `http` and `https` addresses; the URL is never logged (LOG-007).
 
+#[cfg(unix)]
 use std::time::Duration;
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
 
-use crate::{
-    os_program::{self, OPENER_PATIENCE, OsProgramError},
-    web_view::{WebUrl, WebViewError},
-};
+#[cfg(unix)]
+use crate::os_program::{self, OPENER_PATIENCE, OsProgramError};
+
+use crate::web_view::{WebUrl, WebViewError};
 
 /// The URL opener: `open` on macOS, `xdg-open` on Linux. An absolute path, so `PATH`
 /// cannot swap it.
+#[cfg(unix)]
 const OPENER: &str = if cfg!(target_os = "macos") {
     "/usr/bin/open"
 } else {
@@ -58,6 +60,7 @@ impl Serialize for SystemBrowserError {
 /// Runs `opener` with `url` as its one argument (no shell). A checked URL starts with its
 /// scheme, so the opener cannot read it as an option. An opener still running after
 /// `patience` is taken as a browser in the foreground (see `os_program::open_within`).
+#[cfg(unix)]
 fn open_with(opener: &str, url: &WebUrl, patience: Duration) -> Result<(), SystemBrowserError> {
     os_program::open_within(opener, url.as_str().as_ref(), patience).map_err(|error| match error {
         OsProgramError::NotFound => SystemBrowserError::Unavailable,
@@ -72,12 +75,10 @@ pub async fn system_browser_open(
     url: String,
 ) -> Result<(), SystemBrowserError> {
     let opened = match crate::web_view::caller(webview.label()).and_then(|()| WebUrl::parse(&url)) {
-        Ok(url) => {
-            tauri::async_runtime::spawn_blocking(move || open_with(OPENER, &url, OPENER_PATIENCE))
-                .await
-                .map_err(|_| SystemBrowserError::Failed)
-                .flatten()
-        }
+        Ok(url) => tauri::async_runtime::spawn_blocking(move || open_url(&url))
+            .await
+            .map_err(|_| SystemBrowserError::Failed)
+            .flatten(),
         Err(error) => Err(SystemBrowserError::Address(error)),
     };
     if let Err(error) = opened {
@@ -86,7 +87,7 @@ pub async fn system_browser_open(
     opened
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     //! The tests run `true`, `false` or a missing program in place of the opener, so no test
     //! opens a browser.
@@ -151,4 +152,14 @@ mod tests {
         let json = serde_json::to_value(SystemBrowserError::Failed).unwrap();
         assert_eq!(json, serde_json::json!({ "code": "failed" }));
     }
+}
+
+#[cfg(unix)]
+fn open_url(url: &WebUrl) -> Result<(), SystemBrowserError> {
+    open_with(OPENER, url, OPENER_PATIENCE)
+}
+
+#[cfg(windows)]
+fn open_url(url: &WebUrl) -> Result<(), SystemBrowserError> {
+    open::that_detached(url.as_str()).map_err(|_| SystemBrowserError::Unavailable)
 }

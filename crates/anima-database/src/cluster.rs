@@ -14,11 +14,12 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
+#[cfg(unix)]
 use nix::unistd::{Uid, User};
 
 use crate::{Layout, Lock, Program, Tree, owner_only};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The superuser of a bundled cluster. Only this crate signs in with it, for the roles, the
@@ -26,8 +27,10 @@ mod tests;
 pub const SUPERUSER: &str = "anima_super";
 
 /// The name of the map in `pg_ident.conf` that lets the operating-system user be [`SUPERUSER`].
+#[cfg(unix)]
 const USER_MAP: &str = "anima";
 
+#[cfg(unix)]
 const ACCESS_RULES: &str = "\
 # Written by anima-database; a change here is lost when the cluster is made again.
 # The superuser: only the operating-system user who runs the database, no password.
@@ -35,6 +38,9 @@ local all anima_super peer map=anima
 # Every other login: its password, never in clear text.
 local all all scram-sha-256
 ";
+
+#[cfg(windows)]
+const ACCESS_RULES: &str = "hostssl all all 127.0.0.1/32 scram-sha-256\nhost all all 0.0.0.0/0 reject\nhost all all ::0/0 reject\n";
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClusterError {
@@ -122,9 +128,12 @@ pub fn create(_lock: &Lock, tree: &Tree, layout: &Layout) -> Result<(), ClusterE
     {
         return Err(io_error("remove a half-made cluster")(error));
     }
+    #[cfg(windows)]
+    crate::windows::Endpoint::create(layout).map_err(io_error("prepare the database identity"))?;
     run_initdb(tree, &being_made)?;
     replace(&being_made.join("pg_hba.conf"), ACCESS_RULES)
         .map_err(io_error("write the cluster's access rules"))?;
+    #[cfg(unix)]
     replace(&being_made.join("pg_ident.conf"), &user_map(&this_user()?))
         .map_err(io_error("write the cluster's user map"))?;
     fs::rename(&being_made, layout.cluster()).map_err(io_error("move the new cluster into place"))
@@ -135,6 +144,7 @@ pub fn create(_lock: &Lock, tree: &Tree, layout: &Layout) -> Result<(), ClusterE
 ///
 /// # Errors
 /// When the user has no name or the map cannot be written.
+#[cfg(unix)]
 pub fn admit_this_user(_lock: &Lock, layout: &Layout) -> Result<(), ClusterError> {
     replace(
         &layout.cluster().join("pg_ident.conf"),
@@ -143,6 +153,14 @@ pub fn admit_this_user(_lock: &Lock, layout: &Layout) -> Result<(), ClusterError
     .map_err(io_error("write the cluster's user map"))
 }
 
+#[cfg(windows)]
+pub fn admit_this_user(_lock: &Lock, layout: &Layout) -> Result<(), ClusterError> {
+    crate::windows::Endpoint::load(layout)
+        .map(drop)
+        .map_err(io_error("check the database identity"))
+}
+
+#[cfg(unix)]
 fn this_user() -> Result<String, ClusterError> {
     let name = User::from_uid(Uid::effective())
         .ok()
@@ -158,12 +176,14 @@ fn this_user() -> Result<String, ClusterError> {
 
 /// Whether `name` means only itself in `pg_ident.conf`. A leading `/` makes a quoted value a
 /// regular expression there, and a line break would start a second mapping.
+#[cfg(unix)]
 fn is_plain_user_name(name: &str) -> bool {
     !name.is_empty() && !name.starts_with('/') && !name.chars().any(char::is_control)
 }
 
 /// The `pg_ident.conf` text that maps `user` to [`SUPERUSER`]. The name is quoted, so no
 /// character in it can add a second mapping.
+#[cfg(unix)]
 fn user_map(user: &str) -> String {
     format!(
         "# Written by anima-database at each start.\n{USER_MAP} \"{}\" {SUPERUSER}\n",
@@ -200,13 +220,28 @@ pub fn was_stopped_cleanly(tree: &Tree, layout: &Layout) -> Result<bool, Cluster
 }
 
 fn run_initdb(tree: &Tree, cluster: &Path) -> Result<(), ClusterError> {
-    let output = tree
-        .command(Program::Initdb)
+    let mut command = tree.command(Program::Initdb);
+    #[cfg(unix)]
+    command.args(["--auth-local", "peer", "--auth-host", "reject"]);
+    #[cfg(windows)]
+    command
+        .args([
+            "--auth-local",
+            "scram-sha-256",
+            "--auth-host",
+            "scram-sha-256",
+        ])
+        .arg("--pwfile")
+        .arg(
+            cluster
+                .parent()
+                .ok_or(ClusterError::UserName)?
+                .join("connection/superuser.password"),
+        );
+    let output = command
         .arg("--pgdata")
         .arg(cluster)
         .args(["--username", SUPERUSER])
-        // Replaced by this crate's own rules before any server starts.
-        .args(["--auth-local", "peer", "--auth-host", "reject"])
         .args(["--encoding", "UTF8", "--locale", "C"])
         .args([
             "--locale-provider",

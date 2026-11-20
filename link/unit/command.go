@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/netip"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
 )
@@ -24,10 +25,20 @@ func here() (System, error) {
 	if err != nil {
 		return System{}, refused("no home folder: set HOME")
 	}
-	return System{
+	on := System{
 		GOOS: runtime.GOOS, UID: os.Getuid(), Home: home,
 		ConfigHome: os.Getenv("XDG_CONFIG_HOME"), RuntimeDir: os.Getenv("XDG_RUNTIME_DIR"),
-	}, nil
+	}
+	if runtime.GOOS == "windows" {
+		account, err := user.Current()
+		if err != nil {
+			return System{}, refused("the Windows account cannot be read")
+		}
+		on.SID = account.Uid
+		on.Windows = os.Getenv("SystemRoot")
+		on.ConfigHome = os.Getenv("LOCALAPPDATA")
+	}
+	return on, nil
 }
 
 // settingsFrom reads the flags of "unit install". The program of the unit

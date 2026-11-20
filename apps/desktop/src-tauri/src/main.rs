@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 //! The desktop program. The shell is the library, so that a phone can load it (MOB-001).
 //! On a phone the operating system starts the library, and this program does nothing.
 

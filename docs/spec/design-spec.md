@@ -55,17 +55,18 @@ Anima uses `guacd` from Guacamole as a separate process. Anima does not copy sou
 | --- | --- | --- |
 | macOS | Tauri desktop application | 1 |
 | Linux | Tauri desktop application | 1 |
+| Windows 11 x86_64 | Native desktop, CLI, host services and local NSIS installer (WIN1, WIN2) | Local trial; acceptance Open |
 | Web | Static web application that the hub serves | 3 |
 | iOS | Tauri mobile application | 5 |
 | Android | Tauri mobile application | 5 |
 
 The desktop applications are the first priority. Do not start the web, iOS and Android work until Phase 2 is complete. [mobile-plan.md](../plans/mobile-plan.md) is the plan for iOS and Android (operator, 2026-11-16).
 
-The desktop package also carries the command line (Section 6.10). Section 3.11 gives the installation rules. A public website gives the install links (Section 3.12).
+The macOS, Linux and Windows desktop packages also carry the command line (Section 6.10). Section 3.11 gives the installation rules. A public website gives the install links (Section 3.12).
 
 ### 1.4 Out of scope for this version
 
-- Windows desktop package. Tauri supports Windows, so a later version can add it.
+- Publishing a Windows release. The operator authorized the Windows release workflow and Authenticode implementation on 2026-11-20; setting cloud credentials or publishing still needs a release instruction. WIN1 and WIN2 authorize the native Windows client, persistent link and daemon, local hub, builder, CLI installation, MCP setup, supported stay-awake controls and Windows update packaging, without WSL (operator, 2026-11-20). Local implementation and acceptance belong to WIN2 in projects-and-builds-plan.md; this authorization does not publish a release.
 - Multiple operators with different permissions.
 - File transfer between the client and a device.
 - Access from outside the private network. Each client must be on the same network as the hub and the devices (Section 4.1).
@@ -136,7 +137,7 @@ The command line and the MCP server (Section 6.10) use the same GraphQL API as t
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
 | Remote display | `guacamole-common-js` |
-| Secret storage | The operating system key store: macOS Keychain, Linux Secret Service |
+| Secret storage | The operating system key store: macOS Keychain, Linux Secret Service, Windows Credential Manager |
 
 - **CLI-001.** The client must use the same user interface code on all platforms.
 - **CLI-002.** The client must keep the hub address in local settings. The web client has no hub address field. It talks only to the hub that served it. (D-5, R-081)
@@ -400,7 +401,7 @@ desktop app ── GET https://releases.anima.ing/{{target}}-{{arch}}/latest.jso
 | Trigger | The operator selects "Release" in the Builds view. The hub does not poll GitHub and has no webhook. |
 | Commit | The hub reads the head of `main` from the public GitHub API when the operator opens the release form. The operator sees the commit and confirms it. |
 | Version | The operator types it. The form proposes the highest released version with the patch number plus 1. Do not commit version changes. |
-| Targets | `linux-x86_64` (AppImage) and `darwin-universal` (app and DMG, built on an Apple Silicon Mac). |
+| Targets | `linux-x86_64` (AppImage), `darwin-universal` (app and DMG, built on an Apple Silicon Mac), and `windows-x86_64` (NSIS installer; WIN2). |
 | Builder | A desktop app with "Build releases on this computer" on. Off by default. |
 | Storage | Cloudflare R2 bucket `anima-releases`, served at `https://releases.anima.ing` |
 | Upload credential | A presigned R2 `PUT` URL for each file of one job. It expires after 15 minutes (changed by R-108). |
@@ -422,7 +423,7 @@ queued ──► claimed ──► building ──► uploading ──► publis
 
 - **BLD-001.** The operator must start a release from the Builds view with "Release <version>". The hub must make one job in state `queued` for each selected target.
 - **BLD-002.** The hub must refuse a release whose version is not more than each published version of each selected target. A version is never built twice for one target.
-- **BLD-003.** A builder must claim only a job whose target its platform can build. `linux-x86_64` needs Linux on x86_64. `darwin-universal` needs macOS on aarch64.
+- **BLD-003.** A builder must claim only a job whose target its platform can build. `linux-x86_64` needs Linux on x86_64. `darwin-universal` needs macOS on aarch64. `windows-x86_64` needs Windows on x86_64 (WIN2, operator 2026-11-20).
 - **BLD-004.** A claim must be atomic. Two builders must not claim the same job.
 - **BLD-005.** A claim gives the builder a lease of 90 seconds. The builder must report at least each 15 seconds. Each report extends the lease to 90 seconds from the report.
 - **BLD-006.** When a lease ends without a report, the hub must put the job back to `queued` and add 1 to its attempts. After 3 attempts the job must go to `failed` with the reason "builder stopped 3 times".
@@ -503,7 +504,7 @@ The macOS application is `Anima.ing.app`: Tauri makes the name from `productName
 
 Built state: the release record in [releases.md](../procedures/releases.md) holds what is published. INS-002 to INS-007 are built (merge `a6ba6b19`, 2026-11-13). The builder puts the `anima` program in both artefacts, and Settings > Updates > Command line tool puts it on the `PATH`. The check of the signature, the notarization and the update on a real release is row REL-1 of [need-human-testing.md](../need-human-testing.md) (OD-16 to OD-18).
 
-- **INS-001.** The operator must install Anima from the disk image on macOS or from the AppImage on Linux. There is no other installation path for the desktop application. The command line alone is the one exception: it can also be installed with Homebrew or with Cargo (INS-010, INS-011). The command line from the desktop application stays as INS-002 to INS-007 say. (operator, 2026-11-13; the exception: operator, 2026-11-18, R-151)
+- **INS-001.** The operator must install Anima from the disk image on macOS or from the AppImage on Linux. The Windows local trial installs with a per-user NSIS installer (WIN1, operator, 2026-11-20). There is no other installation path for the desktop application. The command line alone is the one exception: it can also be installed with Homebrew or with Cargo (INS-010, INS-011). The command line from the desktop application stays as INS-002 to INS-007 say. (operator, 2026-11-13; the exception: operator, 2026-11-18, R-151)
 - **INS-002.** Each artefact must contain the `anima` program beside the desktop application. The two must come from the same commit and must have the same version. Thus there is one download for the desktop application. The formula and the crate hold the same program at the same version (INS-012). (Built: the bundle step of the builder builds `anima` from the job commit, puts it in `apps/desktop/src-tauri/binaries/` and gives `bundle.externalBin: ["binaries/anima"]` to `tauri build` and `tauri bundle`. A missing file fails the build. `src/builder/sidecar.rs`.)
 - **INS-003.** `anima --version` must print the version of the desktop application that contains it. (Built; Section 11, OD-17.)
 - **INS-004.** On macOS, the Settings page of the desktop application must offer "Install the command line tool". The application must propose a directory that is on the operator's `PATH`. The operator must confirm the directory. Then the application must make a link named `anima` in that directory. The link must point to the `anima` program inside the installed application. (Built: `apps/desktop/src-tauri/src/command_line/`. The application refuses to make the link when it runs from the disk image or from a translocated path, and tells the operator to move it to Applications first.)
@@ -724,7 +725,7 @@ records the colour it comes from and the rule that made it.
 | `surface-hover`, `surface-selected` | Row and item states |
 | `border-subtle` | Where two equal surfaces meet; table row separators |
 | `border-strong` | Inputs and other control edges, at least 3:1 on `surface-raised` and `surface-sunken` (WCAG 1.4.11); every border under `prefers-contrast: more` |
-| `text`, `text-secondary`, `text-tertiary`, `text-quiet` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information); quiet text for the second line of a row and the small-caps section label, at least 4.5:1 on `surface-base` |
+| `text`, `text-secondary`, `text-tertiary`, `text-quiet` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information); quiet text for the second line of a row and for a count beside a label, at least 4.5:1 on `surface-base` |
 | `planned` | Things that are configured but not yet running: a planned machine, a pending change |
 | `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `accent-tint` | The one accent: active place, focus, the primary action |
 | `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` | Status shapes: dots, edges, bars |
@@ -858,7 +859,7 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl`, `text-display` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5, 2.25 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
-| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (small-caps labels) |
+| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (a one-time code; no label uses it: a label is in sentence case with `tracking-small`, R-279) |
 | Weight | `weight-light`, `weight-regular`, `weight-medium` | 200, 400, 500 (UR-7; OpenDyslexic has 400 and 700 only, so it shows 200 and 500 as 400) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 2, 4, 4, 999 px (UR-7: the website's near-square corners) |
@@ -1275,7 +1276,7 @@ The daemon may read NVIDIA values through NVML in place of `nvidia-smi`. The val
 - **MET-002.** The SSH collector and the daemon must only read values on the device. Neither must change the device. The daemon may write only its own configuration, token and buffer files. One exception: a second unit of the daemon, which has no network access, may replace the program files of the daemon with a verified release and keep the previous version (ROL-015 to ROL-017). (R-084, R-139)
 - **MET-003.** The device detail view must show a chart for each metric for 1 hour, 24 hours and 7 days.
 - **MET-004.** The device card must show a metric in `--status-degraded` colour when the value is more than 85 percent.
-- **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add a daemon or WinRM. A device left at Other is first detected (DEV-025).
+- **MET-005.** WIN2 adds native Windows daemon metrics for CPU, memory, uptime, mounted disks and network interfaces (operator, 2026-11-20). Windows SSH and WinRM metric collection remain out of scope. Readers must leave unsupported values absent, as MET-007 requires for a missing GPU. A device left at Other is first detected (DEV-025).
 - **MET-006.** The hub must find the GPUs of a device at the first metric collection. The hub must find them again each 24 hours and after a device restart.
 - **MET-007.** If a device has no GPU with its own memory, the client must not show VRAM. Do not show "0 %" for a missing GPU.
 - **MET-008.** If a device has a GPU with its own memory, the device card must show a VRAM bar after the disk bar. If the device has more than one GPU, the bar must show the GPU with the highest VRAM usage.
@@ -1301,7 +1302,7 @@ The daemon may read NVIDIA values through NVML in place of `nvidia-smi`. The val
 - **MET-028.** Drive activity (Linux). The SSH collector and the daemon must read `/proc/diskstats` with each collection and store, for each drive of MET-027, the read and the write bytes per second (sectors of 512 bytes) and the busy percent (the time the drive spent on I/O over the time between the two readings). Like the network rates, there is no value without an earlier reading, for a drive new since it, or for a counter that went back. The device detail view charts the read and write rates of each drive (MET-003). (Operator ruling in chat, 2026-11-12)
 - **MET-029.** The Overview tab must show a Storage section after Metrics. On top, one summary line as text, not a bar: the number of drives, their total size and how many are not mounted ("4 drives · 31.0 TiB · 1 not mounted"). Then one row per drive: its name, its mount points in the monospace font, its kind as text (NVMe, SSD, HDD, Disk; never colour alone), its size, a used bar for each mount with the value as text ("7.3 TiB · 41 %"), and its read, write and busy values. A drive with no mount shows its size and "Not mounted" in the muted colour, with no bar. A mount that belongs to no drive the hub knows (a network file system, or any mount on macOS) is a row of its own. Loading, empty and failed states follow the Metrics section. (Operator ruling in chat, 2026-11-12)
 - **MET-030.** The device card's disk bar shows the fullest mount (MET-004) and is labelled with that mount ("Disk /", "Disk /mnt/archive"). When the device has more drives than the one that holds that mount, the bar shows "+N drives", unmounted drives counted. (Operator ruling in chat, 2026-11-12)
-- **MET-031.** macOS has no `lsblk`: the hub knows no drives of a macOS device, so its Storage section lists its mounts (the data volume) as MET-029's rows of their own, with no kind and no activity, and its card shows no "+N drives". Windows devices have no metrics (MET-005). (Operator ruling in chat, 2026-11-12)
+- **MET-031.** macOS has no `lsblk`: the hub knows no drives of a macOS device, so its Storage section lists its mounts (the data volume) as MET-029's rows of their own, with no kind and no activity, and its card shows no "+N drives". Windows daemon devices likewise show their mounted disks; Windows SSH metrics remain unavailable (MET-005, WIN2). (Operator ruling in chat, 2026-11-12)
 
 ### 6.7 Device detail view
 

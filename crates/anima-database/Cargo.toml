@@ -24,7 +24,6 @@ getrandom.workspace = true
 # The SCRAM verifier of a login: the server is never sent the password itself.
 hmac.workspace = true
 # The shutdown signal to the server, as the hub and the desktop shell send theirs.
-nix = { version = "0.31", default-features = false, features = ["fs", "resource", "signal", "user"] }
 sha2.workspace = true
 # The roles step signs in over the socket. No TLS: the server has no network listener.
 sqlx.workspace = true
@@ -36,3 +35,21 @@ zeroize.workspace = true
 [dev-dependencies]
 static_assertions.workspace = true
 tempfile.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+anima-windows = { path = "../anima-windows" }
+sqlx = { workspace = true, features = ["tls-rustls-ring-webpki"] }
+rcgen.workspace = true
+tempfile.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", default-features = false, features = ["fs", "resource", "signal", "user"] }
+
+[features]
+# Gate-only runner: never included in the application bundle.
+test-server = []
+
+[[bin]]
+name = "anima-test-database"
+path = "src/test_server/main.rs"
+required-features = ["test-server"]

@@ -40,9 +40,10 @@ async function offsite(args: string[], env: Record<string, string> = {}) {
   return { exitCode: result.exitCode, out: result.stdout + result.stderr };
 }
 
-beforeEach(setUp);
+if (process.platform !== "win32") beforeEach(setUp);
 
-describe("offsite.sh (VPS-006)", () => {
+// The offsite script targets Unix hosts. The static backup contract below runs everywhere.
+describe.skipIf(process.platform === "win32")("offsite.sh (VPS-006)", () => {
   test("VPS-006: sends the newest dump and its manifest with the secret files named, not read", async () => {
     const result = await offsite([]);
     expect(result.exitCode).toBe(0);

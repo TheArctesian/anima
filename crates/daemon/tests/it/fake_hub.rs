@@ -12,7 +12,14 @@ use axum::response::{IntoResponse as _, Response};
 use axum::routing::post;
 use daemon_core::wire::RefusalCode;
 use reqwest::Url;
-use tokio::net::{TcpListener, UnixListener};
+use tokio::net::TcpListener;
+#[cfg(unix)]
+use tokio::net::UnixListener;
+#[cfg(windows)]
+#[path = "fake_hub/windows.rs"]
+mod windows;
+#[cfg(windows)]
+use windows::UnixListener;
 
 /// One canned answer.
 #[derive(Clone)]

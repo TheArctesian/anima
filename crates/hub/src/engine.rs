@@ -8,6 +8,7 @@ pub mod locations;
 pub mod places;
 pub mod records;
 pub mod reminders;
+pub mod sealed_records;
 pub mod sealing_keys;
 pub mod sources;
 pub mod timeline;

@@ -62,10 +62,9 @@
   .label {
     padding: 0 var(--space-2) var(--space-2);
     color: var(--text-secondary);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+    letter-spacing: var(--tracking-small);
   }
 
   .line {

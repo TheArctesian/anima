@@ -127,11 +127,7 @@ where
         key: &staged.key,
         piece: &staged.binding,
     };
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&staged.path)
+    let mut file = super::pieces::new_file(&staged.path)
         .await
         .map_err(staging)?;
     file.write_all(&binding.header()).await.map_err(staging)?;

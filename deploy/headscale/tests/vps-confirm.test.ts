@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
@@ -13,10 +14,11 @@ const ESTABLISHED = "0 0 100.64.0.1:22 100.64.0.2:51000\n0 0 [fd7a:115c:a1e0::1]
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("harden.sh firewall and confirm keep the boot file to the Anima include (VPS-002)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh firewall and confirm keep the boot file to the Anima include (VPS-002)", () => {
   test.each([["firewall"], ["confirm"]])("%s refuses while the boot file has another active line", (command) => {
     if (command === "confirm") expect(host.run(["firewall"], vpn).code).toBe(0);
     host.write("etc/sysconfig/nftables.conf", '# stock\ninclude "/etc/nftables/extra.nft"\n');
@@ -65,7 +67,7 @@ describe("harden.sh firewall and confirm keep the boot file to the Anima include
   });
 });
 
-describe("harden.sh confirm needs a connection opened after firewall (VPS-002)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh confirm needs a connection opened after firewall (VPS-002)", () => {
   test.each([
     ["the other session that was open over IPv4", "100.64.0.2 51000 100.64.0.1 22", "0 0 100.64.0.1:22 100.64.0.2:51000\n"],
     ["a session open over IPv6, in other case", "fd7a:115c:a1e0::2 52000 fd7a:115c:a1e0::1 22", ESTABLISHED],
@@ -94,7 +96,7 @@ describe("harden.sh confirm needs a connection opened after firewall (VPS-002)",
   });
 });
 
-describe("harden.sh check and confirm read nftables.service as systemd loaded it (VPS-002, D-10)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check and confirm read nftables.service as systemd loaded it (VPS-002, D-10)", () => {
   const OTHER = "/etc/systemd/system/nftables.service.d/zz-other.conf";
   const cases: [string, Record<string, string>, string][] = [
     [

@@ -16,6 +16,7 @@
     "text",
     "fingerprint",
     "core_dumps",
+    "shutdown",
     "records",
     "instants",
     "sealing_keys"
@@ -153,6 +154,9 @@
       "extensions",
       "sources"
     ],
+    "sealed_records": [
+      "events"
+    ],
     "jobs": [
       "events"
     ],
@@ -239,6 +243,9 @@
       "access"
     ],
     "reminders": [
+      "access"
+    ],
+    "sealed_records": [
       "access"
     ]
   }

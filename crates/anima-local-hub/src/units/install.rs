@@ -2,8 +2,11 @@
 //! file, and the commands that start and stop the unit. The commands run through a function the caller
 //! gives, so a test runs none of them.
 
-use std::fs::{self, OpenOptions};
+use std::fs;
+#[cfg(unix)]
+use std::fs::OpenOptions;
 use std::io::{self, Write as _};
+#[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -21,7 +24,7 @@ use crate::members::Carried;
 use crate::programs::{self, CopyError};
 use crate::{run, stop_marker};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 #[derive(Debug, thiserror::Error)]
@@ -279,7 +282,10 @@ fn private(folder: &Path, uid: u32) -> Result<(), InstallError> {
 /// unit tool runs what the file names at each login.
 fn write_unit(file: &Path, text: &str, uid: u32) -> Result<(), InstallError> {
     let folder = file.parent().unwrap_or(file);
+    #[cfg(unix)]
     fs::create_dir_all(folder).map_err(write_error(folder))?;
+    #[cfg(windows)]
+    owner_only::folder(folder).map_err(write_error(folder))?;
     private(folder, uid)?;
     let mut being_written = file.as_os_str().to_owned();
     being_written.push(".new");
@@ -289,13 +295,26 @@ fn write_unit(file: &Path, text: &str, uid: u32) -> Result<(), InstallError> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(write_error(being_written)(error)),
     }
+    #[cfg(unix)]
     let mut new = OpenOptions::new()
         .write(true)
         .create_new(true)
         .mode(0o644)
         .open(being_written)
         .map_err(write_error(being_written))?;
-    new.write_all(text.as_bytes())
+    #[cfg(windows)]
+    let mut new =
+        anima_windows::files::create_new(being_written).map_err(write_error(being_written))?;
+    #[cfg(windows)]
+    let encoded: Vec<u8> = std::iter::once(0xfeff_u16)
+        .chain(text.encode_utf16())
+        .flat_map(u16::to_le_bytes)
+        .collect();
+    #[cfg(windows)]
+    let bytes = encoded.as_slice();
+    #[cfg(unix)]
+    let bytes = text.as_bytes();
+    new.write_all(bytes)
         .and_then(|()| new.sync_all())
         .map_err(write_error(being_written))?;
     fs::rename(being_written, file).map_err(write_error(file))

@@ -3,7 +3,9 @@
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{attachments, extractions, locations, places, record_links, reminders, timeline};
+use crate::{
+    attachments, extractions, locations, places, record_links, reminders, sealed_records, timeline,
+};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum SharedRecordCommand {
@@ -45,6 +47,12 @@ pub enum SharedRecordCommand {
         #[command(subcommand)]
         command: reminders::ReminderCommand,
     },
+    /// The opaque bytes of records that a client sealed with the vault key (show, store,
+    /// remove). No command opens a record.
+    SealedRecord {
+        #[command(subcommand)]
+        command: sealed_records::SealedRecordCommand,
+    },
 }
 
 impl SharedRecordCommand {
@@ -57,6 +65,7 @@ impl SharedRecordCommand {
             Self::Place { command } => command.run(invocation).await,
             Self::Location { command } => command.run(invocation).await,
             Self::Reminder { command } => command.run(invocation).await,
+            Self::SealedRecord { command } => command.run(invocation).await,
         }
     }
 }

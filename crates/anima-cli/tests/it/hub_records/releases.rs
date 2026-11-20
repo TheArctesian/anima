@@ -131,6 +131,8 @@ async fn bld_001_release_create_sends_one_target_for_each_flag() {
             "linux-x86-64",
             "--target",
             "darwin-universal",
+            "--target",
+            "windows-x86-64",
             "--hub",
             &hub.origin,
         ])
@@ -138,7 +140,10 @@ async fn bld_001_release_create_sends_one_target_for_each_flag() {
     assert_eq!(run.code, 0, "{run:?}");
     assert!(run.stdout.contains("0.5.0"), "{}", run.stdout);
     let sent = &hub.seen()[0].variables;
-    assert_eq!(sent["targets"], json!(["LINUX_X86_64", "DARWIN_UNIVERSAL"]));
+    assert_eq!(
+        sent["targets"],
+        json!(["LINUX_X86_64", "DARWIN_UNIVERSAL", "WINDOWS_X86_64"])
+    );
     assert_eq!(
         (sent["version"].clone(), sent["commit"].clone()),
         (json!("0.5.0"), json!(COMMIT))

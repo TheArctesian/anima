@@ -85,7 +85,7 @@ impl UsageSettings {
             .filter_map(|folder| std::fs::canonicalize(folder).ok())
             .collect();
         settings.excluded_folders.extend(resolved);
-        settings.fold_case = cfg!(target_os = "macos");
+        settings.fold_case = cfg!(any(target_os = "macos", windows));
         Ok(settings)
     }
 
@@ -164,18 +164,38 @@ mod tests {
 
     #[test]
     fn ais_008_the_settings_read_back_and_exclude_by_folder_and_repository() {
-        let settings = UsageSettings::parse(
-            br#"{"excludedFolders":["/Users/me/private"],"excludedRepositories":["github.com/Me/Secret"]}"#,
-        )
-        .expect("parses");
+        let folder = if cfg!(windows) {
+            "C:/Users/me/private"
+        } else {
+            "/Users/me/private"
+        };
+        let document = serde_json::json!({"excludedFolders": [folder], "excludedRepositories": ["github.com/Me/Secret"]});
+        let settings =
+            UsageSettings::parse(&serde_json::to_vec(&document).unwrap()).expect("parses");
         assert!(!settings.off);
         let app = Some("github.com/me/app");
-        let private = Path::new("/Users/me/private/app");
+        let private = Path::new(if cfg!(windows) {
+            "C:/Users/me/private/app"
+        } else {
+            "/Users/me/private/app"
+        });
         assert!(settings.excludes(&[private], app));
-        let near = Path::new("/Users/me/private-not");
+        let near = Path::new(if cfg!(windows) {
+            "C:/Users/me/private-not"
+        } else {
+            "/Users/me/private-not"
+        });
         assert!(!settings.excludes(&[near], app), "whole components");
-        let elsewhere = Path::new("/tmp/wt");
-        let main = Path::new("/Users/me/private");
+        let elsewhere = Path::new(if cfg!(windows) {
+            "C:/tmp/wt"
+        } else {
+            "/tmp/wt"
+        });
+        let main = Path::new(if cfg!(windows) {
+            "C:/Users/me/private"
+        } else {
+            "/Users/me/private"
+        });
         assert!(
             settings.excludes(&[elsewhere, main], app),
             "a worktree of an excluded repository"
@@ -219,7 +239,11 @@ mod tests {
     fn ais_023_an_unknown_repository_is_excluded_when_any_repository_is() {
         let listed = UsageSettings::parse(br#"{"excludedRepositories":["github.com/me/secret"]}"#)
             .expect("parses");
-        let folder = Path::new("/Users/me/Documents/secret");
+        let folder = Path::new(if cfg!(windows) {
+            "C:/Users/me/Documents/secret"
+        } else {
+            "/Users/me/Documents/secret"
+        });
         assert!(listed.excludes(&[folder], None));
         assert!(!UsageSettings::default().excludes(&[folder], None));
     }
@@ -249,10 +273,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("a folder");
         let real = dir.path().join("real/secret");
         std::fs::create_dir_all(&real).expect("a folder");
-        std::os::unix::fs::symlink(dir.path().join("real"), dir.path().join("link"))
+        crate::test_links::symlink(dir.path().join("real"), dir.path().join("link"))
             .expect("a link");
         let written = dir.path().join("link/secret");
-        let text = format!(r#"{{"excludedFolders":["{}"]}}"#, written.display());
+        let text = serde_json::to_vec(&serde_json::json!({"excludedFolders": [written]})).unwrap();
         std::fs::write(dir.path().join(SETTINGS_FILE), text).expect("written");
         let settings = UsageSettings::read(&Home::at(dir.path().to_owned())).expect("read");
         let recorded = std::fs::canonicalize(&real).expect("real").join("app");
@@ -266,16 +290,41 @@ mod tests {
     #[test]
     fn ais_008_folders_compare_without_letter_case_on_macos() {
         let settings = UsageSettings {
-            excluded_folders: vec![PathBuf::from("/Users/Me/Private")],
+            excluded_folders: vec![PathBuf::from(if cfg!(windows) {
+                "C:/Users/Me/Private"
+            } else {
+                "/Users/Me/Private"
+            })],
             fold_case: true,
             ..UsageSettings::default()
         };
-        assert!(settings.excludes(&[Path::new("/users/me/private/app")], None));
-        assert!(!settings.excludes(&[Path::new("/users/me/private-not")], None));
+        assert!(settings.excludes(
+            &[Path::new(if cfg!(windows) {
+                "C:/users/me/private/app"
+            } else {
+                "/users/me/private/app"
+            })],
+            None
+        ));
+        assert!(!settings.excludes(
+            &[Path::new(if cfg!(windows) {
+                "C:/users/me/private-not"
+            } else {
+                "/users/me/private-not"
+            })],
+            None
+        ));
         let exact = UsageSettings {
             fold_case: false,
             ..settings
         };
-        assert!(!exact.excludes(&[Path::new("/users/me/private/app")], None));
+        assert!(!exact.excludes(
+            &[Path::new(if cfg!(windows) {
+                "C:/users/me/private/app"
+            } else {
+                "/users/me/private/app"
+            })],
+            None
+        ));
     }
 }

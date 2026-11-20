@@ -17,7 +17,7 @@ use super::approval;
 use super::outcome::{OPERATOR_ONLY, result};
 use super::permissions::State;
 use super::selection::{Row, statement};
-use super::untrusted::{cleaned, fitted};
+use super::untrusted::{cleaned_result, fitted};
 use crate::failure::Failure;
 use crate::hub::{Hub, TokenKind};
 
@@ -103,15 +103,13 @@ impl Server {
                 return refused(approval::sentence(&refusal, definition.name));
             }
         }
-        let outcome = row
-            .entry
-            .tool
-            .call(&self.hub, request.arguments)
-            .await
-            .map(|value| match cleaned(value) {
-                Value::Object(fields) => Value::Object(fitted(fields)),
-                other => other,
-            });
+        let outcome =
+            row.entry.tool.call(&self.hub, request.arguments).await.map(
+                |value| match cleaned_result(&request.name, value) {
+                    Value::Object(fields) => Value::Object(fitted(fields)),
+                    other => other,
+                },
+            );
         result(outcome, self.token)
     }
 }

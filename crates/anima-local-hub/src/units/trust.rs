@@ -1,12 +1,16 @@
 //! Whether somebody else could swap what the unit runs at each login: the unit file, or the
 //! program it names.
 
+#[cfg(unix)]
 use std::fs;
 use std::io;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 
+#[cfg(unix)]
 const STICKY: u32 = 0o1000;
+#[cfg(unix)]
 const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 
 /// The first folder, from `folder` up to `/`, that a user other than `uid` and root can
@@ -17,6 +21,7 @@ const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 ///
 /// # Errors
 /// When `folder` or a folder above it cannot be looked at.
+#[cfg(unix)]
 pub fn open_to_others(folder: &Path, uid: u32) -> io::Result<Option<PathBuf>> {
     // The real path: a link in the path is a name that its own folder's rules protect.
     let folder = fs::canonicalize(folder)?;
@@ -32,9 +37,11 @@ pub fn open_to_others(folder: &Path, uid: u32) -> io::Result<Option<PathBuf>> {
     Ok(None)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
+    #[cfg(unix)]
     use std::fs;
+    #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
 
     use super::open_to_others;
@@ -84,4 +91,17 @@ mod tests {
 
         assert_eq!(found, Some(fs::canonicalize(folder.path()).unwrap()));
     }
+}
+
+/// A Windows path is trusted only if every directory rejects other users' writes.
+/// # Errors
+/// A path or its ACL cannot be inspected.
+#[cfg(windows)]
+pub fn open_to_others(folder: &Path, _: u32) -> io::Result<Option<PathBuf>> {
+    for parent in std::path::absolute(folder)?.ancestors() {
+        if !anima_windows::files::secure(parent, false)? {
+            return Ok(Some(parent.to_path_buf()));
+        }
+    }
+    Ok(None)
 }

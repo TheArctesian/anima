@@ -169,6 +169,16 @@ pub enum LidHold {
     Borrowed,
 }
 
+impl LidHold {
+    /// Whether this hold remains active; a borrowed setting must be checked again.
+    pub fn alive(&mut self) -> bool {
+        match self {
+            Self::Inhibitor(hold) | Self::Setting { watcher: hold } => hold.alive(),
+            Self::Borrowed => false,
+        }
+    }
+}
+
 /// Whether the report of `pmset -g` says that all sleep is disabled.
 #[must_use]
 pub fn sleep_disabled(report: &str) -> bool {

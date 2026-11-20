@@ -103,6 +103,10 @@ describe('the upload (BLD-060, BLD-063)', () => {
 });
 
 describe('toolCheckFrom (BLD-028)', () => {
+  it('WIN2: reads the native Windows builder tool check', () => {
+    const answer = { os: 'WINDOWS', arch: 'X86_64', missing: ['tauri-packages', 'go-race-compiler'] };
+    expect(toolCheckFrom(answer)).toEqual(answer);
+  });
   it('BLD-028: reads the platform and the missing tools', () => {
     expect(toolCheckFrom({ os: 'LINUX', arch: 'X86_64', missing: ['cargo-nextest', 'postgres', 'updater-public-key'] })).toEqual({
       os: 'LINUX',
@@ -138,7 +142,7 @@ describe('toolCheckFrom (BLD-028)', () => {
   it.each([
     null,
     'LINUX',
-    { os: 'WINDOWS', arch: 'X86_64', missing: [] },
+    { os: 'UNKNOWN', arch: 'X86_64', missing: [] },
     { os: 'LINUX', arch: 'MIPS', missing: [] },
     { os: 'LINUX', arch: 'X86_64', missing: ['compiler'] },
     // R-117: the builder holds no updater key, so a key is never a missing tool.

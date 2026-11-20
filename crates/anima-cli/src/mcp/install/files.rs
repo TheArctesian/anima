@@ -2,8 +2,11 @@
 //! MCP-034): no symbolic link, no file that a different user can change, a bounded size, a copy
 //! of the file as it was, and a rename so that a reader never sees half of it.
 
-use std::fs::{self, File, OpenOptions};
+use std::fs;
+#[cfg(unix)]
+use std::fs::{File, OpenOptions};
 use std::io::{self, Read as _, Write as _};
+#[cfg(unix)]
 use std::os::unix::fs::{
     DirBuilderExt as _, MetadataExt as _, OpenOptionsExt as _, PermissionsExt as _,
 };
@@ -55,6 +58,12 @@ fn check_path(root: Root<'_>, path: &Path) -> Result<(), FileError> {
     let below = path
         .strip_prefix(root.home)
         .map_err(|_| FileError::NotAFile)?;
+    if below
+        .components()
+        .any(|part| !matches!(part, std::path::Component::Normal(_)))
+    {
+        return Err(FileError::NotAFile);
+    }
     let mut at = root.home.to_path_buf();
     let count = below.components().count();
     for (position, part) in below.components().enumerate() {
@@ -71,7 +80,7 @@ fn check_path(root: Root<'_>, path: &Path) -> Result<(), FileError> {
         if last != metadata.is_file() {
             return Err(FileError::NotAFile);
         }
-        if open_to_others(&metadata, root.user) {
+        if shared(&at, &metadata, root.user)? {
             return Err(FileError::Shared);
         }
     }
@@ -84,11 +93,14 @@ fn check_path(root: Root<'_>, path: &Path) -> Result<(), FileError> {
 /// [`FileError`] for a link, a file that is not regular, shared, too large or not text.
 pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
     check_path(root, path)?;
-    let file = match OpenOptions::new()
+    #[cfg(unix)]
+    let opened = OpenOptions::new()
         .read(true)
         .custom_flags(no_follow())
-        .open(path)
-    {
+        .open(path);
+    #[cfg(windows)]
+    let opened = anima_windows::files::read(path, false);
+    let file = match opened {
         Ok(file) => file,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
@@ -98,6 +110,7 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
     if !metadata.is_file() {
         return Err(FileError::NotAFile);
     }
+    #[cfg(unix)]
     if open_to_others(&metadata, root.user) {
         return Err(FileError::Shared);
     }
@@ -112,6 +125,7 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
 }
 
 /// `O_NOFOLLOW`: the open fails when the last part of the path is a symbolic link.
+#[cfg(unix)]
 fn no_follow() -> i32 {
     i32::try_from(rustix::fs::OFlags::NOFOLLOW.bits()).unwrap_or_default()
 }
@@ -119,6 +133,7 @@ fn no_follow() -> i32 {
 /// Whether a different user can change what `metadata` describes: a different owner, a write bit
 /// for all, or a write bit for a group that is not the private group of the user (the group
 /// with the user's own number, which the usual Linux systems give each user).
+#[cfg(unix)]
 #[must_use]
 pub fn open_to_others(metadata: &fs::Metadata, user: u32) -> bool {
     let mode = metadata.permissions().mode();
@@ -148,20 +163,19 @@ pub fn replace(
     check_path(root, path)?;
     let (folder, name) = parts(path)?;
     // A folder that is made is private: the mask of the process does not decide (MCP-034).
+    #[cfg(unix)]
     fs::DirBuilder::new()
         .recursive(true)
         .mode(0o700)
         .create(folder)?;
+    #[cfg(windows)]
+    anima_windows::files::directory(folder)?;
     check_path(root, folder.join(name).as_path())?;
-    let mode =
-        fs::symlink_metadata(path).map_or(0o600, |metadata| metadata.permissions().mode() & 0o777);
+    let mode = permissions(path);
     if let Some(before) = before {
         keep_copy(root, path, mode, before)?;
     }
-    let mut temporary = tempfile::Builder::new()
-        .prefix(".anima-")
-        .permissions(fs::Permissions::from_mode(mode))
-        .tempfile_in(folder)?;
+    let mut temporary = temporary(folder, path, mode)?;
     temporary.write_all(text.as_bytes())?;
     temporary.as_file().sync_all()?;
     // The file is as it was read, or nothing is written: a program that saved it in between keeps its text.
@@ -172,6 +186,7 @@ pub fn replace(
     temporary
         .persist(path)
         .map_err(|error| FileError::Io(error.error))?;
+    #[cfg(unix)]
     File::open(folder).and_then(|folder| folder.sync_all()).ok();
     Ok(())
 }
@@ -183,7 +198,7 @@ fn keep_copy(root: Root<'_>, path: &Path, mode: u32, before: &str) -> Result<(),
     let (folder, _) = parts(path)?;
     let copy = copy_path(path);
     match fs::symlink_metadata(&copy) {
-        Ok(metadata) if metadata.is_file() && !open_to_others(&metadata, root.user) => {
+        Ok(metadata) if metadata.is_file() && !shared(&copy, &metadata, root.user)? => {
             return Ok(());
         }
         Ok(metadata) if metadata.file_type().is_symlink() => return Err(FileError::Link),
@@ -191,10 +206,7 @@ fn keep_copy(root: Root<'_>, path: &Path, mode: u32, before: &str) -> Result<(),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(error.into()),
     }
-    let mut temporary = tempfile::Builder::new()
-        .prefix(".anima-")
-        .permissions(fs::Permissions::from_mode(mode))
-        .tempfile_in(folder)?;
+    let mut temporary = temporary(folder, path, mode)?;
     temporary.write_all(before.as_bytes())?;
     temporary.as_file().sync_all()?;
     // A hard link fails when the name is there: a copy made in the meantime is kept.
@@ -205,5 +217,53 @@ fn keep_copy(root: Root<'_>, path: &Path, mode: u32, before: &str) -> Result<(),
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
+
+#[cfg(unix)]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Windows ACL inspection can fail; both platforms share this fallible boundary"
+)]
+fn shared(_: &Path, metadata: &fs::Metadata, user: u32) -> io::Result<bool> {
+    Ok(open_to_others(metadata, user))
+}
+#[cfg(windows)]
+fn shared(path: &Path, _: &fs::Metadata, _: u32) -> io::Result<bool> {
+    anima_windows::files::secure(path, false).map(|secure| !secure)
+}
+#[cfg(unix)]
+fn permissions(path: &Path) -> u32 {
+    fs::symlink_metadata(path).map_or(0o600, |metadata| metadata.permissions().mode() & 0o777)
+}
+#[cfg(windows)]
+fn permissions(_: &Path) -> u32 {
+    0
+}
+
+fn temporary(folder: &Path, original: &Path, mode: u32) -> io::Result<tempfile::NamedTempFile> {
+    #[cfg(unix)]
+    let file = {
+        let _ = original;
+        tempfile::Builder::new()
+            .prefix(".anima-")
+            .permissions(fs::Permissions::from_mode(mode))
+            .tempfile_in(folder)?
+    };
+    #[cfg(windows)]
+    let file = {
+        let _ = mode;
+        let file = tempfile::Builder::new()
+            .prefix(".anima-")
+            .tempfile_in(folder)?;
+        match fs::symlink_metadata(original) {
+            Ok(_) => anima_windows::files::copy_acl(original, file.path())?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                anima_windows::files::protect(file.path())?;
+            }
+            Err(error) => return Err(error),
+        }
+        file
+    };
+    Ok(file)
+}

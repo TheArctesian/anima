@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -16,10 +17,11 @@ const hooked = (ruleset: Ruleset, hook: string): Chain => ruleset.chains.find((c
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("local allow file", () => {
+describe.skipIf(process.platform === "win32")("local allow file", () => {
   test("adds exactly its ports as public accepts and leaves the other chains as reviewed", () => {
     host.write(ALLOW, "# blog and mail\n80/tcp\n  8443/tcp  # admin UI\n\n51820/udp\n");
     expect(host.run(["firewall"], vpn).code).toBe(0);

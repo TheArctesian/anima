@@ -126,7 +126,7 @@ async fn a_full_gateway_says_it_is_busy() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
     let address = listener.local_addr().expect("an address");
     let workers = Workers {
-        program: env!("CARGO_BIN_EXE_anima-gateway").into(),
+        program: crate::program(),
         other_gateway: None,
         passed: Vec::new(),
         most_sessions: 1,
