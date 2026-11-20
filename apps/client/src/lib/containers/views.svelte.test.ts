@@ -76,6 +76,21 @@ it('HOST-017: the log replaces the details, and closing drops the details', asyn
   expect(store.detail).toBeNull();
 });
 
+it('R-224: the switch in the pane of a container reads its details, then its log again', async () => {
+  button('Log of tracks-app-1')?.click();
+  await settle();
+  expect(view('log')?.getAttribute('aria-checked')).toBe('true');
+  view('detail')?.click();
+  await settle();
+  expect(calls.detailsAsked).toEqual([APP_ID]);
+  expect(document.querySelector('.detail h3')?.textContent).toBe('Details of tracks-app-1');
+  expect(view('detail')?.getAttribute('aria-checked')).toBe('true');
+  view('log')?.click();
+  await settle();
+  expect(document.querySelector('.log h3')?.textContent).toBe('Log of tracks-app-1');
+  expect(store.selected).toBe(APP_ID);
+});
+
 it('HOST-017: details the hub refuses show the reason of the hub and keep the table', async () => {
   calls.fail = { code: 'FORBIDDEN', message: 'An API key cannot use containerDetail.' };
   button('Details of tracks-app-1')?.click();

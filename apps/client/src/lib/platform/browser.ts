@@ -17,6 +17,7 @@ export const browserCapabilities: Capabilities = {
   localHub: false,
   deviceLink: false,
   cloudAccount: false,
+  accountSession: false,
   overlayTitleBar: false,
   recentCopy: false,
 };
