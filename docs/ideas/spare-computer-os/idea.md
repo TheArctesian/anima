@@ -23,8 +23,9 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 3: hardware families | Decided in part | A + B + C: 64-bit Intel/AMD PCs, Intel Macs and selected ARM64 boards or mini PCs. Exact supported models need selection and testing. Apple Silicon is deferred to a later release (follow-up choice C). Keep its possible integration in the design; it is not an experimental first-release target. Older 32-bit PCs were not selected. Firmware and resource minimums remain open. |
 | Decision 4: boot paths | Decided | A + B + C: 64-bit UEFI, legacy BIOS for 64-bit PCs and board-specific boot for selected ARM64 hardware. This does not add 32-bit CPU support. Bootloader choice, Secure Boot policy, exact hardware targets and installation/recovery validation remain open. |
 | Decision 5: disk installation modes | Decided | A + B + E: install to one explicitly selected disk after erase confirmation, keep installation and boot files on that disk and preserve unselected disks; offer a live trial before installation. B is a safeguard of A, not a separate mode. Same-disk dual boot and external-drive installation are not first-version commitments. Trial persistence, partition layout and filesystem remain open. |
-| Decision 6: setup surfaces | Decided in part | Add setup from within Anima after the machine boots and connects to the internet. Include an opt-in prepared, fully unattended setup path aligned with one-click installation. A standalone local-browser interface is not implied. The operator has not explicitly selected or rejected graphical setup, text setup or a desktop. Enrollment, network bootstrap, prepared-media identity and authorization to erase a disk remain open. |
+| Decision 6: setup surfaces | Decided in part | Add setup from within Anima after the machine boots and connects to the internet. Include an opt-in prepared, fully unattended setup path aligned with one-click installation. A standalone local-browser interface is not implied. Decision 7 provisionally selects graphical and text setup; a full desktop is not selected. Enrollment, network bootstrap, prepared-media identity and authorization to erase a disk remain open. |
 | Decision 6: distribution | Decided | Standard downloadable ISO written to USB with dd or a graphical flasher. No custom flasher is required by this choice. It does not settle prepared-media settings, enrollment or automatic disk erasure. Selected ARM boards may need board-specific image formats; do not assume one ISO boots every target. |
+| Decision 7: local interface | Provisional | A + B: graphical setup and installed status/recovery screen, plus text setup and recovery menus as a fallback. Setup through Anima remains in scope. The operator is discussing this in a side chat and asked to log the choice for now and revisit later. No interface framework or full desktop is selected. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -60,7 +61,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Decision 7: which local setup surfaces should accompany the standard ISO and setup through Anima? Options can be combined: graphical setup/status; text setup/recovery; remote-only setup with a minimal local connection/pairing screen; optional full desktop. Recommendation: graphical setup/status plus text fallback, with the same installation workflow available through Anima. No selection yet. Prepared-media authorization remains a later discussion; the distribution answer did not select its policy.
+1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The decision walkthrough is paused at the operator's request. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
 2. Which bootloader, Secure Boot policy, resource minimums and exact hardware models should be selected? Discuss after installation and recovery goals; no selection yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
@@ -109,6 +110,8 @@ Read 2026-11-19 at the operator's request:
 
 - 2026-11-19: The operator specified a standard downloadable ISO written with dd or a flasher application. Recorded the delivery choice without inferring acceptance of all unattended-install options. Next: close the local-interface choice; avoid repeating the delivery question.
 
+- 2026-11-19: The operator provisionally selected A + B for Decision 7 and asked to log it while discussing the subject in a side chat. Marked it for later review and paused the walkthrough. No side-chat conclusions have been imported.
+
 ## Source text
 
 Selected direct operator messages, unchanged:
@@ -152,3 +155,7 @@ In response to Decision 6:
 In response to the plug-and-play follow-up:
 
 > yeah standard download an iso and flash it on with dd or a flasher app
+
+In response to Decision 7:
+
+> We can do A + B also thinking about this on the side chat so log that for now and we can circle back too it later
