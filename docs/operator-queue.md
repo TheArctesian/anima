@@ -36,7 +36,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (130)
+## 2. Open decisions (131)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -45,6 +45,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
 | OD-W39 | Which of his own Linux machines is the computer for the measurements of task W2 of projects-and-builds-plan.md? R-188 ("B: my own Linux box") says that it is a… | Open. Recommendation: a machine with a current kernel, not the machine that he works on each day and not a server that holds data of other people; he also says… | [plan/decisions.md](plan/decisions.md) |
+| OD-W47 | Which version does the crate `anima-cli` on crates.io have, now that the version of a release is the count of the first line of `main` and no file holds it (R-1… | Open. Recommendation: (C) for now, then (A). The Homebrew formula takes the version from the release with no file to change, and a version on crates.io can neve… | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
