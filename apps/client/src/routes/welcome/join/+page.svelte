@@ -7,8 +7,11 @@
   import { joinLink, readLink, type Joined } from '$lib/desktop/link/shell';
   import { clearAccessToken } from '$lib/desktop/token';
   import FormButton from '$lib/forms/FormButton.svelte';
+  import { markPendingEnrolment } from '$lib/devices/enrollment/pending-enrolment';
+  import { enrollmentCode } from '$lib/link/enrollment-code';
   import Icon from '$lib/icons/Icon.svelte';
   import { crossFade } from '$lib/motion/roles/transitions';
+  import QrReader from '$lib/qr/QrReader.svelte';
   import { finishJoin, joinHub } from './join';
   import JoinSteps from './JoinSteps.svelte';
   import { waitForHub, type StepId } from './steps';
@@ -52,6 +55,14 @@
     field?.focus();
   }
 
+  function readInvite(text: string): boolean {
+    const value = enrollmentCode(text);
+    if (value === null) return false;
+    invite = value;
+    problem = null;
+    return true;
+  }
+
   async function join(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (busy) return;
@@ -93,21 +104,29 @@
     const finished = await finishJoin(device, after);
     await afterJoin(finished.ok ? null : finished.message);
   }
+
+  async function signInToHub(): Promise<void> {
+    if (busy) return;
+    busy = true;
+    await markPendingEnrolment(sessionStorage).catch(() => undefined);
+    if (!left) loadClientAt('/sign-in');
+  }
 </script>
 
-<svelte:head><title>{device === null ? 'Paste invite' : 'Joining the hub'} – Anima.ing</title></svelte:head>
+<svelte:head><title>{device === null ? 'Join with an invite' : 'Joining the hub'} – Anima.ing</title></svelte:head>
 
 <!-- Frame 2 of docs/mockup/mobile/index.html: "Paste invite", then "Joining" with one mark for each step (MOB-033). -->
 <div class="stack" data-join>
 {#if device === null}
   <form onsubmit={join} novalidate transition:crossFade>
     <a class="back" href={resolve('/welcome/hub')}><Icon name="carbon:chevron-left" size="lg" />Back</a>
-    <h1 tabindex="-1" bind:this={title}>Paste invite</h1>
+    <h1 tabindex="-1" bind:this={title}>Join with an invite</h1>
+    <QrReader onread={readInvite} label="Scan enrollment QR" />
     <div class="invite-label">
       <label for="invite">Invite</label>
       {#if canPaste}<FormButton icon="carbon:paste" onclick={() => void pasteInvite()}>Paste</FormButton>{/if}
     </div>
-    <p class="fine" id="invite-help">Ask the person who runs your hub for an invite, then paste the full invite here.</p>
+    <p class="fine" id="invite-help">Scan the enrollment QR or paste the full invite. Then sign in to the hub.</p>
     <textarea
       id="invite"
       rows="4"
@@ -132,7 +151,7 @@
       {#if problem !== null}
         <FormButton tone="primary" size="lg" {busy} onclick={() => void retry()}>Retry</FormButton>
       {:else if step === 'sign-in'}
-        <FormButton tone="primary" size="lg" onclick={() => loadClientAt('/sign-in')}>Sign in</FormButton>
+        <FormButton tone="primary" size="lg" {busy} onclick={() => void signInToHub()}>Sign in</FormButton>
       {:else}
         <FormButton tone="ghost" size="lg" onclick={() => void goto(resolve('/welcome/hub'))}>Cancel</FormButton>
       {/if}

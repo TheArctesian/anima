@@ -7,7 +7,7 @@ export interface Joined {
 }
 
 /** Why the device link is not up. */
-export type LinkDownReason = 'port-taken' | 'ended' | 'not-carried' | 'no-port';
+export type LinkDownReason = 'port-taken' | 'ended' | 'repeated-failure' | 'not-carried' | 'no-port';
 
 /** The device link of this computer, as `link_status` reports it. */
 export interface DeviceLinkStatus {
@@ -15,6 +15,7 @@ export interface DeviceLinkStatus {
   readonly joined: boolean;
   readonly state: 'stopped' | 'starting' | 'up' | 'down';
   readonly port?: number;
+  readonly publicKey?: string;
   readonly reason?: LinkDownReason;
   /** With `up` (LNK-006). */
   readonly path?: 'direct' | 'relayed' | 'none';
@@ -44,7 +45,7 @@ export type LinkResult<T> = { readonly ok: true; readonly value: T } | { readonl
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 const isPort = (value: unknown): value is number => Number.isInteger(value) && (value as number) > 0 && (value as number) < 65_536;
 const STATES: readonly unknown[] = ['stopped', 'starting', 'up', 'down'] satisfies DeviceLinkStatus['state'][];
-const REASONS: readonly unknown[] = ['port-taken', 'ended', 'not-carried', 'no-port'] satisfies LinkDownReason[];
+const REASONS: readonly unknown[] = ['port-taken', 'ended', 'repeated-failure', 'not-carried', 'no-port'] satisfies LinkDownReason[];
 const PATHS: readonly unknown[] = ['direct', 'relayed', 'none'] satisfies NonNullable<DeviceLinkStatus['path']>[];
 const absent = (value: unknown): boolean => value === undefined || value === null;
 
@@ -61,10 +62,10 @@ export function joinedOf(value: unknown): Joined | undefined {
 /** The status the shell answered, or `undefined` for anything that is not one. Absent fields stay absent. */
 export function linkStatusOf(value: unknown): DeviceLinkStatus | undefined {
   if (!isRecord(value) || typeof value.joined !== 'boolean' || !STATES.includes(value.state)) return undefined;
-  const { port, reason, path, latencyMs } = value;
-  const valid = [absent(port) || isPort(port), absent(reason) || REASONS.includes(reason), absent(path) || PATHS.includes(path), absent(latencyMs) || typeof latencyMs === 'number'];
+  const { port, reason, path, latencyMs, publicKey } = value;
+  const valid = [absent(port) || isPort(port), absent(reason) || REASONS.includes(reason), absent(path) || PATHS.includes(path), absent(latencyMs) || typeof latencyMs === 'number', absent(publicKey) || (typeof publicKey === 'string' && publicKey !== '')];
   if (valid.includes(false)) return undefined;
-  const present = Object.entries({ port, reason, path, latencyMs }).filter(([, field]) => !absent(field));
+  const present = Object.entries({ port, reason, path, latencyMs, publicKey }).filter(([, field]) => !absent(field));
   return { joined: value.joined, state: value.state, ...Object.fromEntries(present) } as DeviceLinkStatus;
 }
 

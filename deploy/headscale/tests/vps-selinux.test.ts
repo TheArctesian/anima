@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
@@ -11,10 +12,11 @@ const SPEC = "/opt/anima/headscale/(config|lib)(/.*)?";
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("harden.sh selinux", () => {
+describe.skipIf(process.platform === "win32")("harden.sh selinux", () => {
   test("D-9: adds the file-context rule, then relabels the Headscale folder", () => {
     const run = host.run(["selinux"]);
     expect(run.code).toBe(0);
@@ -61,7 +63,7 @@ describe("harden.sh selinux", () => {
   });
 });
 
-describe("harden.sh docker", () => {
+describe.skipIf(process.platform === "win32")("harden.sh docker", () => {
   test("D-10: docker installs daemon.json with the loopback bind and SELinux labels", () => {
     expect(host.run(["docker"]).code).toBe(0);
     expect(JSON.parse(host.read("etc/docker/daemon.json"))).toMatchObject({ ip: "127.0.0.1", "selinux-enabled": true });
@@ -125,7 +127,7 @@ describe("harden.sh docker", () => {
   });
 });
 
-describe("harden.sh docker --restart-docker (R-050)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh docker --restart-docker (R-050)", () => {
   test("R-050: docker reloads Docker to turn live-restore on before it restarts it", () => {
     const run = host.run(["--restart-docker", "docker"]);
     expect(run.code).toBe(0);
@@ -178,8 +180,9 @@ describe("harden.sh docker --restart-docker (R-050)", () => {
   });
 });
 
-describe("harden.sh check (Headscale's process label)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh check (Headscale's process label)", () => {
   beforeEach(() => {
+  if (process.platform === "win32") return;
     host.harden();
   });
 

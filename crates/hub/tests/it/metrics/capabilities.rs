@@ -245,3 +245,25 @@ async fn cap_020_a_deleted_device_takes_its_inventory_with_it(pool: PgPool) {
         assert_eq!(left, 0, "{table}");
     }
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn win2_native_windows_inventory_is_stored_and_listed(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
+    let key = read_key(&daemons, now).await;
+    let inventory = json!({
+        "architecture": "x86_64", "os": "windows", "osVersion": "11.0.26100",
+        "tools": [{"name": "rustc", "version": "1.100.0"}],
+        "buildTargets": ["x86_64-pc-windows-msvc"]
+    });
+    let batch = inventory_batch(PVE_01, now - TimeDelta::seconds(10), Some(inventory));
+    assert_eq!(daemons.push(&token, &batch).await.0, StatusCode::NO_CONTENT);
+    let rows = listed(&daemons, &key, json!({})).await;
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["os"], "windows");
+    assert_eq!(rows[0]["buildTargets"], json!(["x86_64-pc-windows-msvc"]));
+}

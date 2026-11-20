@@ -45,14 +45,16 @@ const HOSTS_INCOMPLETE: HubError = {
  * Every device's host, page by page, or an error unless the last page was reached: a page that says there is
  * more but gives no cursor, or more than `MAX_HOST_PAGES` pages, fails rather than returning part of the list.
  */
-async function readHosts(hub: Hub): Promise<HubResult<readonly string[]>> {
-  const hosts: string[] = [];
+type DeviceHost = DeviceHostsQuery['devices']['edges'][number]['node'];
+
+async function readHosts(hub: Hub): Promise<HubResult<readonly DeviceHost[]>> {
+  const hosts: DeviceHost[] = [];
   let after: string | null = null;
   for (let page = 0; page < MAX_HOST_PAGES; page += 1) {
     const result: HubResult<DeviceHostsQuery> = await hub.request(DeviceHosts, { after });
     if (!result.ok) return result;
     const { edges, pageInfo }: DeviceHostsQuery['devices'] = result.value.devices;
-    hosts.push(...edges.map((edge) => edge.node.host));
+    hosts.push(...edges.map((edge) => edge.node));
     if (!pageInfo.hasNextPage) return { ok: true, value: hosts };
     after = pageInfo.endCursor ?? null;
     if (after === null) return { ok: false, error: HOSTS_INCOMPLETE };
@@ -119,7 +121,11 @@ export function devicesApi(hub: Hub) {
       return result.ok ? { ok: true, value: result.value.devices } : result;
     },
     /** Every device's host (R-060: is this computer already a device?). */
-    hosts: (): Promise<HubResult<readonly string[]>> => readHosts(hub),
+    hosts: async (): Promise<HubResult<readonly string[]>> => {
+      const result = await readHosts(hub);
+      return result.ok ? { ok: true, value: result.value.map((device) => device.host) } : result;
+    },
+    deviceHosts: () => readHosts(hub),
     tags: async (): Promise<HubResult<readonly string[]>> => {
       const result = await hub.request(Tags, {});
       return result.ok ? { ok: true, value: result.value.tags } : result;

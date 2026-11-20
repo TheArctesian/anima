@@ -35,6 +35,7 @@
         "@xterm/xterm": "6.0.0",
         "graphql": "17.0.2",
         "graphql-ws": "6.4.1",
+        "jsqr": "1.4.0",
         "motion": "14.4.0",
         "uqr": "0.1.3",
       },
@@ -983,6 +984,8 @@
     "json-to-pretty-yaml": ["json-to-pretty-yaml@1.2.2", "", { "dependencies": { "remedial": "^1.0.7", "remove-trailing-spaces": "^1.0.6" } }, "sha512-rvm6hunfCcqegwYaG5T4yKJWxc9FXFgBVrcTZ4XfSVRwa5HA/Xs+vB/Eo9treYYHCeNM0nrSUr82V/M31Urc7A=="],
 
     "json5": ["json5@2.2.3", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="],
+
+    "jsqr": ["jsqr@1.4.0", "", {}, "sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A=="],
 
     "keyv": ["keyv@5.6.0", "", { "dependencies": { "@keyv/serialize": "^1.1.1" } }, "sha512-CYDD3SOtsHtyXeEORYRx2qBtpDJFjRTGXUtmNEMGyzYOKj1TE3tycdlho7kA1Ufx9OYWZzg52QFBGALTirzDSw=="],
 

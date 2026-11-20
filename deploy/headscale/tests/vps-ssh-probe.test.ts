@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,10 +19,11 @@ const readVps = (name: string): string => readFileSync(join(VPS_DIR, name), "utf
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("the anima-probe entry (VP-13)", () => {
+describe.skipIf(process.platform === "win32")("the anima-probe entry (VP-13)", () => {
   test("VP-13 the drop-in allows the admin from the VPN and anima-probe from the hub address, with keys only", () => {
     const lines = readVps("sshd-anima.conf").split("\n").filter((line) => !line.startsWith("#"));
     expect(lines.filter((line) => line.startsWith("AllowUsers"))).toEqual([`AllowUsers \${ANIMA_ADMIN_USER}@100.64.0.0/10 ${PROBE}`]);
@@ -55,7 +57,7 @@ describe("the anima-probe entry (VP-13)", () => {
   });
 });
 
-describe("other AllowUsers entries stay refused (VP-13, VPS-001)", () => {
+describe.skipIf(process.platform === "win32")("other AllowUsers entries stay refused (VP-13, VPS-001)", () => {
   test.each([
     ["anima-probe"],
     ["anima-probe@*"],

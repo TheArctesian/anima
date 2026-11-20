@@ -37,7 +37,7 @@ const SIGNED_AT: &str = "SOURCE_DATE_EPOCH";
 pub enum ReleaseError {
     #[error(
         "usage: anima-hub release <sign | check | publish | record> \
-         <linux-x86_64 | darwin-universal> <version> <folder>"
+         <linux-x86_64 | darwin-universal | windows-x86_64> <version> <folder>"
     )]
     Usage,
     #[error("{0} is not set or is not valid")]

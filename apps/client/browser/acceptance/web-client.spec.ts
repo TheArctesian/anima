@@ -76,14 +76,14 @@ test.describe('what the web client leaves to the desktop app', () => {
     await expect(page.getByText(/update/i)).toHaveCount(0);
   });
 
-  test('CLI-001: Add device offers no "This Mac" or "This computer" choice and no System Settings button', async ({ page }) => {
+  test('CLI-001: Add device can enroll another device from the browser', async ({ page }) => {
     await openDevices(page);
     await page.getByRole('button', { name: 'Add device' }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('radio', { name: /^This (Mac|computer)/ })).toHaveCount(0);
-    await expect(dialog.getByText(/This (Mac|computer)/)).toHaveCount(0);
-    await expect(dialog.getByRole('button', { name: /Remote Login|System Settings/ })).toHaveCount(0);
+    const dialog = page.getByRole('dialog', { name: 'Add device' });
+    await expect(dialog.getByRole('button', { name: 'Enroll this computer' })).toHaveCount(0);
+    await expect(dialog.getByLabel('Host', { exact: true })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Enroll another device' }).click();
+    await expect(page.getByRole('dialog', { name: 'Enroll another device' }).getByLabel('Device name')).toBeVisible();
   });
 
   test('CLI-001: Set up screen sharing starts no System Settings step in the page', async ({ page }) => {

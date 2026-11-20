@@ -25,6 +25,9 @@ desktop in deploy/bin/commit-version
 desktop in deploy/bin/affected-applications
 desktop in deploy/bin/release-decision
 desktop in deploy/release/
+desktop in deploy/bin/windows-bundle.ps1
+desktop in deploy/bin/windows-command.ts
+desktop in deploy/windows/
 
 # `anima` alone (Homebrew and Cargo; task B8h). No job releases it yet. It is built from
 # crates/anima-cli, the copy of the schema in it, and the Cargo files of the root; a test
@@ -61,6 +64,9 @@ cli in deploy/bin/commit-version
 cli in deploy/bin/affected-applications
 cli in deploy/bin/release-decision
 cli in deploy/release/
+cli in deploy/bin/windows-bundle.ps1
+cli in deploy/bin/windows-command.ts
+cli in deploy/windows/
 cli in deploy/bin/cli-formula
 cli in deploy/bin/crate-version
 

@@ -19,3 +19,10 @@ bundled-postgres = { max-threads = 4 }
 # The modules named here are pure or touch files only; they start no server.
 filter = "(package(anima-database) & not test(/^(layout|password|urls|owner_only)::/)) | (package(anima-hub) & test(listening::bundled)) | (package(anima-local-hub) & binary(it))"
 test-group = "bundled-postgres"
+
+[[profile.default.overrides]]
+# These measure SQL batching through the real schema's 10 ms wall-clock window.
+# Reserve the runner slots so unrelated test processes cannot fragment each batch.
+# Keep their query budgets unchanged: per-key loading must still fail the tests.
+filter = "test(wiring::checks_schema::api_005_) | test(wiring::devices_schema::api_005_)"
+threads-required = "num-cpus"

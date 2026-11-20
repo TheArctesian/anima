@@ -45,6 +45,7 @@ const HOLDERS: Record<string, { environment: string; secrets: string[] }> = {
     environment: "release",
     secrets: ["APPLE_CERTIFICATE", "APPLE_CERTIFICATE_PASSWORD", "APPLE_ID", "APPLE_PASSWORD", "APPLE_TEAM_ID"],
   },
+  windows: { environment: "release-windows", secrets: ["WINDOWS_CERTIFICATE", "WINDOWS_CERTIFICATE_PASSWORD"] },
   sign: { environment: "release-sign", secrets: ["TAURI_SIGNING_PRIVATE_KEY", "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"] },
   bucket: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   publish: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
@@ -112,15 +113,15 @@ describe("what starts the workflow (UPD-007, R-184, R-198)", () => {
 describe("which push is a release (R-184, R-198)", () => {
   test("R-184 the first job decides with release-decision, from the feeds of today and the tip of main before the push", () => {
     const text = runText(job("commit"));
-    for (const feed of ["darwin-aarch64", "darwin-x86_64", "linux-x86_64"]) expect(text).toContain(`published ${feed}`);
-    expect(text).toContain('sh deploy/bin/release-decision --before "$BEFORE" "$sha" desktop "$mac_arm" "$mac_intel" "$linux"');
+    for (const feed of ["darwin-aarch64", "darwin-x86_64", "linux-x86_64", "windows-x86_64"]) expect(text).toContain(`published ${feed}`);
+    expect(text).toContain('sh deploy/bin/release-decision --before "$BEFORE" "$sha" desktop "$mac_arm" "$mac_intel" "$linux" "$windows"');
     expect(job("commit").steps.find((step) => step.id === "read")?.env?.["BEFORE"]).toBe("${{ github.event.before }}");
     expect(text).toContain("404) echo none ;;");
     expect(text).toMatch(/\*\) echo "::error::The feed \$1 answered \$code\." >&2; return 1 ;;/);
   });
 
   test("when the decision is nothing, no job builds, signs or publishes", () => {
-    for (const name of ["tool", "macos", "linux"]) {
+    for (const name of ["tool", "macos", "linux", "windows"]) {
       expect(job(name).if).toBe("needs.commit.outputs.release == 'true'");
     }
     for (const name of ["sign", "publish", "trial"]) {
@@ -233,18 +234,19 @@ describe("which job holds which secret (R-180, BLD-045)", () => {
       TOOL_SHA256: "${{ needs.tool.outputs.sha256 }}",
       MACOS_SHA256: "${{ needs.macos.outputs.updater_sha256 }}",
       LINUX_SHA256: "${{ needs.linux.outputs.updater_sha256 }}",
+      WINDOWS_SHA256: "${{ needs.windows.outputs.updater_sha256 }}",
     });
   });
 });
 
 describe("the order to a published release (UPD-008, BLD-042)", () => {
-  test("the sign job waits for the gates, the tool and both builds", () => {
-    expect(needsOf("sign").sort()).toEqual(["commit", "daemon", "gates", "linux", "macos", "tool"]);
+  test("the sign job waits for the gates, the tool, all three builds and the daemon", () => {
+    expect(needsOf("sign").sort()).toEqual(["commit", "daemon", "gates", "linux", "macos", "tool", "windows"]);
   });
 
   test("publish runs only for a push to main with the switch on, and only after every other job passed", () => {
     expect(ownCondition(job("publish").if, needsOf("publish"))).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
-    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "daemon", "gates", "gates-linux", "gates-macos", "linux", "macos", "sign", "tool"]);
+    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "daemon", "gates", "gates-linux", "gates-macos", "linux", "macos", "sign", "tool", "windows"]);
   });
 
 });
@@ -316,13 +318,13 @@ function marks(set: Record<string, string>): { exitCode: number; printed: string
 describe("the updater of a built application (UPD-001, DEF-001)", () => {
   const identity = { SIGN_IDENTITY: "Developer ID Application: A Test (ABCDE12345)" };
 
-  test("a build of the workflow has the updater on, also when the caller's environment has a mark", () => {
+  test.skipIf(process.platform === "win32")("a build of the workflow has the updater on, also when the caller's environment has a mark", () => {
     expect(marks({ ANIMA_RELEASE_BUILD: "1", ...identity })).toEqual({ exitCode: 0, printed: UPDATER_ON });
     const marked = { ANIMA_RELEASE_BUILD: "1", ANIMA_LOCAL_BUILD: "", VITE_ANIMA_LOCAL_BUILD: "1", ...identity };
     expect(marks(marked)).toEqual({ exitCode: 0, printed: UPDATER_ON });
   });
 
-  test("a build by hand has the updater off, with or without a signing identity", () => {
+  test.skipIf(process.platform === "win32")("a build by hand has the updater off, with or without a signing identity", () => {
     expect(marks({})).toEqual({ exitCode: 0, printed: UPDATER_OFF });
     expect(marks(identity)).toEqual({ exitCode: 0, printed: UPDATER_OFF });
     expect(marks({ ANIMA_RELEASE_BUILD: "0", ...identity })).toEqual({ exitCode: 0, printed: UPDATER_OFF });

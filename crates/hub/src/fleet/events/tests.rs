@@ -36,9 +36,20 @@ async fn pool_as(pool: &PgPool, role: &str) -> PgPool {
 }
 
 /// A one-connection pool on the test database that logs in as the LOGIN role `login`. The
-/// throwaway server trusts local connections, so no password is needed (R-009).
+/// login gets a throwaway password so TLS/SCRAM test servers work too (R-009).
 async fn login_pool(pool: &PgPool, login: &str) -> PgPool {
-    connect((*pool.connect_options()).clone().username(login)).await
+    let password = Uuid::now_v7().simple().to_string();
+    sqlx::query(&format!("alter role {login} password '{password}'"))
+        .execute(pool)
+        .await
+        .unwrap();
+    connect(
+        (*pool.connect_options())
+            .clone()
+            .username(login)
+            .password(&password),
+    )
+    .await
 }
 
 async fn connect(options: sqlx::postgres::PgConnectOptions) -> PgPool {

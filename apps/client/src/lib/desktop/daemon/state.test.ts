@@ -10,7 +10,7 @@ describe('the state of the daemon of this computer (HMD-053)', () => {
   it('each end with no daemon has a reason in words for a person', () => {
     expect(stateAfter({ kind: 'not-ready' })).toEqual({ kind: 'failed', reason: 'The application did not find this computer among the devices of the hub.' });
     expect(stateAfter({ kind: 'failed', step: 'enrol' })).toEqual({ kind: 'failed', reason: 'The hub made no enrolment code.' });
-    expect(stateAfter({ kind: 'failed', step: 'copy' })).toEqual({ kind: 'failed', reason: 'The daemon could not be copied to ~/.local/bin.' });
+    expect(stateAfter({ kind: 'failed', step: 'copy' })).toEqual({ kind: 'failed', reason: 'The daemon could not be copied to its installation folder.' });
   });
 
   it('each state has one sentence, and a failure says how to try again', () => {

@@ -12,3 +12,6 @@ pub mod update;
 
 pub use steps::{STEP_LIMIT, Step, run_step};
 pub use unit_file::{Launch, RenderError};
+
+#[cfg(windows)]
+mod windows;

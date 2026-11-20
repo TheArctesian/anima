@@ -7,6 +7,10 @@
 //! web view; its form is checked first, it reaches `anima-link` on standard input only and it
 //! is never logged (LOG-007).
 
+#[cfg(unix)]
+mod copy;
+#[cfg(windows)]
+#[path = "link/copy/windows.rs"]
 mod copy;
 mod device;
 mod error;
@@ -15,9 +19,10 @@ mod joining;
 mod kept;
 mod printed;
 mod repair;
+mod restarts;
 mod state;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::{
@@ -27,7 +32,6 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
-    thread,
     time::Duration,
 };
 
@@ -40,9 +44,15 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
-pub use kept::{daemon_socket, hosted_hub_opened};
-pub use state::{DeviceState, Event};
+pub use kept::daemon_socket;
+pub use kept::hosted_hub_opened;
+#[cfg(windows)]
+pub use kept::owns_background;
+#[cfg(unix)]
+pub use state::DeviceState;
+pub use state::Event;
 use state::{Phase, Reason};
+use std::thread;
 
 const PROGRAM: &str = "anima-link";
 const RESTART_AFTER: Duration = Duration::from_secs(10);
@@ -79,6 +89,8 @@ pub struct LinkStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<Reason>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
@@ -99,7 +111,11 @@ fn folders() -> Result<LinkFolders, LinkError> {
 /// What `anima-link` may see of the app's environment: the home folder and the folder for
 /// temporary files.
 fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str, OsString)> {
-    ["HOME", "TMPDIR"]
+    #[cfg(unix)]
+    let names = ["HOME", "TMPDIR"];
+    #[cfg(windows)]
+    let names = ["USERPROFILE", "LOCALAPPDATA", "SystemRoot", "TEMP", "TMP"];
+    names
         .into_iter()
         .filter_map(|name| Some((name, read(name).filter(|value| !value.is_empty())?)))
         .collect()
@@ -242,19 +258,23 @@ pub async fn link_status<R: Runtime>(
         joined: folders.device.is_dir(),
         state: now.phase,
         port: now.port,
+        public_key: None,
         reason: now.reason,
         path: None,
         latency_ms: None,
     };
-    if now.phase == Phase::Up {
-        let path = blocking(move || Ok(link_path(&folders.device))).await?;
-        (status.path, status.latency_ms) = path.unzip();
+    if now.phase == Phase::Up
+        && let Some((path, latency, key)) = blocking(move || Ok(link_path(&folders.device))).await?
+    {
+        status.path = Some(path);
+        status.latency_ms = Some(latency);
+        status.public_key = key;
     }
     Ok(status)
 }
 
 /// `anima-link ctl status` of the running device link: its path and latency.
-fn link_path(folder: &Path) -> Option<(String, f64)> {
+fn link_path(folder: &Path) -> Option<(String, f64, Option<String>)> {
     let program = crate::carried::program(PROGRAM)?;
     let env = environment(|name| std::env::var_os(name));
     let args = [

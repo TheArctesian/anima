@@ -2,10 +2,10 @@ package hublink_test
 
 import (
 	"context"
+	"github.com/TheArctesian/anima/link/testpath"
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -106,8 +106,8 @@ func TestLNK002TheHubsSocketGetsEachDeviceByItsOwnAddressAndNoOtherKey(t *testin
 
 func TestTheLinkDoesNotConnectToASocketThatOtherUsersCanReach(t *testing.T) {
 	for name, expose := range map[string]func(*testhub.Hub) error{
-		"the socket":        func(hub *testhub.Hub) error { return os.Chmod(hub.Socket, 0o666) },
-		"the socket folder": func(hub *testhub.Hub) error { return os.Chmod(filepath.Dir(hub.Socket), 0o755) },
+		"the socket":        func(hub *testhub.Hub) error { return testpath.Chmod(hub.Socket, 0o666) },
+		"the socket folder": func(hub *testhub.Hub) error { return testpath.Chmod(filepath.Dir(hub.Socket), 0o755) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			hub := testhub.Start(t)

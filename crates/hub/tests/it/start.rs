@@ -4,7 +4,7 @@
 use std::{
     io::{Read as _, Write as _},
     path::Path,
-    process::{Command, Stdio},
+    process::Stdio,
     thread,
     time::{Duration, Instant},
 };
@@ -19,8 +19,7 @@ const DEADLINE: Duration = Duration::from_secs(20);
 /// a free loopback port; returns (success, stderr). Kills the hub and fails the test when it
 /// does not stop within `DEADLINE`, so a hub that wrongly serves cannot hang the suite.
 fn start_with(key_file: &Path, extra: &[(&str, &Path)]) -> (bool, String) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
-        .env_clear()
+    let mut child = crate::transport::process::hub()
         .env("ANIMA_KEY_FILE", key_file)
         .env("ANIMA_LOG", "error")
         .env("ANIMA_LISTEN", "127.0.0.1:0")

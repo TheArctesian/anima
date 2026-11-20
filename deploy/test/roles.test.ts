@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,6 +21,7 @@ function password(name: string): string {
 }
 
 beforeAll(async () => {
+  if (process.platform === "win32") return;
   ({ secretsFolder, passwordEnv } = await installRoles());
 });
 
@@ -34,7 +36,7 @@ function roleFlags(role: string, flags: string[]): Promise<string> {
   return scalar(`select ${flags.join(" or ")} from pg_roles where rolname = '${role}'`);
 }
 
-describe("roles.sql inputs (DB-003)", () => {
+describe.skipIf(process.platform === "win32")("roles.sql inputs (DB-003)", () => {
   test.each([
     ["missing", "no_such_file"],
     ["empty", "empty_password"],
@@ -81,7 +83,7 @@ describe("roles.sql inputs (DB-003)", () => {
 
 });
 
-describe("hub login start check (DB-003)", () => {
+describe.skipIf(process.platform === "win32")("hub login start check (DB-003)", () => {
   test("DB-003: anima_hub signs in as itself, owns no database, has no server-level role and no SET role", async () => {
     const url = new URL(read(secretsFolder, "hub_database_url").replace(/^postgres:/, "http:"));
     expect(url.search).toBe("");
@@ -98,7 +100,7 @@ describe("hub login start check (DB-003)", () => {
 
 });
 
-describe("roles.sql attributes (DB-003)", () => {
+describe.skipIf(process.platform === "win32")("roles.sql attributes (DB-003)", () => {
   test("DB-003: anima_owner can log in but is not superuser, createdb, createrole, bypassrls or replication", async () => {
     expect(await roleFlags("anima_owner", ["rolcanlogin"])).toBe("t");
     expect(await roleFlags("anima_owner", ["rolsuper", "rolcreatedb", "rolcreaterole", "rolbypassrls", "rolreplication"])).toBe("f");
@@ -122,7 +124,7 @@ describe("roles.sql attributes (DB-003)", () => {
 
 });
 
-describe("roles.sql database access (DB-003, LOG-006, LOG-007)", () => {
+describe.skipIf(process.platform === "win32")("roles.sql database access (DB-003, LOG-006, LOG-007)", () => {
   test("DB-003: anima_owner owns the database anima", async () => {
     expect(await scalar("select pg_get_userbyid(datdba) from pg_database where datname = 'anima'")).toBe("anima_owner");
   });
@@ -153,7 +155,7 @@ describe("roles.sql database access (DB-003, LOG-006, LOG-007)", () => {
 
 });
 
-describe("roles.sql passwords stay out of logs (LOG-007)", () => {
+describe.skipIf(process.platform === "win32")("roles.sql passwords stay out of logs (LOG-007)", () => {
   const serverLog = () => readFileSync(join(serverDirectory(), "server.log"), "utf8");
 
   test("LOG-007: no password reaches the server log even when the client asks to log every statement", async () => {

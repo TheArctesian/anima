@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/commit-version: the version of a commit from the number of commits on the first
 // line of its history (R-183, R-201). Each repository here is made in a temporary folder.
 import { afterAll, describe, expect, test } from "bun:test";
@@ -40,7 +41,7 @@ function repositoryWith(count: number): string {
   return folder;
 }
 
-describe("the formula (R-183)", () => {
+describe.skipIf(process.platform === "win32")("the formula (R-183)", () => {
   test.each([
     ["1", "0.0.1"],
     ["99", "0.0.99"],
@@ -61,7 +62,7 @@ describe("the formula (R-183)", () => {
   });
 });
 
-describe("the version of a commit of a repository", () => {
+describe.skipIf(process.platform === "win32")("the version of a commit of a repository", () => {
   const folder = repositoryWith(3);
 
   test("with no commit named, it is the version of the commit that is checked out", () => {

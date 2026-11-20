@@ -38,6 +38,10 @@ function signInCodeOf(value: unknown): SignInCode | undefined {
 
 const HUB_STATES: readonly unknown[] = ['ready', 'making', 'waking'] satisfies HubState[];
 
+export async function clearCloudSession(): Promise<void> {
+  await invoke('cloud_sign_out');
+}
+
 /**
  * The Anima.ing cloud through the shell (HMD-043): the WorkOS device sign-in, the hub of the account and this device's
  * access to it. The shell does the calls, so the WorkOS tokens stay in the shell and its key store (HMD-034); this side
