@@ -34,6 +34,9 @@ struct Extensions {
 /// [`HubError::Refused`] for the first GraphQL error; [`HubError::Malformed`] for a body that
 /// is not a GraphQL answer of this shape.
 pub fn read<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, HubError> {
+    if let Some(gateway) = gateway_refusal(body) {
+        return Err(gateway);
+    }
     let Ok(envelope) = serde_json::from_slice::<Envelope<T>>(body) else {
         return Err(not_graphql(status));
     };
@@ -51,6 +54,9 @@ pub fn read_raw(
     status: u16,
     body: &[u8],
 ) -> Result<(serde_json::Value, Option<HubError>), HubError> {
+    if let Some(gateway) = gateway_refusal(body) {
+        return Err(gateway);
+    }
     let value: serde_json::Value = serde_json::from_slice(body).map_err(|_| not_graphql(status))?;
     if !value.is_object() {
         return Err(not_graphql(status));
@@ -95,6 +101,39 @@ pub fn refusal(status: u16, body: &[u8]) -> HubError {
     }
 }
 
+/// What the command line says when the gateway of the hosted hubs answers in place of a hub
+/// (HMD-059, HM-T31): `https://hub.anima.ing` was the default address of a hub of one's own
+/// and is the hosted service now.
+pub const HOSTED_ADDRESS: &str = "This address is the hosted Anima.ing hub in a browser. It does not answer the command line. For a hub of your own, give its address with --hub or ANIMA_HUB. For a hosted hub, open https://hub.anima.ing in a browser, or sign in with the Anima.ing application.";
+
+/// The refusal of the gateway of the hosted hubs, `{ "error": { "code", "message" } }`, as an
+/// error of the hub; `None` for each other body. The words of the gateway are not repeated.
+fn gateway_refusal(body: &[u8]) -> Option<HubError> {
+    #[derive(Deserialize)]
+    struct Gateway {
+        error: Refusal,
+    }
+    #[derive(Deserialize)]
+    struct Refusal {
+        code: String,
+    }
+    let gateway = serde_json::from_slice::<Gateway>(body).ok()?;
+    let (code, message) = match gateway.error.code.as_str() {
+        "sign_in_needed" => (Code::Unauthenticated, HOSTED_ADDRESS),
+        "hub_not_ready" | "hub_failed" => (
+            Code::Unavailable,
+            "The hosted hub did not answer. Try again in a few seconds.",
+        ),
+        "too_many_requests" => (Code::Unavailable, "Too many requests. Wait a minute."),
+        _ => return None,
+    };
+    Some(HubError::Refused {
+        code,
+        message: message.to_owned(),
+        fields: Vec::new(),
+    })
+}
+
 /// A body that is not GraphQL: a refusal in front of the GraphQL layer (NET-002), a proxy's
 /// page, or a broken answer. Its status is the only thing to go by.
 fn not_graphql(status: u16) -> HubError {
@@ -129,6 +168,29 @@ mod tests {
         assert_eq!(error.code(), Code::Validation);
         assert_eq!(error.to_string(), "Check the name.");
         assert_eq!(error.fields()[0].field, "name");
+    }
+
+    #[test]
+    fn hm_t31_the_gateway_of_the_hosted_hubs_is_named_in_plain_words_with_the_way_on() {
+        let body = br#"{"error":{"code":"sign_in_needed","message":"words of the gateway"}}"#;
+        let error = read::<Me>(401, body).expect_err("refused");
+        assert_eq!(error.code(), Code::Unauthenticated);
+        assert_eq!(error.to_string(), HOSTED_ADDRESS);
+        assert!(HOSTED_ADDRESS.contains("--hub") && HOSTED_ADDRESS.contains("ANIMA_HUB"));
+        let raw = read_raw(401, body).expect_err("the gateway is no answer of a hub");
+        assert_eq!(raw.to_string(), HOSTED_ADDRESS);
+
+        let starting = br#"{"error":{"code":"hub_not_ready","message":"x"}}"#;
+        assert_eq!(
+            read::<Me>(503, starting).expect_err("refused").code(),
+            Code::Unavailable
+        );
+        // A body of the same shape with a code that the gateway does not have goes by its status.
+        let other = br#"{"error":{"code":"other","message":"x"}}"#;
+        assert!(matches!(
+            read::<Me>(200, other).expect_err("no data"),
+            HubError::Malformed { status: 200 }
+        ));
     }
 
     #[test]
