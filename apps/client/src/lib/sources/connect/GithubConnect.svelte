@@ -2,7 +2,8 @@
   import { untrack } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { useHub } from '$lib/hub/context';
-  import { describeAttempt, hubPageAddress, NO_ATTEMPT, RESTARTED, TAB_BLOCKED } from './attempt';
+  import { isOnThisComputer } from '$lib/hub/hub';
+  import { describeAttempt, hubPageAddress, NO_ATTEMPT, NO_BROWSER_ADDRESS, RESTARTED, TAB_BLOCKED } from './attempt';
   import { githubConnectApi } from './api';
   import { linkOpening, type LinkOpening } from './browser';
   import { GithubConnectStore } from './github-connect.svelte';
@@ -16,7 +17,13 @@
 
   const { opener = linkOpening, onKeyFile }: Props = $props();
   // The hub is fixed for the life of the row.
-  const store = untrack(() => new GithubConnectStore(githubConnectApi(useHub())));
+  const hub = untrack(() => useHub());
+  const store = new GithubConnectStore(githubConnectApi(hub));
+  /**
+   * The app reaches the hub at a port of this computer (a hosted hub through the link, or a hub of this computer): no
+   * browser can open a page of such a hub, so the flow is not offered and no one-time link is asked for (DEF-003).
+   */
+  const noBrowserAddress = isOnThisComputer(hub.address);
   const view = $derived(store.attempt !== null ? describeAttempt(store.attempt) : store.restarted ? RESTARTED : NO_ATTEMPT);
   const pageUrl = $derived(store.blocked && store.attempt !== null ? hubPageAddress(store.attempt.pageUrl) : null);
 
@@ -34,10 +41,12 @@
 </script>
 
 <div class="connect">
-  {#if view.line !== ''}
+  {#if noBrowserAddress}
+    <p class="line" role="status">{NO_BROWSER_ADDRESS}</p>
+  {:else if view.line !== ''}
     <p class="line" role="status">{view.line}</p>
   {/if}
-  {#if pageUrl !== null}
+  {#if pageUrl !== null && !noBrowserAddress}
     <p class="line">
       {TAB_BLOCKED}
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the hub's own page, not a route of this app -->
@@ -48,14 +57,14 @@
     <p class="line" role="alert">{store.refusal}</p>
   {/if}
   <div class="actions">
-    {#if view.start}
+    {#if view.start && !noBrowserAddress}
       <FormButton busy={store.busy} onclick={() => void store.start(opener())}>Connect GitHub</FormButton>
     {/if}
-    {#if view.installUrl !== null}
+    {#if view.installUrl !== null && !noBrowserAddress}
       {@const url = view.installUrl}
       <FormButton tone="primary" onclick={() => { openOnGithub(url); }}>Install on GitHub</FormButton>
     {/if}
-    {#if view.continueInBrowser}
+    {#if view.continueInBrowser && !noBrowserAddress}
       <FormButton busy={store.busy} onclick={() => void store.continueInBrowser(opener())}>Continue in browser</FormButton>
     {/if}
     {#if view.appSettingsUrl !== null}

@@ -1079,6 +1079,7 @@ part, the page on a screen, a real answer of WorkOS, the refresh after this flow
    with no password.
 
 Result: Open.
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): he pressed "+ VNC" on a row of the Devices list with Tailscale quit. A small panel said "No answer on port 5900. Screen Sharing (or the VNC se", cut off at the edge of the window, with a Close button. He did not report that Tailscale started. This agrees with step 3. Steps 1, 2, 4 and 5 were not reported. The message that is cut off is a fault of the layout, not of this check; the interface session has it.
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
@@ -1277,6 +1278,8 @@ when it must run. Not proven before that trial: the time of `gates-macos`, and t
 `deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
 
 Result: Open.
+
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
 
 ### HT-038: the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8)
 
@@ -1553,10 +1556,15 @@ Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-
 2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is
    faster than the first (the cache).
 3. When `merge-to-dev.yml` is on `main` and the settings are made: push a branch with one changed document and
-   one placeholder of a number. Expected: after the gates, the run `merge-to-dev` merges it; `dev` has a merge
-   commit that names the number; the placeholder is gone; a run `gates` for `dev` starts.
-4. Push two such branches at the same time. Expected: the first merges; the gates of the second run again
-   with the new `dev`, and then it merges. `main` did not move.
+   one placeholder of a number. Expected: after its gates, a run `merge-to-dev` makes a branch `train/...`
+   and a run `gates` starts for it; when that run passes, the next run `merge-to-dev` moves `dev` to the
+   commit of the train: `dev` has a merge commit that names the number, the placeholder is gone, the branch
+   `train/...` is gone, and no run `gates` starts for `dev`.
+4. Push three such branches at the same time. Expected: one train holds each branch whose gates passed
+   when it was made; one run of the gates lands them in one step; no branch runs a second time. `main`
+   did not move. (Seen on 2026-11-20 with the workflow before the train: `ui/bar-foot` and
+   `fix/first-use-observations` merged with no session, and each merge started the gates of each waiting
+   branch again; the train replaces that.)
 5. Push a branch that has a conflict with `dev` in a document. Expected: its gates fail in the step "Merge
    the dev of this run into the checkout", and nothing is merged.
 
@@ -1709,6 +1717,7 @@ The operator deferred these fifteen checks on 2026-11-18 (R-169: "Approve the so
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A computer of a hosted hub has a link address and no VPN address | Entry below |
 | HT-019 | The VPN role `daemon` on the VPS | The policy of the VPN that the operator leaves | Entry below |
 | HT-024 | A hub restored on a second server from its backup | The operator starts fresh on the hosted hub (R-140). Row 4.2 of the priorities waits for nothing because of this ruling | Entry below |
+| HT-058 | The page Extensions as a tight list and as a grid (EXT-001) | The desktop application of a build that holds the branch `ui/extensions-grid` | Open |
 | O-1, O-2 | RDP | A hosted hub has no RDP session yet (HM-T14) | "Phase 2" above |
 | O-5 | Wake-on-LAN through the site relay | Not possible for a computer of the link (HT-031) | "Phase 2" above |
 | P-1 to P-6 | The deployed image, the T4 probe, and the web client in a browser | The hub on the VPS and its VPN | "Phase 3" above |
@@ -1873,6 +1882,8 @@ signed-in Devices list. The screenshot shows one `pop-os` row on the link, Up, a
 The operator then quit and reopened the preview. It returned to the same hub without another
 sign-in and still showed one `pop-os` row. The row showed the generic Linux logo and no metrics.
 
+Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): the Devices list of his hosted hub showed three rows, all Up: `Hub` with the host `localhost`, his MacBook with a link address, and `pop-os` with a link address. Each row showed "No metrics", which is expected until the daemon is installed (task HM-T19). So a Linux computer joined the hosted hub through the application. Which build ran on `pop-os` is not known here.
+
 ### HT-047: the Devices page after the interface review (R-224)
 
 Built on the branch `ui/v2-devices` (`132e03b3`): in `apps/client/src/lib/devices/card/DeviceTable.svelte` the name is the
@@ -2013,5 +2024,29 @@ its switches, or the phone.
 6. Open the application on a phone, then Settings.
    Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
    "Open Extensions", which opens the page.
+
+Result: Open.
+
+### HT-058: the page Extensions as a tight list and as a grid (EXT-001)
+
+Built on the branch `ui/extensions-grid` (`189a48a5`): `apps/client/src/lib/extensions/ExtensionsSection.svelte` draws each
+extension as one line or as a tile, and `apps/client/src/routes/extensions/+page.svelte` has the control "List" and
+"Grid" and keeps the choice on the device. The tests prove the switches, the marks and that the choice is kept. The
+page was looked at only in pictures of the web client at 1280 px with a sample list. No person saw it with the
+extensions of a real hub, at other widths or on a phone.
+
+1. Open "Extensions" from the bar, in a window about 1280 px wide.
+   Expected: one line for each extension: its mark, its name, one line of words, and at the end its switch, "On" for
+   one that is always on, or nothing for one that is not built. A long line of words is cut and its full text is the
+   tooltip. The rows are closer than they were in Settings.
+2. Select "Grid".
+   Expected: the same extensions as tiles, each with its mark on a plain field, its name, its switch and its words in
+   full. No tile shows a screen that does not exist.
+3. Set "Projects" on in each view.
+   Expected: "Projects" comes into the bar at once. A switch that needs a second extension asks first, as before.
+4. Close the application and open it again, then open "Extensions".
+   Expected: the view that you chose last is shown.
+5. Make the window narrow (about 800 px), in the light and the dark appearance, and look at both views.
+   Expected: no part lies over another; the tiles go to fewer columns.
 
 Result: Open.

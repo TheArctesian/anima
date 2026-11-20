@@ -108,18 +108,49 @@ two for the set-up of the machine (a wrapper script that `sh` of Ubuntu broke; P
 of `deploy`), one for three tests of the daemon that run only on Linux and were stale, and two because
 `dev` had moved and the branch did not merge with it.
 
-### The merge into `dev` (R-252)
+### The merge into `dev`: the merge train (R-252)
 
-`.github/workflows/merge-to-dev.yml` starts when a run of `gates` ends. For a push of a branch of this
-repository that passed, `merge-to-dev.sh` reads the rule of `dev`, makes sure that the branch and `dev` are
-still the commits that the gates tested (if `dev` moved, it starts the gates again), runs
-`bun quality/bin/merge.ts <branch> --push`, and starts the gates for the new `dev`. GitHub has a merge queue
-for this work only for a repository of an organization; this repository belongs to a personal account.
-GitHub takes the workflow file from the default branch, so it works only when it is on `main`. The workflow
-checks out `dev`, so `merge-to-dev.sh` and `quality/bin/merge.ts` are those of `dev`: a change of one of the
-two has effect when it is in `dev`. The script makes the merge commit first and runs the document gates on
-it, because the mockup check counts the layout files of the branch as changed while the merge is not
-committed; when the gates fail it removes the commit (`src/merge/commit.ts`).
+A branch does not merge alone. `quality/bin/train.ts` is the conductor; the workflow `merge-to-dev` runs one
+step of it at each start, and `bun quality/bin/train.ts --plan` prints, in any worktree and with no change,
+each train with its state and the branches of the next one.
+
+- **The batch.** Each branch on origin whose tip passed its own run of `gates` (a push, tested as merged with
+  the `dev` of that moment) and that is not in `dev`; the oldest pass first, then the name; at most 12.
+- **The train.** The conductor merges the batch in that order on the `dev` of the moment, each branch with
+  the steps of `bin/merge.ts` (the generated files written again, the numbers, the merge commit, the document
+  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with a line that
+  says why. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
+  it one time, on the commit as it is.
+- **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
+  to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
+  so no run of the gates follows for `dev`. If `dev` moved (a claim, a merge by hand), the gates of the
+  train do not count: its run is cancelled and the next train holds the same branches on the new `dev`.
+- **A failure.** The next train holds the first half of the failed one, in the same order. A branch that
+  fails alone is refused: a note on its tip (`refs/notes/train`) keeps it out until the branch moves or its
+  own gates pass again (`gh run rerun`). A cancelled run is no verdict: the train is built again.
+- **What no longer happens.** A branch does not run again because `dev` moved. With n branches that passed,
+  the old workflow needed about n runs after each merge, n squared in all; the train needs one run for the
+  batch, and about log2(n) more when one branch of it fails.
+
+A push of a commit to a branch stops the older run of that branch (`concurrency` in `gates.yml`). The pure
+rules are `src/merge/train.ts`, the git work is `src/merge/stack.ts`, the end of one merge is
+`src/merge/finish.ts` and `src/merge/commit.ts`: the merge commit comes first and the document gates run on
+it, because the mockup check counts the layout files of a branch as changed while its merge is not committed.
+
+What works from where. GitHub takes `merge-to-dev.yml` from the default branch, `main`; the checkout is
+`dev`, so the conductor and `merge-to-dev.sh` are those of `dev`. With the old file on `main` the train works,
+but the workflow starts only when the gates of a pushed branch pass: a train lands, or is split, at the next
+such start, so the last train of a quiet hour waits. The new file also starts at the end of the gates of a
+train and each 20 minutes. GitHub has a merge queue for this work only for a repository of an organization;
+this repository belongs to a personal account.
+
+Not run on GitHub when it was written (2026-11-20): the conductor. The tests cover the rules and the
+merges of a train in a real repository; the calls to GitHub are not covered.
+
+The limit of GitHub (https://docs.github.com/en/actions/reference/limits, read 2026-11-20): an account
+runs at most 20 jobs of standard runners at the same time on the plan Free, 40 on Pro, 60 on Team. One run
+of `gates` has four jobs at the same time, so 5 runs fill the limit of Free and 10 that of Pro; each run
+after them waits. A concurrency group keeps one run and one that waits.
 
 ### Settings of GitHub
 
