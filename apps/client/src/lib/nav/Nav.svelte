@@ -15,7 +15,7 @@
   import { watchHubBanner } from './banner-shift';
   import { phoneLayout } from './phone/layout.svelte';
   import './phone/bar.css';
-  import { AGENT_USAGE, DEVICES, LOGS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
+  import { AGENT_USAGE, DEVICES, LOGS, EXTENSIONS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -82,7 +82,6 @@
     <span class="words">Anima.ing</span>
   </div>
   {@render destination(DEVICES)}
-  <LiveSessions {hub} {iconOnly} />
   <!-- The phone bar has four destinations (MOB-010), so the page is not in it. -->
   {#if !phoneLayout()}{@render destination(AGENT_USAGE)}{/if}
   {#each optionalDestinations(projectsOn, capabilities().builds && buildsOn) as item (item.href)}
@@ -102,9 +101,13 @@
   </div>
   <hr />
   {#if running !== undefined}<Running>{@render running()}</Running>{/if}
+  <!-- What is live sits at the foot, directly above the hub it runs through (NAV-001; operator, 2026-11-19). -->
+  <LiveSessions {hub} {iconOnly} />
   <HubStatus {iconOnly} />
   <!-- In the phone layout the logs are a page of the bar, not a panel (MOB-013). -->
   {#if phoneLayout()}{@render destination(LOGS)}{/if}
+  <!-- The phone bar has four destinations (MOB-010): a phone reaches Extensions from the Settings page. -->
+  {#if !phoneLayout()}{@render destination(EXTENSIONS)}{/if}
   {@render destination(SETTINGS)}
   {#if canCollapse && oncollapse}
     <ResizeEdge {collapsed} onsettle={oncollapse} />

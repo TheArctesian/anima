@@ -1,9 +1,11 @@
 // Merges one branch into `dev`: `bun quality/bin/merge.ts <branch> [--push]`, in a clean worktree
 // that is on `dev`. It writes the generated files again in place of a merge of them, gives each
-// placeholder its number (PLN-021), runs the document gates and makes the merge commit. Without
-// `--push` it pushes nothing and prints the command. It never pushes to `main`.
+// placeholder its number (PLN-021), makes the merge commit and runs the document gates on that
+// commit (`src/merge/commit.ts` says why in that order); if they fail, the commit is removed.
+// Without `--push` it pushes nothing and prints the command. It never pushes to `main`.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { commitThenCheck, undoMerge } from "../src/merge/commit.ts";
 import { conflictsForAHand, gatesRefusal, GENERATED, mergeMessage, parseMergeRule, type CheckRun } from "../src/merge/rules.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
@@ -23,7 +25,7 @@ function stop(code: number, message: string): never {
 function step(argv: string[]): string {
   const done = run(argv);
   if (!done.ok) {
-    run(["git", "merge", "--abort"], true);
+    undoMerge(REPO_ROOT, before);
     stop(4, `\`${argv.join(" ")}\` failed; the merge is undone and nothing is changed`);
   }
   return done.out;
@@ -53,6 +55,7 @@ const tip = run(["git", "rev-parse", "--verify", `${source}^{commit}`], true);
 if (!tip.ok) stop(2, `${source} is not a branch on origin`);
 if (rule.fullGates === "github") requireGatesOnGitHub(tip.out.trim());
 
+const before = run(["git", "rev-parse", "HEAD"]).out.trim();
 run(["git", "merge", "--no-ff", "--no-commit", source], true);
 const conflicted = run(["git", "diff", "--name-only", "--diff-filter=U"]).out.split("\n").filter((path) => path !== "");
 const forAHand = conflictsForAHand(conflicted);
@@ -68,10 +71,9 @@ const numbers = step(["bun", "quality/bin/numbers.ts", "--assign"])
   .map((line) => line.split(" -> "))
   .filter((pair): pair is [string, string] => pair.length === 2);
 step(["bun", "run", "quality:register"]);
-step(["bun", "run", "quality:documents"]);
-step(["bun", "quality/bin/numbers.ts", "--check"]);
-step(["git", "add", "-A"]);
-step(["git", "commit", "--quiet", "-m", mergeMessage(source, INTO, numbers)]);
+const CHECKS = [["bun", "run", "quality:documents"], ["bun", "quality/bin/numbers.ts", "--check"]];
+const failed = commitThenCheck(REPO_ROOT, mergeMessage(source, INTO, numbers), () => CHECKS.find((argv) => !run(argv).ok)?.join(" "));
+if (failed !== undefined) stop(4, `\`${failed}\` failed on the merge commit; the commit is removed and nothing is changed`);
 console.log(`merge: ${source} is merged into local ${INTO} at ${run(["git", "rev-parse", "--short", "HEAD"]).out.trim()}`);
 for (const [placeholder, number] of numbers) console.log(`merge: ${placeholder} is ${number}`);
 console.log(`merge: the generated files are written again: ${GENERATED.join(", ")}`);
