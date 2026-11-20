@@ -109,7 +109,7 @@ it('F-10, M-A: a loopback address typed into the hub field is checked first; wit
   mocks.loopbackProblem.mockImplementation((origin: string) => Promise.resolve(origin === 'http://127.0.0.1:9000' ? PROBLEM : null));
   const target = open();
   await settle();
-  button(target, 'Change')?.click();
+  button(target, 'Change hub address')?.click();
   await settle();
   type(target, 'hub-address', 'http://127.0.0.1:9000');
   await continueWith(target, 'ann', 'hunter2-pw');
@@ -123,7 +123,7 @@ it('F-10, M-A: a loopback address typed into the hub field is checked first; wit
 async function towardsTyped(typed: string): Promise<HTMLElement> {
   const target = open();
   await settle();
-  button(target, 'Change')?.click();
+  button(target, 'Change hub address')?.click();
   await settle();
   type(target, 'hub-address', typed);
   await continueWith(target, 'ann', 'hunter2-pw');

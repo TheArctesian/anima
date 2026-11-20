@@ -142,6 +142,8 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .iconbtn.fill { background: var(--surface-raised); color: var(--text); }
 
 /* hub slot: one fixed-height place for the link state, so a notice never moves a control (MOB-018) */
+.invite-label { display: flex; align-items: center; justify-content: space-between; }
+.invite-label .btn { min-height: 44px; font-size: 14px; }
 .hubslot { display: flex; align-items: center; gap: 12px; block-size: 68px; padding: 0 12px; border-radius: 4px; font-size: 14px; line-height: 1.35; color: var(--text-secondary); }
 .hubslot .t { flex: 1; min-inline-size: 0; }
 .hubslot b { display: block; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -163,7 +165,15 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .first { padding-inline: 24px; }
 .first .brand { margin-top: 14px; position: relative; z-index: 1; }
 .first .say { display: grid; gap: 12px; margin-top: auto; position: relative; z-index: 1; }
-.first .acts { display: grid; gap: 10px; margin-top: 24px; padding-bottom: 10px; position: relative; z-index: 1; }
+.first .wordmark { display: inline-block; }
+.first .wordmark span { background: linear-gradient(90deg, #5e81ac, #88c0d0, #8fbcbb); background-clip: text; color: transparent; }
+.gl .first .wordmark span { background-image: linear-gradient(90deg, #5e81ac, #2e6e80 50%); }
+.first .acts { display: grid; gap: 8px; inline-size: min(100%, 288px); margin-top: 16px; padding-bottom: 10px; position: relative; z-index: 1; }
+.first .acts .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.first .acts .btn { min-block-size: 48px; border-radius: 12px; }
+.first .acts .pri { background: var(--accent); color: var(--on-accent); }
+.first .acts .secondary { border: 1px solid var(--border-strong); background: none; }
+.first .acts .join { justify-content: space-between; padding-inline: 0 4px; border-top: 1px solid var(--border-subtle); border-radius: 0; background: none; color: var(--text-secondary); font-weight: 400; }
 .first .how { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0 6px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 14px; }
 .first .how .i { margin-top: 2px; color: var(--text-tertiary); }
 .first .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -354,13 +364,13 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
 <template id="t-first">
   <canvas class="doorfield" aria-hidden="true"></canvas>
   <div class="body first">
-    <p class="brand"><span class="logo"></span><i></i>Anima.ing</p>
     <div class="say">
-      <h3 class="display">Welcome to Anima.ing</h3>
+      <h3 class="display">Welcome to <span class="wordmark"><span>Anima</span>.ing</span></h3>
     </div>
     <div class="acts">
-      <button class="btn pri big">Sign in</button>
-      <div class="pair"><button class="btn">Sign up</button><button class="btn">Join a hub</button></div>
+      <div class="pair"><button class="btn pri">Sign in</button><button class="btn secondary">Sign up</button></div>
+      <button class="btn join">Join a hub <svg class="i sm" aria-hidden="true"><use href="#i-right"/></svg></button>
+      <p class="fine">Connect to a hub your team already runs.</p>
     </div>
   </div>
 </template>
@@ -395,7 +405,7 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
     <header><span class="n">1</span><h2>First run</h2><p>MOB-017, MOB-033, MOB-038</p></header>
     <div class="row">
       <figure class="shot"><div class="phone gd ios"><div class="screen" data-tpl="t-first"></div></div>
-        <figcaption><b>Welcome</b><span class="tag">dark, iOS</span><p>Sign in with the Anima.ing account, low, under the thumb. Sign up and Join a hub side by side under it (operator, 2026-11-17).</p></figcaption></figure>
+        <figcaption><b>Welcome</b><span class="tag">dark, iOS</span><p>Sign in and Sign up share a row. Join a hub describes how to connect to an existing team.</p></figcaption></figure>
       <figure class="shot"><div class="phone gl ios"><div class="screen" data-tpl="t-first"></div></div>
         <figcaption><b>Welcome</b><span class="tag">light, iOS</span><p>Light appearance.</p></figcaption></figure>
     </div>
@@ -422,8 +432,7 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
           <div class="navrow"><button class="back"><svg class="i"><use href="#i-left"/></svg>Back</button></div>
           <h2>Paste invite</h2>
           <div class="stack">
-            <div class="field"><label>Invite</label><div class="area mono"><span>anima-invite:hub.okita.example:<span class="fade">kQ7x2mVd9TzR4LwEj8HnB3sYcF6uA1pG</span><span class="caret"></span></span></div></div>
-            <button class="btn line"><svg class="i"><use href="#i-paste"/></svg>Paste</button>
+            <div class="field"><div class="invite-label"><label>Invite</label><button class="btn line"><svg class="i"><use href="#i-paste"/></svg>Paste</button></div><p class="fine">Ask the person who runs your hub for an invite, then paste the full invite here.</p><div class="area mono"><span>anima-invite:hub.okita.example:<span class="fade">kQ7x2mVd9TzR4LwEj8HnB3sYcF6uA1pG</span><span class="caret"></span></span></div></div>
             <button class="btn pri">Join hub</button>
             <p class="fine">Works once. Not kept.</p>
           </div>
@@ -456,16 +465,16 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
         <div class="field"><label>User name</label><div class="box"><svg class="i"><use href="#i-user"/></svg><span class="val">okita</span></div></div>
         <div class="field"><label>Password</label><div class="box"><svg class="i"><use href="#i-lock"/></svg><span class="val">••••••••••••</span></div></div>
         <button class="btn pri">Continue<svg class="i"><use href="#i-arrow"/></svg></button>
-        <div class="hubslot bad"><svg class="i"><use href="#i-unlink"/></svg><div class="t"><b>Can't reach home-hub</b>Check this device's network.</div><button class="act">Retry</button></div>
+        <div class="hubslot bad"><svg class="i"><use href="#i-unlink"/></svg><div class="t"><b>Can't reach home-hub</b>Check this device's network.</div><div><button class="act">Change hub address</button><button class="act">Retry</button></div></div>
       </div></div></div>
-        <figcaption><b>User name and password</b><span class="tag">dark, iOS</span><p>The row under the button is the hub slot. It has a fixed height, so the notice moves nothing.</p></figcaption></figure>
+        <figcaption><b>User name and password</b><span class="tag">dark, iOS</span><p>The row under the button is the hub slot. Change hub address remains available if the hub does not answer.</p></figcaption></figure>
 
       <figure class="shot"><div class="phone gd ios"><div class="screen"><div class="body signin flush" style="padding-bottom:0">
         <div class="head"><p class="brand"><span class="logo"></span><i></i>Anima.ing</p><h3 class="display">Enter code</h3></div>
         <p class="fine">From your authenticator app.</p>
         <div class="codes mono"><span>4</span><span>0</span><span>7</span><span class="cur"><i class="caret"></i></span><span></span><span></span></div>
         <div class="links"><button>Back</button><button>No code</button></div>
-        <div class="hubslot"><svg class="i"><use href="#i-link"/></svg><div class="t"><b>home-hub</b>Linked</div><button class="act">Change</button></div>
+        <div class="hubslot"><svg class="i"><use href="#i-link"/></svg><div class="t"><b>home-hub</b>Linked</div><button class="act">Change hub address</button></div>
         <div class="grow"></div>
         <div class="kb num" data-kb="num"></div>
       </div></div></div>
@@ -526,6 +535,7 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
 
       <figure class="shot"><div class="phone gd ios"><div class="screen" data-tabs="settings"><div class="body tabsroom">
         <div class="pagehead"><h3 class="display">Settings</h3></div>
+        <button class="btn">Jump to section</button>
         <div class="scroll">
           <div class="set" style="margin-top:4px"><span class="cap">Account</span>
             <div class="kv"><span>User name</span><span class="v"><span>okita</span></span></div>
@@ -544,7 +554,8 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
             <div class="kv"><span>Font</span><span class="v"><span>IBM Plex Sans</span><svg class="i sm"><use href="#i-right"/></svg></span></div>
           </div>
           <div class="set"><span class="cap">Runner capabilities</span>
-            <div class="kv"><span>Capability report</span><span class="v">Read capabilities</span></div>
+            <p class="fine">Memory, storage, power, and thermal state.</p>
+            <div class="kv"><span>Last checked <time datetime="2026-11-20T10:21:00Z">2:21 AM</time></span><button class="btn">Refresh</button></div>
           </div>
           <div class="set"><span class="cap">Leave</span>
             <button class="btn danger" style="margin-top:12px">Leave hub</button>
