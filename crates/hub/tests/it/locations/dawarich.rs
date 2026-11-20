@@ -107,10 +107,21 @@ impl Kit {
             .unwrap()
     }
 
-    /// Waits for the first run, which the connection starts, to store `count` samples.
+    /// True when a run is recorded and each recorded run has ended: the account is free to claim.
+    async fn runs_ended(&self) -> bool {
+        sqlx::query_scalar(
+            "select count(*) > 0 and count(*) filter (where outcome is null) = 0 \
+             from sources.sync_runs",
+        )
+        .fetch_one(&self.pool)
+        .await
+        .unwrap()
+    }
+
+    /// Waits for the first run, which the connection starts, to store `count` samples and end.
     async fn wait_for(&self, count: i64) {
         for _ in 0..100 {
-            if self.stored().await == count {
+            if self.stored().await == count && self.runs_ended().await {
                 return;
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
