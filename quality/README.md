@@ -123,12 +123,14 @@ each train with its state and the branches of the next one.
   it one time, on the commit as it is.
 - **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
-  so no run of the gates follows for `dev`. If `dev` moved (a claim, a merge by hand), the gates of the
-  train do not count: its run is cancelled and the next train holds the same branches on the new `dev`.
-- **A move of `dev` in records only.** Off today (OD-W-NEW-trainrecords). With `"carryRecords": true` in
-  `quality/merge-rule.json`, a train is not given up when `dev` moved only in `docs/claims/`, `docs/ideas/`
-  or the two generated files: the conductor makes it again on the new `dev`, proves that each other file is
-  the one that the gates tested, and lands it. Not covered by a test: the calls to git and GitHub of this step.
+  so no run of the gates follows for `dev`.
+- **A move of `dev` while the gates of a train run.** The run is never stopped. Off today
+  (OD-W-NEW-trainrecords): with `"carryDocuments": true` in `quality/merge-rule.json`, a train that passed
+  still lands when `dev` moved only in documents (the rule of the fast tier, `src/gates/tier.ts`): the
+  conductor merges the same branches again on the new `dev`, with the document gates on each merge commit,
+  proves that each file that is not a document is the one that the gates tested, and lands that. When `dev`
+  moved in code, or the rule is off, the train is made again on the new `dev` and its gates run one more
+  time. Not covered by a test: the calls to git and GitHub of this step.
 - **A failure.** The next train holds the first half of the failed one, in the same order. A branch that
   fails alone is refused: a note on its tip (`refs/notes/train`) keeps it out until the branch moves or its
   own gates pass again (`gh run rerun`). A cancelled run is no verdict: the train is built again.

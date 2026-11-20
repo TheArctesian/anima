@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { conflictsForAHand, gatesRefusal, mergeMessage, onlyRecords, parseMergeRule, rowsTwice } from "../../src/merge/rules.ts";
+import { conflictsForAHand, gatesRefusal, mergeMessage, parseMergeRule, rowsTwice } from "../../src/merge/rules.ts";
 
 describe("the merge of a branch into dev", () => {
   test("PLN-020 a conflict in a generated file needs no hand; each other conflict does", () => {
@@ -23,7 +23,7 @@ describe("the merge of a branch into dev", () => {
 describe("the two rules of a merge (quality/merge-rule.json; R-NEW-gaterule, R-NEW-automerge)", () => {
   test("the rule file of the repository has the two rules on", () => {
     const text = readFileSync(join(import.meta.dir, "..", "..", "merge-rule.json"), "utf8");
-    expect(parseMergeRule(text)).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryRecords: false });
+    expect(parseMergeRule(text)).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryDocuments: false });
   });
 
   test("a rule file that is not exact is refused, and never read as on", () => {
@@ -32,20 +32,16 @@ describe("the two rules of a merge (quality/merge-rule.json; R-NEW-gaterule, R-N
     }
   });
 
-  test("a train is carried over a move of dev only when the rule says so in exact words, and only over records", () => {
-    const on = parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true,"carryRecords":true}');
-    expect(on).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryRecords: true });
-    const loose = parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true,"carryRecords":"true"}');
-    expect(loose).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryRecords: false });
-    expect(onlyRecords(["docs/ideas/os/README.md", "docs/claims/w3.md", "docs/operator-queue.md"])).toBe(true);
-    expect(onlyRecords(["docs/ideas/os/README.md", "docs/rulings.md"])).toBe(false);
-    expect(onlyRecords(["docs/claims/w3.md", "crates/hub/src/main.rs"])).toBe(false);
-    expect(onlyRecords(["docs/ideasx/a.md"])).toBe(false);
+  test("a train is carried over a move of dev only when the rule says so in exact words", () => {
+    const on = parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true,"carryDocuments":true}');
+    expect(on).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryDocuments: true });
+    const loose = parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true,"carryDocuments":"true"}');
+    expect(loose).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryDocuments: false });
   });
 
   test("a merge with no check needs the gates on GitHub", () => {
     expect(parseMergeRule('{"fullGates":"mac","mergeWithoutCheck":true}')).toContain("needs fullGates");
-    expect(parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true}')).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryRecords: false });
+    expect(parseMergeRule('{"fullGates":"github","mergeWithoutCheck":true}')).toEqual({ fullGates: "github", mergeWithoutCheck: true, carryDocuments: false });
   });
 
   test("the gates on GitHub permit a merge only when the job `passed` passed", () => {

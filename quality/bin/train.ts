@@ -8,7 +8,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { undoMerge } from "../src/merge/commit.ts";
 import { finishMerge } from "../src/merge/finish.ts";
-import { onlyRecords, parseMergeRule, RECORDS } from "../src/merge/rules.ts";
+import { isDocument } from "../src/gates/tier.ts";
+import { parseMergeRule } from "../src/merge/rules.ts";
 import { members, stack, type LeftOut } from "../src/merge/stack.ts";
 import { batch, firstHalf, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
@@ -78,39 +79,49 @@ function merge(wanted: Tip[]): { merged: Tip[]; leftOut: LeftOut[] } {
   });
 }
 
-/** If the rule permits it: `dev` moved from `base` only in records, so the gates of a train on `base` still count. */
-function movedOnlyInRecords(base: string): boolean {
+function changed(from: string, to: string): string[] {
+  return must(["git", "diff", "--name-only", from, to]).split("\n").filter((path) => path !== "");
+}
+
+/** If the rule permits it: `dev` moved from `base` only in documents, by the rule of the fast tier. */
+function movedOnlyInDocuments(base: string): boolean {
   const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));
-  if (typeof rule === "string" || !rule.carryRecords) return false;
-  return onlyRecords(must(["git", "diff", "--name-only", base, `origin/${INTO}`]).split("\n").filter((path) => path !== ""));
+  return typeof rule !== "string" && rule.carryDocuments && changed(base, `origin/${INTO}`).every(isDocument);
 }
 
 /**
- * Makes the train again on the `dev` that moved in records, with no run of the gates, and pushes
- * it to `dev`. It does so only when each file that is not a record is the same as in the commit
- * that the gates tested; if one is different, nothing is pushed.
+ * Makes the train again on the `dev` that moved in documents, with the document gates on each
+ * merge commit and no second run of the full list, and pushes it to `dev`. It pushes only when
+ * each branch merged again and each file that is not a document is the same as in the commit
+ * that the gates tested. "again": `dev` moved once more in that moment, the next step tries again.
  */
-function carry(train: Tip, held: Tip[]): boolean {
+function carry(train: Tip, held: Tip[]): "landed" | "again" | "different" {
   const start = must(["git", "rev-parse", "HEAD"]);
   const made = merge(held);
-  const same = run(["git", "diff", "--quiet", train.sha, "HEAD", "--", ".", ...RECORDS.map((record) => `:(exclude)${record}`)]).ok;
-  if (made.leftOut.length === 0 && same && run(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${INTO}`]).ok) return true;
+  const same = made.leftOut.length === 0 && changed(train.sha, "HEAD").every(isDocument);
+  if (same && run(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${INTO}`]).ok) return "landed";
   undoMerge(REPO_ROOT, start);
-  return false;
+  return same ? "again" : "different";
 }
 
-/** Moves `dev` to the commit of the train when `dev` is still the commit that the train stands on. */
-function land(train: Tip, base: string): void {
+/**
+ * Lands a train whose gates passed: `dev` moves to its commit when `dev` did not move, or to the
+ * train made again when `dev` moved only in documents. Returns false when the train stays for the next step.
+ */
+function land(train: Tip, base: string): boolean {
   const held = members(REPO_ROOT, base, train.sha);
   const names = held.map((tip) => tip.branch).join(", ");
   const moved = base !== must(["git", "rev-parse", `origin/${INTO}`]);
+  const carried = moved && movedOnlyInDocuments(base) ? carry(train, held) : undefined;
+  if (carried === "again") return false;
   if (!moved && run(["git", "push", "--quiet", "origin", `${train.sha}:refs/heads/${INTO}`]).ok) {
     must(["git", "merge", "--quiet", "--ff-only", train.sha]);
     say(`landed ${held.length} branch(es) in one step, ${INTO} is ${train.sha.slice(0, 8)}: ${names}`);
-  } else if (moved && movedOnlyInRecords(base) && carry(train, held)) {
-    say(`landed ${held.length} branch(es); ${INTO} had moved only in records, and each other file is the one that the gates tested: ${names}`);
+  } else if (carried === "landed") {
+    say(`landed ${held.length} branch(es); ${INTO} had moved only in documents, and each other file is the one that the gates tested: ${names}`);
   } else say(`${INTO} moved after the train was made; the gates of the train do not count. The branches go into the next train: ${names}`);
   remove(train);
+  return true;
 }
 
 /**
@@ -119,19 +130,20 @@ function land(train: Tip, base: string): void {
  */
 function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undefined {
   const base = must(["git", "merge-base", train.sha, `origin/${INTO}`]);
-  const stale = base !== must(["git", "rev-parse", `origin/${INTO}`]) && !movedOnlyInRecords(base);
+  const moved = base !== must(["git", "rev-parse", `origin/${INTO}`]);
   const what = verdict(train.sha, runs);
-  if (what === "land") return void land(train, base);
-  if (what === "wait" && !stale) return "wait";
+  // A run of the gates is never stopped because `dev` moved: what it proves is used when it ends.
+  if (what === "wait" || (what === "land" && !land(train, base))) return "wait";
+  if (what === "land") return undefined;
+  const stale = moved && !movedOnlyInDocuments(base);
   if (what === "start-gates" && !stale) {
     const age = now.getTime() / 1000 - Number(must(["git", "log", "-1", "--format=%ct", train.sha]));
     if (age > YOUNG_SECONDS) must(["gh", "workflow", "run", "gates.yml", "--ref", train.branch]);
     return "wait";
   }
   const held = members(REPO_ROOT, base, train.sha);
-  for (const each of runs.filter((one) => one.headSha === train.sha && one.status !== "completed")) run(["gh", "run", "cancel", String(each.databaseId)]);
   remove(train);
-  if (what !== "split") return void say(`the train ${train.branch} is given up (${stale ? `${INTO} moved` : "its gates were cancelled"}); its branches go into the next train`);
+  if (what !== "split") return void say(`the train ${train.branch} is given up (${stale ? `${INTO} moved before its gates started` : "its gates were cancelled"}); its branches go into the next train`);
   const [only] = held;
   if (held.length === 1 && only !== undefined) return void refuse(only, now);
   say(`the gates failed for a train of ${held.length} branches; the next train holds the first half`);
