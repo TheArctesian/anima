@@ -25,6 +25,24 @@ pub struct Here {
 }
 
 impl Here {
+    /// This computer for the user that runs the process, or `None` when that user is not known
+    /// or does not own `home` (as under `sudo`): the files would then belong to the wrong user.
+    #[must_use]
+    pub fn for_this_user(home: PathBuf, path: Vec<PathBuf>) -> Option<Self> {
+        // The user of this process is the owner of a file that it makes.
+        let user = tempfile::tempfile()
+            .and_then(|file| file.metadata())
+            .ok()?
+            .uid();
+        let owned = fs::metadata(&home).is_ok_and(|metadata| metadata.uid() == user);
+        owned.then_some(Self {
+            home,
+            path,
+            user,
+            macos: cfg!(target_os = "macos"),
+        })
+    }
+
     fn root(&self) -> Root<'_> {
         Root {
             home: self.home.as_path(),

@@ -131,30 +131,14 @@ fn usage(message: String) -> Failure {
 
 /// This computer, from the process: the home folder, `PATH` and the user of the home folder.
 fn here() -> Result<Here, Failure> {
-    use std::os::unix::fs::MetadataExt as _;
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .filter(|home| home.is_absolute())
         .ok_or_else(|| usage("HOME is not set to a folder.".to_owned()))?;
-    // The user of this process is the owner of a file that it makes.
-    let user = tempfile::tempfile()
-        .and_then(|file| file.metadata())
-        .map_err(|_| usage("The user of this program is not known.".to_owned()))?
-        .uid();
-    // A home folder of a different user (as under `sudo`) is not changed: its files would then
-    // belong to the wrong user.
-    if std::fs::metadata(&home).map_or(true, |metadata| metadata.uid() != user) {
-        return Err(usage(
-            "The home folder does not belong to the user that runs this program.".to_owned(),
-        ));
-    }
     let path = std::env::var_os("PATH")
         .map_or_else(Vec::new, |path| std::env::split_paths(&path).collect());
-    Ok(Here {
-        home,
-        path,
-        user,
-        macos: cfg!(target_os = "macos"),
+    Here::for_this_user(home, path).ok_or_else(|| {
+        usage("The home folder does not belong to the user that runs this program.".to_owned())
     })
 }
 
