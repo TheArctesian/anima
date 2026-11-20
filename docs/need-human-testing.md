@@ -89,6 +89,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
@@ -1011,6 +1012,9 @@ a kept link (up, down, up again, and a stop of the application that leaves the u
 the folder. Not covered: the copy to the real home folder, `launchctl`, the hand-over inside a real
 sign-in, the start of the application with a unit that runs, and an update of the application.
 
+Changed by DEF-007: the copy is `~/Library/Application Support/ing.anima.desktop/link/program/anima-link`,
+not `~/.local/bin/anima-link`. In the steps below, read `~/.local/bin/anima-link` as that path, in double quotes.
+
 It needs: this Mac with the application of this build (a trial bundle is enough), signed in to the
 hosted hub. `<DIR>` is `~/Library/Application Support/ing.anima.desktop/link/device`; put it in
 double quotes in a command, because the path has a space.
@@ -1035,6 +1039,37 @@ double quotes in a command, because the path has a space.
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
+
+### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
+
+Built: on the branch `fix/link-private-folder`. The shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies
+`anima-link` to `<application>/link/program/` (`~/.local/share/anima/link/program/` on Linux), which the
+application makes, and no longer to `~/.local/bin`. A unit of an earlier application that runs
+`~/.local/bin/anima-link` is moved to the new copy at the next start. The log has the cause when the link
+refuses the unit.
+
+The tests cover: the paths of the copy, and that a unit of an earlier application is found by its copy in
+`~/.local/bin`. Not covered: the copy into a real home folder (the check of the folders refuses the temporary
+folder of a test), systemd and `launchctl`, the install of the daemon, and the metrics at the hub.
+
+Seen by the session that wrote this (2026-11-20, on `pop-os`, with the desktop program of this branch in the
+0.0.3 AppImage; not a result): "a unit of the user keeps the device link"; `anima-link.service` active; the link
+ran from the new copy with `-daemon-socket`; the socket was made; `~/.local/bin/anima-link` was deleted.
+
+It needs: `pop-os` (Pop!_OS 24.04, `~/.local/bin` mode 775), an AppImage that holds this branch, the sign-in to
+the hosted hub; for step 5, this Mac with the unit that an earlier application made.
+
+1. On `pop-os`, run `stat -c %a ~/.local/bin`. Expected: `775` (the case of the defect). Do not change it.
+2. Open the AppImage and sign in. Wait two minutes. Expected: `systemctl --user is-active anima-link.service`
+   prints `active`, and `ls ~/.local/share/anima/link/program/anima-link` finds the file.
+3. Run `systemctl --user is-active anima-daemon.service`. Expected: `active`. The log of the application
+   (`~/.local/share/ing.anima.desktop/logs/Anima.log`) has "the daemon of this computer: try N of 5: installed".
+4. On the hub, open Devices. Expected: the row `pop-os` shows CPU, Memory and Disk, not "No metrics".
+5. On this Mac, install the application of this branch over the one before and open it. Wait one minute.
+   Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
+   the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
+
+Result: Open.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1212,9 +1247,10 @@ Observation (2026-11-19; the operator, from screenshots of a local build of `mai
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
-Built: on the branch `engine/e0-7-reminders`. The hub evaluates reminder rules each minute and sends
-each firing through the notification channels. `anima reminder` makes and changes rules, and shows,
-snoozes and acknowledges firings.
+Built: on `dev`, and steps 9 and 10 on the branch `engine/e0-7-firings-subscription`. The hub evaluates
+reminder rules each minute and sends each firing through the notification channels. `anima reminder`
+makes and changes rules, and shows, snoozes and acknowledges firings. `anima reminder watch` is an
+open application: while it runs, the hub gives it each firing and sends none to a channel.
 
 The tests use a stopped clock, a database of the test and an HTTPS server of the test in the place of
 ntfy. Not covered: the task of each minute in a hub that runs for hours, a real ntfy server and the
@@ -1243,6 +1279,11 @@ ntfy app on a phone, the text on a real lock screen, and a change of the clocks 
 8. Run `anima reminder set <rule> --message "Changed"` for the rule of step 2 in the minute before it
    is due again on the next day, or run `anima reminder disable <rule>`. Expected: a firing that
    waited is `SUPPRESSED` with the reason `rule_changed`, and the phone shows nothing.
+9. Run `anima reminder watch` in a second terminal and leave it open. Run `anima reminder test <rule>`
+   for the rule of step 2. Expected: in not more than 2 minutes the second terminal shows one line
+   with the time, the ID of the firing and `Stand up`, and the phone shows no notification. Stop the
+   command with Ctrl-C and run the test again. Expected: the phone shows the notification.
+10. Run `anima notify channel topic` two times. Expected: two different topics of 22 characters.
 
 Result: Open.
 

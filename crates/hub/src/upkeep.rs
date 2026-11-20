@@ -144,6 +144,7 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
                 db: pool.clone(),
                 bus: bus.clone(),
                 vault: dependencies.vault.clone(),
+                live: dependencies.reminders.clone(),
             },
             reminders::Reading {
                 seal: locations::Seal::new(dependencies.files.sealing_keys().clone()),

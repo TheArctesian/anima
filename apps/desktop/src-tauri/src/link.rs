@@ -7,6 +7,7 @@
 //! web view; its form is checked first, it reaches `anima-link` on standard input only and it
 //! is never logged (LOG-007).
 
+mod copy;
 mod device;
 mod error;
 mod folder;
@@ -141,10 +142,13 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
         return;
     };
     if let Some(link) = kept::now(&folders.device, port) {
-        // The unit runs the copy of an earlier app: it gets the program of this app (HMD-055).
-        if let Some(carried) = &program {
-            link.refresh(carried);
-        }
+        // The unit runs the copy of an earlier app, or a copy at its earlier place: it gets the
+        // program of this app at its place (HMD-055).
+        let application = crate::user_folders::of_this_user();
+        let link = match (&program, application) {
+            (Some(carried), Some(application)) => link.refresh(carried, &application),
+            _ => link,
+        };
         link.watch(device);
         return;
     }
@@ -285,7 +289,7 @@ pub async fn link_leave<R: Runtime>(
         device.stop();
         if let Some(link) = kept::now(&folders.device, 0) {
             link.remove_because("this device leaves its hub")?;
-            kept::unplace(&link.program);
+            copy::unplace(&link.program);
         }
         folders.remove().map_err(|_| LinkError::Folder)
     })
