@@ -32,6 +32,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 11: encrypted-storage unlock | Decided | A + B: local passphrase and hardware-backed automatic unlock on validated hardware. Include a recovery key stored outside the machine, as recommended in the accepted choice. Encryption stays opt-in/off by default. Owner-initiated remote unlock, network-assisted automatic unlock and removable-token unlock are deferred. TPM boot policy, key custody and update/rollback validation remain open. |
 | Decision 12: default filesystem | Decided | A: Btrfs for installed OS and persistent data, with separate subvolumes. The operator accepted it as sufficient for the current design. Use NixOS generations for system software/configuration rollback; data restoration remains separate. This selects a filesystem, not an application database. Exact partitions, subvolumes, snapshot policy, compression and additional-drive layouts remain open. |
 | Decision 13: disk capacity layout | Decided | A: one shared Btrfs filesystem with separate subvolumes, plus hardware-appropriate boot partitions. System and workload data share free capacity. Space limits, cleanup and snapshot retention must be designed; subvolumes do not by themselves reserve system capacity. Data-preserving OS repair must not format the shared filesystem. Separate system/data partitions, LVM and a multi-disk installation are not selected. |
+| Product direction: appliance experience | Decided direction (relayed) | Purpose-built appliance with sensible defaults and limited supported host configuration. Prioritize install-and-work simplicity; accept reduced configuration freedom. General-purpose development environments can use OmniXY, Omarchy or other distributions. Caddy, SteamOS and Ubuntu are experience analogies, not selected architectures or a request for a desktop. Existing decisions and optional administrator access remain in force. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -68,7 +69,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 14: how should root filesystem state persist? Alternatives: persistent root with separate persistent workload/state subvolumes; root reset to a known baseline at boot with an explicit persistence inventory; read-only root with designated writable mounts. Recommendation: persistent root first, with Nix-managed configuration and defined state boundaries. No selection yet. This choice precedes exact subvolume paths and must preserve device identity, network configuration, workloads and recovery access.
+2. Decision 14 reframed: what support boundary should apply to advanced host changes? Recommendation: Anima owns the supported host configuration; keep optional administrative access for diagnostics and recovery, but direct custom software into workload environments. Ask whether direct host modifications are allowed as an unsupported advanced mode, or supported through a bounded extension mechanism. No answer yet. Persistent/reset/read-only root remains undecided; propose its implementation as part of a coherent design rather than infer it from the appliance analogy.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -90,6 +91,12 @@ These are discussion topics, not selected requirements or a task breakdown:
 - Backups, application data recovery and moving to a replacement machine.
 - Sleep, laptop lids, battery and thermal health, power loss and wake-on-LAN.
 - Hardware validation, image distribution, support and security maintenance.
+
+## Appliance design recommendations (not individually approved)
+
+The side chat proposed one supported storage/base-package/update setup; outcome-based settings for networking, workload permissions, resource limits and maintenance windows; workload dependencies kept separate from the host; Anima owning supported host configuration; and recovery returning to a known system while preserving designated data. These are recommendations, not new approved requirements.
+
+Use the approved product direction to propose a coherent engineering default. Ask the operator about consequential product tradeoffs instead of each filesystem, partition or service setting. Keep existing decisions unless explicitly changed. Optional administrator access does not itself settle support for arbitrary host modifications.
 
 ## Apple Silicon research
 
@@ -131,6 +138,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 12 accepted Btrfs for OS and persistent data. Next: shared versus separate system/data capacity on the installation disk, before exact partition sizes and subvolume paths.
 
 - 2026-11-19: Decision 13 accepted A: one shared Btrfs filesystem with subvolumes and hardware-specific boot partitions. Next: system-state persistence before the detailed subvolume layout.
+
+- 2026-11-19: Received an explicitly authorized side-chat relay of the appliance direction. Marked its provenance and separated the operator's words from the side chat's recommendations. Reframed unanswered Decision 14 around the supported host-customization boundary; did not select a root architecture or revoke administrator access.
 
 ## Source text
 
@@ -207,3 +216,7 @@ In response to Decision 12:
 In response to Decision 13:
 
 > yeah A is good
+
+Operator words relayed by the side chat, with explicit authorization to relay (not independently read from that chat):
+
+> I think following a caddy or steam os thing is not a bad idea here. Like we can point people to omnixy or omarchy for a development OS or they can do whatever they want but this is the ubuntu equivlent like just install it just works don't have to think about it but you sacrfice some configuration
