@@ -1,6 +1,6 @@
 # K10 — Work route: claim, report, log, stop and a secret for one job
 
-Status: **accepted** (R-209, operator, 2026-11-19: "I accept the work route contract K10, version 0.3, as written in `contracts/work-route.md`, and for each open finding of its security review I accept the state that `docs/security-findings.md` gives."; task W1 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md); version 0.3, 2026-11-18; version 0.4, 2026-11-19). It changes only by a ruling (CON-001). Version 0.4 adds the container work types (Section 6.4, and the paragraphs "Container types (version 0.4)" in Sections 1 to 9 and 13). It is the second part of R-209: "I approve Section 4 of `docs/proposals/hosted-applications-stage-2.md` as the text of the container work types for a security review. It becomes version 0.4 of the contract when that review has no finding that I have not decided." Three separate reviewers read the text (SF-015 to SF-069 of [security-findings.md](../docs/security-findings.md)); the operator decided each point that needed him (R-226 to R-238, R-246); the third reviewer wrote: "No finding remains that the owner has not decided; the open points are changes of the text." Those changes are in this text; no reviewer of the security review read the text after them. Version 0.4 changes no rule of `build` and `runner`, apart from the sentences that say so. Version 0.3 has the answers of the operator to three findings (R-185: SF-003, a machine with no list of repositories refuses each item; R-186: SF-006, the device list now and the device key later; R-187: SF-013, accepted). Version 0.1 was the text that the security review read; version 0.2 has the changes that the review asked for, and each is marked with its finding (SF-003 to SF-014). R-160 (operator, 2026-11-18) confirmed the work route and its default. The security review of this text is in [security-findings.md](../docs/security-findings.md), entries SF-003 to SF-014; the acceptance closes none of them: each keeps the state that the document gives, and each that is Open stays Open until code exists. The container work types of [hosted-applications-stage-2.md](../docs/proposals/hosted-applications-stage-2.md), Section 4, are not in this version: the same ruling approves that text for a security review, and it becomes version 0.4 after that review.
+Status: **accepted** (R-209, operator, 2026-11-19: "I accept the work route contract K10, version 0.3, as written in `contracts/work-route.md`, and for each open finding of its security review I accept the state that `docs/security-findings.md` gives."; task W1 of [projects-and-builds-plan.md](../docs/plans/projects-and-builds-plan.md); version 0.3, 2026-11-18; version 0.4, 2026-11-19). It changes only by a ruling (CON-001). Version 0.4 adds the container work types (Section 6.4, and the paragraphs "Container types (version 0.4)" in Sections 1 to 9 and 13). It is the second part of R-209: "I approve Section 4 of `docs/proposals/hosted-applications-stage-2.md` as the text of the container work types for a security review. It becomes version 0.4 of the contract when that review has no finding that I have not decided." Three separate reviewers read the text (SF-015 to SF-069 of [security-findings.md](../docs/security-findings.md)); the operator decided each point that needed him (R-226 to R-238, R-246); the third reviewer wrote: "No finding remains that the owner has not decided; the open points are changes of the text." Those changes are in this text; no reviewer of the security review read the text after them. Version 0.4 changes no rule of `build` and `runner`, apart from the sentences that say so. Version 0.3 has the answers of the operator to three findings (R-185: SF-003, a machine with no list of repositories refuses each item; R-186: SF-006, the device list now and the device key later; R-187: SF-013, accepted). Version 0.1 was the text that the security review read; version 0.2 has the changes that the review asked for, and each is marked with its finding (SF-003 to SF-014). R-160 (operator, 2026-11-18) confirmed the work route and its default. The security review of this text is in [security-findings.md](../docs/security-findings.md), entries SF-003 to SF-014; the acceptance closes none of them: each keeps the state that the document gives, and each that is Open stays Open until code exists.
 
 Requirements: USE-001 to USE-009 and JOB-010, JOB-011 of [jobs.md](../docs/proposals/jobs.md); PRO-006, PRO-022 to PRO-024, PRO-029, PRO-030, PRO-034, PRO-039 to PRO-043, PRO-050 of the plan above; MET-013, MET-020, LOG-005, LOG-007, LOG-012 of the design specification. The number K9 is reserved for the link ([s6-spec-delta.md](../docs/plans/one-click/s6-spec-delta.md)).
 
@@ -51,7 +51,7 @@ A hub that does not have this contract answers 404 to each route. The daemon the
 
 | Subject | Who decides | Rule |
 | --- | --- | --- |
-| If the machine takes work | The machine | The switch at the machine (USE-004). The hub cannot set it on. A machine whose switch is off sends `"switch": "off"`. If the hub answers such a claim with an `Item`, the daemon drops the answer and starts nothing; the same when the device policy does not permit work. The machine keeps the switch where no job and no other user can write it, and an update of the daemon does not change it (SF-007). |
+| If the machine takes work | The machine | The switch at the machine (USE-004). The hub cannot set it on. A machine whose switch is off sends `"switch": "off"`. If the hub answers such a claim with an `Item`, the daemon drops the answer and starts nothing; the same when the device policy does not permit work. The machine keeps the switch where no job and no other user can write it, and an update of the daemon does not change it (SF-007). (for a container type: the paragraph at the end of this section) |
 | If a Mac takes a `native` item | The machine | The setting of PRO-024, made at the Mac. The hub cannot set it on. The rules of the switch apply to it (SF-007). |
 | Which repositories the machine works for | The owner of the machine | The machine holds a list of the owners and the repositories of GitHub that it builds. The owner of the machine sets it at the machine; the hub cannot write it, and the rules of the switch apply to it (SF-007). The daemon refuses an item of a repository that is not in the list (`repository_not_permitted`). A machine with no list refuses each item that names a repository. The work route stays on by default (R-160); the list is the control of R-185 (SF-003). |
 | Which machines get a secret of a project | The operator | An item that names a secret goes only to a device that the operator named for that project. The placement and the secret route each check it (SF-006). |
@@ -118,8 +118,8 @@ The daemon asks for work each 10 seconds while its switch is on and it has a fre
 - `device` must be the device of the token (`WRONG_DEVICE`).
 - `types` and `kinds` are what this daemon can do now. `native` is in `kinds` only on a Mac that is set on for native jobs and has its build user (PRO-022, PRO-024).
 - `holds` names each item that the machine runs now. When the hub has a lease of this device for an item that `holds` does not name, the answer to the claim was lost: the hub ends that attempt and does not add to the attempts of the item (SF-011).
-- `unclean` is true when the last clean-up of this machine did not delete each thing (Section 9). The hub gives no item to such a machine, and shows it.
-- The hub answers 204 when it has no item for this machine. It always answers 204 to a claim whose `switch` is `off`.
+- `unclean` is true when the last clean-up of this machine did not delete each thing (Section 9). The hub gives no item to such a machine, and shows it (for a container type: the paragraph at the end of this section).
+- The hub answers 204 when it has no item for this machine. It always answers 204 to a claim whose `switch` is `off` (for a container type: the paragraph at the end of this section).
 - A claim is atomic: two machines never get one attempt (BLD-004). The claim that gets an item starts its lease.
 - The first claim of a device with the switch on makes one event in the hub (USE-008).
 
@@ -171,7 +171,7 @@ The daemon asks for work each 10 seconds while its switch is on and it has a fre
 
 ## 5. What the daemon does with an item
 
-Before it starts an item, the daemon checks it. It refuses the item when one of these is true. A refusal is a report with the state `refused` and a fixed cause (Section 7). It is not an attempt: the hub gives the item to a different machine and adds nothing to its attempts.
+Before it starts an item, the daemon checks it. It refuses the item when one of these is true. A refusal is a report with the state `refused` and a fixed cause (Section 7). It is not an attempt (for a container type: the paragraph at the end of this section): the hub gives the item to a different machine and adds nothing to its attempts.
 
 | Cause | When |
 | --- | --- |
@@ -656,7 +656,7 @@ Stop:
 
 The lease:
 
-- When a lease ends with no report, the hub ends the attempt (BLD-006). For a `build`, the item goes back to the queue with its attempts plus 1; after 3 attempts it is `failed` with the reason "machine stopped 3 times". The placement prefers a different machine (USE-007).
+- When a lease ends with no report, the hub ends the attempt (BLD-006) (for a container type: the paragraph at the end of this section). For a `build`, the item goes back to the queue with its attempts plus 1; after 3 attempts it is `failed` with the reason "machine stopped 3 times". The placement prefers a different machine (USE-007).
 - For a `runner`, the hub removes the registration of that runner at GitHub and makes no second attempt of the item: a JIT configuration is for one use. Warm mode makes a new item (PRO-042).
 - A result counts only from the holder of the current attempt.
 
@@ -678,16 +678,58 @@ holds no output of the Docker program and no text of a file."
   log of the machine. It does not undo a start. After a stop the machine reports `stopped` when
   that command has ended. `container_follow` ends at once.
 - When the machine cannot reach the hub, a container item finishes the step that it started and
-  reports when the hub answers again; `limits.orphanSeconds` has no meaning for the kind `host`.
-- The switch of the operator in the hub (`WORK_OFF`): the hub gives the machine no job and no
-  container item other than `container_action` with `stop`. To a claim whose `applications` is
-  `on` the hub does not answer `403 WORK_OFF`: it answers 204, or that one item. `403 WORK_OFF` to
-  a report of a container item is as `409 NOT_HOLDER`. The count of 5 refused or lost items counts
-  jobs only.
-- `result` of an item of the kind `host` has `cleanup` `none` and these members, each a fixed code
-  or a number: `health`; the code of the rule and the position of the service of a refusal; the
-  counts and the bytes of a removal; `data_not_restored`.
-- `container_action` with `stop` is never refused for `policy` or for `unclean`.
+  reports when the hub answers again. The hub can have ended the attempt in that time
+  (`limits.seconds` and 5 minutes); the report then gets `409 NOT_HOLDER`, and the machine writes
+  the end to its own log only.
+- `WORK_OFF` has two causes (Section 11). The switch of the operator in the hub: the hub gives the
+  machine no job and no container item other than `container_action` with `stop`. The hour after 5
+  refused or lost items: the hub gives the machine no job for that hour and gives container items
+  as usual; the count of 5 counts jobs only. In each case the hub does not answer `403 WORK_OFF`
+  to a claim whose `applications` is `on`: it answers 204, or an item that this rule permits. The
+  hub does not answer `WORK_OFF` to a report of a container item. A machine that gets
+  `403 WORK_OFF` to such a report from an older hub ends the item as for `409 NOT_HOLDER`.
+- `result` of an item of the kind `host` has the four members of Section 7 and, for some types,
+  one member more. `outcome`, `cause` and `seconds` are as for a job. Each of the four members of
+  `cleanup` is `none`. A hub keeps a member of `result` as the machine sent it.
+
+  `application_apply` and `adopted_apply` add `health`, one of `healthy`, `unhealthy`, `no_check`,
+  `not_waited`:
+
+  ```json
+  { "outcome": "succeeded", "cause": null, "seconds": 48, "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" }, "health": "healthy" }
+  ```
+
+  A refusal of a file adds `rule`, a fixed code of Section 6.4.4, and `service`, the position of
+  the service in the file as a whole number from 0, or null for a rule of the top level:
+
+  ```json
+  { "outcome": "failed", "cause": "file_not_permitted", "seconds": 1, "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" }, "rule": "key_not_permitted", "service": 2 }
+  ```
+
+  The codes of `rule` are: `key_not_permitted`, `value_not_permitted`, `variable_not_permitted`,
+  `name_not_permitted`, `too_large`, `yaml_not_permitted`, `image_not_permitted`,
+  `port_not_permitted`, `mount_not_permitted`, `label_not_permitted`, `limit_not_permitted`.
+
+  `application_back` adds `health` and `dataNotRestored`, a truth value:
+
+  ```json
+  { "outcome": "succeeded", "cause": null, "seconds": 20, "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" }, "health": "no_check", "dataNotRestored": true }
+  ```
+
+  `application_remove` and `docker_prune` add `removed`: for each of `containers`, `images`,
+  `networks` and `volumes` that the item named, the count and the bytes that the engine says it
+  freed, each a whole number:
+
+  ```json
+  { "outcome": "succeeded", "cause": null, "seconds": 3, "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" }, "removed": { "containers": { "count": 2, "bytes": 0 }, "images": { "count": 1, "bytes": 470400000 } } }
+  ```
+
+  `container_action` and `container_follow` add no member.
+- `limits` of a container item has the five members of Section 4, so that a daemon that knows
+  the form does not refuse it. `seconds` has the meaning and the maximum of this paragraph.
+  `idleSeconds`, `memoryBytes`, `diskBytes` and `orphanSeconds` have no meaning for the kind `host`:
+  the hub sends 0 for each, and the machine ignores them. The placement does not compare
+  `free.memoryBytes` and `free.diskBytes` with them for the kind `host`.
 
 ## 8. A secret for one job
 
@@ -772,7 +814,7 @@ The body of each refusal is `{ "error": "<CODE>" }` and nothing else.
 | 400 | `MALFORMED` | The body is not valid by this contract | Logs the code; for a report, sends the state again without the log part |
 | 401 | `TOKEN_REFUSED` | As K8 Section 6 | As K8. To a report: ends the job at once (Section 7) |
 | 403 | `WRONG_DEVICE` | `device` is not the device of the token | As `TOKEN_REFUSED` |
-| 403 | `WORK_OFF` | The operator set this device off for work in the hub (USE-004), or the device refused or lost 5 items in 1 hour and the hub gives it none for 1 hour (SF-011) | Ends each item that it holds; claims again in 1 hour |
+| 403 | `WORK_OFF` | The operator set this device off for work in the hub (USE-004), or the device refused or lost 5 items in 1 hour and the hub gives it none for 1 hour (SF-011). To a claim whose `applications` is `on` the hub answers 204 or an item in place of this code (Section 7) | Ends each item that it holds; claims again in 1 hour |
 | 409 | `NOT_HOLDER` | Section 7 | Ends the job, deletes each thing, sends no later report of that attempt |
 | 409 | `SECRET_REFUSED` | Section 8 | Fails the attempt with `secret_failed` |
 | 413 | `TOO_LARGE` | The body exceeds its limit | Sends a smaller log part |
@@ -780,7 +822,7 @@ The body of each refusal is `{ "error": "<CODE>" }` and nothing else.
 
 ## 12. With the update of machines (K8 Section 8)
 
-- A machine that holds an item sends `busy: true` in the `update` member of K8 (ROL-028).
+- A machine that holds an item sends `busy: true` in the `update` member of K8 (ROL-028). For the container types (version 0.4): a machine is busy while it holds an item that changes Docker, and not for a `container_follow` item alone. The hub stops each `container_follow` item of a machine before the step of a rollout that includes it (`stop.reason` is `update`), as for a waiting `runner`, and gives that machine no container item other than `container_action` with `stop` until its update ends.
 - A `runner` item that waits for a job would keep a machine busy with no end. Thus the hub stops each waiting `runner` item of a machine before the step of a rollout that includes it (`stop.reason` is `update`), and gives that machine no item until its update ends.
 
 ## 13. Open points of this text

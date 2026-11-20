@@ -100,7 +100,7 @@ R-233). A second read of the second form found it corrected only in part (SF-034
 decided five points (R-234 to R-238) and the design for a Mac (R-246). A third read by a separate
 reviewer (2026-11-19) of the third form says: no finding remains that the owner has not decided,
 and the open points are changes of the text (SF-049 to SF-069). This fourth form has those
-changes. It is the contract only when `contracts/work-route.md` has it. The earlier
+changes. It is the contract only when `contracts/work-route.md` has it. That file is the current text from its version 0.4: its owner asked for eight more exact forms there (the two causes of `WORK_OFF`, the members of `result` for the kind `host`, the limits of a container item, the update of machines), which are in that file and not in this section. The earlier
 forms are in the history of this file (commits `1c274d68` and `aa364653`).
 
 The owner of `contracts/work-route.md` is the session of
