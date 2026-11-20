@@ -1,4 +1,5 @@
 import type { Extension } from './api';
+import { comingSoon } from './coming';
 
 /** What a row of the Extensions section offers: a live switch, or the reason there is none. */
 export type SwitchKind = 'switch' | 'unbuilt' | 'fixed' | 'needed';
@@ -28,7 +29,7 @@ function kindOf(extension: Extension): SwitchKind {
 function hintOf(extension: Extension, kind: SwitchKind, all: readonly Extension[]): string {
   switch (kind) {
     case 'unbuilt':
-      return 'Not built yet';
+      return comingSoon(extension.key);
     case 'fixed':
       return 'Always on.';
     case 'needed': {
