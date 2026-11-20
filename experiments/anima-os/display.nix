@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 let
   display = pkgs.writeShellApplication {
     name = "anima-display";
@@ -7,7 +7,7 @@ let
   };
 in {
   environment.systemPackages = [ display ];
-  services.xserver.displayManager.sessionCommands = ''
+  services.xserver.displayManager.sessionCommands = lib.mkBefore ''
     ${display}/bin/anima-display --auto || true
   '';
 }

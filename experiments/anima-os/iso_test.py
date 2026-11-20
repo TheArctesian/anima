@@ -36,6 +36,7 @@ def run(iso, output):
         machine.send('stty -echo')
         machine.command('busctl call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus StartServiceByName su fi.w1.wpa_supplicant1 0; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces')
         results.append({'case': 'wifi-supplicant-dbus-activation', 'result': 'Passed'})
+        machine.command("timeout 90 sh -c 'until DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority anima-display --list >/dev/null 2>&1; do sleep 1; done'; output=$(DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority anima-display --list | cut -f1 | head -1); DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority anima-display --save \"$output\"; test -s /run/anima-display.json", timeout=100)
         machine.command('systemctl stop display-manager; pkill -TERM -x calamares || true; sleep 1')
         machine.command('test -d /sys/firmware/efi; test ! -e /var/lib/anima-daemon/token')
         machine.command('parted -s /dev/vda mklabel gpt mkpart primary ext4 1MiB 65MiB; udevadm settle; mkfs.ext4 -F /dev/vda1; mkdir /mnt/blocked-target; mount -t ext4 /dev/vda1 /mnt/blocked-target', timeout=60)
@@ -78,6 +79,11 @@ def run(iso, output):
         machine.command('echo retained > ~/iso-sentinel; cp /etc/machine-id ~/machine-id-before; command -v anima-daemon; command -v podman; ! systemctl is-active anima-daemon')
         machine.command('if anima-daemon >/tmp/usage 2>&1; then exit 1; else test "$?" = 2; fi; grep -q usage /tmp/usage')
         results.append({'case': 'installed-login-readonly-runtime', 'result': 'Passed'})
+        from console_checks import installed_wifi, installed_orientation
+        installed_wifi(machine, password)
+        installed_orientation(machine)
+        results.append({'case': 'confirmed-orientation-transferred-and-applied', 'result': 'Passed'})
+        results.append({'case': 'installed-wifi-backend-after-root-lock', 'result': 'Passed'})
         machine.command("podman info --format '{{.Host.Security.Rootless}}' | grep -qx true", timeout=60)
         machine.command('podman load -i /etc/anima-smoke-image.tar.gz', timeout=120)
         limits = '--pull=never --network=none --read-only --memory=64m --cpus=1 --cap-drop=ALL --security-opt=no-new-privileges'
@@ -93,6 +99,7 @@ def run(iso, output):
         machine.expect('Password:'); machine.send(password)
         machine.expect(r'admin@anima:[^\r\n]*\$'); machine.send('stty -echo')
         machine.command('grep -qx retained ~/iso-sentinel; cmp /etc/machine-id ~/machine-id-before')
+        installed_orientation(machine)
         results.append({'case': 'installed-persistence', 'result': 'Passed'})
     except Exception as error:
         results.append({'case': 'iso-run', 'result': 'Failed', 'reason': str(error)})

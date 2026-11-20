@@ -21,6 +21,8 @@
   };
   networking.networkmanager.enable = true;
   networking.networkmanager.dns = "systemd-resolved";
+  # NetworkManager owns profiles; the supplicant must not touch /etc after root locks.
+  networking.wireless.extraConfig = "update_config=0";
   services.resolved.enable = true;
   networking.firewall.enable = true;
   services.openssh.enable = false;

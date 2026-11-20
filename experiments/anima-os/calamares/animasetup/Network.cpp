@@ -77,7 +77,7 @@ QWidget* networkPage() {
     auto* advanced = new QPushButton("Advanced network settings…", page); box->addWidget(advanced);
     box->addWidget(description("For hidden networks, enterprise Wi-Fi or static addresses, use advanced settings. Saving a profile does not prove it connected; check the device status above.", page));
     for (auto* button : page->findChildren<QPushButton*>()) button->setMaximumWidth(260);
-    wifi->setMaximumWidth(760);
+    wifi->setMaximumWidth(1100);
     status->setObjectName("animaMuted");
     box->addStretch();
     watchStatus(page,status);

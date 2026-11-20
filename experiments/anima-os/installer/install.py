@@ -133,6 +133,9 @@ def install_validated(system, disk, hashed, options):
         prepare_volumes(options.get("data", []), ROOT / "persist")
         run('nixos-install', '--root', str(ROOT), '--system', system, '--no-root-passwd', '--no-channel-copy', '--option', 'substituters', '')
         copy_network_profiles(ROOT / "persist/network-connections")
+        if Path("/run/anima-display.json").is_file():
+            shutil.copyfile("/run/anima-display.json", ROOT / "persist/display.json")
+            (ROOT / "persist/display.json").chmod(0o644)
         run('sync')
     finally:
         if mounted:

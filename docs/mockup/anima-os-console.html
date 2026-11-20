@@ -174,4 +174,12 @@ draw();
 })();
 </script>
 
-</body></html>
+<style>
+#anima-console main{max-width:none;width:100%;margin:0}
+#anima-console form{max-width:720px}
+#anima-console{zoom:var(--console-scale,1)}
+#anima-console .shell{height:calc(100dvh / var(--console-scale,1));min-height:0}
+</style><script>
+function fitConsole(){document.documentElement.style.setProperty('--console-scale',Math.max(1,Math.min(3,Math.floor(Math.min(innerWidth/1280,innerHeight/800)*4)/4)))}
+addEventListener('resize',fitConsole);fitConsole();
+</script></body></html>

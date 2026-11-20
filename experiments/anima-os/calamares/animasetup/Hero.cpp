@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <algorithm>
 class Hero : public QWidget {
     QPixmap art;
     QElapsedTimer clock;
@@ -23,18 +24,20 @@ protected:
         const bool still=QFile::exists("/run/anima-reduced-motion");
         const double phase=still ? 0 : (1-std::cos(clock.elapsed()/16000.0*6.283185))/2;
         const double scale=1+0.045*phase;
-        const int w=int(640*scale), h=int(520*scale);
-        const double sourceWidth=art.height()*640.0/520.0;
+        const int baseWidth=std::clamp(width()-80,640,1200);
+        const int baseHeight=std::clamp(height()-32,520,800);
+        const int w=int(baseWidth*scale), h=int(baseHeight*scale);
+        const double sourceWidth=art.height()*double(baseWidth)/baseHeight;
         painter.setOpacity(0.9);
-        painter.drawPixmap(QRect(45-int((w-640)/2), -int((h-520)/2)-int(4*phase), w,h),art,
+        painter.drawPixmap(QRect(width()-baseWidth-int((w-baseWidth)/2), -int((h-baseHeight)/2)-int(4*phase), w,h),art,
                            QRect(int((art.width()-sourceWidth)/2),0,int(sourceWidth),art.height()));
         painter.setOpacity(1);
-        QLinearGradient fade(0,0,640,0);
+        QLinearGradient fade(0,0,width(),0);
         fade.setColorAt(0,QColor("#1B1D21")); fade.setColorAt(.3,QColor(27,29,33,80)); fade.setColorAt(.9,QColor(27,29,33,20)); fade.setColorAt(1,QColor("#1B1D21"));
-        painter.fillRect(QRect(0,0,740,520),fade);
-        QLinearGradient bottom(0,0,0,520);
+        painter.fillRect(rect(),fade);
+        QLinearGradient bottom(0,0,0,baseHeight);
         bottom.setColorAt(0,QColor("#1B1D21")); bottom.setColorAt(.15,QColor(27,29,33,0)); bottom.setColorAt(.68,QColor(27,29,33,0)); bottom.setColorAt(.85,QColor("#1B1D21"));
-        painter.fillRect(QRect(0,0,740,520),bottom);
+        painter.fillRect(rect(),bottom);
     }
 };
 QWidget* heroPage(const QString& heading,const QString& body) {
@@ -45,7 +48,7 @@ QWidget* heroPage(const QString& heading,const QString& body) {
         title->setText("Install <span style='font-weight:500;color:#5E81AC'>A</span><span style='font-weight:500;color:#81A1C1'>N</span><span style='font-weight:500;color:#88C0D0'>I</span><span style='font-weight:500;color:#6FB3C2'>M</span><span style='font-weight:500;color:#8FBCBB'>A</span> OS");
     }
     box->addWidget(title);
-    auto* text=description(body,page); text->setMaximumWidth(265); box->addWidget(text);
+    auto* text=description(body,page); text->setMaximumWidth(560); box->addWidget(text);
     if (heading == "Install ANIMA OS") {
         box->addSpacing(64);
         box->addWidget(description("This computer",page));
@@ -55,7 +58,7 @@ QWidget* heroPage(const QString& heading,const QString& body) {
         int count=0;
         for(const auto& disk: QJsonDocument::fromJson(inventory.readAll()).array()) if(disk.toObject()["eligible"].toBool()) ++count;
         auto* facts=description(QString("%1 · %2 GiB RAM · %3 available drives").arg(QSysInfo::currentCpuArchitecture()).arg(match.captured(1).toDouble()/1048576.0,0,'f',1).arg(count),page);
-        facts->setMaximumWidth(265); facts->setObjectName("animaMuted"); box->addWidget(facts);
+        facts->setMaximumWidth(560); facts->setObjectName("animaMuted"); box->addWidget(facts);
     }
     box->addStretch();
     return page;

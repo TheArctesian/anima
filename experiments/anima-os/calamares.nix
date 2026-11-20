@@ -65,7 +65,7 @@ let
   });
   launcher = pkgs.writeShellApplication {
     name = "anima-setup";
-    runtimeInputs = with pkgs; [ python3 util-linux parted btrfs-progs dosfstools systemd mkpasswd ckbcomp networkmanager networkmanagerapplet xfce4-terminal ];
+    runtimeInputs = with pkgs; [ python3 util-linux parted btrfs-progs dosfstools systemd mkpasswd ckbcomp networkmanager networkmanagerapplet xfce4-terminal xrandr ];
     text = ''
       if [[ $EUID -ne 0 ]]; then
         exec /run/wrappers/bin/sudo --preserve-env=DISPLAY,XAUTHORITY "$0"
@@ -76,6 +76,9 @@ let
       python3 -c 'import sys,json; sys.path.insert(0,"${installerSource}"); from disks import inventory,eligible; print(json.dumps([dict(d,eligible=eligible(d)) for d in inventory()]))' > /run/anima-installer-disks.json
       export XDG_DATA_DIRS="${extension}/share:''${XDG_DATA_DIRS:-/run/current-system/sw/share}"
       export XDG_CONFIG_DIRS="${extension}/etc:/etc/xdg"
+      export QT_FONT_DPI=96
+      QT_SCALE_FACTOR=$(python3 ${./display/scale.py})
+      export QT_SCALE_FACTOR
       exec ${calamares}/bin/calamares --xdg-config
     '';
   };

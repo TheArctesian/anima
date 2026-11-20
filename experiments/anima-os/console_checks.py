@@ -52,3 +52,16 @@ def installed_console(machine, output, password):
     wait_label(output, 'Local session locked')
     machine.command('systemctl is-active NetworkManager; systemctl is-active display-manager')
     screenshot(output, 'console-relocked')
+
+
+def installed_wifi(machine, password):
+    machine.send('sudo -i'); machine.expect(r'password for admin:'); machine.send(password)
+    machine.expect(r'root@anima:[^\r\n]*#')
+    try:
+        machine.command("findmnt -n -o OPTIONS / | tr ',' '\\n' | grep -qx ro; systemctl restart wpa_supplicant || { journalctl -u wpa_supplicant --no-pager -n 25; exit 1; }; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces", timeout=60)
+    finally:
+        machine.send('exit'); machine.expect(r'admin@anima:[^\r\n]*\$')
+
+
+def installed_orientation(machine):
+    machine.command("test -r /persist/display.json; timeout 90 sh -c 'until DISPLAY=:0 XAUTHORITY=/home/admin/.Xauthority anima-display --list >/dev/null 2>&1; do sleep 1; done'; test \"$(DISPLAY=:0 XAUTHORITY=/home/admin/.Xauthority anima-display --list)\" = \"$(jq -r 'to_entries[] | [.key,.value] | @tsv' /persist/display.json)\"", timeout=100)

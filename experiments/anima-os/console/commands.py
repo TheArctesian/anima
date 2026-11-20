@@ -52,7 +52,9 @@ def connect(args):
 def status():
     disk = shutil.disk_usage('/persist')
     service = subprocess.run(['systemctl', 'is-active', 'anima-daemon'], capture_output=True, text=True).stdout.strip()
+    supplicant = subprocess.run(['systemctl', 'is-active', 'wpa_supplicant'], capture_output=True, text=True).stdout.strip()
     drives = json.loads(run(['lsblk', '-J', '-b', '-o', 'NAME,MODEL,SIZE,TYPE,MOUNTPOINTS']))['blockdevices']
     return {'hostname': os.uname().nodename, 'devices': devices(), 'storage': {'used': disk.used, 'total': disk.total},
             'drives': drives, 'enrolled': os.path.exists('/var/lib/anima-daemon/daemon.json'), 'daemon': service,
+            'supplicant': supplicant, 'radio': run(['nmcli', 'radio', 'wifi']),
             'network': run(['nmcli', '-t', '-f', 'STATE,CONNECTIVITY', 'general'])}

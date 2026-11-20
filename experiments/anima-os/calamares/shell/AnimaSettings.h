@@ -51,11 +51,16 @@ public:
         box->addWidget(new QLabel("Display",this)); box->addWidget(screens);
         for(const auto& rotation:QStringList{"normal","left","right","inverted"}) rotations->addItem(rotation,rotation);
         box->addWidget(new QLabel("Orientation",this)); box->addWidget(rotations);
-        apply=new QPushButton("Apply orientation",this); box->addWidget(apply); apply->setEnabled(screens->count()>0);
+        apply=new QPushButton("Apply orientation",this); box->addWidget(apply); apply->setEnabled(screens->count()>0 && Calamares::ViewManager::instance()->currentStepIndex()<6);
         connect(apply,&QPushButton::clicked,this,[this]{applyRotation();});
-        status=new QLabel("Changes revert unless you keep them.",this); status->setWordWrap(true); box->addWidget(status);
+        status=new QLabel(Calamares::ViewManager::instance()->currentStepIndex()<6 ? "Changes revert unless you keep them." : "Change orientation before installation or from the installed console.",this); status->setWordWrap(true); box->addWidget(status);
         keep=new QPushButton("Keep orientation",this); keep->setObjectName("view-button-next"); box->addWidget(keep); keep->hide();
-        connect(keep,&QPushButton::clicked,this,[this]{timer.stop(); remaining=0; screens->setEnabled(true); rotations->setEnabled(true); screens->setItemData(screens->currentIndex(),rotations->currentData()); keep->hide(); apply->setEnabled(true); status->setText("Orientation kept for this live session.");});
+        connect(keep,&QPushButton::clicked,this,[this]{
+            QProcess save; save.start("anima-display",{"--save",output});
+            if (!save.waitForFinished(5000) || save.exitStatus()!=QProcess::NormalExit || save.exitCode()!=0) {
+                save.kill(); save.waitForFinished(); status->setText("Could not save orientation. The preview will revert."); return;
+            }
+            timer.stop(); remaining=0; screens->setEnabled(true); rotations->setEnabled(true); screens->setItemData(screens->currentIndex(),rotations->currentData()); keep->hide(); apply->setEnabled(true); status->setText("Orientation saved for the installed system.");});
         connect(&timer,&QTimer::timeout,this,[this]{if(remaining==1){revert();return;} --remaining;status->setText(QString("Reverting in %1 seconds…").arg(remaining));});
         auto* motion=new QCheckBox("Reduce background motion",this); motion->setChecked(QFile::exists("/run/anima-reduced-motion")); box->addWidget(motion);
         connect(motion,&QCheckBox::toggled,this,[](bool off){QFile f("/run/anima-reduced-motion");if(off) f.open(QIODevice::WriteOnly); else f.remove();});

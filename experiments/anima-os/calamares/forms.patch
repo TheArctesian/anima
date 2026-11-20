@@ -22,8 +22,8 @@
 +    form->addWidget(new QLabel("Variant",this)); form->addWidget(variants);
 +    form->addWidget(new QLabel("Test your keyboard",this)); form->addWidget(ui->LE_TestKeyboard);
 +    form->addStretch();
-+    for(auto* combo : findChildren<QComboBox*>()) combo->setMaximumWidth(760);
-+    ui->LE_TestKeyboard->setMaximumWidth(760);
++    for(auto* combo : findChildren<QComboBox*>()) combo->setMaximumWidth(1100);
++    ui->LE_TestKeyboard->setMaximumWidth(1100);
 --- a/src/modules/users/UsersPage.cpp
 +++ b/src/modules/users/UsersPage.cpp
 @@ -188,0 +189,10 @@
@@ -35,7 +35,7 @@
 +    form->addWidget(new QLabel("Password — at least 12 characters",this)); form->addWidget(ui->textBoxUserPassword);
 +    form->addWidget(new QLabel("Confirm password",this)); form->addWidget(ui->textBoxUserVerifiedPassword);
 +    form->addWidget(ui->labelUserPasswordError);
-+    ui->textBoxUserPassword->setMaximumWidth(760); ui->textBoxUserVerifiedPassword->setMaximumWidth(760);
++    ui->textBoxUserPassword->setMaximumWidth(1100); ui->textBoxUserVerifiedPassword->setMaximumWidth(1100);
 +    form->addStretch();
 --- a/src/calamares/progresstree/ProgressTreeDelegate.cpp
 +++ b/src/calamares/progresstree/ProgressTreeDelegate.cpp

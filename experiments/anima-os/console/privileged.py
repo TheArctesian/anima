@@ -8,7 +8,7 @@ import sys
 import threading
 from commands import connect, networks, run, status
 from hosted import Account
-from orientation import outputs, rotate
+from orientation import outputs, rotate, save_rotation
 
 
 class Session:
@@ -44,6 +44,9 @@ class Session:
     def dispatch(self, op, args):
         if op == 'status':
             return status()
+        if op == 'radio-on':
+            run(['nmcli', 'radio', 'wifi', 'on'])
+            return status()
         if op == 'scan':
             return networks()
         if op == 'connect':
@@ -56,6 +59,7 @@ class Session:
             with self.rotation_lock:
                 if self.rotation is None:
                     raise ValueError('The display preview expired. Apply it again.')
+                save_rotation(self.rotation[0])
                 self.revert_timer.cancel()
                 self.rotation = None
             return {}
@@ -84,7 +88,7 @@ class Session:
         if op == 'diagnostics':
             return {'network': run(['nmcli', '-t', '-f', 'STATE,CONNECTIVITY', 'general']),
                     'radio': run(['rfkill', '--json']), 'root': run(['findmnt', '-n', '-o', 'OPTIONS', '/']),
-                    'monitoring': status()['daemon']}
+                    'monitoring': status()['daemon'], 'wifi_backend': status()['supplicant']}
         raise ValueError('Unsupported operation.')
 
 

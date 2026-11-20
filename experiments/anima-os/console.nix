@@ -16,9 +16,12 @@ let
   };
   console = pkgs.writeShellApplication {
     name = "anima-console";
-    runtimeInputs = [ python ];
+    runtimeInputs = [ python pkgs.xrandr ];
     text = ''
       ulimit -c 0
+      export QT_FONT_DPI=96
+      QT_SCALE_FACTOR=$(python3 ${./display/scale.py})
+      export QT_SCALE_FACTOR
       export QT_PLUGIN_PATH="${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}"
       export QTWEBENGINE_RESOURCES_PATH="${pkgs.qt6.qtwebengine}/resources"
       export QTWEBENGINE_LOCALES_PATH="${pkgs.qt6.qtwebengine}/qtwebengine_locales"

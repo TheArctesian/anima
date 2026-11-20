@@ -107,7 +107,8 @@ def installed_checks(machine, password, output):
     machine.command('command -v lspci; command -v nmcli; systemctl is-active NetworkManager; systemctl show -p Result --value anima-keymap | grep -qx success; systemctl show -p ExecMainStartTimestampMonotonic --value anima-keymap | grep -qv "^0$"; test -s /persist/console.map')
     machine.command('nmcli -g NAME connection show | grep -qx anima-fixture')
     machine.command("podman info --format '{{.Host.Security.Rootless}}' | grep -qx true", timeout=60)
-    from console_checks import installed_console
+    from console_checks import installed_console, installed_wifi
+    installed_wifi(machine, password)
     installed_console(machine, output, password)
     machine.send('sudo -s'); machine.expect('password for admin:'); machine.send(password)
     machine.expect(r'root@anima:[^\r\n]*#')

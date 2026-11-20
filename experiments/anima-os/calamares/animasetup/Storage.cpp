@@ -26,7 +26,7 @@ void Setup::storage() {
         auto disk = value.toObject();
         if (disk["eligible"].toBool()) systemDisk->addItem(diskText(disk), disk["path"].toString());
     }
-    systemDisk->setMaximumWidth(760); layout->addWidget(systemDisk);
+    systemDisk->setMaximumWidth(1100); layout->addWidget(systemDisk);
     layout->addWidget(description("This disk will be erased. Its remaining space is available for workloads.",page));
     layout->addSpacing(16);
     layout->addWidget(description("Additional data drives — optional", page));
