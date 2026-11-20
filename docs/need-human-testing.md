@@ -2420,3 +2420,85 @@ extensions of a real hub, at other widths or on a phone.
    Expected: no part lies over another; the tiles go to fewer columns.
 
 Result: Open.
+
+### HT-073: labels in sentence case in the whole application (R-279)
+
+Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
+`apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
+1280 px, in the dark and the light appearance. No person saw the other screens, a desktop window or a phone.
+
+1. Open "Devices" in a desktop window, in the dark and the light appearance.
+   Expected: the column heads read "Name", "Status", "24 h", "Last 50 checks", "Usage", "Connect", and a group head
+   reads for example "Needs a look 1". No word is in capitals. A group head is easy to tell from a device row.
+2. Select the grid view.
+   Expected: the group heads are the same as in the list.
+3. Open the logs panel, a project's commits, "Agent usage", "Projects" and "Settings".
+   Expected: each head of a day, a column or a group is in sentence case, and is still seen as a head.
+4. Open "Devices" and "Settings" on a phone.
+   Expected: the group heads and the section labels are in sentence case.
+
+Result: Open.
+
+### HT-071: the layout of the Devices list (R-278)
+
+Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
+`apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
+a device that is down shows no usage, and in a browser at 1280 px that three rows have one height. The list was looked
+at only in pictures of the web client with sample devices, at 800, 1280 and 1600 px. No person saw it in a desktop
+window with real devices.
+
+1. Open "Devices" as a list, in a window about 1280 px wide, with a device that is down and a device with metrics.
+   Expected: each row has the same height. The column heads are "Name", "Status", "24 h", "Last 50 checks", "CPU",
+   "Memory", "Disk" and "Connect", each on one line and on the edge of its cells.
+2. Look at the device that is down.
+   Expected: "Down" with a red dot and no fill, then how long, for example "over 15 min". Under it the reason; a click
+   on the reason opens the checks of the device. The usage is a dash. The row has no "+ VNC".
+3. Look at a device with metrics and at a device with none.
+   Expected: three values with a thin bar under each, under the words of the column head; "No metrics" for the other.
+4. Look at a device with a long name and an IPv6 address.
+   Expected: the name is whole where the window has room. The address shows its first two and its last two groups; the
+   pointer on it shows the whole address.
+5. Look at a device that is up and has a MAC address, and at one with no screen sharing.
+   Expected: no "Wake" in the row. "+ VNC" has no dashed border and opens the setup as before.
+6. Make the window narrow (below 1100 px) and select the grid view.
+   Expected: no part lies over another. In a narrow list the reason of a problem stands where the usage was.
+7. Stop a device that has two ways in and a MAC address (for example VNC and Web), and wait until the list says Down.
+   Expected: its row has the same height as before and the rows below do not jump. Its buttons are three icons on one
+   line; the pointer on each shows its name ("VNC", "Web", "Wake").
+8. Load the page again and look at the line under "Devices" before the list comes.
+   Expected: a quiet block, never "0 devices". When the counts come, nothing below them moves.
+9. Wait until the page stands still, then open "Tags", "Site" and the sort menu with the pointer.
+   Expected: the page does not scroll and the toolbar does not move.
+
+Result: Open.
+
+
+### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
+`apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,
+`apps/client/src/lib/devices/screen/DeviceScreen.svelte` and `Skeleton.svelte`, `apps/client/src/lib/devices/list/Meters.svelte`.
+The tests prove which element plays a fade and the order of the rows. The motion was measured frame by frame in
+headless WebKit with sample devices. No person saw it in a desktop window, at the frame rate of a real screen, or on a phone.
+
+1. Open "Devices" as a list in a desktop window. Set a device of a group to a different status (for example, stop the
+   link of a computer that is up), and keep the pointer away from the list.
+   Expected: the rows slide to their new places. A group title that appears ("Needs a look") fades in where it stands;
+   a group title that empties fades out, then the rows under it close the gap.
+2. Do step 1 again with the pointer on a row of the list.
+   Expected: no row moves while the pointer is on the list; the status word of the device changes in its place. When
+   the pointer leaves the list, the rows slide to their new places.
+3. Select "Grid", then "List".
+   Expected: the two views cross-fade in place. Nothing slides and nothing flashes.
+4. Filter with a count of the count line (for example "1 down"), then clear it.
+   Expected: the rows that go fade out where they stand; the rows that come fade in.
+5. Open "Devices" on a slow connection to the hub (or right after the hub starts), as a list and as a grid.
+   Expected: if the skeleton shows, its column heads, first group title and rows are where the data comes; the data
+   fades in over it with no jump.
+6. Watch the CPU value of a device with metrics for a minute.
+   Expected: a new value cross-fades over the old one; it does not count. Set Settings, Appearance, "Reduce motion":
+   the bar under the value is at its new length at once.
+7. Do steps 1 to 4 with "Reduce motion" on.
+   Expected: no row slides; rows and views fade only.
+
+Result: Open.

@@ -3,13 +3,18 @@
   import type { IconName } from '$lib/icons/icons';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { barRow, type Bar, type BarReadings } from '$lib/metrics/bars/bars';
+  import { motionPreference } from '$lib/motion/preference';
+  import { crossFade } from '$lib/motion/roles/transitions';
 
   interface Props {
     readings: BarReadings | null;
     source: MetricsSource | null | undefined;
+    /** The list's form: the value over its bar in a fixed slot, the words in the column head (row H of the site language plan). */
+    compact?: boolean;
   }
 
-  const { readings, source }: Props = $props();
+  const { readings, source, compact = false }: Props = $props();
+  const preference = motionPreference();
   const row = $derived(barRow(readings, source));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
   const ICONS: Record<Bar['key'], IconName> = {
@@ -26,10 +31,10 @@
 {#if row.kind === 'empty'}
   <span class="none">{row.text}</span>
 {:else}
-  <span class="meters">
+  <span class="meters" class:compact class:reduced={preference.reduced}>
     {#each row.bars as bar (bar.key)}
       <span
-        class="meter"
+        class="meter {bar.key}"
         class:degraded={bar.degraded}
         role={bar.percent === null ? undefined : 'meter'}
         aria-label={bar.percent === null ? undefined : bar.label}
@@ -40,7 +45,10 @@
         title={bar.tooltip}
       >
         <span class="word"><Icon name={ICONS[bar.key]} size="sm" />{WORDS[bar.key]}</span>
-        <span class="value">{bar.text}</span>
+        <!-- A new value cross-fades over the old one in one cell; it never counts (MET-008, MOT-008). -->
+        <span class="slot">
+          {#key bar.text}<span class="value" transition:crossFade>{bar.text}</span>{/key}
+        </span>
         <span class="track" aria-hidden="true"><span class="fill" style:--fill={(bar.percent ?? 0) / 100}></span></span>
       </span>
     {/each}
@@ -84,7 +92,12 @@
     color: var(--text-quiet);
   }
 
+  .slot {
+    display: grid;
+  }
+
   .value {
+    grid-area: 1 / 1;
     font-variant-numeric: tabular-nums;
     line-height: var(--leading-tight);
   }
@@ -106,6 +119,20 @@
     transition: transform var(--duration-base) var(--ease-enter);
   }
 
+  /*
+   * The list: three slots of one width, so each row has one height and the values stand under the words of the column
+   * head. The memory of a GPU is not in the list: the tile and the device page show it.
+   */
+  .compact {
+    grid-template-columns: repeat(3, var(--usage-slot));
+    gap: var(--space-3);
+  }
+
+  .compact .word,
+  .compact .vram {
+    display: none;
+  }
+
   .degraded {
     color: var(--status-warning-text);
   }
@@ -118,9 +145,8 @@
     background: var(--status-warning);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .fill {
-      transition: none;
-    }
+  /* The OS or the Settings choice (MOT-043): the bar is at its new length at once. */
+  .reduced .fill {
+    transition: none;
   }
 </style>
