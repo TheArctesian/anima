@@ -100,6 +100,7 @@ pub struct Subscription(
     checks::graphql::Subscription,
     events::graphql::Subscription,
     metrics::graphql::Subscription,
+    reminders::graphql::Subscription,
     sessions::graphql::Subscription,
     sources::graphql::Subscription,
     sources::graphql::GithubConnectSubscription,
@@ -143,6 +144,9 @@ pub struct Dependencies {
     /// The file store and its data keys (K-E4 Section 9): the `/files/v1` routes get a clone of
     /// this same value. [`files::Store::off`] when `ANIMA_FILES_DIR` is not set.
     pub files: files::Store,
+    /// The hub's one way to the open applications (K-E6 Section 5): the sender of the reminders
+    /// gets a clone of this same value, so it counts the open `reminderFirings`.
+    pub reminders: reminders::Live,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -169,6 +173,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         vpn_broker,
         sources,
         files,
+        reminders,
     } = dependencies;
     let builder = harden(
         Schema::build(
@@ -230,6 +235,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(links::TitleSources::new(vec![places::record_titles()]))
         // places: the later domains that hold a PlaceId (none yet)
         .data(places::Holders::default())
+        // reminders: the open applications (K-E6 Section 5)
+        .data(reminders)
         .finish()
 }
 

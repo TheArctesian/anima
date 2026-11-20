@@ -7,6 +7,7 @@ pub mod channel_input;
 pub mod channel_list;
 pub mod channel_remove;
 pub mod channel_test;
+pub mod channel_topic;
 pub mod channel_write;
 pub mod deliveries;
 pub mod documents;

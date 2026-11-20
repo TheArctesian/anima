@@ -1212,9 +1212,10 @@ Observation (2026-11-19; the operator, from screenshots of a local build of `mai
 
 ### HT-043: a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010)
 
-Built: on the branch `engine/e0-7-reminders`. The hub evaluates reminder rules each minute and sends
-each firing through the notification channels. `anima reminder` makes and changes rules, and shows,
-snoozes and acknowledges firings.
+Built: on `dev`, and steps 9 and 10 on the branch `engine/e0-7-firings-subscription`. The hub evaluates
+reminder rules each minute and sends each firing through the notification channels. `anima reminder`
+makes and changes rules, and shows, snoozes and acknowledges firings. `anima reminder watch` is an
+open application: while it runs, the hub gives it each firing and sends none to a channel.
 
 The tests use a stopped clock, a database of the test and an HTTPS server of the test in the place of
 ntfy. Not covered: the task of each minute in a hub that runs for hours, a real ntfy server and the
@@ -1243,6 +1244,11 @@ ntfy app on a phone, the text on a real lock screen, and a change of the clocks 
 8. Run `anima reminder set <rule> --message "Changed"` for the rule of step 2 in the minute before it
    is due again on the next day, or run `anima reminder disable <rule>`. Expected: a firing that
    waited is `SUPPRESSED` with the reason `rule_changed`, and the phone shows nothing.
+9. Run `anima reminder watch` in a second terminal and leave it open. Run `anima reminder test <rule>`
+   for the rule of step 2. Expected: in not more than 2 minutes the second terminal shows one line
+   with the time, the ID of the firing and `Stand up`, and the phone shows no notification. Stop the
+   command with Ctrl-C and run the test again. Expected: the phone shows the notification.
+10. Run `anima notify channel topic` two times. Expected: two different topics of 22 characters.
 
 Result: Open.
 
