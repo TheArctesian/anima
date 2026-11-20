@@ -47,7 +47,8 @@ pub use graphql::AuthPayload;
 pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired, operator_only};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
-pub use login::hosted::{HostedDevice, sign_in_hosted};
+pub use login::browser_ticket::{BrowserTickets, TICKET_BYTES};
+pub use login::hosted::{BrowserSession, HostedDevice, sign_in_hosted, sign_in_hosted_browser};
 pub use origin::PublicOrigin;
 pub use password::Password;
 pub use rebinding::loopback_names_layer;
@@ -60,6 +61,13 @@ use crate::{
     },
     ids::OperatorId,
 };
+
+/// The refusal of a browser call that does not come from the public origin (A-4), for a
+/// domain that has such a call of its own: the browser sign-in of a hosted hub (HMD-061).
+#[must_use]
+pub fn other_origin() -> async_graphql::Error {
+    Error::OtherOrigin.into_graphql()
+}
 
 /// Random bytes from the operating system, for a secret of another domain (a claim of a hosted
 /// hub, R-129).

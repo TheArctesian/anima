@@ -9,6 +9,7 @@
 use std::{path::Path, sync::Arc};
 
 use async_graphql::{Context, Object, Result, SimpleObject};
+use axum::http::header::SET_COOKIE;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
@@ -23,7 +24,7 @@ use crate::{
     clock::Clock,
     config::{Config, LINK_DEVICES},
     fleet::{
-        access::{self, AuthPayload},
+        access::{self, AuthPayload, BrowserTickets, SameOrigin, TICKET_BYTES},
         events::{self, ActorKind, Bus, ClientAddr, NewEvent, Severity, Source},
     },
 };
@@ -32,6 +33,8 @@ const NOT_HOSTED: &str = "This hub is not hosted by Anima.ing.";
 const WRONG_KEY: &str = "The cloud key is wrong.";
 /// How long the claim of a device that is already on the link works: as long as an invite.
 const CLAIM_LIFE: chrono::TimeDelta = chrono::TimeDelta::minutes(15);
+const WRONG_TICKET: &str = "The ticket is used, expired or wrong.";
+const TOO_MANY_TICKETS: &str = "Too many browser tickets are open. Try again in a minute.";
 const WRONG_CLAIM: &str =
     "The claim is used, expired or wrong, or this device did not join with its invite.";
 
@@ -43,6 +46,21 @@ pub struct HostedDeviceInvite {
     invite: Option<String>,
     /// The one-time claim that the device that joined with `invite` trades for its token.
     claim: String,
+    expires_at: DateTime<Utc>,
+}
+
+/// K1 `HostedBrowserTicket`: shown once to the cloud. No `Debug`.
+#[derive(SimpleObject)]
+pub struct HostedBrowserTicket {
+    /// The one-time ticket that the gateway trades for the session cookie of the hub.
+    ticket: String,
+    expires_at: DateTime<Utc>,
+}
+
+/// K1 `HostedBrowserSignIn`: the token is only in the cookie of the answer, never in its body.
+#[derive(SimpleObject)]
+pub struct HostedBrowserSignIn {
+    /// When the session ends at the latest; it ends sooner after 30 minutes with no request.
     expires_at: DateTime<Utc>,
 }
 
@@ -102,6 +120,52 @@ impl HostedMutation {
             invite,
             claim,
             expires_at: expires,
+        })
+    }
+
+    /// A one-time ticket for a browser of the account, for the Anima.ing cloud only: it sends
+    /// the key of `ANIMA_HOSTED_CLOUD_KEY_FILE`. The gateway trades the ticket at once with
+    /// `hostedBrowserSignIn`. Needs no token (HMD-061).
+    async fn hosted_browser_ticket(
+        &self,
+        ctx: &Context<'_>,
+        cloud_key: String,
+    ) -> Result<HostedBrowserTicket> {
+        check_cloud_key(&cloud_key_file(ctx)?, &cloud_key).await?;
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        let ticket =
+            URL_SAFE_NO_PAD.encode(access::random_bytes::<TICKET_BYTES>().map_err(internal)?);
+        let expires_at = schema_dependency::<BrowserTickets>(ctx)?
+            .open(&ticket, now)
+            .ok_or_else(|| coded(TOO_MANY_TICKETS, ErrorCode::Unavailable))?;
+        ctx.insert_http_header("cache-control", "no-store");
+        Ok(HostedBrowserTicket { ticket, expires_at })
+    }
+
+    /// The session cookie of this hub for the browser that the gateway serves, in trade for
+    /// `ticket`. The gateway sends it from the public origin and gives the `Set-Cookie` of the
+    /// answer to the browser; the ticket is never in an address and never in the browser. The
+    /// ticket works once. Needs no token (HMD-061, HMD-062).
+    async fn hosted_browser_sign_in(
+        &self,
+        ctx: &Context<'_>,
+        ticket: String,
+    ) -> Result<HostedBrowserSignIn> {
+        cloud_key_file(ctx)?;
+        if ctx.data_opt::<SameOrigin>().is_none() {
+            return Err(access::other_origin());
+        }
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        if !schema_dependency::<BrowserTickets>(ctx)?.use_ticket(&ticket, now) {
+            return Err(coded(WRONG_TICKET, ErrorCode::Unauthenticated));
+        }
+        let client = *schema_dependency::<ClientAddr>(ctx)?;
+        let (db, bus) = (pool(ctx)?, schema_dependency::<Bus>(ctx)?);
+        let session = access::sign_in_hosted_browser(db, bus, client, now).await?;
+        ctx.insert_http_header("cache-control", "no-store");
+        ctx.append_http_header(SET_COOKIE, session.set_cookie);
+        Ok(HostedBrowserSignIn {
+            expires_at: session.expires_at,
         })
     }
 

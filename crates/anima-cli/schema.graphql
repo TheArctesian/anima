@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite` and `claimDeviceToken` (API-003, D-4, R-111, R-129).
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket` and `hostedBrowserSignIn` (API-003, D-4, R-111, R-129, HMD-061).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -1872,6 +1872,19 @@ type HostedDeviceInvite {
   expiresAt: DateTime!
 }
 
+"""What a hosted hub gives the Anima.ing cloud for a browser of its account (hosted-mode.md HMD-061): shown once, never logged (LOG-007)."""
+type HostedBrowserTicket {
+  "The one-time ticket that the gateway trades for the session cookie of the hub (hostedBrowserSignIn). It works once, for 60 seconds."
+  ticket: String!
+  expiresAt: DateTime!
+}
+
+"""What hostedBrowserSignIn answers (hosted-mode.md HMD-061, HMD-062). The token is only in the Set-Cookie of the answer, never in its body."""
+type HostedBrowserSignIn {
+  "When the session ends at the latest: 12 hours after the sign-in. It ends sooner after 30 minutes with no request; an open socket counts as a request."
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -3597,6 +3610,10 @@ type Mutation {
   hostedDeviceInvite(cloudKey: String!, name: String!): HostedDeviceInvite!
   "A login token for the device that sends this through the link, when it joined with the invite of claim. The claim works once, until its invite expires. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for any other refusal. The response is no-store."
   claimDeviceToken(claim: String!): AuthPayload!
+  "A one-time ticket for a browser of the account, for the Anima.ing cloud only: cloudKey is the key of ANIMA_HOSTED_CLOUD_KEY_FILE. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for a wrong key, UNAVAILABLE when too many tickets are open. Writes nothing to a log or an entry (LOG-007; HMD-061)."
+  hostedBrowserTicket(cloudKey: String!): HostedBrowserTicket!
+  "The browser session of this hub in trade for ticket: the answer sets the __Host-anima cookie (Secure, HttpOnly, SameSite=Strict, Path=/, Max-Age 12 hours). The gateway of the pool sends it for the browser, with Origin of the public origin of the hub, and passes the Set-Cookie on; the ticket is never in an address. The ticket works once. Needs no token. FORBIDDEN on a hub that is not hosted and for a request that does not come from the public origin; UNAUTHENTICATED for a ticket that is used, expired or wrong. Writes an audit entry and an event (HMD-061, HMD-062)."
+  hostedBrowserSignIn(ticket: String!): HostedBrowserSignIn!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
   "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."
