@@ -10,12 +10,14 @@ import { carry, changed } from "../src/merge/carry.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { isDocument } from "../src/gates/tier.ts";
 import { parseMergeRule } from "../src/merge/rules.ts";
-import { members, stack } from "../src/merge/stack.ts";
-import { batch, firstHalf, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
+import { members, stack, type LeftOut } from "../src/merge/stack.ts";
+import { batch, firstHalf, leftOutSaid, oneLine, standing, TRAIN, trainName, verdict, type GatesRun, type Tip } from "../src/merge/train.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const INTO = "dev";
 const NOTES = "refs/notes/train";
+/** The notes of the tips that a train left out: the time, then the reason in one line. */
+const LEFT_OUT = "refs/notes/train-left-out";
 /** A run that was just started is not in the list of GitHub at once: a train this young waits. */
 const YOUNG_SECONDS = 180;
 
@@ -49,11 +51,22 @@ function gatesRuns(): GatesRun[] {
   return JSON.parse(must(["gh", "run", "list", "--workflow", "gates.yml", "--limit", "400", "--json", fields])) as GatesRun[];
 }
 
+/** Each commit that has a note in `ref`, with the text of the note. */
+function notes(ref: string): Map<string, string> {
+  run(["git", "fetch", "--quiet", "origin", `+${ref}:${ref}`]);
+  const noted = run(["git", "notes", "--ref", ref, "list"]).out.split("\n").map((line) => line.split(" ")[1] ?? "");
+  return new Map(noted.filter((sha) => sha !== "").map((sha) => [sha, run(["git", "notes", "--ref", ref, "show", sha]).out]));
+}
+
 /** The tips that failed alone in a train, with the time of that failure (the first line of the note). */
 function refused(): Map<string, string> {
-  run(["git", "fetch", "--quiet", "origin", `+${NOTES}:${NOTES}`]);
-  const noted = run(["git", "notes", "--ref", NOTES, "list"]).out.split("\n").map((line) => line.split(" ")[1] ?? "");
-  return new Map(noted.filter((sha) => sha !== "").map((sha) => [sha, run(["git", "notes", "--ref", NOTES, "show", sha]).out.split("\n")[0] ?? ""]));
+  return new Map([...notes(NOTES)].map(([sha, text]) => [sha, text.split("\n")[0] ?? ""]));
+}
+
+/** Keeps the reason that a train left a tip out, so that `--plan` and the next steps say it. */
+function noteLeftOut(each: LeftOut, sha: string, now: Date): void {
+  run(["git", "notes", "--ref", LEFT_OUT, "add", "--force", "-m", `${now.toISOString()}\n${oneLine(each.reason)}`, sha]);
+  run(["git", "push", "--quiet", "origin", LEFT_OUT]);
 }
 
 function refuse(tip: Tip, now: Date): void {
@@ -134,7 +147,10 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
 
 /** Says, for each branch that is not in `dev` and not ready, why the next train does not take it. */
 function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
+  const left = notes(LEFT_OUT);
   for (const each of standing(tips(), runs, refused(), inDev)) {
+    const said = leftOutSaid(each.tip.branch, left.get(each.tip.sha));
+    if (said !== undefined) say(said);
     // An old branch that nobody pushed since the gates exist has no run; only the plan names those.
     const quiet = also === "with-a-run" && each.reason === "its gates did not run for its tip";
     if (each.reason !== undefined && !quiet) say(`${each.tip.branch} is not taken: ${each.reason}`);
@@ -152,7 +168,11 @@ function build(wanted: Tip[], now: Date): void {
   if (wanted.length === 0) return say("no branch is ready: each is in dev, or has a reason above");
   const base = must(["git", "rev-parse", "HEAD"]);
   const made = stack(REPO_ROOT, wanted, finish);
-  for (const each of made.leftOut) say(`${each.branch} is left out: ${each.reason}. Merge origin/${INTO} into the branch and solve it there.`);
+  for (const each of made.leftOut) {
+    say(`${each.branch} is left out: ${oneLine(each.reason)}. Merge origin/${INTO} into the branch and solve it there.`);
+    const sha = wanted.find((tip) => tip.branch === each.branch)?.sha;
+    if (sha !== undefined) noteLeftOut(each, sha, now);
+  }
   if (made.merged.length === 0) return say("no branch of the batch merges with dev: no train");
   const name = trainName(base, now);
   must(["git", "push", "--quiet", "origin", `HEAD:refs/heads/${name}`]);
