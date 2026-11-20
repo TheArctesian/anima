@@ -18,4 +18,4 @@ rsvg-convert /tmp/anima-hero.svg -o experiments/anima-os/branding/hero.png
 The fullscreen installer blends this still behind welcome/completion content with a slow drift; reduced motion disables that animation. Automatic screensaver, locking and
 sleep are disabled during installation. This does not add a desktop to the installed server.
 
-`wordmark.svg` is the operator-supplied vector wordmark. `settings.svg`, `back.svg` and `next.svg` use IBM Carbon paths (Apache-2.0), matching `apps/client/src/lib/icons/shapes.ts`. The current installer uses Graphite #1B1D21 and frost #88C0D0 with IBM Plex Sans.
+`wordmark.svg` is the operator-supplied vector wordmark. `settings.svg`, `back.svg`, `next.svg`, `power.svg` and `restart.svg` use IBM Carbon paths (Apache-2.0), matching `apps/client/src/lib/icons/shapes.ts`. The current installer uses Graphite #1B1D21 and frost #88C0D0 with IBM Plex Sans.

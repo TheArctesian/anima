@@ -6,7 +6,7 @@ QPushButton, QComboBox { background: #23262B; border: 1px solid #3B4048; border-
 QPushButton:hover { border-color: #88C0D0; }
 QPushButton:focus, QLineEdit:focus, QComboBox:focus { border: 1px solid #88C0D0; }
 QPushButton:disabled { color: #747B86; }
-QPushButton#view-button-next { background: #88C0D0; color: #16181B; }
+QPushButton#view-button-next, QPushButton#animaRestart { background: #88C0D0; color: #16181B; }
 QLineEdit { color: #FFFFFF; background: #16181B; border: 1px solid #3B4048; border-radius: 4px; padding: 6px; }
 QAbstractItemView { color: #E6E7E9; background: #1B1D21; selection-background-color: #30434B; selection-color: white; border: none; }
 QCheckBox { spacing: 10px; padding: 6px 0; }

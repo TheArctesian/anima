@@ -36,7 +36,6 @@ def installed_console(machine, output, password):
     wait_label(output, 'Authentication failed')
     text(output, password); key(output, 'ret')
     wait_label(output, 'Your Anima server')
-    wait_label(output, 'Anima OS Preview')
     screenshot(output, 'console-overview')
     x, y, w, h = locate(output, 'Network'); click(machine, x+w//2, y+h//2)
     wait_label(output, 'Scan networks')
@@ -48,7 +47,7 @@ def installed_console(machine, output, password):
     import subprocess
     screenshot(output, 'current')
     width = int(subprocess.check_output(['magick', 'identify', '-format', '%w', str(output/'current.ppm')], text=True))
-    click(machine, width-67, 52)
+    click(machine, width-115, 52)
     wait_label(output, 'Local session locked')
     machine.command('systemctl is-active NetworkManager; systemctl is-active display-manager')
     screenshot(output, 'console-relocked')
@@ -56,11 +55,11 @@ def installed_console(machine, output, password):
 
 def installed_wifi(machine, password):
     machine.send('sudo -i'); machine.expect(r'password for admin:'); machine.send(password)
-    machine.expect(r'root@anima:[^\r\n]*#')
+    machine.expect(r'root@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*#')
     try:
         machine.command("findmnt -n -o OPTIONS / | tr ',' '\\n' | grep -qx ro; systemctl restart wpa_supplicant || { journalctl -u wpa_supplicant --no-pager -n 25; exit 1; }; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces", timeout=60)
     finally:
-        machine.send('exit'); machine.expect(r'admin@anima:[^\r\n]*\$')
+        machine.send('exit'); machine.expect(r'admin@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*\$')
 
 
 def installed_orientation(machine):

@@ -46,6 +46,8 @@ class Machine:
         ]
         if (directory / 'data.raw').exists():
             args.extend(['-drive', f'file={directory / "data.raw"},format=raw,if=virtio'])
+        if (directory / 'update-origin.raw').exists():
+            args.extend(['-device', 'pcie-root-port,id=update-port'])
         if boot_iso is not None:
             args.extend(["-cdrom", str(boot_iso), "-boot", "once=d"])
         self.process = subprocess.Popen(args, stdin=slave, stdout=slave, stderr=slave)
