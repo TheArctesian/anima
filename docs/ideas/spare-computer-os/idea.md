@@ -37,6 +37,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 15: automatic OS-update recovery | Decided | A: attempt the previous known-good system when the new OS fails boot or required local health checks. Bound retries and enter recovery if both versions fail. Hub unreachability alone does not trigger rollback. Check the daemon and local network configuration; report reconnection failure through available channels and retain manual rollback. Do not silently revert workload data. Bootloader support, watchdog behavior, health criteria and retry limits require implementation and tests. |
 | Decision 16: workload and host dependencies | Decided | A + B + C: separate workload environments by default; curated host integrations; supported custom host packages and services through a controlled configuration mechanism. This expands the supported customization scope beyond curated profiles. Keep the normal system root read-only; do not infer unrestricted imperative host writes or blanket agent authority. Custom configuration must participate in update, validation and recovery design. Exact accepted configuration surface and authorization remain open. |
 | Decision 17: agent authority for host changes | Decided | A by default, with B available: owner approval for each host change unless an explicit bounded standing grant covers it. Grants must have precise scope and be revocable. Broad administrator-agent mode C is not selected. Use the existing Anima permission/execution model; do not create a separate OS permission system or infer bypass of maintenance windows. Reconcile the proposal with existing owner requirements before implementation. |
+| Decision 18: resource priorities | Decided | A + D: service-first by default, with owner-selectable service-first, worker-first and balanced profiles. Reserve capacity for OS, remote management and recovery under every profile. Jobs use remaining capacity under service-first, and admission may wait. Explain effects of profile changes; do not silently kill running work. Existing scheduler/workload owners define enforcement, resource limits and admission behavior. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -73,7 +74,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 18: what should the machine prioritize when workload demand exceeds capacity? Alternatives: protect hosted applications and queue/throttle jobs; prioritize jobs; fair sharing; owner-defined profiles per machine. Recommendation: protect hosted apps by default with an optional worker profile. Reserve capacity for OS/Anima and recovery under every profile. Exact admission control, resource limits and scheduling remain with existing work/hosting owners. No selection yet.
+2. Decision 19: what may automatic storage cleanup remove? Options can be combined: verified regenerable caches and unused images; expired snapshots/logs/system generations under explicit retention and protected recovery rules; completed workspaces/artifacts only when explicitly marked disposable; alerts and admission limits without automatic deletion. Recommendation: regenerable material plus retention-governed history, never arbitrary workload data. No selection yet. Shared Btrfs capacity makes cleanup and admission control necessary design topics; exact thresholds and deletion eligibility remain open.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -152,6 +153,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 16 accepted A + B + C, explicitly including supported custom host dependencies. This supersedes the narrower recommendation to support only curated host changes. Preserve read-only normal operation through controlled configuration; host-change authorization is still undecided. Next: owner approval and agent grants.
 
 - 2026-11-19: Decision 17 accepted the recommendation: per-change owner approval by default, optional bounded standing grants. Broad administrator-agent mode is not selected. Next: workload priorities under resource contention.
+
+- 2026-11-19: Decision 18 accepted A + D: service-first default with owner-selectable profiles. Protect OS/management/recovery capacity and explain profile changes. Next: automatic cleanup boundaries for shared storage.
 
 ## Source text
 
@@ -248,3 +251,7 @@ In response to Decision 16:
 In response to Decision 17 (recommendation A default, B available):
 
 > Yeah I agree
+
+In response to Decision 18 (recommendation A + D):
+
+> agreeded
