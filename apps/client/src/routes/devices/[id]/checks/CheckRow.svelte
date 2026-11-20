@@ -20,7 +20,7 @@
 
   const { check, open, onHistory, onPause, onEdit, onDelete }: Props = $props();
   const text = $derived(checkRowText(check));
-  /** The tone of the status word: a dot and the word, as the Devices list draws a status (R-NEW-listlayout). */
+  /** The tone of the status word: a dot and the word, as the Devices list draws a status (row H of the site language plan). */
   const tone = $derived(check.paused ? 'paused' : check.status.toLowerCase());
   let pausing = $state(false);
   let failure = $state<HubError | null>(null);
