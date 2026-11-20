@@ -2,7 +2,6 @@
 //! comes from a file or standard input and never shows in anything the program prints
 //! (CMD-014, CMD-025).
 
-use std::os::unix::fs::PermissionsExt as _;
 use std::path::PathBuf;
 
 use serde_json::{Value, json};
@@ -26,7 +25,7 @@ fn secret_file(contents: &str, mode: u32) -> (TempDir, PathBuf) {
     let dir = tempfile::tempdir().expect("a folder");
     let path = dir.path().join("secret");
     std::fs::write(&path, contents).expect("a file");
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).expect("a mode");
+    crate::kit::file_access::mode(&path, mode);
     (dir, path)
 }
 
@@ -161,7 +160,7 @@ async fn cmd_025_a_file_others_can_read_is_refused_without_reading_it_out() {
         ])
         .await;
     assert_eq!(run.code, 1, "{run:?}");
-    assert!(run.stderr.contains("chmod 600"), "{}", run.stderr);
+    crate::kit::file_access::assert_refused(&run.stderr);
     run.assert_never_shows(PASSWORD);
     assert!(
         hub.seen()

@@ -1,10 +1,11 @@
 //! The copy of the root of a stopped hub, with the real programs (ROL-053, ROL-054; R-189).
 
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use super::{LOCAL_HUB, Rig, hub_address, hub_is_healthy, stop, tree};
+use super::{Rig, hub_address, hub_is_healthy, local_hub, platform, stop, tree};
 
 fn copy(rig: &Rig, to: &Path) -> Output {
     rig.command("copy")
@@ -17,8 +18,9 @@ fn copy(rig: &Rig, to: &Path) -> Output {
 }
 
 fn check(copy: &Path) -> Output {
-    Command::new(LOCAL_HUB)
-        .env_clear()
+    let mut command = Command::new(local_hub());
+    platform::environment(&mut command);
+    command
         .arg("check-copy")
         .arg(copy)
         .arg("--tree")
@@ -101,13 +103,16 @@ fn rol_054_a_copy_with_a_changed_file_or_a_dump_that_does_not_read_fails_its_che
         "{said}"
     );
     std::fs::write(&key, &whole).unwrap();
-    let opened = check(&to);
-    let said = String::from_utf8_lossy(&opened.stderr).into_owned();
-    assert!(
-        said.contains("different mode"),
-        "a key that others can read: {said}"
-    );
-    std::fs::set_permissions(&key, std::fs::Permissions::from_mode(0o600)).unwrap();
+    #[cfg(unix)]
+    {
+        let opened = check(&to);
+        let said = String::from_utf8_lossy(&opened.stderr).into_owned();
+        assert!(
+            said.contains("different mode"),
+            "a key that others can read: {said}"
+        );
+        std::fs::set_permissions(&key, std::fs::Permissions::from_mode(0o600)).unwrap();
+    }
     assert!(check(&to).status.success(), "the copy is whole again");
 
     // A dump of the right size and digest in the list, which is no dump: only pg_restore says.

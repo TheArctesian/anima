@@ -141,6 +141,7 @@ impl Origin {
 
 /// The path of a socket: absolute, with no `.`, `..` or empty part, and short enough to bind.
 /// The count of the parts refuses what the path type drops without a word (`/./`, `//`).
+#[cfg(unix)]
 fn socket_path(text: &str) -> Result<PathBuf, OriginError> {
     let path = Path::new(text);
     let plain = path.is_absolute()
@@ -152,6 +153,29 @@ fn socket_path(text: &str) -> Result<PathBuf, OriginError> {
             .components()
             .all(|part| matches!(part, Component::RootDir | Component::Normal(_)))
         && path.components().count() == text.split('/').count();
+    if plain {
+        Ok(path.to_path_buf())
+    } else {
+        Err(OriginError::SocketPath)
+    }
+}
+
+#[cfg(windows)]
+fn socket_path(text: &str) -> Result<PathBuf, OriginError> {
+    use std::path::Prefix;
+    let normalized = text.replace('\\', "/");
+    let path = Path::new(text);
+    let drive = matches!(path.components().next(), Some(Component::Prefix(prefix)) if matches!(prefix.kind(), Prefix::Disk(_)));
+    let plain = drive
+        && path.is_absolute()
+        && path.file_name().is_some()
+        && !normalized.ends_with('/')
+        && text.len() <= LONGEST_SOCKET_PATH
+        && !text.chars().any(char::is_control)
+        && normalized
+            .split('/')
+            .skip(1)
+            .all(|part| !part.is_empty() && part != "." && part != ".." && !part.contains(':'));
     if plain {
         Ok(path.to_path_buf())
     } else {
@@ -182,15 +206,15 @@ mod tests {
 
     #[test]
     fn k8_1_the_socket_of_the_link_is_an_origin() {
-        let link = Origin::parse("unix:/home/me/.config/anima-daemon/link.sock").expect("a link");
-        assert_eq!(
-            link.as_text(),
-            "unix:/home/me/.config/anima-daemon/link.sock"
-        );
-        assert_eq!(
-            link.reach(),
-            Reach::LinkSocket(Path::new("/home/me/.config/anima-daemon/link.sock"))
-        );
+        let path = if cfg!(windows) {
+            "C:/Users/me/AppData/Local/Anima/daemon/link.sock"
+        } else {
+            "/home/me/.config/anima-daemon/link.sock"
+        };
+        let origin = format!("unix:{path}");
+        let link = Origin::parse(&origin).expect("a link");
+        assert_eq!(link.as_text(), origin);
+        assert_eq!(link.reach(), Reach::LinkSocket(Path::new(path)));
     }
 
     #[test]

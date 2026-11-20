@@ -1,10 +1,11 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BACKUP, DATABASE, RESTORE_CHECK, backUp, createDatabase, shimDirectory, backupFiles, resetSample, run, state, tearDownSample, toolDirectory } from "./backup-fixture.ts";
 
-beforeEach(resetSample);
-afterAll(tearDownSample);
+if (process.platform !== "win32") beforeEach(resetSample);
+if (process.platform !== "win32") afterAll(tearDownSample);
 
 function writeOld(stamp: string): string {
   const path = join(state.backupDir, `anima-${stamp}.dump`);
@@ -17,7 +18,7 @@ function utcStamp(daysAgo: number): string {
   return new Date(Date.now() - daysAgo * 86_400_000).toISOString().replace(/[-:]|\.\d+/g, "");
 }
 
-describe("backup.sh files (DB-007, VPS-006)", () => {
+describe.skipIf(process.platform === "win32")("backup.sh files (DB-007, VPS-006)", () => {
   test("DB-007: one dump and one counts manifest are written, both mode 0600, no partial file stays", async () => {
     const path = await backUp();
     expect(backupFiles(".dump")).toEqual([path.split("/").pop() ?? ""]);
@@ -53,7 +54,7 @@ describe("backup.sh files (DB-007, VPS-006)", () => {
   });
 });
 
-describe("backup.sh failures (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("backup.sh failures (DB-007)", () => {
   test("DB-007: a failing pg_dump leaves no dump, removes a stale partial file and exits non-zero", async () => {
     writeFileSync(join(state.backupDir, "anima-20000101T000000Z.dump.partial"), "half a dump");
     const result = await run(BACKUP, [], { ANIMA_DB_NAME: "no_such_database" });
@@ -119,7 +120,7 @@ describe("backup.sh failures (DB-007)", () => {
   });
 });
 
-describe("backup.sh pruning (VPS-006)", () => {
+describe.skipIf(process.platform === "win32")("backup.sh pruning (VPS-006)", () => {
   test("VPS-006: pruning goes by the time in the name and removes dump and manifest together", async () => {
     const old = writeOld("20000101T000000Z");
     const recent = writeOld(utcStamp(1));

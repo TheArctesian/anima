@@ -16,11 +16,12 @@ mod database;
 mod entries;
 mod list;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::fs;
 use std::io;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -126,7 +127,13 @@ fn new_place(to: &Path) -> Result<(), RootCopyError> {
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+    #[cfg(windows)]
+    if !anima_windows::files::secure(&above, false).map_err(io_error("inspect the copy folder"))? {
+        return Err(RootCopyError::SharedFolder);
+    }
+    #[cfg(unix)]
     let above = fs::metadata(above).map_err(io_error("look at the folder of the copy"))?;
+    #[cfg(unix)]
     if above.permissions().mode() & 0o022 != 0 {
         return Err(RootCopyError::SharedFolder);
     }

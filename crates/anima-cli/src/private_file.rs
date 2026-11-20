@@ -2,8 +2,13 @@
 //! moment it exists, and it is replaced by rename so a reader never sees half of it (CMD-012,
 //! as the agent does for MET-013).
 
-use std::fs::{self, DirBuilder, File};
+use std::fs;
+#[cfg(unix)]
+use std::fs::DirBuilder;
+#[cfg(unix)]
+use std::fs::File;
 use std::io::{self, Read as _, Write as _};
+#[cfg(unix)]
 use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _, PermissionsExt as _};
 use std::path::Path;
 
@@ -16,7 +21,11 @@ pub const LIMIT: usize = 1024 * 1024;
 pub enum PrivateFileError {
     #[error("{0}")]
     Io(#[from] io::Error),
-    #[error("it is not mode 0600 and owned by you; fix it with chmod 600")]
+    #[cfg_attr(windows, error("the file permissions allow access by another user"))]
+    #[cfg_attr(
+        unix,
+        error("it is not mode 0600 and owned by you; fix it with chmod 600")
+    )]
     Exposed,
     #[error("it is larger than {LIMIT} bytes")]
     TooLarge,
@@ -28,12 +37,18 @@ pub enum PrivateFileError {
 /// # Errors
 /// [`PrivateFileError`] when it is exposed, too large or cannot be read.
 pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError> {
-    let file = match File::open(path) {
+    #[cfg(unix)]
+    let opened = File::open(path);
+    #[cfg(windows)]
+    let opened = anima_windows::files::read(path, true);
+    let file = match opened {
         Ok(file) => file,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
     };
+    #[cfg(unix)]
     let metadata = file.metadata()?;
+    #[cfg(unix)]
     if metadata.permissions().mode() & 0o077 != 0 || metadata.uid() != running_user()? {
         return Err(PrivateFileError::Exposed);
     }
@@ -70,9 +85,14 @@ enum Replace {
 }
 
 fn save(dir: &Path, name: &str, bytes: &[u8], replace: Replace) -> Result<(), PrivateFileError> {
+    #[cfg(unix)]
     DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
+    #[cfg(windows)]
+    anima_windows::files::directory(dir)?;
     // `tempfile` creates the file `0600` and exclusively, so no other process can have it.
     let mut temporary = tempfile::Builder::new().prefix(".tmp-").tempfile_in(dir)?;
+    #[cfg(windows)]
+    anima_windows::files::protect(temporary.path())?;
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
     let destination = dir.join(name);
@@ -81,6 +101,7 @@ fn save(dir: &Path, name: &str, bytes: &[u8], replace: Replace) -> Result<(), Pr
         Replace::No => temporary.persist_noclobber(destination),
     }
     .map_err(|error| error.error)?;
+    #[cfg(unix)]
     File::open(dir)?.sync_all()?;
     Ok(())
 }
@@ -97,6 +118,7 @@ pub fn remove(path: &Path) -> Result<(), PrivateFileError> {
 }
 
 /// The user ID of this process: the owner of a file it creates.
+#[cfg(unix)]
 fn running_user() -> io::Result<u32> {
     Ok(tempfile::tempfile()?.metadata()?.uid())
 }

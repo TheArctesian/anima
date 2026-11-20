@@ -7,7 +7,7 @@ export interface Joined {
 }
 
 /** Why the device link is not up. */
-export type LinkDownReason = 'port-taken' | 'ended' | 'not-carried' | 'no-port';
+export type LinkDownReason = 'port-taken' | 'ended' | 'repeated-failure' | 'not-carried' | 'no-port';
 
 /** The device link of this computer, as `link_status` reports it. */
 export interface DeviceLinkStatus {
@@ -45,7 +45,7 @@ export type LinkResult<T> = { readonly ok: true; readonly value: T } | { readonl
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 const isPort = (value: unknown): value is number => Number.isInteger(value) && (value as number) > 0 && (value as number) < 65_536;
 const STATES: readonly unknown[] = ['stopped', 'starting', 'up', 'down'] satisfies DeviceLinkStatus['state'][];
-const REASONS: readonly unknown[] = ['port-taken', 'ended', 'not-carried', 'no-port'] satisfies LinkDownReason[];
+const REASONS: readonly unknown[] = ['port-taken', 'ended', 'repeated-failure', 'not-carried', 'no-port'] satisfies LinkDownReason[];
 const PATHS: readonly unknown[] = ['direct', 'relayed', 'none'] satisfies NonNullable<DeviceLinkStatus['path']>[];
 const absent = (value: unknown): boolean => value === undefined || value === null;
 

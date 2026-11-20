@@ -3,16 +3,22 @@
 //! followed and no path or text crosses in an error (LOG-007).
 
 use std::{
-    fs::{self, DirBuilder, Metadata},
+    fs,
     io::{self, Read},
-    os::unix::fs::{DirBuilderExt, MetadataExt},
     path::{Path, PathBuf},
+};
+
+#[cfg(unix)]
+use std::{
+    fs::{DirBuilder, Metadata},
+    os::unix::fs::{DirBuilderExt, MetadataExt},
 };
 
 use super::mach_o;
 use crate::builder::{artifact, error::BuilderError};
 
 /// Whether `kind` is a folder of this user that nobody else may write to.
+#[cfg(unix)]
 fn private(kind: &Metadata) -> bool {
     kind.is_dir() && kind.uid() == nix::unistd::geteuid().as_raw() && kind.mode() & 0o022 == 0
 }
@@ -21,6 +27,7 @@ fn private(kind: &Metadata) -> bool {
 /// earlier run left (D-1). The folder it is in must be this user's own, not writable by others,
 /// and reached through no link, so the removal cannot be sent elsewhere. A link at `folder` is
 /// removed as a link, never followed.
+#[cfg(unix)]
 pub fn renew(folder: &Path) -> Result<(), BuilderError> {
     let parent = folder.parent().ok_or(BuilderError::Bundle)?;
     let real = fs::canonicalize(parent).map_err(|_| BuilderError::Bundle)?;
@@ -92,4 +99,20 @@ fn first_bytes(clone: &Path, path: &Path) -> Result<Vec<u8>, BuilderError> {
         .read_to_end(&mut bytes)
         .map_err(|_| BuilderError::Bundle)?;
     Ok(bytes)
+}
+
+/// Recreate a Windows work folder only below a checked private parent.
+#[cfg(windows)]
+pub fn renew(folder: &Path) -> Result<(), BuilderError> {
+    let parent = folder.parent().ok_or(BuilderError::Bundle)?;
+    anima_windows::files::directory(parent).map_err(|_| BuilderError::Bundle)?;
+    match fs::symlink_metadata(folder) {
+        Ok(_) => {
+            anima_windows::files::directory(folder).map_err(|_| BuilderError::Bundle)?;
+            fs::remove_dir_all(folder).map_err(|_| BuilderError::Bundle)?;
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(_) => return Err(BuilderError::Bundle),
+    }
+    anima_windows::files::directory(folder).map_err(|_| BuilderError::Bundle)
 }

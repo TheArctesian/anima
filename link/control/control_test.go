@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/TheArctesian/anima/link/testpath"
 	"net"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ var verbs = map[string]control.Verb{
 // serve starts a control server on a socket and returns a connection to it.
 func serve(t *testing.T) (conn net.Conn, stopped chan error, stop context.CancelFunc) {
 	t.Helper()
-	dir, err := os.MkdirTemp("/tmp", "anima-control-")
+	dir, err := testpath.MkdirTemp("anima-control-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +150,7 @@ func (b *busyListener) Accept() (net.Conn, error) {
 }
 
 func TestServeGoesOnWhenTheSystemHasNoFreeFileForAMoment(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "anima-control-")
+	dir, err := testpath.MkdirTemp("anima-control-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +176,7 @@ func TestServeGoesOnWhenTheSystemHasNoFreeFileForAMoment(t *testing.T) {
 }
 
 func TestAVerbThatEndsTheServerStillGetsItsReplyOut(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "anima-control-")
+	dir, err := testpath.MkdirTemp("anima-control-")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -131,11 +131,7 @@ impl Control {
     }
 
     fn lid_holds(&mut self) -> bool {
-        match &mut self.lid {
-            Some(LidHold::Inhibitor(hold) | LidHold::Setting { watcher: hold }) => hold.alive(),
-            // The other program can set its setting back at any time: look again.
-            Some(LidHold::Borrowed) | None => false,
-        }
+        self.lid.as_mut().is_some_and(LidHold::alive)
     }
 
     fn hold_lid(&mut self) -> bool {

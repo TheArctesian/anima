@@ -27,7 +27,7 @@ pub enum LinkError {
 
 impl LinkError {
     /// Every error, for the tests that check each one.
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     pub const ALL: [Self; 9] = [
         Self::Caller,
         Self::NotCarried,

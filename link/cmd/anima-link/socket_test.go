@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"github.com/TheArctesian/anima/link/testpath"
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -186,7 +186,7 @@ func TestK8TheDaemonReachesTheHubThroughTheSocketOfTheDeviceLink(t *testing.T) {
 	seedRelay(t, state)
 	hub := startHubInFrontOf(t, state, socket.Socket)
 	folder := filepath.Dir(stateDir(t))
-	if err := os.Chmod(folder, 0o700); err != nil {
+	if err := testpath.Chmod(folder, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	forDaemon := filepath.Join(folder, "link.sock")
@@ -217,7 +217,7 @@ func TestK8TheDaemonReachesTheHubThroughTheSocketOfTheDeviceLink(t *testing.T) {
 
 func TestK8ADeviceLinkDoesNotStartWithADaemonSocketThatOtherUsersCanReach(t *testing.T) {
 	folder := filepath.Dir(stateDir(t))
-	if err := os.Chmod(folder, 0o755); err != nil {
+	if err := testpath.Chmod(folder, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	log := &output{}

@@ -26,7 +26,7 @@ chrono.workspace = true
 clap.workspace = true
 getrandom.workspace = true
 # SIGTERM to a member of the group, and the user ID that names the launchd domain.
-nix = { version = "0.31", default-features = false, features = ["fs", "signal", "user"] }
+
 serde = { workspace = true, features = ["derive"] }
 # The state that `status` prints, and the hub's `hub started` log line.
 serde_json.workspace = true
@@ -40,3 +40,9 @@ zeroize.workspace = true
 # The tests read the LaunchAgent file as launchd does.
 plist.workspace = true
 tempfile.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", default-features = false, features = ["fs", "signal", "user"] }
+
+[target.'cfg(windows)'.dependencies]
+anima-windows = { path = "../anima-windows" }

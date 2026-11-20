@@ -1,0 +1,16 @@
+{
+  "postgresql": {
+    "version": "17.12",
+    "url": "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260728",
+    "sha256": "520c8c6f19abb3b31fa83ec5e486e2f769eedd7593d94e60a7cda8a5bfb4df91"
+  },
+  "visualCpp": {
+    "version": "14.44.35211",
+    "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+    "sha256": "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b",
+    "bootstrapOffset": 479744,
+    "bootstrapBytes": 195988,
+    "payloadOffset": 686152,
+    "payloadBytes": 24939223
+  }
+}

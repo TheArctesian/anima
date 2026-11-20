@@ -3,6 +3,9 @@
 //! nothing else: no signing key, no builder or hub token, no URL with a secret, no
 //! `DATABASE_URL` (BLD-042). Pure: the app's environment is a parameter.
 
+#[cfg(windows)]
+mod windows;
+
 use std::{
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
@@ -20,6 +23,34 @@ const PASSED: &[&str] = &[
     "CARGO_HOME",
     "RUSTUP_HOME",
     "RUSTUP_TOOLCHAIN",
+    #[cfg(windows)]
+    "USERPROFILE",
+    #[cfg(windows)]
+    "LOCALAPPDATA",
+    #[cfg(windows)]
+    "APPDATA",
+    #[cfg(windows)]
+    "SystemRoot",
+    #[cfg(windows)]
+    "WINDIR",
+    #[cfg(windows)]
+    "TEMP",
+    #[cfg(windows)]
+    "TMP",
+    #[cfg(windows)]
+    "INCLUDE",
+    #[cfg(windows)]
+    "LIB",
+    #[cfg(windows)]
+    "LIBPATH",
+    #[cfg(windows)]
+    "VCToolsInstallDir",
+    #[cfg(windows)]
+    "VCINSTALLDIR",
+    #[cfg(windows)]
+    "WindowsSdkDir",
+    #[cfg(windows)]
+    "WindowsSDKVersion",
 ];
 
 /// Set for every step: CI behaviour, no colour codes, no prompts, and git with no user or system
@@ -31,12 +62,26 @@ const FIXED: &[(&str, &str)] = &[
     ("CARGO_TERM_COLOR", "never"),
     ("GIT_TERMINAL_PROMPT", "0"),
     ("GIT_CONFIG_NOSYSTEM", "1"),
-    ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    (
+        "GIT_CONFIG_GLOBAL",
+        if cfg!(windows) { "NUL" } else { "/dev/null" },
+    ),
+    #[cfg(windows)]
+    ("RUSTC_WRAPPER", ""),
+    #[cfg(windows)]
+    ("PATHEXT", ".COM;.EXE;.BAT;.CMD"),
     // Replace refs and grafts a build left in the clone cannot rewrite history (D-15). The graft
     // file is a path under `/dev/null`, so nothing can create it, and git prints no deprecation
     // hint for a graft file that does not exist (D-21).
     ("GIT_NO_REPLACE_OBJECTS", "1"),
-    ("GIT_GRAFT_FILE", "/dev/null/anima-has-no-grafts"),
+    (
+        "GIT_GRAFT_FILE",
+        if cfg!(windows) {
+            "NUL"
+        } else {
+            "/dev/null/anima-has-no-grafts"
+        },
+    ),
 ];
 
 /// Folders searched after the app's `PATH`: an app started from the Dock or a desktop menu often
@@ -63,7 +108,13 @@ impl Environment {
         let value = |name: &str| {
             parent
                 .iter()
-                .find(|(key, _)| key == name)
+                .find(|(key, _)| {
+                    if cfg!(windows) {
+                        key.to_string_lossy().eq_ignore_ascii_case(name)
+                    } else {
+                        key == name
+                    }
+                })
                 .map(|(_, value)| value.clone())
         };
         let passed = PASSED
@@ -72,10 +123,25 @@ impl Environment {
             .collect();
         let dirs = search_dirs(
             value("PATH").as_deref(),
-            value("HOME").as_deref(),
+            value(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).as_deref(),
             value("CARGO_HOME").as_deref(),
         );
         Self { passed, dirs }
+    }
+
+    /// Installed MSVC and SDK paths, discovered without executing a shell or build script.
+    #[cfg(windows)]
+    pub fn with_compiler(self) -> Self {
+        windows::compiler(self)
+    }
+
+    /// A bundled native database runtime supplied by the shell, never by the web view.
+    #[cfg(windows)]
+    pub fn with_postgres(mut self, tree: PathBuf) -> Self {
+        self.dirs.push(tree.join("bin"));
+        self.passed
+            .push(("ANIMA_POSTGRES_TREE".into(), tree.into_os_string()));
+        self
     }
 
     /// Program folders, in search order. Each is absolute.
@@ -105,7 +171,19 @@ impl Environment {
     pub fn find(&self, program: &str, exists: impl Fn(&Path) -> bool) -> Option<PathBuf> {
         self.dirs
             .iter()
-            .map(|dir| dir.join(program))
+            .map(|dir| {
+                dir.join(
+                    if cfg!(windows)
+                        && !Path::new(program)
+                            .extension()
+                            .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
+                    {
+                        format!("{program}.exe")
+                    } else {
+                        program.to_owned()
+                    },
+                )
+            })
             .find(|path| exists(path))
     }
 }

@@ -39,7 +39,7 @@ function cratesOf(program: string, includes: (dependency: Package["dependencies"
       }
     }
   }
-  return [...used].map((folder) => `${relative(ROOT, folder)}/`).sort();
+  return [...used].map((folder) => `${relative(ROOT, folder).replaceAll("\\", "/")}/`).sort();
 }
 
 /** The folders below `crates/` that no `out` line of `application` names. */

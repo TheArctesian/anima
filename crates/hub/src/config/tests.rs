@@ -133,8 +133,7 @@ fn empty_tls_files_count_as_unset() {
 
 #[test]
 fn collect_env_rejects_non_unicode_anima_and_skips_other_non_unicode() {
-    use std::os::unix::ffi::OsStringExt;
-    let bad = || OsString::from_vec(vec![0xff, 0xfe]);
+    let bad = || non_unicode("");
     let good = [(OsString::from("ANIMA_LOG"), OsString::from("debug"))];
 
     let skipped = [
@@ -148,10 +147,7 @@ fn collect_env_rejects_non_unicode_anima_and_skips_other_non_unicode() {
     let error = collect_env(value).unwrap_err();
     assert!(matches!(error, Error::NotUnicode { name } if name == "ANIMA_LOG"));
 
-    let name = [(
-        OsString::from_vec(b"ANIMA_\xff".to_vec()),
-        OsString::from("x"),
-    )];
+    let name = [(non_unicode("ANIMA_"), OsString::from("x"))];
     assert!(matches!(collect_env(name), Err(Error::NotUnicode { .. })));
 }
 
@@ -241,11 +237,14 @@ fn k7_phase_3_variables_default_when_unset() {
 fn k7_phase_3_variables_take_explicit_values() {
     let config = from_env(&env(&[
         (PUBLIC_ORIGIN, "https://anima.example.org:8443"),
-        (WEB_ROOT, "/usr/share/anima/web"),
+        (WEB_ROOT, &host_path("/usr/share/anima/web")),
     ]))
     .unwrap();
     assert_eq!(config.public_origin, "https://anima.example.org:8443");
-    assert_eq!(config.web_root, Some(PathBuf::from("/usr/share/anima/web")));
+    assert_eq!(
+        config.web_root,
+        Some(PathBuf::from(host_path("/usr/share/anima/web")))
+    );
 }
 
 #[test]
@@ -283,4 +282,30 @@ fn r_117_d_44_the_updater_key_files_default_to_the_updater_secret_folder_and_may
         moved.updater_key_password_file,
         PathBuf::from("/srv/password")
     );
+}
+
+fn non_unicode(prefix: &str) -> OsString {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        let mut bytes = prefix.as_bytes().to_vec();
+        bytes.push(0xff);
+        OsString::from_vec(bytes)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStringExt;
+        let mut units: Vec<_> = prefix.encode_utf16().collect();
+        units.push(0xd800);
+        OsString::from_wide(&units)
+    }
+}
+
+/// An absolute fixture path on the host running the tests.
+pub(super) fn host_path(path: &str) -> String {
+    if cfg!(windows) {
+        format!("C:{path}")
+    } else {
+        path.to_owned()
+    }
 }

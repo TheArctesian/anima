@@ -93,6 +93,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  windows:
+    needs: base
+    if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/windows-trial.yml
+    with:
+      ref: ${{ inputs.ref }}
+      dev_sha: ${{ needs.base.outputs.dev_sha }}
+      base_ref: ${{ inputs.base_ref || 'origin/phase-2' }}
+
   rust-lint:
     needs: base
     runs-on: ubuntu-24.04
@@ -224,17 +235,15 @@ jobs:
   # One name for a rule of the repository: it passes when each job above passed.
   passed:
     if: always()
-    needs: [base, rust-lint, rust-test, go, bun]
+    needs: [base, rust-lint, rust-test, go, bun, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
       - name: Each job of the gates passed
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          RESULTS: ${{ toJSON(needs) }}
         run: |
           set -eu
           echo "results: $RESULTS"
-          for result in $RESULTS; do
-            [ "$result" = "success" ] || { echo "::error::a job of the gates did not pass"; exit 1; }
-          done
+          echo "$RESULTS" | jq -e 'to_entries | all(.value.result == "success" or (.key == "windows" and .value.result == "skipped"))' > /dev/null

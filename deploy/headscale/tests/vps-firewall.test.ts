@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,10 +20,11 @@ const applyFirewall = (): void => {
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("harden.sh firewall", () => {
+describe.skipIf(process.platform === "win32")("harden.sh firewall", () => {
   test("VPS-002: firewall refuses without tailscale0", () => {
     const run = host.run(["firewall"], { ...vpn, FAKE_TAILSCALE: "1" });
     expect(run.code).toBe(2);
@@ -70,7 +72,7 @@ describe("harden.sh firewall", () => {
   });
 });
 
-describe("harden.sh firewall failures", () => {
+describe.skipIf(process.platform === "win32")("harden.sh firewall failures", () => {
   test.each([
     ["nft -c rejects the rules", { FAKE_NFT_CHECK: "1" }],
     ["nft -c rejects the rollback", { FAKE_NFT_CHECK_ROLLBACK: "1" }],
@@ -100,7 +102,7 @@ describe("harden.sh firewall failures", () => {
   });
 });
 
-describe("harden.sh firewall never silently closes an open port (VPS-005)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh firewall never silently closes an open port (VPS-005)", () => {
   test.each([
     ["a public listener", { FAKE_SS_EXTRA: "tcp LISTEN 0 511 0.0.0.0:8080 0.0.0.0:*" }, "8080/tcp"],
     ["a firewalld port", { ...firewalld, FAKE_FW_PORTS: "8080/tcp" }, "8080/tcp"],
@@ -142,7 +144,7 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
   });
 });
 
-describe("harden.sh firewall never silently closes firewalld policies or Docker ports (VPS-005)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh firewall never silently closes firewalld policies or Docker ports (VPS-005)", () => {
   test.each([
     ["a forward port added to allow-host-ipv6", "allow-host-ipv6", { FAKE_FW_POLICY_EXTRA: "\\trule family=\"ipv4\" forward-port port=\"80\" protocol=\"tcp\" to-port=\"8080\"\\n" }],
     ["allow-host-ipv6 with target ACCEPT", "allow-host-ipv6", { FAKE_FW_POLICY_EDIT: "s/target: CONTINUE/target: ACCEPT/" }],
@@ -193,7 +195,7 @@ describe("harden.sh firewall never silently closes firewalld policies or Docker 
   });
 });
 
-describe("harden.sh confirm", () => {
+describe.skipIf(process.platform === "win32")("harden.sh confirm", () => {
   beforeEach(applyFirewall);
 
   test("VPS-002: confirm from a new VPN session stops the rollback, installs the rules for boot and masks firewalld", () => {
@@ -230,7 +232,7 @@ describe("harden.sh confirm", () => {
   });
 });
 
-describe("harden.sh confirm refusals", () => {
+describe.skipIf(process.platform === "win32")("harden.sh confirm refusals", () => {
   beforeEach(applyFirewall);
 
   test.each([

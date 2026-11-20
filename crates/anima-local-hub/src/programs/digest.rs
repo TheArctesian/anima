@@ -8,15 +8,13 @@
 //! refusals and the limits are those of the copy.
 
 use std::fmt::Write as _;
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::io::Read as _;
-use std::os::unix::ffi::OsStrExt as _;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest as _, Sha256};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use super::{Budget, CopyError, MOST_BYTES, MOST_DEPTH, MOST_ENTRIES, io_error, link_target};
@@ -106,6 +104,8 @@ impl Walk {
         if depth == 0 {
             return Err(CopyError::TooLarge);
         }
+        #[cfg(windows)]
+        super::access::inspect_folder(from).map_err(io_error("read", from))?;
         let listing = fs::read_dir(from).map_err(io_error("read", from))?;
         self.entries.push(Entry {
             name: name.to_path_buf(),
@@ -153,10 +153,10 @@ impl Walk {
                 Kind::File { .. } => b'f',
                 Kind::Link(_) => b'l',
             }]);
-            text(&mut hasher, entry.name.as_os_str().as_bytes());
+            text(&mut hasher, entry.name.as_os_str().as_encoded_bytes());
             match &entry.kind {
                 Kind::Folder => {}
-                Kind::Link(target) => text(&mut hasher, target.as_os_str().as_bytes()),
+                Kind::Link(target) => text(&mut hasher, target.as_os_str().as_encoded_bytes()),
                 Kind::File { program } => {
                     file(&mut hasher, &entry.from, *program, &mut self.budget)?;
                 }
@@ -185,13 +185,7 @@ fn file(
     program: bool,
     budget: &mut Budget,
 ) -> Result<(), CopyError> {
-    use nix::fcntl::OFlag;
-    // No link is followed, and a pipe that took the file's place does not hold the bytes.
-    let mut source = OpenOptions::new()
-        .read(true)
-        .custom_flags((OFlag::O_NOFOLLOW | OFlag::O_NONBLOCK).bits())
-        .open(from)
-        .map_err(io_error("read", from))?;
+    let mut source = super::access::source(from).map_err(io_error("read", from))?;
     let found = source.metadata().map_err(io_error("read", from))?;
     if !found.is_file() {
         return Err(CopyError::Refused(from.to_path_buf()));
@@ -200,7 +194,7 @@ fn file(
         .bytes
         .checked_sub(found.len())
         .ok_or(CopyError::TooLarge)?;
-    let runs = program || found.permissions().mode() & 0o111 != 0;
+    let runs = program || super::access::executable(from, &found);
     hasher.update([u8::from(runs)]);
     hasher.update(found.len().to_be_bytes());
     // No more than the size that was counted, also when the file grows meanwhile.

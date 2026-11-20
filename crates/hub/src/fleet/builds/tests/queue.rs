@@ -179,6 +179,11 @@ fn bld_003_a_platform_builds_only_its_own_target() {
             platform(Os::Macos, Arch::Aarch64),
             vec![Target::DarwinUniversal],
         ),
+        (
+            platform(Os::Windows, Arch::X86_64),
+            vec![Target::WindowsX86_64],
+        ),
+        (platform(Os::Windows, Arch::Aarch64), vec![]),
         (platform(Os::Linux, Arch::Aarch64), vec![]),
         (platform(Os::Macos, Arch::X86_64), vec![]),
     ];

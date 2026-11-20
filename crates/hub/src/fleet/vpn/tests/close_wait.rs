@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
-    net::UnixListener,
     time::Instant,
 };
 
@@ -23,9 +22,11 @@ const KEY_REPLY: &str =
 /// when `None`) before it closes.
 fn broker_closing(folder: &tempfile::TempDir, delay: Duration, open: Option<Duration>) -> Broker {
     let path = folder.path().join("broker.sock");
+    #[cfg(windows)]
+    anima_windows::files::protect(path.parent().unwrap()).unwrap();
     let listener = UnixListener::bind(&path).unwrap();
     tokio::spawn(async move {
-        let (stream, _) = listener.accept().await.unwrap();
+        let stream = accept(&listener).await.unwrap();
         let mut stream = BufReader::new(stream);
         let mut line = String::new();
         stream.read_line(&mut line).await.unwrap();
@@ -84,4 +85,16 @@ async fn bd_10_the_close_wait_never_runs_past_the_call_limit() {
 
     assert!(answer.is_ok(), "the reply is kept: {:?}", answer.err());
     assert_eq!(started.elapsed(), CALL_LIMIT);
+}
+
+#[cfg(windows)]
+use anima_windows::socket::{Listener as UnixListener, Stream as UnixStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
+
+async fn accept(listener: &UnixListener) -> std::io::Result<UnixStream> {
+    #[cfg(unix)]
+    return listener.accept().await.map(|(stream, _)| stream);
+    #[cfg(windows)]
+    listener.accept().await
 }

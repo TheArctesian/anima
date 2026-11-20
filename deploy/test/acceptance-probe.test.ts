@@ -4,7 +4,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import * as refusals from "../acceptance/refusals.ts";
 import { startFakeHub, type FakeHub, type Fault } from "./acceptance-probe-hub.ts";
 import { finish } from "./finished-process.ts";
@@ -53,7 +53,7 @@ describe("spawned probe against a hub that answers right", () => {
   test("criteria 4, 12, 13: every check passes and exits 0; key documents are all invalid", async () => {
     hub.faults.clear();
     const result = await probe([hub.origin, "--key-file", keyFile("key", `  ${KEY}\n`)]);
-    expect(result.err).toBe("");
+    expect(result.err).toBe(process.platform === "win32" ? "probe: warning: verify the key file's Windows access permissions\n" : "");
     expect(failing(result.out)).toEqual([]);
     expect(result.out).toContain(`\n${String(16 + 2 + refusals.REFUSED_ROOTS.length)} checks, 0 failed\n`);
     expect(result.code).toBe(0);
@@ -132,9 +132,11 @@ async function untrustedHub() {
   const pem = join(dir, "tls.pem");
   // ecparam writes a named-curve key under both OpenSSL and macOS LibreSSL; `req -newkey ec` under
   // LibreSSL writes explicit curve parameters, which Bun's BoringSSL refuses.
-  const keyed = await finish(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", join(dir, "tls.key")]);
+  const git = Bun.which("git");
+  const openssl = Bun.which("openssl") ?? (process.platform === "win32" && git !== null ? join(dirname(git), "../usr/bin/openssl.exe") : "openssl");
+  const keyed = await finish([openssl, "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", join(dir, "tls.key")]);
   expect(keyed.exitCode).toBe(0);
-  const made = await finish(["openssl", "req", "-x509", "-new", "-key", join(dir, "tls.key"), "-nodes",
+  const made = await finish([openssl, "req", "-x509", "-new", "-key", join(dir, "tls.key"), "-nodes",
     "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1", "-out", pem]);
   expect(made.exitCode).toBe(0);
   const seen = { requests: 0, keys: 0 };
@@ -201,7 +203,9 @@ describe("spawned refusals exit 2 with one fixed line", () => {
   test("a key file others may read is used, with a warning", async () => {
     hub.faults.clear();
     const result = await probe([hub.origin, "--key-file", keyFile("open", KEY, 0o644)]);
-    expect(result.err).toBe("probe: warning: the key file can be read by group or other users; chmod 600 it\n");
+    expect(result.err).toBe(process.platform === "win32"
+      ? "probe: warning: verify the key file's Windows access permissions\n"
+      : "probe: warning: the key file can be read by group or other users; chmod 600 it\n");
     expect(result.code).toBe(0);
   }, 30_000);
 

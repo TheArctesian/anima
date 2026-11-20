@@ -12,7 +12,7 @@ use anima_database::Role;
 use crate::Folders;
 use crate::child::Spec;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 pub const DATABASE: &str = "anima-database";
@@ -71,7 +71,10 @@ impl Carried {
 
     #[must_use]
     pub fn program(&self, name: &str) -> PathBuf {
-        self.programs.join(name)
+        let path = self.programs.join(name);
+        #[cfg(windows)]
+        let path = path.with_extension("exe");
+        path
     }
 }
 
@@ -160,6 +163,8 @@ pub fn link(carried: &Carried, folders: &Folders) -> Result<Spec, LongSocketPath
     args.push(folders.link().into());
     args.push("-target".into());
     args.push(folders.link_socket().into());
+    #[cfg(windows)]
+    args.push("-stop-with-stdin".into());
     Ok(Spec {
         name: LINK,
         program: carried.program(LINK),
