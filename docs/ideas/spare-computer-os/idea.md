@@ -23,7 +23,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 3: hardware families | Decided in part | A + B + C: 64-bit Intel/AMD PCs, Intel Macs and selected ARM64 boards or mini PCs. Exact supported models need selection and testing. Apple Silicon is deferred to a later release (follow-up choice C). Keep its possible integration in the design; it is not an experimental first-release target. Older 32-bit PCs were not selected. Firmware and resource minimums remain open. |
 | Decision 4: boot paths | Decided | A + B + C: 64-bit UEFI, legacy BIOS for 64-bit PCs and board-specific boot for selected ARM64 hardware. This does not add 32-bit CPU support. Bootloader choice, Secure Boot policy, exact hardware targets and installation/recovery validation remain open. |
 | Decision 5: disk installation modes | Decided | A + B + E: install to one explicitly selected disk after erase confirmation, keep installation and boot files on that disk and preserve unselected disks; offer a live trial before installation. B is a safeguard of A, not a separate mode. Same-disk dual boot and external-drive installation are not first-version commitments. Trial persistence, partition layout and filesystem remain open. |
-| Decision 6: setup surfaces | Decided in part | Add setup from within Anima after the machine boots and connects to the internet. Include an opt-in prepared, fully unattended setup path aligned with one-click installation. A standalone local-browser interface is not implied. Decision 7 provisionally selects graphical and text setup; a full desktop is not selected. Enrollment, network bootstrap, prepared-media identity and authorization to erase a disk remain open. |
+| Decision 6: setup surfaces | Decided in part | Add setup from within Anima after the machine boots and connects to the internet. An opt-in prepared unattended path was initially requested; Decision 26 later selects A only for the first version, leaving that path for later discussion. A standalone local-browser interface is not implied. Decision 7 provisionally selects graphical and text setup; a full desktop is not selected. Enrollment, network bootstrap, prepared-media identity and authorization to erase a disk remain open. |
 | Decision 6: distribution | Decided | Standard downloadable ISO written to USB with dd or a graphical flasher. No custom flasher is required by this choice. It does not settle prepared-media settings, enrollment or automatic disk erasure. Selected ARM boards may need board-specific image formats; do not assume one ISO boots every target. |
 | Decision 7: local interface | Provisional | A + B: graphical setup and installed status/recovery screen, plus text setup and recovery menus as a fallback. Setup through Anima remains in scope. The operator is discussing this in a side chat and asked to log the choice for now and revisit later. No interface framework or full desktop is selected. |
 | Decision 8: hub disconnection | Decided | A + B + D: approved applications keep running and may restart under their existing policy; already-running jobs and agents may continue within existing permissions and limits; authorized local administration remains available without a reachable hub. Do not start new queued or scheduled jobs while disconnected in the first version. Grant expiry, reconnect reconciliation and local authentication still need design. External-service dependencies can still prevent a workload from working. |
@@ -45,6 +45,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 23: server power behavior | Decided | A + C + D: stay available on external power, including supported closed-lid laptop use; protect laptops on battery loss; recover availability after power returns where hardware supports it. No automatic idle sleep in the first version. Keep thermal safeguards and deliberate shutdown/reboot/recovery available. Critical-battery protective action is distinct from ordinary idle sleep; exact shutdown/suspend choice remains engineering work. Resume approved services, not blindly interrupted jobs. The operator names Proxmox as the server-operation reference; this does not select its virtualization stack or change NixOS/Btrfs choices. |
 | Decision 24: app access and internet use | Decided | A default, with B and C available per app: private Anima-network access by default; explicit LAN publication; explicit public publication through supported hosting paths. Keep host administration and recovery separate. These are inbound exposure choices, not a ban on outbound internet use. The operator explicitly requires agentic software to be able to use the internet. Support outbound access for workloads within their permissions; exact egress policy remains open. Installing a workload must not implicitly publish it. |
 | Decision 25: outbound networking | Decided | A default, optional C + D: ordinary outbound internet within existing workload permissions, with optional destination-restricted and offline profiles. No extra per-workload internet approval step is selected beyond existing grants. Outbound access does not grant credentials, host control, other workload data or arbitrary private-network access. Inbound publication remains separate. Enforcement and supported allowlist semantics must be reconciled with existing Anima permission/network owners. |
+| Decision 26: installation enrollment | Decided | A only for the first version: standard live installer presents short-lived pairing code/QR; owner approves in a signed-in Anima session, verifies the machine and explicitly confirms its installation disk before installation proceeds. Prepared unattended enrollment B and install-locally/enroll-later C are not selected. This narrows the earlier unattended setup direction. Local setup/recovery interfaces remain in scope; they do not imply an offline unenrolled installation path. Reuse existing identity rules and explicitly handle ownership transfer. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -81,7 +82,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Finish the product choices in three remaining discussion groups: enrollment/ownership and unattended-install authorization; update channels/timing and workload interruption; first-release hardware examples and acceptance scope. Then consolidate the proposal and recommend engineering defaults together instead of continuing an unbounded component questionnaire. Existing provisional local-interface choice can be reviewed during consolidation. Exact protocol, package, partition, retention and test choices can remain explicit proposed defaults or validation tasks.
+2. Two product discussion groups remain after Decision 26: update channels/timing and workload interruption; first-release hardware examples and acceptance scope. Then consolidate the proposal and recommend engineering defaults together instead of continuing an unbounded component questionnaire. Existing provisional local-interface choice can be reviewed during consolidation. Exact protocol, package, partition, retention and test choices can remain explicit proposed defaults or validation tasks.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -178,6 +179,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 25 accepted A default with optional C + D. The operator asked how many questions remain. Proposed three remaining product-decision groups followed by consolidation and engineering defaults, not further low-level questionnaires.
 
 - 2026-11-19: The operator asked for Proxmox or VMware precedent in the remaining decisions. Include sourced precedent, distinguish it from recommendations and retain the three remaining discussion groups.
+
+- 2026-11-19: Decision 26 selected A only: pair in Anima and confirm the disk before installation. Prepared unattended and install-first/enroll-later paths are not first-version selections. Next: Decision 27, update policy (second of the final three groups).
 
 ## Source text
 
@@ -311,11 +314,24 @@ Process request:
 
 > Okay lets keep going but in the decion include what the Proxmox or VMWare would do
 
-## Decision 26 preparation: enrollment and unattended installation
+## Decision 26 research: enrollment and unattended installation
 
-Not yet selected. Proposed default: standard ISO with a short-lived pairing flow approved in Anima and explicit disk confirmation before installation. Optional prepared installation profile: scoped enrollment authorization and explicit disk selection/erase permission; stop if selection is ambiguous. An alternative is local installation with administrator credentials followed by enrollment. Local recovery remains available; proof of ownership, token lifetime and transfer/re-enrollment need specification.
+Historical options, before the operator selected A only: standard ISO with a short-lived pairing flow approved in Anima and explicit disk confirmation before installation. Optional prepared installation profile: scoped enrollment authorization and explicit disk selection/erase permission; stop if selection is ambiguous. An alternative is local installation with administrator credentials followed by enrollment. Local recovery remains available; proof of ownership, token lifetime and transfer/re-enrollment need specification.
 
 Precedent checked 2026-11-19:
 
 - [Proxmox installation documentation](https://github.com/proxmox/pve-docs/blob/master/pve-installation.adoc): local graphical/text installation, administrator password, and unattended installation via a prepared ISO and answer file. This is not automatic assignment to an Anima-style account.
 - [Broadcom ESXi scripted-installation article](https://knowledge.broadcom.com/external/article/440457/esxi-scripted-installation-fails-to-dyna.html): ESXi 7/8 scripted setup uses kickstart configuration for host-specific installation settings. We should adopt explicit prepared configuration as a pattern, not copy example first-disk overwrite directives.
+
+In response to Decision 26:
+
+> A
+
+## Decision 27 preparation: updates and interruption
+
+Not selected yet. Recommend stable releases by default, optional preview enrollment, automatic download/validation, and disruptive activation only inside an owner-authorized maintenance window. Stop admitting new work and let active work drain; if it cannot safely finish/checkpoint or a service cannot stop gracefully, defer and report. Do not infer live migration or silently kill non-restartable work. Offer explicit per-update approval as an alternative. Existing maintenance authorization and automatic rollback decisions stay in force.
+
+Precedent read 2026-11-19:
+
+- [Proxmox repository documentation](https://github.com/proxmox/pve-docs/blob/master/pve-package-repos.adoc): checks for updates daily and exposes installation through GUI/APT; distinguishes production-oriented and test repositories. This is not evidence of unconditional unattended reboot.
+- [VMware ESXi maintenance guidance](https://knowledge.broadcom.com/external/article/434515): host remediation requires maintenance mode; standalone hosts need workload downtime because they lack automated DRS evacuation. Apply the planned-interruption principle, not an assumption that Anima already supports VM migration.
