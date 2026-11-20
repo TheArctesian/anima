@@ -22,6 +22,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 2: maintenance | Decided | A + B + C: automatic approved routine upkeep and problem reporting; owner-defined maintenance windows and control over disruptive actions; optional SSH or local administrative access. Fully manual maintenance mode is out of the first version. Exact update, reboot, access and configuration policies remain to be designed. |
 | Decision 3: hardware families | Decided in part | A + B + C: 64-bit Intel/AMD PCs, Intel Macs and selected ARM64 boards or mini PCs. Exact supported models need selection and testing. Apple Silicon is deferred to a later release (follow-up choice C). Keep its possible integration in the design; it is not an experimental first-release target. Older 32-bit PCs were not selected. Firmware and resource minimums remain open. |
 | Decision 4: boot paths | Decided | A + B + C: 64-bit UEFI, legacy BIOS for 64-bit PCs and board-specific boot for selected ARM64 hardware. This does not add 32-bit CPU support. Bootloader choice, Secure Boot policy, exact hardware targets and installation/recovery validation remain open. |
+| Decision 5: disk installation modes | Decided | A + B + E: install to one explicitly selected disk after erase confirmation, keep installation and boot files on that disk and preserve unselected disks; offer a live trial before installation. B is a safeguard of A, not a separate mode. Same-disk dual boot and external-drive installation are not first-version commitments. Trial persistence, partition layout and filesystem remain open. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -57,7 +58,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Decision 5: which disk installation modes should the first version offer? Allow combined choices: dedicate a selected disk; preserve an existing OS on another disk; share a disk with an existing OS; install to an external drive; offer a live trial with no installation. Recommendation: dedicate a selected disk, preserve other disks and offer a live trial. External installation is a possible additional target; same-disk dual boot is not recommended for the first version. No answer yet.
+1. Decision 6: which installation and local interaction surfaces should be available? Options can be combined: a guided graphical installer with a small installed status/recovery screen; text-based setup and console; setup from another device through a local web page; unattended installation from an explicit configuration; an optional full desktop. Recommendation: graphical setup/status plus a text fallback. Remote setup can follow if first-version headless installation matters. No answer yet.
 2. Which bootloader, Secure Boot policy, resource minimums and exact hardware models should be selected? Discuss after installation and recovery goals; no selection yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
@@ -100,6 +101,8 @@ Read 2026-11-19 at the operator's request:
 
 - 2026-11-19: The operator accepted all three boot paths (Decision 4, A + B + C). Their comment that these are easy to support is not a hardware validation result. Next: disk installation modes.
 
+- 2026-11-19: Decision 5 accepted as A + B + E. The operator noted A and B overlap; recorded preservation of unselected disks as part of dedicated-disk installation. Live trial is included. Next: installation and local interaction surfaces.
+
 ## Source text
 
 Selected direct operator messages, unchanged:
@@ -131,3 +134,7 @@ In response to the Apple Silicon follow-up:
 In response to Decision 4 (recommendation A + B + C):
 
 > yeah they are easy to support
+
+In response to Decision 5:
+
+> Yeah B and A are kinda the same I agree with A B and E
