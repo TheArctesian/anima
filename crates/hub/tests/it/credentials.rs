@@ -9,6 +9,7 @@ mod operational;
 mod retrieval;
 mod round_trip;
 mod schema;
+mod sealed_records;
 mod source;
 mod tampering;
 mod transactions;
