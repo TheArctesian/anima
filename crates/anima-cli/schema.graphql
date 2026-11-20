@@ -3555,7 +3555,7 @@ type Mutation {
   restoreRepository(id: ID!): Project!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
-  "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. Login or browser token only (D-23, R-100)."
+  "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. CONFLICT on a hub that no browser can open: a hub in the link mode with no ANIMA_PUBLIC_ORIGIN of its own (HMD-070); openGithubConnect refuses the same way and makes no ticket. Login or browser token only (D-23, R-100)."
   startGithubConnect(input: StartGithubConnectInput): GithubConnectAttempt!
   "Returns a ONE-TIME link; an earlier one stops working. CONFLICT outside WAITING_FOR_BROWSER and AT_GITHUB. FORBIDDEN for a request that declares an AI agent. Login or browser token only (D-23, R-100)."
   openGithubConnect(id: ID!): GithubConnectLink!
