@@ -2,7 +2,8 @@
 // secret, can write nothing, give a pull request of a fork nothing, and run the list of
 // quality/src/gates/gates.ts. Nothing here runs the workflow.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gateList } from "../../quality/src/gates/gates.ts";
 
@@ -145,7 +146,49 @@ describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
     expect(rule).toBeGreaterThan(-1);
     expect(train).toBeGreaterThan(rule);
     expect(script).not.toContain("gh run rerun");
-    expect(script).not.toContain("gh workflow run");
+    expect(script.match(/gh workflow run.*/g)).toEqual(["gh workflow run merge-to-dev.yml"]);
+  });
+
+  describe("while a train is on the way, nothing else wakes it: the script stays, then starts the workflow again", () => {
+    /** Runs the script with stand-ins for bun, gh, git and sleep; `trains` says, for each step, if a train exists after it. */
+    function steps(trains: boolean[], seconds: number, rule = '{"mergeWithoutCheck": true, "fullGates": "github"}'): string[] {
+      const dir = mkdtempSync(join(tmpdir(), "merge-to-dev-"));
+      mkdirSync(join(dir, "bin"));
+      mkdirSync(join(dir, "quality"));
+      writeFileSync(join(dir, "quality", "merge-rule.json"), rule);
+      writeFileSync(join(dir, "trains"), trains.map((each) => (each ? "sha\trefs/heads/train/a" : "")).join("\n"));
+      const log = `echo "$(basename "$0") $*" >> "${dir}/log"`;
+      const stand: Record<string, string> = {
+        bun: log,
+        gh: log,
+        sleep: log,
+        git: `[ "$1" = ls-remote ] || exit 0\nn=$(grep -c '^bun' "${dir}/log")\nsed -n "\${n}p" "${dir}/trains"`,
+      };
+      for (const [name, body] of Object.entries(stand)) writeFileSync(join(dir, "bin", name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+      const env = { PATH: `${join(dir, "bin")}:/usr/bin:/bin`, TRAIN_WATCH_SECONDS: String(seconds), TRAIN_WATCH_PAUSE: "0" };
+      const done = Bun.spawnSync(["/bin/sh", join(ROOT, ".github", "workflows", "merge-to-dev.sh")], { cwd: dir, env });
+      expect(done.exitCode).toBe(0);
+      const said = existsSync(join(dir, "log")) ? readFileSync(join(dir, "log"), "utf8").trim().split("\n") : [];
+      rmSync(dir, { recursive: true });
+      return said.filter((line) => !line.startsWith("sleep"));
+    }
+    const step = "bun quality/bin/train.ts";
+
+    test("no train after the step: one step, and nothing is started", () => {
+      expect(steps([false], 600)).toEqual([step]);
+    });
+
+    test("a train on the way: it does a step again until no train is left, so the train lands with no event", () => {
+      expect(steps([true, true, false], 600)).toEqual([step, step, step]);
+    });
+
+    test("the train is still on the way when the time ends: it starts the workflow again, one time", () => {
+      expect(steps([true], 0)).toEqual([step, "gh workflow run merge-to-dev.yml"]);
+    });
+
+    test("the rule of dev is off: no step and no start", () => {
+      expect(steps([true], 600, '{"mergeWithoutCheck": false, "fullGates": "github"}')).toEqual([]);
+    });
   });
 
   test("each action is pinned to a commit, and no run script holds an expression", () => {
