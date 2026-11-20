@@ -6,8 +6,9 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::{
-    builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub, mcp_permissions,
-    process_log, stay_awake, system_browser, system_settings, this_machine, web_view,
+    builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub, mcp_agents,
+    mcp_permissions, process_log, stay_awake, system_browser, system_settings, this_machine,
+    web_view,
 };
 
 /// Starts the desktop application and returns when it ends.
@@ -40,6 +41,10 @@ fn with_updater(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
 }
 
 /// The shell's commands; each refuses every web view but the main one (WEB-007).
+#[expect(
+    clippy::too_many_lines,
+    reason = "a list with one line for each command of the shell; it holds no logic"
+)]
 fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         keystore::access_token_read,
@@ -61,6 +66,8 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         builder::builder_cancel,
         builder::upload::builder_release_files,
         builder::upload::builder_upload,
+        mcp_agents::mcp_agents_read,
+        mcp_agents::mcp_agents_change,
         mcp_permissions::mcp_permissions_read,
         mcp_permissions::mcp_permissions_write,
         process_log::process_log_folder_open,

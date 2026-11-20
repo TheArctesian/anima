@@ -82,6 +82,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 
@@ -2023,6 +2024,37 @@ names, with many containers or at a narrow width.
 
 Result: Open.
 
+### HT-062: `anima mcp install` with the real coding agents (MCP-027 to MCP-038)
+
+Built on the branch `mcp/install`, in `crates/anima-cli/src/mcp/install`. The tests prove each way against a temporary
+home folder and a stand-in program: the bytes that stay, the copy, the refusal of a symbolic link, the dry run of the
+library. No test starts a real agent and none reads a real configuration. The place and the form of each entry are from
+the documentation of each product on 2026-11-19 and were not tried. The part "Coding agents" of Settings (task MI4)
+is built and was not seen: no desktop build was made.
+
+1. Run `anima mcp agents`.
+   Expected: one row for each of the eight agents. An agent that you have says "not set up"; one that you do not have
+   says "not on this computer".
+2. Run `anima mcp install --dry-run`.
+   Expected: for each agent that you have, the file that would be written with its copy, or the command line that would
+   run, with the full path of `anima`. Look at a file that it names: it is not changed.
+3. Run `anima mcp install` and answer yes. Then run `anima mcp agents`.
+   Expected: each agent says "set up". Beside each written file there is a file with the same name and `.before-anima`,
+   which is the file as it was. Compare the two: only the entry `anima` is different; your comments and your other
+   servers are as they were.
+4. Start each agent anew and look at its list of MCP servers.
+   Expected: a server `anima` is there and its tools work. Write down for each agent: yes or no. The points that the
+   documentation does not settle are: Claude Code at user scope; VS Code through `~/.copilot/mcp-config.json`; opencode
+   under `mcp`, `servers`; Zed at `~/.config/zed/settings.json`; whether an agent needs a restart.
+5. Run `anima auth logout`, start one agent anew, then sign in again.
+   Expected: while signed out the agent shows the server as failed or with no tool; nothing asks for a token.
+6. Run `anima mcp uninstall` and answer yes.
+   Expected: each agent says "not set up". Each file is the same as its copy, byte for byte (an object that Anima had to
+   make stays, empty).
+7. Put a server named `anima` with a different command into one agent by hand, then run `anima mcp agents`,
+   `anima mcp uninstall`, and `anima mcp install`.
+   Expected: the state is "set up, starts a different anima"; uninstall leaves it; install replaces it after it shows
+   it in its list.
 ### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
 
 Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
@@ -2047,6 +2079,14 @@ its switches, or the phone.
 6. Open the application on a phone, then Settings.
    Expected: the bottom bar has Devices, Sessions, Logs and Settings. Settings has a section "Extensions" with the link
    "Open Extensions", which opens the page.
+8. In the desktop application, open Settings, then MCP, with the command line tool not installed (Settings, Updates).
+   Expected: the part "Coding agents" says to install the command line tool first and shows no agent.
+9. Install the command line tool, then open Settings, MCP again.
+   Expected: one row for each agent that you have, with its state in words, and "Set up all". Select "Set up" on one
+   row: a box lists the file that is written with its copy, or the whole command line, and "Set up" and "Cancel".
+   "Cancel" changes nothing. "Set up" changes the row to "Set up" with a button "Remove".
+10. Select "Set up all", confirm, then select "Remove" on one row and confirm.
+   Expected: the same results as steps 3 and 6 for those agents. A row that was refused says why under it.
 
 Result: Open.
 
