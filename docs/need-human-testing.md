@@ -1433,6 +1433,8 @@ Not covered: no run on GitHub. Nobody saw the packages install on `ubuntu-24.04`
 Linux with 4 processors, the time of a run, the cache, or a push by the workflow to `dev`. Expect that the
 first runs fail for a reason of the machine; each such fault is a correction of the workflow, not of the code.
 
+Seen by the session that built it, on 2026-11-19, on the branch `quality/faster-gates` (not a result of this entry: only the operator sets it): the sixth run, 44652644005 on commit `152773ff`, passed each job in 31.5 minutes (`go` 2, `bun` 6, `rust-lint` 12, `rust-test` 31). The five runs before it failed for the reasons that [quality/README.md](../quality/README.md), "The gates on GitHub", lists; two of them were the step "Merge the dev of this run into the checkout" refusing a branch that did not merge with `dev`, as step 5 expects. Steps 3 and 4 were not run: `merge-to-dev.yml` is not on `main`.
+
 1. Push a branch that changes one document. Open the run `gates` of that branch on GitHub. Expected: the
    job `base` prints "tested with dev at:" and a commit; the five other jobs pass; write the time of each job here.
 2. Push a branch that changes one line of Rust. Expected: the same, and the second run of the same branch is

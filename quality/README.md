@@ -100,6 +100,14 @@ daemon and its LaunchAgent; the access-control tests of `link/statedir`; the mac
 shell, with the trust hook that `pinning` proves. No job on GitHub runs macOS: the trial of the release
 workflow measured 82 minutes for the gates on `macos-15`.
 
+Measured on 2026-11-19, the first run in which each job passed (run 44652644005, commit `152773ff`): 31.5
+minutes from the start of `base` to the end of `passed`. `go` 2 minutes, `bun` with the quality gates 6
+minutes, `rust-lint` 12 minutes, `rust-test` 31 minutes (the Rust tests on 4 processors are the longest
+part). An earlier run with a full build cache had `rust-lint` at 2 minutes. Five runs before it failed:
+two for the set-up of the machine (a wrapper script that `sh` of Ubuntu broke; PostgreSQL 17 for the tests
+of `deploy`), one for three tests of the daemon that run only on Linux and were stale, and two because
+`dev` had moved and the branch did not merge with it.
+
 ### The merge into `dev` (R-NEW-automerge)
 
 `.github/workflows/merge-to-dev.yml` starts when a run of `gates` ends. For a push of a branch of this

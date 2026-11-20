@@ -37,8 +37,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (149)
-## 2. Open decisions (148)
+## 2. Open decisions (147)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
