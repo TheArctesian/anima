@@ -66,7 +66,7 @@ pub fn process_config_dir() -> Option<PathBuf> {
 }
 
 /// The home folder of this process (`HOME`) when it is an absolute path: the session files of
-/// the agent programs of this user are below it (THR-001).
+/// the agent programs of this user are below it (THR-007).
 #[must_use]
 pub fn process_home() -> Option<PathBuf> {
     variable("HOME")

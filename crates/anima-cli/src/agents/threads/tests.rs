@@ -141,3 +141,46 @@ fn thr_007_a_glance_reads_the_title_from_the_end_of_a_long_file() {
     assert_eq!(row.title.as_deref(), Some("Named late"));
     assert!(Path::new(&file).exists());
 }
+
+#[test]
+fn thr_007_a_session_file_with_a_second_name_is_not_read() {
+    let home = home();
+    let project = home.path().join(".claude/projects/-w-anima");
+    let outside = home.path().join("outside.jsonl");
+    fs::write(&outside, CLAUDE).expect("written");
+    fs::hard_link(&outside, project.join("8b8b8b8b-hard.jsonl")).expect("a hard link");
+    assert!(!ids(&list(home.path(), None, DEFAULT_LIMIT)).contains(&"8b8b8b8b-hard"));
+}
+
+#[test]
+fn thr_007_a_root_folder_that_is_a_link_gives_no_thread() {
+    let home = home();
+    let real = home.path().join("elsewhere");
+    fs::rename(home.path().join(".codex"), &real).expect("moved");
+    std::os::unix::fs::symlink(&real, home.path().join(".codex")).expect("a link");
+    assert_eq!(
+        ids(&list(home.path(), None, DEFAULT_LIMIT)),
+        ["4f1d2c3b-claude"]
+    );
+}
+
+#[test]
+fn thr_007_the_id_of_a_row_is_the_id_that_opens_it() {
+    let home = home();
+    let day = home.path().join(".codex/sessions/2026/11/19");
+    let forged = CODEX.replace("019a7c2e-codex", "4f1d2c3b-claude");
+    fs::write(
+        day.join("rollout-2026-11-19T11-00-00-5c5c5c5c-other.jsonl"),
+        forged,
+    )
+    .expect("written");
+    let rows = list(home.path(), Some(Source::Codex), DEFAULT_LIMIT);
+    let row = rows
+        .iter()
+        .find(|row| row.id.ends_with("5c5c5c5c-other"))
+        .expect("named by its file");
+    assert_eq!(
+        find(home.path(), &row.id).expect("found").source,
+        Source::Codex
+    );
+}

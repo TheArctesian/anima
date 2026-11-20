@@ -2,7 +2,8 @@
 //! `user` line holds a prompt or the results of tool calls; an `assistant` line holds one block
 //! of a reply (text, thinking or a tool call); `custom-title` and `summary` lines name it. A
 //! line of a sub-agent (`isSidechain`) and a line the program wrote for itself (`isMeta`) are
-//! not a part of the thread.
+//! not a part of the thread. Claude Code writes no line for the end of a turn, so a thread of
+//! it has no [`EntryKind::TurnEnd`].
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -45,7 +46,7 @@ pub(super) fn read(reader: &mut ThreadReader, line: &[u8]) {
         }
         Some("summary") => {
             if let Some(summary) = &line.summary {
-                reader.thread.title.get_or_insert_with(|| summary.clone());
+                reader.name(summary);
             }
             return;
         }

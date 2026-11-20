@@ -1,5 +1,5 @@
 //! `anima agents threads` and `anima agents thread`: the sessions of Claude Code and Codex on
-//! this computer, read from their files as threads (THR-001 to THR-009). The command reads
+//! this computer, read from their files as threads (THR-003 to THR-009). The command reads
 //! files of this user only; it sends nothing to the hub and starts no program.
 
 pub mod files;
@@ -71,6 +71,8 @@ pub struct ThreadRow {
     pub id: String,
     pub program: &'static str,
     pub title: Option<String>,
+    /// The program or the person gave the title; it is not the start of a prompt.
+    pub title_given: bool,
     pub folder: Option<String>,
     pub branch: Option<String>,
     pub model: Option<String>,
@@ -84,10 +86,17 @@ impl ThreadRow {
     #[must_use]
     pub fn of(file: &SessionFile, thread: Thread) -> Self {
         let modified = file.modified.map(DateTime::<Utc>::from);
+        // The ID of a row is the ID that opens it: the ID a Codex file names inside is taken
+        // only when the name of the file ends with it; else the name of the file is the ID.
+        let id = thread
+            .id
+            .filter(|id| id.chars().count() >= MIN_ID && file.name.ends_with(id.as_str()))
+            .unwrap_or_else(|| file.name.clone());
         Self {
-            id: thread.id.unwrap_or_else(|| file.name.clone()),
+            id,
             program: program_name(file.source),
             title: thread.title,
+            title_given: thread.title_given,
             folder: thread.folder,
             branch: thread.branch,
             model: thread.model,

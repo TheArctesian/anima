@@ -1,4 +1,4 @@
-//! One session of Claude Code or Codex read as a thread (THR-001 to THR-006 of
+//! One session of Claude Code or Codex read as a thread (THR-003 to THR-006 of
 //! `docs/proposals/agent-threads.md`): the prompts, the replies, the reasoning, the tool calls
 //! with their results and patches, and the ends of the turns, in the order of the file.
 //!
@@ -33,8 +33,15 @@ pub const MAX_OUTPUT: usize = 16 * 1024;
 /// The most entries one thread keeps: the later ones are counted in [`Thread::dropped`].
 pub const MAX_ENTRIES: usize = 20_000;
 
-/// The most characters of a title made from the first prompt.
+/// The most bytes of text one thread keeps in its entries: the later entries are counted in
+/// [`Thread::dropped`], so a file of any size gives a thread of a known size.
+pub const MAX_THREAD: usize = 8 * 1024 * 1024;
+
+/// The most characters of a title.
 pub const TITLE_LENGTH: usize = 80;
+
+/// The most characters of a folder, a branch, a model or an ID, each one line.
+pub const NAME_LENGTH: usize = 1024;
 
 /// One session of an agent program, read from its file.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -43,6 +50,8 @@ pub struct Thread {
     pub id: Option<String>,
     /// The title the program or the person gave it, else the start of the first prompt.
     pub title: Option<String>,
+    /// The program or the person gave the title; it is not the start of a prompt.
+    pub title_given: bool,
     /// The working folder of the session.
     pub folder: Option<String>,
     /// The git branch of the working folder, as the program wrote it.
@@ -107,6 +116,8 @@ pub struct ThreadReader {
     calls: HashMap<String, usize>,
     /// A title the program or the person gave, which wins over the first prompt.
     named: Option<String>,
+    /// The bytes of text the entries hold.
+    kept: usize,
 }
 
 impl ThreadReader {
@@ -117,6 +128,7 @@ impl ThreadReader {
             thread: Thread::default(),
             calls: HashMap::new(),
             named: None,
+            kept: 0,
         }
     }
 
@@ -134,6 +146,7 @@ impl ThreadReader {
     pub fn finish(mut self) -> Thread {
         if let Some(named) = self.named.take() {
             self.thread.title = Some(named);
+            self.thread.title_given = true;
         }
         self.thread
     }
@@ -148,17 +161,17 @@ impl ThreadReader {
     }
 
     fn folder(&mut self, folder: Option<&str>, branch: Option<&str>) {
-        if let Some(folder) = folder.filter(|folder| !folder.is_empty()) {
-            self.thread.folder = Some(folder.to_owned());
+        if let Some(folder) = folder.map(name).filter(|folder| !folder.is_empty()) {
+            self.thread.folder = Some(folder);
         }
-        if let Some(branch) = branch.filter(|branch| !branch.is_empty()) {
-            self.thread.branch = Some(branch.to_owned());
+        if let Some(branch) = branch.map(name).filter(|branch| !branch.is_empty()) {
+            self.thread.branch = Some(branch);
         }
     }
 
     fn model(&mut self, model: Option<&str>) {
         if let Some(model) = model.filter(|model| !model.is_empty() && !model.starts_with('<')) {
-            self.thread.model = Some(model.to_owned());
+            self.thread.model = Some(name(model));
         }
     }
 
@@ -226,13 +239,32 @@ impl ThreadReader {
 
     fn push(&mut self, at: Option<DateTime<Utc>>, kind: EntryKind) -> bool {
         self.at(at);
-        if self.thread.entries.len() >= MAX_ENTRIES {
+        self.kept = self.kept.saturating_add(size(&kind));
+        if self.thread.entries.len() >= MAX_ENTRIES || self.kept > MAX_THREAD {
             self.thread.dropped += 1;
             return false;
         }
         self.thread.entries.push(Entry { at, kind });
         true
     }
+}
+
+/// The bytes of text an entry holds.
+fn size(kind: &EntryKind) -> usize {
+    match kind {
+        EntryKind::Prompt { text, .. }
+        | EntryKind::Reply { text }
+        | EntryKind::Reasoning { text } => text.len(),
+        EntryKind::Tool(call) => {
+            call.input.len() + call.patch.as_ref().map_or(0, String::len) + MAX_OUTPUT
+        }
+        EntryKind::TurnEnd { .. } | EntryKind::Compacted => 0,
+    }
+}
+
+/// A folder, a branch, a model or an ID as one line of at most [`NAME_LENGTH`] characters.
+fn name(text: &str) -> String {
+    first_line(text, NAME_LENGTH)
 }
 
 /// The first line of `text` that is not blank, at most `length` characters, trimmed.

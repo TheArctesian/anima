@@ -33,7 +33,7 @@ pub(super) fn read(reader: &mut ThreadReader, line: &[u8]) {
     match kind.as_deref() {
         Some("session_meta") => {
             if let Some(id) = field("id") {
-                reader.thread.id = Some(id.to_owned());
+                reader.thread.id = Some(super::name(id));
             }
             let branch = payload.pointer("/git/branch").and_then(Value::as_str);
             reader.folder(field("cwd"), branch);
@@ -150,16 +150,29 @@ fn output(reader: &mut ThreadReader, payload: &Value) {
             .to_owned(),
         _ => String::new(),
     };
-    let parsed: Option<Value> = serde_json::from_str(&text).ok();
-    let inner = parsed.as_ref().unwrap_or(value);
+    // Codex wraps the output of a command as `{"output": "...", "metadata": {...}}`. Only an
+    // object of that exact form is read as the wrapper: text that a command printed must not
+    // choose what is shown or whether the call failed.
+    let wrapper: Option<Value> = serde_json::from_str::<Value>(&text).ok().filter(is_wrapper);
+    let inner = wrapper.as_ref().unwrap_or(value);
     let failed = inner.get("success").and_then(Value::as_bool) == Some(false)
         || inner
             .pointer("/metadata/exit_code")
             .and_then(Value::as_i64)
             .is_some_and(|code| code != 0);
-    let shown = parsed
+    let shown = wrapper
         .as_ref()
-        .and_then(|parsed| parsed.get("output").and_then(Value::as_str))
+        .and_then(|wrapper| wrapper.get("output").and_then(Value::as_str))
         .map_or(text.clone(), str::to_owned);
     reader.result(call, &shown, failed);
+}
+
+/// Whether `value` is the wrapper Codex puts around the output of a command: an object with a
+/// text `output`, an object `metadata`, and no other member.
+fn is_wrapper(value: &Value) -> bool {
+    value.as_object().is_some_and(|members| {
+        members.len() == 2
+            && members.get("output").is_some_and(Value::is_string)
+            && members.get("metadata").is_some_and(Value::is_object)
+    })
 }

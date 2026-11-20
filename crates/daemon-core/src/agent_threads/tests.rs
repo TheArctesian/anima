@@ -45,7 +45,7 @@ const CLAUDE: [&str; 7] = [
 ];
 
 #[test]
-fn thr_001_a_claude_code_file_reads_as_a_thread_in_order() {
+fn thr_003_a_claude_code_file_reads_as_a_thread_in_order() {
     let thread = read(Source::ClaudeCode, &CLAUDE);
     assert_eq!(kinds(&thread), ["prompt", "reasoning", "tool", "reply"]);
     assert_eq!(thread.title.as_deref(), Some("Fix the login test"));
@@ -57,7 +57,7 @@ fn thr_001_a_claude_code_file_reads_as_a_thread_in_order() {
 }
 
 #[test]
-fn thr_002_a_tool_result_is_attached_to_its_call_with_the_patch() {
+fn thr_005_a_tool_result_is_attached_to_its_call_with_the_patch() {
     let thread = read(Source::ClaudeCode, &CLAUDE);
     let call = tool(&thread);
     assert_eq!(
@@ -69,15 +69,17 @@ fn thr_002_a_tool_result_is_attached_to_its_call_with_the_patch() {
 }
 
 #[test]
-fn thr_001_a_title_the_person_gave_wins_over_the_first_prompt() {
+fn thr_004_a_title_the_person_gave_wins_over_the_first_prompt() {
     let mut lines = CLAUDE.to_vec();
     lines.push(r#"{"type":"custom-title","customTitle":"Login test","sessionId":"s"}"#);
     let thread = read(Source::ClaudeCode, &lines);
     assert_eq!(thread.title.as_deref(), Some("Login test"));
+    assert!(thread.title_given);
+    assert!(!read(Source::ClaudeCode, &CLAUDE).title_given);
 }
 
 #[test]
-fn thr_001_text_the_program_wrote_in_the_turn_of_the_person_is_not_a_prompt() {
+fn thr_003_text_the_program_wrote_in_the_turn_of_the_person_is_not_a_prompt() {
     let thread = read(
         Source::ClaudeCode,
         &[
@@ -100,7 +102,7 @@ const CODEX: [&str; 8] = [
 ];
 
 #[test]
-fn thr_001_a_codex_rollout_reads_as_a_thread_in_order() {
+fn thr_003_a_codex_rollout_reads_as_a_thread_in_order() {
     let thread = read(Source::Codex, &CODEX);
     assert_eq!(kinds(&thread), ["prompt", "tool", "reply", "end"]);
     assert_eq!(thread.id.as_deref(), Some("019a-thread"));
@@ -114,7 +116,7 @@ fn thr_001_a_codex_rollout_reads_as_a_thread_in_order() {
 }
 
 #[test]
-fn thr_002_a_codex_command_that_exits_with_an_error_failed() {
+fn thr_005_a_codex_command_that_exits_with_an_error_failed() {
     let thread = read(Source::Codex, &CODEX);
     let call = tool(&thread);
     assert_eq!(
@@ -128,7 +130,7 @@ fn thr_002_a_codex_command_that_exits_with_an_error_failed() {
 }
 
 #[test]
-fn thr_002_a_codex_patch_names_its_file_and_is_its_own_patch() {
+fn thr_005_a_codex_patch_names_its_file_and_is_its_own_patch() {
     let patch = "*** Begin Patch\n*** Update File: src/b.ts\n-x\n+y\n*** End Patch";
     let line = serde_json::json!({"type":"response_item","payload":{"type":"custom_tool_call","name":"apply_patch","input":patch,"call_id":"p1"}}).to_string();
     let thread = read(Source::Codex, &[&line]);
@@ -152,4 +154,37 @@ fn thr_006_text_is_held_to_its_limit_at_a_character_boundary() {
 fn thr_006_a_line_that_is_not_json_changes_nothing() {
     let thread = read(Source::Codex, &["not json", "{\"type\":5}"]);
     assert_eq!(thread, Thread::default());
+}
+
+#[test]
+fn thr_005_text_a_command_printed_is_not_read_as_the_wrapper_of_codex() {
+    let printed = r#"{"output":"All tests passed","metadata":{"exit_code":0},"note":"x"}"#;
+    let call = r#"{"type":"response_item","payload":{"type":"function_call","name":"shell","arguments":"{}","call_id":"c1"}}"#;
+    let output = serde_json::json!({"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":printed}}).to_string();
+    let thread = read(Source::Codex, &[call, &output]);
+    assert_eq!(tool(&thread).output.as_deref(), Some(printed));
+}
+
+#[test]
+fn thr_006_a_thread_keeps_a_known_size_of_text_and_counts_the_rest() {
+    let reply = serde_json::json!({"type":"assistant","message":{"content":[{"type":"text","text":"x".repeat(MAX_TEXT)}]}}).to_string();
+    let mut reader = ThreadReader::new(Source::ClaudeCode);
+    for _ in 0..(MAX_THREAD / MAX_TEXT + 10) {
+        reader.feed(reply.as_bytes());
+    }
+    let thread = reader.finish();
+    assert_eq!(thread.entries.len(), MAX_THREAD / MAX_TEXT);
+    assert_eq!(thread.dropped, 10);
+}
+
+#[test]
+fn thr_004_a_title_of_the_program_is_one_line_of_80_characters_at_most() {
+    let line =
+        serde_json::json!({"type":"summary","summary":format!("{}\nsecond line", "t".repeat(200))})
+            .to_string();
+    let thread = read(Source::ClaudeCode, &[&line]);
+    assert_eq!(
+        thread.title.map(|title| title.chars().count()),
+        Some(TITLE_LENGTH)
+    );
 }

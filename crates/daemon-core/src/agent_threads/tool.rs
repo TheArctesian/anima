@@ -77,7 +77,7 @@ pub fn call(id: &str, name: &str, input: &Value, raw: &str) -> ToolCall {
         name: name.to_owned(),
         kind: ToolKind::of(name),
         summary: summary(input, raw),
-        patch: patch(name, input, raw),
+        patch: patch(name, input, raw).map(|patch| held(&patch, MAX_TEXT)),
         input: held(&shown, MAX_TEXT),
         output: None,
         failed: false,

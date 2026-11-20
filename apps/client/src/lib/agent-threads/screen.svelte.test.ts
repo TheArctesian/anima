@@ -33,7 +33,7 @@ function threadOf(id: string): Thread {
     entries: [
       { kind: 'prompt', at: null, text: `Prompt of ${id}`, images: 0 },
       { kind: 'tool', at: null, tool: { name: 'Bash', kind: 'command', summary: 'bun test', input: '{}', patch: null, output: '1 failed', failed: true } },
-      { kind: 'reply', at: null, text: 'One test fails.' },
+      { kind: 'reply', at: null, text: 'One test fails. <img src=x onerror="window.reached = true">' },
     ],
   });
   if (thread === null) throw new Error('not a thread');
@@ -96,6 +96,9 @@ it('THR-014, THR-015: a selected thread shows its prompt, its tool call with the
   expect(document.querySelector('[data-prompt]')?.textContent).toContain('Prompt of c2');
   expect(document.querySelector('summary .result')?.textContent).toBe('Failed');
   expect(document.querySelector('.composer')?.textContent).toContain('To continue it, use Codex');
+  // Text of a session is drawn as text, never as markup (THR-014).
+  expect(document.querySelector('.reply')?.textContent).toContain('<img src=x');
+  expect(document.querySelector('article img')).toBeNull();
   expect(document.querySelector('[data-thread="c2"]')?.getAttribute('aria-current')).toBe('true');
 });
 
