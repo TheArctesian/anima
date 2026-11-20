@@ -2,8 +2,8 @@
 
 - From: [the operator], 2026-11-19 (16:36 PT), in the chat of the Anima Product Planner. The Planner relayed his words to the idea stage. They are relayed here, not first-hand in this record.
 - Source: the vault note "Agent Multiplexer and Routing"
-- Status: Framed
-- Serves: not confirmed. Closest rows: 4.21 Agent tools as extensions (parts a and b) and 4.7 Jobs, builds and AI agent runs (part c). The Planner or the operator must name the row (question 1).
+- Status: Ready for Planner
+- Serves: row 4.21 Agent tools as extensions for parts (a) and (b), and row 4.7 Jobs, builds and AI agent runs for part (c) (the operator, 2026-11-19).
 - Owner if it becomes work: Open. Part (a) is already owned by [agent-tools-as-extensions.md](../../proposals/agent-tools-as-extensions.md) (AXT-001 to AXT-045). Part (b) is a deferred item of the same proposal. Part (c) has no owner; its neighbours are [jobs.md](../../proposals/jobs.md) (USE-003, JOB-012 to JOB-015) and [agent-runs.md](../../proposals/agent-runs.md) (AGN-001, AGN-002).
 - Effort (estimates): (a) S, only a change to a decided proposal; (b) M; (c) M to L, after a ruling on MCP-006 and a security review. Recommendation: should, but merge it. Two of its three parts are already in a plan or on the deferred list; one part is new.
 
@@ -58,9 +58,18 @@ The operator drops it if the Herdr-based version 1 of AXT shows that panes per d
 2. When the MCP layer picks a machine, does it act by itself? (one choice: suggest the machine and ask the operator first; act by itself for read-only work only; act by itself for all work. Recommended: suggest and ask first. It follows MCP-002 `ask`, AXT-021 and CHAT-041, and needs no change of MCP-006 for the first version.)
 3. Does "embed" mean host Herdr as it is, in a pane (decided in R-196)? (yes/no. Recommended: yes. A "no" means building the open Herdr runtime into the daemon, which reverses OD-AXT2 and AXT-030 and is a larger project.)
 
+## Answers (the operator, 2026-11-19 16:41 to 16:50 PT, in the Planner's chat, relayed verbatim)
+
+1. "Multiplexer Q1: fold the multiplexer and agent-on-device view into agent tools on row 4.21, and send MCP machine routing to the jobs and agent-runs work on row 4.7."
+2. "Multiplexer Q2: automatic for all work."
+3. "Multiplexer Q3: yes, embed means hosting Herdr as it is, in a pane, as R-196 decided."
+
+Answer 2 is against the recommendation. Automatic routing for all work changes MCP-006, JOB-015, AXT-012, AXT-019, AXT-021 and CHAT-041, so it needs rulings and a security review from the Planner. It also brings in OD-AXT10 and the deferred "all agents on all devices" page.
+
 ## Reviews
 
 - 2026-11-19: round 1. The idea stage framed the idea from the relayed words and an overlap check. No answers yet. The Serves row is not confirmed, so the status is Framed.
+- 2026-11-19: round 2. The operator answered all three questions (relayed verbatim). Ready for Planner.
 
 ## Source text
 
