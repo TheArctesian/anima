@@ -56,3 +56,17 @@ it('SET-001, D17: at the foot of the page the last section is current, though it
   expect(current()).toBe('Three');
   close();
 });
+
+it('R-224: the name of a group is written once, above the first link of the group', () => {
+  const entries = [
+    { ...ENTRIES[0], group: 'Hub' },
+    { ...ENTRIES[1], group: 'Hub' },
+    { ...ENTRIES[2], group: 'Connections' },
+  ];
+  const target = document.createElement('div');
+  document.body.append(target);
+  const view = mount(PageIndex, { target, props: { entries, label: 'Sections' } });
+  flushSync();
+  expect([...target.querySelectorAll('nav > *')].map((each) => each.textContent.trim())).toEqual(['Hub', 'One', 'Two', 'Connections', 'Three']);
+  unmount(view);
+});
