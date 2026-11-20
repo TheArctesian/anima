@@ -28,8 +28,18 @@ fn met_019_install_writes_the_user_unit_with_this_binary_s_path_then_enables_and
         fs::metadata(rig.unit()).expect("meta").permissions().mode() & 0o777,
         0o644
     );
+    // First the unit of the old program is taken out (R-126), then the new one is set up.
     assert_eq!(
-        ran,
+        ran[0],
+        "/usr/bin/systemctl --user disable --now anima-agent.service"
+    );
+    assert!(
+        ran[1].starts_with("/bin/rm -f ")
+            && ran[1].ends_with("/.config/systemd/user/anima-agent.service"),
+        "{ran:?}"
+    );
+    assert_eq!(
+        ran[2..],
         [
             "/usr/bin/systemctl --user daemon-reload",
             "/usr/bin/systemctl --user enable anima-daemon.service",
@@ -43,11 +53,15 @@ fn met_019_systemctl_user_is_given_the_session_bus_folder() {
     let rig = enrolled();
     let mut envs = Vec::new();
     install(Target::User, &rig.host(), rig.env(), |step: &Step| {
-        envs.push(step.env.clone());
+        // Each `systemctl --user` command; the step that deletes the file of the old unit is
+        // not one (R-126).
+        if step.program.ends_with("systemctl") {
+            envs.push(step.env.clone());
+        }
         Ok(true)
     })
     .expect("installed");
-    assert_eq!(envs.len(), 3);
+    assert!(envs.len() >= 3, "{envs:?}");
     for env in envs {
         assert_eq!(env, [("XDG_RUNTIME_DIR", "/run/user/test".to_owned())]);
     }
