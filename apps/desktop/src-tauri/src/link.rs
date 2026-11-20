@@ -141,10 +141,13 @@ fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) 
         return;
     };
     if let Some(link) = kept::now(&folders.device, port) {
-        // The unit runs the copy of an earlier app: it gets the program of this app (HMD-055).
-        if let Some(carried) = &program {
-            link.refresh(carried);
-        }
+        // The unit runs the copy of an earlier app, or a copy at its earlier place: it gets the
+        // program of this app at its place (HMD-055).
+        let application = crate::user_folders::of_this_user();
+        let link = match (&program, application) {
+            (Some(carried), Some(application)) => link.refresh(carried, &application),
+            _ => link,
+        };
         link.watch(device);
         return;
     }

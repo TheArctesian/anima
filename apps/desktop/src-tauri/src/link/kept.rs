@@ -1,5 +1,6 @@
 //! The device link kept by a unit of the user (HMD-058, R-240): the link program is copied out
-//! of the application to `~/.local/bin`, `anima-link unit install` writes and starts the unit,
+//! of the application to a folder that the app makes in its own folder (not `~/.local/bin`,
+//! whose mode the person sets), `anima-link unit install` writes and starts the unit,
 //! and the app watches the running link in place of a child of its own. The link then runs
 //! while the person is logged in, with the app closed. No rule of the unit is here: the link
 //! program has them (`link/unit`).
@@ -78,9 +79,29 @@ pub fn private_socket(folder: &Path) -> Option<PathBuf> {
     (private && socket.as_os_str().len() <= LONGEST_SOCKET).then_some(socket)
 }
 
-/// Where the copy of the link program is: `~/.local/bin/anima-link` under `home`.
-pub fn destination(home: &Path) -> PathBuf {
+/// Where the copy of the link program is: `<application>/link/program/anima-link`. The app
+/// makes `link` with mode 0700, so the link's own check of the program's folder passes on any
+/// system, also where the person's `~/.local/bin` can be written by their group (DEF-NEW-linkfolder).
+pub fn destination(application: &Path) -> PathBuf {
+    application.join("link/program").join(super::PROGRAM)
+}
+
+/// Where an app before DEF-NEW-linkfolder put the copy. A unit made then runs it until the app
+/// moves the unit to [`destination`].
+pub fn earlier_copy(home: &Path) -> PathBuf {
     home.join(".local/bin").join(super::PROGRAM)
+}
+
+/// The copy that a unit of this user runs now: the copy at [`destination`], else an earlier
+/// copy that is there, else [`destination`].
+pub fn current_copy(application: &Path, home: &Path) -> PathBuf {
+    let copy = destination(application);
+    let earlier = earlier_copy(home);
+    if !copy.is_file() && earlier.is_file() {
+        earlier
+    } else {
+        copy
+    }
 }
 
 /// What `anima-link unit` may see of the app's environment: the home folder, and on Linux the
@@ -113,9 +134,27 @@ impl Kept {
         if let Some(socket) = self.daemon_socket.as_deref().and_then(Path::to_str) {
             args.extend(["-daemon-socket", socket]);
         }
-        ask(self, &args, UNIT_LIMIT)
-            .map(drop)
-            .ok_or(LinkError::Failed)
+        let args: Vec<OsString> = args.iter().map(OsString::from).collect();
+        let args: Vec<&OsString> = args.iter().collect();
+        let invocation = Invocation {
+            program: &self.program,
+            args: &args,
+            env: &self.env,
+            limit: UNIT_LIMIT,
+        };
+        run(&invocation).map(drop).map_err(|cause| {
+            // The first line of the link's refusal names a folder or a value, never a secret.
+            log::warn!("`anima-link unit install` did not install the unit: {cause}");
+            LinkError::Failed
+        })
+    }
+
+    /// This link with the copy of the program at `program`.
+    fn with_program(&self, program: PathBuf) -> Self {
+        Self {
+            program,
+            ..self.clone()
+        }
     }
 
     /// Stops the unit and deletes its file. A unit that is not there is not an error.
@@ -162,34 +201,48 @@ impl Kept {
         })
     }
 
-    /// Gives the unit the link program of this app when its copy holds different bytes, and
-    /// starts the unit again when the program changed or when the unit was made before the
-    /// socket of the daemon (HMD-054). A copy that cannot be written stays, and the unit runs on.
-    pub fn refresh(&self, carried: &Path) {
-        let changed = !same(carried, &self.program);
-        if !changed && (self.daemon_socket.is_none() || self.has_daemon_socket()) {
-            return;
+    /// Gives the unit the link program of this app when its copy holds different bytes or is
+    /// not at [`destination`] of `application`, and starts the unit again when the program
+    /// changed or when the unit was made before the socket of the daemon (HMD-054). An earlier
+    /// copy is deleted once the unit runs the new one. A copy that cannot be written stays, and
+    /// the unit runs on. Returns the link to watch.
+    pub fn refresh(self, carried: &Path, application: &Path) -> Self {
+        let copy = destination(application);
+        let changed = self.program != copy || !same(carried, &self.program);
+        if !changed {
+            if self.daemon_socket.is_some() && !self.has_daemon_socket() {
+                let _ = self.install();
+            }
+            return self;
         }
-        let Some(home) = crate::user_folders::home() else {
-            return;
+        let Ok(placed) = place(carried, application) else {
+            return self;
         };
-        if !changed || place(carried, &home).is_ok() {
-            let _ = self.install();
+        let moved = self.with_program(placed);
+        if moved.install().is_err() {
+            return self;
         }
+        if self.program != moved.program {
+            unplace(&self.program);
+        }
+        moved
     }
 
     /// Installs and starts the unit again. The copy of the link program is made again from
-    /// `carried` when it is gone. False when the folder of the link is not marked for a unit,
-    /// when there is no program to run, or when the link program refuses the unit.
-    pub fn put_back(&self, carried: Option<&Path>, home: Option<&Path>) -> bool {
+    /// `carried` in `application` when it is gone. False when the folder of the link is not
+    /// marked for a unit, when there is no program to run, or when the link program refuses the
+    /// unit.
+    pub fn put_back(&self, carried: Option<&Path>, application: Option<&Path>) -> bool {
         if !folder::wants_unit(&self.folder) {
             return false;
         }
-        let placed = self.program.is_file()
-            || carried
-                .zip(home)
-                .is_some_and(|(carried, home)| place(carried, home).is_ok());
-        placed && self.install().is_ok()
+        if self.program.is_file() {
+            return self.install().is_ok();
+        }
+        carried
+            .zip(application)
+            .and_then(|(carried, application)| place(carried, application).ok())
+            .is_some_and(|placed| self.with_program(placed).install().is_ok())
     }
 
     /// Has the app watch the running link, and put the unit back when the link stays down
@@ -205,8 +258,8 @@ impl Kept {
                 .due(serving.is_some());
             if due {
                 let carried = crate::carried::program(super::PROGRAM);
-                let home = crate::user_folders::home();
-                if self.put_back(carried.as_deref(), home.as_deref()) {
+                let application = crate::user_folders::of_this_user();
+                if self.put_back(carried.as_deref(), application.as_deref()) {
                     log::warn!(
                         "the device link of the unit did not answer: the unit was installed and started again"
                     );
@@ -229,10 +282,10 @@ fn same(one: &Path, other: &Path) -> bool {
     }
 }
 
-/// Copies the carried link program to its place under `home`, unless the copy there already
-/// holds the same bytes. Returns the path that the unit runs.
-pub fn place(carried: &Path, home: &Path) -> Result<PathBuf, LinkError> {
-    let destination = destination(home);
+/// Copies the carried link program to its place in `application`, unless the copy there
+/// already holds the same bytes. Returns the path that the unit runs.
+pub fn place(carried: &Path, application: &Path) -> Result<PathBuf, LinkError> {
+    let destination = destination(application);
     if same(carried, &destination) {
         return Ok(destination);
     }
@@ -244,14 +297,15 @@ pub fn unplace(program: &Path) {
     let _ = fs::remove_file(program);
 }
 
-/// The link of `folder` as a unit of the user keeps it, with the copy of the program in the
-/// home folder.
+/// The link of `folder` as a unit of the user keeps it, with the copy of the program that a
+/// unit runs now ([`current_copy`]).
 fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
+    let application = crate::user_folders::of_this_user().ok_or(LinkError::NoHome)?;
     let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
     let daemon = daemon_folder(&home, cfg!(target_os = "macos"), config_home.as_deref());
     Ok(Kept {
-        program: destination(&home),
+        program: current_copy(&application, &home),
         folder: folder.to_path_buf(),
         port,
         daemon_socket: private_socket(&daemon),
@@ -302,8 +356,9 @@ fn answers(link: &Kept, limit: Duration) -> bool {
 /// The step that stopped it, in fixed words for the log.
 fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result<(), &'static str> {
     let home = crate::user_folders::home().ok_or("no home folder")?;
-    let placed =
-        place(program, &home).map_err(|_| "the link program was not copied to ~/.local/bin")?;
+    let application = crate::user_folders::of_this_user().ok_or("no home folder")?;
+    let placed = place(program, &application)
+        .map_err(|_| "the link program was not copied to the folder of the link")?;
     let link = Kept {
         program: placed,
         ..at(folder, port).map_err(|_| "no home folder")?
@@ -319,6 +374,11 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
     if !answers(&link, READY_LIMIT) {
         let _ = link.remove_because("its link did not answer on its port");
         return Err("the link of the unit did not answer on its port");
+    }
+    // A copy of an earlier app is no longer run by the unit.
+    let earlier = earlier_copy(&home);
+    if earlier != link.program {
+        unplace(&earlier);
     }
     link.watch(device);
     Ok(())

@@ -215,10 +215,29 @@ fn the_unit_commands_get_the_home_and_the_session_of_the_user_and_nothing_else()
             ("XDG_RUNTIME_DIR", "/run/user/1000".into())
         ]
     );
+}
+
+#[test]
+fn the_copy_of_the_link_is_in_the_folder_of_the_app_and_a_unit_of_an_earlier_app_is_found() {
+    let root = tempfile::tempdir().unwrap();
+    let (application, home) = (root.path().join("app"), root.path().join("home"));
+    let copy = application.join("link/program/anima-link");
+    let earlier = home.join(".local/bin/anima-link");
+    assert_eq!(kept::destination(&application), copy);
+    assert_eq!(kept::earlier_copy(&home), earlier);
+    assert_eq!(kept::current_copy(&application, &home), copy, "no copy yet");
+
+    fs::create_dir_all(earlier.parent().unwrap()).unwrap();
+    fs::write(&earlier, b"link").unwrap();
     assert_eq!(
-        kept::destination(std::path::Path::new("/home/me")),
-        std::path::Path::new("/home/me/.local/bin/anima-link")
+        kept::current_copy(&application, &home),
+        earlier,
+        "a unit of an earlier app runs ~/.local/bin/anima-link"
     );
+
+    fs::create_dir_all(copy.parent().unwrap()).unwrap();
+    fs::write(&copy, b"link").unwrap();
+    assert_eq!(kept::current_copy(&application, &home), copy);
 }
 
 #[test]
