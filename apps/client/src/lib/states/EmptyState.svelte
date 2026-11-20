@@ -8,14 +8,16 @@
     line: string;
     /** The one action (UI-030), for example an "Add device" button. */
     action?: Snippet;
+    /** 1 when the state is the whole page, such as an address that has no page; 3 inside a page. */
+    level?: 1 | 3;
   }
 
-  const { title, line, action }: Props = $props();
+  const { title, line, action, level = 3 }: Props = $props();
 </script>
 
 <!-- Sized to its message (UI-027): no fixed height, no padding to fill a card. -->
 <div class="empty">
-  <h3>{title}</h3>
+  <svelte:element this={`h${level}`} class="title">{title}</svelte:element>
   <p>{line}</p>
   {#if action}<div class="action">{@render action()}</div>{/if}
 </div>
@@ -30,7 +32,7 @@
     text-align: center;
   }
 
-  h3 {
+  .title {
     margin: 0;
     font-size: var(--text-lg);
     font-weight: var(--weight-medium);

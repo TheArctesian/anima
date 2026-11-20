@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import FormButton from '$lib/forms/FormButton.svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import DetailBar from '$lib/page/DetailBar.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
@@ -76,7 +79,11 @@
   {:else if store.status === 'failed'}
     <ErrorState message={`The project did not load. ${store.loadProblem}`} onRetry={() => void store.open(slug)} />
   {:else if project == null}
-    <EmptyState title="Project not found" line="No project has this address." />
+    <EmptyState title="Project not found" line="No project has this address. It may have been left out or removed.">
+      {#snippet action()}
+        <FormButton onclick={() => void goto(resolve('/projects'))}>Go to Projects</FormButton>
+      {/snippet}
+    </EmptyState>
   {:else}
     {#if store.refusal !== null}
       <Notice tone="error" title="The hub refused" line={store.refusal.message} />

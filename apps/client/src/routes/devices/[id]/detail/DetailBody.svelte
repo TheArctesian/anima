@@ -38,6 +38,7 @@
   import PhoneHead from '../phone/PhoneHead.svelte';
   import '../phone/device.css';
   import { detailCalls } from './calls';
+  import ErrorState from '$lib/states/ErrorState.svelte';
   import DeviceMissing from './DeviceMissing.svelte';
 
   /** The device's ID, parsed at the route edge; the route mounts this only for a well-formed one (D-14). */
@@ -167,10 +168,7 @@
   {#if detail.missing}
     <DeviceMissing />
   {:else if detail.error !== null}
-    <div class="notice" role="alert">
-      <p>{detail.error.message}</p>
-      <button type="button" onclick={() => void detail.load()} {@attach press()}>Retry</button>
-    </div>
+    <ErrorState message={`The device did not load. ${detail.error.message}`} onRetry={() => void detail.load()} />
   {:else if device !== null}
     <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
     {#if place.tab === 'overview'}
