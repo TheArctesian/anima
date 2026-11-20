@@ -45,6 +45,22 @@ pub enum Notice {
 }
 
 impl Notice {
+    /// The page's heading: what happened, in a few words.
+    const fn title(self) -> &'static str {
+        match self {
+            Self::LinkEnded => "This link has ended",
+            Self::SignIn => "Sign in to continue",
+            Self::NotFromAnima => "Open this from Anima.ing",
+            Self::NothingWaiting => "Nothing is waiting",
+            Self::NotThisBrowser => "This page is for another browser",
+            Self::StepPassed => "This step is done",
+            Self::TryAgain => "Could not finish this step",
+            Self::Connected => "GitHub is connected.",
+            Self::Finishing | Self::MaybeInstalled => "Finishing the connection",
+            Self::Failed => "Could not connect GitHub",
+        }
+    }
+
     const fn words(self) -> &'static str {
         match self {
             Self::LinkEnded => {
@@ -97,41 +113,27 @@ pub fn escape(text: &str) -> String {
     out
 }
 
-fn document(main: &str) -> String {
-    format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>Connect GitHub to Anima.ing</title><style>body{{font-family:system-ui,sans-serif;\
-         max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5}}</style></head>\
-         <body><h1>Connect GitHub to Anima.ing</h1>{main}</body></html>"
-    )
-}
-
-/// The page of fixed words for `notice`.
+/// The page of fixed words for `notice`, in the same layout as the result page.
 #[must_use]
 pub fn notice(notice: Notice) -> String {
-    document(&format!("<p>{}</p>", notice.words()))
+    installed::document(notice.title(), notice.words(), "")
 }
 
 /// The browser's result when it returns from GitHub (PRJ-039, UR-7).
 #[must_use]
 pub fn installed(notice: Notice) -> String {
-    let heading = if notice == Notice::Connected {
-        "GitHub is connected."
-    } else {
-        "Connect GitHub to Anima.ing"
-    };
-    installed::document(heading, notice.words())
+    self::notice(notice)
 }
 
 /// The confirm page a signed-in operator opens from the link with no value in it: the same
 /// page whether or not an attempt exists.
 #[must_use]
 pub fn confirm() -> String {
-    document(
-        "<p>Anima.ing makes a GitHub App in your account and keeps its key in the hub. Continue in \
-         a browser that is signed in to Anima.ing.</p>\
-         <form method=\"post\" action=\"/connect/github/open\">\
+    installed::document(
+        "Connect GitHub to Anima.ing",
+        "Anima.ing makes a GitHub App in your account and keeps its key in the hub. Continue in \
+         a browser that is signed in to Anima.ing.",
+        "<form method=\"post\" action=\"/connect/github/open\">\
          <button type=\"submit\">Continue to GitHub</button></form>",
     )
 }
@@ -140,13 +142,17 @@ pub fn confirm() -> String {
 /// scripts.
 #[must_use]
 pub fn to_github(action: &str, manifest: &str) -> String {
-    document(&format!(
-        "<p>Sending you to GitHub…</p><form method=\"post\" action=\"{}\">\
-         <input type=\"hidden\" name=\"manifest\" value=\"{}\">\
-         <button type=\"submit\">Continue to GitHub</button></form><script>{SCRIPT}</script>",
-        escape(action),
-        escape(manifest)
-    ))
+    installed::document(
+        "Opening GitHub",
+        "Sending you to GitHub…",
+        &format!(
+            "<form method=\"post\" action=\"{}\">\
+             <input type=\"hidden\" name=\"manifest\" value=\"{}\">\
+             <button type=\"submit\">Continue to GitHub</button></form><script>{SCRIPT}</script>",
+            escape(action),
+            escape(manifest)
+        ),
+    )
 }
 
 /// The policy of the page that posts the manifest: only the hashed [`SCRIPT`] runs, and the

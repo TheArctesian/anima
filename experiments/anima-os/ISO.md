@@ -63,7 +63,7 @@ python3 -m unittest discover -s experiments/anima-os -p 'test_*.py'
 python3 -m unittest discover -s experiments/anima-os/installer
 ```
 
-Physical hardware and real enrollment checks are tracked in HT-NEW-aospreview in `docs/need-human-testing.md`.
+Physical hardware and real enrollment checks are tracked in HT-069 in `docs/need-human-testing.md`.
 
 Brand sources and the hero render command are in [branding/README.md](branding/README.md).
 

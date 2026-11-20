@@ -1,6 +1,6 @@
 # Overnight ISO implementation reviews (2026-11-20)
 
-Continuation authorized by R-NEW-aosrecovery and R-NEW-aosisopreview. Reviews below are direct code inspections by the implementing agent, not independent reviewers. Each stage retains its tests and unresolved limits.
+Continuation authorized by R-277 and R-274. Reviews below are direct code inspections by the implementing agent, not independent reviewers. Each stage retains its tests and unresolved limits.
 
 ## Recovery review
 

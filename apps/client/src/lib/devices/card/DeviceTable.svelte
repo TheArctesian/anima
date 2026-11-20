@@ -15,11 +15,11 @@
   import type { WebInterface } from '$lib/web-interfaces/api';
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
-  import { hostLine } from './card';
+  import { hostLine, shortHost } from './card';
   import Meters from '../list/Meters.svelte';
-  import Why from '../list/Why.svelte';
-  import { listItems, UNGROUPED, type ListEntry } from '../list/look';
+  import { hasLiveUsage, listItems, reasonOf, UNGROUPED } from '../list/look';
   import type { ListQuery } from '../query';
+  import { HeldOrder } from '../list/held.svelte';
   import StatusBadge from '../status/StatusBadge.svelte';
 
   interface Props {
@@ -34,13 +34,18 @@
   }
 
   const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
-  const items: readonly ListEntry<CardDevice>[] = $derived(listItems(devices, query));
+  const held = new HeldOrder<CardDevice>(
+    () => listItems(devices, query),
+    () => `${query.sort} ${query.statuses.join(',')}`,
+  );
+  const items = $derived(held.items);
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
-<!-- The list view (UR-7, D18; R-224): hairline rows with the name first, problems first under their own group title, each
-     problem with its reason where an up device shows its meters. Below 1100 px each device takes two lines. -->
-<div class="device-list">
+<!-- The list view (UR-7, D18; R-224; row H of the site language plan): hairline rows of one height with the name first, problems first
+     under their own group title. A problem has its reason and how long under its status; the usage has one form in each
+     row. Below 1100 px each device takes two lines. -->
+<div class="device-list" {@attach held.hold}>
   <table class="device-rows">
     <caption class="caption">Devices</caption>
     <thead>
@@ -49,50 +54,62 @@
         <th scope="col" class="c-status">Status</th>
         <th scope="col" class="c-uptime">24 h</th>
         <th scope="col" class="c-beats">Last 50 checks</th>
-        <th scope="col" class="c-detail">Usage</th>
+        <th scope="col" class="c-detail" aria-label="Usage: CPU, memory, disk"><span class="usage-heads"><span>CPU</span><span>Memory</span><span>Disk</span></span></th>
         <th scope="col" class="c-connect">Connect</th>
       </tr>
     </thead>
     <tbody>
+      <!-- Each row is the direct child of the loop, so it fades in and out where it stands when the list changes (Reorder). -->
       {#each items as item, index (item.key)}
-        {#if item.kind === 'group'}
-          <tr class="group" transition:listRow={{ index }} {@attach track(item.key)}>
+        <tr
+          class={item.kind}
+          data-edge={item.kind === 'device' && item.device.status !== 'UP' ? item.device.status.toLowerCase() : undefined}
+          transition:listRow={{ index }}
+          {@attach track(item.key)}
+        >
+          {#if item.kind === 'group'}
             <th colspan="6" scope="colgroup">{item.title}<span class="count">{item.count}</span></th>
-          </tr>
-        {:else}
-          {@const device = item.device}
-          {@const line = hostLine(device)}
-          {@const deviceBeats = beats.get(device.id)}
-          <tr class="device" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()} transition:listRow={{ index }} {@attach track(item.key)}>
+          {:else}
+            {@const device = item.device}
+            {@const line = hostLine(device)}
+            {@const deviceBeats = beats.get(device.id)}
+            {@const reason = reasonOf(device, deviceBeats, Date.now())}
             <th scope="row" class="c-name">
               <div class="device-label">
                 <OsIcon os={device.os} distribution={device.distribution} />
                 <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" title={device.name} tabindex="0" data-device-id={device.id} {@attach press()}>{device.name}</a>
               </div>
               <div class="addresses">
-                <span class="host" title={line.host}>{line.host}</span>
+                <span class="host" title={line.host}>{shortHost(line.host)}</span>
                 {#if line.ip !== null}<span class="host ip" title={line.ip}>{line.ip}</span>{/if}
               </div>
             </th>
             <td class="c-status">
               <span class="marks">
-                <StatusBadge status={device.status} deviceId={device.id} />
+                <StatusBadge status={device.status} deviceId={device.id} plain />
                 <WarningBadge warnings={device.accessWarnings} />
               </span>
+              {#if reason !== null}
+                <span class="why">
+                  <a class="reason" href="{resolve('/devices')}/{encodeURIComponent(device.id)}?tab=checks" title="{reason.text}. Open the checks.">{reason.text}</a>
+                  {#if reason.since !== null}<span class="since">{reason.since}</span>{/if}
+                </span>
+              {/if}
             </td>
             <td class="c-uptime">{uptimeText(device.uptime)}</td>
             <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
             <td class="c-detail">
-              {#if device.status === 'UP'}
-                <Meters readings={device.readings ?? null} source={device.metricsSource} />
+              {#if hasLiveUsage(device.status)}
+                <Meters readings={device.readings ?? null} source={device.metricsSource} compact />
               {:else}
-                <Why {device} beats={deviceBeats} />
+                {#if reason !== null}<span class="narrow-reason" title={reason.text}>{reason.text}</span>{/if}
+                <span class="no-usage" title="No reading while the device is {device.status === 'DOWN' ? 'down' : 'unknown'}">—</span>
               {/if}
             </td>
-            <td class="c-connect"><DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} compact /></td>
-            <td class="c-meta" aria-hidden="true"><span class="host">{line.host}</span><span>{uptimeText(device.uptime)}</span></td>
-          </tr>
-        {/if}
+            <td class="c-connect"><DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} compact row /></td>
+            <td class="c-meta" aria-hidden="true"><span class="host">{shortHost(line.host)}</span><span>{uptimeText(device.uptime)}</span></td>
+          {/if}
+        </tr>
       {/each}
     </tbody>
   </table>

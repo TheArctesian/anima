@@ -1,6 +1,6 @@
 # Record: OS1 disposable UEFI prototype (2026-11-20)
 
-This record covers the bounded F1/UEFI-F2 experiment authorized by R-NEW-aosprototype in the [proposal](../../proposals/spare-computer-os.md), Section 13. It adds no requirement and does not approve later implementation. Implementation source is commit `29a875a2`; later evidence/documentation changes do not alter the image. Source and reproduction instructions are in [the prototype](../../../experiments/anima-os/README.md).
+This record covers the bounded F1/UEFI-F2 experiment authorized by R-276 in the [proposal](../../proposals/spare-computer-os.md), Section 13. It adds no requirement and does not approve later implementation. Implementation source is commit `29a875a2`; later evidence/documentation changes do not alter the image. Source and reproduction instructions are in [the prototype](../../../experiments/anima-os/README.md).
 
 ## Artifact and environment
 

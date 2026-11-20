@@ -38,6 +38,8 @@ clap_complete.workspace = true
 crossterm.workspace = true
 # The stream and sink halves of the subscription and tunnel WebSockets (CMD-003).
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+# The bytes of `anima sealed-record`, which K1 carries as base64 (K-E5 Section 3).
+base64.workspace = true
 # The random topic that `anima notify channel topic` offers (REM-008).
 getrandom.workspace = true
 graphql_client.workspace = true

@@ -1,4 +1,5 @@
-/** The rules of a merge of a branch into `dev` (R-198, PLN-020, PLN-021). Pure. */
+/** The rules of a merge of a branch into `dev` (R-198, PLN-019, PLN-020, PLN-021). Pure. */
+import { isRecord, MOCKUPS } from "../documents/mockup-records.ts";
 
 /** The files that a program writes from the documents. A merge never joins two versions of them: it writes them again. */
 export const GENERATED = ["docs/plan/register.md", "docs/operator-queue.md"] as const;
@@ -36,9 +37,13 @@ export function parseMergeRule(text: string): MergeRule | string {
   return { fullGates: rule.fullGates, mergeWithoutCheck: rule.mergeWithoutCheck, carryDocuments: rule.carryDocuments === true };
 }
 
-/** The paths with a conflict that a person or a session must solve: each one that is not a generated file. */
+/**
+ * The paths with a conflict that a person or a session must solve: each one that is not a
+ * generated file, and not the index or a record of the mockups, which the merge settles (PLN-019,
+ * `src/merge/mockups.ts`).
+ */
 export function conflictsForAHand(conflicted: string[]): string[] {
-  return conflicted.filter((path) => !(GENERATED as readonly string[]).includes(path));
+  return conflicted.filter((path) => !(GENERATED as readonly string[]).includes(path) && path !== MOCKUPS && !isRecord(path));
 }
 
 /** The message of the merge commit: the branch, and each number that the merge assigned. */

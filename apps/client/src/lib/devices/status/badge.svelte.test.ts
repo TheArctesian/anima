@@ -32,6 +32,13 @@ it.each<[CombinedStatus, string]>([
   expect(show(status)?.textContent.trim()).toBe(word);
 });
 
+it('the plain form has no fill for a problem and keeps the word', () => {
+  const pill = show('DOWN', { plain: true });
+  expect(pill?.classList.contains('quiet')).toBe(true);
+  expect(pill?.classList.contains('strong')).toBe(true);
+  expect(pill?.textContent.trim()).toBe('Down');
+});
+
 it.each<[CombinedStatus, boolean]>([
   ['UP', true],
   ['UNKNOWN', true],

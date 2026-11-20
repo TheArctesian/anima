@@ -1,6 +1,6 @@
 # Display sizing, installed Wi-Fi and rotation follow-up
 
-Owner: OS3, spare-computer-os proposal; follow-up to R-NEW-aosfullscreen and R-NEW-aosconsole. The operator reported tiny content on a high-resolution panel, requested the change on every page, reported Wi-Fi working in the installer but unavailable after installation, and asked for confirmed rotation to survive installation.
+Owner: OS3, spare-computer-os proposal; follow-up to R-272 and R-271. The operator reported tiny content on a high-resolution panel, requested the change on every page, reported Wi-Fi working in the installer but unavailable after installation, and asked for confirmed rotation to survive installation.
 
 ## Changes
 

@@ -7,7 +7,6 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import PageHeader from '$lib/page/PageHeader.svelte';
-  import SmallCaps from '$lib/page/SmallCaps.svelte';
   import ProjectTile from './ProjectTile.svelte';
   import ProjectBrowse from './ProjectBrowse.svelte';
   import type { ProjectsStore } from './store.svelte';
@@ -84,7 +83,7 @@
   {:else}
     {#each groups as group (group.title)}
       <section class="group" aria-label={group.title ?? (showing === 'leftOut' ? 'Left out' : 'All projects')}>
-        {#if group.title !== null}<h2><SmallCaps>{group.title}</SmallCaps><span class="count">{group.projects.length}</span></h2>{/if}
+        {#if group.title !== null}<h2>{group.title}<span class="count">{group.projects.length}</span></h2>{/if}
         <ul class="tiles">
           {#each group.projects as project (project.id)}
             <ProjectTile {project} onLeaveOut={(id) => void store.leaveOut(id)} onRestore={(id) => void store.restore(id)} />
@@ -125,7 +124,10 @@
     align-items: center;
     gap: var(--space-2);
     margin: 0;
-    font: inherit;
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-small);
   }
 
   .count {

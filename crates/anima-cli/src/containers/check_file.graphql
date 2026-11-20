@@ -1,0 +1,14 @@
+query ComposeFileCheckRun($file: String!) {
+  composeFileCheck(file: $file) {
+    syntaxValid
+    problems {
+      code
+      severity
+      line
+      column
+      serviceNumber
+      key
+    }
+    cut
+  }
+}

@@ -259,7 +259,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `files` (R-148; K-E4) | `access` | the `Authenticated` guard on `attachments`, `deleteAttachment`, `createArchive`, `deleteArchive`, `extractionProposals`, `proposeExtraction`, `confirmExtraction`, `rejectExtraction` |
 | `locations` (R-145; K-E4 Section 13) | `access` | the `Authenticated` guard on `locationSamples`, `locationIngestTokens`, `transferContext`, `recordLocationSamples`, `createLocationIngestToken`, `revokeLocationIngestToken`; `operator_only` on `createLocationIngestToken`, which joins `API_KEY_REFUSED_ROOTS` (it returns a secret) |
 | `sources` (R-261; K-E1 Section 7b, adds) | `access` | `operator_only` on `connectDawarich`, which joins `API_KEY_REFUSED_ROOTS` (it takes a secret) |
-| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks` and `containerImageUpdates`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
+| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks`, `containerImageUpdates`, `composeFileCheck` and `composeFromDockerRun`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -823,6 +823,18 @@ pub async fn image_updates(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc
 ```
 
 This is the one outbound path of the domain that does not go to a device: HTTPS to the fixed hosts of four public registries (`updates/registry.rs`), each resolved once with `targets::resolve_checked` and reached only at those addresses, with no redirect, no credential and no body read but the token (`updates/egress.rs`, as `checks/probe/rdap/egress.rs`).
+
+Addition of R-150 for HOST-022 (task H29), with no new import edge and one new dependency of the hub (`yaml-rust2`, which `compose-rules` already uses). The sub-module `compose_file` holds two pure functions of the text that the caller gives:
+
+```rust
+/// The check of the syntax of a Compose file: is the text YAML, and does it have the form of a Compose file. It is not
+/// the check of HOST-028 (`compose-rules`): it does not say that a machine accepts the file.
+pub fn check(text: &str) -> Check;
+/// The Compose file of one `docker run` command, or the fixed code of why there is none.
+pub fn convert(command: &str) -> Result<Converted, Refusal>;
+```
+
+They reach no device and no network, run nothing and keep nothing, and the two root queries take no device. Each has the complexity 100 (at most four in one request) and runs on a thread for blocking work. `check` reads at most 256 KiB, 64 levels and 100,000 events of the YAML parser, takes the events one at a time (no recursion in the parser), and reads an alias as one node (it expands nothing). `convert` reads at most 64 KiB with its own reader of shell words (`compose_file/words.rs`), which expands nothing and refuses each form that a shell would run, fill or expand; it takes at most 32 networks and 32 network aliases, and refuses a file larger than 256 KiB. A `Problem` holds a fixed code, a line, a column, the number of its service and the name of a key only when Compose defines that name; it holds no text that the operator wrote (LOG-007), because a value or a name in the wrong place can be a secret. The list of the options that are not converted holds the names of options of Docker only. Neither text reaches a log: the request span records no query text and no variables, and the error boundary of the hub replaces each error text that can quote a value (`events/process_log`).
 
 The list of the containers also asks Docker for two more labels of Compose, the folder and the files of the project of a container (R-211, task H15); `Container` has them as `compose_working_dir` and `compose_files`.
 

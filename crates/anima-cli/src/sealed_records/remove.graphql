@@ -1,0 +1,3 @@
+mutation SealedRecordRemove($owner: String!) {
+  deleteSealedRecord(owner: $owner)
+}

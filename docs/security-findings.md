@@ -162,6 +162,21 @@ that owns the area.
 | SF-087 | Section 6.4.2, row "Registries with a login". Low | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-088 | Eleven sentences of contract K10 version 0.4 contradict each other | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-089 | The clean-up with "All containers" on can remove an adopted project, against R-211 | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-139 | A failed stop or a refused image removal left `files/` with its secret values. High | The applications program (task H31, part 1) | Open |
+| SF-137 | The clean-up compared names of images, not digests, and could remove a kept image. Medium | The applications program (task H31, part 1) | Open |
+| SF-132 | It is not proven that each Compose version obeys `--host` and `--config`. Medium | The applications program (task H31, part 1) | Open |
+| SF-138 | The records said that a new version runs before its start. Medium | The applications program (task H31, part 1) | Open |
+| SF-134 | The debug text of a plan showed values of the environment file. Low | The applications program (task H31, part 1) | Open |
+| SF-136 | A record of the pair that cannot be read looked like no record. Low | The applications program (task H31, part 1) | Open |
+| SF-140 | The settings file is checked for its owner and mode only. Low | The applications program (task H31, part 1) | Open |
+| SF-133 | Forms that compose-rules accepted: carriage returns, `=` in a name, two texts for one target. Low | The applications program (task H31, part 1) | Open |
+| SF-135 | One origin of a hub could have two texts. Low | The applications program (task H31, part 1) | Open |
+| SF-144 | The converter writes each network alias for each network, so a small command makes a very large file. High | Compose file check and `docker run` converter (task H29) | Open |
+| SF-141 | One request can hold about 250 checks of the largest file. Medium | Compose file check and `docker run` converter (task H29) | Open |
+| SF-146 | The writer of the converter leaves characters that YAML does not print. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -1901,6 +1916,197 @@ What it is, in the words of the reviewer:
 - One sentence to add in 6.4.13 (HOST-018), so that R-226 holds on a system engine: "The daemon gets these values from the applications program, not from the engine."
 
 State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-139: A failed stop or a refused image removal left `files/` with its secret values. High
+
+Requirements: task H31; contract K10 Section 6.4.8 ("It deletes `files/` of the application in each case").
+
+What it is: the plan of `application_remove` had the steps: no `.env`, `compose down`, one `image rm` for each pulled image, then the deletion of `files/`. The caller stops a plan at the first step that fails. Thus a failed `down`, or an `image rm` that the engine refuses because a different application uses the image, left `files/` with the environment file and the final form.
+
+Where: `crates/anima-applications/src/work/removal.rs`, `crates/anima-applications/src/plan.rs`.
+
+Effect, and who can cause it: the hub, with a removal of an application whose image a different application uses. Effect: the secret values of the application stay on the machine after its removal.
+
+Mitigation now: two new step kinds. `Step::DeleteFolderInEachCase` deletes `files/` directly after the stop and runs also when an earlier step failed. `Step::Attempt` removes an image; its failure does not stop the plan. `binds/` is deleted only after a stop that did not fail. A test shows the order.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `d2455995`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-137: The clean-up compared names of images, not digests, and could remove a kept image. Medium
+
+Requirements: task H31; contract K10 Section 6.4.10 ("it never removes an image that `keep` holds").
+
+What it is: `docker_prune` held an image when the text `name@digest`, made from the name in the file, was in the `RepoDigests` of the engine. The engine writes the short name (`nginx@sha256:…`); the file can name `docker.io/library/nginx:1`. With "All containers" on, an image of a kept version with no tag and no container was removed.
+
+Where: `crates/anima-applications/src/work/prune.rs`.
+
+Effect, and who can cause it: the hub, with `docker_prune` and `images`. Effect: `application_back` has no image to start.
+
+Mitigation now: an image is held when the digest of one of its names is a digest of the version that runs or of the kept version of an application. The name part is not compared. `application_remove` with `images` true also leaves out an image whose digest a different application holds. Tests show both.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `d2455995`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-132: It is not proven that each Compose version obeys `--host` and `--config`. Medium
+
+Requirements: task H31; contract K10 Section 6.4.1.
+
+What it is: the program starts the Compose program with `--host unix://<socket> --config <folder>` before the verb, and gave only `DOCKER_CONFIG` in the environment. No test with a real Compose program shows that each version from the lowest that the program knows takes `--config` and obeys `--host`. If a version does not obey `--host`, it uses the engine of its default socket, which the program did not check.
+
+Where: `crates/anima-applications/src/plan.rs`.
+
+Effect, and who can cause it: no attacker; a fault of the program. Effect: a command goes to an engine that the start checks did not check.
+
+Mitigation now: each command also gets `DOCKER_HOST` with the checked socket in the environment that the program sets. The arguments stay. A comment in the code and the row of task H31 say that part 2 proves the exact list of arguments with a real Compose program, the lowest and the current version, before it does a plan.
+
+State: Open until a real Compose program proves the list. The part in the environment is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-138: The records said that a new version runs before its start. Medium
+
+Requirements: task H31; contract K10 Sections 6.4.6 and 6.4.9.
+
+What it is: the plan of an apply moved the current version to the kept names and wrote the new Compose file, environment file and digests in place before `up`. A failed start thus left records that said that the new version runs, and a `keep` 1 replaced the last good kept version with a version that did not start.
+
+Where: `crates/anima-applications/src/work/apply.rs`, `crates/anima-applications/src/work/back.rs`, `crates/anima-applications/src/plan.rs`.
+
+Effect, and who can cause it: no attacker; a failed start. Effect: `application_back` goes to a wrong version, and `pull` false uses digests that never started.
+
+Mitigation now: an apply and a back write the three records of the new version under staged names before the start, and move them in place only after the start; the kept version is replaced or deleted only after the start. The final form is written in place before the start, because Compose reads it. Tests show the order.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-134: The debug text of a plan showed values of the environment file. Low
+
+Requirements: task H31; `LOG-007`.
+
+What it is: `Prepared`, `Files`, `Kept`, `Step::Write`, `Plan`, `FinalForm` and `Checked` of compose-rules had a derived `Debug`. Their debug text holds the bytes of the environment file or the final form, which hold secret values.
+
+Where: `crates/anima-applications/src/work/apply.rs`, `work/back.rs`, `plan.rs`, `final_form.rs`; `crates/compose-rules/src/lib.rs`.
+
+Effect, and who can cause it: no attacker; a log line or a panic message that a later part writes. Effect: a secret value in a log.
+
+Mitigation now: a hand-written `Debug` for each that shows only the length of the bytes. `Plan`, `Planned` and `Accepted` hold only such steps. A test shows that the debug text of each holds no value.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-136: A record of the pair that cannot be read looked like no record. Low
+
+Requirements: task H31; contract K10 Section 6.4.2.
+
+What it is: the checks took the record of the pair as `Option`. A file that the caller cannot read was thus the same as no file: the next request became the first pair, and a different hub was accepted.
+
+Where: `crates/anima-applications/src/pair.rs`, `crates/anima-applications/src/work.rs`.
+
+Effect, and who can cause it: a program of the user of the daemon that damages the file, if it can write it; a fault of the disk. Effect: the protection of a machine that moved to a different hub is lost.
+
+Mitigation now: the file has three states: none, cannot be read, a record. "Cannot be read" refuses each container item with `applications_off`. The file must be deleted when the administrator sets "Manage applications" on again; that is a duty of part 2 and of task H32.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-140: The settings file is checked for its owner and mode only. Low
+
+Requirements: task H31; contract K10 Sections 6.4.1 and 6.4.2.
+
+What it is: the program checks that the settings file belongs to the identifier 0 and has no write right for a group or for others. Contract Section 6.4.2 asks no more. A link in the path of the file, a folder above it that a different user can write, or an access list, is not checked.
+
+Where: `crates/anima-applications/src/settings/guard.rs`.
+
+Effect, and who can cause it: a user who can write a folder above the settings file. Effect: he can put a settings file of his own in its place.
+
+Mitigation now: none in the code; the code does what the contract says.
+
+Proposed change of the contract text, for the owner of contract K10: in Section 6.4.2, the rule of Section 6.4.1 applies to the settings file and to each folder above it: each link is resolved, and no link, no real file and no folder above it can be written by a user who is neither the identifier 0, nor an administrator account, by the owner, the mode bits and the access list. The contract file is not changed in this branch.
+
+State: Open, for the owner of contract K10. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-133: Forms that compose-rules accepted: carriage returns, `=` in a name, two texts for one target. Low
+
+Requirements: task H28, task H31; contract K10 Section 6.4.4.
+
+What it is: the reader of the environment file cut lines with `lines()`, which takes a carriage return before a line feed as part of the line end, and skipped a line of only spaces. The map form of `environment` accepted a name with `=`. A mount target, a config target and a `tmpfs` path accepted `/.`, `//`, an empty part, a `.` part and a `/` at the end, so that two different texts named one path and "different targets" was not exact.
+
+Where: `crates/compose-rules/src/variables.rs`, `declared.rs`, `forms.rs`.
+
+Effect, and who can cause it: the hub, with a file or an environment file. Effect: Compose reads a different value than the check read, or two mounts of one service name one path.
+
+Mitigation now: the lines are cut at the line feed only, and a line with a carriage return is refused. A line of only spaces is not empty and has no `=`, so it is refused (step 3 of Section 6.4.4). A name of `environment` has no `=`. A target and a `tmpfs` path have one form: absolute, not `/`, and no empty part, no `.` part and no `..` part. Tests show each refused case.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `dccda56b`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-135: One origin of a hub could have two texts. Low
+
+Requirements: task H31; contract K10 Section 6.4.2.
+
+What it is: the origin accepted an IPv6 address in each form that parses (`fd7a:0::1` and `fd7a::1`), an IPv4 address written as IPv6, and a host with an empty label (`http://a..b:1`). One hub could thus send two texts, and the record of the pair would refuse a hub that did not move.
+
+Where: `crates/anima-applications/src/forms.rs`.
+
+Effect, and who can cause it: no attacker; a daemon that writes the origin in a different form. Effect: a false refusal (`applications_off`).
+
+Mitigation now: one text for each address: an IPv6 address only in its canonical short form (RFC 5952), no IPv4 address written as IPv6, an IPv4 address only in its usual form, and a name with no empty label and a last label that is not all digits. `unix:<path>`, the origin of a hosted hub, stays refused; an open decision of the hosted applications plan asks for it.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+### SF-144: The converter writes each network alias for each network, so a small command makes a very large file. High
+
+Requirements: HOST-022, R-150; task H29 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+
+What it is: `networks()` in `crates/hub/src/work/containers/compose_file/draft.rs` gave each network the whole list of the network aliases, so the size of the file was the number of networks times the number of aliases. A command of 65,515 bytes (about 2,800 `--net` options and aliases) made a `composeFile` of 92.6 MB, with 572 MB of memory in the hub. With aliases of GraphQL, one request could ask for tens of GB.
+
+Who can cause it: each signed-in caller and each API key, also a read key.
+
+The correction: a command has at most 32 networks and at most 32 network aliases; more is the refusal `TOO_MANY_NETWORKS`. A file larger than 256 KiB, the most that the check reads, is the refusal `FILE_TOO_LARGE`, so the converter never makes a file that its own check refuses. No other option is written to more than one place more than a fixed number of times. Tests: `tests/refused.rs` (`host_022_more_than_32_networks_or_aliases_is_refused`, `host_022_a_file_larger_than_the_check_reads_is_refused`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-141: One request can hold about 250 checks of the largest file. Medium
+
+Requirements: HOST-022, API-004; task H29.
+
+What it is: `composeFileCheck` and `composeFromDockerRun` had the complexity 1. One request of 1 MiB could ask for about 250 checks of a file of 256 KiB through one variable, about 4 seconds of a worker of the runtime.
+
+Who can cause it: each signed-in caller and each API key.
+
+The correction: each of the two fields has the complexity 100 with the limit of 500 of the schema, so one request holds at most four. Each check and each conversion runs on a thread for blocking work (`spawn_blocking`), under the log and the span of the request, so the test of the log still reads its lines. Test: `crates/hub/tests/it/containers/compose_file.rs` (`host_022_one_request_holds_at_most_four_checks_or_conversions`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-146: The writer of the converter leaves characters that YAML does not print. Low
+
+Requirements: HOST-022; task H29.
+
+What it is: `quoted` in `compose_file/writer.rs` escaped the control characters and three more, but wrote U+FFFE, U+FFFF and other characters outside the printable set of YAML as they are. The reader of Compose refuses such a file.
+
+The correction: the writer escapes each character outside the printable set of YAML 1.2, and also U+0085, U+2028, U+2029 and U+FEFF. Test: `tests/written.rs` (`host_022_each_character_that_yaml_does_not_print_is_an_escape`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-145: The reader of shell words keeps as text an expansion that a shell does. Low
+
+Requirements: HOST-022; task H29.
+
+What it is: the reader of shell words (`compose_file/words.rs`) kept as text a brace expansion (`{80,443}`), a `~` at the start of a word, `*`, `?` and `[` out of quotes, `$[1+2]` and a quote in `${A:-'x'}`, and read a carriage return alone as a space. A shell changes each of these, so the file did not hold what the command does.
+
+The correction: each is refused with a fixed code: `BRACE_EXPANSION`, `TILDE_EXPANSION` (also after `=` or `:`), `PATTERN`, `ARITHMETIC_EXPANSION`, `VARIABLE_NOT_KEPT` for a quote in a kept variable, and `CONTROL_CHARACTER` for a carriage return that is not part of a line end. In quotes, each stays as text. Test: `tests/refused.rs` (`host_022_each_expansion_of_a_shell_with_no_dollar_is_refused`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-142: A problem of the check shows a secret that the operator wrote in the place of a key. Low
+
+Requirements: HOST-022, LOG-007; task H29.
+
+What it is: a problem of the check showed a name of a key or of a service when it was made of safe characters. A secret written in the place of a key (`hunter2: 1`) or as the name of a service (a token of GitHub) was shown in the problem, in the output of the command and in the result of the MCP tool. The text of the first commit said that a problem holds "never a value of the file"; that was not true for such a name.
+
+The correction: a problem gives a key by its name only when Compose defines that name, and a service by its number in `services` (`serviceNumber` in K1 in place of `service`). An unknown key, an extension and the name of a service are not shown. The list of the options that are not converted names an option that Docker does not have as `(an unknown option)`. Test: `tests/secrecy.rs` (`host_022_a_problem_names_only_a_key_that_compose_defines_and_a_service_by_its_number`) and the hub test with a secret as a key and as the name of a service.
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-143: The MCP cleaning can change the Compose file that an agent gets. Low
+
+Requirements: HOST-022, MCP-008; task H29.
+
+What it is: `mcp/untrusted.rs` gave the cap of 4,000 characters with kept lines to each field named `composeFile` in each result of each tool. The cleaning also removes invisible characters, so an agent could get a Compose file that is different from the file of the hub, with no sign of it.
+
+The correction: only the top-level field `composeFile` of `anima_compose_from_run` keeps its lines (`cleaned_result`). The tool gives the file only when the cleaning does not change it; else `composeFile` is null, `withheld` says why, and `fileLength` gives the length of the whole file. The description of the tool says that an agent must not install a file from the result without a person reading it. Tests: `mcp_008_only_the_file_of_the_compose_tool_keeps_its_lines` and `mcp_008_a_file_that_the_cleaning_would_change_is_withheld`.
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
 
 ## Closed
 

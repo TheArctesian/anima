@@ -1,6 +1,6 @@
 # Anima OS experimental ISO — 2026-11-20
 
-Authorized by R-NEW-aosisopreview. This is an installable experimental x86-64 UEFI image, not the supported first release or completion of the 28 product decisions. [Build/use instructions](../../../experiments/anima-os/ISO.md) and the [stage-by-stage code reviews](overnight-reviews-2026-11-20.md) accompany it. Reviews were performed directly by the implementing agent; no independent council re-review is claimed.
+Authorized by R-274. This is an installable experimental x86-64 UEFI image, not the supported first release or completion of the 28 product decisions. [Build/use instructions](../../../experiments/anima-os/ISO.md) and the [stage-by-stage code reviews](overnight-reviews-2026-11-20.md) accompany it. Reviews were performed directly by the implementing agent; no independent council re-review is claimed.
 
 ## What is built
 
@@ -38,6 +38,6 @@ The ISO is an experimental delivery, not completion of OS2–OS8. Still unimplem
 - Anima-managed apps/jobs/agents, permission reconciliation, offline execution semantics and resource-profile scheduling. The monitoring daemon is not a substitute execution engine.
 - Signed/update delivery, production health policy, automatic maintenance, preserving-data repair, reset, backup/restore and optional encryption.
 - BIOS installation, Intel Mac and ARM qualification, physical networking, TPM and laptop battery protection. Apple Silicon remains later scope.
-- Real hub/account/private-network enrollment, tracked with hardware checks in HT-NEW-aospreview of [the human-testing list](../../need-human-testing.md). Hosted enrollment also retains the HM-D16 dependency.
+- Real hub/account/private-network enrollment, tracked with hardware checks in HT-069 of [the human-testing list](../../need-human-testing.md). Hosted enrollment also retains the HM-D16 dependency.
 
 No physical disk, production account or remote host was modified. No ISO was publicly published. Source is kept on the authorized implementation branch.

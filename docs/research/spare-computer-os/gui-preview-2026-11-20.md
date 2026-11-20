@@ -1,6 +1,6 @@
 # Graphical Anima.ing preview — 2026-11-20
 
-This continues OS3 under R-NEW-aosgui. It is an experimental x86-64 UEFI image,
+This continues OS3 under R-273. It is an experimental x86-64 UEFI image,
 not the supported hardware release. The operator requested Calamares, graphical
 network setup, Anima colours, white text and the anima-site hero background.
 
@@ -44,7 +44,7 @@ keyboard setup and persistence. The separate CLI test covers the fallback and lo
 rootless app/job fixtures. Both compare the complete unselected 32 GiB disk hash.
 
 The installer regression tests cover disk refusal and private network-profile copying.
-Hardware and real hub enrollment remain in HT-NEW-aospreview. Firmware and diagnostic
+Hardware and real hub enrollment remain in HT-069. Firmware and diagnostic
 tools are included, but no unknown Wi-Fi chipset is declared supported by a GUI test.
 The installed runtime is unchanged: existing enrollment/monitoring and local Podman,
 not completed Anima app/job/agent orchestration.
@@ -55,9 +55,9 @@ Visual checks: [live desktop](gui-screenshots/desktop.png), [installer summary](
 
 The operator's RTL8821CE is detected with `rtw88_8821ce`; NetworkManager reports no rfkill block or missing firmware, but cannot activate `fi.w1.wpa_supplicant1`. The live ISO forced wireless off, removing the backend required by NetworkManager. Remove that override.
 
-Direct review (Predictable): keep NetworkManager's standard D-Bus backend configuration. Add a live-ISO regression check that activates the backend and reads its Interfaces property. The check fails on the delivered GUI ISO and passes after booting the rebuilt ISO, SHA256 `e75864eeaceef1b9612708135735dca21ac198d1e8b7c5c4190dd95b962139a4`. Documents and Python syntax checks pass. The new image has not repeated the full installation suite; installation logic is unchanged. Physical Wi-Fi scanning and connection remain open under HT-NEW-aospreview.
+Direct review (Predictable): keep NetworkManager's standard D-Bus backend configuration. Add a live-ISO regression check that activates the backend and reads its Interfaces property. The check fails on the delivered GUI ISO and passes after booting the rebuilt ISO, SHA256 `e75864eeaceef1b9612708135735dca21ac198d1e8b7c5c4190dd95b962139a4`. Documents and Python syntax checks pass. The new image has not repeated the full installation suite; installation logic is unchanged. Physical Wi-Fi scanning and connection remain open under HT-069.
 
-## Fullscreen revision under R-NEW-aosfullscreen
+## Fullscreen revision under R-272
 
 This revision supersedes the live-desktop presentation above. Its reference is the operator-approved `anima-installer-wordmark-preview.html` in the local `anima-os-designs/fullscreen-calamares` directory. Fullscreen Calamares uses the supplied vector wordmark, IBM Plex Sans, Graphite surfaces, white text and frost controls. The Anima-site door is behind the welcome/completion content. Openbox supplies only the underlying window session; there is no desktop panel. Account and keyboard forms retain their real validation. Mockup hardware/progress values are not shipped.
 
@@ -67,7 +67,7 @@ Direct review (Predictable): selected additional data drives receive separate Bt
 
 Display evidence: the styled orientation dialog reverted a virtual display to its previous orientation after its countdown. Automatic orientation uses the internal panel's reported mounting orientation, not an accelerometer. Physical touchscreen transforms and the operator's panel remain unqualified.
 
-Networking evidence: installer and appliance use the same redistributable firmware set; no evidence supports adding unrelated firmware to fix this Realtek failure. The standard NetworkManager supplicant wiring is restored. A virtual-radio development check completed WPA authentication and a connection with a fixture static address. Its same-host DHCP fixture did not establish DHCP, so this does not qualify DHCP, internet access or the physical RTL8821CE. Physical scan/authentication/address acquisition and profile persistence remain in HT-NEW-aospreview.
+Networking evidence: installer and appliance use the same redistributable firmware set; no evidence supports adding unrelated firmware to fix this Realtek failure. The standard NetworkManager supplicant wiring is restored. A virtual-radio development check completed WPA authentication and a connection with a fixture static address. Its same-host DHCP fixture did not establish DHCP, so this does not qualify DHCP, internet access or the physical RTL8821CE. Physical scan/authentication/address acquisition and profile persistence remain in HT-069.
 
 Repository validation: 6,468 Rust tests passed (one skipped). The initial broad client test run hit 16 timeouts while other build work ran; the full client suite then passed all 4,873 tests with four workers. Client production build and limits, names, imports, documents and baseline checks passed. Installer regression tests (13), display parser test (1) and VM harness tests (3) passed. Final combined-image installation evidence is recorded separately when complete; these checks do not establish visual approval or physical hardware support.
 

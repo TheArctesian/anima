@@ -1,6 +1,6 @@
 # Installed-console ISO preview — 2026-11-20
 
-Owner: OS3, proposal Section 14; R-NEW-aosconsole. Experimental x86-64 UEFI image, not a stable hardware qualification.
+Owner: OS3, proposal Section 14; R-271. Experimental x86-64 UEFI image, not a stable hardware qualification.
 
 ## Implemented
 
@@ -28,7 +28,7 @@ This reuses existing contracts and permissions. It does not add managed job or a
 - The final delivered image passed all ten [CLI-install and installed-GUI checks](console-preview-results.json): live UEFI boot, supplicant D-Bus activation, mounted-child exclusion, cancellation before erase, offline installation, read-only installed runtime, local rootless app/job execution, GUI authentication/lock/network/display with the fixed footer, reboot persistence and unselected-disk protection. Final screenshot inspection at 1280×800 confirmed visible power controls and no horizontal scrollbar.
 - The full [Calamares multidrive test](console-calamares-results.json) passed on the preceding image (`efa1cb1192049d0b37a69d8081f78715ccc40a229449d74c70677dc3d1879461`). Subsequent changes added the sign-in browser confirmation header, waiting for a waking hub, and the console horizontal-overflow correction; the Calamares installer code was unchanged. The final exact image was then independently installed through the CLI and its installed GUI exercised as above.
 
-Headless and VM checks are local evidence, not physical frame-pacing measurements. No production account was signed in and no real hub enrollment or remote heartbeat was exercised. Hardware Wi-Fi, orientation/touch mapping, live authentication and motion under load remain in HT-NEW-aospreview. The sign-in/backend failures must be reported honestly on hardware; do not bypass existing trust rules to force enrollment.
+Headless and VM checks are local evidence, not physical frame-pacing measurements. No production account was signed in and no real hub enrollment or remote heartbeat was exercised. Hardware Wi-Fi, orientation/touch mapping, live authentication and motion under load remain in HT-069. The sign-in/backend failures must be reported honestly on hardware; do not bypass existing trust rules to force enrollment.
 
 ## Artifact
 

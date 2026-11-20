@@ -116,12 +116,20 @@ signature_settings() {
 
 sh "$ROOT/link/build-phone.sh" aarch64-apple-ios
 cd "$HERE/.."
+# Xcode runs Tauri's Cargo build in a child process, which can otherwise find a system Rust.
+RUST_CARGO=$(rustup which cargo) || refuse "install the Rust toolchain of the repository with rustup"
+export PATH="$(dirname "$RUST_CARGO"):$PATH"
 export CI=true
 # A new project each time, so that no setting of an earlier run stays in it.
 rm -rf "$PROJECT/anima-app.xcodeproj" "$PROJECT/project.yml" "$ARCHIVE" "$IPA"
 bunx tauri ios init --ci
 grep -q '^      PRODUCT_BUNDLE_IDENTIFIER: ' "$PROJECT/project.yml" || refuse "project.yml of Tauri has no group of settings where the script looks for it"
-signature_settings > "$ROOM/settings"
+cp -R "$HERE/ios/AnimaAppIcon.appiconset" "$PROJECT/Assets.xcassets/"
+{
+    signature_settings
+    echo '      ASSETCATALOG_COMPILER_APPICON_NAME: AnimaAppIcon'
+    echo '      TARGETED_DEVICE_FAMILY: "1,2"'
+} > "$ROOM/settings"
 # After the line of the identifier, which each generated project has in its group `app`.
 # The team of the profile takes the place of the team that Tauri wrote.
 if [ "$SIGNED" = yes ]; then sed -i '' -e '/^      DEVELOPMENT_TEAM: /d' "$PROJECT/project.yml"; fi
@@ -135,6 +143,10 @@ APP=$ARCHIVE/Products/Applications/Anima.ing.app
 [ "$(plist CFBundleIdentifier "$APP/Info.plist")" = "$APP_ID" ] || refuse "the application of the archive is not $APP_ID"
 [ "$(plist CFBundleShortVersionString "$APP/Info.plist")" = "$VERSION" ] || refuse "the archive does not have the version $VERSION"
 [ "$(plist CFBundleVersion "$APP/Info.plist")" = "$BUILD" ] || refuse "the archive does not have the build number $BUILD"
+for family in CFBundleIcons 'CFBundleIcons~ipad'; do
+    [ "$(plist "$family:CFBundlePrimaryIcon:CFBundleIconName" "$APP/Info.plist")" = AnimaAppIcon ] ||
+        refuse "the archive does not have the Anima icon for $family"
+done
 
 if [ "$SIGNED" = no ]; then
     if codesign --display "$APP" > /dev/null 2>&1; then refuse "the application of the archive has a signature, and this run asked for none"; fi

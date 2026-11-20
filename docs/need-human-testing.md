@@ -30,7 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
-| HT-NEW-aospreview | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
+| HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -57,12 +57,14 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
+| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -90,7 +92,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
-| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
@@ -104,7 +106,7 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
-### HT-NEW-aospreview: Anima OS preview hardware and enrollment
+### HT-069: Anima OS preview hardware and enrollment
 
 Check that the installed name follows `anima-node-xxxx`, matches the console and newly enrolled hub device, and remains unchanged after reboot and an OS update.
 
@@ -118,9 +120,9 @@ Earlier operator report (2026-11-20): Wi-Fi connected successfully in the live i
 
 Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. This earlier failure is retained as history; see the later operator report below.
 
-Built: [preview source](../experiments/anima-os/README.md), under R-NEW-aosisopreview.
+Built: [preview source](../experiments/anima-os/README.md), under R-274.
 
-Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-NEW-aosgui adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
+Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-273 adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
 VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
 
 1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
@@ -756,6 +758,35 @@ state directory that the application gives it: read the two from the output of
 
 Result: Open.
 
+### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
+
+Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
+address, the hub opens a port on its own loopback address for the session and gives the gateway
+(guacd) that port; each connection of the port goes through the link to the port of the computer.
+
+The tests cover, with a fake link: a program beside the hub reaches a port of a computer through
+the port of the hub, two times in one session; a port that the computer did not turn on gives a
+closed connection; the port closes with its session; a device of the network and a hub with no
+link get no such port. Not covered: a real gateway, a real computer, Screen Sharing of macOS, the
+speed of a session through the relay of the link, and RDP (no link program for Windows yet).
+
+It needs: a hub of the pool from a new hub image that has this build, and an application with the
+link program of HM-T12. The steps are for the time when both exist.
+
+1. On this Mac, turn Screen Sharing on in System Settings, General, Sharing. Do not turn port 5900
+   on for the link yet.
+2. In the application, open the device of this Mac and press VNC. Expected: the session does not
+   open, and the message says that the computer did not answer or refused. Nothing else on the
+   Mac changes.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "<the device folder of the link>" on 5900`
+   (or the switch of HM-T13 when it is built). Press VNC again. Expected: the screen of this Mac
+   shows in the session after the password of Screen Sharing.
+4. Move the mouse and type in a text field in the session for one minute. Expected: the screen
+   follows; write how slow it feels.
+5. End the session, then turn port 5900 off again. Press VNC. Expected: the session does not open.
+
+Result: Open.
+
 ### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
 
 Built: migration `0506_events_audit_chain.sql` and the hash chain of the audit log
@@ -1101,7 +1132,9 @@ the hosted hub; for step 5, this Mac with the unit that an earlier application m
    Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
    the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
 
-Result: Open.
+Result: Open. Steps 1 to 4 passed (operator, 2026-11-20: "all reporting now", with a picture of Devices), with
+the 0.0.4 AppImage of `main` (`19dc3510`) on `pop-os`: the row `pop-os` showed CPU, Memory, Disk and VRAM.
+Step 5 is not done.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1652,6 +1685,17 @@ checks the screen, those check the values. Sign in to the application with a log
     layout has no special form yet.
 12. Sign in with a browser session of an API key, if the hub permits one, and select "Details".
     Expected: the sentence of the hub that it refuses, and the table stays.
+
+Result: Open.
+
+### HT-069: install and update Anima from F-Droid (M5-7)
+
+The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
+
+1. Install the signed release APK from the Anima release server. Open Anima and sign in. Expected: the app starts and reads the device list.
+2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
+3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
+4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
 
 Result: Open.
 
@@ -2396,5 +2440,87 @@ extensions of a real hub, at other widths or on a phone.
    Expected: the view that you chose last is shown.
 5. Make the window narrow (about 800 px), in the light and the dark appearance, and look at both views.
    Expected: no part lies over another; the tiles go to fewer columns.
+
+Result: Open.
+
+### HT-073: labels in sentence case in the whole application (R-279)
+
+Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
+`apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
+1280 px, in the dark and the light appearance. No person saw the other screens, a desktop window or a phone.
+
+1. Open "Devices" in a desktop window, in the dark and the light appearance.
+   Expected: the column heads read "Name", "Status", "24 h", "Last 50 checks", "Usage", "Connect", and a group head
+   reads for example "Needs a look 1". No word is in capitals. A group head is easy to tell from a device row.
+2. Select the grid view.
+   Expected: the group heads are the same as in the list.
+3. Open the logs panel, a project's commits, "Agent usage", "Projects" and "Settings".
+   Expected: each head of a day, a column or a group is in sentence case, and is still seen as a head.
+4. Open "Devices" and "Settings" on a phone.
+   Expected: the group heads and the section labels are in sentence case.
+
+Result: Open.
+
+### HT-071: the layout of the Devices list (R-278)
+
+Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
+`apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
+a device that is down shows no usage, and in a browser at 1280 px that three rows have one height. The list was looked
+at only in pictures of the web client with sample devices, at 800, 1280 and 1600 px. No person saw it in a desktop
+window with real devices.
+
+1. Open "Devices" as a list, in a window about 1280 px wide, with a device that is down and a device with metrics.
+   Expected: each row has the same height. The column heads are "Name", "Status", "24 h", "Last 50 checks", "CPU",
+   "Memory", "Disk" and "Connect", each on one line and on the edge of its cells.
+2. Look at the device that is down.
+   Expected: "Down" with a red dot and no fill, then how long, for example "over 15 min". Under it the reason; a click
+   on the reason opens the checks of the device. The usage is a dash. The row has no "+ VNC".
+3. Look at a device with metrics and at a device with none.
+   Expected: three values with a thin bar under each, under the words of the column head; "No metrics" for the other.
+4. Look at a device with a long name and an IPv6 address.
+   Expected: the name is whole where the window has room. The address shows its first two and its last two groups; the
+   pointer on it shows the whole address.
+5. Look at a device that is up and has a MAC address, and at one with no screen sharing.
+   Expected: no "Wake" in the row. "+ VNC" has no dashed border and opens the setup as before.
+6. Make the window narrow (below 1100 px) and select the grid view.
+   Expected: no part lies over another. In a narrow list the reason of a problem stands where the usage was.
+7. Stop a device that has two ways in and a MAC address (for example VNC and Web), and wait until the list says Down.
+   Expected: its row has the same height as before and the rows below do not jump. Its buttons are three icons on one
+   line; the pointer on each shows its name ("VNC", "Web", "Wake").
+8. Load the page again and look at the line under "Devices" before the list comes.
+   Expected: a quiet block, never "0 devices". When the counts come, nothing below them moves.
+9. Wait until the page stands still, then open "Tags", "Site" and the sort menu with the pointer.
+   Expected: the page does not scroll and the toolbar does not move.
+
+Result: Open.
+
+
+### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
+`apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,
+`apps/client/src/lib/devices/screen/DeviceScreen.svelte` and `Skeleton.svelte`, `apps/client/src/lib/devices/list/Meters.svelte`.
+The tests prove which element plays a fade and the order of the rows. The motion was measured frame by frame in
+headless WebKit with sample devices. No person saw it in a desktop window, at the frame rate of a real screen, or on a phone.
+
+1. Open "Devices" as a list in a desktop window. Set a device of a group to a different status (for example, stop the
+   link of a computer that is up), and keep the pointer away from the list.
+   Expected: the rows slide to their new places. A group title that appears ("Needs a look") fades in where it stands;
+   a group title that empties fades out, then the rows under it close the gap.
+2. Do step 1 again with the pointer on a row of the list.
+   Expected: no row moves while the pointer is on the list; the status word of the device changes in its place. When
+   the pointer leaves the list, the rows slide to their new places.
+3. Select "Grid", then "List".
+   Expected: the two views cross-fade in place. Nothing slides and nothing flashes.
+4. Filter with a count of the count line (for example "1 down"), then clear it.
+   Expected: the rows that go fade out where they stand; the rows that come fade in.
+5. Open "Devices" on a slow connection to the hub (or right after the hub starts), as a list and as a grid.
+   Expected: if the skeleton shows, its column heads, first group title and rows are where the data comes; the data
+   fades in over it with no jump.
+6. Watch the CPU value of a device with metrics for a minute.
+   Expected: a new value cross-fades over the old one; it does not count. Set Settings, Appearance, "Reduce motion":
+   the bar under the value is at its new length at once.
+7. Do steps 1 to 4 with "Reduce motion" on.
+   Expected: no row slides; rows and views fade only.
 
 Result: Open.
