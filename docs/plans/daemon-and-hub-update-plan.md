@@ -1,14 +1,14 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-139 (operator, 2026-11-17): the update of machines, stages A and B. Stage C (the hub of a server) is deferred and its requirements are marked "Not approved". Version 2 (2026-11-17). Tasks U1 (R-122) and U4 are Done. The other tasks are Not started. OD-ROL-15 is decided (R-158): a release server signs. Version 2.1 (2026-11-18) adds OD-ROL-16: the method of the update of a hosted hub. Version 2.2 (2026-11-18): OD-ROL-16 is decided (R-189: a volume, a copy, a replacement); ROL-053, ROL-054 and task U13.
+evidence: Approved by R-139 (operator, 2026-11-17): the update of machines, stages A and B. Stage C (the hub of a server) is deferred and its requirements are marked "Not approved". Version 2 (2026-11-17). Tasks U1 (R-122) and U4 are Done. The other tasks are Not started. OD-ROL-15 is decided (R-158): a release server signs. Version 2.1 (2026-11-18) adds OD-ROL-16: the method of the update of a hosted hub. Version 2.2 (2026-11-18): OD-ROL-16 is decided (R-189: a volume, a copy, a replacement); ROL-053, ROL-054 and task U13. Version 2.4 (2026-11-20): task U5 is built (the pure rules of a rollout); OD-ROL-17 is open.
 ---
 
 # Plan: update the daemon and the hub on each machine (one press, and automatic)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 2.3. Date: 2026-11-19. Version 2.3: task U13 is built (the copy of a hub root and its check), with two more points for the pool plan. Version 2.2 records R-189 (OD-ROL-16 is decided: option B with three conditions), adds ROL-053 and ROL-054 and task U13, and says what the pool plan must take. Version 2.1 adds the section "The update of a hosted hub" and the open decision OD-ROL-16; it changes no requirement. Version 2 is of 2026-11-17. Version 1 (2026-11-16) was the proposal. Version 2 is the plan: R-139 approves stages A and B, defers stage C, and decides OD-ROL-1 to OD-ROL-14. It adds the section "The hub that the pool runs" and OD-ROL-15.
+Version: 2.4. Date: 2026-11-20. Version 2.4: task U5 is built (the pure rules of a rollout, `crates/hub/src/fleet/rollout/`), with the open decision OD-ROL-17 and the section "The rules of a rollout as built"; it also records how the hosted hub of the operator was updated on 2026-11-19 and how the tasks relate to that. Version 2.3: task U13 is built (the copy of a hub root and its check), with two more points for the pool plan. Version 2.2 records R-189 (OD-ROL-16 is decided: option B with three conditions), adds ROL-053 and ROL-054 and task U13, and says what the pool plan must take. Version 2.1 adds the section "The update of a hosted hub" and the open decision OD-ROL-16; it changes no requirement. Version 2 is of 2026-11-17. Version 1 (2026-11-16) was the proposal. Version 2 is the plan: R-139 approves stages A and B, defers stage C, and decides OD-ROL-1 to OD-ROL-14. It adds the section "The hub that the pool runs" and OD-ROL-15.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog
 ([watchdog.md](../proposals/watchdog.md)), and the update of the daemon and the hub.
 Status: the header of this document holds the state (PLN-020). History: a proposal until 2026-11-17. The
@@ -372,6 +372,7 @@ programs. The operator must accept this again, or select a second key (OD-ROL-2)
 | OD-ROL-14 | Is the desktop application part of a rollout? | No. UPD-001 to UPD-006 stay. The application installs with no prompt and waits for "Restart to update". | Decided (R-139): no. |
 | OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), which place holds the key and signs? The options A to E, with their risks, are in [release-four-platforms.md](../proposals/release-four-platforms.md) Section 5: (A) the VPS hub stays; (B) a small server that only makes releases, apart from the pool; (C) a server of the pool or a hosted hub; (D) the account service; (E) the computer of the operator. | Version 2 of this plan recommended: the VPS hub stays (option A), until a different design is approved. A hosted hub is on a server that it shares with the hubs of other persons, and its key would sign a program for each machine of each person. Task U2 waits for this decision. | Decided (R-158, operator, 2026-11-18: "B: release server"): option B. A small server that only makes releases holds the updater key and signs. It is at Hetzner and is not a host of the pool. The hub on the VPS signs until that server has published one release; then the VPS hub can go away. One updater key, moved one time; no new key. Task U12 is the move. |
 | OD-ROL-16 | A hosted hub has no update path: for a new image the pool deletes it and makes it again. The operator (2026-11-18): "this also needs a better method". Which method must the hub program of this repository support? The options A to D, with what the code shows, are in "The update of a hosted hub": (A) the pool puts new programs into the container that runs; (B) the state of a hub is on a volume of its own, the container is replaced, with a copy before each update and a rollout in steps; (C) the hub updates itself from the release feed; (D) delete and make again, with an export and an import. | B, with three conditions: the copy is of the whole root of a stopped hub or an atomic snapshot, with a `pg_dump` that can be checked; the way back is the copy, because the migrations go one way and no gate proves ROL-034 (task U9); the programs run from the image and not from the volume. | Decided (R-189, operator, 2026-11-18: "B: volume, copy, replace"), with the three conditions. Until it exists he deletes his own hub by hand. ROL-053, ROL-054, task U13. |
+| OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets a step go on only without a machine that is not connected. | Yes, the step waits, with no limit, and the client shows that machine as the one that the rollout waits for; the operator can hold it, and a held machine leaves the step. A limit of time would update the other machines while one machine still has the old daemon and nobody decided that. Built this way in task U5; a different answer changes one line of `progress.rs`. | Open |
 
 The tier of this proposal is decision OD-W23 of the work plan.
 
@@ -385,7 +386,7 @@ U1 and U4 are done. The other tasks are not started. The states obey PLN-007.
 | U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the daemon files and the record. | Tasks R5 to R7; a release for each target. OD-ROL-15 is decided (R-158), and R-158 names this task | Not started | — |
 | U3 | A prototype on one Linux machine and one Mac: the second unit, the rename, the rollback of a version that stops at once and of one that does not answer, also after a restart of the machine (ROL-030). A record with measured results. | R-139 names it. The operator names one Linux machine and one Mac on which an agent can install a test unit and restart the machine | Not started | — |
 | U4 | The contract: how the hub tells a version, how a daemon gets the record and the file, the states of a machine. | R-139: the change to K8 and to MET-002 | Done | `5bd69f99`: K8 Section 8. The full gates passed on 2026-11-17 (21 of 21). The contract is ruled and not built: tasks U5 and U6 build it. |
-| U5 | The pure rules: the order of a rollout, the steps, the first machine, the states (ROL-023 to ROL-028, ROL-039 to ROL-041). | U4 | In progress (2026-11-20), on the branch `update/u5-rollout-rules` | — |
+| U5 | The pure rules: the order of a rollout, the steps, the first machine, the states (ROL-023 to ROL-028, ROL-039 to ROL-041). | U4 | Built (2026-11-20), on the branch `update/u5-rollout-rules`: the hub domain `crates/hub/src/fleet/rollout/`, with 42 tests. Pure: no table, no route and no caller yet; task U6 stores a rollout and calls the rules. "The rules of a rollout as built" says what each rule decides. OD-ROL-17 is open and does not block: the rule is built as its recommendation | The commits of that branch |
 | U6 | Stage B in the hub and the daemon: fetch, verify, serve, replace, check, roll back. Hub API, then `anima`, then MCP. | U2, U3, U5 | Not started | — |
 | U7 | Stage B in the client: the Updates group, the confirmation, the rollout, the list of machines. | U6 | Not started | — |
 | U8 | The automatic update of machines (ROL-046 to ROL-050). | U6 | Not started | — |
@@ -397,6 +398,36 @@ U1 and U4 are done. The other tasks are not started. The states obey PLN-007.
 
 The release record in [releases.md](../procedures/releases.md) holds what is released. The macOS releases 0.2.0 and 0.2.1 do not have U1: its commits are not in them. Thus no machine has a released daemon that reports its version, and ROL-044 applies only to the daemons that the operator built by hand. The next release carries U1.
 U1 and U3 need no release. U2 and each later task need a release for their target.
+
+## The rules of a rollout as built (task U5)
+
+The hub domain `crates/hub/src/fleet/rollout/` holds the rules as pure functions: the time and each fact of a machine are parameters. Nothing calls them yet.
+
+| Rule | Function | What it decides |
+| --- | --- | --- |
+| Who is in a rollout (ROL-028, ROL-043, ROL-044) | `place` | A machine is included when its token did not end, its daemon has the update function, its switch is on, it is not held, the hub holds a release of the version for its target, and its version is lower. If not, the reason is one of six. A machine that is not connected and a busy machine are included |
+| The first machine (ROL-025) | `first_machine` | The first machine, in the order given, that is connected, is not the machine of the hub and runs no job. None when no machine is such: the operator then selects one |
+| The steps (ROL-023) | `steps`, `step_size` | The first machine alone, then the others in their order. A step has at most a quarter of all the machines of the rollout, rounded down, and at least one: 10 machines give steps of 1, 2, 2, 2, 2 and 1 |
+| What comes next (ROL-026, ROL-027, ROL-039) | `next`, `standing` | Start a step, record that a step is good, stop, finish, or wait. A step is good when no machine of it is still updating, checking or busy. A machine that is not connected, or that the hub tells nothing (held, set off, no update function, token ended), leaves its step. A rollback or a refusal in a started step stops the rollout until the operator continues after that machine. The next step starts 10 minutes after the time that the hub recorded for the good step; for an automatic rollout, 1 hour after the first machine (ROL-047) |
+| What the hub tells a machine (K8 Section 8.2; ROL-031, ROL-032, ROL-040, ROL-045) | `instruction` | A version or nothing. Nothing to a machine that has the version, that refused it, or that rolled back from it 2 times, until "Try again". "Roll back" tells the previous version of the machine until the machine has it |
+| The way to the newest release (ROL-041) | `next_hop` | The newest release when its record says that it can replace the installed version; if not, the highest held release below it that can |
+| The state that the client shows (K8 Section 8.4) | `state` | The 12 states, in the order of the table of the contract |
+
+Three points that the requirements did not fix, and how they are built: a quarter is of all the machines of the rollout, the first one included; a step waits for a busy machine (OD-ROL-17); a release that a machine refused is told again only after "Try again", as a rollback after 2 tries is.
+
+Left for task U6: the tables of a rollout and of its steps, the times that `next` reads, the audit entries (ROL-022), the hold of a machine by the operator, and the reading of the `update` member of a batch into these types.
+
+## The hosted hub of the operator on 2026-11-19, and the tasks
+
+Relayed by the orchestrating session on 2026-11-20; no session of this repository saw the pool. `hub.anima.ing` moved to the hosted front door. The image of the hubs of the pool is `anima-hub-3a277cfd`, which `deploy/hub-image` of the private repository builds from `main` at `3a277cfd`. A hub keeps the programs of its image, so the update of a hosted hub on that day was the copy of the root, the replacement of the container, and the start on the same volume (R-189, ROL-053, ROL-054, task U13).
+
+How the tasks of this plan relate to that update:
+
+- **It is not a rollout.** The pool updates a hub. A rollout of this plan updates the daemons of the machines of one hub, to the version of that hub (tasks U5 to U8). After an update of a hosted hub, its machines keep the daemon that they have until stage B exists; then the rollout brings them to the version of the hub.
+- **The hub must work with the daemons before it.** Each update of a hosted hub leaves machines with the previous daemon. ROL-037 says that this pair must work, and no gate proves it: task U9. The update of 2026-11-19 was of the operator's own hub.
+- **The way back was the copy**, not the older image on the same volume: no gate proves ROL-034 (task U9).
+- **The image of the pool is not a release of this plan.** It is built from a commit of `main` by the private repository. The release record of task U2 has no entry for it, and OD-ROL-3 (the published form of a hub) stays deferred with stage C. The files that a rollout needs, `anima-daemon` for each target with its record, come from the release workflow of this repository (task U2), not from that image.
+- **Which hub holds the daemon files.** A daemon gets its file from its hub (ROL-008). A hosted hub must thus fetch and verify the release of its own version (ROL-006, ROL-007; task U6). The image could carry the files in its place; that is a question for task U6 and for the pool plan, and nothing is decided.
 
 ## Needs
 
