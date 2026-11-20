@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 1 (2026-11-20). The direction and the build of stage 1 before the launch are R-NEW-t3native (operator, 2026-11-20, first-hand to the orchestrating session, relayed to the session that records it). The requirements THR-001 to THR-060 are not approved. Only tasks TH1 to TH4, the read side of stage 1, may be built and merged; they start no program and drive no agent. Each task that starts or drives an agent waits for the approval of this proposal and of its security points (Section 8, OD-THR1 to OD-THR22). A separate reviewer read version 1 and found 28 weaknesses, 8 High (Section 9); the text has the corrections that need no decision, and no reviewer read the corrected text.
+evidence: Version 1 (2026-11-20). The direction and the build of stage 1 before the launch are R-NEW-t3native (operator, 2026-11-20, first-hand to the orchestrating session, relayed to the session that records it). The requirements THR-001 to THR-054 are not approved. Only tasks TH1 to TH4, the read side of stage 1, may be built and merged; they start no program and drive no agent. Each task that starts or drives an agent waits for the approval of this proposal and of its security points (Section 8, OD-THR1 to OD-THR23). A separate reviewer read version 1 and found 28 weaknesses, 8 High (Section 9); the text has the corrections that need no decision, and no reviewer read the corrected text.
 ---
 
 # Proposal: agent threads (the behaviour of T3 Code, as a native part of Anima)
@@ -12,14 +12,14 @@ Version: 1. Date: 2026-11-20.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), categories Use and See, row 4.24 of [priorities.md](../plan/priorities.md).
 From: R-NEW-t3native.
-Identifiers: THR-001 to THR-060, OD-THR1 to OD-THR22, tasks TH0 to TH40.
+Identifiers: THR-001 to THR-054, OD-THR1 to OD-THR23, tasks TH0 to TH52.
 Language: Simplified Technical English (design specification, Section 0).
 Mockup: [agent-threads/index.html](../mockup/agent-threads/index.html).
 Inventory of T3 Code: [t3-code-inventory.md](../research/agent-threads/t3-code-inventory.md) (a record; it adds no requirement).
 
 ## 1. What was decided, and what was not
 
-The operator said on 2026-11-20, first-hand to the orchestrating session: "I am using t3 code more and more and want to completley emulate it as a native feature of the app". Asked when to build it, he selected the option "Build now, first stage before launch". The text of that option: a proposal this week; then the first stage, a thread view over Claude Code and Codex on this Mac, is built before the launch; the security review runs at the same time. Earlier he approved that the Agent usage page should "look and work like T3 Code" (R-224 and the row of agent-usage-v2 in [mockup/README.md](../mockup/README.md)). R-NEW-t3native records these words.
+The operator said on 2026-11-20, first-hand to the orchestrating session: "I am using t3 code more and more and want to completley emulate it as a native feature of the app". Asked when to build it, he selected the option "Build now, first stage before launch". The text of that option: a proposal this week; then the first stage, a thread view over Claude Code and Codex on this Mac, is built before the launch; the security review runs at the same time. Earlier he approved that the Agent usage page should "look and work like T3 Code" (R-224 and the row of agent-usage-v2 in [mockup/README.md](../mockup/README.md)). The same day he said of T3 Code: "it is really good and i want it in my app should copy every feature they have". R-NEW-t3native records these words. Two answers followed on 2026-11-20: Threads is its own item of the navigation bar (R-NEW-threadsnav), and on the phone it takes the place of Sessions in the bar (R-NEW-threadsphone).
 
 What this decides:
 
@@ -224,7 +224,7 @@ The operator said on 2026-11-20, first-hand to the orchestrating session: "There
 - **THR-014.** The thread view must show, in order: the prompts on the trailing side, the replies, the reasoning folded, the tool calls of a turn in one block with one line each (kind, summary, result), the patch of an edit with removed and added lines, the end of each turn with "Stopped" when it was stopped. An open tool call shows its output. Each text of a session is drawn as text, never as markup; a test proves it. Claude Code writes no line for the end of a turn, so its threads show no end of a turn in stage 1a. A row and a thread are what a file says: each program of the user can write such a file.
 - **THR-015.** In stage 1a the composer is a note: the thread is read from the file of the program, and to continue it the person uses the program. The screen must start nothing.
 - **THR-016.** Keys of the thread screen: Up and Down move in the list and Enter opens; `/` goes to the search of the list; Cmd+Shift+[ and Cmd+Shift+] open the previous and the next thread; Cmd+1 to Cmd+9 open the thread at that place of the list; Cmd+F finds in the thread; `E` opens or closes the tool calls of the thread; `?` shows the keys. Cmd+K stays the jump field of Anima (R-224). A key is not taken while the focus is in a text field, except Escape.
-- **THR-017.** The screen is the page Threads in the navigation bar, above Agent usage (OD-THR10), with the mockup [agent-threads/index.html](../mockup/agent-threads/index.html). It is shown only in the desktop application; the phone and the web client do not show it in stage 1.
+- **THR-017.** The screen is the page Threads, its own item of the navigation bar, above Agent usage (R-NEW-threadsnav: "Own nav item"), with the mockup [agent-threads/index.html](../mockup/agent-threads/index.html). It is shown only in the desktop application; the phone and the web client do not show it in stage 1.
 
 ## 6. Stages and tasks
 
@@ -279,7 +279,61 @@ Needs: W0 (the socket of the link) for a machine that reaches the hub through th
 
 ### 6.5 Stage 4: worktrees, checkpoints, diffs, pull requests
 
-TH40 and the next tasks: a worktree for each thread (base branch, name from the first prompt, clean-up off by default), checkpoints as hidden commits under a private ref after each turn, the diff of a turn and of the thread, "Edit from here" with revert of the files only in a worktree, commit, push and a pull request through the forge domain of the hub. Then the rest of the inventory marked should: pin, archive, rename, plan mode, queue and steer, images, a terminal for each thread, find in thread, the context meter. The tasks are written when stage 3 is approved.
+TH40 to TH49: a worktree for each thread (base branch, name from the first prompt, clean-up off by default), checkpoints as hidden commits under a private ref after each turn, the diff of a turn and of the thread, "Edit from here" with revert of the files only in a worktree, commit, push and a pull request through the forge domain of the hub. Then the rest of the inventory marked should: pin, archive, rename, plan mode, queue and steer, images, a terminal for each thread, find in thread, the context meter. The tasks are written when stage 3 is approved.
+
+### 6.6 Stage 5: each other function of the inventory
+
+- **THR-053.** No function of the inventory of T3 Code is dropped (R-NEW-t3native: "should copy every feature they have"). Each row of the inventory has a stage in this proposal. A function that a different document of Anima owns is built there and shown in the thread; the table says which. The marks must, should and later give the order inside a stage, not a permission to leave a function out. Two rows of the inventory are not functions to copy: the telemetry of T3 Code, and "export", which T3 Code does not have.
+
+Stages 1 to 4 hold each function marked must or should in Section 3.3. Stage 5 holds the rest. Its tasks are written when stage 4 is approved; each one that starts a program or opens a path to a machine has its own security read first.
+
+| Function of the inventory (section) | Stage | Owner, when it is not this proposal |
+| --- | --- | --- |
+| Pin, snooze, settle and auto-settle, archive, delete, tags, drag in the list, the Working shelf, grouping by project (1.4, 1.6) | 4 (pin, archive, delete, rename); 5 (the rest) | — |
+| Threads with no project; add a folder, new project, clone, publish (1.1, 1.2) | 5 | Projects ([projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)) for a project that is a repository |
+| Fork, side chat, merge back, sub-agents as cards with their own thread (1.8) | 5; stage 1a already leaves sub-agent lines out, and stage 4 shows them read-only | — |
+| Plan mode and the proposed plan; goals; the suggested next prompt; `/clear`; compaction; find in thread; cite a reply (2.8, 2.12) | 4 (plan mode, find, `/clear`); 5 (the rest) | — |
+| The context meter, limits of a subscription, resume at the reset of a limit (2.11, 5) | 5. A limit of an account is read only if a ruling changes AIS-022 | Agent usage (AIS-018 to AIS-024) for the usage page |
+| The modes Accept edits and Auto (3.2) | 3 (Accept edits); 5 (Auto) | — |
+| Other agent programs: Cursor, OpenCode, Pi, Kiro, Grok Build, fx, Antigravity, Muse Code, any ACP agent (3.5) | 5, one program at a time, each with its vendor terms row | The catalogue and the terms rules of [bots.md](bots.md) (BOT-029 to BOT-046) |
+| Continue threads after a restart; unload when idle; force stop (3.6, 5) | 3 (force stop, idle); 5 (continue after a restart) | — |
+| Worktree clean-up rules, the copy-on-write cache, sparse checkout, submodules (6.1) | 5 | — |
+| The pull request page (review, comment, merge, auto-merge, stacks), watches of a pull request, other forges, issues (6.4, 14) | 5 | The forge domain and Projects (PRO requirements); PRO-007 for a second forge |
+| A terminal for each thread, splits, kept scroll-back; project scripts and set-up scripts (7) | 5 | The terminal of Anima (design specification Section 6.3) |
+| The list of local servers of a thread; the preview browser (7, 14) | 5 | [agent-tools-as-extensions.md](agent-tools-as-extensions.md) Section 6.10, AXT-079 to AXT-088 (R-281) |
+| The device panel (iOS Simulator, Android Emulator), screen capture (7, 14) | 5 | No owner yet |
+| The whole keyboard table and keys that the person can change (8); the settings of Section 9 of the inventory | 1b to 4 for the keys of the functions of each stage; 5 for the file of key rules | Settings |
+| Fast mode, more than one account of a program, the picker of the program (10) | 1b (model, effort); 5 (the rest; more than one account needs a ruling on BOT-025) | — |
+| Files as attachments, a large paste as a file, excerpts of a terminal (11) | 4 (images); 5 (the rest) | Attachments of the hub (FIL requirements) |
+| The queue on the server, edit and reorder of a queued message, steer, restart of a turn (12) | 1b (stop, a queue in the client); 4 (steer, the queue); 5 (the rest) | — |
+| Remote: pairing, SSH, Tailscale, the relay of the vendor, the hosted web app, linked servers (13) | 2 and 3, through the hub, the link and the VPN of Anima; the relay of the vendor is not copied because the hub is that part | The hosted mode and the link |
+| The phone application (13) | 6 | The mobile plan |
+| Guest links (13) | 5 | No owner yet; SEC-008 and RA-035 forbid a public link today, so it needs a ruling |
+| The file picker, the search of a project, the file viewer and editor, open in an editor (14) | 5 | — |
+| Notifications when a thread ends or needs the person (14) | 3 | The alert of AXT-053 and of [agent-layer.md](agent-layer.md) |
+| The `/` menu of commands and skills; restart of the agent session; the prompt stash; dictation; prompt links; copy a thread reference (14) | 1b (the `/` menu passes to the program); 5 (the rest) | — |
+| Scheduled tasks and webhooks that start a thread (14) | 5 | [jobs.md](jobs.md) and the routing of R-243, with their reviews |
+| Secret providers and a request of an agent for a secret (14) | 5 | Secrets (extensions plan Section 4.4); K10 Section 8 |
+| Agents of the outside over MCP; MCP tools that the server gives to its own agents (14) | 5 | The MCP server of Anima ([cli-mcp-plan.md](../plans/cli-mcp-plan.md)); OD-THR8 |
+| Import of the history of Claude Code and Codex (14) | 1a: the read side is this function | — |
+| Themes and the theme editor; managed policy; diagnostics; triage (14) | 5 | The tokens and Settings of Anima; no second theme system |
+| The command of the server (`t3 serve`, `pair`, `service`, `thread`) (14) | 1a to 3 | `anima agents` (Section 4.7) and `anima-daemon` |
+
+### 6.7 Stage 6: threads on the phone
+
+- **THR-054.** In the phone layout, Threads takes the place of Sessions in the bar at the bottom (R-NEW-threadsphone: "And on mobile it should replace the center button where sessions are"). The phone shows the threads of the devices through the hub (stage 2); it has no session files of its own. From stage 3 the phone sends a prompt and answers an approval under the rules of Section 7.
+
+**Note for the mobile stream.** The mobile plan owns the phone bar (MOB-010: "four destinations: Devices, Sessions, Logs and Settings"; mockup 6; task M2-2) and all phone and iOS code. This proposal and the tasks TH1 to TH4 change none of it: the page Threads is shown only where the capability `agentThreads` is true, which is the desktop application; the browser and the phone have it false. What the mobile stream gets from R-NEW-threadsphone:
+
+1. MOB-010 changes when stage 2 is built: the second destination of the phone bar is Threads, not Sessions. Until then the phone bar stays as it is.
+2. Open point, OD-THR23 here and OD-M11 in the mobile plan: where the live remote sessions (MOB-020 to MOB-022; NAV-008) are reached from on the phone when Sessions is no longer in the bar.
+3. The phone needs the hub API of stage 2 (THR-023) and the decisions OD-THR4, OD-THR16 and OD-THR19, because each thread that a phone shows comes through the hub.
+
+| Task | Work | Needs | Check | State |
+| --- | --- | --- | --- | --- |
+| TH50 | The mobile stream changes MOB-010 and mockup 6, and decides OD-M11 with the operator | R-NEW-threadsphone; OD-THR23 | The mockup of the phone bar | Not started (the mobile stream) |
+| TH51 | The page Threads in the phone layout, read only, through the hub | TH21, TH50 | A human check on an iPhone and an Android phone | Not started (the mobile stream) |
+| TH52 | Prompts and approvals from the phone | Stage 3; OD-THR5, OD-THR20 | A separate security read | Not started (held) |
 
 ## 7. Requirements of the drive side (stages 1b to 4; not approved)
 
@@ -386,7 +440,7 @@ Each row is one question for the operator with the options, the strength and the
 | OD-THR7 | What does the environment of the agent program hold? | (A) The environment of the daemon, as T3 Code. (B) A fixed allow list and the variables that the person names at the machine (THR-040). | B |
 | OD-THR8 | May an AI agent start a thread or send a prompt through MCP? | (A) No. (B) Yes, as a change tool in state `ask` (MCP-013). (C) Yes, routed and automatic, as R-243 permits for agent runs. | A. MCP-006 and AGL-003 say that no tool and no agent starts or types into a session, and a change tool is `allow` by default (MCP-002), so B would be automatic for most people. Ask again after stage 1b is in use |
 | OD-THR9 | May the daemon send the session ID with the counts of AIS-018, so that Agent usage shows the use of one thread? | (A) No: no use by thread. (B) Yes: the ID only, no text. | B |
-| OD-THR10 | Where is the page Threads? | (A) An item Threads in the navigation bar, above Agent usage. (B) A tab of the page Agent usage. (C) In Projects, on the page of a project. | A |
+| OD-THR10 | Where is the page Threads? | (A) An item Threads in the navigation bar, above Agent usage. (B) Inside Projects. | Decided (R-NEW-threadsnav, operator, 2026-11-20, on a question card: "Own nav item"): A |
 | OD-THR11 | What happens to the T3 Code entry of the catalogue of agent tools (AXT-020, AXT-045)? | (A) Keep it for a person who wants T3 Code itself; not offered by default after stage 1b. (B) Withdraw it. | A |
 | OD-THR12 | Does stage 3 (drive the agents of other machines) wait for task W7? | (A) Yes. (B) No, with the guards of P1 and OD-THR5 (B) only. | A, the same condition as R-186 |
 | OD-THR13 | May the title of a thread (the first line of a prompt) leave the computer in stage 2 and go to an MCP tool? | (A) Yes, cleaned and capped. (B) Only a title that the person or the program gave; else the folder name and the time. | B for the hub and the MCP tool; the full title stays in the client of the same computer |
@@ -398,6 +452,7 @@ Each row is one question for the operator with the options, the strength and the
 | OD-THR20 | Stage 3: a person who controls the hosted hub could start a thread and name its prompt on a machine, also with W7. What do you require? | (A) Each start and each prompt for a different machine carries a signature of a key of one of your clients, which the runner checks; needs a plan for such keys. (B) Accept the hub as trusted for this, with the switch at the machine and the folder list. (C) No stage 3 on a hosted hub; only a hub on your own computer. | A; until the keys exist, C |
 | OD-THR21 | The settings of a project folder of an agent program (allow rules, hooks, MCP servers) may run things with no approval. Does the runner honour them? | (A) No: the runner starts the program with the settings of the project off, where the program permits it (task TH10). (B) Yes, as the program does in a terminal, with a notice on the thread. | A for a thread that the hub or an agent starts; B with the notice for a thread that you start in your own folder |
 | OD-THR22 | How long does the runner keep the event log of a thread at the machine? | (A) Until the thread is deleted. (B) 30 days after the last entry. (C) Not at all: the view is made from the session file of the program each time. | C where the session file gives enough; else B |
+| OD-THR23 | On the phone Threads takes the place of Sessions in the bar (R-NEW-threadsphone). Where are the live remote sessions reached from then? The mobile stream owns the answer (OD-M11 of [mobile-plan.md](../plans/mobile-plan.md)). | (A) From the device: the page of a device lists and opens its sessions, and a mark in the head of the application shows a session that is live. (B) A section "Live sessions" at the top of the page Threads. (C) An entry in Settings. | A: a session belongs to a device, and it is where a person starts one |
 | OD-THR14 | Do you approve the mockup [agent-threads/index.html](../mockup/agent-threads/index.html), frames 1 and 2, for stage 1a? | (A) Yes. (B) Changes. | A |
 
 ## 11. Changes that this proposal asks of other documents
@@ -416,7 +471,8 @@ Not made in this version; each needs the ruling named.
 | bots.md BOT-020, BOT-038 | A prompt that came through a hosted hub to a program with a subscription login; the vendor terms row | OD-THR2, OD-THR3 |
 | agent-tools-as-extensions.md Section 3, AXT-049 | "Do not build a second ... T3 Code" names Herdr and the bot only; AXT-049 as OD-THR16 | Approval of this proposal; OD-THR16 |
 | [contracts/work-route.md](../../contracts/work-route.md) Section 6 | The work type `agent_thread` and the long poll of THR-026 | TH30 |
-| [design-spec.md](../spec/design-spec.md) NAV-001 | The item Threads | OD-THR10 |
+| [design-spec.md](../spec/design-spec.md) NAV-001 | The item Threads, above Agent usage (R-NEW-threadsnav) | The approval of this proposal |
+| [mobile-plan.md](../plans/mobile-plan.md) MOB-010, mockup 6 | Threads in the place of Sessions in the phone bar (R-NEW-threadsphone); the mobile stream makes the change, in stage 6 | OD-THR23 and OD-M11 |
 
 ## 12. What could not be verified
 
@@ -428,6 +484,7 @@ Not made in this version; each needs the ruling named.
 
 ## 13. History
 
+- 2026-11-20, version 1, fourth part. R-NEW-threadsnav decides OD-THR10 (its own item of the bar); R-NEW-threadsphone puts Threads in the place of Sessions in the phone bar (THR-054, OD-THR23, the note for the mobile stream); each function of the inventory has a stage (Section 6.6, THR-053), after the words "should copy every feature they have".
 - 2026-11-20, version 1, third part. The separate security read (28 findings) is recorded in Section 9; the text and the code of the read side have its corrections; OD-THR18 to OD-THR22 are new, and the recommendation of OD-THR8 changed.
 - 2026-11-20, version 1, second part. `origin/dev` at `116c7b15` was read for the documents of the other planning stream (Section 4.10); OD-THR15 to OD-THR17 are new.
 - 2026-11-20, version 1. Written from R-NEW-t3native, the inventory of T3 Code at commit `6f5293fb`, and the code of `dev` at `4ffc36a5`. Tasks TH1 to TH4 are built on the branch `threads/read-side`. A separate reviewer read version 1 (Section 9).
