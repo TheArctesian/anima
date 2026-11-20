@@ -80,6 +80,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-NEW-overviewfull | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1928,5 +1929,42 @@ names, with many containers or at a narrow width.
 4. Make the window narrow (about 900 px) and look again, in the light and the dark appearance.
    Expected: the status text is cut with an ellipsis and its full text is the tooltip; the state word is whole; the tools
    of the log go to a second line and none lies over another.
+
+Result: Open.
+
+### HT-NEW-overviewfull: the tab Overview with the cards Connect and About, the chart figures and the storage table (R-224)
+
+Built on the branch `ui/v2-overview-full` (`32e6881a`), in `apps/client/src/routes/devices/[id]/overview` and
+`apps/client/src/lib/metrics/storage`. The tests prove the rows of the card "Connect", the texts of the card "About",
+the figures of a chart and the rows of the storage. No test reads a layout. The tab was looked at only in pictures of the
+web client at 1280 px, with one chart and with no drive. No person saw it with real metrics, with drives, with a
+daemon, on a hosted hub, at other widths or while it loads.
+
+1. Open a device in the application, in a window about 1280 px wide.
+   Expected: at the left, Status, Uptime and Checks are one row, then Metrics, then Storage. At the right, from the top:
+   "Connect", "SSH host key", "About". Nothing lies over another part.
+2. Look at "Connect".
+   Expected: one row for SSH, one for RDP, one for VNC when it is on, and one for each web interface of the device. A
+   way that works has "Open"; the first one is the filled button. SSH with no accepted host key has "Test". A way that
+   is not set up says "Not set up" and has "Set up", which opens its section of the Settings tab.
+3. Select "Open" for SSH, then for a web interface.
+   Expected: the session or the web tab opens as it does from the button at the top of the page. On the hosted hub,
+   write down what a web interface does: the client offers the button on every hub.
+4. Look at "About" for a device with a daemon and for one with none.
+   Expected: "Daemon" gives the version and "sending metrics", or "not sending now" when the daemon is silent for 30
+   seconds, or "Not installed". "Sessions" gives the limit or "No limit".
+5. Look at "Metrics" for a device that sends metrics, and select "24 hours" and "7 days".
+   Expected: each chart of one line has "peak" with the highest value of the range and then the newest value on its
+   title line; the charts change with the range and nothing else moves.
+6. Look at "Storage" on a Linux device with a drive that is not mounted.
+   Expected: a line of column names, then one row for each drive: name, kind, size, each mount with its value and bar,
+   and read, write and busy. The drive with no mount says "Not mounted" and has no bar and no read and write. A drive
+   with two mounts has one line for each mount under its name.
+7. Open a device with no metrics.
+   Expected: "Metrics" is one line, "Metrics are off. Install the daemon or turn on SSH metrics in Settings.", with
+   "Open Settings" at its end; there is no Storage card.
+8. Make the window narrow (about 900 px), then reload the page, in the light and the dark appearance.
+   Expected: "Connect", "SSH host key" and "About" are above the facts as one column; while the page loads, grey shapes
+   are where the cards then are.
 
 Result: Open.
