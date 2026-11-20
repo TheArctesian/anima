@@ -95,23 +95,18 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-it('NAV-001: Devices comes first, then the divider, then the status, then Extensions, then Settings last', () => {
+it('NAV-001: Devices comes first, then the divider, Live sessions and the status, then Extensions, then Settings last', () => {
   const nav = show();
   const destinations = [...nav.querySelectorAll('a, hr, .status')];
   expect(destinations.map((node) => node.getAttribute('href') ?? node.textContent?.trim())).toEqual([
     '/devices', '/agents/usage', '', 'Connected', '/extensions', '/settings',
   ]);
-});
-
-it('NAV-001: Live sessions is at the foot of the bar, after the divider and directly above the hub status', () => {
-  const nav = show();
+  // Live sessions is at the foot: after the divider, with only the name of the hub between it and the status.
   const children = [...nav.children];
   const live = children.findIndex((child) => child.classList.contains('live'));
-  expect(live).toBeGreaterThan(children.findIndex((child) => child.tagName === 'HR'));
-  // Between it and the status there is only the name of the hub: no other destination.
   const status = children.findIndex((child) => child.classList.contains('status'));
-  expect(status).toBeGreaterThan(live);
-  expect(children.slice(live + 1, status).some((child) => child.tagName === 'A')).toBe(false);
+  expect(live).toBeGreaterThan(children.findIndex((child) => child.tagName === 'HR'));
+  expect(children.slice(live, status).some((child) => child.tagName === 'A')).toBe(false);
 });
 
 it('NAV-002: only the active item has aria-current="page"', () => {
