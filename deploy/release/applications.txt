@@ -15,6 +15,9 @@ desktop out docs/
 desktop out quality/
 desktop out deploy/
 desktop out crates/rdp-test-device/
+# The bundle does not carry the applications program yet; task H33 of the hosted applications
+# plan adds it and removes this line.
+desktop out crates/anima-applications/
 desktop out AGENTS.md
 desktop out CLAUDE.md
 desktop out README.md
@@ -33,6 +36,7 @@ cli out apps/
 cli out link/
 cli out design/
 cli out contracts/
+cli out crates/anima-applications/
 cli out crates/anima-database/
 cli out crates/anima-gateway/
 cli out crates/anima-local-hub/
@@ -65,6 +69,7 @@ cli in deploy/bin/crate-version
 ios out docs/
 ios out quality/
 ios out deploy/
+ios out crates/anima-applications/
 ios out crates/anima-database/
 ios out crates/anima-gateway/
 ios out crates/anima-local-hub/

@@ -2,7 +2,7 @@
 
 use crate::{
     Node, Refusal, Rule, Settings,
-    forms::{bytes, is_image, is_line, is_name, is_processors, seconds, truth, whole},
+    forms::{bytes, is_image, is_line, is_name, is_processors, is_target, seconds, truth, whole},
     mounts,
     project::Names,
 };
@@ -193,7 +193,7 @@ fn plain_values(service: &Declared<'_>) -> Result<(), Refusal> {
         text == "no-new-privileges:true"
     })?;
     service.each("tmpfs", Rule::MountNotPermitted, |text| {
-        text.starts_with('/') && !text.contains([':', ',']) && is_line(text)
+        is_target(text) && !text.contains([':', ','])
     })?;
     match service
         .node
@@ -224,7 +224,7 @@ pub(crate) fn checked(
     let environment = pairs(&service, "environment")?;
     if !environment
         .iter()
-        .all(|(name, _)| is_line(name) && !name.contains(' '))
+        .all(|(name, _)| is_line(name) && !name.contains([' ', '=']))
     {
         return Err(service.refusal(Rule::ValueNotPermitted));
     }

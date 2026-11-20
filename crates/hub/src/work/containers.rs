@@ -9,6 +9,7 @@
 //! name, an image or a line of a log (LOG-007). No error holds text from the device.
 //! No domain imports this one; `schema.rs` merges [`graphql`].
 
+pub mod compose_file;
 mod detail;
 mod docker;
 pub mod graphql;

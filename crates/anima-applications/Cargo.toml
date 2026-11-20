@@ -1,0 +1,25 @@
+[package]
+name = "anima-applications"
+description = "The applications program of a machine: the one program of Anima that talks to Docker (contract K10 Section 6.4). Part 1: the settings, the check of each request, the final form and the plans; it starts no program and opens no socket"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "anima_applications"
+path = "src/lib.rs"
+
+[[bin]]
+name = "anima-applications"
+path = "src/main.rs"
+
+[dependencies]
+compose-rules = { path = "../compose-rules" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
