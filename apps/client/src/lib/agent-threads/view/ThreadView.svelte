@@ -3,6 +3,7 @@
   import { KEY_WORDS } from '../keys';
   import { STATE_MARKS, type ThreadState } from '../state';
   import { folderName, parts, programName, type Thread } from '../thread';
+  import Markdown from './Markdown.svelte';
   import ToolBlock from './ToolBlock.svelte';
 
   interface Props {
@@ -45,12 +46,12 @@
         <ToolBlock tools={part.tools} open={toolsOpen} />
       {:else if part.entry.kind === 'prompt'}
         <div class="you" data-prompt>
-          <p>{part.entry.text}</p>
+          <Markdown text={part.entry.text} />
           {#if part.entry.images > 0}<span class="at">{part.entry.images === 1 ? '1 image' : `${String(part.entry.images)} images`}</span>{/if}
           <span class="at">{clock(part.entry.at)}</span>
         </div>
       {:else if part.entry.kind === 'reply'}
-        <p class="reply">{part.entry.text}</p>
+        <div class="reply"><Markdown text={part.entry.text} /></div>
       {:else if part.entry.kind === 'reasoning'}
         <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
       {:else if part.entry.kind === 'turn_end'}
