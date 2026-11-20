@@ -3,6 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fakeUsageHub, type FakeUsageHub } from '$lib/agent-usage/agent-usage.fixture';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import { daemonHere } from '$lib/desktop/daemon/state.svelte';
 import { markHosted } from '$lib/hosted/mark';
 import Page from './+page.svelte';
 
@@ -47,29 +48,29 @@ async function open(search: string): Promise<void> {
 }
 
 it('AIS-020: the page reads the use with the choices of its address', async () => {
-  await open('?days=7&by=MODEL&source=CODEX&device=d-mac');
-  const asked = hub.asked[0] as { filter: Record<string, string>; by: string[] };
-  expect(asked.by).toEqual(['MODEL']);
-  expect(asked.filter).toMatchObject({ source: 'CODEX', deviceId: 'd-mac' });
-  expect(document.querySelector('.summary')?.textContent).toContain('17 sessions');
+  await open('?days=7&count=tokens&source=CODEX&device=d-mac&repository=github.com%2Facme%2Fblog');
+  const asked = hub.asked[0] as { filter: Record<string, string> };
+  expect(asked.filter).toMatchObject({ source: 'CODEX', deviceId: 'd-mac', repository: 'github.com/acme/blog' });
+  expect(document.querySelector('.figures dd')?.textContent).toBe('17');
+  expect(document.querySelector('ol.days')?.getAttribute('aria-label')).toBe('Tokens for each day (UTC)');
 });
 
-it('AIS-020: with no choices in the address the page reads the last 30 days by device and program', async () => {
+it('AIS-020: with no choices in the address the page reads the last 30 days of every device, program and repository', async () => {
   await open('');
-  const asked = hub.asked[0] as { filter: Record<string, string>; by: string[] };
-  expect(asked.by).toEqual(['DEVICE', 'SOURCE']);
+  const asked = hub.asked[0] as { filter: Record<string, string> };
+  expect(Object.keys(asked.filter).sort()).toEqual(['firstDay', 'lastDay']);
   const days = (Date.parse(`${asked.filter['lastDay'] ?? ''}T00:00:00Z`) - Date.parse(`${asked.filter['firstDay'] ?? ''}T00:00:00Z`)) / 86_400_000;
   expect(days).toBe(29);
 });
 
 it('a choice goes to the address and keeps the others', async () => {
-  await open('?by=MODEL');
+  await open('?source=CODEX');
   document.querySelector<HTMLElement>('[role="radio"][data-value="90"]')?.click();
-  expect(mocks.goto).toHaveBeenCalledWith('/agents/usage?days=90&by=MODEL', { replaceState: true, keepFocus: true, noScroll: true });
+  expect(mocks.goto).toHaveBeenCalledWith('/agents/usage?days=90&source=CODEX', { replaceState: true, keepFocus: true, noScroll: true });
 });
 
 it('DEF-002: the hub that this client marked as hosted gets the empty state with no link; a different hub gets Open Devices', async () => {
-  hub.answer = { ...hub.answer, rows: [], devices: [] };
+  hub.answer = { ...hub.answer, days: [], models: [], devices: [], states: [] };
   hub.everyone = [];
   await open('');
   expect(document.querySelector('a')?.textContent).toBe('Open Devices');
@@ -77,5 +78,11 @@ it('DEF-002: the hub that this client marked as hosted gets the empty state with
   markHosted(localStorage, HUB);
   await open('');
   expect(document.querySelector('a')).toBeNull();
-  expect(document.body.textContent).toContain('Coming soon: the Anima.ing application will install the daemon on this computer.');
+  // No install runs in this test, as in a browser: the page says where one runs.
+  expect(document.body.textContent).toContain('Open the Anima.ing application on a computer and sign in: it installs the daemon there.');
+  if (app !== undefined) await unmount(app);
+  daemonHere.current = { kind: 'failed', reason: 'The hub made no enrolment code.' };
+  await open('');
+  expect(document.body.textContent).toContain('The daemon was not installed on this computer. The hub made no enrolment code.');
+  daemonHere.current = { kind: 'idle' };
 });
