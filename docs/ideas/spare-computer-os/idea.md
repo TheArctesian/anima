@@ -61,8 +61,8 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The decision walkthrough is paused at the operator's request. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Which bootloader, Secure Boot policy, resource minimums and exact hardware models should be selected? Discuss after installation and recovery goals; no selection yet.
+1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
+2. Decision 8: what continues when the machine cannot reach its Anima hub? Options: keep approved apps running; let running jobs and agents continue within their grants; start already-authorized queued or scheduled work offline; allow local administration offline. Recommendation: keep apps and running work going, and retain local administration. Offline starts need an explicit policy. No choice yet. Internet-dependent workloads can still fail even when the OS allows them to continue.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -112,6 +112,8 @@ Read 2026-11-19 at the operator's request:
 
 - 2026-11-19: The operator provisionally selected A + B for Decision 7 and asked to log it while discussing the subject in a side chat. Marked it for later review and paused the walkthrough. No side-chat conclusions have been imported.
 
+- 2026-11-19: The operator clarified that the walkthrough should continue. Decision 7 stays provisional for later review; the discussion is not paused. Next: behavior when disconnected from the Anima hub.
+
 ## Source text
 
 Selected direct operator messages, unchanged:
@@ -159,3 +161,7 @@ In response to the plug-and-play follow-up:
 In response to Decision 7:
 
 > We can do A + B also thinking about this on the side chat so log that for now and we can circle back too it later
+
+After the pause interpretation:
+
+> No We can keep making desicons lets keep going
