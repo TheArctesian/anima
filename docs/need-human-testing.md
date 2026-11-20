@@ -2330,3 +2330,33 @@ window with real devices.
 
 Result: Open.
 
+
+### HT-NEW-motionlist: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
+`apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,
+`apps/client/src/lib/devices/screen/DeviceScreen.svelte` and `Skeleton.svelte`, `apps/client/src/lib/devices/list/Meters.svelte`.
+The tests prove which element plays a fade and the order of the rows. The motion was measured frame by frame in
+headless WebKit with sample devices. No person saw it in a desktop window, at the frame rate of a real screen, or on a phone.
+
+1. Open "Devices" as a list in a desktop window. Set a device of a group to a different status (for example, stop the
+   link of a computer that is up), and keep the pointer away from the list.
+   Expected: the rows slide to their new places. A group title that appears ("Needs a look") fades in where it stands;
+   a group title that empties fades out, then the rows under it close the gap.
+2. Do step 1 again with the pointer on a row of the list.
+   Expected: no row moves while the pointer is on the list; the status word of the device changes in its place. When
+   the pointer leaves the list, the rows slide to their new places.
+3. Select "Grid", then "List".
+   Expected: the two views cross-fade in place. Nothing slides and nothing flashes.
+4. Filter with a count of the count line (for example "1 down"), then clear it.
+   Expected: the rows that go fade out where they stand; the rows that come fade in.
+5. Open "Devices" on a slow connection to the hub (or right after the hub starts), as a list and as a grid.
+   Expected: if the skeleton shows, its column heads, first group title and rows are where the data comes; the data
+   fades in over it with no jump.
+6. Watch the CPU value of a device with metrics for a minute.
+   Expected: a new value cross-fades over the old one; it does not count. Set Settings, Appearance, "Reduce motion":
+   the bar under the value is at its new length at once.
+7. Do steps 1 to 4 with "Reduce motion" on.
+   Expected: no row slides; rows and views fade only.
+
+Result: Open.

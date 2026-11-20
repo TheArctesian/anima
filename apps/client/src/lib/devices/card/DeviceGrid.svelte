@@ -9,8 +9,9 @@
   import DeviceCard from './DeviceCard.svelte';
   import './geometry.css';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
-  import { listItems, UNGROUPED, type ListEntry } from '../list/look';
+  import { listItems, UNGROUPED } from '../list/look';
   import type { ListQuery } from '../query';
+  import { HeldOrder } from '../list/held.svelte';
 
   interface Props {
     devices: readonly CardDevice[];
@@ -24,20 +25,25 @@
   }
 
   const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
-  const items: readonly ListEntry<CardDevice>[] = $derived(listItems(devices, query));
+  const held = new HeldOrder<CardDevice>(
+    () => listItems(devices, query),
+    () => `${query.sort} ${query.statuses.join(',')}`,
+  );
+  const items = $derived(held.items);
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
 <!-- A new card fades in after its stagger delay; a leaving card fades and keeps its place until it is gone (Reorder). -->
-<ul class="grid" aria-label="Devices">
+<ul class="grid" aria-label="Devices" {@attach held.hold}>
   {#each items as item, index (item.key)}
-    {#if item.kind === 'group'}
-      <li class="group" transition:listRow={{ index }} {@attach track(item.key)}>{item.title}<span class="count">{item.count}</span></li>
-    {:else}
-      <li transition:listRow={{ index }} {@attach track(item.key)}>
+    <!-- The tile is the direct child of the loop, so its fade plays when the list changes, not only when its kind does. -->
+    <li class:group={item.kind === 'group'} transition:listRow={{ index }} {@attach track(item.key)}>
+      {#if item.kind === 'group'}
+        {item.title}<span class="count">{item.count}</span>
+      {:else}
         <DeviceCard device={item.device} beats={beats.get(item.device.id)} {onConnect} {onOpenWeb} {wake} {screenSharing} />
-      </li>
-    {/if}
+      {/if}
+    </li>
   {/each}
 </ul>
 
