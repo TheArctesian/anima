@@ -13,7 +13,7 @@ use super::{
     types::Version,
 };
 
-type ItemChange = fn(&mut Value);
+type AnswerChange = fn(&mut Value);
 type MachineChange = fn(&mut Machine<'_>);
 
 const ID: &str = "0192f6aa-0000-7000-8000-000000000001";
@@ -82,7 +82,7 @@ fn k10_5_an_item_that_passes_each_check_is_started_as_the_hub_sent_it() {
 #[test]
 fn k10_5_each_cause_of_the_fixed_list_refuses_the_item() {
     let repositories = list();
-    let cases: [(ItemChange, Cause); 9] = [
+    let cases: [(AnswerChange, Cause); 9] = [
         (|item| item["type"] = json!("shell"), Cause::TypeUnknown),
         (
             |item| item["kind"] = json!("native"),
