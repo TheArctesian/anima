@@ -1104,9 +1104,9 @@ decides differently.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| MI1 | The member editor for JSON with comments (MCP-030) and the safe file write with the copy (MCP-031, MCP-032, MCP-034), with their tests | Not started | |
-| MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | Not started | |
-| MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | Not started | |
+| MI1 | The member editor for JSON with comments (MCP-030) and the safe file write with the copy (MCP-031, MCP-032, MCP-034), with their tests | In progress | `37d557ea` on the branch `mcp/install`: built and tested; the review of MI5 is open |
+| MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-NEW-mcpinstall); the review of MI5 is open |
+| MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
 | MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | Not started | |
 | MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | Not started | |
 | MI6 | The entry HT-NEW-mcpinstall: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
