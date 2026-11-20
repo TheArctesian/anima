@@ -34,24 +34,56 @@ function isWork(branch: string): boolean {
   return branch !== "dev" && branch !== "main" && branch !== "HEAD" && !branch.startsWith(TRAIN);
 }
 
-/** The time at which the gates last passed for exactly this tip, by a push of the branch. */
-function passedAt(tip: Tip, runs: GatesRun[]): string | undefined {
-  const green = runs.filter((run) => run.event === "push" && run.headSha === tip.sha && run.status === "completed" && run.conclusion === "success");
-  return green.map((run) => run.updatedAt).sort().at(-1);
+/** A branch that is not in `dev`, and why the next train does not take it; with no reason it is ready. */
+export interface Standing {
+  tip: Tip;
+  /** The time at which the gates last passed for exactly this tip, by a push of the branch. */
+  passedAt?: string;
+  reason?: string;
+}
+
+function pushRuns(tip: Tip, runs: GatesRun[]): GatesRun[] {
+  return runs.filter((run) => run.event === "push" && run.headBranch === tip.branch);
+}
+
+/** Why the gates of the branch do not count for its tip; undefined when they passed for it, with the time in `passedAt`. */
+function gatesOf(tip: Tip, runs: GatesRun[]): { passedAt?: string; reason?: string } {
+  const all = pushRuns(tip, runs);
+  const mine = all.filter((run) => run.headSha === tip.sha);
+  const passedAt = mine.filter((run) => run.status === "completed" && run.conclusion === "success").map((run) => run.updatedAt).sort().at(-1);
+  if (passedAt !== undefined) return { passedAt };
+  if (mine.some((run) => run.status !== "completed")) return { reason: "its gates still run" };
+  const last = mine.sort((one, other) => (one.updatedAt < other.updatedAt ? 1 : -1))[0];
+  if (last !== undefined) return { reason: `its gates ended with "${last.conclusion ?? "no conclusion"}"; correct the branch or run them again` };
+  const older = all.find((run) => run.conclusion === "success");
+  if (older !== undefined) return { reason: `its gates passed for an older commit (${older.headSha.slice(0, 8)}), not for its tip` };
+  return { reason: "its gates did not run for its tip" };
+}
+
+/**
+ * Each branch of work that is not in `dev`, with the reason that the next train does not take
+ * it. A tip that failed alone in a train stays out until its gates pass again after that
+ * failure or the branch moves.
+ */
+export function standing(tips: Tip[], runs: GatesRun[], refused: Refused, inDev: (sha: string) => boolean): Standing[] {
+  return tips
+    .filter((tip) => isWork(tip.branch) && !inDev(tip.sha))
+    .map((tip) => {
+      const gates = gatesOf(tip, runs);
+      const failedAt = refused.get(tip.sha);
+      if (gates.passedAt !== undefined && failedAt !== undefined && failedAt >= gates.passedAt) {
+        return { tip, reason: `it failed alone in a train at ${failedAt}; run its gates again or push a correction` };
+      }
+      return { tip, ...gates };
+    });
 }
 
 /**
  * The branches of the next train, in their order: each branch that is not in `dev`, whose tip
- * passed its own gates, the oldest pass first and then by name. A tip that failed alone in a
- * train stays out until its gates pass again after that failure or the branch moves.
+ * passed its own gates, the oldest pass first and then by name; at most `MOST`.
  */
 export function batch(tips: Tip[], runs: GatesRun[], refused: Refused, inDev: (sha: string) => boolean): Tip[] {
-  const ready = tips.flatMap((tip) => {
-    if (!isWork(tip.branch) || inDev(tip.sha)) return [];
-    const at = passedAt(tip, runs);
-    if (at === undefined || (refused.get(tip.sha) ?? "") >= at) return [];
-    return [{ tip, at }];
-  });
+  const ready = standing(tips, runs, refused, inDev).flatMap((each) => (each.reason === undefined && each.passedAt !== undefined ? [{ tip: each.tip, at: each.passedAt }] : []));
   ready.sort((a, b) => (a.at === b.at ? (a.tip.branch < b.tip.branch ? -1 : 1) : a.at < b.at ? -1 : 1));
   return ready.slice(0, MOST).map((each) => each.tip);
 }

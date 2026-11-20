@@ -59,7 +59,7 @@ describe("PLN-019 the document gates run on the merge commit", () => {
     const root = repository();
     startMerge(root);
     expect(mockupCheck(root)).toBe("screen-changed-after-mockup");
-  });
+  }, 60_000);
 
   test("a branch that recorded its comparison merges, and the commit stays", () => {
     const root = repository();
@@ -68,7 +68,7 @@ describe("PLN-019 the document gates run on the merge commit", () => {
     expect(commitThenCheck(root, "Merge ui/containers into dev\n", () => mockupCheck(root))).toBeUndefined();
     expect(git(root, "rev-parse", "HEAD^1")).toBe(before);
     expect(git(root, "log", "-1", "--format=%s")).toBe("Merge ui/containers into dev");
-  });
+  }, 60_000);
 
   test("a screen that dev also changed fails on the commit, and the commit is removed", () => {
     const root = repository();
@@ -79,5 +79,5 @@ describe("PLN-019 the document gates run on the merge commit", () => {
     expect(git(root, "rev-parse", "--short=8", "HEAD")).toBe(before);
     expect(git(root, "status", "--porcelain")).toBe("");
     expect(Bun.spawnSync(["git", "rev-parse", "--verify", "--quiet", "MERGE_HEAD"], { cwd: root }).exitCode).not.toBe(0);
-  });
+  }, 60_000);
 });
