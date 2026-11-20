@@ -155,6 +155,23 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
   expect(text()).toContain('A repository is no longer on GitHub.');
 });
 
+it('R-224: the choice of a group shows only that group, with how many projects each choice holds', async () => {
+  await openList();
+  const choice = (value: string) => document.querySelector<HTMLButtonElement>(`[role="radio"][data-value="${value}"]`);
+  const shown = () => [...document.querySelectorAll('section.group')].map((group) => group.getAttribute('aria-label'));
+  expect(['all', 'look', 'deployed', 'undeployed'].map((value) => choice(value)?.textContent.trim())).toEqual(['All 3', 'Needs a look 2', 'Deployed 0', 'Not deployed 1']);
+  choice('undeployed')?.click();
+  flushSync();
+  expect(shown()).toEqual(['Not deployed']);
+  choice('deployed')?.click();
+  flushSync();
+  expect(shown()).toEqual([]);
+  expect(text()).toContain('No project in this group');
+  choice('all')?.click();
+  flushSync();
+  expect(shown()).toEqual(['Needs a look', 'Not deployed']);
+});
+
 async function openTab(tab: string): Promise<void> {
   await store.open('acme-site');
   app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug: 'acme-site', tab } });
