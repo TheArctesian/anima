@@ -7,6 +7,7 @@ pub mod approval;
 pub mod arguments;
 pub mod catalogue;
 pub mod definition;
+pub mod install;
 pub mod outcome;
 pub mod permission_change;
 pub mod permission_commands;
@@ -22,6 +23,7 @@ use crate::failure::Failure;
 use crate::hub::{Token, TokenKind};
 use crate::invocation::Invocation;
 use catalogue::ToolSet;
+use install::InstallCommand;
 use permission_commands::{PermissionsCommand, saved};
 use selection::{Flags, select, statement};
 use server::Server;
@@ -41,6 +43,9 @@ enum McpCommand {
     /// Show or save each tool's state: allow, ask or off.
     #[command(subcommand)]
     Permissions(PermissionsCommand),
+    /// List the coding agents, or put `anima mcp` into them or take it out (MCP-027, MCP-028).
+    #[command(flatten)]
+    Agents(InstallCommand),
 }
 
 /// The flags at start, for this run only. They only narrow the saved states, except that
@@ -68,6 +73,7 @@ impl McpArgs {
         match self.command {
             None => start(self.start, invocation).await,
             Some(McpCommand::Permissions(command)) => command.run(invocation),
+            Some(McpCommand::Agents(command)) => command.run(invocation),
         }
     }
 }

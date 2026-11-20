@@ -7,14 +7,14 @@
 | Language | The words of the reviewer, not changed |
 | Kind | Record. It adds no requirement (PLN-010). |
 
-The session that wrote the proposal gave a separate reviewer agent the text and the rules of the project, and no opinion. This is its report as it wrote it. The findings F1 to F24 are the entries SF-NEW-rcl01 to SF-NEW-rcl24 of [security-findings.md](../../security-findings.md), in the same order. The paths in the report are from the root of the repository.
+The session that wrote the proposal gave a separate reviewer agent the text and the rules of the project, and no opinion. This is its report as it wrote it. The findings F1 to F24 are the entries SF-090 to SF-113 of [security-findings.md](../../security-findings.md), in the same order. The paths in the report are from the root of the repository.
 
 Reviewer: an independent reviewer agent. I got the text and the project's rules, and no opinion of the session that wrote the proposal. I changed no file of the repository. No code exists for this function, so each finding is about the text.
 
 ## 0. Method, and what "verified" means here
 
 Read in full: the proposal; `contracts/work-route.md` (K10, version 0.4, all sections); `docs/proposals/jobs.md`; `docs/research/work-isolation/w2-isolation.md`; `docs/security-findings.md` lines 1 to 378 (the format, SF-003 to SF-014, the preamble of the container review) and the headings of SF-015 to SF-069.
-Read in part: `contracts/daemon-push.md` Sections 1 and 2; `docs/spec/design-spec.md` Section 6.3, INT-003, LOG-005 to LOG-018, MET-013; `docs/plans/cli-mcp-plan.md` MCP-001 to MCP-012, MCP-024 to MCP-026, CMD-010 to CMD-013; `docs/rulings.md` entries R-113, R-120, R-160, R-185, R-186, R-196, R-206, R-231, R-234, R-236, R-243, R-244, R-246, R-NEW-agentshell, R-NEW-placement; `docs/plans/projects-and-builds-plan.md` PRO-011, PRO-022 to PRO-024, PRO-029, PRO-030 and the rows of tasks W0 to W7; CHAT-041 of `compute-plan.md`; AXT-012 and AXT-021 of `agent-tools-as-extensions.md`.
+Read in part: `contracts/daemon-push.md` Sections 1 and 2; `docs/spec/design-spec.md` Section 6.3, INT-003, LOG-005 to LOG-018, MET-013; `docs/plans/cli-mcp-plan.md` MCP-001 to MCP-012, MCP-024 to MCP-026, CMD-010 to CMD-013; `docs/rulings.md` entries R-113, R-120, R-160, R-185, R-186, R-196, R-206, R-231, R-234, R-236, R-243, R-244, R-246, R-258, R-259; `docs/plans/projects-and-builds-plan.md` PRO-011, PRO-022 to PRO-024, PRO-029, PRO-030 and the rows of tasks W0 to W7; CHAT-041 of `compute-plan.md`; AXT-012 and AXT-021 of `agent-tools-as-extensions.md`.
 Not read: the bodies of SF-015 to SF-069, K4, the hub code, the daemon code. I ran no program and measured nothing.
 
 In each finding, "Verified" means that I read the quoted sentence in the named file. "Inferred" means that I reasoned from those sentences or from general knowledge of an operating system, SSH or Docker, and did not check it.
@@ -263,7 +263,7 @@ What would correct it. The owner decides with F1. If the session stays, the ruli
 
 Severity: Note.
 
-What it is. ROU-014: "No routed start ships before the security review RT7 passes with no open finding of severity high." ROU-016 gives a session and a command line "its own part of that review". Section 9 and R-NEW-agentshell say: nothing is merged "before the operator has decided its findings". "Decided" includes "accepted". The ruling itself is "relayed, not first-hand", from the label of a card ("B: agents too, no question"), and its number is a placeholder. For a decision of this weight the owner may want to state it first-hand, with F1 to F5 before him, and to say if a High finding that he accepts still blocks the merge as ROU-014 says.
+What it is. ROU-014: "No routed start ships before the security review RT7 passes with no open finding of severity high." ROU-016 gives a session and a command line "its own part of that review". Section 9 and R-258 say: nothing is merged "before the operator has decided its findings". "Decided" includes "accepted". The ruling itself is "relayed, not first-hand", from the label of a card ("B: agents too, no question"), and its number is a placeholder. For a decision of this weight the owner may want to state it first-hand, with F1 to F5 before him, and to say if a High finding that he accepts still blocks the merge as ROU-014 says.
 
 ## 4. Findings that are corrections of the text
 
@@ -391,7 +391,7 @@ Severity: Low. Each is verified by reading the sentence.
 | INT-003, the parts after `startSession` | `openFiles`; "must not set or clear a device credential" | F1, F16 |
 | MET-013 of the design specification | "It allows only two calls" | Already false since K10; not caused by this proposal |
 
-Also: R-NEW-agentshell lists what it amends and does not list CHAT-041, LOG-007 or AXT-021.
+Also: R-258 lists what it amends and does not list CHAT-041, LOG-007 or AXT-021.
 
 ### F24. "No shell" and "`startSession` stays closed" are true and protect nothing
 

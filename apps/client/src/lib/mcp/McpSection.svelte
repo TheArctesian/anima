@@ -3,6 +3,7 @@
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import { useHub } from '$lib/hub/context';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import CodingAgents from './agents/CodingAgents.svelte';
   import BulkActions from './BulkActions.svelte';
   import { allowQuestion } from './allowance';
   import { groupTools, needsConfirmation, TOOLSET_COUNT, type McpChange } from './permissions';
@@ -15,9 +16,11 @@
   interface Props {
     /** The shell's permission commands; tests pass their own. */
     shell?: McpShell;
+    /** False where the part "Coding agents" is not drawn: the tests of the permissions have no shell for it. */
+    agents?: boolean;
   }
 
-  const { shell = desktopMcpShell }: Props = $props();
+  const { shell = desktopMcpShell, agents = true }: Props = $props();
   const hub = useHub();
   // The hub address is fixed for the life of the section: changing the hub signs out and reloads the client.
   // svelte-ignore state_referenced_locally
@@ -59,6 +62,9 @@
       still limits everything: a read key changes nothing.
     </p>
   </div>
+
+  <!-- Above the tool groups: which coding agents start `anima mcp`, and the way to set them up (MCP-039). -->
+  {#if agents}<CodingAgents />{/if}
 
   <!-- Loading, failure and the list fill one block of the same height at the first paint, so nothing below moves (SET-004, MOT-007). -->
   <div class="stack" aria-busy={store.status === 'loading'}>

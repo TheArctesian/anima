@@ -195,6 +195,7 @@ dependencies = [
  "rsa 0.9.10",
  "russh",
  "russh-sftp",
+ "rustix",
  "rustls",
  "schemars 1.2.3",
  "serde",

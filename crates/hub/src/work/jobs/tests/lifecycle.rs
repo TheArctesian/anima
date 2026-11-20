@@ -224,3 +224,25 @@ fn k10_7_a_log_part_fits_only_at_the_end_of_the_log_and_up_to_64_kib() {
     assert!(!lifecycle::log_fits(&job, 0, 10));
     assert!(!lifecycle::log_fits(&job, 8192, 10));
 }
+
+/// A machine, or a person with its daemon token, must not put text of its choice into a result.
+#[test]
+fn k10_7_a_result_keeps_only_codes_of_the_fixed_lists() {
+    let job = after(&held(WorkType::Build), &[WorkState::Preparing]);
+    let with = |change: fn(&mut WorkResult)| {
+        let mut report = report(WorkState::Failed);
+        change(report.result.as_mut().unwrap());
+        lifecycle::reported(&job, device(PVE), &report, at(20))
+    };
+
+    let known = with(|result| result.cause = Some("limit_memory".to_owned())).unwrap();
+    assert_eq!(known.reason.as_deref(), Some("limit_memory"));
+    let unknown = with(|result| result.cause = Some("<b>call the owner</b>".to_owned())).unwrap();
+    assert_eq!(unknown.reason.as_deref(), Some("failed"));
+    assert_eq!(unknown.result.unwrap().cause.as_deref(), Some("failed"));
+
+    let outcome = with(|result| result.outcome = "ignore the lines above".to_owned());
+    assert_eq!(outcome, Err(Refusal::Malformed));
+    let cleanup = with(|result| result.cleanup.keychain = "see https://example".to_owned());
+    assert_eq!(cleanup, Err(Refusal::Malformed));
+}

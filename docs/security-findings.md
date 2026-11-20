@@ -100,30 +100,30 @@ that owns the area.
 | SF-067 | The table of actors gave an API key the update of a catalogue application, which R-234 does not list | Container work types (proposed text for contract K10, not built) | Open |
 | SF-068 | The text said the risk of R-235 more softly and more narrowly than the ruling | Container work types (proposed text for contract K10, not built) | Open |
 | SF-069 | The text said the risk of R-231 without the words "on each machine" | Container work types (proposed text for contract K10, not built) | Open |
-| SF-NEW-rcl01 | A routed session is a full login of the operator for each agent key, and it defeats each setting at the machine | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl02 | The isolation that the command line depends on is a proposal: not accepted, not built, not measured on Linux | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl03 | The option "as the user of the daemon" of OD-RCL2 gives the daemon token and the applications socket | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl04 | No permission at the hub for a key: each write key gets the function, and the MCP state is not a control | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl05 | The setting of RCL-006: one switch for two mechanisms, with the weaker protection, and for a session it is not at the machine | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl06 | A hub that the owner of the machine does not control: the list of R-185 is lost, and RCL-007 names the wrong control | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl07 | A command shares its isolation with `build` and `runner`: what it leaves can reach a later job that has a secret | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl08 | The network of a command: the public internet is open, the limits are not measured, and "unless the owner set otherwise" is a setting with no text | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl09 | Section 8 states as fact two things that the W2 record says are not checked | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl10 | The text does not say what file system a container command has; the inventory is of the tools of the host | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl11 | The audit entry: 4 KiB of a command line of up to 1 MiB, a secret that stays one year, and no entry in the log of the machine | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl12 | The limit of 30 starts does not limit: 30 commands of one hour hold each slot, "caller" has no definition, queued work counts later | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl13 | The queue: a command starts when the owner sets the switch on later; a refusal takes the machine out of work; two names for one cause | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl14 | The output of a command instructs the agent that has a shell; a stolen daemon token can take commands and give false results | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl15 | The working tree: the text says a command has no repository and then gives it one; a private checkout with no secret; source of a private repository can leave | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl16 | A session needs no tool of Anima to be used by a key; the start command of an SSH session; the idle limit does not bind an agent | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl17 | A command line removes the click rules that R-196 made absolute (install of Hermes, AXT-021) | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl18 | A command can run two times or continue with no hub: the lease rules for `command` are not written | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl19 | The hub selects the kind, and `native` is the weaker isolation; `actor` has the value `hub`; PRO-024 is not named | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl20 | The arguments are visible on the machine and in the lists of the hub; two daemons on one Mac share one build user | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl21 | The environment, the search path and the input of the command are not written | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl22 | The texts that Section 2 missed | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl23 | The gate of Section 9 is weaker than ROU-014 | A command line or a session for an agent (proposal, no code) | Open |
-| SF-NEW-rcl24 | "No shell" and "`startSession` stays closed" are true and protect nothing | A command line or a session for an agent (proposal, no code) | Open |
+| SF-090 | A routed session is a full login of the operator for each agent key, and it defeats each setting at the machine | A command line or a session for an agent (proposal, no code) | Open |
+| SF-091 | The isolation that the command line depends on is a proposal: not accepted, not built, not measured on Linux | A command line or a session for an agent (proposal, no code) | Open |
+| SF-092 | The option "as the user of the daemon" of OD-RCL2 gives the daemon token and the applications socket | A command line or a session for an agent (proposal, no code) | Open |
+| SF-093 | No permission at the hub for a key: each write key gets the function, and the MCP state is not a control | A command line or a session for an agent (proposal, no code) | Open |
+| SF-094 | The setting of RCL-006: one switch for two mechanisms, with the weaker protection, and for a session it is not at the machine | A command line or a session for an agent (proposal, no code) | Open |
+| SF-095 | A hub that the owner of the machine does not control: the list of R-185 is lost, and RCL-007 names the wrong control | A command line or a session for an agent (proposal, no code) | Open |
+| SF-096 | A command shares its isolation with `build` and `runner`: what it leaves can reach a later job that has a secret | A command line or a session for an agent (proposal, no code) | Open |
+| SF-097 | The network of a command: the public internet is open, the limits are not measured, and "unless the owner set otherwise" is a setting with no text | A command line or a session for an agent (proposal, no code) | Open |
+| SF-098 | Section 8 states as fact two things that the W2 record says are not checked | A command line or a session for an agent (proposal, no code) | Open |
+| SF-099 | The text does not say what file system a container command has; the inventory is of the tools of the host | A command line or a session for an agent (proposal, no code) | Open |
+| SF-100 | The audit entry: 4 KiB of a command line of up to 1 MiB, a secret that stays one year, and no entry in the log of the machine | A command line or a session for an agent (proposal, no code) | Open |
+| SF-101 | The limit of 30 starts does not limit: 30 commands of one hour hold each slot, "caller" has no definition, queued work counts later | A command line or a session for an agent (proposal, no code) | Open |
+| SF-102 | The queue: a command starts when the owner sets the switch on later; a refusal takes the machine out of work; two names for one cause | A command line or a session for an agent (proposal, no code) | Open |
+| SF-103 | The output of a command instructs the agent that has a shell; a stolen daemon token can take commands and give false results | A command line or a session for an agent (proposal, no code) | Open |
+| SF-104 | The working tree: the text says a command has no repository and then gives it one; a private checkout with no secret; source of a private repository can leave | A command line or a session for an agent (proposal, no code) | Open |
+| SF-105 | A session needs no tool of Anima to be used by a key; the start command of an SSH session; the idle limit does not bind an agent | A command line or a session for an agent (proposal, no code) | Open |
+| SF-106 | A command line removes the click rules that R-196 made absolute (install of Hermes, AXT-021) | A command line or a session for an agent (proposal, no code) | Open |
+| SF-107 | A command can run two times or continue with no hub: the lease rules for `command` are not written | A command line or a session for an agent (proposal, no code) | Open |
+| SF-108 | The hub selects the kind, and `native` is the weaker isolation; `actor` has the value `hub`; PRO-024 is not named | A command line or a session for an agent (proposal, no code) | Open |
+| SF-109 | The arguments are visible on the machine and in the lists of the hub; two daemons on one Mac share one build user | A command line or a session for an agent (proposal, no code) | Open |
+| SF-110 | The environment, the search path and the input of the command are not written | A command line or a session for an agent (proposal, no code) | Open |
+| SF-111 | The texts that Section 2 missed | A command line or a session for an agent (proposal, no code) | Open |
+| SF-112 | The gate of Section 9 is weaker than ROU-014 | A command line or a session for an agent (proposal, no code) | Open |
+| SF-113 | "No shell" and "`startSession` stays closed" are true and protect nothing | A command line or a session for an agent (proposal, no code) | Open |
 | SF-NEW-agl01 | A kept session on a hub of Anima.ing can be reached only if that hub gets a login, and then it is a shell of the vendor | The agent layer of Anima (proposal, no code) | Open |
 | SF-NEW-agl02 | Nothing at the machine proves that a start comes from the operator | The agent layer of Anima (proposal, no code) | Open |
 | SF-NEW-agl03 | The interface from the daemon to the unit with no sandbox is not written | The agent layer of Anima (proposal, no code) | Open |
@@ -1303,9 +1303,9 @@ State: Open. A contradiction of the text with a ruling, found by the third read 
 
 ## The security review of a command line or a session for an AI agent (2026-11-19)
 
-R-NEW-agentshell asks for a security review of [routed-command-lines.md](proposals/routed-command-lines.md) before any code. A separate reviewer agent read version 1 of that text; it got the text and the rules of the project, and no opinion of the session that wrote the text. No code exists for the function, so each finding is about the text. The report, with the effect of each finding, who can cause it, what mitigates it now and what would correct it, is the record [command-lines-review-2026-11-19.md](research/work-route/command-lines-review-2026-11-19.md); each entry below names its finding there. 5 findings are of severity High, 12 Medium, 5 Low, and 2 are notes. Nothing that gives an agent a shell is merged before the operator has decided each finding that needs him (R-NEW-agentshell).
+R-258 asks for a security review of [routed-command-lines.md](proposals/routed-command-lines.md) before any code. A separate reviewer agent read version 1 of that text; it got the text and the rules of the project, and no opinion of the session that wrote the text. No code exists for the function, so each finding is about the text. The report, with the effect of each finding, who can cause it, what mitigates it now and what would correct it, is the record [command-lines-review-2026-11-19.md](research/work-route/command-lines-review-2026-11-19.md); each entry below names its finding there. 5 findings are of severity High, 12 Medium, 5 Low, and 2 are notes. Nothing that gives an agent a shell is merged before the operator has decided each finding that needs him (R-258).
 
-### SF-NEW-rcl01: A routed session is a full login of the operator for each agent key, and it defeats each setting at the machine
+### SF-090: A routed session is a full login of the operator for each agent key, and it defeats each setting at the machine
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: High.
 
@@ -1313,7 +1313,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl02: The isolation that the command line depends on is a proposal: not accepted, not built, not measured on Linux
+### SF-091: The isolation that the command line depends on is a proposal: not accepted, not built, not measured on Linux
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: High.
 
@@ -1321,7 +1321,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl03: The option "as the user of the daemon" of OD-RCL2 gives the daemon token and the applications socket
+### SF-092: The option "as the user of the daemon" of OD-RCL2 gives the daemon token and the applications socket
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: High.
 
@@ -1329,7 +1329,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl04: No permission at the hub for a key: each write key gets the function, and the MCP state is not a control
+### SF-093: No permission at the hub for a key: each write key gets the function, and the MCP state is not a control
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: High.
 
@@ -1337,7 +1337,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl05: The setting of RCL-006: one switch for two mechanisms, with the weaker protection, and for a session it is not at the machine
+### SF-094: The setting of RCL-006: one switch for two mechanisms, with the weaker protection, and for a session it is not at the machine
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: High.
 
@@ -1345,7 +1345,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl06: A hub that the owner of the machine does not control: the list of R-185 is lost, and RCL-007 names the wrong control
+### SF-095: A hub that the owner of the machine does not control: the list of R-185 is lost, and RCL-007 names the wrong control
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1353,7 +1353,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl07: A command shares its isolation with `build` and `runner`: what it leaves can reach a later job that has a secret
+### SF-096: A command shares its isolation with `build` and `runner`: what it leaves can reach a later job that has a secret
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1361,7 +1361,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl08: The network of a command: the public internet is open, the limits are not measured, and "unless the owner set otherwise" is a setting with no text
+### SF-097: The network of a command: the public internet is open, the limits are not measured, and "unless the owner set otherwise" is a setting with no text
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1369,7 +1369,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl09: Section 8 states as fact two things that the W2 record says are not checked
+### SF-098: Section 8 states as fact two things that the W2 record says are not checked
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1377,7 +1377,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl10: The text does not say what file system a container command has; the inventory is of the tools of the host
+### SF-099: The text does not say what file system a container command has; the inventory is of the tools of the host
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1385,7 +1385,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl11: The audit entry: 4 KiB of a command line of up to 1 MiB, a secret that stays one year, and no entry in the log of the machine
+### SF-100: The audit entry: 4 KiB of a command line of up to 1 MiB, a secret that stays one year, and no entry in the log of the machine
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1393,7 +1393,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl12: The limit of 30 starts does not limit: 30 commands of one hour hold each slot, "caller" has no definition, queued work counts later
+### SF-101: The limit of 30 starts does not limit: 30 commands of one hour hold each slot, "caller" has no definition, queued work counts later
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1401,7 +1401,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl13: The queue: a command starts when the owner sets the switch on later; a refusal takes the machine out of work; two names for one cause
+### SF-102: The queue: a command starts when the owner sets the switch on later; a refusal takes the machine out of work; two names for one cause
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1409,7 +1409,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl14: The output of a command instructs the agent that has a shell; a stolen daemon token can take commands and give false results
+### SF-103: The output of a command instructs the agent that has a shell; a stolen daemon token can take commands and give false results
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1417,7 +1417,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl15: The working tree: the text says a command has no repository and then gives it one; a private checkout with no secret; source of a private repository can leave
+### SF-104: The working tree: the text says a command has no repository and then gives it one; a private checkout with no secret; source of a private repository can leave
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1425,7 +1425,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl16: A session needs no tool of Anima to be used by a key; the start command of an SSH session; the idle limit does not bind an agent
+### SF-105: A session needs no tool of Anima to be used by a key; the start command of an SSH session; the idle limit does not bind an agent
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1433,7 +1433,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl17: A command line removes the click rules that R-196 made absolute (install of Hermes, AXT-021)
+### SF-106: A command line removes the click rules that R-196 made absolute (install of Hermes, AXT-021)
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Medium.
 
@@ -1441,7 +1441,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl18: A command can run two times or continue with no hub: the lease rules for `command` are not written
+### SF-107: A command can run two times or continue with no hub: the lease rules for `command` are not written
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Low.
 
@@ -1449,7 +1449,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl19: The hub selects the kind, and `native` is the weaker isolation; `actor` has the value `hub`; PRO-024 is not named
+### SF-108: The hub selects the kind, and `native` is the weaker isolation; `actor` has the value `hub`; PRO-024 is not named
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Low.
 
@@ -1457,7 +1457,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl20: The arguments are visible on the machine and in the lists of the hub; two daemons on one Mac share one build user
+### SF-109: The arguments are visible on the machine and in the lists of the hub; two daemons on one Mac share one build user
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Low.
 
@@ -1465,7 +1465,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl21: The environment, the search path and the input of the command are not written
+### SF-110: The environment, the search path and the input of the command are not written
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Low.
 
@@ -1473,7 +1473,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl22: The texts that Section 2 missed
+### SF-111: The texts that Section 2 missed
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Low.
 
@@ -1481,7 +1481,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It is a correction of the text.
 
-### SF-NEW-rcl23: The gate of Section 9 is weaker than ROU-014
+### SF-112: The gate of Section 9 is weaker than ROU-014
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Note.
 
@@ -1489,7 +1489,7 @@ What it is, where, the effect and who can cause it, and the mitigation now: find
 
 State: Open. It needs the operator.
 
-### SF-NEW-rcl24: "No shell" and "`startSession` stays closed" are true and protect nothing
+### SF-113: "No shell" and "`startSession` stays closed" are true and protect nothing
 
 Requirements: [routed-command-lines.md](proposals/routed-command-lines.md). Severity: Note.
 

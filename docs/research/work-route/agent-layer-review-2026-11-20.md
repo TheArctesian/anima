@@ -31,25 +31,25 @@ Reviewer: read-only; no file changed. "NV" = not verified: it rests on my knowle
 | F14 | Low | AGL-009 | No size limit, no rule for a link or a pipe in place of the file, no rule for truncation against an append. On Linux the file is in the one writable folder, beside the token. | A pipe blocks each hook past 100 ms; a truncation loses a `Notification`. | Open as `token_file.rs` does; a size cap; rename rotation. | Text |
 | F15 | Low | AGL-005 to AGL-007 | `Notification` is not only "waiting" (NV); no event ends Waiting when a permission is answered; "cannot find the process" has no method. "Unknown, active" is a seventh state against AXT-048. | Rows stay Waiting during work; the operator stops trusting them. | AL0 result as a condition of AGL-020. | Text |
 | F16 | Low | AGL-014 against AGL-015 | Program version and "hooks installed" leave the device but are not in the "only" list. Reading a version means running a program of the user's path, against CAP-022 and the fixed path in `command.rs`. | Two builds differ. | Add the fields; say how the version is read. | Text |
-| F17 | Low | Section 7, Section 10 | The gate AL9 covers kept sessions only and High findings only. AL3 to AL7 have no gate; R-NEW-agentshell asks for all findings decided. | Rows and alerts ship to a hosted hub unreviewed. | One gate before AL3, all findings decided. | Owner |
+| F17 | Low | Section 7, Section 10 | The gate AL9 covers kept sessions only and High findings only. AL3 to AL7 have no gate; R-258 asks for all findings decided. | Rows and alerts ship to a hosted hub unreviewed. | One gate before AL3, all findings decided. | Owner |
 | F18 | Low | AGL-023 | A user unit ends at logout unless linger is set (NV); linger is a system setting. | "Stays" is false on a server after SSH logout. | State it. | Text |
 
 ## 2. Findings of the routed command line review that apply here
 
-- SF-NEW-rcl01: an agent with the person's login defeats each machine-side setting, and the key store gives the `anima` login token (F4, F6).
-- SF-NEW-rcl03: running as the user of the daemon gives the daemon token; the kept agent is that user.
-- SF-NEW-rcl05: one switch at the machine that is not a control at the machine (F6).
-- SF-NEW-rcl06: a hub that the machine owner does not control starts a program with no list (F2).
-- SF-NEW-rcl11: no entry in the log of the machine (F2).
-- SF-NEW-rcl12: no real limit on starts (F2).
-- SF-NEW-rcl14: a stolen daemon token gives false results (F7).
-- SF-NEW-rcl16: a session needs no Anima tool to be used; `tmux` and the CLI suffice (F4).
-- SF-NEW-rcl17: the click rules of R-196 are bypassed by a self-approved prompt (F4).
-- SF-NEW-rcl20: arguments visible to a second user (F11).
-- SF-NEW-rcl21: environment and search path not written (F5).
-- SF-NEW-rcl22: texts that the change list missed (F2, F12).
-- SF-NEW-rcl23: the gate is weaker than the ruling (F17).
-- SF-NEW-rcl24: "no MCP tool for a start" is true and protects nothing (F4).
+- SF-090: an agent with the person's login defeats each machine-side setting, and the key store gives the `anima` login token (F4, F6).
+- SF-092: running as the user of the daemon gives the daemon token; the kept agent is that user.
+- SF-094: one switch at the machine that is not a control at the machine (F6).
+- SF-095: a hub that the machine owner does not control starts a program with no list (F2).
+- SF-100: no entry in the log of the machine (F2).
+- SF-101: no real limit on starts (F2).
+- SF-103: a stolen daemon token gives false results (F7).
+- SF-105: a session needs no Anima tool to be used; `tmux` and the CLI suffice (F4).
+- SF-106: the click rules of R-196 are bypassed by a self-approved prompt (F4).
+- SF-109: arguments visible to a second user (F11).
+- SF-110: environment and search path not written (F5).
+- SF-111: texts that the change list missed (F2, F12).
+- SF-112: the gate is weaker than the ruling (F17).
+- SF-113: "no MCP tool for a start" is true and protects nothing (F4).
 
 ## 3. Who decides
 
