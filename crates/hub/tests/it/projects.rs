@@ -6,7 +6,6 @@ mod accounts;
 mod browse;
 mod forge;
 mod github;
-mod groups;
 mod guard;
 mod import;
 mod leave_out;
@@ -34,7 +33,7 @@ use crate::{
 /// Every field of a project the client and the command line read.
 pub const PROJECT: &str = "id slug name subjectKey syncedAt \
     repositories { id fullName url defaultBranch private archived fork description pushedAt leftOut gone } \
-    resources { id kind state evidence { sign path } foundAt confirmedAt } group { id name }";
+    resources { id kind state evidence { sign path } foundAt confirmedAt }";
 
 /// A signed-in hub whose sources reach the stub only, with the Projects intake wired in as
 /// `main.rs` wires it.

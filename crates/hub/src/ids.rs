@@ -90,8 +90,6 @@ entity_id! {
     SyncRunId,
     /// A project.
     ProjectId,
-    /// A group of projects: the operator's own label (PRO-059).
-    ProjectGroupId,
     /// A repository of a project.
     RepositoryId,
     /// A resource a project uses, such as a Cloudflare or Vercel deployment.

@@ -91,8 +91,6 @@ pub(in crate::work::projects) async fn page(
             AND ($6::text IS NULL OR r.primary_language = $6)
             AND ($7::integer IS NULL OR r.size_kib >= $7)
             AND ($8::integer IS NULL OR r.size_kib <= $8)
-            AND ($10::uuid IS NULL OR p.group_id = $10)
-            AND (NOT $11 OR p.group_id IS NULL)
          )
          SELECT id, slug, name, sort_name,
                 CASE WHEN $5 <> 'name' THEN rank END AS rank
@@ -110,8 +108,6 @@ pub(in crate::work::projects) async fn page(
     .bind(browse.min_size_kib)
     .bind(browse.max_size_kib)
     .bind(after.and_then(|a| a.rank))
-    .bind(browse.group_id())
-    .bind(browse.ungrouped.unwrap_or(false))
     .fetch_all(db)
     .await
 }

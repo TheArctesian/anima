@@ -12,7 +12,6 @@ use crate::{
     paging::PageEnd,
     work::projects::{
         forge::{RepositoryAccess, access},
-        groups::GroupView,
         model::{ResourceKind, ResourceState, Sign},
         page::{After, encode_cursor},
         proposals::kind_of,
@@ -80,8 +79,6 @@ pub(super) struct ProjectView {
     resources: Vec<ResourceView>,
     /// When the hub last read its repositories.
     synced_at: Option<DateTime<Utc>>,
-    /// Its group; null when it is in none (PRO-059).
-    group: Option<GroupView>,
 }
 
 #[derive(SimpleObject)]
@@ -105,8 +102,6 @@ pub(super) struct Rows {
     pub repositories: Vec<RepositoryRow>,
     pub resources: Vec<ResourceRow>,
     pub evidence: Vec<EvidenceRow>,
-    /// The group of each project that has one.
-    pub groups: HashMap<ProjectId, GroupView>,
     /// The standing of each account the repositories name.
     pub standings: Vec<(SourceAccountId, Standing)>,
 }
@@ -164,7 +159,7 @@ pub(super) fn resource(row: &ResourceRow, evidence: &[EvidenceRow]) -> Option<Re
 }
 
 /// The K1 projects of `projects`, in their order, from `rows`.
-pub(super) fn projects(projects: Vec<ProjectRow>, mut rows: Rows) -> Vec<(After, ProjectView)> {
+pub(super) fn projects(projects: Vec<ProjectRow>, rows: Rows) -> Vec<(After, ProjectView)> {
     let mut repositories: HashMap<ProjectId, Vec<RepositoryRow>> = HashMap::new();
     for row in rows.repositories {
         repositories.entry(row.project_id).or_default().push(row);
@@ -198,7 +193,6 @@ pub(super) fn projects(projects: Vec<ProjectRow>, mut rows: Rows) -> Vec<(After,
                     .map(|row| repository(row, &rows.standings))
                     .collect(),
                 resources: resources.remove(&project.id).unwrap_or_default(),
-                group: rows.groups.remove(&project.id),
             };
             (after, view)
         })
