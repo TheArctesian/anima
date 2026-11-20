@@ -1,0 +1,10 @@
+# The record of the mockup agent-threads/index.html
+
+One row of the index in [README.md](../README.md) (PLN-019). `bun run quality:register` writes the row from this file.
+
+- Mockup: [agent-threads/index.html](../agent-threads/index.html)
+- Owner: [agent-threads.md](../../proposals/agent-threads.md) Section 5 (THR-013 to THR-017; task TH4); ruling R-NEW-t3native of [rulings.md](../../rulings.md)
+- Screens: None yet: the page Threads is built on the branch `threads/read-side` and is not in `dev`
+- State: Proposed (the operator did not approve it: OD-THR14). Frame 3 shows a later stage and is not a part of the screen
+- Compared: Not compared
+- Differences: None recorded. The screen of the branch was not compared with frames 1 and 2
