@@ -57,7 +57,7 @@ pub fn hosted_parts(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) 
     let env = BTreeMap::from([
         (
             "ANIMA_LINK_SOCKET".to_owned(),
-            "/run/anima/link.sock".to_owned(),
+            link.path.with_file_name("link.sock").display().to_string(),
         ),
         (
             "ANIMA_LINK_CONTROL".to_owned(),

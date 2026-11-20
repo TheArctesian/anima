@@ -30,7 +30,11 @@ async fn d_2_an_app_file_the_file_system_cannot_look_up_is_never_html() {
         format!("//_app/{long}.js"),
     ] {
         let answer = get(&web.router(), &path).await;
-        assert!(answer.status.is_server_error(), "{path}");
+        // Windows reports an overlong component as not found; Unix reports a lookup error.
+        assert!(
+            answer.status.is_server_error() || answer.status == StatusCode::NOT_FOUND,
+            "{path}"
+        );
         assert_eq!(answer.body, "", "{path}");
         assert_eq!(answer.header("content-type"), "", "{path}");
     }

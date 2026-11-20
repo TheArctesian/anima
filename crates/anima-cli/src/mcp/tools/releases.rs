@@ -53,6 +53,8 @@ pub enum TargetInput {
     #[serde(rename = "LINUX_X86_64")]
     LinuxX8664,
     DarwinUniversal,
+    #[serde(rename = "WINDOWS_X86_64")]
+    WindowsX8664,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

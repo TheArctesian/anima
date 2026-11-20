@@ -1,0 +1,25 @@
+{
+  "iso_sha256": "139011f6fa415a055a7364bdac5de622322cdb27aef58e94e6530ea2ad145dcb",
+  "results": [
+    {
+      "case": "completion-restart-installed-console-storage-wire",
+      "result": "Passed"
+    },
+    {
+      "case": "signed-https-download-staging-without-live-activation",
+      "result": "Passed"
+    },
+    {
+      "case": "updated-system-health-and-persistence",
+      "result": "Passed"
+    },
+    {
+      "case": "owner-rollback-preserves-data",
+      "result": "Passed"
+    },
+    {
+      "case": "unselected-disk",
+      "result": "Passed"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ use std::io;
 use std::process::{ExitStatus, Stdio};
 use std::time::Duration;
 
+#[cfg(unix)]
 use rustix::process::{Pid, Signal, kill_process_group};
 use tokio::io::{AsyncRead, AsyncReadExt as _};
 use tokio::process::{Child, Command};
@@ -16,7 +17,8 @@ use tokio::time::timeout;
 const OUTPUT_LIMIT: u64 = 1024 * 1024;
 
 /// The only search path a command gets: the daemon's own environment is not passed on.
-const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
+#[cfg(unix)]
+const PATH: &str = "/run/current-system/sw/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 
 /// How long a command that closed its output may take to report its exit status.
 const EXIT_GRACE: Duration = Duration::from_secs(1);
@@ -59,17 +61,41 @@ impl FixedCommand {
     /// [`FixedCommand::keep_cut_output`]) or exits with a failure.
     pub async fn run(&self) -> Result<Vec<u8>, CommandError> {
         let mut command = Command::new(self.program);
-        command
-            .args(self.args)
-            .env_clear()
-            .env("PATH", PATH)
-            .env("LC_ALL", "C");
+        command.args(self.args).env_clear().env("LC_ALL", "C");
+        #[cfg(unix)]
+        command.env("PATH", PATH);
+        #[cfg(windows)]
+        windows_environment(&mut command);
         let bounds = Bounds {
             limit: self.limit,
             keep_cut_output: self.keep_cut_output,
             output_limit: OUTPUT_LIMIT,
         };
         capture(&mut command, self.program, bounds).await
+    }
+}
+
+#[cfg(windows)]
+fn windows_environment(command: &mut Command) {
+    use std::{env, path::PathBuf};
+    let system = env::var_os("SystemRoot")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute());
+    let mut folders = Vec::new();
+    if let Some(system) = system {
+        folders.push(system.join("System32"));
+    }
+    if let Some(programs) = env::var_os("ProgramFiles")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+    {
+        folders.push(programs.join("NVIDIA Corporation/NVSMI"));
+    }
+    command.env("PATH", env::join_paths(folders).unwrap_or_default());
+    for name in ["SystemRoot", "WINDIR", "TEMP", "TMP"] {
+        if let Some(value) = env::var_os(name) {
+            command.env(name, value);
+        }
     }
 }
 
@@ -98,16 +124,22 @@ pub async fn capture(
     program: &'static str,
     bounds: Bounds,
 ) -> Result<Vec<u8>, CommandError> {
+    #[cfg(unix)]
+    command.process_group(0);
+    #[cfg(windows)]
+    command.creation_flags(anima_windows::job::SUSPENDED);
     let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .process_group(0)
         .kill_on_drop(true)
         .spawn()
         .map_err(|source| CommandError::Start { program, source })?;
     // Declared after `child`, so it is dropped first: the group dies before the child is dropped.
+    #[cfg(unix)]
     let mut group = Group::of(&child);
+    #[cfg(windows)]
+    let mut group = Group::of(&child).map_err(|source| CommandError::Start { program, source })?;
     let Some(stdout) = child.stdout.take() else {
         return Err(CommandError::Failed { program });
     };
@@ -157,8 +189,10 @@ async fn until_exit(
 }
 
 /// The process group of a running command; dropping it kills every process in the group.
+#[cfg(unix)]
 struct Group(Option<Pid>);
 
+#[cfg(unix)]
 impl Group {
     fn of(child: &Child) -> Self {
         let leader = child
@@ -178,13 +212,29 @@ impl Group {
     }
 }
 
+#[cfg(windows)]
+struct Group(Option<anima_windows::job::Job>);
+
+#[cfg(windows)]
+impl Group {
+    fn of(child: &Child) -> io::Result<Self> {
+        let pid = child.id().ok_or(io::ErrorKind::NotFound)?;
+        Ok(Self(Some(anima_windows::job::Job::start(pid)?)))
+    }
+    fn kill(&mut self) {
+        if let Some(job) = self.0.take() {
+            job.kill();
+        }
+    }
+}
+
 impl Drop for Group {
     fn drop(&mut self) {
         self.kill();
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

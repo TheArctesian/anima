@@ -3,10 +3,12 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::net::SocketAddr;
-use std::path::{Component, PathBuf};
+use std::path::PathBuf;
 
 mod link;
 mod origin;
+mod paths;
+use paths::{optional_path, optional_root, optional_socket, remote_drive_path};
 mod releases;
 
 pub use link::{LINK_DEVICES, dial_socket};
@@ -155,34 +157,6 @@ fn value<'a>(
     }
 }
 
-/// An empty value (Compose passes `VAR=`) counts as unset.
-fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> {
-    env.get(name)
-        .filter(|text| !text.is_empty())
-        .map(PathBuf::from)
-}
-
-/// An absolute folder from `name`; unset or empty is `None`. The root `/` is refused: as a
-/// web root it would serve the whole file system, and so is any path with a `..` part.
-fn optional_root(
-    env: &BTreeMap<String, String>,
-    name: &'static str,
-) -> Result<Option<PathBuf>, Error> {
-    match env.get(name).map(String::as_str) {
-        None | Some("") => Ok(None),
-        Some(text) => {
-            let path = absolute_path(name, text)?;
-            if path.components().any(|part| part == Component::ParentDir) {
-                return Err(Error::ParentDirectory { variable: name });
-            }
-            if path.parent().is_none() {
-                return Err(Error::FilesystemRoot { variable: name });
-            }
-            Ok(Some(path))
-        }
-    }
-}
-
 /// `host:port` where an IPv6 host must be bracketed.
 fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
     let invalid = || Error::HostPort {
@@ -195,30 +169,6 @@ fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
         return Err(invalid());
     }
     Ok(text.to_owned())
-}
-
-/// An absolute Unix socket path from `name`; unset or empty is `None`.
-fn optional_socket(
-    env: &BTreeMap<String, String>,
-    name: &'static str,
-) -> Result<Option<PathBuf>, Error> {
-    match env.get(name).map(String::as_str) {
-        None | Some("") => Ok(None),
-        Some(text) => absolute_path(name, text).map(Some),
-    }
-}
-
-/// A path in another filesystem (the guacd container), which only an absolute path names.
-fn absolute_path(variable: &'static str, text: &str) -> Result<PathBuf, Error> {
-    let path = PathBuf::from(text);
-    if path.is_absolute() {
-        Ok(path)
-    } else {
-        Err(Error::NotAbsolute {
-            variable,
-            value: text.to_owned(),
-        })
-    }
 }
 
 /// The permitted networks: the link mode's own, or `ANIMA_PERMITTED_NETWORKS`.
@@ -321,7 +271,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
         key_file: value(env, KEY_FILE, "/run/secrets/anima_key")?.into(),
         guacd: host_port(GUACD, value(env, GUACD, "guacd:4822")?)?,
-        guacd_drive_root: absolute_path(
+        guacd_drive_root: remote_drive_path(
             GUACD_DRIVE_ROOT,
             value(env, GUACD_DRIVE_ROOT, "/var/lib/guacd/drives")?,
         )?,

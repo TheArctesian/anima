@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -65,6 +66,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
 | HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
+| HT-070 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
+| HT-075 | Android reports its memory and storage readings (M6-1) | A physical Android device joined to a hub, and another client to check the same device | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -109,9 +112,17 @@ The steps for a hub with a user name and a password (the self-host path) stay in
 
 ### HT-069: Anima OS preview hardware and enrollment
 
-Latest operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+Check that the installed name follows `anima-node-xxxx`, matches the console and newly enrolled hub device, and remains unchanged after reboot and an OS update.
 
-Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. Wi-Fi connection on this machine remains unverified.
+Latest operator report (2026-11-20): “wifi works”. Installed Wi-Fi is confirmed working on the same physical device. The operator also reports absent disk/storage telemetry on the hub and an oversized sign-in browser header. Full hardware/enrollment acceptance remains Open.
+
+Combined follow-up retest: boot the next ISO, check the battery icon at the top-right (charge, charging/discharging and unplug/replug), rotate the display while settings are open, then complete installation with either Restart or Shut down. Unlock the installed console: battery status must remain visible while locked and readings must update after unlock. Check CPU, memory and storage locally and disk inventory/usage on the hub. Sign in to Anima without provider-name copy or a tall browser header; alternatively connect through the visible self-hosted hub form using an existing reachable private HTTPS hub and a fresh enrollment code. Verify the self-hosted daemon continues reporting after reboot.
+
+For OS updates: check the hosted preview channel, download an available signed update, finish running work and choose Restart to update. Expected: new system boots with the same identity, network settings, orientation and persistent data; the previous system remains selectable. Test owner-requested rollback on disposable data. Actual battery hardware, live account sign-in, physical boot recovery and the public update transport are not established by synthetic VM fixtures alone.
+
+Earlier operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+
+Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. This earlier failure is retained as history; see the later operator report below.
 
 Built: [preview source](../experiments/anima-os/README.md), under R-274.
 
@@ -1692,6 +1703,30 @@ The [Android build procedure](procedures/setup/android-apk.md) gives the steps t
 
 Result: Open.
 
+### HT-070: keep and clear a mobile session (M5-1)
+
+1. Join a test hub by invitation. Open Devices and confirm that a fresh read succeeds.
+2. Force-stop the application and open it again. Open Devices, request a fresh read, and check that the link and session still work without entering the invite or credentials again.
+3. In Settings, sign out. Force-stop the application and open it again. Confirm that a fresh read now requires sign-in.
+4. Repeat with an Anima.ing account and its hosted hub. After signing out, select Sign in again and confirm that the app starts a new browser sign-in instead of resuming locally.
+
+On 2026-11-20 a separate debug app on the Android tablet stored and replaced a synthetic hub token, refused access from another origin and from an unowned loopback port, restored the token after force-stop, and kept it cleared after a second force-stop. The record contained ciphertext in the app’s no-backup directory.
+
+An Android emulator joined an isolated hub by invitation through the relay after the Android interface enumeration fix. The app verified that it owned the loopback listener, reached the hub with the stored token before and after force-stop, and confirmed that clearing the token removed it. The hosted sign-in service issued a device code on the emulator. The physical tablet later joined the isolated hub, signed in to the hosted hub after returning manually from the browser, and made fresh authenticated requests to both hubs after force-stop. The wide Settings layout initially signed in again after Sign out. A UI test now covers clearing the account session from the wide row. The fixed build on the physical tablet used its compact layout and returned to Welcome with both sessions cleared. Both sessions stayed cleared after force-stop. The signed update check and runtime iOS Keychain check remain open.
+
+Result: Open.
+
+### HT-075: Android reports its memory and storage readings (M6-1)
+
+1. On a signed-in Android device that has joined the hub, open Devices, choose Add device, and choose to enroll this device. Confirm that its entry appears.
+2. On another signed-in client, open the same device. Confirm that Memory and Storage have recent values and that the metrics source is Daemon.
+3. Put Anima in the background on Android for 45 seconds. Confirm that the hub marks the values stale and does not turn the device Down. Return to Anima and confirm that the readings get a newer timestamp.
+4. In Android Settings, choose Sign out. Confirm that Anima returns to Welcome. Select Sign in again and check that it asks for a new approval.
+
+On 2026-11-20 the Samsung tablet was enrolled from the app. The hosted hub showed the tablet with source Daemon and new memory and storage readings. New readings reached the hub again after bringing the app back to the foreground. The background stale state still needs an independent client check.
+
+Result: Open.
+
 ### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
 
 Built: in 53af82a1 and 3b46dfef (R-157). The application keeps the last answer of the hub for the device list,
@@ -2467,6 +2502,106 @@ not compared with its mockup.
 
 Result: Open.
 
+
+### HT-074: the native Windows desktop client (WIN1)
+
+Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
+state with protected ACLs, platform capability controls and a per-user NSIS installer.
+The build procedure is [windows.md](procedures/setup/windows.md). Automated Windows tests
+cover shared shell logic and link file security. The installer and welcome window were
+started in the Windows 11 VM. Real account sign-in and remote sessions need this check.
+
+1. Run the local installer and start Anima.ing from Start.
+   Expected: the welcome screen appears with Sign in, Sign up and Join hub.
+2. Sign in to your Anima account, or use Join hub with an existing hub invitation.
+   Expected: the device link connects and the hub's devices appear. No token is logged.
+3. Close Anima and open it again.
+   Expected: the saved credential is read from Windows Credential Manager; the link reconnects.
+4. Open an SSH or remote desktop session to a device you control.
+   Expected: keyboard input and screen updates work; closing the session returns to the hub.
+5. Open a device's HTTPS web interface.
+   Expected: the system browser opens it. Windows does not offer native certificate pinning.
+6. Inspect Settings and close the app.
+   Expected: unsupported host controls and the updater are absent; the link child stops.
+7. Uninstall through Windows Settings, then install again.
+   Expected: the application and shortcut are removed and installed without administrator rights.
+
+Operator report, 2026-11-20: Sign in displayed "No network" (Failed). After the VM
+was restarted, agent checks reached WorkOS and the Anima cloud from Windows; the
+installed app resumed the saved account and showed Devices, Connected, and one hub
+Up. The original transport failure was not isolated. No application code changed.
+Operator confirmation and remote-session testing remain outstanding.
+
+Agent observation, 2026-11-20: later the client disconnected while Defender repeatedly
+terminated its `anima-link.exe` child (`Behavior:Win32/SuspClickFix.F`). The desktop
+was stopped to end its restart loop. Detection cause is unresolved; Defender remains
+enabled, with no new exclusions. Sustained connection and restart acceptance remain open.
+
+Further agent observation, 2026-11-20: starting the unchanged app from the Start menu
+kept the same connection-helper process alive for six minutes, with no new Defender
+detection and all three reported protection modes enabled. This supports a launch-context
+hypothesis; it does not establish the detector's cause. WIN2 adds a bounded retry policy
+and bundles a native CLI. A temporary MCP configuration add/remove test preserved the
+other entry; a real coding agent connection remains to be tested.
+
+8. With the WIN2 installer, open PowerShell and run
+   `& "$env:LOCALAPPDATA\Anima.ing\anima.exe" --help`.
+   Expected: the native CLI prints its commands without a missing-runtime error.
+9. In a supported coding agent installed on Windows, configure its MCP command as
+   the installed `anima.exe` with argument `mcp`, then connect it to your configured hub.
+   Expected: the agent lists the same permitted hub tools as on Linux/macOS, and a read
+   command succeeds. Do not assume that all agent-specific automatic setup paths work yet.
+
+Result: Open.
+
+### WIN2 continuation checks for HT-074
+
+The entry HT-074 remains Open. These checks extend that entry; they are not a pass record.
+
+1. In Windows Settings > Updates, install the command line tool. Confirm the displayed user-PATH
+   folder. Open a fresh terminal and run `anima --version`; it must resolve to the bundled CLI.
+   Remove it and open another terminal; unrelated PATH entries must remain unchanged.
+2. In Settings > MCP, inspect an installed coding agent, confirm the shown change and connect
+   the agent to `anima mcp`. Remove Anima's entry; other server entries and their settings must remain.
+3. After the hosted connection hands off to Task Scheduler, close Anima. Its link must remain
+   connected. Open Anima again, sign out/in to Windows, and verify reconnection without a password
+   prompt, elevation prompt, or an extra console window.
+4. Remove the link through Anima. Its task and persistent process must stop. Repeat with a
+   standard non-administrator Windows account; the VM's administrator account is insufficient proof.
+
+5. Open the hosted hub with the bundled daemon present. This Windows computer must appear
+   once, enroll automatically, and have a running per-user daemon task. Check CPU, memory,
+   disk and network metrics. Close Anima and confirm new metrics still arrive; sign out/in
+   and confirm both tasks restart. Do not treat device registration alone as metrics acceptance.
+6. On a Windows laptop, choose Keep awake in Settings and confirm the tray agrees. Wait past
+   the configured idle sleep time; the computer should remain running while the display may
+   sleep. Turn it off, quit, then separately force-close the app; each must release Anima's
+   request (`powercfg /requests` can inspect it). Repeat on battery and test the saved floor:
+   below the floor it must pause, and connecting mains must resume it. Check Modern Standby
+   hardware separately. On a laptop whose power policy permits it, choose the closed-lid level.
+   Anima must use a temporary copy of the active power plan and restore the previous plan on
+   Off, normal exit and force-closing the app. The original plan's settings must not change.
+   Select a different power plan while the hold is active, then stop the hold: the selected
+   plan must remain active. Restart after an interrupted guard and verify recovery removes
+   Anima's temporary plan. A VM without a lid, or a machine with locked policy, must show
+   this level as unavailable.
+
+7. Install the local hub from Settings on a standard Windows account. Wait for Ready, close
+   the app and reopen it; the hub must remain available. Stop and start it, make a backup,
+   and recover that backup into a fresh folder. Confirm the account and devices survive.
+   This check does not authorize deleting an existing hub or replacing its database.
+8. On a Windows builder with the documented native compiler tools, enable building and
+   run a trial Windows release. Its gates must pass before packaging. Cancel during a build;
+   no compiler or packaging child may remain. Test the signed installer update with the
+   private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
+   Do not enable or publish a public feed as part of this check.
+
+9. Download the `windows-trial` artifact from a successful dev workflow and install it in
+   a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and
+   automatic updates are disabled. For a signed release trial on main, confirm the installer
+   shows the expected verified publisher and its timestamp is valid. Test a private update
+   from the previous signed version and check the link, daemon and hub after restart.
+   Certificate provisioning and this signed trial remain Open.
 ### HT-073: labels in sentence case in the whole application (R-279)
 
 Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is

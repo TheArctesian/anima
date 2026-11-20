@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, VPN_SESSION, type Host } from "./vps-host.ts";
 
@@ -11,10 +12,11 @@ const applied = (calls: string[]): boolean => calls.some((call) => call.startsWi
 let host: Host;
 
 beforeEach(() => {
+  if (process.platform === "win32") return;
   host = fakeHost();
 });
 
-describe("harden.sh needs Docker 28 or newer (D-10, WP-04 preflight)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh needs Docker 28 or newer (D-10, WP-04 preflight)", () => {
   test.each([["docker"], ["firewall"]])("%s refuses Docker 27 and changes nothing", (command) => {
     const run = host.run([command], { ...vpn, FAKE_DOCKER_VERSION: "27.5.1" });
     expect(run.code).toBe(2);
@@ -32,7 +34,7 @@ describe("harden.sh needs Docker 28 or newer (D-10, WP-04 preflight)", () => {
   });
 });
 
-describe("harden.sh keeps Docker's range for the bridges (NET-002, WP-04 C-3)", () => {
+describe.skipIf(process.platform === "win32")("harden.sh keeps Docker's range for the bridges (NET-002, WP-04 C-3)", () => {
   const withAddress = (line: string): Record<string, string> => ({
     FAKE_ADDRS: `1: lo    inet 127.0.0.1/8 scope host lo\\n${line}`,
   });

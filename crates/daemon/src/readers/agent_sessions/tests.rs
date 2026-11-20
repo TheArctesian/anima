@@ -16,7 +16,7 @@ const MARKER: &str = "MARKER-7f3a9c-SECRET";
 fn claude_line(cwd: &Path, output: u64) -> String {
     format!(
         r#"{{"type":"assistant","timestamp":"2026-11-08T09:00:00Z","cwd":"{}","message":{{"model":"claude-opus-5-5","content":[{{"type":"text","text":"{MARKER}"}}],"usage":{{"output_tokens":{output}}}}}}}"#,
-        cwd.display()
+        cwd.display().to_string().replace('\\', "/")
     )
 }
 
@@ -24,7 +24,7 @@ fn codex_meta(id: &str, parent: Option<&str>, cwd: &Path) -> String {
     let parent = parent.map_or(String::new(), |p| format!(r#","parent_thread_id":"{p}""#));
     format!(
         r#"{{"timestamp":"2026-11-08T10:00:00Z","type":"session_meta","payload":{{"id":"{id}","cwd":"{}"{parent}}}}}"#,
-        cwd.display()
+        cwd.display().to_string().replace('\\', "/")
     )
 }
 
@@ -94,7 +94,7 @@ fn home() -> tempfile::TempDir {
         &codex_child,
     );
     write(&root.join("elsewhere/s3.jsonl"), &[claude_line(&app, 1000)]);
-    std::os::unix::fs::symlink(root.join("elsewhere/s3.jsonl"), project.join("s3.jsonl"))
+    crate::test_links::symlink(root.join("elsewhere/s3.jsonl"), project.join("s3.jsonl"))
         .expect("a link");
     home
 }
@@ -191,9 +191,14 @@ fn ais_024_only_a_daemon_of_a_user_reads_sessions() {
                 .map(|(_, value)| (*value).to_owned())
         }
     };
+    let (key, path) = if cfg!(windows) {
+        ("USERPROFILE", "C:/Users/me")
+    } else {
+        ("HOME", "/home/me")
+    };
     assert_eq!(
-        user_home(env(&[("HOME", "/home/me")])),
-        Some("/home/me".into())
+        user_home(|name| (name == key).then(|| path.to_owned())),
+        Some(path.into())
     );
     let system = env(&[
         ("HOME", "/var/lib/anima-daemon"),
@@ -233,7 +238,7 @@ fn ais_008_a_working_folder_reached_through_a_link_is_excluded() {
     let home = tempfile::tempdir().expect("a home");
     let private = home.path().join("real/private");
     fs::create_dir_all(private.join("app")).expect("a folder");
-    std::os::unix::fs::symlink(home.path().join("real"), home.path().join("via")).expect("a link");
+    crate::test_links::symlink(home.path().join("real"), home.path().join("via")).expect("a link");
     let recorded = home.path().join("via/private/app");
     write(
         &home.path().join(".claude/projects/-via/s8.jsonl"),

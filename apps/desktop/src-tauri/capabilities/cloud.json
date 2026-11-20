@@ -2,8 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "cloud",
   "description": "The sign-in to the Anima.ing account and the calls of its cloud (hosted-mode.md Section 4.1, HMD-032 to HMD-035, HMD-043): start the WorkOS device sign-in and get the short code and the page, ask whether the person signed in, sign in again with the refresh token in the key store, ask the cloud for the hub of the account, get this computer's link invite and one-time claim for the ready hub, and read the device name, the computer name and the OS of this computer (HMD-044). The commands take no argument: the client ID, the cloud address and the device name are the shell's own. The WorkOS tokens and the device code never reach the web view. Main web view only.",
-  "webviews": ["main"],
-  "platforms": ["macOS", "linux"],
+  "webviews": [
+    "main"
+  ],
+  "platforms": [
+    "macOS",
+    "linux",
+    "windows"
+  ],
   "permissions": [
     "allow-cloud-sign-in-start",
     "allow-cloud-sign-in-poll",

@@ -1,5 +1,8 @@
-//! Gives the app's build the iOS package in `ios/`. The web view has no command of this plugin: only the shell calls it.
+//! Registers the native packages without exposing plugin commands to the web view.
 
 fn main() {
-    tauri_plugin::Builder::new(&[]).ios_path("ios").build();
+    tauri_plugin::Builder::new(&[])
+        .ios_path("ios")
+        .android_path("android")
+        .build();
 }

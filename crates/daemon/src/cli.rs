@@ -245,15 +245,16 @@ mod tests {
             parse(args("enrol - --hub http://hub.example")),
             Err(CliError::Hub(OriginError::Scheme))
         ));
-        let Ok(Command::Enrol { hub, .. }) = parse(args(
-            "enrol - --hub unix:/home/me/.config/anima-daemon/link.sock",
-        )) else {
+        let origin = if cfg!(windows) {
+            "unix:C:/Users/me/Anima/link.sock"
+        } else {
+            "unix:/home/me/.config/anima-daemon/link.sock"
+        };
+        let line = format!("enrol - --hub {origin}");
+        let Ok(Command::Enrol { hub, .. }) = parse(args(&line)) else {
             panic!("the socket of anima-link is a hub origin");
         };
-        assert_eq!(
-            hub.as_text(),
-            "unix:/home/me/.config/anima-daemon/link.sock"
-        );
+        assert_eq!(hub.as_text(), origin);
         assert!(matches!(
             parse(args("enrol - --hub http://127.0.0.1:8443")),
             Err(CliError::Hub(OriginError::LinkPort))

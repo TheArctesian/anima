@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,12 +9,12 @@ import {
   run, shimDirectory, state, tearDownSample, toolDirectory,
 } from "./backup-fixture.ts";
 
-beforeEach(resetSample);
-afterAll(tearDownSample);
+if (process.platform !== "win32") beforeEach(resetSample);
+if (process.platform !== "win32") afterAll(tearDownSample);
 
 const noCheckDatabase = async () => expect(await databasesLike("anima_restore_check")).toEqual([]);
 
-describe("restore-check.sh against the manifest (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("restore-check.sh against the manifest (DB-007)", () => {
   test("DB-007: a fresh dump passes and leaves no check database", async () => {
     const result = await run(RESTORE_CHECK, [await backUp()]);
     expect(result.stderr).toBe("");
@@ -57,7 +58,7 @@ describe("restore-check.sh against the manifest (DB-007)", () => {
 
 });
 
-describe("restore-check.sh failures (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("restore-check.sh failures (DB-007)", () => {
   test("DB-007: the output never holds row contents", async () => {
     const path = await backUp();
     await owner("select 1");
@@ -86,7 +87,7 @@ describe("restore-check.sh failures (DB-007)", () => {
   });
 });
 
-describe("restore-check.sh arguments (DB-007)", () => {
+describe.skipIf(process.platform === "win32")("restore-check.sh arguments (DB-007)", () => {
   test.each([["--yes"], ["--force"]])("DB-007: %s is refused", async (option) => {
     expect((await run(RESTORE_CHECK, [option, await backUp()])).exitCode).not.toBe(0);
     await noCheckDatabase();
@@ -98,7 +99,7 @@ describe("restore-check.sh arguments (DB-007)", () => {
   });
 });
 
-describe("restore-check.sh privileges (LOG-006)", () => {
+describe.skipIf(process.platform === "win32")("restore-check.sh privileges (LOG-006)", () => {
   const cases = ["event_log", "audit_log"].flatMap((table) =>
     ["select", "insert", "update", "delete", "truncate"].map((privilege) => [table, privilege] as const),
   );

@@ -53,11 +53,19 @@ tauri-plugin-account-session = { path = "../account-session" }
 sha2.workspace = true
 base64.workspace = true
 
+[target.'cfg(target_os = "android")'.dependencies]
+chrono.workspace = true
+daemon-core = { path = "../../../crates/daemon-core" }
+reqwest = { workspace = true, features = ["json"] }
+rustix = { version = "1.1", default-features = false, features = ["std", "fs"] }
+uuid.workspace = true
+
 # The dependencies of the desktop application. A phone has the window, the access token, the link and the account sign-in only, so it
 # builds none of them (MOB-002, MOB-003).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 # The Settings panel for `anima mcp` reads and saves permissions through the command line's own library (MCP-018).
 anima-cli = { path = "../../../crates/anima-cli" }
+
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -143,3 +151,8 @@ excessive_nesting = "deny"
 allow_attributes = "deny"
 allow_attributes_without_reason = "deny"
 
+
+[target.'cfg(target_os = "windows")'.dependencies]
+anima-windows = { path = "../../../crates/anima-windows" }
+keyring = { workspace = true, features = ["windows-native"] }
+open = "5"

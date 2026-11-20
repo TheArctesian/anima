@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, mutatingCalls, VPN_SESSION, VPS_DIR } from "./vps-host.ts";
@@ -5,7 +6,7 @@ import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, mutatingCalls, VPN_SESSION, V
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
 afterEach(removeHosts);
 
-describe("harden.sh dry run, usage and lint", () => {
+describe.skipIf(process.platform === "win32")("harden.sh dry run, usage and lint", () => {
   test("VPS-005: --dry-run writes nothing and calls no mutating command", () => {
     const host = fakeHost();
     host.write("var/lib/anima/nftables.pending", "pending\n");

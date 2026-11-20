@@ -13,13 +13,15 @@ import (
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/ports"
 	"github.com/TheArctesian/anima/link/statedir"
+	"github.com/TheArctesian/anima/link/tunnel"
 )
 
 // deviceStatus is the answer of the device's "status" verb.
 type deviceStatus struct {
 	Role string `json:"role"`
 	// Local is the loopback address that reaches the hub.
-	Local string `json:"local"`
+	Local     string           `json:"local"`
+	PublicKey tunnel.DeviceKey `json:"publicKey"`
 	// Path is "direct", "relayed" or "none" (LNK-006).
 	Path      string  `json:"path"`
 	LatencyMS float64 `json:"latencyMs"`
@@ -124,7 +126,7 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 			path := link.Path()
 			open, err := ports.List(dir)
 			return deviceStatus{
-				Role: "device", Local: link.LocalAddr().String(),
+				Role: "device", Local: link.LocalAddr().String(), PublicKey: device.Key.Public(),
 				Path: string(path.Kind), LatencyMS: float64(path.Latency.Microseconds()) / 1000,
 				OpenPorts: append([]uint16{}, open...),
 			}, err

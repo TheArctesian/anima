@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import { binaryDirs, findTools, serverOptions, socketDatabaseUrl } from "../src/gates/postgres.ts";
 
 describe("throwaway PostgreSQL (R-009)", () => {
@@ -10,7 +11,7 @@ describe("throwaway PostgreSQL (R-009)", () => {
   });
 
   test("finds the first folder that has every tool", () => {
-    const present = new Set(["/b/initdb", "/b/pg_ctl", "/a/initdb"]);
+    const present = new Set([join("/b", "initdb"), join("/b", "pg_ctl"), join("/a", "initdb")]);
     expect(findTools(["/a", "/b"], ["initdb", "pg_ctl"], (path) => present.has(path))).toBe("/b");
     expect(findTools(["/a"], ["initdb", "pg_ctl"], (path) => present.has(path))).toBeUndefined();
   });

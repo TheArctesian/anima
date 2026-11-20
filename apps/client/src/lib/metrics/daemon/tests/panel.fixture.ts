@@ -106,6 +106,7 @@ export function setUp(): void {
   clock = START;
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'] });
   Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Linux x86_64' });
+  Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (X11; Linux x86_64)' });
 }
 
 /** Call from `afterEach`. */

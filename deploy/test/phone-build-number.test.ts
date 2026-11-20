@@ -1,3 +1,4 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/phone-build-number: the build number of the phone applications from the release
 // version (mobile plan M5-3, RLS-003).
 import { describe, expect, test } from "bun:test";
@@ -13,7 +14,7 @@ function run(command: string, ...given: string[]): { exitCode: number; printed: 
 
 const number = (version: string) => run("phone-build-number", version);
 
-describe("the rule (RLS-003)", () => {
+describe.skipIf(process.platform === "win32")("the rule (RLS-003)", () => {
   test.each([
     ["0.0.1", "1"],
     ["0.0.99", "99"],
@@ -50,7 +51,7 @@ describe("the rule (RLS-003)", () => {
   });
 });
 
-describe("what is refused", () => {
+describe.skipIf(process.platform === "win32")("what is refused", () => {
   test.each([
     ["0.0.0", "no build number"],
     ["0.7.100", "not like 0.7.95"],

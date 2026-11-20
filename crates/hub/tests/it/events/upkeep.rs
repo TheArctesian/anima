@@ -3,7 +3,7 @@
 
 use std::{
     io::Write as _,
-    process::{Child, Command, Stdio},
+    process::{Child, Stdio},
     time::{Duration, Instant},
 };
 
@@ -21,7 +21,7 @@ fn url_as(login: &str, database: &str) -> String {
     let url = url_for(database);
     let (scheme, rest) = url.split_once("://").unwrap();
     let host = rest.split_once('@').map_or(rest, |(_, host)| host);
-    format!("{scheme}://{login}@{host}")
+    format!("{scheme}://{login}:{login}@{host}")
 }
 
 /// Kills the hub when the test ends, also when it fails.
@@ -50,10 +50,12 @@ async fn upkeep_done(pool: &PgPool) -> bool {
 #[sqlx::test(migrations = "./migrations")]
 async fn db_004_the_serving_hub_runs_the_upkeep_at_start(pool: PgPool) {
     let login = format!("anima_test_{}_hub", Uuid::now_v7().simple());
-    sqlx::query(&format!("create role {login} login in role anima_runtime"))
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(&format!(
+        "create role {login} login password '{login}' in role anima_runtime"
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
     sqlx::query(
         "insert into access.login_attempts (id, at, username, client_addr, ok) \
          values ($1, now() - interval '91 days', 'long-ago', '100.64.0.7', false)",
@@ -68,8 +70,7 @@ async fn db_004_the_serving_hub_runs_the_upkeep_at_start(pool: PgPool) {
     let mut key_file = tempfile::NamedTempFile::new().unwrap();
     write!(key_file, "{}", STANDARD.encode([3_u8; 32])).unwrap();
 
-    let hub = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
-        .env_clear()
+    let hub = crate::transport::process::hub()
         .env("ANIMA_KEY_FILE", key_file.path())
         .env("ANIMA_DATABASE_URL_FILE", url_file.path())
         .env("ANIMA_LOG", "error")

@@ -1,3 +1,4 @@
+// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { fixture, PASSWORD, removeFixtures, resticCommands, run, snapshotList, type Run } from "./backup-fixture.ts";
@@ -31,7 +32,7 @@ function commandNames(result: Run): string[] {
   return resticCommands(result.calls).map((argv) => argv.find((arg) => !arg.startsWith("-") && !arg.includes("/")) ?? "");
 }
 
-describe("prune.sh", () => {
+describe.skipIf(process.platform === "win32")("prune.sh", () => {
   test("VPS-006 checks the snapshot list, then forgets everything older than a year grouped by host and tag, then checks", () => {
     const result = prune(dailyTimes(40));
     expect(result.code).toBe(0);
@@ -77,7 +78,7 @@ describe("prune.sh", () => {
   });
 });
 
-describe("prune.sh refusals", () => {
+describe.skipIf(process.platform === "win32")("prune.sh refusals", () => {
   const refusals: [string, string[], string][] = [
     ["a snapshot is dated more than an hour in the future", [...dailyTimes(20), "2027-01-01T03:15:00Z"], "in the future"],
     ["a snapshot is dated in the future through its time zone", [...dailyTimes(3), "2026-11-04T08:30:00-05:00"], "in the future"],

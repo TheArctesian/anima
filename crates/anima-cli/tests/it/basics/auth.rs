@@ -1,8 +1,6 @@
 //! `anima auth`: a key from standard input, the token store, `ANIMA_TOKEN` before it, and
 //! sign-out (CMD-011..014).
 
-use std::os::unix::fs::PermissionsExt as _;
-
 use anima_cli::hub::{Hub, Origin, Token};
 use serde_json::json;
 use zeroize::Zeroizing;
@@ -38,11 +36,7 @@ async fn cmd_011_login_with_token_checks_the_key_and_stores_it_privately() {
     );
     assert_eq!(hub.seen()[0].authorization, Some(format!("Bearer {KEY}")));
     let file = anima.config_dir().join("tokens.json");
-    let mode = std::fs::metadata(&file)
-        .expect("the token file")
-        .permissions()
-        .mode();
-    assert_eq!(mode & 0o777, 0o600);
+    crate::kit::file_access::assert_private(&file);
 
     let run = anima.run(&["auth", "status", "--hub", &hub.origin]).await;
     assert_eq!(run.code, 0, "{run:?}");
@@ -172,10 +166,10 @@ async fn cmd_012_a_token_file_others_can_read_is_refused() {
         )
         .await;
     let file = anima.config_dir().join("tokens.json");
-    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).expect("chmod");
+    crate::kit::file_access::mode(&file, 0o644);
     let run = anima.run(&["auth", "status", "--hub", &hub.origin]).await;
     assert_eq!(run.code, 1, "{run:?}");
-    assert!(run.stderr.contains("0600"), "{}", run.stderr);
+    crate::kit::file_access::assert_refused(&run.stderr);
     run.assert_never_shows(KEY);
 }
 

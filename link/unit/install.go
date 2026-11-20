@@ -14,10 +14,6 @@ import (
 // stepDeadline is how long launchctl or systemctl may take.
 const stepDeadline = 30 * time.Second
 
-// searchPath is the only search path that a command gets: the environment
-// of the caller is not passed on.
-const searchPath = "PATH=/usr/sbin:/usr/bin:/sbin:/bin"
-
 // Runner runs one step and reports whether it ended with success. The
 // error is for a step that could not run at all.
 type Runner func(ctx context.Context, step Step) (bool, error)
@@ -27,8 +23,9 @@ func Run(ctx context.Context, step Step) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, stepDeadline)
 	defer cancel()
 	command := exec.CommandContext(ctx, step.Program, step.Args...)
-	command.Env = append([]string{searchPath}, step.Env...)
-	command.Dir = "/"
+	env, directory := commandEnvironment()
+	command.Env = append(env, step.Env...)
+	command.Dir = directory
 	err := command.Run()
 	var exit *exec.ExitError
 	if errors.As(err, &exit) && ctx.Err() == nil {
@@ -65,13 +62,13 @@ func runAll(ctx context.Context, run Runner, steps []Step) error {
 // started again, so that it uses the file and the program of now. The
 // folder of the file is made when it is absent.
 func Install(ctx context.Context, plan Plan, run Runner) error {
-	if err := os.MkdirAll(filepath.Dir(plan.File), 0o755); err != nil {
+	if err := prepareDirectory(filepath.Dir(plan.File)); err != nil {
 		return err
 	}
 	// The file is written beside its place and renamed, so that a reader
 	// never finds half a file.
 	next := plan.File + ".next"
-	if err := os.WriteFile(next, []byte(plan.Content), 0o644); err != nil {
+	if err := os.WriteFile(next, unitBytes(plan.Content), 0o644); err != nil {
 		return err
 	}
 	if err := os.Rename(next, plan.File); err != nil {

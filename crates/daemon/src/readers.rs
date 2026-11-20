@@ -8,6 +8,8 @@ pub mod gpu;
 mod inventory;
 mod linux;
 mod macos;
+#[cfg(windows)]
+mod windows;
 
 use chrono::{DateTime, Utc};
 use daemon_core::readings::Reading;
@@ -18,12 +20,19 @@ pub use inventory::inventory;
 pub enum Platform {
     Linux,
     Macos,
+    #[cfg(windows)]
+    Windows,
 }
 
 impl Platform {
     /// The platform the daemon was built for.
     #[must_use]
     pub const fn current() -> Self {
+        #[cfg(windows)]
+        {
+            Self::Windows
+        }
+        #[cfg(unix)]
         if cfg!(target_os = "macos") {
             Self::Macos
         } else {
@@ -38,5 +47,7 @@ pub async fn reading(platform: Platform, now: DateTime<Utc>) -> Reading {
     match platform {
         Platform::Linux => linux::reading().await,
         Platform::Macos => macos::reading(now).await,
+        #[cfg(windows)]
+        Platform::Windows => windows::reading().await,
     }
 }
