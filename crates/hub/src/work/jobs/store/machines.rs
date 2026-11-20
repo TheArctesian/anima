@@ -19,6 +19,7 @@ type MachineRow = (
     bool,
     Option<DateTime<Utc>>,
     Option<DateTime<Utc>>,
+    bool,
 );
 
 /// What the hub knows of the machine, locked; `None` before its first claim.
@@ -27,14 +28,15 @@ pub(in crate::work::jobs) async fn machine_locked(
     device: DeviceId,
 ) -> Result<Option<Machine>, Error> {
     let row: Option<MachineRow> = sqlx::query_as(
-        "SELECT switch, unclean, off_by_operator, off_until, first_on_at FROM jobs.machines \
+        "SELECT switch, unclean, off_by_operator, off_until, first_on_at, excluded \
+         FROM jobs.machines \
          WHERE device_id = $1 FOR UPDATE",
     )
     .bind(device)
     .fetch_optional(conn)
     .await?;
     row.map(
-        |(switch, unclean, off_by_operator, off_until, first_on_at)| {
+        |(switch, unclean, off_by_operator, off_until, first_on_at, excluded)| {
             Ok(Machine {
                 device,
                 switch: read_word::<Switch>(&switch)?,
@@ -42,13 +44,14 @@ pub(in crate::work::jobs) async fn machine_locked(
                 off_by_operator,
                 off_until,
                 first_on_at,
+                excluded,
             })
         },
     )
     .transpose()
 }
 
-/// Writes what the machine said in its claim at `now`.
+/// Writes the state of the machine for work at `now`; the exclusion is not changed.
 pub(in crate::work::jobs) async fn save_machine(
     conn: &mut PgConnection,
     machine: &Machine,

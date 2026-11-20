@@ -53,7 +53,7 @@ function open(): HTMLElement {
 }
 
 function change(target: HTMLElement): HTMLButtonElement {
-  const button = [...target.querySelectorAll('button')].find((each) => each.textContent.trim() === 'Change');
+  const button = [...target.querySelectorAll('button')].find((each) => each.textContent.trim() === 'Change hub address');
   if (button === undefined) throw new Error('no Change button');
   return button;
 }

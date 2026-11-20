@@ -1,0 +1,15 @@
+# `anima reminder watch`: a reminder was sent (K1 Subscription.reminderFirings).
+subscription ReminderWatch {
+  reminderFirings {
+    id
+    ruleId
+    subject
+    text
+    state
+    reason
+    dueAt
+    sentAt
+    snoozedUntil
+    decidedAt
+  }
+}

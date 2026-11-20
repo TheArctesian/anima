@@ -1,7 +1,7 @@
 /*
  * The Settings page in the phone layout, with the sizes of mockup 7 (docs/mockup/mobile/index.html): a title of 36 px,
  * each section under a small capital caption with a hairline, rows of at least 48 px with the name of 16 px at the start
- * and the value of 15 px at the end, and a segmented choice of 44 px that fills the width. There is no index of sections.
+ * and the value of 15 px at the end, and a segmented choice of 44 px that fills the width. The section index opens from a disclosure.
  * The selectors start at `:root` so they win over the scoped rules of the shared rows.
  */
 @media (max-width: 767.98px) {
@@ -10,10 +10,6 @@
   }
 
   :root [data-settings-page] > .head .label {
-    display: none;
-  }
-
-  :root [data-settings-page] nav {
     display: none;
   }
 
@@ -38,7 +34,7 @@
     display: none;
   }
 
-  :root [data-settings-page] section > p {
+  :root [data-settings-page] section:not([aria-labelledby="settings-runner"]) > p {
     display: none;
   }
 

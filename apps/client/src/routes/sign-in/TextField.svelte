@@ -10,7 +10,7 @@
     icon?: IconName | undefined;
     value: string;
     error?: string | undefined;
-    type?: 'text' | 'password';
+    type?: 'text' | 'password' | 'url';
     autocomplete: 'username' | 'current-password' | 'one-time-code' | 'off';
     /** Digits only: the numeric keyboard, a short field and tabular figures. */
     code?: boolean;

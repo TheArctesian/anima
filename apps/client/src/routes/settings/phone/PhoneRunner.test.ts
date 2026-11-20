@@ -17,7 +17,11 @@ it.each([
     logicalCPUCount: 6, activeCPUCount: 6, physicalMemoryBytes: 8_000_000_000,
     ...memory,
   };
-  shell.invoke.mockReset().mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, charging: 'unplugged' });
+  const refreshedAt = '2026-11-20T06:01:00Z';
+  shell.invoke.mockReset()
+    .mockResolvedValueOnce(report)
+    .mockResolvedValueOnce({ ...report, observedAt: refreshedAt, charging: 'unplugged' })
+    .mockRejectedValueOnce(new Error('Native report unavailable'));
   const target = document.createElement('div');
   document.body.append(target);
   const app = mount(PhoneRunner, { target });
@@ -30,10 +34,18 @@ it.each([
     await vi.waitFor(() => expect(target.textContent).toContain('128 MiB'));
     expect(shell.invoke).toHaveBeenCalledWith('runner_capabilities_read');
     expect(target.textContent).toContain(label);
+    expect(target.textContent).toContain('Last checked');
+    expect(target.querySelector('time')?.dateTime).toBe(report.observedAt);
+    expect(target.querySelector('[role="status"]')?.textContent).toBe('Capability report ready.');
     expect(target.querySelector('details pre')?.textContent).toContain(`"platform": "${platform}"`);
     button.click();
     await vi.waitFor(() => expect(target.textContent).toContain('unplugged'));
     expect(shell.invoke).toHaveBeenCalledTimes(2);
+    expect(target.querySelector('time')?.dateTime).toBe(refreshedAt);
+    expect(target.querySelector('[role="status"]')?.textContent).toBe('Capability report refreshed.');
+    button.click();
+    await vi.waitFor(() => expect(target.querySelector('[role="alert"]')?.textContent).toContain('Showing the last report.'));
+    expect(target.querySelector('time')?.dateTime).toBe(refreshedAt);
   } finally {
     await unmount(app);
     target.remove();
