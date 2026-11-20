@@ -57,6 +57,10 @@ let
     postPatch = (old.postPatch or "") + ''
       cp -r ${./calamares/animasetup} src/modules/animasetup
       cp ${./calamares/shell/AnimaSettings.h} src/calamares/AnimaSettings.h
+      cp ${./calamares/shell/AnimaBattery.h} src/calamares/AnimaBattery.h
+      substituteInPlace src/calamares/AnimaBattery.h --replace-fail @python@ ${pkgs.python3}/bin/python3 --replace-fail @readings@ ${./telemetry/readings.py}
+      cp ${./calamares/shell/AnimaCompletion.h} src/calamares/AnimaCompletion.h
+      substituteInPlace src/calamares/AnimaCompletion.h --replace-fail @powerIcon@ ${./branding/power.svg} --replace-fail @restartIcon@ ${./branding/restart.svg}
       chmod -R u+w src/modules/animasetup
       substituteInPlace src/modules/animasetup/Hero.cpp --replace-fail @hero@ ${./branding/hero.png}
       substituteInPlace src/calamares/CalamaresWindow.cpp --replace-fail @wordmark@ ${./branding/wordmark.svg} --replace-fail @settingsIcon@ ${./branding/settings.svg} --replace-fail @backIcon@ ${./branding/back.svg} --replace-fail @nextIcon@ ${./branding/next.svg}

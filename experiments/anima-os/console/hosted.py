@@ -176,5 +176,5 @@ class Account:
             site_id = graph('mutation($name:String!,$subnet:Cidr!){createSite(name:$name,subnet:$subnet){id}}',
                             {'name': 'Link', 'subnet': 'fd41:4e49:4d41::/48'}, token)['createSite']['id']
         return graph('mutation($input:CreateDeviceInput!){createDevice(input:$input){id}}',
-                     {'input': {'siteId': site_id, 'name': name, 'host': address,
+                     {'input': {'siteId': site_id, 'name': os.uname().nodename, 'host': address,
                                 'kind': 'server', 'os': 'LINUX', 'tags': [], 'addDefaultCheck': False}}, token)['createDevice']['id']

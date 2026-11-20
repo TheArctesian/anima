@@ -4,10 +4,13 @@ from pathlib import Path
 import sys
 from PySide6.QtCore import QObject, QProcess, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
+
+from signin import SigninWindow
+from readings import Readings
 
 ROOT = Path(__file__).resolve().parent
 
@@ -17,12 +20,8 @@ class LocalPage(QWebEnginePage):
         return url.isLocalFile() and Path(url.toLocalFile()).resolve() == ROOT / 'index.html'
 
 
-class BrowserPage(QWebEnginePage):
-    def acceptNavigationRequest(self, url, kind, main_frame):
-        return url.scheme() == 'https' or url.toString() == 'about:blank'
-
-
 class Bridge(QObject):
+    telemetryChanged = Signal(str)
     answer = Signal(str)
     locked = Signal()
     openBrowser = Signal(str, str)
@@ -34,6 +33,14 @@ class Bridge(QObject):
         self.buffer = b''
         self.busy = False
         self.unlocked = False
+        self.readings = Readings()
+        self.telemetry_timer = QTimer(self)
+        self.telemetry_timer.timeout.connect(self.telemetry)
+        self.telemetry_timer.start(5000)
+
+    @Slot()
+    def telemetry(self):
+        self.telemetryChanged.emit(json.dumps(self.readings.sample()))
 
     def emit_error(self, identity, message):
         self.answer.emit(json.dumps({'id': identity, 'ok': False, 'error': message}))
@@ -147,30 +154,9 @@ def main():
     channel.registerObject('console', bridge)
     page.setWebChannel(channel)
     window.setCentralWidget(view)
-    browser = QWidget()
-    browser.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-    browser.setStyleSheet('QWidget{background:#1B1D21;color:#E6E7E9;font:14px "IBM Plex Sans";}QPushButton{padding:8px 14px;border:1px solid #353941;border-radius:4px;}QPushButton:hover{border-color:#88C0D0;}')
-    layout = QVBoxLayout(browser)
-    back = QPushButton('← Back to Anima')
-    confirmation = QLabel()
-    confirmation.setTextFormat(Qt.TextFormat.PlainText)
-    origin = QLabel()
-    origin.setTextFormat(Qt.TextFormat.PlainText)
-    header = QHBoxLayout()
-    header.addWidget(back)
-    header.addStretch()
-    header.addWidget(confirmation)
-    header.addStretch()
-    header.addWidget(origin)
-    web = QWebEngineView(browser)
-    remote_profile = QWebEngineProfile(web)
-    web.setPage(BrowserPage(remote_profile, web))
-    layout.addLayout(header)
-    layout.addWidget(web)
-    back.clicked.connect(browser.hide)
-    web.urlChanged.connect(lambda url: origin.setText(url.host()))
-    bridge.openBrowser.connect(lambda url, code: (confirmation.setText('Confirm code: '+code), web.load(QUrl(url)), browser.showFullScreen()))
-    bridge.closeBrowser.connect(lambda: (browser.hide(), web.load(QUrl('about:blank')), remote_profile.cookieStore().deleteAllCookies()))
+    browser = SigninWindow()
+    bridge.openBrowser.connect(browser.open_signin)
+    bridge.closeBrowser.connect(browser.clear)
     view.load(QUrl.fromLocalFile(str(ROOT / 'index.html')))
     window.showFullScreen()
     app.aboutToQuit.connect(bridge.lock)

@@ -18,7 +18,7 @@ const OUTPUT_LIMIT: u64 = 1024 * 1024;
 
 /// The only search path a command gets: the daemon's own environment is not passed on.
 #[cfg(unix)]
-const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
+const PATH: &str = "/run/current-system/sw/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 
 /// How long a command that closed its output may take to report its exit status.
 const EXIT_GRACE: Duration = Duration::from_secs(1);
