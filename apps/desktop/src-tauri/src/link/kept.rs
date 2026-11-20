@@ -6,7 +6,8 @@
 
 use std::{
     ffi::OsString,
-    fs,
+    fs::{self, DirBuilder},
+    os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -34,7 +35,43 @@ pub struct Kept {
     pub program: PathBuf,
     pub folder: PathBuf,
     pub port: u16,
+    /// The socket that the link makes for the daemon of this user (K8 Section 1, HMD-054); none
+    /// when its folder cannot be a private one.
+    pub daemon_socket: Option<PathBuf>,
     pub env: Vec<(&'static str, OsString)>,
+}
+
+/// The name of the socket in the folder of the daemon, as the daemon knows it.
+const DAEMON_SOCKET: &str = "link.sock";
+/// The longest path that the link takes for a socket.
+const LONGEST_SOCKET: usize = 100;
+
+/// The folder of the daemon of this user, where the daemon itself looks for it: on macOS
+/// `~/Library/Application Support/anima-daemon`, else `$XDG_CONFIG_HOME/anima-daemon` or
+/// `~/.config/anima-daemon`.
+pub fn daemon_folder(home: &Path, macos: bool, config_home: Option<&Path>) -> PathBuf {
+    if macos {
+        return home.join("Library/Application Support/anima-daemon");
+    }
+    config_home
+        .filter(|folder| folder.is_absolute())
+        .map_or_else(|| home.join(".config"), Path::to_path_buf)
+        .join("anima-daemon")
+}
+
+/// The socket for the daemon in `folder`, once the folder is there and private: it is made
+/// with mode 0700 when it is absent. None when the folder is a link, belongs to a different
+/// user or gives its group or others any access, and when the path is too long for a socket:
+/// the link would refuse it, and the link must still start.
+pub fn private_socket(folder: &Path) -> Option<PathBuf> {
+    let _ = DirBuilder::new().recursive(true).mode(0o700).create(folder);
+    let found = fs::symlink_metadata(folder).ok()?;
+    let private = found.is_dir()
+        && found.uid() == nix::unistd::getuid().as_raw()
+        // No bit of the group or of others: the last two octal digits are zero.
+        && found.mode() % 0o100 == 0;
+    let socket = folder.join(DAEMON_SOCKET);
+    (private && socket.as_os_str().len() <= LONGEST_SOCKET).then_some(socket)
 }
 
 /// Where the copy of the link program is: `~/.local/bin/anima-link` under `home`.
@@ -68,7 +105,10 @@ impl Kept {
     pub fn install(&self) -> Result<(), LinkError> {
         let folder = self.folder.to_str().ok_or(LinkError::Folder)?;
         let listen = format!("127.0.0.1:{}", self.port);
-        let args = ["unit", "install", "-state", folder, "-listen", &listen];
+        let mut args = vec!["unit", "install", "-state", folder, "-listen", &listen];
+        if let Some(socket) = self.daemon_socket.as_deref().and_then(Path::to_str) {
+            args.extend(["-daemon-socket", socket]);
+        }
         ask(self, &args, UNIT_LIMIT)
             .map(drop)
             .ok_or(LinkError::Failed)
@@ -93,16 +133,25 @@ impl Kept {
         printed::link_local(&status)
     }
 
+    /// Whether the link of the unit made the socket of the daemon.
+    fn has_daemon_socket(&self) -> bool {
+        self.daemon_socket.as_deref().is_some_and(|socket| {
+            fs::symlink_metadata(socket).is_ok_and(|found| found.file_type().is_socket())
+        })
+    }
+
     /// Gives the unit the link program of this app when its copy holds different bytes, and
-    /// starts the unit again with it. A copy that cannot be written stays, and the unit runs on.
+    /// starts the unit again when the program changed or when the unit was made before the
+    /// socket of the daemon (HMD-054). A copy that cannot be written stays, and the unit runs on.
     pub fn refresh(&self, carried: &Path) {
-        if same(carried, &self.program) {
+        let changed = !same(carried, &self.program);
+        if !changed && (self.daemon_socket.is_none() || self.has_daemon_socket()) {
             return;
         }
         let Some(home) = crate::user_folders::home() else {
             return;
         };
-        if place(carried, &home).is_ok() {
+        if !changed || place(carried, &home).is_ok() {
             let _ = self.install();
         }
     }
@@ -141,10 +190,13 @@ pub fn unplace(program: &Path) {
 /// home folder.
 fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
+    let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
+    let daemon = daemon_folder(&home, cfg!(target_os = "macos"), config_home.as_deref());
     Ok(Kept {
         program: destination(&home),
         folder: folder.to_path_buf(),
         port,
+        daemon_socket: private_socket(&daemon),
         env: environment(|name| std::env::var_os(name)),
     })
 }
@@ -154,6 +206,19 @@ pub fn now(folder: &Path, port: u16) -> Option<Kept> {
     at(folder, port)
         .ok()
         .filter(|link| link.program.is_file() && link.installed())
+}
+
+/// The socket for the daemon of the link that a unit keeps on `port`, when that link made it.
+/// None for a different port, for a link that the app runs itself, and before the socket is there.
+pub fn daemon_socket(port: u16) -> Option<PathBuf> {
+    let folders = folders().ok()?;
+    if folder::read_port(&folders.device) != Some(port) {
+        return None;
+    }
+    let link = now(&folders.device, port)?;
+    link.has_daemon_socket()
+        .then_some(link.daemon_socket)
+        .flatten()
 }
 
 /// Waits until the link of the unit answers on its port.

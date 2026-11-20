@@ -163,7 +163,7 @@ async fn install<R: Runtime>(
 ) -> Result<(), DaemonError> {
     from_main(webview.label())?;
     let code = EnrolmentCode::parse(&code).ok_or(DaemonError::Code)?;
-    let hub = HubOrigin::parse(origin).ok_or(DaemonError::Origin)?;
+    let hub = hub_origin(origin).ok_or(DaemonError::Origin)?;
     let claim = installing.claim()?;
     let work = move || {
         let limits = Limits {
@@ -176,6 +176,16 @@ async fn install<R: Runtime>(
     tauri::async_runtime::spawn_blocking(work)
         .await
         .unwrap_or(Err(DaemonError::Failed))
+}
+
+/// The origin that the daemon is enrolled at: the `https` origin that the web view names, or,
+/// for a hub that the app reaches through its link at `http://127.0.0.1:<port>`, the socket
+/// that the link of that port made for the daemon (HMD-054). The web view never names a path.
+fn hub_origin(origin: &str) -> Option<HubOrigin> {
+    HubOrigin::parse(origin).or_else(|| {
+        let socket = crate::link::daemon_socket(request::link_port(origin)?)?;
+        HubOrigin::link(&socket)
+    })
 }
 
 /// Whether this build of the app carries the daemon, so the client can offer to install it.

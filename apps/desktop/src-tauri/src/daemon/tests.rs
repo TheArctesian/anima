@@ -20,7 +20,7 @@ use std::{
 use super::{
     DaemonError, Installing, bundled, from_main,
     placement::{bundled_beside, destination},
-    request::{EnrolmentCode, HubOrigin},
+    request::{self, EnrolmentCode, HubOrigin},
     run::{INSTALL_ARGS, daemon_env, enrol_args},
 };
 
@@ -213,4 +213,35 @@ fn web_007_only_the_main_web_view_may_ask() {
     for label in ["web-0b9f", "builder", ""] {
         assert_eq!(from_main(label), Err(DaemonError::Caller), "{label}");
     }
+}
+
+#[test]
+fn hmd_054_only_the_local_address_of_a_link_gives_a_port() {
+    assert_eq!(request::link_port("http://127.0.0.1:41001"), Some(41001));
+    for refused in [
+        "http://127.0.0.1",
+        "http://127.0.0.1:",
+        "http://127.0.0.1:0",
+        "http://127.0.0.1:99999",
+        "http://127.0.0.1:41001/",
+        "http://127.0.0.1:41001/x",
+        "http://127.0.0.1:+4100",
+        "http://127.0.0.2:41001",
+        "http://localhost:41001",
+        "https://127.0.0.1:41001",
+        "http://user@127.0.0.1:41001",
+    ] {
+        assert_eq!(request::link_port(refused), None, "{refused:?}");
+    }
+}
+
+#[test]
+fn hmd_054_the_link_origin_is_unix_and_the_path_of_the_socket() {
+    let socket = Path::new("/Users/me/Library/Application Support/anima-daemon/link.sock");
+    assert_eq!(
+        HubOrigin::link(socket).unwrap().as_str(),
+        "unix:/Users/me/Library/Application Support/anima-daemon/link.sock"
+    );
+    assert!(HubOrigin::link(Path::new("relative/link.sock")).is_none());
+    assert!(HubOrigin::link(Path::new("/a\nb/link.sock")).is_none());
 }
