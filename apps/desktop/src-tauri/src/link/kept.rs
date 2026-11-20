@@ -208,6 +208,19 @@ pub fn now(folder: &Path, port: u16) -> Option<Kept> {
         .filter(|link| link.program.is_file() && link.installed())
 }
 
+/// The socket for the daemon of the link that a unit keeps on `port`, when that link made it.
+/// None for a different port, for a link that the app runs itself, and before the socket is there.
+pub fn daemon_socket(port: u16) -> Option<PathBuf> {
+    let folders = folders().ok()?;
+    if folder::read_port(&folders.device) != Some(port) {
+        return None;
+    }
+    let link = now(&folders.device, port)?;
+    link.has_daemon_socket()
+        .then_some(link.daemon_socket)
+        .flatten()
+}
+
 /// Waits until the link of the unit answers on its port.
 fn answers(link: &Kept, limit: Duration) -> bool {
     let end = Instant::now() + limit;

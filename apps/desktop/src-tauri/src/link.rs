@@ -38,7 +38,7 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
-pub use kept::hosted_hub_opened;
+pub use kept::{daemon_socket, hosted_hub_opened};
 pub use state::{DeviceState, Event};
 use state::{Phase, Reason};
 
