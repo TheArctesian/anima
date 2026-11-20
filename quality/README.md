@@ -125,7 +125,7 @@ each train with its state and the branches of the next one.
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
   so no run of the gates follows for `dev`.
 - **A move of `dev` while the gates of a train run.** The run is never stopped. Off today
-  (OD-W-NEW-trainrecords): with `"carryDocuments": true` in `quality/merge-rule.json`, a train that passed
+  (OD-W52): with `"carryDocuments": true` in `quality/merge-rule.json`, a train that passed
   still lands when `dev` moved only in documents (the rule of the fast tier, `src/gates/tier.ts`): the
   conductor merges the same branches again on the new `dev`, with the document gates on each merge commit,
   proves that each file that is not a document is the one that the gates tested, and lands that. When `dev`
