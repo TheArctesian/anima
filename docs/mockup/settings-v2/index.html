@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings v2: mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@200;400;500&amp;display=swap">
+<style>
+/* Layout: a review board with two frames, the tab Overview of a device at 1280 px in the dark and the light appearance (R-224).
+   The colours, sizes and spaces of the frames are the values of design/tokens (Graphite); this file adds none. */
+body { margin: 0; padding: 24px 16px 48px; background: #101214; color: #E6E7E9; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: #A4A8B0; font-size: 14px; max-width: 90ch; }
+figure { margin: 0 0 24px; }
+figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; }
+/* v2 artboards. Every colour, space, radius and size below is a token of the Anima design system
+   (https://claude.ai/artifact/BpU9eFkcLbJYBpZrwAPZDU, tokens.json). No second set of values. */
+.v2[data-theme="dark"] {
+  --surface-sunken: #16181B;
+  --surface-base: #1B1D21;
+  --surface-raised: #23262B;
+  --surface-overlay: #2C3036;
+  --surface-hover: #2C3036;
+  --surface-selected: #333F45;
+  --border-subtle: #2C3036;
+  --border-strong: #6C7076;
+  --text: #E6E7E9;
+  --text-secondary: #A4A8B0;
+  --text-tertiary: #7E838C;
+  --text-quiet: #5C6169;
+  --planned: #B997B3;
+  --accent: #88C0D0;
+  --accent-hover: #96C6D4;
+  --accent-pressed: #5E81AC;
+  --on-accent: #16181B;
+  --accent-tint: #333F45;
+  --status-up: #A3BE8C;
+  --status-down: #BF616A;
+  --status-degraded: #EBCB8B;
+  --status-warning: #D08770;
+  --status-maintenance: #B48EAD;
+  --status-unknown: #7E838C;
+  --status-up-tint: #373E3B;
+  --status-up-text: #A3BE8C;
+  --status-down-tint: #3C2F35;
+  --status-down-text: #CA888F;
+  --status-degraded-tint: #43403A;
+  --status-down-wash: #BF616A12;
+  --status-degraded-wash: #EBCB8B0F;
+  --status-degraded-text: #EBCB8B;
+  --status-warning-tint: #3F3636;
+  --status-warning-text: #D2917C;
+  --status-maintenance-tint: #3A3740;
+  --status-maintenance-text: #B997B3;
+  --status-unknown-tint: #32353B;
+  --status-unknown-text: #999DA4;
+  --danger: #C0656E;
+  --on-danger: #16181B;
+  --scrim: #0000008C;
+  --material-edge: #FFFFFF24;
+  --material-sheen: #FFFFFF0D;
+  --focus-ring: #88C0D0;
+  --shadow: #000000;
+  --chart-grid: #41464E;
+  --chart-axis: #A4A8B0;
+  --chart-threshold: #EBCB8B;
+  --chart-series-1: #88C0D0;
+  --chart-series-2: #81A1C1;
+  --chart-series-3: #5E81AC;
+  --chart-series-4: #8FBCBB;
+  --chart-series-5: #B48EAD;
+  --chart-series-6: #D08770;
+}
+.v2[data-theme="light"] {
+  --surface-sunken: #EEEFF1;
+  --surface-base: #F6F7F8;
+  --surface-raised: #FFFFFF;
+  --surface-overlay: #FFFFFF;
+  --surface-hover: #EEEFF1;
+  --surface-selected: #E2EBED;
+  --border-subtle: #E3E5E8;
+  --border-strong: #86898E;
+  --text: #1D2024;
+  --text-secondary: #5A5F68;
+  --text-tertiary: #71757D;
+  --text-quiet: #A3A7AE;
+  --planned: #7B657A;
+  --accent: #2E6E80;
+  --accent-hover: #2C6575;
+  --accent-pressed: #2A5A69;
+  --on-accent: #FFFFFF;
+  --accent-tint: #E2EBED;
+  --status-up: #7C906E;
+  --status-down: #BF616A;
+  --status-degraded: #998762;
+  --status-warning: #B97A66;
+  --status-maintenance: #A0809B;
+  --status-unknown: #71757D;
+  --status-up-tint: #EDEFEB;
+  --status-up-text: #617159;
+  --status-down-tint: #F6E9EA;
+  --status-down-text: #9F545C;
+  --status-degraded-tint: #F1EEE9;
+  --status-down-wash: #BF616A12;
+  --status-degraded-wash: #9987620F;
+  --status-degraded-text: #786B51;
+  --status-warning-tint: #F5ECEA;
+  --status-warning-text: #8D6154;
+  --status-maintenance-tint: #F2EDF1;
+  --status-maintenance-text: #7B657A;
+  --status-unknown-tint: #EBECED;
+  --status-unknown-text: #676B72;
+  --danger: #9F545C;
+  --on-danger: #FFFFFF;
+  --scrim: #1D202459;
+  --material-edge: #FFFFFFCC;
+  --material-sheen: #FFFFFF0D;
+  --focus-ring: #2E6E80;
+  --shadow: #1D2024;
+  --chart-grid: #C3C7CD;
+  --chart-axis: #5A5F68;
+  --chart-threshold: #998762;
+  --chart-series-1: #5E81AC;
+  --chart-series-2: #5A5F68;
+  --chart-series-3: #7C906E;
+  --chart-series-4: #A0809B;
+  --chart-series-5: #B97A66;
+  --chart-series-6: #BF616A;
+}
+.v2 {
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-pill: 999px;
+  --control-sm: 28px;
+  --control-md: 32px;
+  --control-lg: 40px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 20px;
+  --content-form: 704px;
+  --content-page: 1440px;
+  --border-thin: 1px;
+  --border-focus: 2px;
+  --target-min-desktop: 24px;
+  --target-min-touch: 44px;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --t-display: 36px; --t-2xl: 24px; --t-xl: 20px; --t-lg: 16px; --t-md: 14px; --t-sm: 13px; --t-xs: 12px;
+}
+
+/* ---------- Base ---------- */
+.v2, .v2 * { box-sizing: border-box; }
+.v2 { display: flex; font-family: var(--font-ui); font-size: var(--t-md); line-height: 1.5; color: var(--text); background: var(--surface-sunken); overflow: hidden; }
+.v2 h1, .v2 h2, .v2 h3, .v2 p, .v2 ul, .v2 ol, .v2 dl, .v2 dd, .v2 figure { margin: 0; padding: 0; }
+.v2 ul, .v2 ol { list-style: none; }
+.v2 a { color: inherit; text-decoration: none; }
+.v2 button, .v2 input { font: inherit; color: inherit; }
+.v2 .mono { font-family: var(--font-mono); font-size: var(--t-sm); }
+.v2 .num { font-variant-numeric: tabular-nums; }
+.v2 .sec { color: var(--text-secondary); }
+.v2 .ter { color: var(--text-tertiary); }
+.v2 .ic { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.v2 .link { color: var(--accent); }
+.v2 .grow { flex: 1; min-width: 0; }
+
+/* ---------- Type roles ---------- */
+.v2 .display { font-size: var(--t-display); font-weight: 200; line-height: 1.2; letter-spacing: -0.03em; }
+.v2 .label { font-size: var(--t-xs); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-secondary); }
+.v2 .title { font-size: var(--t-xl); font-weight: 500; line-height: 1.2; }
+
+/* ---------- Navigation bar ---------- */
+.v2 .side { width: 224px; flex: none; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4) var(--space-2); background: var(--surface-base); }
+.v2 .brand { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-2); font-size: var(--t-lg); }
+.v2 .brand i { width: var(--icon-lg); height: var(--icon-lg); border: var(--border-focus) solid var(--accent); border-radius: var(--radius-sm); }
+.v2 .jump { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-2); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .kbd { margin-left: auto; font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text-secondary); padding: 0 var(--space-1); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-sm); }
+.v2 .nav { display: flex; flex-direction: column; gap: var(--space-1); }
+.v2 .nav a { display: flex; align-items: center; gap: var(--space-3); height: var(--control-md); padding: 0 var(--space-2); border-radius: var(--radius-md); color: var(--text-secondary); }
+.v2 .nav a.on { background: var(--surface-selected); color: var(--text); font-weight: 500; }
+.v2 .nav a.on .ic { color: var(--accent); }
+.v2 .nav .n { margin-left: auto; font-size: var(--t-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.v2 .nav .n.bad { color: var(--status-down-text); }
+.v2 .side .foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-3); }
+.v2 .running { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2); }
+.v2 .running a { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--t-sm); height: var(--target-min-desktop); }
+.v2 .running a span { margin-left: auto; color: var(--text-secondary); }
+.v2 .hubcard { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-2); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .hubcard b { font-weight: 500; }
+
+/* ---------- Page ---------- */
+.v2 .page { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.v2 .head { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-8) var(--space-4); }
+.v2 .head .actions { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; }
+.v2 .body { padding: 0 var(--space-8) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); flex: 1; min-height: 0; }
+.v2 .toolbar { display: flex; align-items: center; gap: var(--space-2); }
+.v2 .card { background: var(--surface-raised); border-radius: var(--radius-lg); }
+
+/* ---------- Controls ---------- */
+.v2 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); white-space: nowrap; cursor: pointer; }
+.v2 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 500; }
+.v2 .btn.quiet { border-color: var(--surface-raised); background: var(--surface-raised); color: var(--text-secondary); }
+.v2 .btn.bare { border-color: var(--surface-sunken); background: var(--surface-sunken); color: var(--text-secondary); }
+.v2 .btn.sm { height: var(--control-sm); padding: 0 var(--space-2); font-size: var(--t-sm); }
+.v2 .btn.icon { width: var(--control-sm); padding: 0; }
+.v2 .btn.danger { color: var(--danger); }
+.v2 .field { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text-secondary); }
+.v2 .field input { border: 0; outline: 0; background: none; flex: 1; min-width: 0; }
+.v2 .field input::placeholder { color: var(--text-tertiary); }
+.v2 .seg { display: inline-flex; height: var(--control-md); padding: var(--space-1); gap: var(--space-1); border-radius: var(--radius-md); background: var(--surface-base); }
+.v2 .seg button { display: inline-flex; align-items: center; gap: var(--space-2); border: 0; background: none; padding: 0 var(--space-3); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: var(--t-sm); cursor: pointer; }
+.v2 .seg button.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
+.v2 .seg.sm { height: var(--control-sm); }
+.v2 .seg.sm button { padding: 0 var(--space-2); }
+.v2 .seg .n { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-weight: 400; }
+
+/* ---------- Status: a dot and a word, always ---------- */
+.v2 .st { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.v2 .st::before { content: ""; width: var(--space-2); height: var(--space-2); border-radius: var(--radius-pill); background: var(--status-unknown); flex: none; }
+.v2 .st.up::before { background: var(--status-up); }
+.v2 .st.down::before { background: var(--status-down); }
+.v2 .st.warn::before { background: var(--status-warning); }
+.v2 .st.deg::before { background: var(--status-degraded); }
+.v2 .st.maint::before { background: var(--status-maintenance); }
+.v2 .st.live::before { background: var(--accent); }
+.v2 .st.down { color: var(--status-down-text); }
+.v2 .st.warn { color: var(--status-warning-text); }
+.v2 .st.deg { color: var(--status-degraded-text); }
+.v2 .st.unk { color: var(--status-unknown-text); }
+.v2 .tag { display: inline-flex; align-items: center; height: var(--space-5); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--surface-base); color: var(--text-secondary); font-size: var(--t-xs); white-space: nowrap; }
+.v2 .tag.warn { background: var(--status-warning-tint); color: var(--status-warning-text); }
+.v2 .tag.up { background: var(--status-up-tint); color: var(--status-up-text); }
+.v2 .tag.planned { background: var(--status-maintenance-tint); color: var(--planned); }
+
+/* ---------- Table: one pattern for every list ---------- */
+.v2 .table { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); overflow: hidden; }
+.v2 .tr { display: grid; align-items: center; column-gap: var(--space-4); padding: 0 var(--space-4); min-height: var(--space-12); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .tr.th { min-height: var(--control-md); border-top: 0; color: var(--text-secondary); font-size: var(--t-xs); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.v2 .tr.group { min-height: var(--control-md); background: var(--surface-base); color: var(--text-secondary); font-weight: 500; display: flex; gap: var(--space-3); }
+.v2 .tr.sel { background: var(--surface-selected); }
+.v2 .tr.dense { min-height: var(--control-lg); }
+.v2 .tr.need { background: linear-gradient(90deg, var(--status-down-wash), var(--surface-raised) 40%); }
+.v2 .tr.need.w { background: linear-gradient(90deg, var(--status-degraded-wash), var(--surface-raised) 40%); }
+.v2 .cell2 { display: flex; flex-direction: column; min-width: 0; }
+.v2 .cell2 b { font-weight: 500; font-size: var(--t-md); }
+.v2 .cell2 > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .end { justify-self: end; display: flex; gap: var(--space-1); align-items: center; }
+.v2 .r { text-align: right; }
+.v2 .name { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.v2 .name .ic { color: var(--text-secondary); }
+.v2 .why { display: flex; gap: var(--space-2); align-items: baseline; min-width: 0; }
+.v2 .why span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Check history: 50 ticks drawn as one strip; a failed tick is a taller mark of the status colour. */
+.v2 .beats { position: relative; height: var(--space-4); width: 200px; background: repeating-linear-gradient(90deg, var(--status-up) 0 3px, var(--surface-raised) 3px 4px); opacity: 0.9; }
+.v2 .beats.unk { background: repeating-linear-gradient(90deg, var(--border-subtle) 0 3px, var(--surface-raised) 3px 4px); }
+.v2 .beats i { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--status-down); }
+.v2 .beats i.g { background: var(--status-degraded); }
+.v2 .beats.s20 { width: 80px; }
+.v2 .meter { display: flex; align-items: center; gap: var(--space-2); }
+.v2 .meter u { display: block; width: var(--space-10); height: var(--space-1); background: var(--surface-base); border-radius: var(--radius-sm); overflow: hidden; }
+.v2 .meter u i { display: block; height: 100%; background: var(--chart-series-2); }
+.v2 .meter u i.hot { background: var(--status-degraded); }
+
+/* ---------- Detail page ---------- */
+.v2 .bar { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-8) 0; background: var(--surface-base); }
+.v2 .bar .row1 { display: flex; align-items: center; gap: var(--space-4); }
+.v2 .crumb { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); }
+.v2 .crumb h1 { font-size: var(--t-xl); font-weight: 500; line-height: 1.2; color: var(--text); }
+.v2 .reason { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .tabs { display: flex; gap: var(--space-6); }
+.v2 .tabs a { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-lg); color: var(--text-secondary); border-bottom: var(--border-focus) solid var(--surface-base); }
+.v2 .tabs a.on { color: var(--text); font-weight: 500; border-bottom-color: var(--accent); }
+.v2 .tabs .n { font-size: var(--t-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.v2 .split { display: grid; gap: var(--space-4); flex: 1; min-height: 0; }
+.v2 .pane { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); min-height: 0; overflow: hidden; }
+.v2 .pane-head { display: flex; align-items: center; gap: var(--space-3); min-height: var(--space-12); padding: 0 var(--space-4); }
+.v2 .pane-tools { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); flex-wrap: wrap; }
+.v2 .log { flex: 1; margin: 0 var(--space-4) var(--space-4); padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--t-sm); display: flex; flex-direction: column; gap: var(--space-1); overflow: hidden; }
+.v2 .log li { display: grid; grid-template-columns: 64px 48px minmax(0, 1fr); gap: var(--space-3); }
+.v2 .log time { color: var(--text-secondary); }
+.v2 .log .lv { color: var(--text-secondary); }
+.v2 .log .lv.w { color: var(--status-warning-text); }
+.v2 .log .lv.e { color: var(--status-down-text); }
+.v2 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); font-size: var(--t-sm); }
+.v2 .kv dt { color: var(--text-secondary); }
+.v2 .dock { display: flex; align-items: center; gap: var(--space-4); height: var(--control-lg); padding: 0 var(--space-8); background: var(--surface-base); font-size: var(--t-sm); }
+.v2 .dock .msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .switch { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .switch::before { content: ""; width: var(--space-8); height: var(--space-4); border-radius: var(--radius-pill); background: var(--accent); }
+.v2 .switch.off::before { background: var(--border-strong); }
+.v2 .empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-8); }
+.v2 .note { font-size: var(--t-sm); color: var(--text-secondary); }
+
+/* ---------- Forms and settings ---------- */
+.v2 .cols { display: grid; gap: var(--space-8); }
+.v2 .subnav { display: flex; flex-direction: column; gap: var(--space-1); }
+.v2 .subnav a { display: flex; align-items: center; height: var(--control-md); padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--text-secondary); }
+.v2 .subnav a.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
+.v2 .subnav .label { padding: var(--space-3) var(--space-3) var(--space-1); }
+.v2 .setrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-6); align-items: center; padding: var(--space-3) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); min-height: var(--space-12); }
+.v2 .setrow:first-of-type { border-top: 0; }
+.v2 .setrow p { font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .group-title { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-2) 0; }
+.v2 .center { flex: 1; display: grid; place-items: center; background: var(--surface-sunken); }
+.v2 .sheet { width: 400px; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-8); background: var(--surface-raised); border-radius: var(--radius-lg); }
+.v2 .btn.lg { height: var(--control-lg); }
+.v2 .steps { display: flex; flex-direction: column; gap: var(--space-2); }
+.v2 .steps li { display: flex; align-items: center; gap: var(--space-3); font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .steps li.done { color: var(--text); }
+.v2 .steps li.now { color: var(--text); font-weight: 500; }
+.v2 .steps li::before { content: ""; width: var(--space-2); height: var(--space-2); border-radius: var(--radius-pill); background: var(--border-strong); }
+.v2 .steps li.done::before { background: var(--status-up); }
+.v2 .steps li.now::before { background: var(--accent); }
+.v2 .code { font-family: var(--font-mono); font-size: var(--t-2xl); letter-spacing: 0.14em; }
+.v2 .phones { display: flex; gap: var(--space-8); padding: var(--space-8); align-items: flex-start; }
+.v2 .phone { width: 390px; height: 844px; flex: none; display: flex; flex-direction: column; background: var(--surface-sunken); border-radius: var(--radius-lg); overflow: hidden; outline: var(--border-thin) solid var(--border-subtle); }
+.v2 .phone .ptop { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-12) var(--space-4) var(--space-3); background: var(--surface-base); }
+.v2 .phone .pbody { flex: 1; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); min-height: 0; overflow: hidden; }
+.v2 .phone .tabbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface-base); padding: var(--space-2) var(--space-2) var(--space-6); }
+.v2 .phone .tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); min-height: var(--target-min-touch); font-size: var(--t-xs); color: var(--text-secondary); }
+.v2 .phone .tabbar a.on { color: var(--accent); }
+.v2 .phone .tr { min-height: var(--space-16); }
+.v2 .phone .btn { height: var(--target-min-touch); }
+.v2 .phone .seg { height: var(--target-min-touch); }
+
+/* Corrections after the first rendered look (2026-11-19). */
+.v2 .tr > * { min-width: 0; }
+.v2 .why .st { flex: none; overflow: visible; }
+.v2 .why a { flex: none; white-space: nowrap; }
+.v2 .name .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .name .tag { flex: none; }
+.v2 .nowrap { white-space: nowrap; }
+.v2 .seg button { white-space: nowrap; }
+.v2 .name b { white-space: nowrap; }
+.v2 .phone .seg button { padding: 0 var(--space-1); }
+
+</style>
+</head>
+<body>
+<h1 class="board">Settings v2</h1>
+<p class="about">The Settings page after the interface review of 2026-11-19 (R-224). The index of the sections is in three groups: this computer, the hub, and what the hub is connected to. One group shows at a time, with each of its settings as a row of a card.</p>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 860px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a class="on" href="#" aria-current="page">Hub and account</a><a href="#">Devices on the link</a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="group-title"><h2 class="title">Hub and account</h2></div>
+        <section class="card" aria-label="Hub">
+          <div class="setrow"><div><b style="font-weight: 500">okita's hub</b><p>Hosted by Anima.ing. This computer reaches it through the link; no VPN is needed.</p></div><span class="st up">Connected</span></div>
+          <div class="setrow"><div>Version<p>The hub updates itself.</p></div><span class="mono">0.8.14</span></div>
+          <div class="setrow"><div>Account<p class="mono">okita@example.com</p></div><button class="btn sm" type="button">Manage on cloud.anima.ing</button></div>
+          <div class="setrow"><div>Use a different hub<p>Sign in to a hub on a server of your own, or join one with an invite.</p></div><button class="btn sm" type="button">Change hub</button></div>
+        </section>
+        <div class="group-title"><span class="label">Devices on the link</span><span class="note">3 devices reach this hub over the link</span></div>
+        <ul class="table">
+          <li class="tr th" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span>Device</span><span>State</span><span>Joined</span><span></span></li>
+          <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1"/><path d="M1.5 12.5h13"/></svg><b style="font-weight: 500">studio-mac</b><span class="tag">This computer</span></span><span class="st up">Connected</span><span class="sec num">18 Nov 2026</span><span></span></li>
+          <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1"/><path d="M1.5 12.5h13"/></svg><b style="font-weight: 500">pop-os</b></span><span class="st up">Connected</span><span class="sec num">18 Nov 2026</span><span class="end"><button class="btn sm quiet danger" type="button">Remove</button></span></li>
+          <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><b style="font-weight: 500">edge-vps</b></span><span class="st unk">Not yet connected</span><span class="sec num">19 Nov 2026</span><span class="end"><button class="btn sm quiet danger" type="button">Remove</button></span></li>
+        </ul>
+        <div><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Invite a device</button></div>
+        <section class="card" aria-label="Leave">
+          <div class="setrow"><div>Leave this hub<p>Signs this computer out and forgets the hub. Your devices and records stay in the hub.</p></div><button class="btn sm danger" type="button">Leave</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<figcaption>Frame 1, dark, 1280 px.</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="light" style="width: 1280px; height: 860px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a class="on" href="#" aria-current="page">Hub and account</a><a href="#">Devices on the link</a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="group-title"><h2 class="title">Hub and account</h2></div>
+        <section class="card" aria-label="Hub">
+          <div class="setrow"><div><b style="font-weight: 500">okita's hub</b><p>Hosted by Anima.ing. This computer reaches it through the link; no VPN is needed.</p></div><span class="st up">Connected</span></div>
+          <div class="setrow"><div>Version<p>The hub updates itself.</p></div><span class="mono">0.8.14</span></div>
+          <div class="setrow"><div>Account<p class="mono">okita@example.com</p></div><button class="btn sm" type="button">Manage on cloud.anima.ing</button></div>
+          <div class="setrow"><div>Use a different hub<p>Sign in to a hub on a server of your own, or join one with an invite.</p></div><button class="btn sm" type="button">Change hub</button></div>
+        </section>
+        <div class="group-title"><span class="label">Devices on the link</span><span class="note">3 devices reach this hub over the link</span></div>
+        <ul class="table">
+          <li class="tr th" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span>Device</span><span>State</span><span>Joined</span><span></span></li>
+          <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1"/><path d="M1.5 12.5h13"/></svg><b style="font-weight: 500">studio-mac</b><span class="tag">This computer</span></span><span class="st up">Connected</span><span class="sec num">18 Nov 2026</span><span></span></li>
+          <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1"/><path d="M1.5 12.5h13"/></svg><b style="font-weight: 500">pop-os</b></span><span class="st up">Connected</span><span class="sec num">18 Nov 2026</span><span class="end"><button class="btn sm quiet danger" type="button">Remove</button></span></li>
+          <li class="tr dense" style="grid-template-columns: minmax(0, 1fr) 150px 130px 110px"><span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><b style="font-weight: 500">edge-vps</b></span><span class="st unk">Not yet connected</span><span class="sec num">19 Nov 2026</span><span class="end"><button class="btn sm quiet danger" type="button">Remove</button></span></li>
+        </ul>
+        <div><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Invite a device</button></div>
+        <section class="card" aria-label="Leave">
+          <div class="setrow"><div>Leave this hub<p>Signs this computer out and forgets the hub. Your devices and records stay in the hub.</p></div><button class="btn sm danger" type="button">Leave</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<figcaption>Frame 2, light, 1280 px.</figcaption>
+</figure>
+</body>
+</html>

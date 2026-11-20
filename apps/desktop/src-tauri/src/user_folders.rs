@@ -17,12 +17,14 @@ pub fn application(macos: bool, home: &Path, xdg_data_home: Option<&Path>) -> Pa
         .join("anima")
 }
 
+/// The home folder of the user of this app; none without an absolute `HOME`.
+pub fn home() -> Option<PathBuf> {
+    Some(PathBuf::from(std::env::var_os("HOME")?)).filter(|home| home.is_absolute())
+}
+
 /// The application's folder for the user of this app; none without an absolute `HOME`.
 pub fn of_this_user() -> Option<PathBuf> {
-    let home = PathBuf::from(std::env::var_os("HOME")?);
-    if !home.is_absolute() {
-        return None;
-    }
+    let home = home()?;
     let xdg_data_home = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from);
     Some(application(
         cfg!(target_os = "macos"),

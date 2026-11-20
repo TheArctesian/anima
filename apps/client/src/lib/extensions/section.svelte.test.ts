@@ -77,12 +77,12 @@ it('EXT-001: each extension is a row with its switch, off by default, and a chan
 
 it('EXT-002: the bar shows Projects only while Projects is on, and no longer after it is set off', async () => {
   await open();
-  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/settings']);
+  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
   await flip('projects');
-  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/projects', '/settings']);
+  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/projects', '/extensions', '/settings']);
   await flip('projects');
   expect(hub.sent).toEqual(['projects:true', 'projects:false']);
-  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/settings']);
+  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
 });
 
 it('EXT-011: the "also sets Secrets on" sentence shows before anything is sent, and the change waits for the yes', async () => {
@@ -127,5 +127,5 @@ it('EXT-012: a refused change puts the switch back and shows the hub words', asy
   expect(isOn('projects')).toBe(false);
   const alerts = [...document.querySelectorAll('[role="alert"]')].map((each) => each.textContent).filter((text) => text !== '');
   expect(alerts).toEqual([hub.refuse.message]);
-  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/settings']);
+  expect(navHrefs()).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
 });

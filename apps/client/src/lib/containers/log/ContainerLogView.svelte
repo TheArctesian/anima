@@ -38,9 +38,10 @@
     <Segmented label="Level" size="sm" options={levelOptions} bind:value={level} />
     <label class="switch"><Switch label="Wrap lines" bind:checked={wrap} /><span aria-hidden="true">Wrap</span></label>
     <label class="switch"><Switch label="Show timestamps" bind:checked={timestamps} /><span aria-hidden="true">Timestamps</span></label>
+    <!-- The count is in the bar of the tools, so the lines start one row higher (R-224). -->
+    <p class="shown" role="status">{lines.length} of {log.lines.length} {log.lines.length === 1 ? 'line' : 'lines'}</p>
     <FormButton size="sm" tone="ghost" icon="carbon:download" aria-disabled={lines.length === 0} onclick={() => { if (lines.length > 0) download(); }}>Download</FormButton>
   </div>
-  <p class="shown" role="status">{lines.length} of {log.lines.length} {log.lines.length === 1 ? 'line' : 'lines'}</p>
   {#if lines.length === 0}
     <p class="none">No line has this text and this level.</p>
   {:else}
@@ -68,6 +69,11 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  .shown {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .search {

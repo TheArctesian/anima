@@ -1,0 +1,52 @@
+#!/bin/sh
+# Finds a run of the workflow `gates` that passed for the content of a commit, so that a
+# release does not run the gates a second time for one content (BLD-042).
+#
+#   gated-run <repository> <commit> < runs.json
+#       prints `<run id> <commit of the run>` of the newest run that counts, and nothing when
+#       no run counts. runs.json is the answer of the API of GitHub to
+#       repos/<repository>/actions/workflows/gates.yml/runs?branch=dev&status=success
+#   gated-run --passed < jobs.json
+#       exits 0 only when the job `passed` of that run has the result success. jobs.json is
+#       the answer to repos/<repository>/actions/runs/<run id>/jobs
+#
+# A run counts only when each of these is true:
+#   - it is a run of the file .github/workflows/gates.yml of this repository, for the branch
+#     `dev` of this repository, started by a push or by hand, complete, with the result success;
+#   - the tree of its commit is the tree of <commit>. The tree holds each file, also the
+#     gates and this workflow, so the same gates ran on the same content.
+# A run for any other branch never counts: it tests the branch as merged with `dev`, which is
+# not the tree of its commit. The list comes from GitHub, and only a push to `dev` or a run by
+# hand on `dev` can add a run to it, so a branch cannot make a run that counts.
+#
+# An answer that cannot be read counts as no run: the release then runs the gates.
+set -eu
+
+refuse() { echo "gated-run: $1" >&2; exit 2; }
+
+if [ "${1:-}" = --passed ] && [ $# -eq 1 ]; then
+    jq -e '[.jobs[]? | select(.name == "passed")] | length == 1 and .[0].status == "completed" and .[0].conclusion == "success"' > /dev/null 2>&1
+    exit $?
+fi
+[ $# -eq 2 ] || refuse "give the repository and a commit, or --passed"
+REPOSITORY=$1
+TREE=$(git rev-parse --verify --quiet --end-of-options "$2^{tree}") || refuse "no such commit"
+
+RUNS=$(jq -r --arg repository "$REPOSITORY" '
+    .workflow_runs[]?
+    | select(.path == ".github/workflows/gates.yml")
+    | select(.head_branch == "dev")
+    | select(.event == "push" or .event == "workflow_dispatch")
+    | select(.status == "completed" and .conclusion == "success")
+    | select(.repository.full_name == $repository and .head_repository.full_name == $repository)
+    | select((.id | type) == "number" and (.head_sha | type) == "string" and (.head_sha | test("^[0-9a-f]{40}$")))
+    | "\(.id) \(.head_sha)"' 2> /dev/null) || exit 0
+
+echo "$RUNS" | while read -r id sha; do
+    [ -n "$id" ] || continue
+    tree=$(git rev-parse --verify --quiet "$sha^{tree}") || continue
+    if [ "$tree" = "$TREE" ]; then
+        echo "$id $sha"
+        break
+    fi
+done

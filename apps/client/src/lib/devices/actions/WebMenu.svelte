@@ -144,6 +144,10 @@
     min-inline-size: calc(var(--space-16) * 3);
     max-inline-size: calc(100vw - var(--space-4) * 2);
     max-block-size: calc(var(--space-16) * 5);
+    /* A cell of the Devices table sets `nowrap`, and the panel is inside it: a long name or address must wrap all the same. */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: start;
     margin: 0;
     margin-block-end: var(--space-1);
     padding: var(--space-2);

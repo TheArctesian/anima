@@ -24,6 +24,7 @@ COPY crates ./crates
 # Workspace members: cargo reads their manifests, but builds nothing of them here.
 COPY apps/desktop/src-tauri ./apps/desktop/src-tauri
 COPY apps/desktop/keyboard ./apps/desktop/keyboard
+COPY apps/desktop/account-session ./apps/desktop/account-session
 RUN cargo build --release --locked --bin anima-hub
 
 FROM debian:bookworm-20261027-slim
