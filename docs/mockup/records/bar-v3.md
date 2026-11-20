@@ -1,0 +1,10 @@
+# The record of the mockup bar-v3/index.html
+
+One row of the index in [README.md](../README.md) (PLN-019). `bun run quality:register` writes the row from this file.
+
+- Mockup: [bar-v3/index.html](../bar-v3/index.html)
+- Owner: Ruling R-255 of [rulings.md](../../rulings.md); NAV-001 and NAV-003 of [design-spec.md](../../spec/design-spec.md), EXT-001 of [extensions-plan.md](../../plans/extensions-plan.md)
+- Screens: The navigation bar of [nav](../../../apps/client/src/lib/nav), the page [extensions](../../../apps/client/src/routes/extensions)
+- State: Approved for two points only (operator, 2026-11-19, R-255: "Live Sessions can move down to the connected session or just above it"; "Extensions should also be seprate from settings but still placed near it in the nav bar"). The choice between frame A and frame B is open
+- Compared: `189a48a5` (2026-11-19), compared by its difference from the commit named next only, by reading and from the same pictures: the page Extensions has a control for a list or a grid (its own mockup is extensions-v2/index.html); the bar does not change. Before it `66c730ad` (2026-11-19): the built bar on the Devices page and on the page Extensions at 1280 px in the dark and the light appearance, from pictures of the gallery tool beside pictures of the mockup, by the order of the entries. The narrow bar and the phone were not pictured. Not compared on a desktop window (HT-056)
+- Differences: The application has frame B: Live sessions is its own entry directly above the name of the hub. Frame A is not built. The field "Search or jump to" is not built (PAL-1). "Running now" shows only while something runs. On a phone, Extensions is a section of Settings with a link "Open Extensions", not the first row of the page. The page Extensions was pictured with no extension: the test hub of the gallery tool has none. The entries are the built ones: the sample counts are different.

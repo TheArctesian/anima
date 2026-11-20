@@ -29,3 +29,8 @@ QDialog#animaSettings, QDialog#animaNetworkDialog { border: 1px solid #41464E; b
 QLabel#animaDialogHeading { font-size: 22px; font-weight: 300; }
 
 QPushButton#view-button-back, QPushButton#view-button-next { min-width: 80px; padding: 6px 16px; }
+QDialog#animaSettings QScrollBar:vertical { background: transparent; width: 8px; margin: 0; }
+QDialog#animaSettings QScrollBar::handle:vertical { background: #41464E; min-height: 24px; border-radius: 4px; }
+QDialog#animaSettings QScrollBar::handle:vertical:hover { background: #88C0D0; }
+QDialog#animaSettings QScrollBar::add-line:vertical, QDialog#animaSettings QScrollBar::sub-line:vertical { height: 0; border: none; }
+QDialog#animaSettings QScrollBar::add-page:vertical, QDialog#animaSettings QScrollBar::sub-page:vertical { background: transparent; }

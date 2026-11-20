@@ -1,7 +1,7 @@
 //! The variables: filled by this program, from the environment file of the item only.
 
 use super::{ENVIRONMENT, Rule, SOUND, checked, refusal, top, with};
-use crate::{Node, Settings, check};
+use crate::{Node, Refusal, Settings, check};
 
 fn app(key: &str) -> Node {
     let document = checked(SOUND).unwrap().document;
@@ -123,4 +123,38 @@ fn host_028_the_environment_file_has_one_form_and_no_name_two_times() {
     };
     assert_eq!(entries[0].text(), Some("POSTGRES_PASSWORD=\"a=b\""));
     assert!(ENVIRONMENT.starts_with("DB_PASSWORD="));
+}
+
+#[test]
+fn host_028_a_line_with_a_carriage_return_and_a_line_of_only_spaces_are_refused() {
+    let settings = Settings::default();
+    let refused = Refusal::File {
+        rule: Rule::VariableNotPermitted,
+        service: None,
+    };
+    for environment in [
+        "DB_PASSWORD=hunter2\r\n",
+        "DB_PASSWORD=hunter2\n\r\n",
+        "DB_PASSWORD=hunter2\rOTHER=1\n",
+        "DB_PASSWORD=hunter2\n   \n",
+        "DB_PASSWORD=hunter2\n\t\n",
+        " # a comment\nDB_PASSWORD=hunter2\n",
+    ] {
+        assert_eq!(
+            check(SOUND, environment, &settings),
+            Err(refused),
+            "{environment:?}"
+        );
+    }
+    for environment in [
+        "DB_PASSWORD=hunter2",
+        "DB_PASSWORD=hunter2\n",
+        "\n# a comment\n\nDB_PASSWORD=hunter2\n\n",
+        "DB_PASSWORD=hunter2\nEMPTY=\nSPACES=  a b  \n",
+    ] {
+        assert!(
+            check(SOUND, environment, &settings).is_ok(),
+            "{environment:?}"
+        );
+    }
 }

@@ -8,7 +8,7 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-2`) |
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
-| `bun run documents` | PLN-016, PLN-017, PLN-019 to PLN-023 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); a number of the rulings log names one ruling (PLN-021); a claim is complete and one claim holds a task (PLN-022; `claim-not-complete`, `task-claimed-twice`); a mockup in state Built names the commit it was compared at, and no layout file of its screens has a later commit (PLN-019; `mockup-not-compared`, `mockup-commit-not-found`, `mockup-without-screens`, `screen-changed-after-mockup`); the operator queue agrees with the documents and a task for an agent links to a document whose state permits a build (PLN-023, PLN-007; `queue-out-of-date`, `queue-without-list`, `agent-task-without-link`, `agent-task-in-unapproved-document`); the register has its generated list and each plan has evidence (`register-without-list`, `plan-without-evidence`); a known duplicate still has two owners (`known-duplicate-has-one-owner`); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
+| `bun run documents` | PLN-016, PLN-017, PLN-019 to PLN-023 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); a number of the rulings log names one ruling (PLN-021); a claim is complete and one claim holds a task (PLN-022; `claim-not-complete`, `task-claimed-twice`); a mockup in state Built names the commit it was compared at in its record, and no layout file of its screens has a later commit; the table of the index is the one the records give (PLN-019; `mockup-not-compared`, `mockup-commit-not-found`, `mockup-without-screens`, `screen-changed-after-mockup`, `mockup-table-stale`, `mockup-table-not-generated`, `mockup-record-without-mockup`); the operator queue agrees with the documents and a task for an agent links to a document whose state permits a build (PLN-023, PLN-007; `queue-out-of-date`, `queue-without-list`, `agent-task-without-link`, `agent-task-in-unapproved-document`); the register has its generated list and each plan has evidence (`register-without-list`, `plan-without-evidence`); a known duplicate still has two owners (`known-duplicate-has-one-owner`); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
 
 ## Local gates
 
@@ -136,8 +136,10 @@ each train with its state and the branches of the next one.
   the `dev` of that moment) and that is not in `dev`; the oldest pass first, then the name; at most 12.
 - **The train.** The conductor merges the batch in that order on the `dev` of the moment, each branch with
   the steps of `bin/merge.ts` (the generated files written again, the numbers, the merge commit, the document
-  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with a line that
-  says why. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
+  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with one line
+  that says why: the conflicting files, or the failed check and its first fault. A note on its tip
+  (`refs/notes/train-left-out`) keeps that line, and `--plan` and each later step of the conductor print it
+  until the branch moves. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
   it one time, on the commit as it is.
 - **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
@@ -168,12 +170,17 @@ it, because the mockup check counts the layout files of a branch as changed whil
 The documents that each branch adds to. A conflict in a document leaves a branch out of a train, and its
 session must merge `dev` into the branch. Five documents merge by union (`.gitattributes`): the rulings, the
 human checks, the decisions table, the list of security findings and the table of owners; the documents gate
-finds an entry that a union kept two times (`decision-row-twice`, `finding-twice`, `owner-row-twice`). Two
-hot documents cannot take the union rule, because branches change the same lines of them:
-`docs/mockup/README.md` (each interface branch writes the cell "Compared" of its row again) and
-`docs/proposals/hosted-mode.md` (each task of the hosted work changes the version line, the header and the
-row of its task). They need one file for each entry, as the claims have: one record for each mockup, one
-file for each task. Not built: the two documents have owners.
+finds an entry that a union kept two times (`decision-row-twice`, `finding-twice`, `owner-row-twice`). The
+mockups have one record for each mockup (`docs/mockup/records/`, PLN-019), and the table of
+`docs/mockup/README.md` is generated from them by `bun run register`, so two interface branches conflict only
+when both compared the same mockup. The merge settles that (`src/merge/mockups.ts`, from `finish.ts`): it keeps
+the record whose comparison is at the later commit (`git merge-base --is-ancestor`; with no order, the one of
+the branch), writes the table again, and the documents gate on the merge commit checks the kept comparison. A
+branch that still changes the table of before the records is settled the same way: each row that it changed
+after the merge base becomes its record. `conflictsForAHand` leaves the index and the records to the merge, and
+`--plan` forecasts the same. One hot document is still a single file: `docs/proposals/hosted-mode.md` (each
+task of the hosted work changes the version line, the header and the row of its task); it needs one file for
+each task. Not built: the document has an owner.
 
 What works from where. GitHub takes `merge-to-dev.yml` from the default branch, `main`; the checkout is
 `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`. With the old file on `main` the train works,

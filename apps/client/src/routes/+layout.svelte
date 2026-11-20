@@ -341,6 +341,14 @@
     min-inline-size: 0;
   }
 
+  /* On a very wide window the pages keep the page measure (`content-page`) in the middle of the room beside the bar,
+     with the same room at each side, so a row does not spread over the window. A session keeps the full width. The
+     room is part of the gutter, so a detail bar still runs to the edges. */
+  .pages {
+    --page-room: max(0px, calc((100vw - var(--nav-inline-size) - var(--page-gutter) * 2 - var(--content-page)) / 2));
+    padding-inline: var(--page-room);
+  }
+
   /* Covered pages stay mounted but give the stage no height, so a session pane is sized by the window (D-7). */
   .covered {
     visibility: hidden;

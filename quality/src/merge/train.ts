@@ -120,3 +120,15 @@ export function trainName(devSha: string, now: Date): string {
 export function mergedBranch(subject: string): string | undefined {
   return /^Merge origin\/(\S+) into dev$/.exec(subject)?.[1];
 }
+
+/** A reason as one line, so that a session reads it in one line of a log. */
+export function oneLine(reason: string): string {
+  return reason.replace(/\s*\n\s*/g, " ").trim();
+}
+
+/** What the conductor says of a tip that a train left out, from its note (the time, then the reason); undefined with no note. */
+export function leftOutSaid(branch: string, note: string | undefined): string | undefined {
+  if (note === undefined || note.trim() === "") return undefined;
+  const [at = "", ...reason] = note.trim().split("\n");
+  return `${branch} was left out of the train at ${at}: ${oneLine(reason.join(" "))}`;
+}
