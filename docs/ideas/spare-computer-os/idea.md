@@ -21,6 +21,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 1: first-version workloads | Decided | Hosted applications, queued jobs and agent execution are all in scope. An agent runner executes agents on the machine; it is not only a machine that an external agent can control. |
 | Decision 2: maintenance | Decided | A + B + C: automatic approved routine upkeep and problem reporting; owner-defined maintenance windows and control over disruptive actions; optional SSH or local administrative access. Fully manual maintenance mode is out of the first version. Exact update, reboot, access and configuration policies remain to be designed. |
 | Decision 3: hardware families | Decided in part | A + B + C: 64-bit Intel/AMD PCs, Intel Macs and selected ARM64 boards or mini PCs. Exact supported models need selection and testing. Apple Silicon is deferred to a later release (follow-up choice C). Keep its possible integration in the design; it is not an experimental first-release target. Older 32-bit PCs were not selected. Firmware and resource minimums remain open. |
+| Decision 4: boot paths | Decided | A + B + C: 64-bit UEFI, legacy BIOS for 64-bit PCs and board-specific boot for selected ARM64 hardware. This does not add 32-bit CPU support. Bootloader choice, Secure Boot policy, exact hardware targets and installation/recovery validation remain open. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -56,8 +57,8 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 
 ## Open questions
 
-1. Decision 4: which boot paths should be supported? Options can be combined: 64-bit UEFI for PCs; legacy BIOS for older 64-bit PCs; board-specific boot for selected ARM64 machines. Recommendation: all three, with named hardware tests. Intel Mac firmware needs model-specific validation. Bootloader choice and Secure Boot policy remain separate decisions.
-2. Which boot firmware and installation targets should the first version support? Discuss UEFI, legacy boot and the installation experience after hardware families. No choice is made yet.
+1. Decision 5: which disk installation modes should the first version offer? Allow combined choices: dedicate a selected disk; preserve an existing OS on another disk; share a disk with an existing OS; install to an external drive; offer a live trial with no installation. Recommendation: dedicate a selected disk, preserve other disks and offer a live trial. External installation is a possible additional target; same-disk dual boot is not recommended for the first version. No answer yet.
+2. Which bootloader, Secure Boot policy, resource minimums and exact hardware models should be selected? Discuss after installation and recovery goals; no selection yet.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -97,6 +98,8 @@ Read 2026-11-19 at the operator's request:
 
 - 2026-11-19: The operator chose C for the Apple Silicon follow-up: later release. The first release targets PCs, Intel Macs and selected ARM64 machines. Next: boot paths.
 
+- 2026-11-19: The operator accepted all three boot paths (Decision 4, A + B + C). Their comment that these are easy to support is not a hardware validation result. Next: disk installation modes.
+
 ## Source text
 
 Selected direct operator messages, unchanged:
@@ -124,3 +127,7 @@ In response to Decision 3:
 In response to the Apple Silicon follow-up:
 
 > We can leave apple silicon for a later release so C
+
+In response to Decision 4 (recommendation A + B + C):
+
+> yeah they are easy to support
