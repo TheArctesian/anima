@@ -8,6 +8,9 @@ import { commitThenCheck } from "../../src/merge/commit.ts";
 import { stack } from "../../src/merge/stack.ts";
 import type { Tip } from "../../src/merge/train.ts";
 
+/** These tests make repositories with many git commands; a busy machine needs more than the 5 seconds of a test. */
+const SLOW = 60_000;
+
 function git(root: string, ...args: string[]): string {
   const done = Bun.spawnSync(["git", ...args], { cwd: root });
   if (done.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${done.stderr.toString()}`);
@@ -79,7 +82,7 @@ describe("R-NEW-traincarry a train that passed lands over a dev that moved only 
     );
     expect(git(at.conductor, "diff", "--name-only", at.tested, dev)).toBe("docs/ideas/spare-computer/idea.md");
     expect(git(at.origin, "rev-list", "--count", "--merges", dev)).toBe("2");
-  });
+  }, SLOW);
 
   test("a dev that moved in code is refused, nothing is pushed, and the worktree is as before", () => {
     const at = world();
@@ -89,7 +92,7 @@ describe("R-NEW-traincarry a train that passed lands over a dev that moved only 
     expect(git(at.origin, "rev-parse", "dev")).toBe(before);
     expect(git(at.conductor, "rev-parse", "HEAD")).toBe(before);
     expect(git(at.conductor, "status", "--porcelain")).toBe("");
-  });
+  }, SLOW);
 
   test("a document of dev that a branch of the train also changed is refused: the branch does not merge again", () => {
     const at = world();
@@ -99,7 +102,7 @@ describe("R-NEW-traincarry a train that passed lands over a dev that moved only 
     expect(carried.outcome).toBe("different");
     expect(carried.refused).toEqual(["docs/ruling: a conflict in docs/rulings.md"]);
     expect(git(at.origin, "rev-parse", "dev")).toBe(before);
-  });
+  }, SLOW);
 
   test("a dev that moves once more in that moment is not overwritten: the answer is to try again", () => {
     const at = world();
@@ -110,5 +113,5 @@ describe("R-NEW-traincarry a train that passed lands over a dev that moved only 
     expect(carry(at.conductor, { into: "dev", tested: at.tested, held: at.held }, at.rules)).toEqual({ outcome: "again", refused: [] });
     expect(git(at.origin, "rev-parse", "dev")).toBe(pushed);
     expect(git(at.conductor, "status", "--porcelain")).toBe("");
-  });
+  }, SLOW);
 });

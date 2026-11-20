@@ -6,6 +6,9 @@
 !Cargo.lock
 !crates/
 !apps/desktop/src-tauri/
+!apps/desktop/keyboard/
+!apps/desktop/account-session/
+!apps/desktop/runner/
 # The web stage: manifests, the lock file and the client sources.
 !bun.lock
 !apps/client/

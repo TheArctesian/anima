@@ -246,7 +246,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (84)
+## 4. Checks that only the operator can do (85)
 
 | Check | What |
 | --- | --- |
@@ -298,6 +298,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-041 | the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d) |
 | HT-046 | the iOS application from the release workflow to TestFlight (R-203; task B8i) |
 | HT-051 | the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252) |
+| HT-064 | Read the native capability report in Anima.ing Settings |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |

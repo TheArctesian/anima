@@ -6,3 +6,6 @@ docs/operator-queue.md merge=union
 docs/rulings.md merge=union
 docs/need-human-testing.md merge=union
 docs/plan/decisions.md merge=union
+# The same for the list of security findings and the table of owners (finding-twice, owner-row-twice).
+docs/security-findings.md merge=union
+docs/plan/ownership.md merge=union

@@ -6,7 +6,7 @@ import { QUEUE } from "../src/documents/queue.ts";
 import { REGISTER } from "../src/documents/register.ts";
 import { layoutChangedSince } from "../src/documents/screens.ts";
 import { isShared, placeholders } from "../src/merge/numbers.ts";
-import { DECISIONS, rowsTwice } from "../src/merge/rules.ts";
+import { DECISIONS, findingKey, FINDINGS, headingsTwice, ownerKey, OWNERS, rowsTwice, twiceInOneTable } from "../src/merge/rules.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
 import { report } from "../src/report.ts";
 
@@ -33,5 +33,13 @@ if (isShared(head) || isShared(process.env["GITHUB_REF_NAME"] ?? "")) {
 // The decisions table merges by union: a row that two branches changed is there two times.
 for (const id of rowsTwice(documents.find((document) => document.path === DECISIONS)?.text ?? "")) {
   violations.push({ path: DECISIONS, signal: "decision-row-twice", detail: `${id}: keep one row` });
+}
+// The findings list and the owners table merge by union too: an entry that two branches changed is there two times.
+const textOf = (path: string): string => documents.find((document) => document.path === path)?.text ?? "";
+for (const id of [...twiceInOneTable(textOf(FINDINGS), findingKey), ...headingsTwice(textOf(FINDINGS))]) {
+  violations.push({ path: FINDINGS, signal: "finding-twice", detail: `${id}: keep one row and one entry` });
+}
+for (const id of twiceInOneTable(textOf(OWNERS), ownerKey)) {
+  violations.push({ path: OWNERS, signal: "owner-row-twice", detail: `${id}: keep one row` });
 }
 process.exit(report("documents", violations));
