@@ -466,7 +466,7 @@ Proposed change: "At adoption the daemon records, for each project, the real pat
 
 (a), (c) and (d) are confirmed from the text. (b) depends on Compose behaviour that I did not verify.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-17 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The paths are recorded at the adoption, `up` never builds, and a file that others can write is refused (Section 4.9). The part `pull` is decided by R-232: the operator accepts that the hub can make an adopted stack get and start new images. For that part the state is Accepted (R-232, 2026-11-19), with his reason: no setting for each stack; the screen says what an update does. The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: ways (a) and (d) are not corrected: a user who is not the administrator can still change the file of an adopted project (SF-040); OD-HOST-23.
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-17 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): The paths are recorded at the adoption, `up` never builds, and a file that others can write is refused (Section 4.9). The part `pull` is decided by R-232: the operator accepts that the hub can make an adopted stack get and start new images. For that part the state is Accepted (R-232, 2026-11-19), with his reason: no setting for each stack; the screen says what an update does. The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: ways (a) and (d) are not corrected: a user who is not the administrator can still change the file of an adopted project (SF-040); OD-HOST-23. R-235 (2026-11-19): for ways (a) and (d) the state is Accepted: Anima does not check if the file of an adopted stack changed.
 
 ### SF-020: `container_action` works on each container of the machine, so the adopted list does not limit it, and an API key can stop the things that the daemon and the hub need
 
@@ -484,7 +484,7 @@ Proposed change: The owner chooses the scope (list below). My proposal: "`contai
 
 Confirmed from the text.
 
-State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-15 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-227: only applications of Anima and adopted projects, with "All containers" at the machine; protected containers; the rule for `start` (Sections 4.7 and 4.8). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: which actor may ask for each type is not decided: OD-HOST-22.
+State: Open. The text is a proposal and no code exists. It needs a decision of the operator: OD-HOST-15 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Update, 2026-11-19, after the answers of the operator (R-226 to R-233): R-227: only applications of Anima and adopted projects, with "All containers" at the machine; protected containers; the rule for `start` (Sections 4.7 and 4.8). The corrected text is version 3 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md), Section 4. No code exists; the entry stays Open until its code exists and only the operator closes it. The second read of 2026-11-19 says: which actor may ask for each type is not decided: OD-HOST-22. R-234 (2026-11-19) decides which actor may ask for each type.
 
 ### SF-021: `docker_prune` and `application_remove` let an API key delete each container of the machine, and the rule for volumes is only in the hub
 
@@ -735,7 +735,7 @@ After R-226 to R-233 the text was written again (version 3 of [hosted-applicatio
 
 The judgement of the reviewer, in its words: "Yes: SF-019 (ways a and d), SF-020 with the last point of SF-033 (which actor may ask for each type, Section 4.14), and SF-031 (way b, an image already on the machine). SF-018 has the consequence of SF-039 that no ruling states. SF-015, SF-016, SF-017, SF-024 and SF-029 are corrected only in part, but they need changes of the text (SF-034, SF-036, SF-037, SF-038, SF-042, SF-044, SF-047), not a decision."
 
-Thus the condition of R-209 is not met: the text is not version 0.4 of the contract. Five points need the operator; they are the open decisions OD-HOST-22 to OD-HOST-26 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Two points that the reviewer put to the owner (an image that is already on the machine, SF-041; the labels of a file, SF-043) are taken as changes of the text, as the reviewer proposes, and need no decision unless he wants the wider form.
+The operator answered the five points on 2026-11-19 (R-234 to R-238). By R-237 the text does not become version 0.4 until the design of task H30 for a Mac exists and he has approved it. Before his answers this paragraph said: thus the condition of R-209 is not met: the text is not version 0.4 of the contract. Five points need the operator; they were the open decisions OD-HOST-22 to OD-HOST-26 of [hosted-applications-plan.md](plans/hosted-applications-plan.md). Two points that the reviewer put to the owner (an image that is already on the machine, SF-041; the labels of a file, SF-043) are taken as changes of the text, as the reviewer proposes, and need no decision unless he wants the wider form.
 
 How the reviewer judged each first finding:
 
@@ -791,7 +791,7 @@ Requirements: task H14; the text of the container work types, version 3 of the p
 - Who: each program of the user of the daemon.
 - Change: "The applications program runs `docker` and its Compose plug-in only at paths that are fixed in the program. It refuses to start when one of them, or a folder above, can be written by a user other than the administrator. Where the engine or its command line belongs to a user (Docker Desktop, rootless), the applications program runs as that user and not as the administrator, and this version gives such a machine no container work until task H30 is accepted by a ruling."
 
-State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-237 (2026-11-19): not accepted. Version 0.4 waits for the design of task H30 for a Mac and for a rootless Docker.
 
 ### SF-036: Section 4.5: "at any level" with a list of two levels
 
@@ -839,7 +839,7 @@ Requirements: task H14; the text of the container work types, version 3 of the p
 - Section 4.1: "The socket is in a folder that only the administrator can write. The daemon checks that the peer is the administrator. No request on the socket changes a setting."
 - Section 4.10: "The applications program checks the signature of the operator (task W7)."
 
-State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-236 (2026-11-19): Accepted until task W7; the contract says it.
 
 ### SF-040: Section 4.9: "or the user that owned it at the adoption"
 
@@ -851,7 +851,7 @@ Requirements: task H14; the text of the container work types, version 3 of the p
 - Who: a local user who is not the administrator.
 - Change: "… can be written by a user other than the administrator. At the adoption the applications program records the SHA-256 of each file that the reader opens for the project. `adopted_apply` with `up` refuses the item when one is different (`not_adopted`), until the owner adopts the project again at the machine." This also corrects way (d).
 
-State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19.
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-235 (2026-11-19): Accepted. Anima does not check the file and starts it as it is; no fingerprint is built. The text must say that Anima does not check, not that the owner of the file may change it.
 
 ### SF-041: Images: "no login" has no way, and an image that is on the machine can be started
 
