@@ -42,6 +42,7 @@ Make a minimal operating system that gives a spare computer a new purpose as an 
 | Decision 20: backup destinations | Decided | A + B + C: another explicitly authorized enrolled Anima machine, user-provided network storage, and a deliberately selected separate attached or secondary drive. Do not automatically use or format unselected disks. User-provided cloud/object storage and Anima-managed backup storage are not selected for the first version. Expose destination configuration and last successful backup; define capacity, authentication, retention and restore validation. Same-disk snapshots are not disk-failure backups. |
 | Decision 21: backup coverage | Decided | A + D: after destination/policy approval, cover managed persistent data and configuration by default, with optional owner-selected extra paths. Include persistent agent/job workspaces and retained outputs; exclude regenerable OS packages/caches and explicitly disposable work. Show exclusions and workloads without a reliable backup method. Define app-consistent capture and restore handling, including custom services. Credential/identity recovery and backup encryption remain open. Whole-disk imaging is not selected as the default. |
 | Decision 22: backup encryption and recovery keys | Decided | A + B: encrypt backups before transfer, provide exportable owner-held recovery material, and optionally keep a copy on another explicitly authorized trusted device. A backup destination does not automatically receive decryption authority. Scheduled backups run without repeated password entry after setup. Recovery must not rely solely on the source machine; account/service-assisted recovery and unencrypted backup mode are not selected. Key storage, rotation, revocation and recovery testing remain to be designed. Disk encryption remains opt-in/off by default. |
+| Decision 23: server power behavior | Decided | A + C + D: stay available on external power, including supported closed-lid laptop use; protect laptops on battery loss; recover availability after power returns where hardware supports it. No automatic idle sleep in the first version. Keep thermal safeguards and deliberate shutdown/reboot/recovery available. Critical-battery protective action is distinct from ordinary idle sleep; exact shutdown/suspend choice remains engineering work. Resume approved services, not blindly interrupted jobs. The operator names Proxmox as the server-operation reference; this does not select its virtualization stack or change NixOS/Btrfs choices. |
 | Earlier apps-only answer | Superseded | The operator first selected useful apps, then corrected this to all capabilities and explicitly included agents and jobs. Do not use the earlier answer to exclude these from the first version. |
 | Decision process | Decided | Discuss practical options and tradeoffs, give a recommendation, take the operator's answer and update this record. Allow combined answers. Record uncertainty and tests before treating an unverified choice as settled. |
 
@@ -78,7 +79,7 @@ Review linked choices together: storage layout, filesystem, encryption, persiste
 ## Open questions
 
 1. Revisit Decision 7 after the operator's side discussion. Current provisional choice: graphical setup/status plus text setup/recovery (A + B), alongside setup through Anima. The walkthrough continues; only Decision 7 needs a later review. Prepared-media authorization also remains unresolved; the ISO distribution answer did not select its policy.
-2. Decision 23: what power behavior should apply by default? Options: stay awake on external power, including lid closure; optionally suspend when idle under an explicit availability policy; laptop battery protection that stops new work and performs an orderly suspend/shutdown before critical depletion; resume service after power returns where supported. Recommendation: stay awake on external power plus battery protection and supported power-return recovery, with automatic idle sleep deferred. No selection yet. Thermal safeguards remain active; firmware wake/power-return support is hardware-dependent. Existing AWK and power-health owners retain their requirements.
+2. Decision 24: how should access to hosted apps be exposed by default? Options: private Anima-network access; explicit LAN publication; explicit public-internet publication. Recommendation: private by default, with LAN/public exposure only through deliberate per-app actions consistent with existing hosting and network requirements. No selection yet. Do not automatically publish administrative, recovery or pre-boot unlock interfaces. This is an appliance integration policy, not a replacement for existing HOST/network owners.
 3. Which priority row and owner should the proposal use? Resolve after the scope and dependencies are clear.
 
 ## Topics still to discuss
@@ -167,6 +168,8 @@ Read 2026-11-19 at the operator's request:
 - 2026-11-19: Decision 21 accepted A + D: managed persistent data/configuration and extra owner-selected paths. Next: backup encryption and recovery-key ownership, separately from installation-disk encryption.
 
 - 2026-11-19: Decision 22 accepted A + B: encrypted backups with owner recovery material and optional explicitly trusted second-device key storage. Next: power behavior and laptop use.
+
+- 2026-11-19: Decision 23 accepted A + C + D, with explicit server-first direction and no ordinary idle sleep. Proxmox is an operational reference. Its official feature overview (https://www.proxmox.com/en/products/proxmox-virtual-environment/features, read 2026-11-19) describes centralized server/workload administration; this check did not establish exact host suspend defaults. No Proxmox implementation or architecture was selected. Next: app network exposure.
 
 ## Source text
 
@@ -283,3 +286,7 @@ In response to Decision 21 (recommendation A + D):
 In response to Decision 22 (recommendation A + B):
 
 > agreed
+
+In response to Decision 23:
+
+> agreed these are meant to be servers so sleep and idle are not really avalable right it's just whatever lets it be the best server copy proxmox
