@@ -48,6 +48,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.19 | 3 | The watchdog | See, Use | Proposal, direction decided (R-162). After jobs (row 4.7). | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | 3 | The terminal screen (`anima tui`) | See, Reach | Direction decided (R-168). The requirements are not approved. Starts after R8a to R8d (row 4.6); the measurement TU1 may run before. | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | 3 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Reach, Use | Direction decided (R-196). The requirements are not approved. Tier 3, after row 4.7 (OD-AXT11); AX0 to AX2 may run earlier than the tier. | Operator: the approval of AXT-001 to AXT-045 (task AX1) in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md). Agent: task AX0 in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10 (a record only); AX2 to AX16 wait for AX1 |
+| 4.23 | 3 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | See, Reach | Direction decided (R-226, 2026-11-19, first-hand). The requirements OBS-001 to OBS-066 are not approved (task OB1). R-144 holds them until WP-53 (OD-OBS13). | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in [extensions-plan.md](../plans/extensions-plan.md) Section 4.17. Agent: nothing; no ruling names a task |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
@@ -229,6 +230,14 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: No work item yet. The tasks AX0 to AX16 are in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10
 - State: Direction decided (R-196, operator, 2026-11-18, first-hand). OD-AXT1 to OD-AXT18 are decided: the native agent panes (AIS-009 to AIS-017) and the native bot runtime are withdrawn, and the host may start before the 15 extensions with manifests of Anima.ing only (EXT-009). The requirements AXT-001 to AXT-045 are not approved; that is task AX1. Only AX0 (a record) may start now.
 
+### 4.23 The observability suite
+
+- Tier: 3 (R-226, OD-OBS5: "OD-OBS5: new row 4.23 at tier 3."). It is not under row 4.8. R-144 still holds it until the acceptance run WP-53 (OD-OBS13: "OD-OBS13: yes, R-144 holds these extensions until WP-53."). In the order of XP-005 it comes right after XP-02 (OD-OBS12).
+- Category: See, Reach
+- Work: four extensions, off by default, built together (OD-OBS3): status pages served on one public path of the hub, error tracking and product analytics on a self-hosted PostHog that the hub places on a machine with room or a VM, and short links. Uptime checks stay in the design specification.
+- Work items: No work item yet. The tasks OB0 to OB18 are in [extensions-plan.md](../plans/extensions-plan.md) Section 4.17.9
+- State: Direction decided (R-226, operator, 2026-11-19, first-hand). OD-OBS1 to OD-OBS14 are decided (OD-OBS9 withdrawn); OD-OBS7 and OD-OBS15 to OD-OBS20 are open. The requirements are not approved; no task may start.
+
 ### Notes on the order
 
 Notes:
@@ -240,6 +249,7 @@ Notes:
 - Row 4.20 is tier 3, after R8a to R8d of row 4.6. It is a new row, so it follows 4.19. The operator chose a row of its own for the terminal screen (R-168). It is not a category: the command line and the MCP server stay a way to use each category.
 - Row 4.21 is tier 3, after row 4.7 (R-196, OD-AXT11). It is a new row, so it follows 4.20. The operator confirmed a row of its own first-hand (R-196, OD-AXT1).
 - Row 4.22 is tier 1, after row 4.3 (R-207, OD-UD4). Its number follows 4.21 because it is a new row; a published number does not change.
+- Row 4.23 is tier 3 (R-226, OD-OBS5). It is a new row, so it follows 4.22. R-144 holds it until WP-53 (OD-OBS13).
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 

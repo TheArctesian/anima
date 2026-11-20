@@ -196,7 +196,7 @@ is built in the private repository (fact 5); this repository holds the client an
 
 ### 6.2 Hosted hub
 
-- **HMD-011.** The server stack must run `anima-link`, and the hub must run in link mode (Section 3, fact 3). A hosted hub must have no public port other than the relay. Approved (R-163).
+- **HMD-011.** The server stack must run `anima-link`, and the hub must run in link mode (Section 3, fact 3). A hosted hub must have no public port other than the relay. Approved (R-163). R-226 adds the public path of the observability extensions (SEC-008; [extensions-plan.md](../plans/extensions-plan.md) Section 4.17.6): on a hosted hub it goes through the relay, so the relay stays the one public port [NEEDS CLARIFICATION: OD-OBS19]. Not approved (task OB1).
 - **HMD-012.** A hosted hub must run without Headscale and without the Tailscale client. Approved (R-163).
 - **HMD-013.** The pool must make a hub in less than 60 seconds. The application must show the progress. Approved (R-163).
 - **HMD-014.** A hosted hub must have its own data, keys and backup. One hub must never read the data of a different hub. Approved (R-163).

@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (15)
+## 1. In the order of the priorities (16)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -34,9 +34,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
+| 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (144)
+## 2. Open decisions (137)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -64,6 +65,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E23 | The commands of the operational keys (E0-6 T3). K-E5 Section 2.2 names them `anima key list\ | Not decided. Recommendation: `anima secret` for the operational keys, with the MCP tools `anima_secrets_list` and `anima_secret_show`, and K-E5 Section 2.2 chan… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E24 | The Dawarich pull of E0-5 T3 (K-E4 Section 11). K-E4 says that it goes through the source framework with a base address and an API key for each account. The sou… | Not decided. Recommendation: yes to (1) and (2) as written; for (3) a switch `locations` of the engine that is on by default. Until then the operator can use th… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E25 | K-E4 Section 13 says that each change writes one audit entry and one event. For the OwnTracks path this is one audit entry and one event for each fix that the p… | Not decided. Recommendation: (b). The options: (a) keep one entry and one event for each stored fix; (b) no event for a stored fix, and one audit entry for each… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS7 | Do SITE-008 and OD-21 change for a page-view collector? | Open. Recommendation: no change. The operator's sites send events to the operator's own PostHog; `www.anima.ing` and `docs.anima.ing` keep Vercel Web Analytics… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS15 | Does Anima.ing's own product analytics move from PostHog Cloud to a self-hosted PostHog (a change to OD-E6)? | Open. Recommendation: no, not now. Strength: no stack to run for the project itself before the extension is proven. Weakness: Anima.ing does not use its own ext… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS16 | OD-OBS4 says inside the hub and the daemon; PostHog is a stack of containers. Do the hub and the daemon manage the stack (install, place, update, check), rather… | Open. Recommendation: yes, manage it. Strength: the only way to run PostHog; no new program of Anima.ing. Weakness: the stack needs about 4 vCPU and 16 GB on on… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS17 | Short links: an engine in the hub, or Dub run as a stack? | Open. Recommendation: an engine in the hub. Strength: small, no other services; Dub's self-host needs MySQL, Upstash and Tinybird and its code is AGPLv3. Weakne… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS18 | Does the public intake also accept analytics events from the operator's websites (not only errors)? | Open. Recommendation: yes. Strength: a private PostHog cannot get browser events in another way. Weakness: more public traffic on the hub. | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS19 | On a hosted hub, does the public path go through the relay, with a 503 when a free hub sleeps? | Open. Recommendation: yes. Strength: keeps the relay as the one public port (HMD-011) and does not wake a free hub. Weakness: a public page is down while the hu… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS20 | Is the PostHog image pinned by digest and updated only when the operator selects Update? | Open. Recommendation: yes. Strength: PostHog has no tagged releases for self-host; a pin stops a surprise break. Weakness: security fixes wait for the operator. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-5 | Do you accept the work route contract, and how do the container work types join it? | Contract K10 version 0.3 is accepted; Section 4 of the proposal goes to a security review and becomes version 0.4 after it (R-209). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
@@ -145,20 +153,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D17 | At which address does the browser meet a hosted hub for Connect GitHub? | Open. Section 7.2 has the choices, with what is for and against each. Recommendation: the local port of the link (choice A there), after an agent verifies its t… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D18 | What R-206 left open for the daemon of a computer: (a) while the application is closed; (b) a question before the installation; (c) a computer with no applicati… | Open. Section 7.1 has each point with a recommendation: (a) first build with gaps and say so on the page, then decide if the link becomes a unit of the user; (b… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| OD-OBS1 | Which pieces are in scope? (one choice: all four, including product and web analytics, as relayed; status pages and error tracking; status pages only) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS2 | Are short links (Dub, named in the post) out of scope? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS3 | In what order? (one choice: status pages and error tracking together, as relayed; status pages first) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS4 | Do they ship inside the hub and the daemon as extensions that are off by default, with no separate binary? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS5 | Which priority row? (one choice: under row 4.8, as relayed; a new row 4.23 at tier 3) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS6 | Do you reverse OD-E6 ("No custom telemetry endpoint") so that Anima.ing stores product analytics events of its own? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS7 | Does SITE-008 and OD-21 change, so that an Anima.ing collector can count page views? (one choice: no change, Vercel Web Analytics stays; a collector for the ope… | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS8 | How does a status page reach the public? (one choice: static export that the hub publishes outbound to a target; a separate public program on the VPS, as the we… | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS9 | Is the first publish target a branch of a GitHub repository through the Projects GitHub App? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS10 | Which events can the error tracker accept? (one choice: only what Anima.ing reads now, container logs and restart loops; also Sentry SDK events on the daemon lo… | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS11 | Are the new extensions outside "the 15 extensions" of EXT-009, as the "Agent tools" switch is (R-196)? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS12 | Where in the order of XP-005? (one choice: right after XP-02 Projects; at the end) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS13 | Does R-144 (PH-E-000 until the acceptance run WP-53) also hold these extensions? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
-| OD-OBS14 | Does this stay a separate proposal now, and move into extensions-plan.md and design-spec.md (INT-004) at approval? (yes/no) | Open | [proposals/observability-suite.md](proposals/observability-suite.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
 | Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). | [proposals/power-health.md](proposals/power-health.md) |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
@@ -185,7 +179,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (28)
+## 3. Documents that wait for an approval (27)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -209,7 +203,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |
 | [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
-| [proposals/observability-suite.md](proposals/observability-suite.md) | Proposal, with a task table | Draft |
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |

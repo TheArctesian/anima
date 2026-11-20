@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Observability suite mockups (status pages and errors)</title>
 <style>
-/* Layout: a review board for observability-suite.md (Draft, not approved).
-   Frame 1 is the public status page, written as static files (OBS-010 to OBS-018).
-   Frame 2 is the Status pages screen of the client (OBS-010, OBS-012, OBS-015, OBS-016).
-   Frame 3 is the Errors page of the client (OBS-020 to OBS-030).
+/* Layout: a review board for extensions-plan.md Section 4.17 (direction decided, R-226; not approved).
+   Frame 1 is the public status page, served on the public path of the hub (OBS-010 to OBS-016, OBS-061).
+   Frame 2 is the Status pages screen of the client and the public path setting (OBS-010, OBS-012, OBS-015, OBS-060).
+   Frame 3 is the Errors page of the client, read from the self-hosted PostHog (OBS-020 to OBS-025).
+   Frame 4 is the Links page and the placement of the PostHog stack (OBS-032, OBS-040 to OBS-046).
    No font, script or image comes from a third party. IBM Plex is named, and the system font is the fallback. */
 :root {
   color-scheme: dark;
@@ -80,7 +81,7 @@ code { font-family: var(--font-mono); font-size: 0.8125rem; }
 </head>
 <body>
 <h1 class="board">Observability suite</h1>
-<p class="about">Mockups for <a href="../../proposals/observability-suite.md" style="color:inherit">observability-suite.md</a> (Draft). The proposal is not approved. All names and numbers are examples. The public page shows only the display names that the operator writes: no address, host name or device name (OBS-012).</p>
+<p class="about">Mockups for <a href="../../plans/extensions-plan.md" style="color:inherit">extensions-plan.md</a> Section 4.17 (direction decided, R-226). The requirements are not approved. All names and numbers are examples. The public page shows only the display names that the operator writes: no address, host name or device name (OBS-012).</p>
 <div class="frames">
 
 <figure>
@@ -94,27 +95,27 @@ code { font-family: var(--font-mono); font-size: 0.8125rem; }
     <div class="comp"><div class="row"><h3>API</h3><span><span class="dot up" style="display:inline-block"></span> Operational</span></div><div class="bars" data-pattern="mnt"></div><div class="row muted"><span>90 days ago</span><span>100 % uptime (maintenance not counted)</span><span>Today</span></div></div>
   </div>
   <div class="legend muted"><span><i class="dot up"></i>Operational</span><span><i class="dot deg tri"></i>Degraded</span><span><i class="dot down sq"></i>Down</span><span><i class="dot mnt"></i>Maintenance</span><span><i class="dot nod"></i>No data (the hub slept or no beat)</span></div>
-  <p class="muted">Static files. No cookie, no analytics, no request to the hub. If this page is older than 15 minutes it says "Status not current" (OBS-014).</p>
+  <p class="muted">Served by the hub on its public path, from a snapshot. No cookie, no analytics script, nothing from another origin (OBS-013, OBS-014).</p>
 </div></div>
-<figcaption>Frame 1, the public status page (light). OBS-011 (states and 90 daily bars from the day aggregates), OBS-013 (static bundle), OBS-014 (stale rule and No data), OBS-015 (incident updates). A state has a word and a shape, not only a color.</figcaption>
+<figcaption>Frame 1, the public status page (light). OBS-011 (states and 90 daily bars from the day aggregates), OBS-013 (served on the public path), OBS-014 (the snapshot), No data for a gap, OBS-015 (incident updates). A state has a word and a shape, not only a color.</figcaption>
 </figure>
 
 <figure>
 <div class="frame gd"><div class="app">
   <div class="side"><div class="group">Fleet</div><span class="nav">Devices</span><span class="nav">Checks</span><span class="nav on">Status pages</span><span class="nav">Errors</span><div class="group">Extensions</div><span class="nav">Projects</span></div>
   <div class="pad">
-    <div class="row"><h2>Example Project status</h2><span><span class="btn">Download bundle</span> <span class="btn pri">Publish now</span></span></div>
+    <div class="row"><h2>Example Project status</h2><span><span class="btn">Open public page</span> <span class="btn pri">Write incident</span></span></div>
     <table>
       <tr><th>Display name (public)</th><th>Check (private)</th><th>State</th><th></th></tr>
       <tr><td>Website</td><td class="muted">HTTP(S) check</td><td>Operational</td><td><span class="chip">Up</span></td></tr>
       <tr><td>Sign-in</td><td class="muted">Group check, 2 children</td><td>Degraded</td><td><span class="chip">Draft incident offered</span></td></tr>
       <tr><td><code>api.example.com</code></td><td class="muted">HTTP(S) check</td><td>Operational</td><td class="warn">Refused: looks like a host name. Write a display name (OBS-012).</td></tr>
     </table>
-    <div class="banner"><span class="dot up" aria-hidden="true"></span><span>Publish target: a branch of a GitHub repository (OD-OBS9). Last publish 15:20 PT. Each 5 minutes and at each change.</span></div>
+    <div class="banner"><span class="dot up" aria-hidden="true"></span><span>Public path: on. <code>status.example.com/s/example</code>. Only status pages, short links and the intake are public (OBS-061).</span></div>
     <p class="muted">Each publish and each incident is in the audit log (OBS-019). The hub never publishes an incident that you did not write or confirm (OBS-015).</p>
   </div>
 </div></div>
-<figcaption>Frame 2, the Status pages screen of the client (dark). OBS-010, OBS-012 (the address gate names the field), OBS-015, OBS-016 and OBS-017. The target is open until OD-OBS8 and OD-OBS9.</figcaption>
+<figcaption>Frame 2, the Status pages screen of the client (dark). OBS-010, OBS-012 (the address gate names the field), OBS-015, OBS-016 and OBS-060. The public path ships only after the security review OB17.</figcaption>
 </figure>
 
 <figure>
@@ -126,12 +127,29 @@ code { font-family: var(--font-mono); font-size: 0.8125rem; }
       <tr><th>Error group</th><th>Program</th><th>Count</th><th>Last</th><th>State</th></tr>
       <tr><td><strong>ConnectionRefused</strong> connect to &lt;host&gt;:&lt;n&gt; failed<br><span class="muted">New 14:38 PT. 1 notification sent.</span></td><td>container <code>web</code> on Studio</td><td>212</td><td>15:19</td><td><span class="chip">Unresolved</span></td></tr>
       <tr><td><strong>Restart loop</strong> 4 restarts in 15 minutes<br><span class="muted">From CHK-014</span></td><td>unit <code>worker.service</code> on Shelf</td><td>4</td><td>15:02</td><td><span class="chip">Unresolved</span></td></tr>
-      <tr><td><strong>TypeError</strong> cannot read &lt;field&gt; of undefined<br><span class="muted">Occurs again after Resolved. SDK event, loopback (OD-OBS10)</span></td><td>app <code>dashboard</code> on Studio</td><td>9</td><td>13:47</td><td><span class="chip">Regressed</span></td></tr>
+      <tr><td><strong>TypeError</strong> cannot read &lt;field&gt; of undefined<br><span class="muted">Occurs again after Resolved. PostHog SDK event through the public intake (OBS-062)</span></td><td>app <code>dashboard</code> on Studio</td><td>9</td><td>13:47</td><td><span class="chip">Regressed</span></td></tr>
     </table>
-    <p class="muted">Messages are redacted before they are stored (OBS-024). Each group links to its log lines and its device (OBS-028). An error group does not change a check or the uptime (OBS-031).</p>
+    <p class="muted">Read from the self-hosted PostHog on Shelf. Events are redacted before they are forwarded (OBS-005). Each issue links to its log lines, its device and its page in PostHog (OBS-024). An error does not change a check or the uptime (OBS-025).</p>
   </div>
 </div></div>
-<figcaption>Frame 3, the Errors page of the client (dark). OBS-020 to OBS-030. The fingerprint replaces numbers, hosts and fields with placeholders (OBS-021). The SDK row exists only if OD-OBS10 permits SDK events.</figcaption>
+<figcaption>Frame 3, the Errors page of the client (dark). OBS-020 to OBS-025. The list comes from the API of the PostHog stack [NEEDS CLARIFICATION in OBS-024: a list in Anima.ing or a link to PostHog].</figcaption>
+</figure>
+<figure>
+<div class="frame gd"><div class="app">
+  <div class="side"><div class="group">Fleet</div><span class="nav">Devices</span><span class="nav">Status pages</span><span class="nav">Errors</span><span class="nav">Analytics</span><span class="nav on">Links</span></div>
+  <div class="pad">
+    <div class="row"><h2>Links</h2><span class="btn pri">New link</span></div>
+    <table>
+      <tr><th>Short link</th><th>Target</th><th>Clicks (7 days)</th><th>State</th></tr>
+      <tr><td><code>/l/launch</code></td><td class="muted">https://example.com/launch</td><td>318</td><td><span class="chip">Active</span></td></tr>
+      <tr><td><code>/l/talk-nov</code></td><td class="muted">https://example.com/slides</td><td>41</td><td><span class="chip">Ends 30 Nov</span></td></tr>
+      <tr><td><code>/l/nas</code></td><td class="muted">http://192.168.1.20</td><td>—</td><td class="warn">Refused: a private address (OBS-046)</td></tr>
+    </table>
+    <div class="banner"><span class="dot up" aria-hidden="true"></span><span>PostHog stack: on Shelf (8 vCPU, 32 GB, 410 GB free). All 10 containers Up. Image pinned; <span class="btn">Update</span> (OBS-032 to OBS-034)</span></div>
+    <p class="muted">No machine with room? Anima.ing can make a VM for the stack (OBS-032, CVM, a draft). Clicks go to PostHog only when Product analytics is on (OBS-043).</p>
+  </div>
+</div></div>
+<figcaption>Frame 4, the Links page and the placement of the PostHog stack (dark). OBS-032 to OBS-034, OBS-040 to OBS-046. The engine of the links is open (OD-OBS17).</figcaption>
 </figure>
 </div>
 <script>
