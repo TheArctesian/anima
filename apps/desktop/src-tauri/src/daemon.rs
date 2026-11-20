@@ -14,10 +14,10 @@
 
 mod error;
 mod installing;
-mod placement;
+pub(crate) mod placement;
 mod request;
 mod run;
-mod trust;
+pub(crate) mod trust;
 
 #[cfg(test)]
 mod tests;
@@ -105,13 +105,7 @@ fn here(source: PathBuf) -> Result<Here, DaemonError> {
         .map(PathBuf::from)
         .filter(|home| home.is_absolute())
         .ok_or(DaemonError::NoHome)?;
-    let uid = nix::unistd::getuid().as_raw();
-    let passwd = fs::read_to_string(PASSWD).ok();
-    let group = fs::read_to_string(GROUP).ok();
-    let user = User {
-        uid,
-        private_group: trust::private_group(uid, passwd.as_deref(), group.as_deref()),
-    };
+    let user = this_user();
     let env = run::daemon_env(&home, |name| std::env::var_os(name));
     Ok(Here {
         source,
@@ -119,6 +113,18 @@ fn here(source: PathBuf) -> Result<Here, DaemonError> {
         user,
         env,
     })
+}
+
+/// The user of this process, with their private group. An account file that cannot be read
+/// means no private group, so a folder its group may write is refused.
+pub(crate) fn this_user() -> User {
+    let uid = nix::unistd::getuid().as_raw();
+    let passwd = fs::read_to_string(PASSWD).ok();
+    let group = fs::read_to_string(GROUP).ok();
+    User {
+        uid,
+        private_group: trust::private_group(uid, passwd.as_deref(), group.as_deref()),
+    }
 }
 
 /// The daemon beside `executable`, in a release build only: a debug build's target folder may
