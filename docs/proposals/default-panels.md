@@ -61,9 +61,8 @@ None of these is approved. Build nothing from them (PLN-007).
 - **PNL-002.** The Agents page must show, for each device, the agents that the daemon found and one
   state for each (BOT-024). When Herdr is installed and granted on a device (the Herdr tool extension of
   [agent-tools-as-extensions.md](agent-tools-as-extensions.md), R-196; AIS-009 to AIS-013 are withdrawn), it must link to the Herdr pane
-  of that device. [NEEDS CLARIFICATION: whether the Agents page also lists the panes of Herdr and their
-  states. Version 1 leaves the state of each agent to Herdr (R-196, OD-AXT10); the idea `agent-state-hooks`
-  comes next.] It must show the usage page (AU-4, AIS-020). With no agent
+  of that device. R-234 decides that the Agents page lists the agents of all devices with their states, Herdr panes included
+  (AXT-046 to AXT-052 of [agent-tools-as-extensions.md](agent-tools-as-extensions.md); OD-AXT21 asks if it replaces this list). It must show the usage page (AU-4, AIS-020). With no agent
   it must show an empty state with the action "Add agent" (UI-030).
 - **PNL-003.** "Add agent" must open the list of the agent catalog (BOT-040) and the custom entry
   (BOT-039). The terms gate of BOT-041 applies.
