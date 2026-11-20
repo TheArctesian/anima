@@ -42,7 +42,7 @@
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
-<!-- The list view (UR-7, D18; R-224; R-NEW-listlayout): hairline rows of one height with the name first, problems first
+<!-- The list view (UR-7, D18; R-224; row H of the site language plan): hairline rows of one height with the name first, problems first
      under their own group title. A problem has its reason and how long under its status; the usage has one form in each
      row. Below 1100 px each device takes two lines. -->
 <div class="device-list" {@attach held.hold}>

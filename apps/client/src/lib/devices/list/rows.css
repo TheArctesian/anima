@@ -36,7 +36,7 @@
 
 /*
  * The name takes the free width; each other column has its own width, so a long name and its address are whole where
- * the window has room (R-NEW-listlayout).
+ * the window has room (row H of the site language plan).
  */
 .device-rows .c-status {
   inline-size: calc(var(--space-16) * 2.5);

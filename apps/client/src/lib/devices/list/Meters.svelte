@@ -9,7 +9,7 @@
   interface Props {
     readings: BarReadings | null;
     source: MetricsSource | null | undefined;
-    /** The list's form: the value over its bar in a fixed slot, the words in the column head (R-NEW-listlayout). */
+    /** The list's form: the value over its bar in a fixed slot, the words in the column head (row H of the site language plan). */
     compact?: boolean;
   }
 

@@ -25,7 +25,7 @@
     screenSharing?: CardScreenSharing;
     /** Icon buttons named by their tooltip and label, for the list's fixed connect column (UR-7, D18). */
     compact?: boolean;
-    /** A row of the list: no action that cannot work now, so each row keeps one line (R-NEW-listlayout). */
+    /** A row of the list: no action that cannot work now, so each row keeps one line (row H of the site language plan). */
     row?: boolean;
   }
 
@@ -33,7 +33,7 @@
   const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
   const web = $derived(webInterfacesOf(device));
   const protocols = $derived(connectProtocols(device));
-  // The setup needs the device: a row of the list does not offer it for a device that is down (R-NEW-listlayout).
+  // The setup needs the device: a row of the list does not offer it for a device that is down (row H of the site language plan).
   const offersSetup = $derived(screenSharing !== undefined && offersScreenSharing(device) && !(row && device.status === 'DOWN'));
   const offersWeb = $derived(onOpenWeb !== undefined && web.length > 0);
   /**
