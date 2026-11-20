@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (15)
+## 1. In the order of the priorities (16)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -34,9 +34,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
+| 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (139)
+## 2. Open decisions (144)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -65,6 +66,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E23 | The commands of the operational keys (E0-6 T3). K-E5 Section 2.2 names them `anima key list\ | Not decided. Recommendation: `anima secret` for the operational keys, with the MCP tools `anima_secrets_list` and `anima_secret_show`, and K-E5 Section 2.2 chan… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E24 | The Dawarich pull of E0-5 T3 (K-E4 Section 11). K-E4 says that it goes through the source framework with a base address and an API key for each account. The sou… | Not decided. Recommendation: yes to (1) and (2) as written; for (3) a switch `locations` of the engine that is on by default. Until then the operator can use th… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E25 | K-E4 Section 13 says that each change writes one audit entry and one event. For the OwnTracks path this is one audit entry and one event for each fix that the p… | Not decided. Recommendation: (b). The options: (a) keep one entry and one event for each stored fix; (b) no event for a stored fix, and one audit entry for each… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS21 | The Compose files of PostHog and Dub do not pass the profile `contained` (R-228): `extends`, relative bind mounts, `ulimits`, ports below 1024. How do they run? | Open. Recommendation: Anima.ing writes a catalogue entry for each in the `contained` form (one file, files by `configs` with `content`, ports above 1024 on `127… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS22 | With ports on `127.0.0.1` only (R-229), how does the hub reach the stacks (forward events, read the API, forward `/l/<code>`)? | Open. Recommendation: an SSH `direct-tcpip` channel of the hub to the port, as AXT-009. Strength: no port on the network; "Open to the network" stays off. Weakn… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS23 | Automatic updates and R-233 (digests in the catalogue): what moves? | Open. Recommendation: Anima.ing moves the digest of the catalogue entry after a test install, and each machine applies the new digest automatically. No machine… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS24 | Dub names hosted services (PlanetScale, Upstash Redis, QStash, Tinybird). Does Anima.ing run Dub only with local replacements? | Open. Recommendation: yes, only local replacements on the same machine, no account at a third party; OB0 proves it, and if it fails the question comes back. Str… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-OBS25 | An automatic update is a request that no person made. HOST-021 and ETH-004 say that Anima updates nothing by itself, and Section 4.14 of the stage 2 proposal na… | Open. Recommendation: yes, as a new actor "the hub schedule" for `application_apply` of the PostHog and Dub entries only, with OBS-050 to OBS-055. Strength: R-2… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-5 | Do you accept the work route contract, and how do the container work types join it? | Contract K10 version 0.3 is accepted; Section 4 of the proposal goes to a security review and becomes version 0.4 after it (R-209). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
