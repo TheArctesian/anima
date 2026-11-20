@@ -1,9 +1,11 @@
 //! The forms of single values: a name of the file, an image, a whole number, a duration, a
-//! size, a path in a container.
+//! size, a path in a container. The applications program reads each value of the final form
+//! with these readers, so that the check and the final form read one value in one way.
 
 /// A name of a service, a volume, a network or a config: 1 to 63 characters of `a-z`, `0-9`,
 /// `-` and `_`, and the first is a letter or a digit.
-pub(crate) fn is_name(text: &str) -> bool {
+#[must_use]
+pub fn is_name(text: &str) -> bool {
     let first = text
         .bytes()
         .next()
@@ -17,7 +19,8 @@ pub(crate) fn is_name(text: &str) -> bool {
 
 /// An image reference: it starts with `a-z` or `0-9`, has only the characters that a registry
 /// permits, and names a tag or a digest. It can thus never be read as an option of a command.
-pub(crate) fn is_image(text: &str) -> bool {
+#[must_use]
+pub fn is_image(text: &str) -> bool {
     let first = text
         .bytes()
         .next()
@@ -34,7 +37,8 @@ pub(crate) fn is_image(text: &str) -> bool {
 }
 
 /// A whole number of 0 or more, with no sign and no other character.
-pub(crate) fn whole(text: &str) -> Option<u64> {
+#[must_use]
+pub fn whole(text: &str) -> Option<u64> {
     if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
         return None;
     }
@@ -42,7 +46,8 @@ pub(crate) fn whole(text: &str) -> Option<u64> {
 }
 
 /// A truth value as YAML writes it.
-pub(crate) fn truth(text: &str) -> Option<bool> {
+#[must_use]
+pub fn truth(text: &str) -> Option<bool> {
     match text {
         "true" => Some(true),
         "false" => Some(false),
@@ -52,7 +57,8 @@ pub(crate) fn truth(text: &str) -> Option<bool> {
 
 /// A duration of Compose in whole seconds: parts of a number and `h`, `m` or `s`
 /// (`1m30s`), or a number of seconds alone. A part of a second is not permitted.
-pub(crate) fn seconds(text: &str) -> Option<u64> {
+#[must_use]
+pub fn seconds(text: &str) -> Option<u64> {
     if let Some(plain) = whole(text) {
         return Some(plain);
     }
@@ -77,7 +83,8 @@ pub(crate) fn seconds(text: &str) -> Option<u64> {
 
 /// A size of Compose in bytes: a whole number, or one with `b`, `k`, `m` or `g` (also `kb`,
 /// `mb`, `gb`).
-pub(crate) fn bytes(text: &str) -> Option<u64> {
+#[must_use]
+pub fn bytes(text: &str) -> Option<u64> {
     let lower = text.to_ascii_lowercase();
     let digits_end = lower
         .find(|character: char| !character.is_ascii_digit())
@@ -93,8 +100,30 @@ pub(crate) fn bytes(text: &str) -> Option<u64> {
     whole(digits)?.checked_mul(scale)
 }
 
+/// A count of processors in billionths of one processor, as the engine counts them. A digit
+/// after the ninth of the decimal part is dropped.
+#[must_use]
+pub fn processor_billionths(text: &str) -> Option<u64> {
+    let (units, part) = text.split_once('.').unwrap_or((text, "0"));
+    whole(part)?;
+    let part: String = part.chars().chain("000000000".chars()).take(9).collect();
+    whole(units)?
+        .checked_mul(1_000_000_000)?
+        .checked_add(whole(&part)?)
+}
+
+/// The name of the folder of a bind mount: the source is exactly `binds/<name>` of the
+/// application, with or without `./` before it (K10 Section 6.4.5). The name has the form of
+/// a name of the file, which is inside what Section 6.4.5 permits.
+#[must_use]
+pub fn bind_name(source: &str) -> Option<&str> {
+    let relative = source.strip_prefix("./").unwrap_or(source);
+    relative.strip_prefix("binds/").filter(|name| is_name(name))
+}
+
 /// A count of processors above 0: a whole number, or one with a decimal part (`0.5`).
-pub(crate) fn is_processors(text: &str) -> bool {
+#[must_use]
+pub fn is_processors(text: &str) -> bool {
     let (units, part) = text.split_once('.').unwrap_or((text, "0"));
     match (whole(units), whole(part)) {
         (Some(units), Some(part)) => units > 0 || part > 0,
@@ -103,7 +132,8 @@ pub(crate) fn is_processors(text: &str) -> bool {
 }
 
 /// A path in a container that a mount may name: absolute, with no `..`, and not `/`.
-pub(crate) fn is_target(text: &str) -> bool {
+#[must_use]
+pub fn is_target(text: &str) -> bool {
     text.starts_with('/')
         && text != "/"
         && !text.split('/').any(|part| part == "..")
@@ -111,6 +141,7 @@ pub(crate) fn is_target(text: &str) -> bool {
 }
 
 /// One line of text with no control character, for a value that Compose takes as it is.
-pub(crate) fn is_line(text: &str) -> bool {
+#[must_use]
+pub fn is_line(text: &str) -> bool {
     !text.is_empty() && !text.bytes().any(|byte| byte.is_ascii_control())
 }

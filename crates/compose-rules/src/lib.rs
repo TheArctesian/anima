@@ -7,7 +7,7 @@
 //! A refusal is a fixed code and the position of a service, never text of the file.
 
 mod declared;
-mod forms;
+pub mod forms;
 mod keys;
 mod mounts;
 mod project;
