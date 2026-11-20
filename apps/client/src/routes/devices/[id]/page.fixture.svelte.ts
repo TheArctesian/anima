@@ -26,6 +26,9 @@ export function device(change: Partial<DeviceDetail> = {}, ssh: Partial<DeviceDe
     webInterfaces: [],
     webInterfaceSuggestions: [],
     metricsSource: 'NONE',
+    metricsStale: false,
+    daemonVersion: null,
+    sessionLimit: null,
     accessWarnings: [],
     rdp: {
       enabled: false,

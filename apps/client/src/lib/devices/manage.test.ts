@@ -28,6 +28,9 @@ const DETAIL: DeviceDetail = {
   webInterfaces: [],
   webInterfaceSuggestions: [],
   metricsSource: 'NONE',
+  metricsStale: false,
+  daemonVersion: null,
+  sessionLimit: null,
   accessWarnings: [],
   rdp: {
     enabled: false,
