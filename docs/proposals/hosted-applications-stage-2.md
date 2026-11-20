@@ -1,14 +1,14 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-241 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. No reviewer other than its writer has read the third form yet, so this header does not say that the condition of R-209 is met. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 4 (2026-11-19).
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. No reviewer other than its writer has read the third form yet, so this header does not say that the condition of R-209 is met. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 4 (2026-11-19).
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this document (PLN-005).
 
-Version: 4. Date: 2026-11-19. Version 4 has Section 4 in its third form, after the second read (SF-034 to SF-048), R-234 to R-238 and R-241. Version 3 has Section 4 written again after its security review and the answers of the operator to it (R-226 to R-233). Version 1 was the proposal with eight open decisions. Version 2 records the answers of the operator (R-209 to R-216) and adds Section 9, the state of each requirement.
+Version: 4. Date: 2026-11-19. Version 4 has Section 4 in its third form, after the second read (SF-034 to SF-048), R-234 to R-238 and R-246. Version 3 has Section 4 written again after its security review and the answers of the operator to it (R-226 to R-233). Version 1 was the proposal with eight open decisions. Version 2 records the answers of the operator (R-209 to R-216) and adds Section 9, the state of each requirement.
 From: the operator, 2026-11-19, relayed by the orchestrating session and not first-hand in the session that wrote this: the container side should be "fleshed out more via the competitor research", and "the coolify/dockploy and the portainer things are still competitors and things I want to emulate ish".
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md). The plan that this proposal changes when it is approved is [hosted-applications-plan.md](../plans/hosted-applications-plan.md). The contract that it changes is K10, [work-route.md](../../contracts/work-route.md).
@@ -97,7 +97,7 @@ This is the text for version 0.4 of [work-route.md](../../contracts/work-route.m
 form. A first review read the first form (SF-015 to SF-033 of
 [security-findings.md](../security-findings.md)); the operator decided eight points (R-226 to
 R-233). A second read of the second form found it corrected only in part (SF-034 to SF-048); he
-decided five points (R-234 to R-238) and the design for a Mac (R-241). This form is written to
+decided five points (R-234 to R-238) and the design for a Mac (R-246). This form is written to
 correct each finding and to hold each ruling. It is the contract only when
 `contracts/work-route.md` has it; a reviewer who did not write it must read it first. The earlier
 forms are in the history of this file (commits `1c274d68` and `aa364653`).
@@ -114,17 +114,17 @@ Docker: the applications program, `anima-applications`. The daemon, `anima-daemo
 hub and gives each container item to the applications program. The applications program makes no
 connection to a network and never talks to the hub.
 
-**Two kinds of engine (R-226, R-241).**
+**Two kinds of engine (R-226, R-246).**
 
 | Kind of engine | How the program knows | The applications program runs as | What the Docker right is there |
 | --- | --- | --- | --- |
 | A system engine | The socket of the engine belongs to the administrator | The administrator of the machine. The daemon has no right to use Docker and is in no group that has it (R-226) | The right of the administrator of the machine |
-| An engine of a user (Docker Desktop on a Mac, a rootless Docker) | The socket of the engine belongs to a user | That user, as a second unit beside the daemon. It never runs as the administrator there (R-241) | The right of that user over the engine and over what the engine can reach. Each program of that user holds it with no Anima |
+| An engine of a user (Docker Desktop on a Mac, a rootless Docker) | The socket of the engine belongs to a user | That user, as a second unit beside the daemon. It never runs as the administrator there (R-246) | The right of that user over the engine and over what the engine can reach. Each program of that user holds it with no Anima |
 
 - On a machine with an engine of a user, the daemon can reach Docker, because it runs as that
   user. The rules of this text there protect against the hub, an API key and an AI agent, whose
   requests reach Docker only through the applications program. They do not protect against a
-  different program of that user, to which Anima gives nothing that it did not have (R-241).
+  different program of that user, to which Anima gives nothing that it did not have (R-246).
 - The applications program talks to one engine: the socket at one path that the administrator set
   when he set "Manage applications" on. It gives that path to each `docker` command as an
   argument.
@@ -307,7 +307,7 @@ the code of a refusal; the digest of each image that was started; the counts of 
 For `container_follow`: the container and the time, never a line. The applications program writes
 this log where the daemon and the hub cannot change it."
 
-**Section 13.** Point W1-P6 is decided (R-226, R-241): the applications program.
+**Section 13.** Point W1-P6 is decided (R-226, R-246): the applications program.
 
 ### 4.4 Which containers and projects a type reaches
 

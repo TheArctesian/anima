@@ -791,7 +791,7 @@ Requirements: task H14; the text of the container work types, version 3 of the p
 - Who: each program of the user of the daemon.
 - Change: "The applications program runs `docker` and its Compose plug-in only at paths that are fixed in the program. It refuses to start when one of them, or a folder above, can be written by a user other than the administrator. Where the engine or its command line belongs to a user (Docker Desktop, rootless), the applications program runs as that user and not as the administrator, and this version gives such a machine no container work until task H30 is accepted by a ruling."
 
-State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-237 (2026-11-19): not accepted. Version 0.4 waits for the design of task H30 for a Mac and for a rootless Docker. R-241 (2026-11-19): on a machine whose Docker belongs to a user the applications program runs as that user and never as the administrator, and it refuses to start when a Docker program can be written by a user other than the one it runs as. The third form of the text has this (Section 4.1).
+State: Open. The text is a proposal and no code exists. Found by the second read of 2026-11-19. R-237 (2026-11-19): not accepted. Version 0.4 waits for the design of task H30 for a Mac and for a rootless Docker. R-246 (2026-11-19): on a machine whose Docker belongs to a user the applications program runs as that user and never as the administrator, and it refuses to start when a Docker program can be written by a user other than the one it runs as. The third form of the text has this (Section 4.1).
 
 ### SF-036: Section 4.5: "at any level" with a list of two levels
 

@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: R-196 (2026-11-18) withdraws AIS-009 to AIS-017 (Section 4.12.1) and adds a note at EXT-009. Version 0.3 (2026-11-18). The operator approved the engine items and Projects one at a time, not the plan as one document. On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-5 and E0-6 are on `main` in part since the merge of the branch `engine/e0-5-places` (2026-11-18): their task table says what is built. E0-3, E0-7 after its contract and the other extensions are not on `main`. The operator decided T0 of E0-5 and of E0-6, the contract ruling and the gate on 2026-11-18 (R-144 to R-148). The index of the work items holds the state of each item ([work-items/](../work-items/README.md), "Engine", "Extensions" and "Decisions").
+evidence: Version 0.4 (2026-11-19): R-241 (operator, first-hand, 2026-11-19, 16:24 to 16:36 PT) decides OD-OBS1 to OD-OBS14 and merges the observability suite into Section 4.17 (OBS-001 to OBS-066, not approved; task OB1); the plan has 19 extensions (OD-OBS11). Version 0.5 (2026-11-19): R-242 (first-hand, 16:50 to 17:08 PT) decides OD-OBS7 and OD-OBS15 to OD-OBS20 (Dub for short links, automatic image updates, OD-E6 reversed when the extension works); OD-OBS21 to OD-OBS25 are open (the managed stacks against R-226 to R-238). R-196 (2026-11-18) withdraws AIS-009 to AIS-017 (Section 4.12.1) and adds a note at EXT-009. Version 0.3 (2026-11-18). The operator approved the engine items and Projects one at a time, not the plan as one document. On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-5 and E0-6 are on `main` in part since the merge of the branch `engine/e0-5-places` (2026-11-18): their task table says what is built. E0-3, E0-7 after its contract and the other extensions are not on `main`. The operator decided T0 of E0-5 and of E0-6, the contract ruling and the gate on 2026-11-18 (R-144 to R-148). The index of the work items holds the state of each item ([work-items/](../work-items/README.md), "Engine", "Extensions" and "Decisions").
 ---
 
 # Anima Extensions Plan
@@ -11,10 +11,10 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Extensions plan |
-| Version | 0.3 |
-| Date | 2026-11-18 |
+| Version | 0.4 |
+| Date | 2026-11-19 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: In progress. The operator did not approve the plan as one document: version 0.1 of 2026-11-03 was "For review". The operator approved the engine items and Projects one at a time, and they are built (Section 0). Version 0.2 adds Section 0 and the tasks of E0-5 to E0-7, moves the Bots proposal to its own document, and records OD-E18. It changes no requirement, except the folder name in ENG-012. Version 0.3 records the decisions of 2026-11-18 (R-144 to R-148): it changes FIL-001 and REM-008, decides OD-E1 and OD-E18, and adds OD-E19 and task T6 of E0-5. |
+| Status | The header of this document holds the state (PLN-020). History: In progress. Version 0.4 (2026-11-19) adds Section 4.17, the observability suite (R-241), changes the count of the extensions from 15 to 19 (EXT-009, Section 1.1) and adds XP-17 to XP-20 after XP-02 in XP-005. The operator did not approve the plan as one document: version 0.1 of 2026-11-03 was "For review". The operator approved the engine items and Projects one at a time, and they are built (Section 0). Version 0.2 adds Section 0 and the tasks of E0-5 to E0-7, moves the Bots proposal to its own document, and records OD-E18. It changes no requirement, except the folder name in ENG-012. Version 0.3 records the decisions of 2026-11-18 (R-144 to R-148): it changes FIL-001 and REM-008, decides OD-E1 and OD-E18, and adds OD-E19 and task T6 of E0-5. |
 | Related | [design-spec.md](../spec/design-spec.md), [implementation-plan.md](../archive/phase-1/implementation-plan.md) (Phase 1, done and in the archive; XP-002 uses its task loop) |
 
 This document obeys the writing rules in Section 0 of the design specification.
@@ -45,14 +45,14 @@ Read this section first. It says where the state is and what is next. It holds n
 
 ### 1.1 Purpose
 
-This plan adds 15 extensions to Anima. With the extensions, Anima also keeps a record of the life and work of the operator. The device manager stays the foundation.
+This plan adds 19 extensions to Anima (15 until R-241 added the four of Section 4.17; OD-OBS11). With the extensions, Anima also keeps a record of the life and work of the operator. The device manager stays the foundation.
 
 Anima has three layers. The model is the Obsidian application: a small foundation, and functions that each person sets on or off.
 
 | Layer | Contents | Can be set off |
 | --- | --- | --- |
 | Foundation | The device manager of the design specification (devices, checks, sessions, the VPN, the hub) and the engine of Section 2 | No |
-| Extensions | The 15 extensions of this plan. The Anima project builds them, and they are part of each installation. | Yes, each one (Section 2.8) |
+| Extensions | The 19 extensions of this plan. The Anima project builds them, and they are part of each installation. | Yes, each one (Section 2.8) |
 | Community extensions | Extensions from other people. See EXT-009 and the draft direction in Section 2.8.1. | Yes |
 
 Each hub has one operator (spec Section 1.4). Other people can install their own Anima. Each operator selects the extensions that they want, and a new installation has no extension on (EXT-001). Thus Anima must not need an extension that an operator does not want. (operator, 2026-11-13)
@@ -257,10 +257,11 @@ Map, Wardrobe, Library and Reminders use places. The places domain owns them. Th
 | Secrets | — | Projects |
 | AI coding sessions | — | Projects |
 | Projects | — | Secrets, Model gateway, AI coding sessions, Writing |
+| Status pages, Error tracking, Product analytics, Short links | — | As the table of Section 4.17 (R-241) |
 | All other extensions | — | As their seams in Section 5.4 |
 
 - **EXT-008.** At the first start, the client must ask the operator what Anima must do, and must offer sets of extensions. One set is the developer set: Projects, Secrets, Model gateway and AI coding sessions. The operator can select a set, select single extensions, or select none. The operator can change the selection in Settings at any time.
-- **EXT-009.** Community extensions are a later phase. Do not start them until the 15 extensions of this plan are built. The first function for other people must be a new source (Section 2.1), because a source gives records only and gets only its own token. The hub must not run the code of other people until a design for isolation and permissions is approved. (operator, 2026-11-13)
+- **EXT-009.** Community extensions are a later phase. Do not start them until the 19 extensions of this plan are built (15 until R-241, OD-OBS11: "OD-OBS11: no, they count toward the 15."). The first function for other people must be a new source (Section 2.1), because a source gives records only and gets only its own token. The hub must not run the code of other people until a design for isolation and permissions is approved. (operator, 2026-11-13)
 
   Note (R-196, operator, 2026-11-18; OD-AXT4 and OD-AXT8 of [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md)): the host of agent tools may start before the 15 extensions are built, with three limits. Its catalogue holds only manifests that Anima.ing writes; no code of a tool runs in the hub; and it starts only after the operator approves its isolation and permissions design (Section 8.3 of that proposal). "Agent tools" is one new switch of the registry and is not one of the 15. Community extensions still wait for EXT-009. The requirements of that proposal are not approved.
 
@@ -1051,6 +1052,207 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 
 This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-078; R-196 withdrew BOT-001 to BOT-018 and BOT-025 to BOT-028 and parked BOT-047 to BOT-057). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
 
+### 4.17 Observability suite: status pages, error tracking, product analytics and short links (R-241)
+
+**Direction.** R-241 (operator, first-hand, 2026-11-19, 16:24 to 16:36 PT) decides OD-OBS1 to OD-OBS14 (Section 7). R-242 (operator, first-hand, 2026-11-19, 16:50 to 17:08 PT) decides OD-OBS7 and OD-OBS15 to OD-OBS20; OD-OBS21 to OD-OBS25 are open. The requirements OBS-001 to OBS-066 of this section (with gaps between the groups) are not approved: that is task OB1. No task may start before OB1, and R-144 holds them until the acceptance run WP-53 (OD-OBS13). Row 4.23 of [priorities.md](../plan/priorities.md) is the parent (tier 3; OD-OBS5). The mockup is [mockup/observability-suite/index.html](../mockup/observability-suite/index.html).
+
+**Purpose.** Give the operator, inside Anima.ing, the tools that a public post of the founder of Coolify (2026-11-19, https://x.com/heyandras/status/2123390206464209146) listed as one program: a public status page, error tracking, product analytics and short links. Uptime checks are not new: they stay CHK-001 to CHK-014 and NOT-001 to NOT-008 in the design specification. The four parts are four extensions, each off by default, and the operator selects which to run (OD-OBS1, OD-OBS2, OD-OBS4). They count toward the extensions of this plan (OD-OBS11): this plan now has 19 extensions.
+
+**Interpretation of the Planner (not words of the operator).** For product analytics and error tracking the operator said: "Everything in this entire extension, and it should just be Post Hog. Post Hog is like industry standard, it's the best. It also has an open source version." and "the thought for this entire thing is that you probably have the space available on another machine to run it. Or you can spin up a VM to run it". The Planner reads this as follows. Product analytics and error tracking use the open-source PostHog, self-hosted, as a stack of containers. The hub selects a machine of the operator with space, or a VM that Anima.ing provisions ([cloud-machines.md](../proposals/cloud-machines.md), CVM, a draft), and installs the stack there. The hub and the daemon manage the stack; they do not hold it in their own program. The MCP layer and the hub send each call to the machine that runs the stack ("if this machine is not the right machine to run it, then the other machine is the right machine to run it"). [NEEDS CLARIFICATION: OD-OBS16. The operator also said "In theory, this is all embedded inside either the hub app, like the installed hub app, or everything else" and chose "inside the hub and daemon ... no separate binary" (OD-OBS4). The PostHog stack is ClickHouse, Kafka, Postgres, Redis and more, and needs about 4 vCPU and 16 GB of memory, so it cannot be inside the hub program.]
+
+| Extension | Key | Work package | Data class | Needs | Works with |
+| --- | --- | --- | --- | --- | --- |
+| Status pages | `status_pages` | XP-17 | C (the operator publishes it) | — | Projects, Short links |
+| Error tracking | `errors` | XP-18 | B | — | Projects, Product analytics |
+| Product analytics | `analytics` | XP-19 | B | — | Projects, Error tracking, Short links |
+| Short links | `short_links` | XP-20 | C | — | Product analytics, Projects |
+
+#### 4.17.1 Common rules
+
+- **OBS-001.** Each of the four is one entry of the extension registry, off by default (EXT-001). The registry has 19 entries; the code type `static REGISTRY: [Entry; 15]` in `crates/hub/src/engine/extensions/registry.rs` changes to 19 (task OB3; K-E7).
+- **OBS-002.** The foundation must not read a table of these extensions (EXT-005). Status pages read check state and the day aggregates (DB-008, DB-009, CHK-011) through the read functions of the checks domain only.
+- **OBS-003.** Migrations use 3600 to 3699 (status pages), 3700 to 3799 (error tracking), 3800 to 3899 (product analytics) and 3900 to 3999 (short links). [NEEDS CLARIFICATION: confirm in task OB2 that no open branch takes these ranges.]
+- **OBS-004.** No new program of Anima.ing runs for these extensions (OD-OBS4). The hub and the daemon manage the containers of the PostHog stack and of the Dub stack on a machine with room; they do not hold them in their own program (R-242, OD-OBS16).
+- **OBS-008.** The stacks obey the rules of the container work types (R-226 to R-238; [hosted-applications-stage-2.md](../proposals/hosted-applications-stage-2.md) Section 4): (a) only the applications program talks to Docker; the daemon gives it each item (R-226); (b) each stack is an entry of the tested catalogue of Anima.ing (OD-HOST-11, R-215) that names each image by a digest (R-233); (c) the final file must pass the profile `contained` (R-228) [NEEDS CLARIFICATION: OD-OBS21; the Compose files of PostHog and Dub as published do not pass]; (d) each port is on `127.0.0.1` (R-229), and the hub reaches it [NEEDS CLARIFICATION: OD-OBS22]; (e) nothing installs before the design of task H30 is approved and the types are version 0.4 of contract K10 (R-237); (f) an API key or an MCP tool may ask for the install of these entries, because they are entries of the tested catalogue, but not for an update from a file of its own (R-234 on `dev`).
+- **OBS-005.** Each stored text and each forwarded event goes through the shared redaction crate first (LOG-007, RED-002).
+- **OBS-006.** Setting an extension off keeps its data, and "Delete data" removes it (EXT-003). Setting `status_pages` or `short_links` off removes its routes from the public path at once.
+- **OBS-007.** Status pages, error tracking, product analytics and short links are built together, in the same waves (OD-OBS3, Section 4.17.9).
+
+#### 4.17.2 Status pages (XP-17)
+
+- **OBS-010.** The operator can make a status page with a title, an optional short text, an address name (slug) and an ordered list of components. A component is one check or one check of the type Group (design specification Section 6.4), with a display name that the operator writes.
+- **OBS-011.** For each component the page shows the current state (Operational, Degraded, Down, Maintenance, No data) and 90 daily bars from the day aggregates. A maintenance window (design specification Section 6.5) shows as Maintenance and does not count as down time. A time with no beat, or when the hub slept, shows as No data and never as up.
+- **OBS-012.** The page must not show an address, a host name, a port, a device name, a hub name or a check target. It shows only the display names that the operator writes. The hub refuses a display name or incident text that looks like an IP address, a host name with a dot, or a URL, and names the field.
+- **OBS-013.** The hub serves the page on the public path (Section 4.17.6, OD-OBS8): HTML, `status.json`, and an SVG badge for each component and for the page. The page loads nothing from another origin, sets no cookie and has no analytics script.
+- **OBS-014.** The hub renders the page from a snapshot that the status domain writes at each state change and at least each minute. The public path reads only the snapshot, never the checks or the database.
+- **OBS-015.** Incidents. The operator writes an incident with a title, the components it affects, a state (Investigating, Identified, Monitoring, Resolved) and dated updates. When a component goes Down, the client can offer a draft. The hub never publishes an incident that the operator did not write or confirm. The page keeps 90 days of incidents.
+- **OBS-016.** Each change of a page, of an incident and of the public path is in the audit log (LOG-012 to LOG-020) with the actor kind.
+
+#### 4.17.3 Error tracking (XP-18)
+
+- **OBS-020.** Error tracking uses the error tracking of the PostHog stack of Section 4.17.4 (OD-OBS6). Anima.ing does not write a second error store. [NEEDS CLARIFICATION: task OB0 checks that the self-hosted PostHog has error tracking on its free features; PostHog says "All paid-plan features are Cloud-only".]
+- **OBS-021.** Sources: (a) the PostHog SDKs in the operator's programs, which send to the public error intake of the hub (OD-OBS10, OBS-062); (b) the lines of a container log at level error or fatal, on the path of HOST-001; (c) a restart loop (CHK-014). The hub sends (b) and (c) to the stack as exception events, with the device and the program.
+- **OBS-022.** The hub forwards an event to the stack over the private network only. The stack is never public.
+- **OBS-023.** The hub sends a notification (NOT-003 channels) for a new issue and for a resolved issue that occurs again, at most one for each issue in each hour. It reads the issues from the API of the stack.
+- **OBS-024.** The Errors page of the client lists the issues from the API of the stack, with a link to the device, the log lines (HOST-001, HOST-015) and the page of the issue in PostHog. [NEEDS CLARIFICATION: a list in Anima.ing, or only a link to the PostHog interface. Recommendation: a list, so that MCP can read it.]
+- **OBS-025.** An error is not a check. It does not change the state of a check or the uptime.
+
+#### 4.17.4 Product analytics and the PostHog stack (XP-19)
+
+- **OBS-030.** Product analytics is the open-source PostHog, self-hosted (OD-OBS6). The code outside its `ee/` folder is under the MIT licence (the PostHog `LICENSE` file, read 2026-11-19). The stack is the Docker Compose deployment of PostHog ("hobby"); PostHog says that self-hosted deployments are "officially unsupported" and have no tagged releases.
+- **OBS-031.** One stack serves error tracking and product analytics. The hub installs it when the operator sets the first of the two extensions on, and removes it, after a confirmation, when the second is set off and the operator asks to delete the data.
+- **OBS-032.** Placement. The hub proposes a machine that has Docker and the free room that PostHog names (about 4 vCPU, 16 GB of memory and more than 30 GB of disk, PostHog self-host page, read 2026-11-19), from the metrics of each machine (MET). The operator confirms the machine. If no machine has room, the client offers a VM that Anima.ing provisions (CVM; [NEEDS CLARIFICATION: CVM-001 to CVM-024 are a draft]).
+- **OBS-033.** The hub installs and updates the stack as an entry of the tested catalogue, through the container work types `application_apply` and `application_back` (OBS-008; hosted applications stage 2). The stack is a check group: one check for each container, and an HTTP check of its web service.
+- **OBS-034.** The images of the PostHog and Dub stacks update automatically (R-242, OD-OBS20: "automatically."; against the recommendation). How the digest of R-233 moves is open [NEEDS CLARIFICATION: OD-OBS23]. The guardrails of OBS-050 to OBS-055 apply to each automatic update.
+- **OBS-035.** The operator opens the PostHog interface in the client through the tunnel of the hub (as a web interface of the device), not from the public internet.
+- **OBS-036.** The Projects extension reads analytics from this stack as from PostHog (PRJ-009), with its base address. Anima.ing moves its own product analytics from PostHog Cloud to this extension once the extension works, that is when the human checks of task OB18 are Passed; OD-E6 is reversed then, not before (R-242, OD-OBS15). `www.anima.ing` and `docs.anima.ing` keep Vercel Web Analytics; SITE-008 and OD-21 do not change (OD-OBS7).
+- **OBS-037.** Events from the operator's websites reach the stack only through the public intake of the hub (R-242, OD-OBS18). The intake accepts analytics events as well as errors (OBS-062).
+- **OBS-050.** Before each automatic update, the hub makes a copy of the volumes of the stack [NEEDS CLARIFICATION: where the copy goes before the copy of stage 3 (HOST-042) exists; R-238 says that the setting "The hub may delete volumes" does not protect data. Recommendation: a copy on the same machine, kept until the next update passes].
+- **OBS-051.** After each automatic update, the hub runs the check group of the stack (OBS-033) [NEEDS CLARIFICATION: the time to wait and the checks that count; recommendation: all containers Up and the HTTP check Up within 10 minutes].
+- **OBS-052.** When the check of OBS-051 fails, the hub goes back to the earlier digest with `application_back` and restores the copy of OBS-050 when the update changed the data (a migration of ClickHouse or Postgres) [NEEDS CLARIFICATION: a migration can be one-way; task OB0 tests a way back].
+- **OBS-053.** Each automatic update writes one entry in the audit log: the stack, the machine, the earlier and the new digest, the result, and a way back if one ran (LOG-012 to LOG-020) [NEEDS CLARIFICATION: the actor kind of an update that no person asked for; OD-OBS25].
+- **OBS-054.** A failed update and a way back each send one notification (NOT-003).
+- **OBS-055.** The operator can stop automatic updates for one stack. The default is on (R-242).
+- **OBS-038.** Routing. A call of the command line or of an MCP tool for errors or analytics goes to the hub, and the hub sends it to the machine that runs the stack. The caller does not need to know the machine.
+
+#### 4.17.5 Short links (XP-20)
+
+- **OBS-040.** The operator can make a short link: a code and a target address. The code is 4 to 64 characters of `a-z`, `0-9` and `-`. The target is an `https` or `http` address.
+- **OBS-041.** The hub answers `GET /l/<code>` on the public path with a redirect (302) to the target. An unknown code gives 404 with no text.
+- **OBS-042.** Only the operator makes a link (the client, the command line, or MCP with approval). The public path never makes or changes a link.
+- **OBS-043.** When Product analytics is on, each redirect sends one event to the PostHog stack: the code, the time, the referrer domain, the country and the device class. The hub stores no IP address and no full user agent.
+- **OBS-044.** A link can have an end date and can be paused. A paused or ended link gives 404.
+- **OBS-045.** Short links run Dub, self-hosted, as a stack that the hub manages as it manages PostHog (R-242, OD-OBS17: "run Dub, managed by the hub like PostHog."): placement as OBS-032, the rules of OBS-008, automatic updates as OBS-034 and OBS-050 to OBS-055. Anima.ing writes no engine of its own. Dub holds the links; the public path forwards `GET /l/<code>` to the redirect of Dub, and the client, the command line and MCP make links through the API of Dub by the hub. OBS-040 to OBS-044 and OBS-046 are rules of the hub for these calls. Dub's code is AGPLv3 [NEEDS CLARIFICATION: OD-OBS24; Dub's settings name hosted services: MySQL (PlanetScale), Upstash Redis, Upstash QStash and Tinybird, from `apps/web/.env.example`, read 2026-11-19].
+- **OBS-046.** The hub refuses a target that is the address of the hub, of a device or of a private network (NET-001), so that a link does not expose a private address.
+
+#### 4.17.6 The public path of the hub (OD-OBS8, OD-OBS10)
+
+R-241 changes SEC-008, NET-003, DNS-005, SITE-006 (design specification) and HMD-011 ([hosted-mode.md](../proposals/hosted-mode.md)) to permit one public path. These requirements are not approved, so the exception has no effect until OB1 approves them and task OB17, the security review, passes.
+
+- **OBS-060.** The public path is off by default. It is on only while `status_pages`, `short_links`, or the intake of `errors` or `analytics` is on and the operator sets "Public path" on.
+- **OBS-061.** It is a second listener of the hub on one public port with TLS, on its own name (not `hub.anima.ing`; DNS-005). It serves only these routes: `GET /s/<slug>` and its files (OBS-013), `GET /l/<code>` (OBS-041), and `POST /i/<project>/...` (OBS-062). Each other request gets 404 with no text.
+- **OBS-062.** The intake accepts the capture and exception requests of the PostHog SDKs for each project that the operator adds. Each project has a key; a request with no valid key gets 401. A body is at most 64 KiB, and each key has at most 100 requests each second and each sender address at most 20 [NEEDS CLARIFICATION: the limits are recommendations; task OB0]. The intake redacts (OBS-005) and puts the event on a bounded queue that the forwarder sends to the stack.
+- **OBS-063.** The public listener has no route to the API, the GraphQL, the tunnels, the sign-in, the sessions or the files. It holds no session and no credential. It reads only the snapshot of status pages, the table of links and the project keys.
+- **OBS-064.** The hub writes an event for each refused request class (counts each minute, not each request) and shows the counts in the client.
+- **OBS-065.** On a hosted hub, the public path goes through the relay and the hub has no other public port (R-242, OD-OBS19). When a free hosted hub sleeps (HM-R6), the relay answers 503 with "Status not available" and does not wake the hub.
+- **OBS-066.** The public path must not ship before the security review of task OB17 passes with no open finding of severity high.
+
+#### 4.17.7 Interfaces (CMD-030 order)
+
+1. Hub GraphQL: status pages, incidents, the public path setting, the intake projects and keys, the links, the errors and analytics reads, and the placement of the stack.
+2. Command line: `anima status-page`, `anima incident`, `anima errors`, `anima analytics`, `anima links`, `anima public-path`.
+3. MCP: read tools for each; a change tool (publish an incident, make a link, set the public path) follows the MCP permissions (MCP-014 to MCP-025) and has its JSON-RPC test (MCP-017). The hub routes each call (OBS-038).
+4. Client: the Status pages, Errors, Analytics and Links pages, and the placement dialog (the mockup).
+
+#### 4.17.8 Reviews
+
+**Scope.** All four parts are in (OD-OBS1, OD-OBS2). Effort: L or larger for the four together (an estimate, not verified). Out: a separate binary, session recording, feature flags, surveys, alerts by phone call, on-call schedules, the "fix with an agent" idea, and a public link maker.
+
+**Design scores (0 to 10).** Clarity of the status page 8; honesty (No data, a sleeping hub) 8; privacy of the operator on public pages 7; effort to start PostHog (placement) 6, a 10 needs a one-click VM; same look as the product 8; control (nothing public without the operator) 8.
+
+**Engineering.** Types: `StatusPage`, `Component { check_id, display_name: DisplayName }` (refuses an address at construction), `Incident`, `StatusSnapshot`; `PublicRoute` (a closed enum of the routes of OBS-061); `IntakeProject { key_hash }`; `ShortLink { code: LinkCode, target: PublicUrl }`; `StackPlacement { device_id, state }`. Contracts: K-E7 (19 entries), K3 (the new domains), the schema, and the text of the public path; K8 does not change because the SDK events arrive at the hub, not at the daemon. Failure modes: the stack machine is down (the intake queue holds 24 hours, then drops the oldest and counts); a flood (the limits of OBS-062); an open redirect (OBS-042, OBS-046); a leak of a private name (OBS-012); a sleeping hosted hub (OBS-065); an update of PostHog that breaks (OBS-034). Trust boundaries: a visitor and the public listener; an SDK and the intake (the key); the hub and the stack (the private network); the operator and the placement. Tests: the route enum refuses each other path; `DisplayName` and `PublicUrl` refusals; the rate limits; the snapshot has no address; the forwarder retries. Blast radius: SEC-008, NET-003, DNS-005, SITE-006, HMD-011, EXT-009, XP-004, XP-005, the registry size, K-E7.
+
+#### 4.17.9 Tasks
+
+One pull request for each task. All tasks are Not started; none starts before OB1 and WP-53 (R-144). Status pages, error tracking, product analytics and short links are built in the same waves (OD-OBS3).
+
+| Task | Wave | Content | Needs | State | Commits |
+| --- | --- | --- | --- | --- | --- |
+| OB0 | 0 | A record in `docs/research/`: the PostHog Compose stack on a test machine (resources, a run with no public domain behind the hub, error tracking on the free features, the capture endpoints); the PostHog and Dub files in the profile `contained` (OD-OBS21); Dub with no hosted service (OD-OBS24); an update and a way back across a migration (OBS-052) | — | Not started | — |
+| OB1 | 1 | The operator approves OBS-001 to OBS-066 and decides OD-OBS21 to OD-OBS25 | The operator | Not started | — |
+| OB2 | 1 | Docs and contracts: K-E7 (19 entries), K3, the schema, the public path text | OB1 | Not started | — |
+| OB3 | 2 | Hub: four registry entries, `REGISTRY: [Entry; 19]`, switches, migrations | OB2 | Not started | — |
+| OB4 | 2 | Hub: the public listener, the closed route enum, TLS, limits, counts (security) | OB2 | Not started | — |
+| OB5 | 3 | Hub: status pages, incidents, the snapshot, `DisplayName`, the public render and badges | OB3, OB4 | Not started | — |
+| OB6 | 3 | Hub and daemon: the placement of the PostHog stack, its catalogue entry by digest and its install through the container work types (OBS-008), its check group | OB3; the container work types as version 0.4 of K10 and task H30 (R-237); H31 | Not started | — |
+| OB7 | 3 | Hub: the intake projects, keys, the queue and the forwarder to the stack (security) | OB4, OB6 | Not started | — |
+| OB8 | 3 | Hub: the error sources of OBS-021 (b), (c); notifications of new and recurring issues | OB6 | Not started | — |
+| OB9 | 3 | Hub: analytics reads from the stack; Projects reads its base address (OBS-036) | OB6 | Not started | — |
+| OB10 | 3 | Hub: the Dub stack (placement and catalogue entry as OB6), the forward of `GET /l/<code>` to Dub, the refusals of OBS-046, the click events | OB3, OB4, OB6 | Not started | — |
+| OB11 | 4 | Command line: `status-page`, `incident`, `errors`, `analytics`, `links`, `public-path` | OB5, OB7 to OB10 | Not started | — |
+| OB12 | 4 | MCP: the read tools and the change tools with permissions; routing of OBS-038 | OB11 | Not started | — |
+| OB13 | 5 | Client: the four pages, the placement dialog, the public path setting; the mockup compared | OB11 | Not started | — |
+| OB14 | 4 | The VM path for the stack (CVM), only after CVM is approved | OB6; CVM | Not started | — |
+| OB15 | 1 | Docs: the code change list for `REGISTRY` and XP-004 checked against the code at OB3 | OB2 | Not started | — |
+| OB16 | 5 | The privacy page of the docs lists the public path and the stack (UDOC-040 to UDOC-044) | OB13 | Not started | — |
+| OB17 | 6 | The security review of the public path, the intake, the redirects and the stack exposure; entries in `need-human-testing.md`. The public path does not ship before it passes | OB4, OB5, OB7, OB10 | Not started | — |
+| OB19 | 3 | Hub: automatic updates of the PostHog and Dub stacks with the guardrails OBS-050 to OBS-055 | OB6, OB10; OD-OBS23, OD-OBS25 | Not started | — |
+| OB18 | 7 | Human checks: a real outage on the public page; a real error from an SDK in PostHog; a short link and its click; a stack on a second machine | OB17 | Not started | — |
+
+| Task | Pass or fail | Check commands | Out of scope |
+| --- | --- | --- | --- |
+| OB0 | Pass when the record gives the measured resources, the run behind the hub, the error tracking result and the engine choice; fail otherwise | `bun run quality:documents` | Code |
+| OB1, OB2, OB15 | Pass when the ruling or the documents exist and the gates pass; fail otherwise | `bun run quality:register`, `bun run quality:documents` | Code |
+| OB3 | Pass when the four switches are off by default, the foundation tests pass with all off, and the registry test lists 19 entries; fail otherwise | `cargo nextest run -p anima-hub engine::extensions`, `bun run gates` | Pages |
+| OB4 | Pass when each path outside OBS-061 gets 404, the limits hold under a load test, and the listener has no route to the API (test); fail otherwise | `cargo nextest run -p anima-hub public_path` | Routes of other tasks |
+| OB5 | Pass when the snapshot has no address (test), the bars match the aggregates with maintenance, and No data shows for a gap; fail otherwise | `cargo nextest run -p anima-hub status_pages` | — |
+| OB6 | Pass when the hub proposes a machine from metrics, installs the stack by the digest of its catalogue entry on a test machine, and its checks are Up; fail otherwise | `cargo nextest run -p anima-hub observability`, the human check of OB18 | The VM path |
+| OB7 | Pass when a request with no key gets 401, a large body is refused, an event reaches the stack, and a fixture secret is redacted; fail otherwise | `cargo nextest run -p anima-hub intake` | SDKs other than PostHog |
+| OB8, OB9 | Pass when fixture logs make issues in a test stack and one notification each hour, and Projects shows analytics from the stack; fail otherwise | `cargo nextest run -p anima-hub observability` | — |
+| OB10 | Pass when a link of Dub redirects through the public path, a paused link gives 404, and a private target is refused; fail otherwise | `cargo nextest run -p anima-hub short_links` | Public link making |
+| OB19 | Pass when a test update with a broken image goes back to the earlier digest, the copy is restored, and one audit entry and one notification exist; fail otherwise | `cargo nextest run -p anima-hub observability`, the human check of OB18 | Other catalogue entries |
+| OB11, OB12 | Pass when the commands follow the output rules and the MCP tools pass their JSON-RPC tests; fail otherwise | `cargo nextest run -p anima-cli` | — |
+| OB13 | Pass when the pages match the mockup at 1040 px, light and dark, and the mockup row names the commit; fail otherwise | `bun run --cwd apps/client test`, `bun run gates` | — |
+| OB14 | Pass when a VM is made, the stack runs on it and is removed with it; fail otherwise | The human check | — |
+| OB16 | Pass when the privacy page lists each connection; fail otherwise | `bun run --cwd apps/docs build` | — |
+| OB17 | Pass when no finding of severity high is open and the `HT-nnn` entries exist; fail otherwise | `bun run quality:documents` | — |
+| OB18 | Pass when the operator sets the entries to Passed; fail otherwise | — | — |
+
+Rules for each task:
+
+- Always: work in a worktree from `origin/dev` and merge to `dev`; claim the task (PLN-022); run `bun run quality:register` and `bun run quality:documents` before each commit; keep CMD-030 order; write "Not verified" for a step that you did not run.
+- Ask first: a frozen contract change; a DNS record or a public port; a new outbound connection; a VM that costs money; a change of the guardrails of automatic updates (OBS-050 to OBS-055).
+- Never: a public route other than OBS-061; the PostHog stack on the public internet; an address or a device name on a public page; a link made from the public path; a stored secret; a fact of the business vault.
+
+Prompt for each task: "Follow AGENTS.md 'Start of a session'. Claim and build task OBn of docs/plans/extensions-plan.md Section 4.17. Read Sections 2.8 and 4.17 first. Build only what the row of OBn says. Run the check commands of the row, then bun run quality:documents and bun run gates."
+
+#### 4.17.10 Not verified
+
+- That the self-hosted PostHog gives error tracking with its free features, and how its capture endpoints behave behind the hub (OB0).
+- That the PostHog stack runs with no public domain and no LetsEncrypt certificate (its install asks for a domain and an `A` record).
+- The resource numbers of OBS-032: they are PostHog's text, not a measurement.
+- The limits of OBS-062 and the size of the queue.
+- That the relay of `anima-link` can carry a public route (OBS-065).
+- That HOST-003 (stage 2) and CVM will exist when OB6 and OB14 start.
+- That PostHog and Dub can run in the profile `contained`. The published PostHog file (`docker-compose.hobby.yml`, read 2026-11-19) uses `extends` with a file, bind mounts of relative paths, `ulimits`, ports 80 and 443, and image tags such as `master` and `latest`; each of these is refused by Section 4.5 of the stage 2 proposal or R-233 as written.
+- That Dub runs with no hosted service.
+- That a way back works after a migration of the PostHog data.
+- The effort of the four parts.
+- What the Coolify product will be.
+
+### 4.18 Arcane, hosted as it is (R-245)
+
+**Direction.** R-245 (operator, first-hand, 2026-11-19, 17:08 to 17:12 PT) decides Arcane Q1 to Q4; Q5 is open (OD-ARC1). The requirements ARC-001 to ARC-012 are not approved: that is task AR1. The research is the vault gap report "Arcane" (Arcane `getarcaneapp/arcane`, commit `b154ae6`, read 2026-11-19). Arcane is BSD 3-Clause, a Go server with a SvelteKit client and SQLite, on port 3552; it talks to one Docker API for each environment, and it reaches other machines through its own agents, which dial out to the manager over one gRPC stream (fallback WebSocket). This follows the principle of the operator: "the whole goal of everything is to be able to support other open source applications".
+
+- **ARC-001.** Arcane is an optional extension, off by default (EXT-001). Anima.ing hosts it as it is: no fork, no private patch, the name and the version as the project writes them (AXT-028 to AXT-035). Stage 1 of [hosted-applications-plan.md](hosted-applications-plan.md) stays Anima.ing's own view of containers (R-245, Q1).
+- **ARC-002.** Stage 2 of hosted applications (container control) is built as planned now (R-245, Q4). Arcane does not replace it; the two are two ways to manage containers, and the operator selects.
+- **ARC-003.** The Arcane manager is an entry of the tested catalogue (OD-HOST-11, R-215), its image named by a digest (R-233), installed through the container work types and the applications program (R-226) on a machine that the operator confirms. Its port is on `127.0.0.1` (R-229). [NEEDS CLARIFICATION: its file mounts the Docker socket, which the profile `contained` refuses (R-228); OD-ARC2.]
+- **ARC-004.** The client opens the Arcane manager in a web pane of the agent tools (AXT-008 to AXT-011, AXT-015): a child web view through the tunnel of the hub, not an iframe. Only the operator opens it (AXT-012).
+- **ARC-005.** Sign-in in the pane is through an Anima.ing OIDC provider (ARC-010). The pane does not ship before that provider ships (R-245, Q3). Arcane's own OIDC client is set to the provider; the local admin of Arcane is turned off after the first sign-in (`ARCANE_DEFAULT_ADMIN_DISABLED`) [NEEDS CLARIFICATION: not verified on a real install; task AR0].
+- **ARC-006.** Other machines are reached through Arcane's own agents (R-245, Q2). An agent is a catalogue entry on each machine that the operator grants. The agent's connection to the manager goes over the network of Anima.ing (an SSH `direct-tcpip` channel of the hub, as AXT-009, or the Anima.ing network address of the manager), never over the public internet. The hub carries the bytes and keeps nothing (AXT-015).
+- **ARC-007.** The agent token and the encryption key of Arcane are secrets of the operator: sealed by the hub, never in a log (LOG-007), never returned by MCP.
+- **ARC-008.** Anima.ing never proxies the raw Docker API through the hub or the daemon. A raw Docker API is the administrator of the machine; it would reverse R-226, SF-003 and SF-018.
+- **ARC-009.** The grant screen of the agent says in a plain sentence: "Arcane's agent controls Docker on this machine, and so can do all on this machine."
+- **ARC-010.** Anima.ing gets an OIDC provider in the hub: discovery, authorization code with PKCE, ID tokens signed by a key of the hub, one client for each hosted tool, the operator's login as the only user source (design specification OD-2). [NEEDS CLARIFICATION: OD-ARC3, the owner of the provider.]
+- **ARC-011.** Arcane actions are not in the `anima` command or in MCP (CMD-030 covers only Anima.ing's own functions). An MCP tool may read the state of the Arcane entry (installed, running), as AXT-019.
+- **ARC-012.** No Arcane agent ships before the security review of task AR6 passes with no open finding of severity high.
+
+| Task | Wave | Content | Needs | State | Commits |
+| --- | --- | --- | --- | --- | --- |
+| AR0 | 0 | A record in `docs/research/`: Arcane manager and one agent on test machines, the agent link through the hub, the OIDC setting, the socket mount against the profile `contained` | — | Not started | — |
+| AR1 | 1 | The operator approves ARC-001 to ARC-012 and decides OD-ARC1 to OD-ARC3 | The operator | Not started | — |
+| AR2 | 2 | The catalogue entries of the Arcane manager and agent by digest (ARC-003, ARC-006) | AR1; the container work types as version 0.4 of K10 and task H30 (R-237) | Not started | — |
+| AR3 | 2 | The agent link over the network of Anima.ing (ARC-006), with the grant of ARC-009 | AR2 | Not started | — |
+| AR4 | 3 | The web pane of the manager (ARC-004), after OI3 | AR2; AX5, AX8; OI3 | Not started | — |
+| AR5 | 3 | The extension switch, the state read for MCP (ARC-011), the attribution | AR2 | Not started | — |
+| AR6 | 4 | The security review: the agent with the socket of Docker (OD-ARC2), the token, the link, the pane; entries in `need-human-testing.md` | AR3, AR4 | Not started | — |
+| AR7 | 5 | Human check: the operator signs in to Arcane with Anima.ing and manages a container on a second machine through an agent | AR6 | Not started | — |
+| OI1 | 1 | The design of the OIDC provider (ARC-010): keys, clients, consent, logout, the hosted hub | AR1; OD-ARC3 | Not started | — |
+| OI2 | 2 | Hub: the provider endpoints and the client records | OI1 | Not started | — |
+| OI3 | 3 | The security review of the provider; client: the list of OIDC clients in Settings | OI2 | Not started | — |
+
+Check commands: AR0, AR1 and OI1 are documents (`bun run quality:register`, `bun run quality:documents`); AR2 to AR5 and OI2 run `cargo nextest run -p anima-hub` and `bun run gates`; AR6 and OI3 pass with no open finding of severity high. Always: a worktree from `origin/dev`, a claim (PLN-022), CMD-030 order for Anima.ing's own functions. Ask first: a public port; a change of the profile `contained`. Never: a fork of Arcane; a raw Docker API through the hub; a secret in a log.
+
 ## 5. Build order: engine first, then one workflow per extension
 
 The extensions start only when the current device manager build is finished: Phase 1 is accepted, `phase-1` is merged into `main`, and the macOS and Linux desktop applications are built.
@@ -1189,12 +1391,16 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | XP-13 | [XP-13](../work-items/extensions/XP-13.md) | Library | 4.14 | `life/belongings/library/` | `routes/library/`, `$lib/library/` | `providers/{open_library,goodreads,letterboxd,kindle}/` | 3300–3399 | — |
 | XP-14 | [XP-14](../work-items/extensions/XP-14.md) | Project design and map | 4.2.1 | `work/projects/design/` | `$lib/projects/design/`, `$lib/projects/map/` | — | 3400–3499 | Needs XP-02 first |
 | XP-15 | none | Model gateway | 4.15 | `fleet/model_gateway/` | `routes/model-gateway/`, `$lib/model-gateway/` | `crates/anima-cli/` | 3500–3599 | security (keys, MGW-005). Needs XP-04 first |
+| XP-17 | none | Status pages | 4.17.2 | `fleet/status_pages/` | `routes/status-pages/`, `$lib/status-pages/` | the public path (`fleet/public_path/`, task OB4) | 3600–3699 | security (public path) |
+| XP-18 | none | Error tracking | 4.17.3 | `fleet/errors/` | `routes/errors/`, `$lib/errors/` | the intake and the forwarder | 3700–3799 | security (public intake) |
+| XP-19 | none | Product analytics | 4.17.4 | `fleet/analytics/` | `routes/analytics/`, `$lib/analytics/` | the PostHog stack placement, `providers/posthog/` (shared with XP-02) | 3800–3899 | — |
+| XP-20 | none | Short links | 4.17.5 | `fleet/short_links/` | `routes/links/`, `$lib/links/` | — | 3900–3999 | security (redirects) |
 
 - **XP-001.** An extension workflow must not change an engine path or a path of a different extension. If it needs an engine change, it stops and reports a contract change request to the operator.
 - **XP-002.** Each workflow uses the task loop of the implementation plan (Section 3.1): plan, build, gate, review, fix. A task with a security tag needs the security reviewer (AGT-004).
 - **XP-003.** Each workflow works in its own worktree on the branch `xp/NN-slug`. It merges into `main` only after the gates pass and the operator confirms.
-- **XP-004.** Only XP-14 and XP-15 depend on a different extension (XP-02 and XP-04). All other workflows can run in any order and at the same time.
-- **XP-005.** Suggested order when the operator runs them one at a time: XP-11, XP-02, XP-01, XP-07, XP-10, XP-13, XP-12, XP-05, XP-08, XP-06, XP-04, XP-15, XP-09, XP-14. Low-risk developer data first; the vault-heavy extensions after the engine has some use.
+- **XP-004.** Only XP-14 and XP-15 depend on a different extension (XP-02 and XP-04). All other workflows can run in any order and at the same time. XP-17 to XP-20 share the public path (task OB4) and XP-18 and XP-19 share the PostHog stack (task OB6) of Section 4.17; they run together (R-241, OD-OBS3).
+- **XP-005.** Suggested order when the operator runs them one at a time: XP-11, XP-02, XP-17 to XP-20 (together; R-241, OD-OBS12), XP-01, XP-07, XP-10, XP-13, XP-12, XP-05, XP-08, XP-06, XP-04, XP-15, XP-09, XP-14. Low-risk developer data first; the vault-heavy extensions after the engine has some use.
 
 ### 5.3 Acceptance criteria for each extension
 
@@ -1264,7 +1470,7 @@ crates/
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org before payment. HSBC HK and Revolut use statement uploads. |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. |
-| OD-E6 | Telemetry for projects | Decided: PostHog and Vercel Web Analytics for analytics, Anima checks for uptime, and the service APIs for deployment state. No custom telemetry endpoint. |
+| OD-E6 | Telemetry for projects | Decided: PostHog and Vercel Web Analytics for analytics, Anima checks for uptime, and the service APIs for deployment state. No custom telemetry endpoint. R-242 (OD-OBS15) reverses this when the PostHog extension of Section 4.17 works (OB18 Passed): Anima.ing's own product analytics then moves to it. Until then it stands. |
 | OD-E7 | Garmin access | Use the Garmin bridge with `python-garminconnect` (Section 4.9.1). Keep FIT and export uploads as the fallback. Accept the risk that Garmin blocks unofficial access. |
 | OD-E8 | Obsidian two-way sync | Read-only in this version (WRT-005). Decide after XP-03. |
 | OD-E9 | People sources | Decided: macOS Contacts, iMessage, Instagram, X and GitHub. Bluesky is not needed. |
@@ -1284,6 +1490,34 @@ crates/
 | OD-E23 | The commands of the operational keys (E0-6 T3). K-E5 Section 2.2 names them `anima key list\|show\|add\|set\|rotate\|revoke\|remove\|grant\|ungrant`, but `anima key` is the noun of the API keys (`key list\|create\|revoke`). Which noun do the operational keys get? And does the answer of `deleteDevice` name the keys that the server had (K-E5 Section 2.1), which is a change of K1? | Not decided. Recommendation: `anima secret` for the operational keys, with the MCP tools `anima_secrets_list` and `anima_secret_show`, and K-E5 Section 2.2 changed to these names; `deleteDevice` keeps its answer, and the audit entry and the event of the removal name the keys (built). |
 | OD-E24 | The Dawarich pull of E0-5 T3 (K-E4 Section 11). K-E4 says that it goes through the source framework with a base address and an API key for each account. The source framework (K-E1) has one acquisition, the GitHub App key, and one fixed API base for each source; and no contract gives the K1 root or the command that connects a Dawarich account. An intake also needs an extension that is on (EXT-002), and `locations` is a part of the engine. Three things to decide: (1) K-E1 gets a second acquisition, a stored API key sent as a bearer, and an API base for each account, which the hub checks with the deny list of the probes before each request (the operator's Dawarich is on a private address of the VPN, so the deny list must permit it); (2) K1 gets `connectDawarich(label, baseUrl, apiKey)` (login or browser token only), with `anima source connect dawarich`; (3) the intake of `locations` runs always, or with a switch. Also: K-E4 Section 13 gets the edge `locations -> access` (`client_addr` only), which the OwnTracks path uses for its audit entry (built). | Not decided. Recommendation: yes to (1) and (2) as written; for (3) a switch `locations` of the engine that is on by default. Until then the operator can use the OwnTracks path (built) or `anima location import` with an export of Dawarich. The options: (a) the recommendation; (b) no pull: Dawarich forwards each point to the OwnTracks path of the hub, which needs no change of K-E1 but gets no history; (c) only `anima location import` for Dawarich. |
 | OD-E25 | K-E4 Section 13 says that each change writes one audit entry and one event. For the OwnTracks path this is one audit entry and one event for each fix that the phone sends (built as the contract says; a fix that the hub already has writes none). In the move mode of the app a fix comes each few seconds, so the event log and the audit chain grow fast and other events are hard to see. | Not decided. Recommendation: (b). The options: (a) keep one entry and one event for each stored fix; (b) no event for a stored fix, and one audit entry for each ingest token and hour with the count of its fixes; (c) no entry and no event for a stored fix: the row has its `received_at` and the ingest token has its `last_used_at`. The entries of an ingest token (made, revoked) and of a read of samples do not change. |
+| OD-OBS1 | Which parts of the observability suite are in scope? | Decided (R-241): "OD-OBS1: all of them, including analytics." Against the recommendation (status pages and error tracking). |
+| OD-OBS2 | Are short links (Dub) out of scope? | Decided (R-241): "OD-OBS2: no, include short links." Against the recommendation. Section 4.17.5. |
+| OD-OBS3 | In what order? | Decided (R-241): "OD-OBS3: build them all together." Against the recommendation (status pages first). |
+| OD-OBS4 | Inside the hub and the daemon as extensions that are off by default, with no separate binary? | Decided (R-241): "OD-OBS4: yes, ship inside the hub and daemon as extensions that are off by default, no separate binary." See OD-OBS16. |
+| OD-OBS5 | Which priority row? | Decided (R-241): "OD-OBS5: new row 4.23 at tier 3." |
+| OD-OBS6 | Product analytics and error tracking: what engine? | Decided (R-241), in the operator's words in the chat (quoted in R-241): open-source PostHog that the operator can switch on, on a machine with room or a VM that Anima.ing makes. The Planner's interpretation is in Section 4.17. OD-E6 for Anima.ing's own analytics is not answered: OD-OBS15. |
+| OD-OBS7 | Do SITE-008 and OD-21 change for a page-view collector? | Decided (R-242): "OD-OBS7: yes, no change to SITE-008 or OD-21." As recommended. |
+| OD-OBS8 | How does a status page reach the public? | Decided (R-241): "OD-OBS8: the hub serves the status page." Against the recommendation (static export). Changes SEC-008, NET-003, DNS-005, SITE-006 and HMD-011 (Section 4.17.6). |
+| OD-OBS9 | Is the first publish target a GitHub repository branch? | Withdrawn: OD-OBS8 makes the hub serve the page, so there is no publish target. |
+| OD-OBS10 | Which error events does the tracker accept? | Decided (R-241): "OD-OBS10: also a public error intake on the hub." Against the recommendation (PostHog SDKs straight to the operator's PostHog, no intake on the hub). Combined with PostHog error tracking: Section 4.17.3, OBS-062 (keys for each project, limits, the security review OB17). |
+| OD-OBS11 | Are the new extensions outside the count of EXT-009? | Decided (R-241): "OD-OBS11: no, they count toward the 15." Against the recommendation. The count is 19. |
+| OD-OBS12 | Where in the order of XP-005? | Decided (R-241): "OD-OBS12: right after XP-02 (Projects)." |
+| OD-OBS13 | Does R-144 hold these extensions until WP-53? | Decided (R-241): "OD-OBS13: yes, R-144 holds these extensions until WP-53." |
+| OD-OBS14 | A separate proposal now, or merged into this plan? | Decided (R-241): "OD-OBS14: no, merge it into extensions-plan.md now." Against the recommendation. The proposal `docs/proposals/observability-suite.md` is deleted; its text is Section 4.17. |
+| OD-OBS15 | Does Anima.ing's own product analytics move from PostHog Cloud to a self-hosted PostHog (a change to OD-E6)? | Decided (R-242): "OD-OBS15: yes, Anima moves its own analytics to the PostHog extension once it works; OD-E6 is reversed then." Against the recommendation. OBS-036. |
+| OD-OBS16 | Do the hub and the daemon manage the stack, rather than hold it in their program? | Decided (R-242): "OD-OBS16: yes, the hub and daemon manage the PostHog containers on a machine with room; no new Anima binary." As recommended. OBS-004, OBS-008. |
+| OD-OBS17 | Short links: an engine in the hub, or Dub run as a stack? | Decided (R-242): "OD-OBS17: run Dub, managed by the hub like PostHog." Against the first recommendation; the Planner changed its recommendation to Dub after the principle of the operator. OBS-045; OD-OBS24 is open. |
+| OD-OBS18 | Does the public intake also accept analytics events from the operator's websites? | Decided (R-242): "OD-OBS18: yes, the public intake also accepts analytics events from websites." As recommended. OBS-037, OBS-062. |
+| OD-OBS19 | On a hosted hub, does the public path go through the relay, with a 503 when a free hub sleeps? | Decided (R-242): "OD-OBS19: yes, the public path goes through the relay and answers 503 while a free hub sleeps." As recommended. OBS-065. |
+| OD-OBS20 | Is the PostHog image pinned by digest and updated only when the operator selects Update? | Decided (R-242): "automatically." Against the recommendation. OBS-034, OBS-050 to OBS-055; OD-OBS23 and OD-OBS25 are open. |
+| OD-OBS21 | The Compose files of PostHog and Dub do not pass the profile `contained` (R-228): `extends`, relative bind mounts, `ulimits`, ports below 1024. How do they run? | Open. Recommendation: Anima.ing writes a catalogue entry for each in the `contained` form (one file, files by `configs` with `content`, ports above 1024 on `127.0.0.1`, digests), and OB0 tests it. Strength: the hub manages it with no change of R-228. Weakness: Anima.ing keeps two large files up to date; if a key such as `ulimits` is needed, the entry waits for a ruling or the owner starts it at the machine and adopts it (R-211, R-228). |
+| OD-OBS22 | With ports on `127.0.0.1` only (R-229), how does the hub reach the stacks (forward events, read the API, forward `/l/<code>`)? | Open. Recommendation: an SSH `direct-tcpip` channel of the hub to the port, as AXT-009. Strength: no port on the network; "Open to the network" stays off. Weakness: each forward goes through the SSH link; the speed of the intake is not measured. |
+| OD-OBS23 | Automatic updates and R-233 (digests in the catalogue): what moves? | Open. Recommendation: Anima.ing moves the digest of the catalogue entry after a test install, and each machine applies the new digest automatically. No machine follows a tag. Strength: R-233 holds; a broken upstream build stops at the test. Weakness: an update reaches machines only after Anima.ing tests it. |
+| OD-OBS24 | Dub names hosted services (PlanetScale, Upstash Redis, QStash, Tinybird). Does Anima.ing run Dub only with local replacements? | Open. Recommendation: yes, only local replacements on the same machine, no account at a third party; OB0 proves it, and if it fails the question comes back. Strength: no data leaves the operator's machines. Weakness: Dub may not support it; not verified. |
+| OD-OBS25 | An automatic update is a request that no person made. HOST-021 and ETH-004 say that Anima updates nothing by itself, and Section 4.14 of the stage 2 proposal names the actors. May the hub schedule update these two catalogue entries? | Open. Recommendation: yes, as a new actor "the hub schedule" for `application_apply` of the PostHog and Dub entries only, with OBS-050 to OBS-055. Strength: R-242 needs it. Weakness: one more exception to ETH-004. |
+| OD-ARC1 | Does the Arcane extension count toward the extensions of EXT-009 (as OD-OBS11)? (yes/no) | Open (skipped on 2026-11-19). Recommendation: yes, the count becomes 20. Strength: one rule for each new extension. Weakness: community extensions wait longer. |
+| OD-ARC2 | The Arcane manager and agent mount the socket of Docker. R-226 says that only the applications program talks to Docker, and R-228 has no profile `full`. How do they run? (one choice: the owner starts them at the machine and adopts them (R-211, R-228); a profile for Arcane only, after a ruling; no agent) | Open. Recommendation: the owner starts them at the machine and adopts them, and the grant says what the agent can do (ARC-009). Strength: no change of R-226 or R-228; the owner of each machine decides at the machine. Weakness: no install by one click; an adopted stack updates as R-232 says. |
+| OD-ARC3 | Which document owns the OIDC provider (ARC-010)? (one choice: the design specification, sign-in of the hub (OD-2); a new proposal; this section) | Open. Recommendation: the design specification, next to OD-2, with the tasks OI1 to OI3 of this section until it moves. Strength: the sign-in of the hub has one owner. Weakness: one move later. |
 
 ## 8. Ideas taken from Auracle and HQ
 
