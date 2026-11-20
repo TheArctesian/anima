@@ -37,7 +37,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (150)
+## 2. Open decisions (157)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -167,6 +167,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
+| OD-RCL1 | The setting "Command lines for agents" at a machine: on or off after the install? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL2 | As which user does a command line run: the isolation of a job (RCL-008), or the user of the daemon (ROU-015 as written)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL3 | Is the command line kept in the audit entry (redacted)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL4 | A session keeps no record of what was done (R-113). Is that accepted for a session that an agent opens? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL5 | Does a command line or a session from the Chat page need the click (CHAT-041), or none (R-244, OD-ROU6)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL6 | Does Anima get a tool with which an agent drives a terminal (RCL-020)? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-RCL7 | Which form is built first? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |
@@ -192,7 +199,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (27)
+## 3. Documents that wait for an approval (28)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -219,6 +226,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
 | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
+| [proposals/routed-command-lines.md](proposals/routed-command-lines.md) | Proposal | Draft |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
