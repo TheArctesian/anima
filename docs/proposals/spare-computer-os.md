@@ -139,7 +139,7 @@ Only the bounded OS1 F1/UEFI-F2 experiment in Section 13 is authorized by R-276.
 | OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Experimental preview built under R-274 | [ISO evidence](../research/spare-computer-os/iso-preview-2026-11-20.md); runtime packaged and installed state tested; full M1 qualification remains open |
 | OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Experimental local UEFI installer built under R-274 | [Offline ISO install test](../research/spare-computer-os/iso-preview-results.json); [Calamares preview](../research/spare-computer-os/gui-preview-2026-11-20.md) built under R-273; fullscreen, network/display controls and separate data drives built under R-272; [combined-image graphical/CLI install and reboot checks passed](../research/spare-computer-os/fullscreen-preview-results.json); the [installed console and automatic enrollment](../research/spare-computer-os/console-preview-2026-11-20.md) are built under R-271; [hardware follow-up and persona evidence](../research/spare-computer-os/hardware-followup-2026-11-20.md) record scaling, installed Wi-Fi backend and rotation corrections; physical qualification, live-account verification and hub-driven pre-install setup remain open; motion work is sequenced in Section 14 |
 | OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
-| OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Not started | M4 record |
+| OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Hosted preview updates built under R-282; other maintenance/recovery capabilities remain unimplemented | [Installed-operation preview and VM update/rollback evidence](../research/spare-computer-os/installed-operation-2026-11-20.md); no M4 acceptance claimed |
 | OS6 | Build backup/restore and bounded cleanup | OS4, OS5 recovery interfaces | Not started | M5 record |
 | OS7 | Maintain hardware evidence and user documentation; qualify preview and stable separately | Start matrix with OS1; preview after M2; stable after M1-M5; named hardware from OD-AOS4 | Not started | Separate preview/stable evidence packets and human-check entries; installation docs with M2, recovery docs with M4 |
 | OS8 | Prepare release manifest and publish approved preview or stable artifacts | Corresponding OS7 evidence packet and separate release authorization for that scope | Not started | Published artifact identity and matching evidence |
@@ -557,3 +557,22 @@ Installed hardware feedback also reported Wi-Fi working in the live installer bu
 ### Installer orientation-panel follow-up
 
 The operator reported that changing orientation can leave the settings panel off-center with Done unreachable. Keep the panel within the current screen's available geometry when rotation or screen changes occur, allow its body to scroll on short displays, and keep Done visible outside the scroll area. Preserve the existing confirmation countdown and automatic orientation rollback. Validate rotation while the panel is open in a disposable VM; physical display and touch behavior remain human checks. The [rotation-panel record](../research/spare-computer-os/rotation-panel-2026-11-20.md) owns the regression evidence and delivery details.
+
+### Current preview follow-up: installed operation
+
+The operator requested one combined build on 2026-11-20: compact sign-in browser,
+provider-neutral copy, visible self-hosted enrollment, completion power actions,
+battery icons in both headers, local telemetry, corrected hub storage reporting,
+and hosted OS updates so subsequent changes do not require reinstalling. This is
+an explicitly authorized continuation of OS3 and an experimental OS5 update slice,
+not completion of the stable release gates. Hosted preview artifacts use a separate
+OS namespace and signing identity; desktop release feeds and `main` stay unchanged.
+The update slice must verify signed metadata and artifact bytes, preserve the last
+bootable system and persistent state, require deliberate activation, and be tested
+on disposable installed VMs before delivery. Existing running installations need a
+bootstrap path; the requested next fresh install carries the updater by default.
+
+The operator also selected `anima-node-xxxx` for installed machine names. Generate
+the four-character suffix once per installation, persist it through reboot and OS
+updates, and show the actual name in the console and new hosted device records.
+Keep the longer enrollment identity separate from this human-readable hostname.
