@@ -3,6 +3,8 @@
   import type { IconName } from '$lib/icons/icons';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { barRow, type Bar, type BarReadings } from '$lib/metrics/bars/bars';
+  import { motionPreference } from '$lib/motion/preference';
+  import { crossFade } from '$lib/motion/roles/transitions';
 
   interface Props {
     readings: BarReadings | null;
@@ -12,6 +14,7 @@
   }
 
   const { readings, source, compact = false }: Props = $props();
+  const preference = motionPreference();
   const row = $derived(barRow(readings, source));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
   const ICONS: Record<Bar['key'], IconName> = {
@@ -28,7 +31,7 @@
 {#if row.kind === 'empty'}
   <span class="none">{row.text}</span>
 {:else}
-  <span class="meters" class:compact>
+  <span class="meters" class:compact class:reduced={preference.reduced}>
     {#each row.bars as bar (bar.key)}
       <span
         class="meter {bar.key}"
@@ -42,7 +45,10 @@
         title={bar.tooltip}
       >
         <span class="word"><Icon name={ICONS[bar.key]} size="sm" />{WORDS[bar.key]}</span>
-        <span class="value">{bar.text}</span>
+        <!-- A new value cross-fades over the old one in one cell; it never counts (MET-008, MOT-008). -->
+        <span class="slot">
+          {#key bar.text}<span class="value" transition:crossFade>{bar.text}</span>{/key}
+        </span>
         <span class="track" aria-hidden="true"><span class="fill" style:--fill={(bar.percent ?? 0) / 100}></span></span>
       </span>
     {/each}
@@ -86,7 +92,12 @@
     color: var(--text-quiet);
   }
 
+  .slot {
+    display: grid;
+  }
+
   .value {
+    grid-area: 1 / 1;
     font-variant-numeric: tabular-nums;
     line-height: var(--leading-tight);
   }
@@ -134,9 +145,8 @@
     background: var(--status-warning);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .fill {
-      transition: none;
-    }
+  /* The OS or the Settings choice (MOT-043): the bar is at its new length at once. */
+  .reduced .fill {
+    transition: none;
   }
 </style>
