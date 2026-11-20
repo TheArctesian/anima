@@ -943,6 +943,10 @@ On the Linux computer: steps 1, 4 and 5 as written. For step 2 run
 `systemctl --user status anima-link.service anima-daemon.service`: both are "active (running)". For
 step 3 run `ls -l ~/.config/anima-daemon/`.
 
+Observation (2026-11-19, 19:50 local time; the orchestrating session on the Mac of the operator, a local build 0.8.17 of the first form of these branches, the application already signed in; not a result of the operator): four minutes after the start the link was still the child of the application, with no socket for the daemon; no unit, no copy in `~/.local/bin`, no daemon, and no line in the log. Cause: the hand-over of the link ran only after a sign-in, and the application was signed in already. Corrected on the branch `hosted/hm-t19-daemon-at-sign-in`: the hand-over also runs at each start, and each step writes a line to the log.
+
+What the log says when it works (`~/Library/Logs/ing.anima.desktop/Anima.log`), in this order: "this hub is a hosted one: a unit of the user will keep the device link"; about 45 seconds later "the device link goes to a unit of the user" and "a unit of the user keeps the device link"; lines "the daemon of this computer: try N of 5: ...", the last of them "installed"; and "the daemon was installed on this computer".
+
 If step 1 shows no numbers after 3 minutes: quit the application, open it again and wait 3 minutes
 more (a start of the application tries once). If there are still none, write here what
 `tail -20 ~/Library/Logs/ing.anima.desktop/*.log` says about the device link and the daemon, and the

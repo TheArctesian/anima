@@ -5,6 +5,7 @@ import type { MetricsSource } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import { linkApi } from '$lib/link/api';
 import { metricsApi } from '$lib/metrics/api';
+import { warnToProcessLog } from '../process-log';
 import { daemonBundled, installDaemon, type DaemonShellProblem, type DaemonShellResult } from './shell';
 
 /** The most devices that are read to find this computer: one page of the hub. */
@@ -35,7 +36,12 @@ export interface DaemonHereParts {
   readonly origin: string;
   /** Waits; a test passes one that does not. Default: a timer. */
   readonly wait?: (milliseconds: number) => Promise<void>;
+  /** Takes one line for the log of the app. Each line is fixed text and a fixed code: never a name, an address or the code. */
+  readonly log?: (line: string) => void;
 }
+
+/** Why this computer was not found among the devices of the hub; a fixed code for the log. */
+type NotFound = 'shell-does-not-read-this-computer' | 'link-list-not-read' | 'not-on-the-link' | 'device-list-not-read' | 'not-a-device-yet';
 
 /**
  * The install can start before it can work: the person is not signed in yet, this computer is not a device of the hub
@@ -56,45 +62,56 @@ export type DaemonHere =
   | { readonly kind: 'not-ready' }
   | { readonly kind: 'failed'; readonly step: 'enrol' | DaemonShellProblem };
 
-/** The device of the hub whose host is the link address of this computer, or `null`. */
-async function deviceHere(parts: DaemonHereParts): Promise<HubDevice | null> {
+/** The device of the hub whose host is the link address of this computer, or why it was not found. */
+async function deviceHere(parts: DaemonHereParts): Promise<HubDevice | NotFound> {
   const computer = await parts.device();
-  if (computer === null) return null;
+  if (computer === null) return 'shell-does-not-read-this-computer';
   const linked = await parts.linkDevices();
-  if (!linked.ok) return null;
+  if (!linked.ok) return 'link-list-not-read';
   const address = linked.value.find((link) => link.name === computer.name)?.address;
-  if (address === undefined || address === '') return null;
+  if (address === undefined || address === '') return 'not-on-the-link';
   const devices = await parts.devices();
-  if (!devices.ok) return null;
+  if (!devices.ok) return 'device-list-not-read';
   const mine = comparable(address);
-  return devices.value.find((device) => comparable(device.host) === mine) ?? null;
+  return devices.value.find((device) => comparable(device.host) === mine) ?? 'not-a-device-yet';
 }
 
 /** One turn: what it did, and whether a later turn of this start can do better. */
 interface Turn {
   readonly did: DaemonHere;
   readonly again: boolean;
+  /** What the log says of this turn. */
+  readonly note: string;
 }
 
 async function turn(parts: DaemonHereParts): Promise<Turn> {
   // Not signed in yet, or this computer is not a device of the hub yet: a later turn finds it. No code is made.
   const device = await deviceHere(parts);
-  if (device === null) return { did: { kind: 'not-ready' }, again: true };
-  if (device.metricsSource === 'DAEMON') return { did: { kind: 'present' }, again: false };
+  if (typeof device === 'string') return { did: { kind: 'not-ready' }, again: true, note: `not ready (${device})` };
+  if (device.metricsSource === 'DAEMON') return { did: { kind: 'present' }, again: false, note: 'the daemon reports already' };
   // The code lives in this turn only: it goes to the shell and nowhere else (LOG-007). The shell checks the address
   // before it uses the code, so a code of a turn that waits for the socket is never used and expires at the hub.
   const made = await parts.enrol(device.id);
-  if (!made.ok) return { did: { kind: 'failed', step: 'enrol' }, again: false };
+  if (!made.ok) return { did: { kind: 'failed', step: 'enrol' }, again: false, note: 'the hub made no enrolment code' };
   const done = await parts.install(made.value.code, parts.origin);
-  if (done.ok) return { did: { kind: 'installed' }, again: false };
-  return { did: { kind: 'failed', step: done.problem }, again: done.problem === 'origin' };
+  if (done.ok) return { did: { kind: 'installed' }, again: false, note: 'installed' };
+  const waiting = done.problem === 'origin';
+  const note = waiting ? 'the link has no socket for the daemon yet' : `the shell did not install it (${done.problem})`;
+  return { did: { kind: 'failed', step: done.problem }, again: waiting, note };
 }
 
 async function install(parts: DaemonHereParts): Promise<DaemonHere> {
-  if (!(await parts.bundled())) return { kind: 'not-ready' };
+  const log = parts.log ?? ((): void => undefined);
+  if (!(await parts.bundled())) {
+    log('the daemon of this computer: this build carries no daemon');
+    return { kind: 'not-ready' };
+  }
   for (let attempt = 1; ; attempt += 1) {
-    const { did, again } = await turn(parts);
-    if (!again || attempt >= TRIES) return did;
+    const { did, again, note } = await turn(parts);
+    const last = !again || attempt >= TRIES;
+    // Each turn is in the log, so that a start that ends with no metrics shows where it stopped.
+    log(`the daemon of this computer: try ${String(attempt)} of ${String(TRIES)}: ${note}${last ? '' : '; it looks again in 30 s'}`);
+    if (last) return did;
     await (parts.wait ?? timer)(WAIT_MS);
   }
 }
@@ -134,6 +151,7 @@ export function installDaemonOnThisComputer(hub: Hub): Promise<DaemonHere> {
     enrol: (deviceId) => metricsApi(hub).enrolDaemon(deviceId),
     install: installDaemon,
     origin: hub.address.origin,
+    log: warnToProcessLog,
   });
 }
 

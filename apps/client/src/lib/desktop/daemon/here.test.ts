@@ -20,7 +20,7 @@ const ORIGIN = 'http://127.0.0.1:41001';
 const ok = <T>(value: T): HubResult<T> => ({ ok: true, value });
 const denied: HubResult<never> = { ok: false, error: { code: 'FORBIDDEN', message: 'x' } satisfies HubError };
 
-type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin' | 'wait'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
+type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin' | 'wait' | 'log'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
 
 /** A hosted hub that lists this Mac with no daemon, and a build that carries the daemon. */
 function parts(answers: Answers = {}) {
@@ -33,6 +33,7 @@ function parts(answers: Answers = {}) {
     install: vi.fn<DaemonHereParts['install']>(() => Promise.resolve(answers.install ?? { ok: true })),
     origin: ORIGIN,
     wait: vi.fn(() => Promise.resolve()),
+    log: vi.fn<(line: string) => void>(),
   };
 }
 
@@ -117,5 +118,29 @@ describe('installDaemonHere while the link has no socket yet (HMD-054)', () => {
     const never = parts({ install: { ok: false, problem: 'origin', message: 'x' } });
     expect(await installDaemonHere(never)).toEqual({ kind: 'failed', step: 'origin' });
     expect(never.install).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe('installDaemonHere writes each turn to the log of the app, with fixed words only', () => {
+  it('says where a start that ended with no daemon stopped, and never the code, a name or an address', async () => {
+    const hub = parts({ install: { ok: false, problem: 'origin', message: 'x' } });
+    hub.devices.mockResolvedValueOnce(denied);
+    await installDaemonHere(hub);
+    const lines = hub.log.mock.calls.map(([line]) => line);
+    expect(lines[0]).toBe('the daemon of this computer: try 1 of 5: not ready (device-list-not-read); it looks again in 30 s');
+    expect(lines[1]).toBe('the daemon of this computer: try 2 of 5: the link has no socket for the daemon yet; it looks again in 30 s');
+    expect(lines.at(-1)).toBe('the daemon of this computer: try 5 of 5: the link has no socket for the daemon yet');
+    const all = lines.join(' ');
+    for (const secret of [CODE, ADDRESS, MAC.name, MAC.computer, ORIGIN]) expect(all).not.toContain(secret);
+  });
+
+  it('says installed, and says when the build carries no daemon', async () => {
+    const hub = parts();
+    await installDaemonHere(hub);
+    expect(hub.log.mock.calls).toEqual([['the daemon of this computer: try 1 of 5: installed']]);
+    forgetDaemonHere();
+    const bare = parts({ bundled: false });
+    await installDaemonHere(bare);
+    expect(bare.log.mock.calls).toEqual([['the daemon of this computer: this build carries no daemon']]);
   });
 });
