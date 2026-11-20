@@ -131,12 +131,17 @@ pub fn is_processors(text: &str) -> bool {
     }
 }
 
-/// A path in a container that a mount may name: absolute, with no `..`, and not `/`.
+/// A path in a container that a mount may name: absolute, not `/`, and each part after a `/`
+/// is a name other than `.` and `..`. Thus it has no `//` and no `/` at its end, and two
+/// texts that are different are two different paths.
 #[must_use]
 pub fn is_target(text: &str) -> bool {
-    text.starts_with('/')
-        && text != "/"
-        && !text.split('/').any(|part| part == "..")
+    let Some(below) = text.strip_prefix('/') else {
+        return false;
+    };
+    below
+        .split('/')
+        .all(|part| !part.is_empty() && part != "." && part != "..")
         && !text.bytes().any(|byte| byte.is_ascii_control())
 }
 

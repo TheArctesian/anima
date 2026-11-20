@@ -108,3 +108,33 @@ fn host_028_a_tmpfs_is_a_path_with_no_option_and_a_network_is_of_this_file() {
         }
     );
 }
+
+#[test]
+fn host_028_a_target_has_one_form_so_that_two_mounts_never_name_one_path() {
+    for target in [
+        "/.",
+        "//",
+        "/data/",
+        "/data//x",
+        "/data/./x",
+        "/./data",
+        "//data",
+    ] {
+        let file = with("target: /data", &format!("target: \"{target}\""));
+        assert_eq!(refusal(&file), app(Rule::MountNotPermitted), "{target}");
+        let tmpfs = with("restart: unless-stopped", &format!("tmpfs: \"{target}\""));
+        assert_eq!(refusal(&tmpfs), app(Rule::MountNotPermitted), "{target}");
+    }
+    // `/config` two times, the second with a different text for the same path.
+    let twice = with("target: /data", "target: /config/");
+    assert_eq!(refusal(&twice), app(Rule::MountNotPermitted));
+    assert!(checked(&with("target: /data", "target: /data/sub.d/x")).is_ok());
+    assert!(checked(&with("restart: unless-stopped", "tmpfs: /")).is_err());
+}
+
+#[test]
+fn host_028_a_name_of_environment_has_no_equals_sign_in_the_map_form() {
+    let file = with("RAILS_ENV: production", "\"RAILS_ENV=a\": production");
+    assert_eq!(refusal(&file), app(Rule::ValueNotPermitted));
+    assert!(checked(&with("RAILS_ENV: production", "RAILS_ENV: a=b")).is_ok());
+}
