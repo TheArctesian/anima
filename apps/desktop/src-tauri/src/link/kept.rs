@@ -7,8 +7,7 @@
 
 use std::{
     ffi::OsString,
-    fs::{self, DirBuilder},
-    os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt},
+    fs,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -25,6 +24,20 @@ use tauri_plugin_log::log;
 use super::copy::{current_copy, destination, earlier_copy, place, same, unplace};
 use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
+#[cfg(unix)]
+use unix::socket_present;
+#[cfg(windows)]
+#[path = "kept/windows.rs"]
+mod windows;
+#[cfg(windows)]
+pub use windows::owns_background;
+#[cfg(windows)]
+use windows::{environment, socket_present};
+#[cfg(unix)]
+#[path = "kept/unix.rs"]
+mod unix;
+#[cfg(unix)]
+pub use unix::{daemon_folder, environment, private_socket};
 
 /// `unit install` runs up to three steps of 30 s each, one of them twice.
 const UNIT_LIMIT: Duration = Duration::from_secs(150);
@@ -50,43 +63,6 @@ pub struct Kept {
 const DAEMON_SOCKET: &str = "link.sock";
 /// The longest path that the link takes for a socket.
 const LONGEST_SOCKET: usize = 100;
-
-/// The folder of the daemon of this user, where the daemon itself looks for it: on macOS
-/// `~/Library/Application Support/anima-daemon`, else `$XDG_CONFIG_HOME/anima-daemon` or
-/// `~/.config/anima-daemon`.
-pub fn daemon_folder(home: &Path, macos: bool, config_home: Option<&Path>) -> PathBuf {
-    if macos {
-        return home.join("Library/Application Support/anima-daemon");
-    }
-    config_home
-        .filter(|folder| folder.is_absolute())
-        .map_or_else(|| home.join(".config"), Path::to_path_buf)
-        .join("anima-daemon")
-}
-
-/// The socket for the daemon in `folder`, once the folder is there and private: it is made
-/// with mode 0700 when it is absent. None when the folder is a link, belongs to a different
-/// user or gives its group or others any access, and when the path is too long for a socket:
-/// the link would refuse it, and the link must still start.
-pub fn private_socket(folder: &Path) -> Option<PathBuf> {
-    let _ = DirBuilder::new().recursive(true).mode(0o700).create(folder);
-    let found = fs::symlink_metadata(folder).ok()?;
-    let private = found.is_dir()
-        && found.uid() == nix::unistd::getuid().as_raw()
-        // No bit of the group or of others: the last two octal digits are zero.
-        && found.mode() % 0o100 == 0;
-    let socket = folder.join(DAEMON_SOCKET);
-    (private && socket.as_os_str().len() <= LONGEST_SOCKET).then_some(socket)
-}
-
-/// What `anima-link unit` may see of the app's environment: the home folder, and on Linux the
-/// folders that name the configuration and the session of the user.
-pub fn environment(read: impl Fn(&str) -> Option<OsString>) -> Vec<(&'static str, OsString)> {
-    ["HOME", "TMPDIR", "XDG_CONFIG_HOME", "XDG_RUNTIME_DIR"]
-        .into_iter()
-        .filter_map(|name| Some((name, read(name).filter(|value| !value.is_empty())?)))
-        .collect()
-}
 
 fn ask(kept: &Kept, args: &[&str], limit: Duration) -> Option<Vec<u8>> {
     let args: Vec<OsString> = args.iter().map(OsString::from).collect();
@@ -171,9 +147,7 @@ impl Kept {
 
     /// Whether the link of the unit made the socket of the daemon.
     fn has_daemon_socket(&self) -> bool {
-        self.daemon_socket.as_deref().is_some_and(|socket| {
-            fs::symlink_metadata(socket).is_ok_and(|found| found.file_type().is_socket())
-        })
+        self.daemon_socket.as_deref().is_some_and(socket_present)
     }
 
     /// Gives the unit the link program of this app when its copy holds different bytes or is
@@ -190,11 +164,19 @@ impl Kept {
             }
             return self;
         }
+        #[cfg(windows)]
+        if self.remove().is_err() {
+            return self;
+        }
         let Ok(placed) = place(carried, application) else {
+            #[cfg(windows)]
+            let _ = self.install();
             return self;
         };
         let moved = self.with_program(placed);
         if moved.install().is_err() {
+            #[cfg(windows)]
+            let _ = self.install();
             return self;
         }
         if self.program != moved.program {
@@ -254,13 +236,22 @@ impl Kept {
 fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
     let application = crate::user_folders::of_this_user().ok_or(LinkError::NoHome)?;
-    let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
-    let daemon = daemon_folder(&home, cfg!(target_os = "macos"), config_home.as_deref());
+    #[cfg(unix)]
+    let daemon_socket = {
+        let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
+        private_socket(&daemon_folder(
+            &home,
+            cfg!(target_os = "macos"),
+            config_home.as_deref(),
+        ))
+    };
+    #[cfg(windows)]
+    let daemon_socket = windows::private_socket();
     Ok(Kept {
         program: current_copy(&application, &home),
         folder: folder.to_path_buf(),
         port,
-        daemon_socket: private_socket(&daemon),
+        daemon_socket,
         env: environment(|name| std::env::var_os(name)),
     })
 }
@@ -315,6 +306,7 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
         program: placed,
         ..at(folder, port).map_err(|_| "no home folder")?
     };
+    #[cfg(unix)]
     if link.daemon_socket.is_none() {
         log::warn!("the folder of the daemon is not a private one: the unit gets no socket for it");
     }

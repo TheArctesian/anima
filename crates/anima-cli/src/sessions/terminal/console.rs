@@ -7,6 +7,7 @@ use std::io::{self, Read as _};
 use std::pin::Pin;
 
 use crossterm::terminal;
+#[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::{mpsc, watch};
 
@@ -75,6 +76,7 @@ pub fn keys() -> mpsc::Receiver<Vec<u8>> {
 #[must_use]
 pub fn sizes(follow: bool) -> watch::Receiver<CellSize> {
     let (sender, receiver) = watch::channel(size());
+    #[cfg(unix)]
     if follow && let Ok(mut changes) = signal(SignalKind::window_change()) {
         tokio::spawn(async move {
             while changes.recv().await.is_some() {
@@ -84,11 +86,24 @@ pub fn sizes(follow: bool) -> watch::Receiver<CellSize> {
             }
         });
     }
+    #[cfg(windows)]
+    if follow {
+        tokio::spawn(async move {
+            let mut tick = tokio::time::interval(std::time::Duration::from_millis(200));
+            loop {
+                tokio::select! {
+                    () = sender.closed() => break,
+                    _ = tick.tick() => { sender.send_if_modified(|before| { let next = size(); let changed = *before != next; *before = next; changed }); }
+                }
+            }
+        });
+    }
     receiver
 }
 
 /// Resolves at the first `SIGINT`, `SIGTERM` or `SIGHUP`, so the session ends cleanly and raw
 /// mode is undone instead of the process dying in it.
+#[cfg(unix)]
 pub fn stop() -> Pin<Box<dyn Future<Output = ()> + Send>> {
     let kinds = (
         signal(SignalKind::interrupt()),
@@ -104,5 +119,20 @@ pub fn stop() -> Pin<Box<dyn Future<Output = ()> + Send>> {
             _ = terminate.recv() => {}
             _ = hangup.recv() => {}
         }
+    })
+}
+
+/// Windows console control events end a remote session before raw mode is restored.
+#[cfg(windows)]
+pub fn stop() -> Pin<Box<dyn Future<Output = ()> + Send>> {
+    Box::pin(async {
+        let (Ok(mut interrupt), Ok(mut close), Ok(mut shutdown)) = (
+            tokio::signal::windows::ctrl_c(),
+            tokio::signal::windows::ctrl_close(),
+            tokio::signal::windows::ctrl_shutdown(),
+        ) else {
+            return std::future::pending().await;
+        };
+        tokio::select! { _ = interrupt.recv() => {}, _ = close.recv() => {}, _ = shutdown.recv() => {} }
     })
 }

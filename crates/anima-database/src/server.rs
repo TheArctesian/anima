@@ -1,20 +1,36 @@
 //! The `postgres` process of one bundled database: one copy at a time, started as a child,
 //! proved ready, watched, and stopped with a fast shutdown.
 
-use std::ffi::OsStr;
+#[cfg(windows)]
+use anima_windows::job::Child;
 use std::fs::{self, File, TryLockError};
 use std::io;
-use std::path::Path;
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::ExitStatus;
+#[cfg(unix)]
+use std::process::{Child, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 
+#[cfg(unix)]
 use nix::sys::signal::{Signal, kill};
+#[cfg(unix)]
 use nix::unistd::Pid;
 
-use crate::{Layout, Program, Tree, owner_only};
+#[cfg(unix)]
+use crate::Program;
+use crate::{Layout, Tree, owner_only};
 
+#[cfg(unix)]
+mod left_over;
 mod pid_file;
-#[cfg(test)]
+#[cfg(all(test, unix))]
+use left_over::is_postgres_on;
+#[cfg(unix)]
+pub use left_over::stop_left_over;
+#[cfg(windows)]
+mod windows;
+#[cfg(windows)]
+pub use windows::stop_left_over;
+#[cfg(all(test, unix))]
 mod tests;
 
 use pid_file::PidFile;
@@ -23,6 +39,7 @@ use pid_file::PidFile;
 const POLL: Duration = Duration::from_millis(10);
 
 /// The least time an immediate shutdown gets before the process is killed.
+#[cfg(unix)]
 const QUIT_LIMIT: Duration = Duration::from_secs(5);
 
 /// How long a dropped server gets for its fast shutdown.
@@ -92,104 +109,6 @@ pub fn lock(layout: &Layout) -> Result<Lock, ServerError> {
     }
 }
 
-/// Stops a server that a killed copy left running on this cluster; `true` when one was there.
-/// The caller holds the [`Lock`], so no other copy starts a server meanwhile.
-///
-/// A signal goes only to this cluster's PostgreSQL server: one that answers on this
-/// database's own socket, or a `postgres` process that was started on this cluster. The
-/// process ID in a stale `postmaster.pid` can belong to any program by now; then the file is
-/// removed, because `postgres` refuses to start while the number in it is a live process of
-/// the same user.
-///
-/// # Errors
-/// When `postmaster.pid` cannot be read, a program cannot run, or a server is there and does
-/// not stop in `limits.stop`.
-pub fn stop_left_over(
-    _lock: &Lock,
-    tree: &Tree,
-    layout: &Layout,
-    limits: Limits,
-) -> Result<bool, ServerError> {
-    let pid_file = layout.cluster().join("postmaster.pid");
-    let text = match fs::read_to_string(&pid_file) {
-        Ok(text) => text,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
-        Err(source) => return Err(io_error("read postmaster.pid")(source)),
-    };
-    if !answers_on_socket(tree, layout)? && !names_this_clusters_server(&text, layout)? {
-        fs::remove_file(&pid_file).map_err(io_error("remove a stale postmaster.pid"))?;
-        return Ok(false);
-    }
-    let stopped = tree
-        .command(Program::PgCtl)
-        .arg("stop")
-        .arg("--pgdata")
-        .arg(layout.cluster())
-        .args(["--mode", "fast", "--wait", "--silent"])
-        .arg("--timeout")
-        .arg(limits.stop.as_secs().max(1).to_string())
-        .status()
-        .map_err(io_error("run pg_ctl"))?;
-    if stopped.success() {
-        Ok(true)
-    } else {
-        Err(ServerError::LeftOverStays)
-    }
-}
-
-fn answers_on_socket(tree: &Tree, layout: &Layout) -> Result<bool, ServerError> {
-    let answer = tree
-        .command(Program::PgIsready)
-        .arg("--host")
-        .arg(layout.socket_folder())
-        .args(["--timeout", "3", "--quiet"])
-        .status()
-        .map_err(io_error("run pg_isready"))?;
-    // 0: accepts connections. 1: answers, and refuses for now (it starts or stops).
-    Ok(matches!(answer.code(), Some(0 | 1)))
-}
-
-/// Whether the process that `postmaster.pid` names is now a `postgres` that was started on
-/// this cluster. Another cluster's server can have the number a dead server left.
-fn names_this_clusters_server(pid_file_text: &str, layout: &Layout) -> Result<bool, ServerError> {
-    let Some(process_id) = pid_file_text
-        .lines()
-        .next()
-        .and_then(|line| line.trim().parse::<u32>().ok())
-    else {
-        return Ok(false);
-    };
-    let output = Command::new("ps")
-        .env_clear()
-        .env("PATH", "/bin:/usr/bin")
-        .args(["-o", "args=", "-p"])
-        .arg(process_id.to_string())
-        .output()
-        .map_err(io_error("run ps"))?;
-    let command_line = String::from_utf8_lossy(&output.stdout);
-    let command_line = command_line.trim();
-    match output.status.code() {
-        // `ps` ends with 1 and prints nothing when no such process is there.
-        Some(1) if command_line.is_empty() => Ok(false),
-        Some(0) => Ok(is_postgres_on(command_line, &layout.cluster())),
-        _ => Err(io_error("run ps")(io::Error::other(format!(
-            "ps ended with {}",
-            output.status
-        )))),
-    }
-}
-
-/// Whether `command_line` is a `postgres` program with `-D <cluster>`, as [`Server::start`]
-/// and `pg_ctl` start it. The cluster's path must end there: `cluster-copy` is another one.
-fn is_postgres_on(command_line: &str, cluster: &Path) -> bool {
-    let flag = format!(" -D {}", cluster.display());
-    let Some((program, after)) = command_line.split_once(&flag) else {
-        return false;
-    };
-    (after.is_empty() || after.starts_with(' '))
-        && Path::new(program.trim()).file_name() == Some(OsStr::new("postgres"))
-}
-
 /// Whether a server of this cluster accepts connections now, read from `postmaster.pid`
 /// with no lock taken, so a look never stands in the way of a copy that starts.
 ///
@@ -201,11 +120,17 @@ pub fn accepts_connections(layout: &Layout) -> Result<bool, ServerError> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
         Err(source) => return Err(io_error("read postmaster.pid")(source)),
     };
-    let process = PidFile::parse(&text)
-        .and_then(PidFile::ready_process)
-        .and_then(|id| i32::try_from(id).ok());
-    // Signal 0 sends nothing and tells if the process is there.
-    Ok(process.is_some_and(|id| kill(Pid::from_raw(id), None).is_ok()))
+    let process = PidFile::parse(&text).and_then(PidFile::ready_process);
+    #[cfg(unix)]
+    return Ok(process
+        .and_then(|id| i32::try_from(id).ok())
+        .is_some_and(|id| kill(Pid::from_raw(id), None).is_ok()));
+    #[cfg(windows)]
+    process
+        .map(anima_windows::process::running)
+        .transpose()
+        .map(|running| running.unwrap_or(false))
+        .map_err(io_error("inspect the server"))
 }
 
 /// How a stop went.
@@ -223,6 +148,12 @@ pub enum Stopped {
 pub struct Server {
     child: Child,
     spawned_at: SystemTime,
+    #[cfg(windows)]
+    tree: Tree,
+    #[cfg(windows)]
+    layout: Layout,
+    #[cfg(windows)]
+    job: Option<anima_windows::job::Job>,
 }
 
 impl Server {
@@ -232,6 +163,7 @@ impl Server {
     ///
     /// # Errors
     /// When the socket folder or the log cannot be prepared, or the program cannot start.
+    #[cfg(unix)]
     pub fn start(
         _lock: &Lock,
         tree: &Tree,
@@ -312,6 +244,7 @@ impl Server {
         self.end(limits.stop)
     }
 
+    #[cfg(unix)]
     fn end(&mut self, limit: Duration) -> Result<Stopped, ServerError> {
         if self.ended()?.is_some() {
             return Ok(Stopped::Clean);
@@ -331,6 +264,7 @@ impl Server {
         Ok(Stopped::Immediate)
     }
 
+    #[cfg(unix)]
     fn ends_within(&mut self, limit: Duration) -> Result<bool, ServerError> {
         let started = Instant::now();
         loop {
@@ -344,6 +278,7 @@ impl Server {
         }
     }
 
+    #[cfg(unix)]
     fn signal(&self, signal: Signal) -> Result<(), ServerError> {
         let pid = i32::try_from(self.process_id()).map_err(|_| ServerError::Io {
             step: "signal the server",
@@ -391,6 +326,17 @@ fn arguments(layout: &Layout, settings: Settings) -> Vec<String> {
         "log_min_messages=log".to_owned(),
         "log_error_verbosity=terse".to_owned(),
     ];
+    #[cfg(windows)]
+    arguments.retain(|argument| {
+        ![
+            "listen_addresses=",
+            "unix_socket_",
+            "port=",
+            "dynamic_shared_memory_type=",
+        ]
+        .iter()
+        .any(|prefix| argument.starts_with(prefix))
+    });
     if settings.flush_through_drive_cache {
         arguments.push("wal_sync_method=fsync_writethrough".to_owned());
     }

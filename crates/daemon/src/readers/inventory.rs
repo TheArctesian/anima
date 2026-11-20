@@ -12,8 +12,12 @@
 //! would offer to install the tools. Nothing a probe prints is logged.
 
 use std::env;
-use std::ffi::{OsStr, OsString};
+#[cfg(unix)]
+use std::ffi::OsStr;
+use std::ffi::OsString;
+#[cfg(unix)]
 use std::os::unix::ffi::OsStrExt as _;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -28,7 +32,7 @@ use tokio::process::Command;
 use super::Platform;
 use super::command::{Bounds, CommandError, FixedCommand, capture};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The bounds of one probe (CAP-022).
@@ -75,6 +79,8 @@ pub async fn inventory(platform: Platform) -> Option<Inventory> {
     let os = match platform {
         Platform::Linux => Os::Linux,
         Platform::Macos => Os::Macos,
+        #[cfg(windows)]
+        Platform::Windows => Os::Windows,
     };
     let os_version = os_version(os).await?;
     let search = Search::here(os).await;
@@ -85,11 +91,21 @@ impl Search {
     /// The search of this daemon: its `HOME` and `PATH`, and whether the developer tools are
     /// present.
     async fn here(os: Os) -> Self {
-        let home = env::var_os("HOME").map(PathBuf::from);
+        let home =
+            env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
         let folders = candidates(
             env::var_os("PATH").as_deref(),
             home.as_deref(),
-            &TOOL_FOLDERS,
+            if cfg!(windows) {
+                &[
+                    "~/.cargo/bin",
+                    "~/.bun/bin",
+                    "~/.local/bin",
+                    "~/AppData/Roaming/npm",
+                ]
+            } else {
+                &TOOL_FOLDERS
+            },
         );
         let path = env::join_paths(&folders).unwrap_or_default();
         let developer_tools = os == Os::Macos && developer_tools().await;
@@ -108,7 +124,10 @@ async fn developer_tools() -> bool {
     let Ok(printed) = XCODE_SELECT.run().await else {
         return false;
     };
+    #[cfg(unix)]
     let folder = OsStr::from_bytes(printed.trim_ascii_end());
+    #[cfg(windows)]
+    let folder = std::str::from_utf8(printed.trim_ascii_end()).unwrap_or_default();
     tokio::fs::metadata(folder)
         .await
         .is_ok_and(|found| found.is_dir())
@@ -131,6 +150,7 @@ async fn probe_all(system: (Architecture, Os, String), search: &Search) -> Inven
 /// the kernel release for a distribution that has none.
 async fn os_version(os: Os) -> Option<String> {
     match os {
+        Os::Windows => windows_version(),
         Os::Macos => macos_version(&SW_VERS.run().await.ok()?),
         Os::Linux => {
             let release = read_capped(Path::new("/etc/os-release")).await;
@@ -162,7 +182,17 @@ async fn run(program: Program, own_home: bool, search: &Search) -> Outcome {
         .env("PATH", &search.path)
         .env("LC_ALL", "C")
         .env("RUSTUP_AUTO_INSTALL", "0")
-        .current_dir("/");
+        .current_dir(if cfg!(windows) {
+            env::var_os("SystemRoot").unwrap_or_else(|| "C:/Windows".into())
+        } else {
+            "/".into()
+        });
+    #[cfg(windows)]
+    for key in ["SystemRoot", "WINDIR", "TEMP", "TMP"] {
+        if let Some(value) = env::var_os(key) {
+            command.env(key, value);
+        }
+    }
     let home = match own_home.then(|| give_home(&mut command)) {
         // Without a folder of its own the probe does not run: never with the operator's home.
         Some(None) => return Outcome::Exited,
@@ -182,7 +212,14 @@ fn give_home(command: &mut Command) -> Option<TempDir> {
     let home = tempfile::tempdir()
         .inspect_err(|error| tracing::debug!(%error, "no home folder for a tool probe"))
         .ok()?;
-    for name in ["HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR"] {
+    for name in [
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "CODEX_HOME",
+        "CLAUDE_CONFIG_DIR",
+    ] {
         command.env(name, home.path());
     }
     Some(home)
@@ -210,15 +247,54 @@ fn outcome(captured: Result<Vec<u8>, CommandError>) -> Outcome {
 /// The first folder of `search` that holds an executable file `name`, links followed, that
 /// may run (see [`may_run`]).
 async fn find(name: &str, search: &Search) -> Option<PathBuf> {
-    for folder in &search.folders {
-        let path = folder.join(name);
+    for path in probe_paths(&search.folders, name) {
         if let Ok(found) = tokio::fs::metadata(&path).await
             && found.is_file()
-            && found.permissions().mode() & 0o111 != 0
+            && executable(&found)
             && may_run(&path, search.os, search.developer_tools)
         {
             return Some(path);
         }
     }
     None
+}
+
+fn probe_paths(folders: &[PathBuf], name: &str) -> Vec<PathBuf> {
+    folders
+        .iter()
+        .flat_map(|folder| {
+            if cfg!(windows) {
+                vec![
+                    folder.join(format!("{name}.exe")),
+                    folder.join(format!("{name}.cmd")),
+                ]
+            } else {
+                vec![folder.join(name)]
+            }
+        })
+        .collect()
+}
+
+fn executable(found: &std::fs::Metadata) -> bool {
+    #[cfg(unix)]
+    {
+        found.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(windows)]
+    {
+        found.is_file()
+    }
+}
+
+fn windows_version() -> Option<String> {
+    #[cfg(windows)]
+    {
+        sysinfo::System::os_version()
+            .ok()
+            .filter(|value| daemon_core::inventory::is_version(value))
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }

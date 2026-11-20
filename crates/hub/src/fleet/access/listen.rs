@@ -4,6 +4,7 @@
 mod bind;
 mod certificate;
 mod health;
+#[cfg_attr(windows, path = "listen/link/windows.rs")]
 mod link;
 mod reload;
 mod serve;

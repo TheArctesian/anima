@@ -1,7 +1,8 @@
+// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 // deploy/bin/cli-formula and deploy/bin/crate-version: the Homebrew formula of a release and
 // the version of the crate `anima-cli` (INS-010 to INS-012; task B8h). Nothing here reaches
 // Homebrew, crates.io or the bucket.
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,8 +24,9 @@ function run(program: string[], folder: string): { exitCode: number; printed: st
 
 const formula = (...given: string[]): { exitCode: number; printed: string } => run(["/bin/sh", join(BIN, "cli-formula"), ...given], ROOM);
 
-describe("the Homebrew formula of a release (INS-010)", () => {
-  const text = formula("0.8.15", MAC, LINUX).printed;
+describe.skipIf(process.platform === "win32")("the Homebrew formula of a release (INS-010)", () => {
+  let text: string;
+  beforeAll(() => { text = formula("0.8.15", MAC, LINUX).printed; });
 
   test("it installs the file of the release for each platform, with the SHA-256 of that file", () => {
     const base = "https://releases.anima.ing/anima/0.8.15";
@@ -70,7 +72,7 @@ function root(manifest: string, lock: string): string {
 
 const setVersion = (folder: string, ...given: string[]): number => run(["/bin/sh", join(BIN, "crate-version"), ...given], folder).exitCode;
 
-describe("the version of the crate (INS-012)", () => {
+describe.skipIf(process.platform === "win32")("the version of the crate (INS-012)", () => {
   test("it writes the version of the release in the package and in its entry of the lock file, and nowhere else", () => {
     const folder = root(MANIFEST, LOCK);
     expect(setVersion(folder, "0.8.15")).toBe(0);

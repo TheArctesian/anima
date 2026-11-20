@@ -313,9 +313,12 @@ describe("spawned scan refusals", () => {
 
   test("a reader that closes the output early ends the scan with exit 2 and fixed text", async () => {
     writeFileSync(join(dir, "many.log"), "password=hunter2x\n".repeat(40_000));
-    const pipeline = 'bun "$0" "$1" | head -n 1 >/dev/null; echo "status ${PIPESTATUS[0]}"';
-    const result = await finish(["bash", "-c", pipeline, SCRIPT, join(dir, "many.log")]);
-    expect(result.stdout).toBe("status 2\n");
-    expect(result.stderr).toBe("log-scan: the output closed (EPIPE)\n");
+    const child = Bun.spawn([process.execPath, SCRIPT, join(dir, "many.log")], { stdout: "pipe", stderr: "pipe" });
+    const reader = child.stdout.getReader();
+    await reader.read();
+    await reader.cancel();
+    const errors = new Response(child.stderr).text();
+    expect(await child.exited).toBe(2);
+    expect(await errors).toBe("log-scan: the output closed (EPIPE)\n");
   });
 });

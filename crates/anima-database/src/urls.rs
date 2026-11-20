@@ -12,7 +12,7 @@ use zeroize::Zeroizing;
 
 use crate::{Layout, Password, Role, owner_only};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The database of the hub (K2).
@@ -58,7 +58,13 @@ pub fn write(layout: &Layout, role: Role, password: &Password) -> Result<(), Url
     let file = layout.url_file(role);
     let mut beside = file.clone().into_os_string();
     beside.push(".new");
+    #[cfg(unix)]
     let text = url(layout, role, password);
+    #[cfg(windows)]
+    let text = windows_url(layout, role, password).map_err(|source| UrlError::Io {
+        step: "prepare",
+        source,
+    })?;
     owner_only::folder(&layout.urls_folder()).map_err(|source| UrlError::Io {
         step: "make the folder of",
         source,
@@ -83,7 +89,7 @@ pub fn write(layout: &Layout, role: Role, password: &Password) -> Result<(), Url
 /// # Errors
 /// When the file cannot be read or is not a URL of [`write`].
 pub fn password(layout: &Layout, role: Role) -> Result<Option<Password>, UrlError> {
-    let text = match fs::read_to_string(layout.url_file(role)) {
+    let text = match read_url(&layout.url_file(role)) {
         Ok(text) => Zeroizing::new(text),
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(source) => {
@@ -108,6 +114,7 @@ pub fn password(layout: &Layout, role: Role) -> Result<Option<Password>, UrlErro
 
 /// `postgres://<login>:<password>@localhost:5432/<database>?host=<socket folder>`: the form
 /// `sqlx` and libpq read as "connect through the Unix socket in that folder".
+#[cfg(unix)]
 fn url(layout: &Layout, role: Role, password: &Password) -> Zeroizing<String> {
     let socket_folder = layout.socket_folder().as_os_str().as_encoded_bytes();
     Zeroizing::new(format!(
@@ -132,4 +139,36 @@ fn percent_encoded(bytes: &[u8]) -> String {
         }
     }
     text
+}
+
+#[cfg(windows)]
+fn windows_url(layout: &Layout, role: Role, password: &Password) -> io::Result<Zeroizing<String>> {
+    let endpoint = crate::windows::Endpoint::load(layout)?;
+    let certificate = endpoint.certificate();
+    let certificate = certificate.to_str().ok_or(io::ErrorKind::InvalidData)?;
+    Ok(Zeroizing::new(format!(
+        "postgres://{}:{}@{}/{}?sslmode=verify-full&sslrootcert={}",
+        role.login(),
+        password.expose(),
+        endpoint.authority(),
+        role.database(),
+        percent_encoded(certificate.as_bytes()),
+    )))
+}
+
+fn read_url(path: &std::path::Path) -> io::Result<String> {
+    #[cfg(unix)]
+    return fs::read_to_string(path);
+    #[cfg(windows)]
+    {
+        use std::io::Read;
+        let mut text = String::new();
+        anima_windows::files::read(path, true)?
+            .take(16_385)
+            .read_to_string(&mut text)?;
+        if text.len() > 16_384 {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+        Ok(text)
+    }
 }

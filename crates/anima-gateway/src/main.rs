@@ -61,7 +61,16 @@ async fn listen(address: &str, options: Options) -> std::io::Result<()> {
         most_sessions: MOST_SESSIONS,
     };
     eprintln!("anima-gateway: listening on {}", listener.local_addr()?);
-    listening::listen(listener, workers).await
+    #[cfg(unix)]
+    return listening::listen(listener, workers).await;
+    #[cfg(windows)]
+    {
+        let mut stop = anima_windows::shutdown::Requested::new()?;
+        tokio::select! {
+            result = listening::listen(listener, workers) => result,
+            () = stop.wait() => Ok(()),
+        }
+    }
 }
 
 async fn work(options: Options) -> std::io::Result<()> {

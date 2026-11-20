@@ -48,6 +48,7 @@ describe('Builds view logic', () => {
 
   it('BLD-007: a queued job with no online builder for its target waits for one', () => {
     expect(waitingText(job(), [])).toBe('Waiting for a linux-x86_64 builder');
+    expect(waitingText(job({ target: 'WINDOWS_X86_64' }), [])).toBe('Waiting for a windows-x86_64 builder');
     expect(waitingText(job({ target: 'DARWIN_UNIVERSAL' }), [])).toBe('Waiting for a darwin-universal builder');
   });
 
@@ -58,6 +59,7 @@ describe('Builds view logic', () => {
 
   it('BLD-007: an online builder that can build the target ends the wait', () => {
     expect(waitingText(job(), [builder({ os: 'LINUX', arch: 'X86_64' }, true)])).toBeNull();
+    expect(waitingText(job({ target: 'WINDOWS_X86_64' }), [builder({ os: 'WINDOWS', arch: 'X86_64' }, true)])).toBeNull();
     expect(waitingText(job({ target: 'DARWIN_UNIVERSAL' }), [builder({ os: 'MACOS', arch: 'AARCH64' }, true)])).toBeNull();
   });
 

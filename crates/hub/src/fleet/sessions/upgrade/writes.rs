@@ -50,7 +50,21 @@ pub(in crate::fleet::sessions) async fn close(
             let _ = client.send(last).await;
         }
         let _ = client.send(Message::Close(Some(frame))).await;
-        SinkExt::close(&mut client).await
+        let _ = SinkExt::close(&mut client).await;
+        // Finish a normal closing handshake before dropping a socket with unread input:
+        // Windows can otherwise reset it and discard the outgoing close. Do not read after
+        // a protocol violation: an oversized frame must never be drained into memory.
+        // Keep that socket alive for the bounded closing grace instead, giving the peer
+        // time to read the close before Windows discards unread input with a reset.
+        if cause == Cause::InvalidInstruction {
+            tokio::time::sleep(CLOSE_WAIT).await;
+        } else {
+            while let Some(Ok(message)) = client.recv().await {
+                if matches!(message, Message::Close(_)) {
+                    break;
+                }
+            }
+        }
     })
     .await;
 }

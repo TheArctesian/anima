@@ -1,10 +1,9 @@
 //! A fake control socket of `anima-link hub` in a private folder, and a signed-in hub in the
 //! link mode that uses it.
 
+use crate::local_socket::{Listener as UnixListener, Stream as UnixStream};
 use std::{
     collections::BTreeMap,
-    fs,
-    os::unix::fs::PermissionsExt as _,
     path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
@@ -18,10 +17,7 @@ use anima_hub::{
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use tokio::{
-    io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
-    net::{UnixListener, UnixStream},
-};
+use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
 
 use crate::{
     hub::{Hub, PASSWORD, USERNAME, dependencies, start},
@@ -70,14 +66,17 @@ impl FakeLink {
         answer: impl Fn(&Value) -> String + Send + Sync + 'static,
     ) -> Self {
         let folder = tempfile::tempdir().unwrap();
-        fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        crate::local_socket::protect(folder.path());
         let path = folder.path().join("control.sock");
         let listener = UnixListener::bind(&path).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        // Windows' listener verifies the socket's inherited private ACL. Its
+        // AF_UNIX reparse point must not go through the regular-file protector.
+        #[cfg(unix)]
+        crate::local_socket::protect(&path);
         let seen = Arc::new(Mutex::new(Vec::new()));
         let (answer, record): (Answer, _) = (Arc::new(answer), seen.clone());
         tokio::spawn(async move {
-            while let Ok((stream, _)) = listener.accept().await {
+            while let Ok(stream) = crate::local_socket::accept(&listener).await {
                 tokio::spawn(serve(stream, delay, answer.clone(), record.clone()));
             }
         });
@@ -111,7 +110,7 @@ async fn serve(
     answer: Answer,
     record: Arc<Mutex<Vec<Value>>>,
 ) {
-    let (read, mut write) = stream.into_split();
+    let (read, mut write) = tokio::io::split(stream);
     let mut lines = BufReader::new(read).lines();
     while let Ok(Some(line)) = lines.next_line().await {
         let request: Value = serde_json::from_str(&line).unwrap();
@@ -126,7 +125,7 @@ pub async fn hub_over(pool: &PgPool, link: &FakeLink) -> (Hub, String) {
     let env = BTreeMap::from([
         (
             "ANIMA_LINK_SOCKET".to_owned(),
-            "/run/anima/link.sock".to_owned(),
+            link.path.with_file_name("link.sock").display().to_string(),
         ),
         (
             "ANIMA_LINK_CONTROL".to_owned(),

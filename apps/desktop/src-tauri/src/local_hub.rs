@@ -18,8 +18,10 @@ mod key_copy;
 mod recovery;
 pub mod update;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
+#[cfg(all(test, windows))]
+mod windows_tests;
 
 use std::{
     ffi::OsString,
@@ -51,11 +53,22 @@ const START_STOP_LIMIT: Duration = Duration::from_mins(3);
 
 /// The variables the program gets from the app, when they are set: where the user's folders
 /// are, and the session bus that `systemctl --user` needs.
+#[cfg(unix)]
 const PASSED_ON: [&str; 4] = [
     "HOME",
     "XDG_DATA_HOME",
     "XDG_RUNTIME_DIR",
     "DBUS_SESSION_BUS_ADDRESS",
+];
+
+#[cfg(windows)]
+const PASSED_ON: [&str; 6] = [
+    "USERPROFILE",
+    "LOCALAPPDATA",
+    "SystemRoot",
+    "WINDIR",
+    "TEMP",
+    "TMP",
 ];
 
 /// The one change of the hub on this computer (install, remove, start, stop, account) that may
@@ -85,7 +98,8 @@ impl Drop for Claim {
 fn environment(
     read: impl Fn(&str) -> Option<OsString>,
 ) -> Result<Vec<(&'static str, OsString)>, LocalHubError> {
-    let home_is_absolute = read("HOME").is_some_and(|home| Path::new(&home).is_absolute());
+    let home_is_absolute = read(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+        .is_some_and(|home| Path::new(&home).is_absolute());
     if !home_is_absolute {
         return Err(LocalHubError::NoHome);
     }
@@ -97,7 +111,11 @@ fn environment(
 
 /// The programs this app carries, when it carries them.
 fn carried() -> Result<Carried, LocalHubError> {
-    if !cfg!(any(target_os = "macos", target_os = "linux")) {
+    if !cfg!(any(
+        target_os = "macos",
+        target_os = "linux",
+        target_os = "windows"
+    )) {
         return Err(LocalHubError::Unavailable);
     }
     let executable = std::env::current_exe().map_err(|_| LocalHubError::NotCarried)?;

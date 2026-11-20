@@ -2,11 +2,7 @@
 //! factor off and `--new` prints a secret for `operator create`; `operator show` (SEC-002,
 //! D-9, LOG-007, FRN-003, FRN-004).
 
-use std::{
-    io::Write as _,
-    os::fd::OwnedFd,
-    process::{Command, Stdio},
-};
+use std::{io::Write as _, process::Stdio};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{TimeDelta, Utc};
@@ -38,8 +34,7 @@ fn run_hub(pool: &PgPool, args: &[&str], stdin: Stdio, input: &[u8]) -> (bool, S
     write!(url_file, "{}", url_for(&database)).unwrap();
     let mut key_file = tempfile::NamedTempFile::new().unwrap();
     write!(key_file, "{}", STANDARD.encode([7_u8; 32])).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
-        .env_clear()
+    let mut child = crate::transport::process::hub()
         .env("ANIMA_KEY_FILE", key_file.path())
         .env("ANIMA_DATABASE_URL_FILE", url_file.path())
         .env("ANIMA_LOG", "error")
@@ -220,7 +215,8 @@ async fn sec_002_frn_004_operator_create_saves_both_factors_and_uses_the_code(po
 }
 
 /// The two ends of a new pseudo-terminal: the controller, and the terminal side as a file.
-fn pseudo_terminal() -> (OwnedFd, std::fs::File) {
+#[cfg(unix)]
+fn pseudo_terminal() -> (std::os::fd::OwnedFd, std::fs::File) {
     use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
     let controller = openpt(OpenptFlags::RDWR | OpenptFlags::NOCTTY).unwrap();
     grantpt(&controller).unwrap();
@@ -234,6 +230,7 @@ fn pseudo_terminal() -> (OwnedFd, std::fs::File) {
     (controller, terminal)
 }
 
+#[cfg(unix)]
 #[sqlx::test(migrations = "./migrations")]
 async fn log_007_operator_create_refuses_a_terminal_that_would_echo_the_secrets(pool: PgPool) {
     let (_controller, terminal) = pseudo_terminal();

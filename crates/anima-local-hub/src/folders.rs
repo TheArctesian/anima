@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 use anima_database::{Layout, LayoutError, Platform, UserFolders};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The folder of the database below the hub root; S3 puts its root there for a user.

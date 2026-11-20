@@ -4,12 +4,13 @@
 
 use std::{
     ffi::OsString,
-    fs::{self, File, OpenOptions},
+    fs::{self, File},
     io::{ErrorKind, Read, Write},
-    os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
 };
 
+#[cfg(unix)]
+use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 use zeroize::Zeroizing;
 
 use super::LocalHubError;
@@ -38,6 +39,7 @@ pub fn copy(key: &Path, destination: &Path) -> Result<(), LocalHubError> {
 }
 
 fn read_key(key: &Path) -> Result<Zeroizing<Vec<u8>>, LocalHubError> {
+    #[cfg(unix)]
     let file = OpenOptions::new()
         .read(true)
         .custom_flags(nix::libc::O_NOFOLLOW)
@@ -46,6 +48,11 @@ fn read_key(key: &Path) -> Result<Zeroizing<Vec<u8>>, LocalHubError> {
             ErrorKind::NotFound => LocalHubError::NoKey,
             _ => LocalHubError::Failed,
         })?;
+    #[cfg(windows)]
+    let file = anima_windows::files::read(key, true).map_err(|error| match error.kind() {
+        ErrorKind::NotFound => LocalHubError::NoKey,
+        _ => LocalHubError::Failed,
+    })?;
     let mut bytes = Zeroizing::new(Vec::with_capacity(1024));
     file.take(MOST_KEY + 1)
         .read_to_end(&mut bytes)
@@ -69,6 +76,7 @@ fn temporary_beside(destination: &Path) -> Result<PathBuf, LocalHubError> {
 }
 
 fn write_new(path: &Path, bytes: &[u8]) -> Result<(), LocalHubError> {
+    #[cfg(unix)]
     let mut file: File = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -76,6 +84,9 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), LocalHubError> {
         .custom_flags(nix::libc::O_NOFOLLOW)
         .open(path)
         .map_err(|_| LocalHubError::Destination)?;
+    #[cfg(windows)]
+    let mut file: File =
+        anima_windows::files::create_new(path).map_err(|_| LocalHubError::Destination)?;
     file.write_all(bytes)
         .and_then(|()| file.sync_all())
         .map_err(|_| LocalHubError::Destination)

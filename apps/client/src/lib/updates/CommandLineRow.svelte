@@ -17,6 +17,8 @@
     void tool.load();
   });
 
+  const windows = /Windows NT/.test(navigator.userAgent);
+
   const target = $derived(installTarget(tool.status));
   const advice = $derived(profileAdvice(tool.status));
 
@@ -38,11 +40,15 @@
   {#snippet hint()}
     <p class="hint state" aria-live="polite">
       {#if tool.confirming !== null}
-        Install anima at <strong>{tool.confirming.path}</strong>?
+        {#if windows}Add <strong>{tool.confirming.folder}</strong> to your user PATH?
+        {:else}Install anima at <strong>{tool.confirming.path}</strong>?{/if}
       {:else}
         {describeCommandLine(tool.status)}
       {/if}
     </p>
+    {#if windows}
+      <p class="hint">Install adds the bundled command line tool to your user PATH. Open a new terminal afterward. Remove takes its folder off PATH; the bundled program stays.</p>
+    {/if}
     {#if advice !== null && tool.confirming === null}
       <p class="hint">
         {advice.folder} is not on the login shell PATH. If a new terminal does not find anima, add this to your shell

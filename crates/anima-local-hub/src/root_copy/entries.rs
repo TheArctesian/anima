@@ -4,7 +4,6 @@
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, Read as _, Write as _};
-use std::os::unix::fs::{FileTypeExt as _, OpenOptionsExt as _, PermissionsExt as _};
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest as _, Sha256};
@@ -17,7 +16,7 @@ use crate::Folders;
 /// and the two locks, which belong to the processes of the root.
 const LEFT_OUT: [&str; 3] = ["programs", "lock", "change.lock"];
 
-const MODE_BITS: u32 = 0o7777;
+mod access;
 
 /// Copies each entry of the root of `folders` to the new folder `to` and returns their list.
 /// A socket is left out: it belongs to a process. A link is copied as a link.
@@ -60,7 +59,10 @@ pub(super) fn copy(folders: &Folders, to: &Path) -> Result<List, RootCopyError> 
 /// Copies one entry; `None` for a socket or a thing that is no file, folder or link.
 fn copy_one(from: &Path, to: &Path, path: &Path) -> Result<Option<Entry>, RootCopyError> {
     let found = fs::symlink_metadata(from).map_err(io_error("look at a file of the hub root"))?;
-    let mode = found.permissions().mode() & MODE_BITS;
+    let mode = access::mode(&found);
+    if access::socket(from, &found).map_err(io_error("inspect an endpoint of the hub root"))? {
+        return Ok(None);
+    }
     let kind = found.file_type();
     if kind.is_dir() {
         fs::create_dir(to).map_err(io_error("make a folder of the copy"))?;
@@ -73,23 +75,18 @@ fn copy_one(from: &Path, to: &Path, path: &Path) -> Result<Option<Entry>, RootCo
     }
     if kind.is_symlink() {
         let target = fs::read_link(from).map_err(io_error("read a link of the hub root"))?;
-        std::os::unix::fs::symlink(&target, to).map_err(io_error("make a link of the copy"))?;
+        access::symlink(&target, to).map_err(io_error("make a link of the copy"))?;
         return Ok(Some(Entry {
             path: path.to_path_buf(),
             mode: 0,
             kind: Kind::Link { target },
         }));
     }
-    if !kind.is_file() || kind.is_socket() {
+    if !kind.is_file() {
         return Ok(None);
     }
-    let mut source = File::open(from).map_err(io_error("open a file of the hub root"))?;
-    let mut new = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(mode & 0o700)
-        .open(to)
-        .map_err(io_error("make a file of the copy"))?;
+    let mut source = access::open(from).map_err(io_error("open a file of the hub root"))?;
+    let mut new = access::create(to, mode).map_err(io_error("make a file of the copy"))?;
     let (bytes, sha256) = pass(&mut source, Some(&mut new)).map_err(io_error("copy a file"))?;
     new.sync_all()
         .map_err(io_error("write a file of the copy"))?;
@@ -102,8 +99,7 @@ fn copy_one(from: &Path, to: &Path, path: &Path) -> Result<Option<Entry>, RootCo
 }
 
 fn set_mode(path: &Path, mode: u32) -> Result<(), RootCopyError> {
-    fs::set_permissions(path, fs::Permissions::from_mode(mode))
-        .map_err(io_error("set the mode of an entry of the copy"))
+    access::set_mode(path, mode).map_err(io_error("set the mode of an entry of the copy"))
 }
 
 /// Reads `source` to its end, writes it to `to` when there is one, and returns the count of
@@ -133,13 +129,12 @@ fn pass(source: &mut File, mut to: Option<&mut File>) -> io::Result<(u64, String
 
 /// The entry of the file `file`, listed as `path`.
 pub(super) fn file_entry(file: &Path, path: &Path) -> Result<Entry, RootCopyError> {
-    let mut source = File::open(file).map_err(io_error("open a file of the copy"))?;
-    let mode = source
-        .metadata()
-        .map_err(io_error("look at a file of the copy"))?
-        .permissions()
-        .mode()
-        & MODE_BITS;
+    let mut source = access::open(file).map_err(io_error("open a file of the copy"))?;
+    let mode = access::mode(
+        &source
+            .metadata()
+            .map_err(io_error("look at a file of the copy"))?,
+    );
     let (bytes, sha256) = pass(&mut source, None).map_err(io_error("read a file of the copy"))?;
     Ok(Entry {
         path: path.to_path_buf(),
@@ -160,7 +155,9 @@ pub(super) fn verify(folder: &Path, entry: &Entry) -> Result<(), RootCopyError> 
     let Ok(found) = fs::symlink_metadata(&at) else {
         return fault("is not there");
     };
-    let mode = found.permissions().mode() & MODE_BITS;
+    #[cfg(windows)]
+    access::verify(&at).map_err(io_error("check a private entry of the copy"))?;
+    let mode = access::mode(&found);
     let other_mode = !matches!(entry.kind, Kind::Link { .. }) && mode != entry.mode;
     match &entry.kind {
         Kind::Folder if !found.is_dir() => fault("is not a folder"),

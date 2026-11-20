@@ -2,10 +2,12 @@
 
 pub mod browser;
 pub mod fake_hub;
+pub mod file_access;
 pub mod forge;
 pub mod github;
 pub mod real_hub;
 pub mod subscription_hub;
+#[cfg_attr(windows, path = "kit/terminal/windows.rs")]
 pub mod terminal;
 pub mod totp;
 pub mod tunnel_hub;
@@ -47,7 +49,14 @@ impl Anima {
 
     /// `$XDG_CONFIG_HOME/anima`.
     pub fn config_dir(&self) -> PathBuf {
-        self.home.path().join("config").join("anima")
+        #[cfg(unix)]
+        {
+            self.home.path().join("config").join("anima")
+        }
+        #[cfg(windows)]
+        {
+            self.home.path().join("local").join("Anima/cli")
+        }
     }
 
     pub async fn run(&self, args: &[&str]) -> Outcome {
@@ -63,6 +72,15 @@ impl Anima {
             .env("XDG_CONFIG_HOME", self.home.path().join("config"))
             .env("ANIMA_TOKEN_STORE", "file")
             .envs(self.variables.iter().map(|(name, value)| (name, value)));
+        #[cfg(windows)]
+        {
+            command.env("LOCALAPPDATA", self.home.path().join("local"));
+            for name in ["SystemRoot", "WINDIR", "TEMP", "TMP", "PATH", "PATHEXT"] {
+                if let Some(value) = std::env::var_os(name) {
+                    command.env(name, value);
+                }
+            }
+        }
         command
     }
 

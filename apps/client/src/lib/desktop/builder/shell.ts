@@ -7,6 +7,8 @@ const TOOLS = [
   'rust',
   'cargo-nextest',
   'go',
+  'go-race-compiler',
+  'node',
   'postgres',
   'tauri-packages',
   'tree-tools',
@@ -21,7 +23,7 @@ export type BuilderTool = (typeof TOOLS)[number];
 
 /** This computer's platform, as K1 `BuilderPlatformInput` names it, and the tools it lacks. */
 export interface ToolCheck {
-  readonly os: 'LINUX' | 'MACOS';
+  readonly os: 'LINUX' | 'MACOS' | 'WINDOWS';
   readonly arch: 'X86_64' | 'AARCH64';
   readonly missing: readonly BuilderTool[];
 }
@@ -133,7 +135,7 @@ export function toolCheckFrom(answer: unknown): ToolCheck {
   const { os, arch, missing } = answer;
   const tools: readonly unknown[] = Array.isArray(missing) ? missing : [];
   const known = tools.filter((tool): tool is BuilderTool => TOOLS.some((name) => name === tool));
-  const platform = (os === 'LINUX' || os === 'MACOS') && (arch === 'X86_64' || arch === 'AARCH64');
+  const platform = (os === 'LINUX' || os === 'MACOS' || os === 'WINDOWS') && (arch === 'X86_64' || arch === 'AARCH64');
   if (!platform || known.length !== tools.length) throw new BuilderShellError('failed');
   return { os, arch, missing: known };
 }

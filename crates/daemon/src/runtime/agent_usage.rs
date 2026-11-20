@@ -104,6 +104,7 @@ mod tests {
         }
         let env = |name: &str| match name {
             "HOME" => Some("/home/me".to_owned()),
+            "USERPROFILE" => Some("C:/Users/me".to_owned()),
             "ANIMA_DAEMON_HOME" => daemon_home.map(str::to_owned),
             _ => None,
         };
@@ -123,7 +124,14 @@ mod tests {
         let misspelt = decided(Some(r#"{"excludeFolders":["/x"]}"#), None);
         assert!(matches!(misspelt, Counting::Silent(UsageState::TurnedOff)));
         assert!(matches!(decided(None, None), Counting::Reading(_)));
-        let excluded = decided(Some(r#"{"excludedFolders":["/x"]}"#), None);
+        let excluded = decided(
+            Some(if cfg!(windows) {
+                r#"{"excludedFolders":["C:/x"]}"#
+            } else {
+                r#"{"excludedFolders":["/x"]}"#
+            }),
+            None,
+        );
         assert!(matches!(excluded, Counting::Reading(_)));
     }
 }

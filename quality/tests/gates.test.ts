@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { delimiter, join } from "node:path";
 import { gateList, missingRequirement, runGates, type Gate, type GateEvent } from "../src/gates/gates.ts";
 
 const NAMES = [
@@ -42,7 +43,7 @@ describe("gateList", () => {
     expect(argvs).toContain("go -C link tool staticcheck ./...");
     expect(argvs).toContain("go -C link tool revive -config revive.toml -set_exit_status ./...");
     expect(argvs).toContain("go -C link test -race ./...");
-    expect(argvs).toContain("go -C link build -o /dev/null ./...");
+    expect(argvs).toContain(`go -C link build -o ${process.platform === "win32" ? "NUL" : "/dev/null"} ./...`);
   });
 
   test("CQ-011 passes the base ref to the baseline gate", () => {
@@ -90,8 +91,8 @@ describe("missingRequirement", () => {
   });
 
   test("lets the gate run when cargo-nextest is in a PATH folder", () => {
-    const present = (path: string) => path === "/home/op/.cargo/bin/cargo-nextest";
-    expect(missingRequirement(rustTest, "/usr/bin:/home/op/.cargo/bin", present)).toBeUndefined();
+    const present = (path: string) => path === join("/home/op/.cargo/bin", process.platform === "win32" ? "cargo-nextest.exe" : "cargo-nextest");
+    expect(missingRequirement(rustTest, ["/usr/bin", "/home/op/.cargo/bin"].join(delimiter), present)).toBeUndefined();
   });
 
   test("CQ-024 fails a Go gate with the install command when go is not on PATH", () => {

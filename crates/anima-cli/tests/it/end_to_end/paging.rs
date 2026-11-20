@@ -23,6 +23,7 @@ fn next_page(outcome: &Outcome) -> Option<String> {
 /// The `name` of every node in a printed connection.
 fn names(outcome: &Outcome) -> Vec<String> {
     assert_eq!(outcome.code, 0, "{outcome:?}");
+    assert!(!outcome.stdout.is_empty(), "{outcome:?}");
     let page = outcome.json();
     let edges = page["edges"]
         .as_array()
@@ -37,8 +38,26 @@ async fn paste(anima: &Anima, line: &str) -> (Outcome, Vec<String>) {
     let bin = env!("CARGO_BIN_EXE_anima");
     let mut outcomes = Vec::new();
     for json in ["", " --json"] {
-        let mut command = anima.command("/bin/sh");
-        command.args(["-c", &format!("'{bin}' {line}{json}")]);
+        #[cfg(unix)]
+        let mut command = {
+            let mut command = anima.command("/bin/sh");
+            command.args(["-c", &format!("'{bin}' {line}{json}")]);
+            command
+        };
+        #[cfg(windows)]
+        let mut command = {
+            let mut command = anima.command("powershell.exe");
+            command.args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                &format!(
+                    "& ([IO.Path]::GetFullPath('{}')) {line}{json}; exit $LASTEXITCODE",
+                    bin.replace('\'', "''")
+                ),
+            ]);
+            command
+        };
         let output = command.output().await.expect("the shell runs");
         outcomes.push(Outcome {
             code: output.status.code().expect("an exit code"),

@@ -55,6 +55,7 @@ impl LogFile {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
 
     use super::LogFile;
@@ -62,12 +63,15 @@ mod tests {
     #[test]
     fn lines_are_appended_to_what_an_earlier_run_wrote() {
         let folder = tempfile::tempdir().unwrap();
+        #[cfg(windows)]
+        anima_windows::files::protect(folder.path()).unwrap();
         let path = folder.path().join("hub.log");
         LogFile::open(&path, 100).unwrap().line("first").unwrap();
 
         LogFile::open(&path, 100).unwrap().line("second").unwrap();
 
         assert_eq!(fs::read_to_string(&path).unwrap(), "first\nsecond\n");
+        #[cfg(unix)]
         assert_eq!(
             fs::metadata(&path).unwrap().permissions().mode() & 0o777,
             0o600
@@ -77,6 +81,8 @@ mod tests {
     #[test]
     fn a_full_log_is_put_aside_and_only_one_older_file_is_kept() {
         let folder = tempfile::tempdir().unwrap();
+        #[cfg(windows)]
+        anima_windows::files::protect(folder.path()).unwrap();
         let path = folder.path().join("hub.log");
         let mut log = LogFile::open(&path, 10).unwrap();
 

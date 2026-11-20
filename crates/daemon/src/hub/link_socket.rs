@@ -2,6 +2,7 @@
 //! check that only a program of the daemon's own user can listen there (K8 Section 1, R-172).
 
 use std::io;
+#[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt as _, MetadataExt as _};
 use std::path::Path;
 
@@ -29,6 +30,14 @@ pub fn trusted(socket: &Path) -> Result<(), LinkSocketError> {
     if !private_file::folder_private(folder)? {
         return Err(LinkSocketError::Exposed);
     }
+    #[cfg(windows)]
+    return match anima_windows::socket::private(socket) {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(LinkSocketError::Exposed),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    };
+    #[cfg(unix)]
     match std::fs::symlink_metadata(socket) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error.into()),

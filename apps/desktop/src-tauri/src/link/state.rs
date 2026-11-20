@@ -21,6 +21,8 @@ pub enum Reason {
     PortTaken,
     /// The child ended; it is started again after a pause.
     Ended,
+    /// Repeated early exits exhausted the automatic restart budget.
+    RepeatedFailure,
     /// This build carries no `anima-link`.
     NotCarried,
     /// The saved port cannot be read.

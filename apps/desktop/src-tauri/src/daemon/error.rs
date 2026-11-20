@@ -21,11 +21,18 @@ pub enum DaemonError {
     Origin,
     #[error("the app could not find your home folder")]
     NoHome,
-    #[error(
-        "~/.local/bin, or a folder above it, can be changed by other users (through its group, an ACL or as others): run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL"
+    #[cfg_attr(
+        windows,
+        error("the daemon installation folder or an ancestor can be changed by another user")
+    )]
+    #[cfg_attr(
+        not(windows),
+        error(
+            "~/.local/bin, or a folder above it, can be changed by other users (through its group, an ACL or as others): run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL"
+        )
     )]
     Untrusted,
-    #[error("the daemon could not be copied to ~/.local/bin")]
+    #[error("the daemon could not be copied to its installation folder")]
     Copy,
     #[error("the daemon could not enrol with the hub; make a new code and try again")]
     Enrol,
@@ -39,7 +46,7 @@ pub enum DaemonError {
 
 impl DaemonError {
     /// Every error, for the tests that check each one.
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     pub const ALL: [Self; 13] = [
         Self::Caller,
         Self::Unavailable,

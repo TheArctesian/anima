@@ -5,6 +5,7 @@
 
 use std::fs;
 use std::io;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
@@ -16,7 +17,7 @@ use crate::members::{Carried, HUB};
 use crate::state::{self, State};
 use crate::{Folders, run};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 /// The most characters of an operator's name.
@@ -81,14 +82,17 @@ pub enum AccountError {
 }
 
 /// Group or others may read, write or enter.
+#[cfg(unix)]
 const GROUP_OR_OTHERS: u32 = 0o077;
 /// Group or others may write.
+#[cfg(unix)]
 const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 
 /// Refuses the program unless the hub root, each folder from it down to the program, and the
 /// program are this user's own, are not symbolic links, and no other user can change them. It
 /// changes nothing.
 fn trusted(folders: &Folders, program: &Path) -> Result<(), AccountError> {
+    #[cfg(unix)]
     let uid = nix::unistd::Uid::effective().as_raw();
     let untrusted = |path: &Path| AccountError::Untrusted(path.to_path_buf());
     let root = folders.root();
@@ -101,12 +105,23 @@ fn trusted(folders: &Folders, program: &Path) -> Result<(), AccountError> {
     }
     for folder in &folders_down {
         let found = fs::symlink_metadata(folder).map_err(|_| untrusted(folder))?;
-        if !found.is_dir() || found.uid() != uid || found.mode() & GROUP_OR_OTHERS != 0 {
+        #[cfg(unix)]
+        let private = found.is_dir() && found.uid() == uid && found.mode() & GROUP_OR_OTHERS == 0;
+        #[cfg(windows)]
+        let private = found.is_dir()
+            && anima_windows::files::directory(folder).is_ok()
+            && anima_windows::files::secure(folder, true).unwrap_or(false);
+        if !private {
             return Err(untrusted(folder));
         }
     }
     let found = fs::symlink_metadata(program).map_err(|_| untrusted(program))?;
-    if !found.is_file() || found.uid() != uid || found.mode() & GROUP_OR_OTHERS_WRITE != 0 {
+    #[cfg(unix)]
+    let trusted =
+        found.is_file() && found.uid() == uid && found.mode() & GROUP_OR_OTHERS_WRITE == 0;
+    #[cfg(windows)]
+    let trusted = found.is_file() && anima_windows::files::read(program, false).is_ok();
+    if !trusted {
         return Err(untrusted(program));
     }
     Ok(())
@@ -163,11 +178,16 @@ pub fn run(
     }
     let spec = command(folders, action);
     trusted(folders, &spec.program)?;
-    Command::new(&spec.program)
+    let mut command = Command::new(&spec.program);
+    command.env_clear();
+    #[cfg(windows)]
+    if let Some(root) = std::env::var_os("SystemRoot") {
+        command.env("SystemRoot", root);
+    }
+    command
         .args(&spec.args)
-        .env_clear()
         .envs(spec.env.iter().map(|(key, value)| (key, value)))
-        .current_dir("/")
+        .current_dir(folders.root())
         .stdin(input)
         .stdout(output)
         .stderr(Stdio::null())

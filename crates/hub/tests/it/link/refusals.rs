@@ -1,6 +1,7 @@
 //! Who may not use the link fields, and the errors of a hub with no link or a link that
 //! fails (D-23, FRN-009, LOG-007).
 
+#[cfg(unix)]
 use std::{fs, os::unix::fs::PermissionsExt as _};
 
 use serde_json::{Value, json};
@@ -69,6 +70,7 @@ async fn frn_009_a_reply_over_one_mebibyte_is_unavailable_not_read(pool: PgPool)
     assert_eq!(code(&response), "UNAVAILABLE", "{response}");
 }
 
+#[cfg(unix)]
 #[sqlx::test(migrations = "./migrations")]
 async fn frn_009_a_control_socket_others_can_reach_gets_no_request(pool: PgPool) {
     let link = FakeLink::start(|_| one_device());

@@ -70,7 +70,8 @@ describe('broker files', () => {
     expect(parseState(JSON.stringify(EMPTY_STATE))).toEqual(EMPTY_STATE);
   });
 
-  it('5.1: the state is written whole, mode 0600, and read back', async () => {
+  // The Linux broker's file boundary uses Unix permission bits.
+  it.skipIf(process.platform === 'win32')('5.1: the state is written whole, mode 0600, and read back', async () => {
     const folder = mkdtempSync(join(tmpdir(), 'anima-broker-'));
     folders.push(folder);
     const path = join(folder, 'state.json');

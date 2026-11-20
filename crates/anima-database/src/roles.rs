@@ -3,14 +3,16 @@
 //! migrations and owns every object, `anima_hub` serves as a member of `anima_runtime` and
 //! owns nothing, and nobody connects to a database through `PUBLIC`.
 
-use sqlx::postgres::{PgConnectOptions, PgConnection};
+#[cfg(unix)]
+use sqlx::postgres::PgConnectOptions;
+use sqlx::postgres::PgConnection;
 use sqlx::{ConnectOptions as _, Connection as _};
 
 use crate::cluster::SUPERUSER;
 use crate::urls::{self, DATABASE, UrlError};
 use crate::{Layout, Password, Role};
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 const RUNTIME_GROUP: &str = "anima_runtime";
@@ -105,9 +107,17 @@ async fn apply(
     owner_verifier: &str,
     hub_verifier: &str,
 ) -> Result<(), RolesError> {
-    let mut session = PgConnectOptions::new_without_pgpass()
+    #[cfg(unix)]
+    let options = PgConnectOptions::new_without_pgpass()
         .socket(layout.socket_folder())
-        .port(5432)
+        .port(5432);
+    #[cfg(windows)]
+    let endpoint = crate::windows::Endpoint::load(layout).map_err(RolesError::Client)?;
+    #[cfg(windows)]
+    let password = endpoint.password().map_err(RolesError::Client)?;
+    #[cfg(windows)]
+    let options = endpoint.options().password(password.expose());
+    let mut session = options
         .username(SUPERUSER)
         .database("postgres")
         .application_name("anima-database")
