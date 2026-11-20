@@ -10,7 +10,7 @@ import { createRecentCopy } from './recent/recent';
 export type { HubAddress } from './address';
 export { DEFAULT_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
 export type { FieldError, HubCode, HubError, HubResult } from './error';
-export { TOKEN_UNREADABLE, UNREACHABLE } from './error';
+export { TOKEN_UNREADABLE, UNREACHABLE, noAnswer } from './error';
 export type { TokenProvider } from './request';
 export type { LiveStatus } from './status/connection';
 export type { Connection, HubStatus } from './status/status';

@@ -1,3 +1,5 @@
+import { hubIsHosted, networkAdvice } from '$lib/hosted/mark';
+
 /** The K7 `extensions.code` values the hub sends. */
 const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'] as const;
 
@@ -22,10 +24,22 @@ export type HubError =
 /** The outcome of a hub call: a value, or the typed reason there is none. */
 export type HubResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: HubError };
 
+/** No answer arrived from a hub that is not hosted: the advice names the VPN client (NET-004). */
 export const UNREACHABLE: HubError = {
   code: 'unreachable',
-  message: 'The hub did not answer. Check the VPN client.',
+  message: `The hub did not answer. ${networkAdvice(false)}.`,
 };
+
+/** No answer arrived from a hub that Anima.ing hosts: it has no VPN to check (R-222). */
+const UNREACHABLE_HOSTED: HubError = {
+  code: 'unreachable',
+  message: `The hub did not answer. ${networkAdvice(true)}.`,
+};
+
+/** The error of a call that got no answer from the hub at `origin`. */
+export function noAnswer(origin: string): HubError {
+  return hubIsHosted(origin) ? UNREACHABLE_HOSTED : UNREACHABLE;
+}
 
 export const MALFORMED: HubError = {
   code: 'malformed',

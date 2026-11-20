@@ -171,7 +171,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-27 | Can a released application install a lower version with no question (Section 3.9 "Rollback", UPD-003, BLD-069; defect DEF-001) | Open. `allowDowngrades` is true so that the operator can go back by a change of the feed (BLD-069). With it, each installed application installs each version of… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (29)
+## 3. Documents that wait for an approval (27)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -179,8 +179,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/one-click/s3-spec-delta.md](plans/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft |
 | [plans/one-click/s4-spec-delta.md](plans/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft |
 | [plans/one-click/s6-spec-delta.md](plans/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft |
-| [plans/ui-redesign-direction.md](plans/ui-redesign-direction.md) | Plan: direction of the redesign | Not checked |
-| [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) | Proposal, with a task table | Direction decided |
