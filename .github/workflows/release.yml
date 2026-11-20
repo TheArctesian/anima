@@ -561,8 +561,19 @@ jobs:
               exit 1
             fi
           done
+          # The tray item opens libayatana-appindicator3 at start. From the system, it needs a newer
+          # GLib than the AppImage carries, so the AppImage must carry it and what it needs.
+          appimage="target/release/bundle/appimage/Anima.ing_${VERSION}_amd64.AppImage"
+          (mkdir tray-check && cd tray-check && "../$appimage" --appimage-extract 'usr/lib/*' > /dev/null)
+          for library in libayatana-appindicator3.so.1 libayatana-ido3-0.4.so.0; do
+            if [ ! -e "tray-check/squashfs-root/usr/lib/$library" ]; then
+              echo "::error::The AppImage does not carry $library."
+              exit 1
+            fi
+          done
+          rm -rf tray-check
           mkdir out
-          mv "target/release/bundle/appimage/Anima.ing_${VERSION}_amd64.AppImage" "out/Anima_${VERSION}_amd64.AppImage"
+          mv "$appimage" "out/Anima_${VERSION}_amd64.AppImage"
           echo "updater_sha256=$(sha256sum "out/Anima_${VERSION}_amd64.AppImage" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

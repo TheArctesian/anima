@@ -350,7 +350,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </head>
 <body>
 <h1 class="board">Device overview v2</h1>
-<p class="about">The tab Overview of a device after the interface review of 2026-11-19 (R-224). The facts of the device (checks, uptime, how it is reached, the host key) are one strip, so the resources start higher. A card steps from the page by its surface and has no border. Beside them, a card lists each way in with its button, and a card gives what the device is.</p>
+<p class="about">The tab Overview of a device after the interface review of 2026-11-19 (R-224). The facts of the device (checks, uptime, how it is reached, the host key) are one strip, so the resources start higher. A card steps from the page by its surface and has no border. Beside them, a card lists each way in with its button, and a card gives what the device is. The storage table lists each drive of the machine, also one that is not mounted: it has its kind and its size, the words "Not mounted" where the mount point would be, and no used value and no read and write (operator, 2026-11-19: "i do also want unmounted drives to appear there"). A drive with several mounted partitions has one line for each mount under its name.</p>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 860px;">
 <aside class="side">
@@ -400,7 +400,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
         </div>
-        <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB</span></div>
+        <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB · 1 not mounted</span></div>
         <ul class="table">
           <li class="tr th" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span>Drive</span><span>Kind</span><span>Mounted at</span><span>Used</span><span class="r">Read, write</span></li>
           <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono" style="font-weight: 500">nvme0n1</b></span><span class="sec nowrap">NVMe · 1 TB</span><span class="mono">/</span>
@@ -409,6 +409,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <span class="meter"><u><i style="width: 61%"></i></u></span><span class="num r sec">61% · 12, 4 KiB/s</span></li>
           <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono" style="font-weight: 500">sdb</b></span><span class="sec nowrap">Hard disk · 3 TB</span><span class="mono">/mnt/archive</span>
   <span class="meter"><u><i style="width: 37%"></i></u></span><span class="num r sec">37% · 0, 0 B/s</span></li>
+          <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono sec" style="font-weight: 500">sdc</b></span><span class="sec nowrap">Hard disk · 500 GB</span><span class="sec">Not mounted</span><span></span><span></span></li>
         </ul>
       </div>
       <aside style="display: flex; flex-direction: column; gap: var(--space-4)">
@@ -483,7 +484,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
         </div>
-        <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB</span></div>
+        <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB · 1 not mounted</span></div>
         <ul class="table">
           <li class="tr th" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span>Drive</span><span>Kind</span><span>Mounted at</span><span>Used</span><span class="r">Read, write</span></li>
           <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono" style="font-weight: 500">nvme0n1</b></span><span class="sec nowrap">NVMe · 1 TB</span><span class="mono">/</span>
@@ -492,6 +493,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <span class="meter"><u><i style="width: 61%"></i></u></span><span class="num r sec">61% · 12, 4 KiB/s</span></li>
           <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono" style="font-weight: 500">sdb</b></span><span class="sec nowrap">Hard disk · 3 TB</span><span class="mono">/mnt/archive</span>
   <span class="meter"><u><i style="width: 37%"></i></u></span><span class="num r sec">37% · 0, 0 B/s</span></li>
+          <li class="tr dense" style="grid-template-columns: 110px minmax(0, 1fr) 120px 60px 150px"><span class="cell2"><b class="mono sec" style="font-weight: 500">sdc</b></span><span class="sec nowrap">Hard disk · 500 GB</span><span class="sec">Not mounted</span><span></span><span></span></li>
         </ul>
       </div>
       <aside style="display: flex; flex-direction: column; gap: var(--space-4)">

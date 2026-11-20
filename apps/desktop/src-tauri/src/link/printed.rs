@@ -1,7 +1,7 @@
 //! What `anima-link` takes and prints, read without trust (2.6). Pure: text in, values out.
 //! An invite is a secret; nothing here keeps or quotes one.
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 use zeroize::Zeroizing;
 
@@ -96,6 +96,20 @@ pub fn unit_installed(printed: &[u8]) -> bool {
         .ok()
         .and_then(|shown| shown.get("installed")?.as_bool())
         .unwrap_or(false)
+}
+
+/// The file of the unit in the answer of `unit show`, when the unit is installed.
+pub fn unit_file(printed: &[u8]) -> Option<PathBuf> {
+    let shown: serde_json::Value = serde_json::from_slice(printed).ok()?;
+    let file = PathBuf::from(shown.get("file")?.as_str()?);
+    (unit_installed(printed) && file.is_absolute()).then_some(file)
+}
+
+/// Whether the text of a unit file runs the link of `folder`: the folder is one whole argument
+/// of it, a `<string>` of a launch agent or a quoted word of a systemd unit. A unit of a
+/// different folder (a second copy of the app, a test) is not the unit of this one.
+pub fn unit_runs_folder(unit: &str, folder: &str) -> bool {
+    unit.contains(&format!("<string>{folder}</string>")) || unit.contains(&format!("\"{folder}\""))
 }
 
 /// The path and latency in `ctl status`'s answer: `{ role: "device", path, latencyMs }`.

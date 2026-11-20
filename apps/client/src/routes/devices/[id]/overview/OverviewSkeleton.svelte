@@ -5,6 +5,7 @@
   import '$lib/metrics/bars/geometry.css';
   import { hasMetrics } from '$lib/metrics/source/has-metrics';
   import './geometry.css';
+  import HostKeyCard from './facts/HostKeyCard.svelte';
   import OverviewFacts from './facts/OverviewFacts.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
   import type { OverviewDevice } from './overview';
@@ -35,25 +36,43 @@
   The loaded Overview with no text (D-9): the same facts cards, drawn by the same component with each card's content
   hidden, so a host key wraps to the same lines at every width; then the Metrics card (MOT-007).
 -->
-<div class="ghost" aria-hidden="true" inert>
-  <OverviewFacts device={shape} checks={[]} />
-</div>
-<div class="overview-card metrics" aria-hidden="true">
-  <div class="head" class:ssh={hasMetrics(source)}><div class="overview-card-title">&nbsp;</div></div>
-  {#if hasMetrics(source)}
-    <div class="bars"></div>
-    <MetricsSkeleton {range} {now} />
-  {:else}
-    <!-- The block the loaded section has when metrics are off, with its icon, sentence and button hidden. -->
-    <div class="metrics-off ghost-text">
-      <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
-      <p>&nbsp;</p>
-      <span class="settings"></span>
+<!-- The two columns of the loaded panel, so the main column keeps its width when the cards beside it arrive (R-224). -->
+<div class="overview-fit">
+  <div class="overview-columns">
+    <div class="overview-main">
+      <div class="ghost" aria-hidden="true" inert>
+        <OverviewFacts device={shape} checks={[]} hostKey={false} />
+      </div>
+      <div class="overview-card metrics" aria-hidden="true">
+        <div class="head" class:ssh={hasMetrics(source)}><div class="overview-card-title">&nbsp;</div></div>
+        {#if hasMetrics(source)}
+          <div class="bars"></div>
+          <MetricsSkeleton {range} {now} />
+        {:else}
+          <!-- The block the loaded section has when metrics are off, with its icon, sentence and button hidden. -->
+          <div class="metrics-off ghost-text">
+            <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
+            <p>&nbsp;</p>
+            <span class="settings"></span>
+          </div>
+        {/if}
+      </div>
     </div>
-  {/if}
+    <div class="overview-side" aria-hidden="true">
+      <div class="overview-card side-ghost"></div>
+      <!-- The host key card with the loaded card's text, hidden, so it wraps to the same lines (MOT-007). -->
+      <div class="ghost" inert><HostKeyCard ssh={shape.ssh} /></div>
+      <div class="overview-card side-ghost"></div>
+    </div>
+  </div>
 </div>
 
 <style>
+  /* The cards "Connect" and "About" before their rows are known: about four rows each. */
+  .side-ghost {
+    min-block-size: calc(var(--space-16) * 3);
+  }
+
   /* Each card keeps its box; what it says is not drawn. */
   .ghost :global(.overview-card > *),
   .ghost-text > * {

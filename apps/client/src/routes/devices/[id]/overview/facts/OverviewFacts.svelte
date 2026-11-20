@@ -9,16 +9,18 @@
   interface Props {
     device: OverviewDevice & { readonly status: DeviceStatus };
     checks: readonly { readonly status: DeviceStatus }[];
+    /** False where the host key card is drawn beside the Overview, with the ways in (R-224). */
+    hostKey?: boolean;
   }
 
-  const { device, checks }: Props = $props();
+  const { device, checks, hostKey = true }: Props = $props();
   const id = $props.id();
   const counts = $derived(checkCounts(checks));
 </script>
 
 <!-- D-10: status, uptime, checks and the host key, each a card; the skeleton draws this same component with its text hidden (MOT-007). -->
 <div class="overview-facts-fit">
-  <div class="overview-facts">
+  <div class="overview-facts" class:three={!hostKey}>
     <section class="overview-card" aria-labelledby="{id}-status">
       <h2 id="{id}-status" class="overview-card-title"><Icon name="carbon:activity" />Status</h2>
       <dl class="facts">
@@ -59,7 +61,7 @@
         <p class="overview-figures none">No checks</p>
       {/if}
     </section>
-    <HostKeyCard ssh={device.ssh} />
+    {#if hostKey}<HostKeyCard ssh={device.ssh} />{/if}
   </div>
 </div>
 
