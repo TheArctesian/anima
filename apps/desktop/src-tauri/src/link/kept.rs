@@ -125,9 +125,27 @@ impl Kept {
             .ok_or(LinkError::Failed)
     }
 
-    /// Whether the unit of the user is installed.
-    pub fn installed(&self) -> bool {
-        ask(self, &["unit", "show"], ASK_LIMIT).is_some_and(|shown| printed::unit_installed(&shown))
+    /// Whether the installed unit runs the link of this folder. The file and the label of the
+    /// unit are the same for each copy of the app, so a unit that is there can be the unit of a
+    /// different folder: that one is never changed or removed from here.
+    pub fn keeps_this_folder(&self) -> bool {
+        let Some(folder) = self.folder.to_str() else {
+            return false;
+        };
+        ask(self, &["unit", "show"], ASK_LIMIT)
+            .and_then(|shown| printed::unit_file(&shown))
+            .and_then(|file| fs::read_to_string(file).ok())
+            .is_some_and(|unit| printed::unit_runs_folder(&unit, folder))
+    }
+
+    /// Removes the unit and writes why to the log: each removal by the app has its line.
+    pub fn remove_because(&self, reason: &'static str) -> Result<(), LinkError> {
+        let result = self.remove();
+        match &result {
+            Ok(()) => log::warn!("the unit of the device link was removed: {reason}"),
+            Err(_) => log::warn!("the unit of the device link was not removed ({reason})"),
+        }
+        result
     }
 
     /// The port that the running link listens on; none while no link runs on this folder.
@@ -241,11 +259,12 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     })
 }
 
-/// The link of `folder` when a unit of the user keeps it now.
+/// The link of `folder` when a unit of the user keeps it now: a unit for a different folder
+/// is not it.
 pub fn now(folder: &Path, port: u16) -> Option<Kept> {
     at(folder, port)
         .ok()
-        .filter(|link| link.program.is_file() && link.installed())
+        .filter(|link| link.program.is_file() && link.keeps_this_folder())
 }
 
 /// The socket for the daemon of the link that a unit keeps on `port`, when that link made it.
@@ -294,11 +313,11 @@ fn keep(device: &DeviceLink, program: &Path, folder: &Path, port: u16) -> Result
     }
     device.stop();
     if link.install().is_err() {
-        let _ = link.remove();
+        let _ = link.remove_because("`anima-link unit install` failed");
         return Err("`anima-link unit install` failed");
     }
     if !answers(&link, READY_LIMIT) {
-        let _ = link.remove();
+        let _ = link.remove_because("its link did not answer on its port");
         return Err("the link of the unit did not answer on its port");
     }
     link.watch(device);

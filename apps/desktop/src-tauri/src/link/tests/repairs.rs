@@ -50,7 +50,7 @@ fn hmd_058_a_unit_that_was_removed_is_installed_again_and_its_link_answers() {
     assert_eq!(link.serving(), None);
 
     assert!(link.put_back(None, None));
-    assert!(link.installed());
+    assert!(link.keeps_this_folder());
     assert_eq!(link.serving(), Some(41001));
 }
 
@@ -59,7 +59,7 @@ fn hmd_058_a_folder_that_is_not_marked_for_a_unit_gets_none() {
     let state = tempfile::tempdir().unwrap();
     let link = kept_in(state.path(), 41001);
     assert!(!link.put_back(None, None));
-    assert!(!link.installed());
+    assert!(!link.keeps_this_folder());
     let calls = fs::read_to_string(state.path().join("calls")).unwrap();
     assert!(!calls.contains("unit install"), "{calls}");
 }
