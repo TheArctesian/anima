@@ -1,0 +1,19 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "capacity",
+      "result": "Passed",
+      "harness_reset": false,
+      "response_seconds": 0.4418221319992881,
+      "limitation": "Read/cleanup smoke only; no allocation admission control implemented",
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "capacity/1/serial.log",
+      "sha256": "8761e3b36a42810f8d7ab9c1122636f5d098863cd02765b0c6337495e6f33548"
+    }
+  ]
+}

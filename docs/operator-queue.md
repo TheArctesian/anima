@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (196)
+## 2. Open decisions (195)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -211,7 +211,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Open; mapping only, no reprioritization | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Open; side-chat revisit requested | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Open; no hardware access or result assumed | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
-| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Open; writing this proposal does not approve its build | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS6 | What custom host configuration is a supported public input? | Open; reconcile with Decision 16, do not narrow it silently | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Open; blocks corresponding F4 and OS4 acceptance | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
@@ -274,10 +273,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (89)
+## 4. Checks that only the operator can do (91)
 
 | Check | What |
 | --- | --- |
+| HT-069 | Anima OS preview hardware and enrollment |
 | HT-066 | a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) |
 | HT-001 | `anima snapshot` against GitHub |
 | HT-002 | the tool inventory from a daemon to the command line |
@@ -301,6 +301,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-028 | the hosted hub is a device of its own device list (HM-T9) |
 | HT-029 | the computer is Up while it is connected to the link (HM-T11) |
 | HT-031 | a hosted hub reaches SSH of a computer on its link (HM-T12) |
+| HT-070 | a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14) |
 | HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | HT-033 | an SSH session on a phone, with the key row |
 | HT-025 | a phone joins a hub with an invite, through the link in the app |

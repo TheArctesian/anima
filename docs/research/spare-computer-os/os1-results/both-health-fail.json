@@ -1,0 +1,37 @@
+{
+  "image_sha256": "f7b703f63f8026c914993f7f08ca1661420113d6779bfdb9789d3243f9d01201",
+  "results": [
+    {
+      "case": "both-health-fail",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "both-health-fail",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    },
+    {
+      "case": "both-health-fail",
+      "result": "Passed",
+      "harness_reset": false,
+      "unselected_disk_unchanged": true
+    }
+  ],
+  "serial_logs": [
+    {
+      "path": "both-health-fail/1/serial.log",
+      "sha256": "df019399c7c21cad59419713eec789999a27721fe70d75061b98a030634947c9"
+    },
+    {
+      "path": "both-health-fail/2/serial.log",
+      "sha256": "891ef80f0fc4d14159b1ce3cd9b975a042c8a74ebe6d6f08448fb59b3ff7c920"
+    },
+    {
+      "path": "both-health-fail/3/serial.log",
+      "sha256": "b28d3151a040bc7a4d3db87ecd6d2b414ccc14ed4c1bffefbaa87172a47d73d6"
+    }
+  ]
+}

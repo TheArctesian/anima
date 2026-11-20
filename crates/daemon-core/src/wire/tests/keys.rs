@@ -47,7 +47,7 @@ fn r_147_a_held_list_that_breaks_its_rules_is_malformed() {
 #[test]
 fn r_147_accepted_reads_with_or_without_keys_and_ignores_other_members() {
     let told: PushAccepted =
-        serde_json::from_str(r#"{"keys":{"current":[{"name":"a","version":2}]},"update":{}}"#)
+        serde_json::from_str(r#"{"keys":{"current":[{"name":"a","version":2}]},"later":{}}"#)
             .unwrap();
     assert_eq!(told.keys.unwrap().current, [held("a", 2)]);
     let none: PushAccepted = serde_json::from_str("{}").unwrap();
