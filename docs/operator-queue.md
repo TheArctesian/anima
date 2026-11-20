@@ -36,7 +36,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
-| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-NEW-phoneaccount (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-NEW-iosarchive (the iOS archive with a signature) and HT-NEW-iphonesignin (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
 ## 2. Open decisions (150)
 
@@ -225,7 +225,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (79)
+## 4. Checks that only the operator can do (82)
 
 | Check | What |
 | --- | --- |
@@ -260,6 +260,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
 | HT-044 | the application does not start Tailscale on a hosted hub (DEF-005) |
+| HT-055 | the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4) |
+| HT-053 | the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4) |
+| HT-054 | the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043) |
 | HT-043 | a reminder reaches a phone through ntfy (E0-7 T2 to T4, REM-001 to REM-010) |
 | HT-040 | a phone sends fixes and a file transfer gets its context (E0-5 T3 and T4, R-145) |
 | HT-035 | a server gets, follows and drops an operational key (E0-6 T2, R-147) |

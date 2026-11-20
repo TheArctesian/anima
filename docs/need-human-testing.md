@@ -76,10 +76,10 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-048 | The tab Overview of a device after the interface review: the facts as one strip, cards with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-device-overview`, a device with checks and metrics | Open |
 | HT-049 | The application carries `anima-daemon` (HMD-052, task HM-T16) | This Mac with the tools of a trial bundle; for step 4 a release | Open |
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
-| HT-NEW-containersv2 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
-| HT-NEW-phoneaccount | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
-| HT-NEW-iosarchive | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
-| HT-NEW-iphonesignin | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
+| HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
+| HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
+| HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
+| HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 
 ### What a check on the hosted hub needs
 
@@ -981,7 +981,7 @@ sign-in to the hosted hub.
    and close the form. Expected: Tailscale does not start.
 5. Look again in Activity Monitor. Expected: no process "Tailscale".
 
-### HT-NEW-phoneaccount: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
+### HT-055: the sign-in with the Anima.ing account on a phone, to the hosted hub (mobile plan M3-4)
 
 Built: on the branch `mobile/account-sign-in` (mobile plan M3-4; MOB-017, MOB-030; HMD-032 to HMD-035, HMD-043). The
 phone app has the cloud commands of the desktop app (`apps/desktop/src-tauri/src/cloud.rs`), so "Sign in" and "Sign up"
@@ -1021,7 +1021,7 @@ Steps 1 to 4 need no real phone. Use the Android emulator with a route to the in
 
 Result: Open.
 
-### HT-NEW-iosarchive: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
+### HT-053: the iOS archive with a signature, and the build from TestFlight on a real iPhone (mobile plan M5-3, M5-4)
 
 Built: on the branch `mobile/account-sign-in`: `apps/desktop/src-tauri/ios-archive.sh` and
 `deploy/bin/phone-build-number` ([mobile-build.md](procedures/setup/mobile-build.md)). The tests cover the rule of the
@@ -1042,13 +1042,13 @@ the operator (MOB-006).
 3. Upload the IPA with Transporter or with Xcode (Window, Organizer). Expected: App Store Connect takes the build and
    shows it under TestFlight with the version and the build number of step 2. Note each warning of Apple (for example
    about the icons or the export question).
-4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-NEW-phoneaccount, step 5.
+4. Install the build from TestFlight on a real iPhone and open it. Expected: the first screen. Then do HT-055, step 5.
 5. Run step 2 again at a later commit of `main` and upload. Expected: App Store Connect takes it; its build number is
    higher.
 
 Result: Open.
 
-### HT-NEW-iphonesignin: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
+### HT-054: the sign-in inside the iPhone application, through WorkOS (mobile plan M3-5, MOB-043)
 
 Built: on the branch `mobile/native-sign-in`. On an iPhone "Sign in" shows the page of the Anima.ing account over the
 application (the web authentication session of iOS) and comes back by itself; there is no code and no browser to go
@@ -1058,7 +1058,7 @@ to. The shell uses the authorization code flow of WorkOS with PKCE and listens f
 The tests cover the code challenge (the example of RFC 7636), the address of the page, the listener with a real
 connection, the check of the state, a stopped sign-in, and the fields of the trade of the code. Not covered: the Swift
 part, the page on a screen, a real answer of WorkOS, the refresh after this flow, and the rest of the sign-in
-(HT-NEW-phoneaccount). No build of this branch ran on a simulator or a phone.
+(HT-055). No build of this branch ran on a simulator or a phone.
 
 1. In the WorkOS dashboard, in the production environment: Applications, the application of Anima.ing, the tab
    Redirects. Add `http://127.0.0.1:47113/sign-in`. Do not make it the default. Expected: the dashboard takes it. If it
@@ -1908,7 +1908,7 @@ host key, with many check states or while it loads.
 
 Result: Open.
 
-### HT-NEW-containersv2: the tab Containers of a device after the interface review (R-224)
+### HT-052: the tab Containers of a device after the interface review (R-224)
 
 Built on the branch `ui/v2-device-containers`, in `apps/client/src/lib/containers`: the table has one column "State" with
 the state word and the status text of Docker; the log and the details of the selected container are one raised pane
