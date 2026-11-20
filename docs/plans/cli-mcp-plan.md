@@ -217,7 +217,7 @@ Not in the command line, with the reason:
   each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
   without a hub request). With nothing saved, every read tool and every change tool is `allow`:
   the server is fully automatic (operator ruling R-120, 2026-11-16; MCP-024). A tool that starts
-  routed work follows these states and routes with no question when it is `allow` (R-234, ROU-009). The switch "Ask
+  routed work follows these states and routes with no question when it is `allow` (R-242, ROU-009). The switch "Ask
   before destructive actions" (MCP-025) puts the destructive tools in state `ask`. Before R-120, a
   change tool was `off` with nothing saved.
 - **MCP-003.** The hub token is the real limit. The server shows only the tools that its token
@@ -230,7 +230,7 @@ Not in the command line, with the reason:
 - **MCP-005.** No tool makes a trust decision: accept a host key or a certificate. A person does
   that, in the client or with the command line.
 - **MCP-006.** No tool opens a session or runs a command on a device. (Open point 1.) Exception
-  (R-234, "Multiplexer Q2: automatic for all work."): a tool may start work of a fixed type, or an
+  (R-242, "Multiplexer Q2: automatic for all work."): a tool may start work of a fixed type, or an
   agent run, on the machine that routing picks (ROU-001 to ROU-014 of
   [jobs.md](../proposals/jobs.md)). It takes no command line (JOB-015). Not approved; no effect
   before the security review RT7.

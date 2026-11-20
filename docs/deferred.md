@@ -139,7 +139,7 @@ Added 2026-11-06.
 Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) and R-196.
 
 - [ ] The fallback to a local model, BOT-047 to BOT-057 of [bots.md](proposals/bots.md), is parked (OD-AXT3).
-- [x] A page of all agents on all devices: moved out of this list by R-234 (2026-11-19) into [agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) Section 6.8 (AXT-046 to AXT-052). The alerts stay open (OD-AXT20).
+- [x] A page of all agents on all devices: moved out of this list by R-242 (2026-11-19) into [agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) Section 6.8 (AXT-046 to AXT-052). The alerts stay open (OD-AXT20).
 - [ ] A review of the Herdr decision if Herdr Cloud ships or the Herdr project stalls (OD-AXT2). AIS-009 to AIS-017 are withdrawn, not deferred.
 - [ ] The later entries of Section 6.5.1 of the proposal, in waves: A ComfyUI and Unsloth Studio; B OpenClaw (after a security review) and Agent Zero; C JupyterLab and InvokeAI (OD-AXT17, OD-AXT18).
 - [ ] The desktop and phone applications of Herdr, Hermes Agent and T3 Code (AXT-025).

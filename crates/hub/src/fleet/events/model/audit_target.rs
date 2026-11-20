@@ -3,8 +3,9 @@
 
 use crate::ids::{
     ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-    IngestTokenId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId,
-    ReleaseId, ReminderRuleId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
+    IngestTokenId, JobId, OperationalKeyId, OperatorId, PlaceId, ProjectId, ProposalId,
+    RecordLinkId, ReleaseId, ReminderRuleId, RepositoryId, SessionId, SiteId, SourceAccountId,
+    WindowId,
 };
 
 /// The thing an audited action changed.
@@ -66,6 +67,8 @@ pub enum AuditTarget {
     IngestToken(IngestTokenId),
     /// A reminder rule (K-E6 Section 2).
     ReminderRule(ReminderRuleId),
+    /// A job of the work route (K10 Section 10).
+    Job(JobId),
 }
 
 impl AuditTarget {
@@ -102,6 +105,7 @@ impl AuditTarget {
             Self::LocationSamples => "location_samples",
             Self::IngestToken(_) => "location_ingest_token",
             Self::ReminderRule(_) => "reminder_rule",
+            Self::Job(_) => "job",
         }
     }
 
@@ -137,6 +141,7 @@ impl AuditTarget {
             Self::LocationSamples => "location_samples".to_owned(),
             Self::IngestToken(id) => id.to_string(),
             Self::ReminderRule(id) => id.to_string(),
+            Self::Job(id) => id.to_string(),
         }
     }
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Makes a trial bundle of the application with every program that "Create a hub on this
-# computer" needs (one-click plan S12): for a trial on the computer that built it. It runs the
+# computer" needs (one-click plan S12) and the daemon of this computer (HMD-052, R-206): for a trial on the computer that built it. It runs the
 # build commands of the release builder's bundle step (src/builder/) by hand, in its order,
 # with an ad hoc signature on macOS. It is not that step:
 #   - it runs in your environment, with your cargo settings, and not in the scrubbed one;
@@ -54,8 +54,8 @@ case "$IDENTITY" in *\"* | *\\*) echo "trial-bundle: SIGN_IDENTITY holds a quote
 echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || { echo "trial-bundle: the version is not like 0.1.0" >&2; exit 1; }
 TARGET_FOLDER=${CARGO_TARGET_DIR:-$ROOT/target}
 STAGE=$HERE/binaries
-RUST_PROGRAMS="anima anima-local-hub anima-hub anima-database anima-gateway"
-EXTERNAL='"binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"'
+RUST_PROGRAMS="anima anima-local-hub anima-hub anima-database anima-gateway anima-daemon"
+EXTERNAL='"binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-daemon","binaries/anima-link"'
 CARRIED="\"externalBin\":[$EXTERNAL],\"resources\":{\"database\":\"database\"}"
 export CI=true
 # A trial bundle keeps its version: the published version can be lower, and an application that
@@ -84,7 +84,8 @@ cargo_build() {
         --package anima-local-hub --bin anima-local-hub \
         --package anima-hub --bin anima-hub \
         --package anima-database --bin anima-database \
-        --package anima-gateway --bin anima-gateway "$@" )
+        --package anima-gateway --bin anima-gateway \
+        --package anima-daemon --bin anima-daemon "$@" )
 }
 
 tauri() {
