@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import { COLLAPSED } from '$lib/events/resize/resize';
@@ -72,9 +73,11 @@
   const face = $derived(listing.skeleton ? 'skeleton' : list === null ? 'none' : phoneLayout() ? 'phone' : query.view);
 
   /** The counts are of every device: while a count filters the list, they keep the last unfiltered ones (D18). */
-  let tally = $state<Counts>({ total: 0, parts: [] });
+  const NO_COUNTS: Counts = { total: 0, parts: [] };
+  let tally = $state<Counts | null>(null);
   $effect(() => {
-    if (list !== null && query.statuses.length === 0) tally = tallyOf(list.devices);
+    // The first list gives the first counts, also when it is filtered: no count is better than "0 devices".
+    if (list !== null && (query.statuses.length === 0 || untrack(() => tally) === null)) tally = tallyOf(list.devices);
   });
 
   $effect(() => {
@@ -92,13 +95,13 @@
 
 <!-- The phone layout has its own head and rows (mockup 4): one add button, the counts, the search, and no menus. -->
 {#if phoneLayout()}
-  <PhoneHead {tally} {query} {onQueryChange} {onAddDevice} />
+  <PhoneHead tally={tally ?? NO_COUNTS} {query} {onQueryChange} {onAddDevice} />
 {:else}
 <div class="head" {@attach entrance()}>
   <PageHeader title="Devices">
     {#snippet actions()}<FormButton tone="primary" icon="carbon:add" onclick={onAddDevice}>Add device</FormButton>{/snippet}
   </PageHeader>
-  <Tally {tally} {query} {onQueryChange} />
+  <Tally {tally} waiting={listing.error === null} {query} {onQueryChange} />
   <Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} />
 </div>
 {/if}

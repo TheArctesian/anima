@@ -2327,6 +2327,13 @@ window with real devices.
    Expected: no "Wake" in the row. "+ VNC" has no dashed border and opens the setup as before.
 6. Make the window narrow (below 1100 px) and select the grid view.
    Expected: no part lies over another. In a narrow list the reason of a problem stands where the usage was.
+7. Stop a device that has two ways in and a MAC address (for example VNC and Web), and wait until the list says Down.
+   Expected: its row has the same height as before and the rows below do not jump. Its buttons are three icons on one
+   line; the pointer on each shows its name ("VNC", "Web", "Wake").
+8. Load the page again and look at the line under "Devices" before the list comes.
+   Expected: a quiet block, never "0 devices". When the counts come, nothing below them moves.
+9. Wait until the page stands still, then open "Tags", "Site" and the sort menu with the pointer.
+   Expected: the page does not scroll and the toolbar does not move.
 
 Result: Open.
 

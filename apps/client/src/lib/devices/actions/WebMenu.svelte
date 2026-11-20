@@ -16,9 +16,11 @@
     interfaces: readonly WebInterface[];
     /** The button is passed so the web tab can grow from it (MOT-005). */
     onOpen: (webInterface: WebInterface, button: HTMLElement) => void;
+    /** The icon alone, with "Web" as its tooltip: a row of the list that has more than two ways in. */
+    iconOnly?: boolean;
   }
 
-  const { deviceName, interfaces, onOpen }: Props = $props();
+  const { deviceName, interfaces, onOpen, iconOnly = false }: Props = $props();
   const id = $props.id();
   // A browser cannot pin (WEB-008), so its menu shows each pin for the operator to compare with the browser's certificate view (WEB-011).
   // The menu then opens even for one interface, so the pin is seen before the tab opens.
@@ -95,6 +97,8 @@
   <button
     type="button"
     class="device-action"
+    class:icon-only={iconOnly}
+    title={iconOnly ? 'Web' : undefined}
     tabindex="0"
     bind:this={button}
     aria-label={single === undefined ? `Web interfaces of ${deviceName}` : `Open ${single.label} of ${deviceName}`}
@@ -104,7 +108,7 @@
     onclick={activate}
     {@attach press()}
   >
-    <Icon name="carbon:earth" size="sm" />Web
+    <Icon name="carbon:earth" size="sm" />{#if !iconOnly}Web{/if}
   </button>
   {#if open}
     <div class="panel material-overlay" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" bind:this={panel} transition:popover={{ from: button }} {@attach place}>

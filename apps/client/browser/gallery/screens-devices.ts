@@ -10,7 +10,7 @@ import { openDevices, openedDialog } from './steps';
  * that are not the plain ones.
  */
 function withProblems(loaded: Fixtures): Fixtures {
-  const down = loaded.devices.find((device) => device.name === 'nas');
+  const down = loaded.devices.find((device) => device.name === 'mac-mini');
   const long = loaded.devices.find((device) => device.name === 'amd-box');
   // The real hub gives the devices by status, problems first; the synthetic hub keeps the order of its fixtures.
   const devices = [...loaded.devices.filter((device) => device === down), ...loaded.devices.filter((device) => device !== down)].map((device) => {

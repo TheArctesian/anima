@@ -88,10 +88,12 @@
               <span class="marks">
                 <StatusBadge status={device.status} deviceId={device.id} plain />
                 <WarningBadge warnings={device.accessWarnings} />
-                {#if reason !== null && reason.since !== null}<span class="since">{reason.since}</span>{/if}
               </span>
               {#if reason !== null}
-                <a class="reason" href="{resolve('/devices')}/{encodeURIComponent(device.id)}?tab=checks" title="{reason.text}. Open the checks.">{reason.text}</a>
+                <span class="why">
+                  <a class="reason" href="{resolve('/devices')}/{encodeURIComponent(device.id)}?tab=checks" title="{reason.text}. Open the checks.">{reason.text}</a>
+                  {#if reason.since !== null}<span class="since">{reason.since}</span>{/if}
+                </span>
               {/if}
             </td>
             <td class="c-uptime">{uptimeText(device.uptime)}</td>
