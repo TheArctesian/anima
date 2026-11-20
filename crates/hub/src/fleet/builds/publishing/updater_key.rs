@@ -111,6 +111,26 @@ impl UpdaterKey {
         self.secret.sign(digest, signed)
     }
 
+    /// The bytes of `record` and their signature (ROL-004), checked with the public key before
+    /// they are given (ROL-010).
+    pub(super) fn sign_record(
+        &self,
+        record: &release_record::Record,
+        timestamp: u64,
+    ) -> Result<(Vec<u8>, String), release_record::SignError> {
+        let (bytes, signature) = release_record::sign(record, &self.secret, timestamp)?;
+        for file in &record.files {
+            let expected = release_record::Expected {
+                version: record.version,
+                target: record.target,
+                program: file.program,
+            };
+            release_record::check(&bytes, &signature, &self.public, expected)
+                .map_err(|_| release_record::SignError::Signature)?;
+        }
+        Ok((bytes, signature))
+    }
+
     /// A check of `signature` with the public key, by the updater's own verifier (BLD-046).
     pub(super) fn check(&self, signature: &str) -> Result<SignatureCheck, SignatureError> {
         SignatureCheck::new(&self.public, signature)

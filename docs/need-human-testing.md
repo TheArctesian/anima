@@ -1479,6 +1479,15 @@ from `main`, started with Gates `reuse`: the summary says "The Linux gates are n
 when it must run. Not proven before that trial: the time of `gates-macos`, and the test filter of
 `deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
 
+Changed on 2026-11-20, on the branch `update/u2-release-record`, and not run on GitHub (task U2): the jobs `daemon`
+and `daemon-publish`, and a second step of the job `sign` that writes and signs the release record of each target
+([releases.md](procedures/releases.md), "The daemon alone"). Expected in the next trial: `daemon` passes (the macOS
+program is universal, the Linux program needs no library of the AppImage), and the artifact `records` of `sign`
+holds `release-record.json` and its `.sig` for `linux-x86_64` and `darwin-universal`. Expected at the first public
+release: the six files are at `https://releases.anima.ing/<target>/<version>/`, and the SHA-256 of each
+`anima-daemon` is the one in its record. A fault to look for: `ldd` reports a library that a Linux machine of the
+operator does not have.
+
 Result: Open.
 
 Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.

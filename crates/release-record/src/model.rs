@@ -88,6 +88,49 @@ fn is_file_name(name: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
+impl Program {
+    /// Each program, in the order of ROL-001.
+    pub const ALL: [Self; 5] = [
+        Self::Daemon,
+        Self::Command,
+        Self::Hub,
+        Self::Gateway,
+        Self::Link,
+    ];
+
+    /// The name of the program, which is also the name of its file in a release folder.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Daemon => "anima-daemon",
+            Self::Command => "anima",
+            Self::Hub => "anima-hub",
+            Self::Gateway => "anima-gateway",
+            Self::Link => "anima-link",
+        }
+    }
+
+    /// The program with the name `name`.
+    #[must_use]
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|program| program.name() == name)
+    }
+}
+
+impl File {
+    /// The entry of `program` for the bytes of its file, under the name of the program.
+    #[must_use]
+    pub fn of(program: Program, bytes: &[u8]) -> Self {
+        use sha2::Digest as _;
+        Self {
+            name: program.name().to_owned(),
+            program,
+            size: bytes.len() as u64,
+            sha256: crate::check::to_hex(&sha2::Sha256::digest(bytes)),
+        }
+    }
+}
+
 impl Record {
     /// Whether the fields obey the rules that the types do not hold: the format, the commit,
     /// the names, the sizes and hashes, one file for each program, no two files of one name,

@@ -36,8 +36,8 @@ const SIGNED_AT: &str = "SOURCE_DATE_EPOCH";
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseError {
     #[error(
-        "usage: anima-hub release <sign | check | publish> <linux-x86_64 | darwin-universal> \
-         <version> <folder>"
+        "usage: anima-hub release <sign | check | publish | record> \
+         <linux-x86_64 | darwin-universal> <version> <folder>"
     )]
     Usage,
     #[error("{0} is not set or is not valid")]
@@ -49,12 +49,14 @@ pub enum ReleaseError {
     #[error("{0}")]
     Built(#[from] BuiltError),
     #[error("{0}")]
+    Record(#[from] super::record::RecordError),
+    #[error("{0}")]
     Bucket(#[from] BucketError),
     #[error("invalid configuration")]
     Config(#[from] config::Error),
 }
 
-fn setting<'a>(
+pub(super) fn setting<'a>(
     env: &'a BTreeMap<String, String>,
     name: &'static str,
 ) -> Result<&'a str, ReleaseError> {
@@ -66,7 +68,7 @@ fn setting<'a>(
 
 /// Each regular file of `folder` with its bytes. A folder, a link or a name that is not
 /// Unicode in it is refused: a release folder holds only the files of one target.
-fn files_of(folder: &Path) -> Result<Vec<BuiltFile>, ReleaseError> {
+pub(super) fn files_of(folder: &Path) -> Result<Vec<BuiltFile>, ReleaseError> {
     let fault = |error: std::io::Error| ReleaseError::Folder(error.kind());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(folder).map_err(fault)? {
@@ -85,13 +87,9 @@ fn files_of(folder: &Path) -> Result<Vec<BuiltFile>, ReleaseError> {
     Ok(files)
 }
 
-/// Signs the updater file in `folder` with the key of `ANIMA_UPDATER_KEY_FILE` and writes its
-/// `.sig` beside it.
-fn sign(
-    env: &BTreeMap<String, String>,
-    built: &Built,
-    folder: &Path,
-) -> Result<String, ReleaseError> {
+/// The updater key of `ANIMA_UPDATER_KEY_FILE`, which must have the public key of
+/// `ANIMA_UPDATER_PUBLIC_KEY`, and the time for the trusted comment.
+pub(super) fn open_key(env: &BTreeMap<String, String>) -> Result<(UpdaterKey, u64), ReleaseError> {
     let secret = |name: &'static str| {
         std::fs::read(setting(env, name)?)
             .map(Zeroizing::new)
@@ -106,6 +104,17 @@ fn sign(
     let signed_at = setting(env, SIGNED_AT)?
         .parse()
         .map_err(|_| ReleaseError::Setting(SIGNED_AT))?;
+    Ok((key, signed_at))
+}
+
+/// Signs the updater file in `folder` with the key of `ANIMA_UPDATER_KEY_FILE` and writes its
+/// `.sig` beside it.
+fn sign(
+    env: &BTreeMap<String, String>,
+    built: &Built,
+    folder: &Path,
+) -> Result<String, ReleaseError> {
+    let (key, signed_at) = open_key(env)?;
     let (name, text) = sign_built(&key, built, signed_at)?;
     std::fs::write(folder.join(&name), text).map_err(|error| ReleaseError::Folder(error.kind()))?;
     Ok(format!("Signed: {name} is written."))
@@ -172,6 +181,9 @@ pub async fn release_command(
         .ok_or(ReleaseError::Usage)?;
     let version: Version = version.parse().map_err(|_| ReleaseError::Usage)?;
     let folder = Path::new(folder);
+    if *verb == "record" {
+        return super::record::record(env, target, version, folder);
+    }
     let built = Built {
         target,
         version,

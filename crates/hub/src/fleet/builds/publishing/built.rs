@@ -1,12 +1,14 @@
 //! One release of one target that the jobs of the release workflow built (R-179): the checks
 //! the publisher makes for a queued job (BLD-002, BLD-046, BLD-064 to BLD-069), with no queue
 //! and no database. `checks` holds what needs only the bytes, `publisher` the bucket, and
-//! `command` the `anima-hub release` commands. A refusal names files and versions only; no
+//! `command` the `anima-hub release` commands, and `record` the release record of the
+//! program files of a target (task U2). A refusal names files and versions only; no
 //! key, signature, token or URL reaches an error (LOG-007).
 
 mod checks;
 mod command;
 mod publisher;
+mod record;
 
 use bytes::Bytes;
 

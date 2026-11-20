@@ -119,6 +119,19 @@ To run the Mac tests on a Mac: `sh deploy/bin/macos-tests`, with PostgreSQL 17, 
 
 Do not start a trial for the commit of a release that is still running, and the other way round: the workflow `gates` cancels an older run of itself for the same commit, so the first of the two would lose its gates and fail. Nothing is published in that case; start the failed run again.
 
+### The daemon alone (task U2)
+
+A release also publishes `anima-daemon` for each target, with its signed release record, for the update of the machines (task U6 of the [update plan](../plans/daemon-and-hub-update-plan.md); nothing reads these files yet). After the job `publish`, the job `daemon-publish` puts, for `linux-x86_64` and for `darwin-universal`: `<target>/<version>/anima-daemon`, then `<target>/<version>/release-record.json`, then `<target>/<version>/release-record.json.sig`. The record is signed with the updater key in the job `sign`; no new secret and no new switch. `deploy/release/replaces-from` holds the lowest daemon version that the release can replace (`0.0.0`: each). The fields and the check are in the update plan, "The release record as built".
+
+To check the files of a release by hand:
+
+```sh
+curl -fsS https://releases.anima.ing/linux-x86_64/<version>/release-record.json
+curl -fsS -o anima-daemon https://releases.anima.ing/linux-x86_64/<version>/anima-daemon && shasum -a 256 anima-daemon
+```
+
+The SHA-256 must be the `sha256` of the file in the record.
+
 ### The version of a release (R-183, R-201)
 
 The version of a commit of `main` is `0.<N div 100>.<N mod 100>`, where N is the number of commits on the first line of its history (the own line of `main`; a branch that is merged adds one commit, its merge). This command prints it:

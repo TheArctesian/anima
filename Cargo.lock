@@ -333,6 +333,7 @@ dependencies = [
  "rcgen",
  "rdp-test-device",
  "redaction",
+ "release-record",
  "reqwest 0.12.28",
  "ring",
  "rpassword",
