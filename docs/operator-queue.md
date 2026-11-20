@@ -38,7 +38,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (177)
+## 2. Open decisions (178)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -193,8 +193,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Open; mapping only, no reprioritization | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Open; side-chat revisit requested | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Open; no hardware access or result assumed | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
-| OD-AOS5 | Approve the proposed requirements and a bounded start of OS0/OS1 after architecture/contract review? | Open; writing this proposal does not approve its build | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
+| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Open; writing this proposal does not approve its build | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS6 | What custom host configuration is a supported public input? | Open; reconcile with Decision 16, do not narrow it silently | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
+| OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Open; blocks corresponding F4 and OS4 acceptance | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-2 | Hub authentication method | One operator account with a password and a TOTP second factor. Add OIDC in a later version. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-3 | Desktop client without a hub | Not supported. A later version can add direct SSH from the Rust layer for offline use. | [spec/design-spec.md](spec/design-spec.md) |

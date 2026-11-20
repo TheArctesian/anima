@@ -1,19 +1,19 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.1 (2026-11-19). The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. No implementation or hardware validation has been performed. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
+evidence: Version 0.2 (2026-11-19). Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. No implementation or hardware validation has been performed. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
 ---
 
 # Proposal: Anima OS for spare computers
 
 | Item | Value |
 | --- | --- |
-| Version | 0.1 |
+| Version | 0.2 |
 | Date | 2026-11-19 |
 | Status | Draft. The header holds the state. This proposal is not permission to build or release. |
 | Serves | [Priority 4.16](../plan/priorities.md): a dedicated-machine installation path. This mapping adds no new tier and does not delay existing install work. Workload dependencies remain in rows 4.7 and 4.9; updates in 4.18. |
 | Owner | This proposal owns the proposed OS image, installer, host state layout and recovery integration. Existing owners retain application, job, agent, identity and permission semantics. |
-| Identifiers | AOS-001 to AOS-024; open decisions OD-AOS1 to OD-AOS6; proposed tasks OS0 to OS8 |
+| Identifiers | AOS-001 to AOS-024; open decisions OD-AOS1 to OD-AOS7; proposed tasks OS0 to OS8 |
 | Source | The operator's 28-decision conversation, retained in the appendices. Earlier idea history ends at commit 2371f957. |
 
 ## 1. Product and scope
@@ -134,15 +134,15 @@ No task is buildable from this Draft. Each later claim must name its task and ap
 
 | Task | Work | Depends on | State | Completion evidence |
 | --- | --- | --- | --- | --- |
-| OS0 | Reconcile owner contracts/current code; select repository/base; define installer, maintenance and restore trust boundaries; obtain decisions | OD-AOS1 to OD-AOS5 | Not started | Reviewed architecture and exact proposed contract deltas; no deployment |
-| OS1 | Run F1-F4 feasibility experiments, report pass/fail and hardware limits | OS0 and explicit experiment approval | Not started | Reproducible commands, versions, logs without secrets, failure cases |
-| OS2 | Build versioned base image and state layout | OS1 architecture gate | Not started | M1 record |
+| OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Not started | Per-owner task/revision/status map, exact contract deltas and experiment acceptance protocol; council input is in Section 12 |
+| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Not started | Four separate pass/fail/blocked records; F1/F2 need not wait for UI, physical models or F4 |
+| OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Not started | M1 record |
 | OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Not started | M2 record |
-| OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies | Not started | M3 record |
+| OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
 | OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Not started | M4 record |
 | OS6 | Build backup/restore and bounded cleanup | OS4, OS5 recovery interfaces | Not started | M5 record |
-| OS7 | Qualify hardware, produce docs and preview/stable evidence | OS2-OS6; models from OD-AOS4 | Not started | M6 reports and human-check entries with exact steps |
-| OS8 | Prepare release manifest and publish approved artifacts | OS7 and separate release authorization | Not started | Published artifact identity and matching evidence |
+| OS7 | Maintain hardware evidence and user documentation; qualify preview and stable separately | Start matrix with OS1; preview after M2; stable after M1-M5; named hardware from OD-AOS4 | Not started | Separate preview/stable evidence packets and human-check entries; installation docs with M2, recovery docs with M4 |
+| OS8 | Prepare release manifest and publish approved preview or stable artifacts | Corresponding OS7 evidence packet and separate release authorization for that scope | Not started | Published artifact identity and matching evidence |
 
 Independent packaging and hardware research can proceed in parallel only after authorization and without delaying higher-priority work. Integration follows the dependencies above. Do not estimate calendar dates before OS1 and an audit of missing workload capabilities.
 
@@ -154,8 +154,9 @@ Independent packaging and hardware research can proceed in parallel only after a
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Use 4.16 for the installation deliverable now; do not change its tier or authorize work ahead of its existing tasks. | Open; mapping only, no reprioritization |
 | OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Yes, sharing one installer backend; no full desktop. | Open; side-chat revisit requested |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Select available devices covering UEFI, BIOS, ARM boot, networking and optional TPM. Measure minimum resources. | Open; no hardware access or result assumed |
-| OD-AOS5 | Approve the proposed requirements and a bounded start of OS0/OS1 after architecture/contract review? | Review AOS-001 to AOS-024 and the dependency conflicts first. Authorize a bounded feasibility phase before the rest of implementation. | Open; writing this proposal does not approve its build |
+| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Review AOS-001 to AOS-024, Section 12 and the exact experiment brief. Authorize F1/F2 first without implying approval of F3/F4 contract changes or later implementation. | Open; writing this proposal does not approve its build |
 | OD-AOS6 | What custom host configuration is a supported public input? | Start with declared packages/services and reviewed modules; define allowed options, privilege boundaries and update tests before advertising arbitrary Nix modules. | Open; reconcile with Decision 16, do not narrow it silently |
+| OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Preserve Decisions 8/19/21 as the desired outcome; review a per-work-type contract delta, duplicate-execution prevention and separate retained datasets. Do not bypass current K10 rules. | Open; blocks corresponding F4 and OS4 acceptance |
 
 The implementation proposal is complete for review with these open decisions. No new product questionnaire is required to read it. Engineering specifics can be resolved through the approved feasibility work; material changes to the 28 choices require operator decisions. When approved, move this file to the plans directory and update its register/ownership links in the same change.
 
@@ -176,6 +177,61 @@ This proposal is registered under the existing installation concern. It adds an 
 - [OmniXY](https://github.com/TheArctesian/omnixy) and [nascentOS](https://github.com/TheArctesian/nascentOS): operator experience and background only. [NixOS Apple Silicon support](https://github.com/nix-community/nixos-apple-silicon) is a possible later path, not in v1.
 
 Sources above were read during the planning conversation on 2026-11-19. Proxmox, VMware, Caddy, SteamOS and Ubuntu are references for specific behavior, not architecture selections.
+
+## 12. Council review and implementation elaboration
+
+Three independent reviewers examined architecture, security/recovery and delivery. The [council record](../research/spare-computer-os/council-review-2026-11-19.md) summarizes findings and their disposition. This is design review, not runtime validation, formal security approval or authorization to build. All 28 product choices remain intact. The following proposed details elaborate the requirements above; existing owners must approve changes to their contracts.
+
+### 12.1 Resolve contract gaps before integration
+
+- **Offline execution:** [K10 Section 7](../../contracts/work-route.md) ends a build after 90 seconds without an accepted report, permits reassignment and gives runners a separate orphan timeout. This conflicts with unrestricted continuation in Decision 8. OS0 must map each workload type to disconnect, grant expiry, cancellation, reassignment and reconnect behavior. F4 must partition a machine beyond its lease while another worker is available and demonstrate that the approved design prevents duplicate execution and stale-result acceptance. Until OD-AOS7 is resolved, the existing stop policy is a known incompatibility, not proof of OS offline support.
+- **Retained work:** K10 Section 9 deletes execution isolation, checkout and work folders at completion and daemon restart. Propose an owner-defined export/commit into retained datasets, separate from secret-bearing scratch state. Do not back up a running job's whole isolation. Test completion, crash and daemon restart: declared retained outputs survive; scratch credentials do not; cleanup cannot escape its authorized dataset. Persistent workspace support requires its own owner-approved lifecycle, not renaming the current disposable work folder.
+- **Dependency evidence:** OS0 records each owner requirement/task, approval state, implementation revision, missing delta and verification evidence. A proposal or accepted contract does not establish implemented runtime support. In particular, audit work-route daemon work and hosted-application integration before F4. OS1 records blocked upstream work instead of inventing a substitute scheduler.
+
+### 12.2 State, customization and update transaction
+
+F1 produces a path/dataset inventory: owner, normal mount mode, authorized writer, persistence, snapshot/backup inclusion, restore handling and migration rule. Inspect root, `/etc`, `/var`, `/run`, `/tmp`, `/nix/store`, the Nix database/profiles, boot storage, network state, device identity and workload datasets. Inventory nested subvolumes explicitly; a parent snapshot is not assumed to capture them. Test adding, changing and removing a declared custom package and persistent service through reboot and fallback. Record every writable exception.
+
+Proposed activation states are: staged, validated, waiting for maintenance, draining, candidate boot, local verification, committed; each has a recorded failure exit. Pin the candidate and previous known-good configuration and closures. Verify designated mounts, daemon/local control and local network configuration before blessing the candidate; hub reachability alone is not a health gate. Define whether each custom service is host-critical instead of making every app failure roll back the OS. Check persistent-state compatibility before activation and prove that the fallback can read state left by the candidate. Incompatible migrations block activation unless a separately authorized recovery strategy exists.
+
+Separate workload, daemon/link and privileged host-activation principals. A daemon token alone is not host-change approval. Bind approval to a canonical change, machine, base configuration revision, scope and expiry; revalidate at activation. Test payload substitution and attempts to alter boot, trust, update or recovery settings from workload and daemon identities. Declarative Nix text is not inherently a bounded permission. OD-AOS6 determines the supported customization surface without removing custom packages/services from scope.
+
+OS0 also specifies build/evaluation placement, accepted sources, artifact authentication, resource limits and missing-binary/architecture behavior. A missing artifact must not silently trigger an unrestricted local build. Failed customization leaves the previous configuration active; an update cannot silently drop the owner's declared configuration to pass validation.
+
+### 12.3 Installation and recovery trust
+
+F3 defines one durable installation attempt with explicit states for pairing, approved disk plan, destructive installation, installed-identity handoff and completion/recovery. Bind authorization to the owner, live-session identity, disk fingerprint and plan revision. Revalidate immediately before destructive writes. Define the surviving identity and retirement of live credentials, accounting for [K8 enrollment](../../contracts/daemon-push.md) code consumption and token replacement.
+
+Test dropped responses, concurrent approvals, expiry, disk substitution, power loss before and after the first write, installed-enrollment failure and booting the same USB again. A status retry must not repeat erasure. Neither normal enrollment retry nor restoring a backup may silently replace ownership.
+
+OS0 defines offline local credential provisioning/reset, available recovery operations and audit reconciliation. Physical presence does not silently authorize ownership transfer or erasure. OS5/OS6 classify device/link keys, daemon tokens, administrator credentials, workload secrets and backup keys as restore directly, restore after authorization, regenerate or exclude. Restore into quarantine before services or publication resume. Test source loss, source still online, revoked credentials and custom-service restoration; do not create two active copies of a device identity.
+
+Backup design separates production, restore and deletion authority. Define key export, trusted-device addition/removal, rotation and recovery across rotation. Removing a trusted device cannot retract keys or plaintext it already received. Test a destination that stores but cannot decrypt backups, missing keys and source-independent recovery.
+
+### 12.4 Independent experiment gates
+
+| Evidence gate | Prerequisites | Added pass evidence | Current state |
+| --- | --- | --- | --- |
+| F1 state/customization | Approved bounded brief; selected experimental base | Mount inventory and custom-service lifecycle above; normal write restrictions and interrupted activation | Not started |
+| F2 recovery | F1 candidate; boot-path-specific harness | Rejected boot entry, early kernel hang, userspace health failure and shutdown hang; identify what forces the next boot, timeout/retry bounds and outcome when both versions fail | Not started |
+| F3 installation | Approved identity/installation contract deltas; F1/F2 base | Transaction and cutover tests in Section 12.3; unselected-disk hashes unchanged | Not started |
+| F4 workload/storage | Approved owner runtimes and OD-AOS7 resolution for affected behavior | App/job/agent coexistence; partition/reassignment and retained-state tests; workload writes, snapshots and update staging competing for shared capacity | Not started |
+
+F2 must distinguish selecting a fallback on the next boot from forcing a hung machine to restart. Record watchdog availability and cases requiring physical intervention per boot path. UEFI success does not establish BIOS or ARM recovery.
+
+F4 includes data and metadata pressure, retained snapshots and cleanup that frees less space than expected. Demonstrate continued management, diagnostics and recovery capacity; a subvolume boundary or free-space alert is not a reserved allocation. M5 implements and qualifies the proven capacity mechanism.
+
+Before each experiment, fix iteration counts, injection points, resource limits, management response/error thresholds and pass/fail rules in its brief. Report measurements and exact revisions; do not invent public minimum resources from an unrun test.
+
+The recommended first authorized implementation is F1 plus the UEFI slice of F2 on disposable x86-64 VM disks: shared Btrfs, read-only normal root, identity/configuration and workload sentinels, one declared custom service, interrupted activation and failed-health fallback. It proves only that narrow architecture claim. UI selection and named physical hardware do not block this experiment; F3/F4 and physical qualification retain their separate gates. OS0 remains planning work; this council review does not complete its dependency audit or authorize OS1.
+
+### 12.5 Qualification and preview delivery
+
+Start the hardware matrix during feasibility: exact model/firmware, architecture, boot path, storage/network devices, image digest, scenario, result/log, limitation and human-check reference. Distinguish unavailable hardware from pass/fail. All selected families remain stable targets; infeasible support returns to the operator.
+
+A preview after M2 needs its own evidence packet: exact digest/source revision, passed install/pair/unselected-disk checks for named preview targets, recovery/removal instructions, absent milestones clearly listed and explicit publication authorization. OS7/OS8 accept this preview packet independently of the later stable packet. Stable still requires M1-M5 and the selected hardware evidence.
+
+Write installation instructions with M2 and recovery instructions with M4, then validate them on a clean target. The [user documentation owner](user-documentation.md) proposes `docs/user/` for user-facing sources; the OS repository's documentation should hold developer/build material and link to those guides rather than create a second user manual.
 
 ## Appendix A. Recorded direction
 
