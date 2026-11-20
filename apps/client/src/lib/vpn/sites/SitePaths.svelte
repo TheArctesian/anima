@@ -143,6 +143,11 @@
     justify-self: start;
   }
 
+  /* The approval is a line of text and its button: it takes the width of the row (its own container has no width of its own). */
+  div.action {
+    justify-self: stretch;
+  }
+
   .hint {
     grid-column: 1 / -1;
     color: var(--text-secondary);

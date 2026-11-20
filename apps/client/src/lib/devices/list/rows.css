@@ -38,8 +38,9 @@
  * The name takes the free width; each other column has its own width, so a long name and its address are whole where
  * the window has room (R-NEW-listlayout).
  */
+/* The status widens with the table, so the reason of a problem and how long it has lasted are whole on a wide window. */
 .device-rows .c-status {
-  inline-size: calc(var(--space-16) * 2.5);
+  inline-size: clamp(calc(var(--space-16) * 2.5), calc(100cqi - var(--space-16) * 14), calc(var(--space-16) * 3.5));
 }
 
 .device-rows .c-uptime {
