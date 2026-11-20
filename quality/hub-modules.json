@@ -81,7 +81,8 @@
       "ssh",
       "credentials",
       "events",
-      "agent_usage"
+      "agent_usage",
+      "jobs"
     ],
     "notifications": [
       "events",
@@ -149,6 +150,9 @@
       "events",
       "extensions",
       "sources"
+    ],
+    "jobs": [
+      "events"
     ]
   },
   "graphql": {

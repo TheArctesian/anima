@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import type { HubAddress } from './address';
-import { isGraphQLResponse, MALFORMED, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubResult } from './error';
+import { isGraphQLResponse, MALFORMED, noAnswer, parseResponse, TOKEN_UNREADABLE, type HubResult } from './error';
 import type { StatusSignal } from './status/status';
 
 /**
@@ -78,7 +78,7 @@ export async function sendRequest<TResult, TVariables>(
   const text = await answerText(transport, token.value, JSON.stringify({ query: print(document), variables }));
   if (text === undefined) {
     transport.signal('failed');
-    return { ok: false, error: UNREACHABLE };
+    return { ok: false, error: noAnswer(transport.address.origin) };
   }
   const body = parseJson(text);
   if (!isGraphQLResponse(body)) return { ok: false, error: MALFORMED };

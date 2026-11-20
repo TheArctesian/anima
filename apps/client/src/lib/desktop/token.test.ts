@@ -1,6 +1,6 @@
 import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, parseHubAddress, type HubAddress } from '$lib/hub/hub';
+import { createHub, NO_HUB_ADDRESS, parseHubAddress, type HubAddress } from '$lib/hub/hub';
 import { FakeSocket, newHub, onlySocket, recordingSink, settle, STATUS_CHANGED } from '$lib/hub/socket/fake';
 import { storedHubAddress, storeHubAddress } from './address';
 import { AccessTokenError, clearAccessToken, clearBuilderToken, readAccessToken, readBuilderToken, writeAccessToken, writeBuilderToken } from './token';
@@ -9,7 +9,7 @@ const core = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => core);
 
 const SECRET = 's3cret-token';
-const HUB = DEFAULT_HUB_ADDRESS;
+const HUB = NO_HUB_ADDRESS;
 
 function addressOf(host: string): HubAddress {
   const parsed = parseHubAddress(host);

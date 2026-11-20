@@ -15,8 +15,8 @@
   const REPORTS = 'The daemon of each device reports the use of the AI agent programs.';
   /** The daemon is installed for one device, in its settings; the Devices page is where a device is opened. */
   const WHERE_TO_INSTALL = 'To install it, open a device, then Settings, then Daemon.';
-  /** R-206: the application will install the daemon on this computer; until that is built there is nothing to open. */
-  const NOT_ON_HOSTED = 'On this hub the application will install the daemon on this computer. That is not built yet, so this page stays empty for now.';
+  /** R-206: the application will install the daemon on this computer. Until that is built the page says so in the words of R-223. */
+  const NOT_ON_HOSTED = 'Coming soon: the Anima.ing application will install the daemon on this computer.';
 
   interface Props {
     store: UsageStore;

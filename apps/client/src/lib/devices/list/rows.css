@@ -53,7 +53,7 @@
 
 .device-rows .c-beats {
   /* The name gets 20% of the results width. Reserve room for the other columns before widening the history. */
-  inline-size: clamp(var(--space-16), calc(80cqi - var(--space-16) * 11), calc(var(--space-16) * 2));
+  inline-size: clamp(var(--space-16), calc(80cqi - var(--space-16) * 12), calc(var(--space-16) * 2));
 }
 
 .device-rows thead .c-beats {
@@ -67,8 +67,9 @@
   inline-size: 100%;
 }
 
+/* Room for two named buttons side by side (R-224). */
 .device-rows .c-connect {
-  inline-size: calc(var(--control-md) * 3 + var(--space-8));
+  inline-size: calc(var(--space-16) * 3);
   text-align: end;
 }
 

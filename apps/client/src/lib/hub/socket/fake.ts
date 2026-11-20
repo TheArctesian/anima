@@ -2,7 +2,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, type HubError, type Sink, type TokenProvider } from '../hub';
+import { createHub, NO_HUB_ADDRESS, type HubError, type Sink, type TokenProvider } from '../hub';
 
 export const STATUS_CHANGED = parse('subscription S($deviceId: ID) { deviceStatusChanged(deviceId: $deviceId) { status } }') as TypedDocumentNode<
   { deviceStatusChanged: { status: string } },
@@ -83,7 +83,7 @@ export function recordingSink() {
 export const FAKE_WEBSOCKET = FakeSocket as unknown as typeof WebSocket;
 
 export function newHub(token: TokenProvider = () => Promise.resolve('s3cret-token')) {
-  return createHub({ address: DEFAULT_HUB_ADDRESS, token, WebSocket: FAKE_WEBSOCKET, now: () => NOW });
+  return createHub({ address: NO_HUB_ADDRESS, token, WebSocket: FAKE_WEBSOCKET, now: () => NOW });
 }
 
 /** Run pending promise callbacks and timers due by `ms`. */

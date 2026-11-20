@@ -1,0 +1,55 @@
+#!/bin/sh
+# Prints the Homebrew formula `anima` for one release (INS-010, R-217; task B8h): it installs
+# the standalone `anima` file of the release for macOS (one universal file) or for Linux
+# x86_64, and checks its SHA-256. It builds nothing and installs nothing else.
+#
+#   cli-formula <version> <sha256 of the macOS file> <sha256 of the Linux file>
+#
+# The files are at https://releases.anima.ing/anima/<version>/. The job `cli` of the release
+# workflow runs this, with no secret; the job `tap` pushes the text to the tap.
+set -eu
+
+refuse() { echo "cli-formula: $1" >&2; exit 1; }
+[ $# -eq 3 ] || refuse "give a version and two SHA-256 values"
+VERSION=$1
+echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || refuse "the version is not like 0.8.15"
+for SUM in "$2" "$3"; do
+    echo "$SUM" | grep -Eq '^[0-9a-f]{64}$' || refuse "a SHA-256 is not 64 small hex characters"
+done
+BASE=https://releases.anima.ing/anima/$VERSION
+
+cat <<FORMULA
+# The release workflow of TheArctesian/anima.ing writes this file. Do not change it by hand.
+class Anima < Formula
+  desc "Command-line tool and MCP server for an Anima hub"
+  homepage "https://anima.ing"
+  version "$VERSION"
+  license "AGPL-3.0-or-later"
+
+  on_macos do
+    on_arm do
+      url "$BASE/anima-darwin-universal.tar.gz"
+      sha256 "$2"
+    end
+    on_intel do
+      url "$BASE/anima-darwin-universal.tar.gz"
+      sha256 "$2"
+    end
+  end
+
+  on_linux do
+    on_intel do
+      url "$BASE/anima-linux-x86_64.tar.gz"
+      sha256 "$3"
+    end
+  end
+
+  def install
+    bin.install "anima"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/anima --version")
+  end
+end
+FORMULA

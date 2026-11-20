@@ -170,7 +170,7 @@ it('NET-004: when unreachable the banner shows the problem, the hub, the advice 
   const lastContactAt = new Date(NOW.getTime() - 5 * 60_000);
   const nav = show('/devices', { connection: 'unreachable', lastContactAt });
   const text = nav.querySelector('[role="status"]')?.textContent ?? '';
-  for (const part of ['Not on the network', 'https://hub.anima.ing', 'Check the VPN client', 'Data from 5 minutes ago']) {
+  for (const part of ['Not on the network', 'https://no-hub.invalid', 'Check the VPN client', 'Data from 5 minutes ago']) {
     expect(text).toContain(part);
   }
 });
@@ -264,10 +264,10 @@ it('H-2: the hub is created with the stored address and the key store as its tok
   expect(fake.options?.token).toBe(keyStore.read);
 });
 
-it('H-2: with nothing stored the hub is the default one', () => {
+it('H-2, R-225: with nothing stored the client has no hub: its address is one that never resolves', () => {
   keyStore.available.mockReturnValue(true);
   show();
-  expect(fake.options?.address.origin).toBe('https://hub.anima.ing');
+  expect(fake.options?.address.origin).toBe('https://no-hub.invalid');
 });
 
 it('API-003, H-5: in the desktop app with no stored token the layout goes to /sign-in', async () => {

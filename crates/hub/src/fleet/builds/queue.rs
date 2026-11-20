@@ -7,18 +7,15 @@ use super::{
     log_lines,
     model::{Arch, BuildJob, Builder, JobState, Os, Platform, Report, Target},
 };
-use crate::ids::BuilderId;
-
-/// How long a claim or a report holds the job (BLD-005).
-pub(super) const LEASE: TimeDelta = TimeDelta::seconds(90);
+use crate::{
+    clock::lease::{self, Lost},
+    ids::BuilderId,
+};
 
 /// A builder that reported within this time is online (BLD-007).
 pub(super) const ONLINE_WITHIN: TimeDelta = TimeDelta::seconds(60);
 
-/// Leases that may end without a report before the job fails (BLD-006).
-const MAX_ATTEMPTS: u8 = 3;
-
-/// The reason of a job whose lease ended [`MAX_ATTEMPTS`] times (BLD-006).
+/// The reason of a job whose lease ended three times (BLD-006, [`lease::MAX_LOST`]).
 pub(super) const STOPPED_REASON: &str = "builder stopped 3 times";
 
 /// Why a change of a job is refused.
@@ -47,12 +44,12 @@ pub(super) const fn permitted(from: JobState, to: JobState) -> bool {
 
 /// The lease end of a claim or report at `now` (BLD-005).
 pub(super) fn lease_end(now: DateTime<Utc>) -> DateTime<Utc> {
-    now + LEASE
+    lease::end(now)
 }
 
 /// Whether the job's lease has ended at `now`. A job without a lease has none to end.
 pub(super) fn lease_ended(job: &BuildJob, now: DateTime<Utc>) -> bool {
-    job.state.is_leased() && job.lease_ends_at.is_none_or(|end| now >= end)
+    job.state.is_leased() && lease::ended(job.lease_ends_at, now)
 }
 
 /// Whether a builder on `platform` can build `target` (BLD-003).
@@ -150,13 +147,13 @@ pub(super) fn report(
 /// The job after its lease ended at `now`: back in the queue with one more attempt, or
 /// `failed` with [`STOPPED_REASON`] on the third (BLD-006). The builder is released.
 pub(super) fn expire(job: &BuildJob, now: DateTime<Utc>) -> BuildJob {
-    let attempts = job.attempts.saturating_add(1).min(MAX_ATTEMPTS);
-    let mut next = if attempts >= MAX_ATTEMPTS {
-        let mut failed = entered(job, JobState::Failed, now);
-        failed.failure_reason = Some(STOPPED_REASON.to_owned());
-        failed
-    } else {
-        entered(job, JobState::Queued, now)
+    let (mut next, attempts) = match lease::lost(job.attempts) {
+        Lost::Failed(attempts) => {
+            let mut failed = entered(job, JobState::Failed, now);
+            failed.failure_reason = Some(STOPPED_REASON.to_owned());
+            (failed, attempts)
+        }
+        Lost::Again(attempts) => (entered(job, JobState::Queued, now), attempts),
     };
     next.attempts = attempts;
     next.builder = None;

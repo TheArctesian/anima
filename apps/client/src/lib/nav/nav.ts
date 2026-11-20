@@ -1,3 +1,4 @@
+import { networkAdvice } from '$lib/hosted/mark';
 import { dataAge, type HubStatus } from '$lib/hub/hub';
 import type { IconName } from '$lib/icons/icons';
 
@@ -36,6 +37,15 @@ export function statusLabel(status: HubStatus): string {
   return status.connection === 'connected' ? 'Connected' : 'Disconnected';
 }
 
+/**
+ * The name of the hub at the foot of the bar (R-224): a hub that Anima.ing hosts is reached at a port of this computer,
+ * which says nothing, so it is named by who hosts it; each other hub is named by its host.
+ */
+export function hubName(origin: string, hosted: boolean): string {
+  if (hosted) return 'Hosted by Anima.ing';
+  return URL.canParse(origin) ? new URL(origin).host : origin;
+}
+
 /** What the operator reads when the hub cannot be reached (NET-004). */
 export interface UnreachableBanner {
   readonly title: string;
@@ -44,13 +54,13 @@ export interface UnreachableBanner {
   readonly age: string;
 }
 
-/** The banner for `status`, or `null` when the hub is not unreachable. `now` dates the data age. */
-export function unreachableBanner(status: HubStatus, origin: string, now: Date): UnreachableBanner | null {
+/** The banner for `status`, or `null` when the hub is not unreachable. `now` dates the data age; a hosted hub has no VPN to check (R-222). */
+export function unreachableBanner(status: HubStatus, origin: string, now: Date, hosted: boolean): UnreachableBanner | null {
   if (status.connection !== 'unreachable') return null;
   // A copy on the screen may be older than the last contact, and is all there is after a start with no hub (FND-007).
   const since = status.copyFrom ?? status.lastContactAt;
   const age = since === null ? 'No data yet' : `Data from ${dataAge(since, now)}`;
-  return { title: 'Not on the network', origin, advice: 'Check the VPN client', age };
+  return { title: 'Not on the network', origin, advice: networkAdvice(hosted), age };
 }
 
 /** How often the data age in the banner is recomputed; `dataAge` changes at most once a minute. */

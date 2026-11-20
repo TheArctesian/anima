@@ -14,6 +14,7 @@
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
   import DomainExpiryFields from './probes/DomainExpiryFields.svelte';
+  import { contextHubIsHosted } from '$lib/hosted/context';
   import { contextChannelCalls } from './channels/calls';
   import { ChannelsDraft } from './channels/draft.svelte';
   import ChannelsSection from './channels/ChannelsSection.svelte';
@@ -42,7 +43,7 @@
 
   const { check, siblings, onSave, onDone, onCancel }: Props = $props();
 
-  const TYPES: readonly { value: CheckType; label: string }[] = [
+  const ALL_TYPES: readonly { value: CheckType; label: string }[] = [
     { value: 'ICMP', label: 'Ping (ICMP)' },
     { value: 'TCP', label: 'TCP port' },
     { value: 'TLS', label: 'TLS certificate' },
@@ -56,6 +57,9 @@
     { value: 'TAILSCALE_PING', label: 'Tailscale ping' },
     { value: 'DOMAIN_EXPIRY', label: 'Domain expiry' },
   ];
+  // A hub that Anima.ing hosts has no VPN, so it offers no Tailscale ping; a check that already is one keeps its type (R-222).
+  const hosted = contextHubIsHosted();
+  const TYPES = ALL_TYPES.filter((entry) => !hosted || entry.value !== 'TAILSCALE_PING' || untrack(() => check?.type) === 'TAILSCALE_PING');
 
   // Inside a modal the actions go to its footer; the submit button is tied to the form by its ID.
   const footer = modalFooter();
