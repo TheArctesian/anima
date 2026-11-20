@@ -2,8 +2,8 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use super::{
-    Carried, SOCKET_PATH_LIMIT, database, gateway, gateway_address, hosted, hub, hub_address, link,
-    migration,
+    Carried, Pool, SOCKET_PATH_LIMIT, database, gateway, gateway_address, hosted, hub, hub_address,
+    link, migration,
 };
 use crate::Folders;
 
@@ -203,11 +203,43 @@ fn r_129_a_run_with_the_cloud_key_file_puts_the_hub_in_the_hosted_mode() {
         "127.0.0.1:50123".parse().unwrap(),
     );
     assert_eq!(value(&local.env, "ANIMA_HOSTED_CLOUD_KEY_FILE"), None);
-    let still_local = hosted(local.clone(), None);
+    let still_local = hosted(local.clone(), &Pool::default());
     assert_eq!(still_local.env, local.env);
-    let pool = hosted(local, Some(key));
+    let with_key = Pool {
+        cloud_key_file: Some(key.to_path_buf()),
+        ..Pool::default()
+    };
+    let pool = hosted(local, &with_key);
     assert_eq!(
         value(&pool.env, "ANIMA_HOSTED_CLOUD_KEY_FILE"),
         Some("/etc/anima/cloud.key")
     );
+    assert_eq!(value(&pool.env, "ANIMA_PUBLIC_ORIGIN"), None);
+    assert_eq!(value(&pool.env, "ANIMA_WEB_ROOT"), None);
+}
+
+#[test]
+fn hmd_069_a_run_of_the_pool_gives_the_hub_its_public_origin_and_its_web_client() {
+    let local = hub(
+        &carried(),
+        &folders(),
+        "127.0.0.1:8443".parse().unwrap(),
+        "127.0.0.1:50123".parse().unwrap(),
+    );
+    assert_eq!(
+        value(&local.env, "ANIMA_PUBLIC_ORIGIN"),
+        None,
+        "the default of the hub"
+    );
+    let told = Pool {
+        cloud_key_file: None,
+        public_origin: Some("https://hub.anima.ing".to_owned()),
+        web_root: Some(PathBuf::from("/opt/anima/web")),
+    };
+    let pool = hosted(local, &told);
+    assert_eq!(
+        value(&pool.env, "ANIMA_PUBLIC_ORIGIN"),
+        Some("https://hub.anima.ing")
+    );
+    assert_eq!(value(&pool.env, "ANIMA_WEB_ROOT"), Some("/opt/anima/web"));
 }

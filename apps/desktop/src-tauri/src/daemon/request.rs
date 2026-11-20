@@ -1,7 +1,8 @@
 //! What the web view asks for, checked before anything runs (MET-019, MET-020): an enrolment
-//! code in the form the hub issues, and the hub's `https` origin. Pure.
+//! code in the form the hub issues, and the hub's `https` origin, or the local address of a hub
+//! behind the link of this computer (HMD-054). Pure.
 
-use std::fmt;
+use std::{fmt, path::Path};
 
 use url::Url;
 use zeroize::Zeroizing;
@@ -63,7 +64,27 @@ impl HubOrigin {
         bare.then(|| Self(url.origin().ascii_serialization()))
     }
 
+    /// The origin of a hub behind the link of this computer: `unix:` and the socket that the
+    /// link made for the daemon (K8 Section 1, R-172). The path is the shell's own, never one
+    /// from the web view; it must be absolute and hold no control character.
+    pub fn link(socket: &Path) -> Option<Self> {
+        let path = socket.to_str()?;
+        let plain = socket.is_absolute() && !path.chars().any(char::is_control);
+        plain.then(|| Self(format!("unix:{path}")))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
+}
+
+/// The port of `text` when it is `http://127.0.0.1:<port>` and nothing more: the address at
+/// which the app reaches a hub through its link.
+pub fn link_port(text: &str) -> Option<u16> {
+    let port = text.strip_prefix("http://127.0.0.1:")?;
+    let digits = !port.is_empty() && port.len() <= 5 && port.bytes().all(|b| b.is_ascii_digit());
+    digits
+        .then(|| port.parse().ok())
+        .flatten()
+        .filter(|port| *port != 0)
 }

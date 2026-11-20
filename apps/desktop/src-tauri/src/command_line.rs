@@ -124,6 +124,27 @@ async fn here() -> Result<Here, CommandLineError> {
     })
 }
 
+/// The installed `anima` of this app, with the home folder and the folders of the login `PATH`.
+pub(crate) struct Installed {
+    pub anima: PathBuf,
+    pub home: PathBuf,
+    pub path: Vec<PathBuf>,
+}
+
+/// What the set-up of the coding agents needs (MCP-039); `None` when the command line tool is not
+/// installed by this app, because an entry must start the installed `anima` (MCP-033).
+pub(crate) async fn installed() -> Option<Installed> {
+    let here = here().await.ok()?;
+    match here.status() {
+        Status::Installed { path } => Some(Installed {
+            anima: PathBuf::from(path),
+            home: here.home.clone(),
+            path: here.path.clone(),
+        }),
+        _ => None,
+    }
+}
+
 /// Puts this app's `anima` in `folder`, which must be the proposed folder or the folder of an
 /// Anima app's own entry. Refuses anything an Anima app did not make.
 fn install_in(here: &Here, folder: &Path) -> Result<(), CommandLineError> {

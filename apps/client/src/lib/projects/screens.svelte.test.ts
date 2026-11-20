@@ -105,6 +105,17 @@ it('PRO-001: with no projects the empty state links to the Integrations section'
   await openList();
   expect(text()).toContain('Connect GitHub.');
   expect(document.querySelector('a')?.getAttribute('href')).toBe('/settings#settings-integrations');
+  // Nothing to sort or to filter: the page draws no Sort, Language or Size control.
+  expect(document.querySelector('select')).toBeNull();
+});
+
+it('PRO-001: for a hub reached on this computer the empty state names the key file, which is the way that connects it', async () => {
+  store = new ProjectsStore(projectsApi(fakeHub([])));
+  await store.load();
+  app = mount(ProjectsScreen, { target: document.body, props: { store, keyFileOnly: true } });
+  flushSync();
+  expect(text()).toContain('Connect GitHub with the key file of a GitHub App.');
+  expect(document.querySelector('a')?.getAttribute('href')).toBe('/settings#settings-integrations');
 });
 
 it('PRO-004: a proposal says Found in the repository with its sign until confirmed, then says Confirmed', async () => {
@@ -153,6 +164,23 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
   ]);
   expect(text()).toContain('Cloudflare found in the repository (wrangler.toml), not confirmed.');
   expect(text()).toContain('A repository is no longer on GitHub.');
+});
+
+it('R-224: the choice of a group shows only that group, with how many projects each choice holds', async () => {
+  await openList();
+  const choice = (value: string) => document.querySelector<HTMLButtonElement>(`[role="radio"][data-value="${value}"]`);
+  const shown = () => [...document.querySelectorAll('section.group')].map((group) => group.getAttribute('aria-label'));
+  expect(['all', 'look', 'deployed', 'undeployed'].map((value) => choice(value)?.textContent.trim())).toEqual(['All 3', 'Needs a look 2', 'Deployed 0', 'Not deployed 1']);
+  choice('undeployed')?.click();
+  flushSync();
+  expect(shown()).toEqual(['Not deployed']);
+  choice('deployed')?.click();
+  flushSync();
+  expect(shown()).toEqual([]);
+  expect(text()).toContain('No project in this group');
+  choice('all')?.click();
+  flushSync();
+  expect(shown()).toEqual(['Needs a look', 'Not deployed']);
 });
 
 async function openTab(tab: string): Promise<void> {
