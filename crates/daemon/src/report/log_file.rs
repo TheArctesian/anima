@@ -130,12 +130,15 @@ mod tests {
 
     #[test]
     fn met_019_the_launch_agent_log_is_in_the_logs_folder_of_the_user() {
-        let set = env(&[(LOG_VARIABLE, TO_FILE), ("HOME", "/Users/me")]);
+        // A home that is absolute on each system: `/Users/me` is relative on Windows, where
+        // `path` refuses it as it should.
+        let home = std::env::temp_dir().join("me");
+        let home = home.to_str().expect("a home in text");
+        let pairs = [(LOG_VARIABLE, TO_FILE), ("HOME", home)];
+        let set = env(&pairs);
         assert_eq!(
             path(&set, true),
-            Some(PathBuf::from(
-                "/Users/me/Library/Logs/Anima/anima-daemon.log"
-            ))
+            Some(PathBuf::from(home).join("Library/Logs/Anima/anima-daemon.log"))
         );
         assert_eq!(path(&set, false), None, "only macOS writes the file");
         assert_eq!(path(env(&[("HOME", "/Users/me")]), true), None);
