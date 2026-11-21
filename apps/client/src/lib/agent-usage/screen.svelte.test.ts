@@ -293,9 +293,10 @@ it('AIS-022 (R-313): an account groups its devices under one bar for each limit,
   expect(text()).not.toContain(ANSWER.accounts[0]?.key);
 });
 
-it('with no account reported the page has no part By account', async () => {
+it('with no account reported the part By account says that the devices do not send their accounts yet', async () => {
   hub = fakeUsageHub({ ...ANSWER, accounts: [] });
   await open();
-  expect(text()).not.toContain('By account');
-  expect(text()).toContain('By device');
+  expect(text()).toContain('By account');
+  expect(text()).toContain('No account to show. The devices do not send their accounts yet.');
+  expect(document.querySelectorAll('li.card')).toHaveLength(0);
 });
