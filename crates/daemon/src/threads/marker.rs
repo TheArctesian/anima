@@ -33,15 +33,17 @@ pub async fn end_marked(thread: &str, spare: &tree::Known) -> Ended {
             all: false,
         };
     };
+    // A spared server and each process below it are kept, as the walk of the tree keeps them.
+    // When the table cannot be read, each spared ID is kept and "all ended" is not said.
+    let mut unproven = false;
     if !spare.is_empty() {
-        // A spared process is the same one only when its start time did not change; when the
-        // table cannot be read, each spared ID is kept, so that no server ends by mistake.
-        let starts = tree::table().await.map(|table| table.starts);
-        marked.retain(|pid| match (&starts, spare.get(pid)) {
-            (_, None) => true,
-            (Some(starts), Some(start)) => starts.get(pid) != Some(start),
-            (None, Some(_)) => false,
-        });
+        let kept = if let Some(table) = tree::table().await {
+            tree::spare_with_children(&table, spare)
+        } else {
+            unproven = true;
+            spare.keys().copied().collect()
+        };
+        marked.retain(|pid| !kept.contains(pid));
     }
     for pid in &marked {
         tree::signal(*pid, Signal::KILL);
@@ -52,7 +54,7 @@ pub async fn end_marked(thread: &str, spare: &tree::Known) -> Ended {
     let left = marked.iter().filter(|pid| tree::alive(**pid)).count();
     Ended {
         count: u32::try_from(marked.len()).unwrap_or(u32::MAX),
-        all: left == 0,
+        all: left == 0 && !unproven,
     }
 }
 

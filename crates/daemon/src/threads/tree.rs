@@ -104,7 +104,8 @@ pub fn below(rows: &[Row], root: u32) -> BTreeSet<u32> {
 }
 
 /// The processes of `spare` that still run as the same process, with each process below them.
-fn spare_with_children(table: &Table, spare: &Known) -> BTreeSet<u32> {
+#[must_use]
+pub fn spare_with_children(table: &Table, spare: &Known) -> BTreeSet<u32> {
     let mut out = table.still(spare);
     for pid in out.clone() {
         out.extend(below(&table.rows, pid));
