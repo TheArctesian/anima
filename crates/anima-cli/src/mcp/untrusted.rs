@@ -42,8 +42,12 @@ fn cut(cleaned: String, cap: usize) -> String {
 }
 
 /// The one field of the result of a tool that keeps its line breaks and gets [`BODY_CAP`]:
-/// the Compose file of `anima_compose_from_run` (HOST-022), at the top level of its result.
-const LINES_KEPT: [(&str, &str); 1] = [("anima_compose_from_run", "composeFile")];
+/// the Compose file of `anima_compose_from_run` (HOST-022) and of `anima_catalogue_show`
+/// (task H38), at the top level of its result.
+const LINES_KEPT: [(&str, &str); 2] = [
+    ("anima_compose_from_run", "composeFile"),
+    ("anima_catalogue_show", "composeFile"),
+];
 
 /// `value` with every string cleaned and capped; the key `text` (a log line) gets the
 /// larger cap, and the key `body` (Markdown from GitHub) keeps its line breaks and gets

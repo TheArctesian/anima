@@ -1,6 +1,6 @@
 # The figures of an account for the page of a hosted hub
 
-Status: **proposed**, version 0.5, 2026-11-20. HMD-073 in form B of [hosted-mode.md](../docs/proposals/hosted-mode.md) Section 6.11 (approved, R-NEW-hubusage) says that the page of the hub takes the figures of the account from the account, "in one form, which the contract defines once". This file is that form, as the sessions of the pool (`anima-cloud`), of the account site (`anima-site`) and of the hub agreed it on 2026-11-20. The body is the answer of the pool for an account and a month; the pool owns its members. It stays proposed until the route and the path are built; it changes only by a ruling after that (CON-001). Task HM-T39 builds the client against it.
+Status: **proposed**, version 0.5, 2026-11-20. HMD-073 in form B of [hosted-mode.md](../docs/proposals/hosted-mode.md) Section 6.11 (approved, R-304) says that the page of the hub takes the figures of the account from the account, "in one form, which the contract defines once". This file is that form, as the sessions of the pool (`anima-cloud`), of the account site (`anima-site`) and of the hub agreed it on 2026-11-20. The body is the answer of the pool for an account and a month; the pool owns its members. It stays proposed until the route and the path are built; it changes only by a ruling after that (CON-001). Task HM-T39 builds the client against it.
 
 ## 1. Who answers, and to whom
 

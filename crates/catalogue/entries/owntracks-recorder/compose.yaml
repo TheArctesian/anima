@@ -1,0 +1,27 @@
+services:
+  recorder:
+    image: owntracks/recorder@sha256:8d48df647eb280bb94668658b7fc7ad3b47b9a7307e252aaf63d4c3681c6deaf
+    environment:
+      OTR_PORT: "0"
+      OTR_HTTPHOST: 0.0.0.0
+      OTR_HTTPPORT: "8083"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - target: 8083
+        published: 8083
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: store
+        target: /store
+      - type: volume
+        source: config
+        target: /config
+volumes:
+  store:
+  config:
