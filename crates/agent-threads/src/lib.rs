@@ -12,6 +12,7 @@
 
 mod claude;
 mod codex;
+pub mod drive;
 #[cfg(test)]
 mod tests;
 mod tool;
