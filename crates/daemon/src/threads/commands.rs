@@ -243,34 +243,50 @@ async fn mark(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
     Outcome::Ok
 }
 
+/// What the holder knows of a program when it ends its processes.
+struct Ending {
+    root: u32,
+    gone: bool,
+    spare: tree::Known,
+    /// The processes seen below the program that may have left its tree since (a stop only).
+    seen: tree::Known,
+    left_behind: bool,
+}
+
 async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -> Outcome {
-    let found = {
-        let state = locked(shared);
-        state.threads.get(thread).map(|slot| {
-            let spare = if with_root {
-                tree::Known::new()
-            } else {
-                slot.spared.clone()
-            };
-            (
-                slot.pid,
-                slot.reaped || slot.exit.is_some(),
-                spare,
-                slot.left_behind,
-            )
-        })
-    };
+    let found = locked(shared).threads.get(thread).map(|slot| Ending {
+        root: slot.pid,
+        gone: slot.reaped || slot.exit.is_some(),
+        spare: if with_root {
+            tree::Known::new()
+        } else {
+            slot.spared.clone()
+        },
+        seen: if with_root {
+            slot.seen.clone()
+        } else {
+            tree::Known::new()
+        },
+        left_behind: slot.left_behind,
+    });
     match found {
         None => refused(Refusal::UnknownThread),
-        Some((_, true, _, left_behind)) => Outcome::Stopped {
+        Some(Ending {
+            gone: true,
+            left_behind,
+            ..
+        }) => Outcome::Stopped {
             ended: 0,
             all_ended: !left_behind,
         },
-        Some((root, false, spare, _)) => {
-            let ended = tree::end(root, with_root, &spare, GRACE).await;
+        Some(ending) => {
+            let ended = tree::end(ending.root, with_root, &ending.spare, GRACE).await;
+            // A process that was below the program and left its tree (its parent ended) is
+            // found by its start time (THR-049).
+            let swept = tree::sweep(&ending.seen).await;
             Outcome::Stopped {
-                ended: ended.count,
-                all_ended: ended.all,
+                ended: ended.count.saturating_add(swept.count),
+                all_ended: ended.all && swept.all,
             }
         }
     }

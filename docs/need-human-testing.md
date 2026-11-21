@@ -92,6 +92,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
 | HT-NEW-threadview | The page Threads with the real sessions of Claude Code and Codex of this computer (R-NEW-t3native) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-NEW-threadsholder | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
 | HT-NEW-threadsdrive | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
@@ -2511,6 +2512,42 @@ not compared with its mockup.
 
 Result: Open.
 
+
+### HT-NEW-threadsholder: the holder on Linux, against a second user, and with a process that leaves the tree (THR-049, THR-113, THR-128)
+
+Built on the local branch `threads/runner` (tasks TH11 and TH17 of [agent-threads.md](proposals/agent-threads.md)). The
+tests ran on a Mac only, as one user.
+
+What the holder does to end the processes of a program: it walks the process table (`ps -axo pid=,ppid=,lstart=`) from
+the program down, in each process group, stops each process it finds, then kills it. While the program runs it looks at
+the processes below it every 2 seconds, and keeps each one with its start time. So a process that was seen below the program and
+then left the tree (its parent ended) is still ended at a stop or at the end of the program, and a process that took a
+reused ID is never ended. It uses no cgroup (Linux) and no job object (Windows); a Mac has neither.
+
+What it cannot stop: a process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork,
+is never seen. It runs on after the stop, and the stop cannot report it (it can report only what it saw). On Linux a
+cgroup of the user (`systemd-run --user --scope`) would close this gap; it is not built.
+
+1. On `pop-os`, in the checkout, run `cargo nextest run -p anima-daemon threads`.
+   Expected: each test passes. Write the count and any failure here.
+2. On `pop-os`, run `cargo test -p anima-daemon tree` and `ps -axo pid=,ppid=,lstart= | head -3`.
+   Expected: the tests pass; each line of `ps` has a number, a number and a date of five words.
+3. On the Mac, make a second user (System Settings, Users and Groups). As the first user, start a daemon of the build
+   with a state folder of your own and one thread (step 1 of HT-NEW-threadsdrive). Note the state folder.
+4. Log in as the second user. Run `ls -l <state folder>/threads` and `nc -U <state folder>/threads/holder.sock`, then
+   `nc -U <state folder>/threads/runner.sock`.
+   Expected: `ls` says permission denied (the folder is 0700). If you give the second user a way into the folder,
+   `nc` still gets no answer: the holder and the runner close a connection of a different user.
+5. As the first user, start a thread whose program runs
+   `perl -MPOSIX -e 'exit if fork; POSIX::setsid(); exit if fork; sleep 600'`, then stop the thread with
+   `anima agents stop <ID>`. Run `ps -ax | grep 'sleep 600'`.
+   Expected (the known limit): the `perl` process still runs, and the stop said that all ended. Kill it by hand with
+   `kill <pid>`.
+6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
+   then stop the thread.
+   Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
+
+Result: Open.
 
 ### HT-NEW-threadsdrive: the thread runner of the daemon starts and drives Claude Code and Codex (TH11 to TH13)
 

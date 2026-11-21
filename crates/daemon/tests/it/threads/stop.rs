@@ -159,6 +159,42 @@ async fn thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its
 }
 
 #[tokio::test]
+async fn thr_049_a_stop_ends_a_process_that_left_the_tree_after_it_was_seen() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let script = "(perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep 3) & sleep 300";
+    let id = link.send(start("left", "/bin/sh", &["-c", script])).await;
+    link.answer(id).await;
+    let child: u32 = texts(
+        &link
+            .until(|event| matches!(event, Event::Lines { .. }))
+            .await,
+    )[0]
+    .1
+    .parse()
+    .expect("a pid");
+    // The holder looks each 2 s; the subshell ends after 3 s and the child leaves the tree.
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    assert!(tree::alive(child), "the child runs outside the tree now");
+    let stop = link
+        .send(Action::Stop {
+            thread: "left".into(),
+        })
+        .await;
+    assert!(matches!(
+        link.answer(stop).await,
+        Outcome::Stopped {
+            all_ended: true,
+            ..
+        }
+    ));
+    assert!(
+        gone(child).await,
+        "the stop ended the child that left the tree"
+    );
+}
+
+#[tokio::test]
 async fn thr_113_a_program_that_does_not_read_its_input_holds_up_no_command() {
     let holder = Holder::start(0);
     let mut link = holder.link().await;
