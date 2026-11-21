@@ -95,10 +95,6 @@ impl DeviceTool {
     ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
-    #[expect(
-        clippy::cognitive_complexity,
-        reason = "a flat dispatch with one arm for each tool"
-    )]
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::FleetOverview => read::overview(hub).await,

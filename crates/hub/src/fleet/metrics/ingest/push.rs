@@ -62,6 +62,11 @@ pub(super) async fn serve_push(state: DaemonState, request: Request) -> Response
     }
 }
 
+/// A list of the batch as the rows of the store; `None` when the batch did not bring it.
+fn converted<T, U: From<T>>(list: Option<Vec<T>>) -> Option<Vec<U>> {
+    list.map(|list| list.into_iter().map(U::from).collect())
+}
+
 async fn push(
     state: &DaemonState,
     (headers, body): (&HeaderMap, Body),
@@ -89,15 +94,9 @@ async fn push(
     let rows = samples::rows(&accepted.points);
     let daemon_version = accepted.daemon_version;
     let held = accepted.keys;
-    let gpus: Option<Vec<Gpu>> = accepted
-        .gpus
-        .map(|gpus| gpus.into_iter().map(Gpu::from).collect());
-    let drives: Option<Vec<Drive>> = accepted
-        .drives
-        .map(|drives| drives.into_iter().map(Drive::from).collect());
-    let batteries: Option<Vec<Battery>> = accepted
-        .batteries
-        .map(|batteries| batteries.into_iter().map(Battery::from).collect());
+    let gpus: Option<Vec<Gpu>> = converted(accepted.gpus);
+    let drives: Option<Vec<Drive>> = converted(accepted.drives);
+    let batteries: Option<Vec<Battery>> = converted(accepted.batteries);
     let pushed = Push {
         device,
         name: &name,
