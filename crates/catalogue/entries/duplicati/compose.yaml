@@ -1,0 +1,40 @@
+services:
+  duplicati:
+    image: lscr.io/linuxserver/duplicati@sha256:ea137d806f2c0556468f2c620bcac963f0825bf45876de274988b42ff13b453a
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
+    ports:
+      - target: 8200
+        published: 8200
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: config
+        target: /config
+      - type: volume
+        source: backups
+        target: /backups
+      - type: volume
+        source: source
+        target: /source
+volumes:
+  config:
+  backups:
+  source:

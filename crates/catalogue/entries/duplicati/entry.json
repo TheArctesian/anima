@@ -1,0 +1,71 @@
+{
+  "id": "duplicati",
+  "name": "duplicati",
+  "description": "duplicati is a backup client that securely stores encrypted, incremental, compressed backups on local storage, cloud storage services and remote file servers.",
+  "version": "v2.4.1.0_stable_2026-10-29-ls318",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "backup"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-duplicati",
+  "icon_url": "https://github.com/linuxserver/docker-templates/raw/master/linuxserver.io/img/duplicati-icon.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "duplicati",
+        "image": "lscr.io/linuxserver/duplicati@sha256:ea137d806f2c0556468f2c620bcac963f0825bf45876de274988b42ff13b453a",
+        "tag": "v2.4.1.0_stable_2026-10-29-ls318",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "duplicati"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      },
+      {
+        "volume": "backups",
+        "copy": "files"
+      },
+      {
+        "volume": "source",
+        "copy": "files"
+      }
+    ],
+    "generated": [
+      "SETTINGS_ENCRYPTION_KEY"
+    ],
+    "test": {
+      "service": "duplicati",
+      "port": 8200,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

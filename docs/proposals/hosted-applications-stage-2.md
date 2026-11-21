@@ -1362,7 +1362,11 @@ in the tables makes the entry unreadable.
 | `database` | For an application that needs a database only: `engine` (`postgresql`), `lowest_major`, `extensions`, and `variables`: the name of the variable for each connection value that the application wants, of `url`, `host`, `port`, `name`, `user` and `password`, at least one. The install writes each of them, so each is also in `generated` (Section 14.2) |
 | `images` | For each service of the Compose file: `service`, `image`, `tag` and `resolved`. `image` is `repository@sha256:` and 64 hexadecimal digits, with no tag (R-233). `tag` is the tag that was read from the registry to get the digest. `resolved` is the day of that read |
 | `marks` | What the recipe needs beyond the default rules (Section 13.3). Empty for most recipes |
-| `exceptions` | The exceptions of a fixed list to the rights that each service drops (Section 13.3). Empty for most recipes |
+| `exceptions` | The exceptions of a fixed list to the rights of a service (Section 13.3), each as `exception` and the `services` that it applies to. Empty for most recipes |
+| `class` | `application` (the default) or `shell`: an entry that is a shell (Section 15.7, OD-HOST-54). A `shell` has at least one variable in `generated`, its credential, and no `network-port` mark |
+| `origin` | None for an entry that a person wrote. For a generated entry (tier 2, Section 15.4): `from` (`linuxserver`) and `read`, the day of the data of the publisher |
+| `streams` | Each published port other than the port of the test, as `port` (in the container) and `protocols`: the streams that a route of task H40 can carry. Each is a `ports` entry of the file with each protocol |
+| `optional` | The parts that are off because no rule of a file permits them yet, each with a setting of the machine: `{"part": "device", "path": "/dev/dri"}`. The path starts with `/dev/`. The Compose file does not have the part |
 | `volumes` | Each top-level volume of the Compose file, with the kind of copy that it needs (Section 13.4) |
 | `generated` | The variables that the install makes, for example a password. The example file has no value for them |
 | `test` | The test of a machine (Section 13.5). Task H37 runs it |
@@ -1399,18 +1403,28 @@ refuses with `privilege_not_permitted` and one reason:
 | `root_user` | `user` that is `0` or `root`, as the user or as the group, or a variable |
 | `new_privileges` | A service with no `security_opt: [no-new-privileges:true]` |
 | `capabilities_kept` | A service whose `cap_drop` is not `[ALL]` and not the drop of an exception of the entry |
-| `exception_not_needed` | The entry names an exception that no service uses |
+| `exception_not_needed` | An exception names a service that does not use it, or no service |
+| `entrypoint` | A service has `entrypoint`, and no exception `reviewed-command` names it |
+| `shell_command` | The `command` or the test of the `healthcheck` of a service runs a shell (`sh`, `bash`, `ash`, `dash`, `zsh`, `busybox`, `env`, `-c`, the forms `CMD-SHELL` and one text), and no exception `reviewed-command` names it |
+| `generated_exception` | An entry with an `origin` names `reviewed-command`, which only a person gives |
 
-The list of exceptions is fixed. It has one exception, `init-capabilities`: an init that starts
+The list of exceptions is fixed. Each exception names the services that it applies to, and no
+other service has it (SF-NEW-revcatentry). `init-capabilities`: an init that starts
 as root, gives the files to a different user and changes to it (the s6 init of the LinuxServer
 images, `gosu`, `su-exec`). Such a service keeps exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`,
-`SETGID` and `SETUID`. Contract K10 has no `cap_add`, so the service drops each other capability
+`SETGID` and `SETUID`. `reviewed-command`: a person read the `entrypoint`, the `command` and the
+health check of the service, which run a shell; a generated entry never has it. The variables
+`DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` are refused also in a word of a
+command, with the exception or without it. Contract K10 has no `cap_add`, so the service drops each other capability
 of the default set of the engine by name: `AUDIT_WRITE`, `FSETID`, `KILL`, `MKNOD`,
 `NET_BIND_SERVICE`, `NET_RAW`, `SETFCAP`, `SETPCAP` and `SYS_CHROOT`.
 
-The image, a published port and its `host_ip` are written in the file, never as a variable: the
-install could change a variable after the static test (`variable_not_permitted`,
-SF-NEW-revcatvars).
+The image, a published port, its `host_ip`, the `command`, the `entrypoint` and the `hostname`
+are written in the file, never as a variable: the install could change a variable after the
+static test (`variable_not_permitted`, SF-NEW-revcatvars, SF-NEW-revcatentry). A word of a
+command or of a health check that gives a value to a name that marks a secret (`--password=x`,
+`--token x`, `API_KEY=x`) is refused as `secret_in_file`; a name that ends with `FILE` names a
+path.
 
 The rules of Section 4.5 permit a published port from 1024 only. "Open to the network" does not
 change that. Thus a DNS server on port 53 (Pi-hole, AdGuard Home) is refused today, also with its
@@ -1490,6 +1504,9 @@ file. One recipe can have more than one code.
 | `variable_not_permitted` | The image, a published port or its `host_ip` is a variable (Section 13.3) |
 | `secret_in_file` | The Compose file gives a variable whose name marks a secret a value that is not one variable (Section 13.6) |
 | `privilege_not_permitted` | A service keeps rights that it does not need, or changes its code at the start. The second part is the reason (Section 13.3) |
+| `stream_not_published` | A stream of the entry is not a published port of the file with each of its protocols |
+| `optional_not_permitted` | An optional part is not a device below `/dev/` |
+| `shell_not_contained` | An entry of the class `shell` has no generated credential, or a `network-port` mark (OD-HOST-54) |
 
 A test of the crate reads the folder `entries/` and requires each recipe to pass, with one known
 refusal: Pi-hole (Section 13.3). Thus `bun run gates` runs the static test of each recipe.
@@ -1878,6 +1895,46 @@ The proposed rule, the class `shell`:
   the digest at the moment of each request; a new pin puts an entry back in tier 2 until its test.
 - Whether a release carries the data of the catalogue to hosted hubs with no further step is a
   question for the cloud plan.
+
+### 15.10 What the rest still needs (task H39)
+
+The generator of task H39 (`crates/catalogue/src/bin/generate.rs`) ran the form of
+`catalogue::linuxserver` over the fleet list of 2026-11-17 (202 current images, read on
+2026-11-21). The form keeps only the parts that are not optional, each volume of a placeholder
+path as a named volume, a port of the machine below 1024 moved up by 8000, each port on
+`127.0.0.1` with its protocol, `PUID` and `PGID` of 1000, the exception `init-capabilities` for
+its one service, and each secret or credential as a variable that the install makes. Ten images
+are entries now, in `crates/catalogue/entries/` with an `origin`, pinned by the digest of the
+index of each tag read from `lscr.io` on 2026-11-21: `calibre-web`, `code-server` (class `shell`,
+its `PASSWORD` made at the install), `duplicati`, `freshrss`, `heimdall`, `jellyfin` (the device
+`/dev/dri` as an optional part that is off), `nextcloud`, `qbittorrent` (the stream 6881, TCP and
+UDP), `radarr` (three volumes) and `sonarr`. Totals: **81 fit** (55 as they are, 16 with a port
+moved, 10 with an optional part off) and **121 do not fit**. The counts differ from Section 15.3
+because the form also refuses a variable with no value, an image with no TCP port, and a shell
+with no credential.
+
+| Place or reason | Count | What it still needs | Images |
+| --- | --- | --- | --- |
+| fits | 55 | A pin and a test on a machine (task H37) for tier 1. Ten are entries now | `adguardhome-sync`, `apprise-api`, `audiosilo`, `babybuddy`, `bazarr`, `beets`, `bitcoin-knots`, `calibre-web`, `changedetection.io`, `code-server`, `deluge`, `duplicati`, `faster-whisper`, `flexget`, `grocy`, `habridge`, `hedgedoc`, `hishtory-server`, `htpcmanager`, `jackett`, `kavita`, `lazylibrarian`, `ldap-auth`, `lidarr`, `limnoria`, `mariadb`, `medusa`, `mstream`, `mylar3`, `ngircd`, `nzbget`, `nzbhydra2`, `ombi`, `pairdrop`, `piper`, `planka`, `prowlarr`, `pwndrop`, `pydio-cells`, `pyload-ng`, `radarr`, `raneto`, `resilio-sync`, `sabnzbd`, `sickgear`, `sonarr`, `synclounge`, `tautulli`, `thelounge`, `transmission`, `ubooquity`, `unifi-network-application`, `vscodium-web`, `wikijs`, `znc` |
+| fits with a port moved | 16 | The same; the person reaches the port of the machine from 1024 (80 is 8080, 443 is 8443) | `cops`, `diskover`, `dokuwiki`, `freshrss`, `grav`, `heimdall`, `kimai`, `librespeed`, `nextcloud`, `nginx`, `phpmyadmin`, `piwigo`, `projectsend`, `smokeping`, `syslog-ng`, `xbackbone` |
+| fits with an optional part off | 10 | The same; the part (a device, a capability, a key of Compose) needs a setting of the machine and a change of contract K10 | `airsonic-advanced`, `emby`, `jellyfin`, `kdenlive`, `lm-studio`, `orcaslicer`, `ppsspp`, `qbittorrent`, `scummvm`, `tvheadend` |
+| shared memory | 84 | The key `shm_size` in contract K10 Section 6.4.4 and in `crates/compose-rules` (OD-HOST-51 A, for the owner of the contract); then most are desktops of the class `shell` and need their credential (`PASSWORD`) in the fixed list of the form | `altus`, `ardour`, `audacity`, `azahar`, `bambustudio`, `blade-of-agony`, `blender`, `boinc`, `brave`, `calibre`, `calligra`, `chrome`, `chromium`, `craft-apps`, `cura`, `darktable`, `digikam`, `dogwalk`, `dolphin`, `dosbox-staging`, `doublecommander`, `duckstation`, `eden`, `ferdium`, `filezilla`, `firefox`, `flycast`, `freecad`, `gimp`, `gitqlient`, `gzdoom`, `handbrake`, `helium`, `inkscape`, `intellij-idea`, `joplin`, `kali-linux`, `keepassxc`, `kicad`, `krita`, `libreoffice`, `librewolf`, `lollypop`, `mame`, `mediaelch`, `melonds`, `modrinth`, `msedge`, `nomacs`, `obsidian`, `onlyoffice`, `openshot`, `opera`, `pcsx2`, `pelorus`, `pidgin`, `pycharm`, `qdirstat`, `rawtherapee`, `remmina`, `retroarch`, `rpcs3`, `rustdesk`, `shadps4`, `shotcut`, `signal`, `spotube`, `sqlitebrowser`, `steam`, `telegram`, `thunderbird`, `ungoogled-chromium`, `vivaldi`, `vlc`, `webcord`, `webstation`, `webtop`, `weixin`, `winegui`, `wps-office`, `xemu`, `yaak`, `zen`, `zotero` |
+| value needed | 8 | A value that only the person or a different service gives (the address of a database, the address of the application, a key of a form): a database entry of the machine (MariaDB) and a form for the values of the person at the install | `bookstack`, `healthchecks`, `lychee`, `manyfold`, `mastodon`, `netbox`, `speedtest-tracker`, `your_spotify` |
+| no port | 7 | A test of a machine for a program with no TCP port (a program that ends, a UDP server) in task H37 | `ddclient`, `doplarr_rs`, `foldingathome`, `kometa`, `luanti`, `rsnapshot`, `webgrabplus` |
+| host network | 5 | Tier 3: install at the machine and adopt (R-228) | `duckdns`, `fail2ban`, `homeassistant`, `plex`, `wireshark` |
+| no config | 4 | Tier 3, or an entry that a person writes: the publisher gives no data | `ffmpeg`, `modmanager`, `qemu-static`, `socket-proxy` |
+| capability IPC_LOCK | 4 | Tier 3; or a test that the application works with no keyring | `github-desktop`, `mysql-workbench`, `vscode`, `vscodium` |
+| capability NET_ADMIN | 3 | Tier 3 | `mullvad-browser`, `swag`, `wireguard` |
+| device | 2 | Tier 3 until a setting of the machine permits a device | `minisatip`, `oscam` |
+| shell without credential | 2 | A credential that the install can make, for each image (the user and password of `openssh-server`, the user of the web page of Syncthing) | `openssh-server`, `syncthing` |
+| privileged | 1 | Tier 3 | `kasm` |
+| engine socket | 1 | Tier 3 until the exception of R-247 (task H34) | `sealskin` |
+
+The ten entries are tier 2: no test on a machine ran (HT-NEW-lsentries is the check by a person).
+The device of hardware decoding of Jellyfin is an optional part that is off; the streams of
+qBittorrent (6881, TCP and UDP) and of Heimdall and Nextcloud (their second port) wait for the
+routes of task H40. The hub lists the generated entries with the others; it does not show the
+tier, the class or the optional parts yet, and its install stays refused (task H6).
 
 
 ## 16. The hub as the proxy manager, with streams (R-NEW-linuxserver, HOST-050)

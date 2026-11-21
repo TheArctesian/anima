@@ -1,0 +1,52 @@
+{
+  "qbittorrent": {
+    "tag": "5.3.0_v2.1.2-ls487",
+    "digest": "sha256:3d4c4545d51a690a0df15a2ff99038823a88a9822df8e794526447b9afbd7384",
+    "resolved": "2026-11-21"
+  },
+  "jellyfin": {
+    "tag": "12.4ubu2604-ls59",
+    "digest": "sha256:2f708001387aa9853e744a4a4d572d9970927c479c56d6c9e199f789c5173535",
+    "resolved": "2026-11-21"
+  },
+  "radarr": {
+    "tag": "7.0.3.10918-ls328",
+    "digest": "sha256:044788f5508b7f67a3e0368cdd142c77c4d4cd5aec2efaba53e1a68b6b6231e7",
+    "resolved": "2026-11-21"
+  },
+  "code-server": {
+    "tag": "4.145.2-ls377",
+    "digest": "sha256:20ffca4512fcfc85dcd5612fb769233c1553192392d2ec417f0859135805f40c",
+    "resolved": "2026-11-21"
+  },
+  "heimdall": {
+    "tag": "v2.8.4-ls373",
+    "digest": "sha256:47f70751f900be4499017a48c01206c02ab9d18f34a580c6213a13d24cdc1a4a",
+    "resolved": "2026-11-21"
+  },
+  "freshrss": {
+    "tag": "1.30.4-ls331",
+    "digest": "sha256:2a7656d689b115cf5ade58b9dac1de5692df8e89fe92d77cc7f32b3d11622950",
+    "resolved": "2026-11-21"
+  },
+  "sonarr": {
+    "tag": "4.0.20.3014-ls5",
+    "digest": "sha256:c7d1df25e428da6c9ace05daea0d34e59522978a3843ea1944812f855af4086c",
+    "resolved": "2026-11-21"
+  },
+  "calibre-web": {
+    "tag": "0.6.27-ls410",
+    "digest": "sha256:adb69d75b9c252e580fc691096f858833b901b5d106ae4080fb476bab104d946",
+    "resolved": "2026-11-21"
+  },
+  "duplicati": {
+    "tag": "v2.4.1.0_stable_2026-10-29-ls318",
+    "digest": "sha256:ea137d806f2c0556468f2c620bcac963f0825bf45876de274988b42ff13b453a",
+    "resolved": "2026-11-21"
+  },
+  "nextcloud": {
+    "tag": "35.0.3-ls1",
+    "digest": "sha256:1c3cfb00eb8653e03042653065e848523edf177498b439fcfdddff5ecd355e1a",
+    "resolved": "2026-11-21"
+  }
+}

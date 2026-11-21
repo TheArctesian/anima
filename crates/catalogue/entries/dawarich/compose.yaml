@@ -105,7 +105,7 @@ services:
       - SETPCAP
       - SYS_CHROOT
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dawarich -d dawarich"]
+      test: ["CMD", "pg_isready", "-U", "dawarich", "-d", "dawarich"]
       interval: 10s
       retries: 10
       start_period: 30s

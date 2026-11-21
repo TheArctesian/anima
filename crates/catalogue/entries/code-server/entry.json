@@ -1,0 +1,63 @@
+{
+  "id": "code-server",
+  "name": "code-server",
+  "description": "code-server is VS Code running on a remote server, accessible through the browser.",
+  "version": "4.145.2-ls377",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "programming"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-code-server",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/code-server-banner.png",
+  "anima": {
+    "class": "shell",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "code-server",
+        "image": "lscr.io/linuxserver/code-server@sha256:20ffca4512fcfc85dcd5612fb769233c1553192392d2ec417f0859135805f40c",
+        "tag": "4.145.2-ls377",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "code-server"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      }
+    ],
+    "generated": [
+      "PASSWORD"
+    ],
+    "test": {
+      "service": "code-server",
+      "port": 8443,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

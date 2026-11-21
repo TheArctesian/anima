@@ -18,11 +18,21 @@ fn host_047_each_shipped_recipe_passes_or_has_its_known_refusal() {
     assert_eq!(
         folders,
         [
+            "calibre-web",
+            "code-server",
             "dawarich",
+            "duplicati",
+            "freshrss",
             "gitea",
+            "heimdall",
+            "jellyfin",
+            "nextcloud",
             "owntracks-recorder",
             "pihole",
             "postgresql",
+            "qbittorrent",
+            "radarr",
+            "sonarr",
             "uptime-kuma",
             "vaultwarden"
         ]

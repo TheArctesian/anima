@@ -20,10 +20,20 @@ fn h38_the_hub_lists_each_shipped_recipe_that_passes_the_static_test() {
     assert_eq!(
         ids(entries()),
         [
+            "calibre-web",
+            "code-server",
             "dawarich",
+            "duplicati",
+            "freshrss",
             "gitea",
+            "heimdall",
+            "jellyfin",
+            "nextcloud",
             "owntracks-recorder",
             "postgresql",
+            "qbittorrent",
+            "radarr",
+            "sonarr",
             "uptime-kuma",
             "vaultwarden"
         ]

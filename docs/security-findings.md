@@ -217,6 +217,7 @@ that owns the area.
 | SF-NEW-revcatvars | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatsecret | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatpg | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-NEW-revcatentry | A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in COMMIT) |
 | SF-NEW-lsdownload | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lsgenerator | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lstier | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
@@ -2335,6 +2336,21 @@ Effect, and who can cause it: The author of a recipe or of an application name. 
 Mitigation now: The password is 22 to 128 letters and digits (at least 128 bits). An application identifier with `_` or `--` is refused, so the names are different for different identifiers; the way back uses `__back_` and `__check`, which no application name has. An extension is one of a fixed list (`vector`, `pg_trgm`, `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry `postgresql` names). Tests: `crates/catalogue/src/postgresql/tests.rs`.
 
 State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revcatentry: A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low
+
+Requirements: HOST-047, HOST-049, tasks H36 and H39; R-NEW-catalogueways.
+
+What it is: (1) The static test did not read `command`, `entrypoint` or the test of `healthcheck`. A recipe could set `DOCKER_MODS` there, or run `sh -c "curl … | sh"`, and `${VAR}` was permitted in `command`, `entrypoint` and `hostname`, so a value of the install changed what runs. A secret written in a word of a command was not refused. (2) Once an entry named `init-capabilities`, each service of the file could keep the five capabilities of the init.
+
+Where: `crates/catalogue/src/privileges.rs`, `crates/catalogue/src/file.rs`, `crates/catalogue/src/example.rs`.
+
+Effect, and who can cause it: The author of a recipe, or the data of a publisher that the generator copies. Effect: code that no digest names runs at the start, or a service that needs no init keeps the capabilities of one.
+
+Mitigation now: `$` in `command`, `entrypoint` and `hostname` is `variable_not_permitted`. An `entrypoint` is refused (`entrypoint`), and a `command` or a health check that runs a shell (`sh`, `bash`, `ash`, `dash`, `zsh`, `busybox`, `env`, `-c`, the forms `CMD-SHELL` and one text) is refused (`shell_command`), unless the entry names the exception `reviewed-command` for that service; a generated entry (with `origin`) that names it is refused (`generated_exception`). `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` in a word of a command are `image_mods` in each case. A word that gives a value to a secret name (`--password=x`, `--token x`, `API_KEY=x`) is `secret_in_file`. Each exception is now `{"exception": …, "services": […]}` and applies only to the services that it names; a named service that does not use it is `exception_not_needed`. The health checks of PostgreSQL and of the database of Dawarich are now of the form `CMD`; Dawarich names `reviewed-command` for its services `app` and `sidekiq`. Tests: `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/privileges.rs`.
+
+State: Open (built in COMMIT). The words of a command are read as words: a program that a recipe starts can still run a shell of its own, which only the test on a machine shows (task H37). Found by a separate reviewer on 2026-11-21.
+
 ## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
 
 A separate reviewer read Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code exists for them. The text is corrected in the same branch.

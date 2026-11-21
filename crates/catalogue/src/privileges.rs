@@ -1,7 +1,10 @@
-//! The rights of the services of a recipe (SF-NEW-revcatroot): each service refuses new rights
-//! and drops each capability, no setting makes a service root, and no setting makes an image
-//! change its code at the start. The rules read the file as its author wrote it, before an
-//! environment file fills its variables, so that no value of the install changes the result.
+//! The rights of the services of a recipe (SF-NEW-revcatroot, SF-NEW-revcatentry): each service
+//! refuses new rights and drops each capability, no setting makes a service root, no setting
+//! makes an image change its code at the start, and no command runs a shell that no person read.
+//! The rules read the file as its author wrote it, before an environment file fills its
+//! variables, so that no value of the install changes the result.
+
+pub(crate) mod commands;
 
 use compose_rules::Node;
 
@@ -46,8 +49,15 @@ pub enum Privilege {
     NewPrivileges,
     /// `cap_drop` is not `[ALL]`, and not the drop of an exception that the entry names.
     CapabilitiesKept,
-    /// The entry names an exception that no service uses.
+    /// An exception names a service that does not use it, or no service.
     ExceptionNotNeeded,
+    /// A service sets `entrypoint`, and the entry names no reviewed command for it.
+    Entrypoint,
+    /// The command or the health check of a service runs a shell, and the entry names no
+    /// reviewed command for it.
+    ShellCommand,
+    /// A generated entry names a reviewed command, which only a person gives.
+    GeneratedException,
 }
 
 impl Privilege {
@@ -64,6 +74,9 @@ impl Privilege {
             Self::NewPrivileges => "new_privileges",
             Self::CapabilitiesKept => "capabilities_kept",
             Self::ExceptionNotNeeded => "exception_not_needed",
+            Self::Entrypoint => "entrypoint",
+            Self::ShellCommand => "shell_command",
+            Self::GeneratedException => "generated_exception",
         }
     }
 }
@@ -141,24 +154,80 @@ fn dropped(service: &Node, init: bool) -> Option<bool> {
     }
 }
 
-/// The codes of the rights of `services`, for an entry that names `exceptions`. Each code is
-/// there one time, in a fixed order.
-pub(crate) fn check(services: &[(String, Node)], exceptions: &[Exception]) -> Vec<Privilege> {
-    let init = exceptions.contains(&Exception::InitCapabilities);
-    let mut found = Vec::new();
-    let mut used = false;
-    for (_, service) in services {
-        found.extend(settings(service));
-        if !texts(service, "security_opt").contains(&NO_NEW_PRIVILEGES) {
-            found.push(Privilege::NewPrivileges);
-        }
-        match dropped(service, init) {
-            Some(exception) => used |= exception,
-            None => found.push(Privilege::CapabilitiesKept),
-        }
+/// True when `exception` is of the kind of `init` (the init as root, else the reviewed command)
+/// and names `service`.
+fn names(exception: &Exception, init: bool, service: &str) -> bool {
+    let kind = matches!(exception, Exception::InitCapabilities { .. }) == init;
+    kind && exception.services().iter().any(|name| name == service)
+}
+
+/// The codes of one service named `name`. Each exception that the service uses is added to
+/// `used`, with the kind of the exception.
+fn service_rights<'a>(
+    name: &'a str,
+    service: &Node,
+    exceptions: &[Exception],
+    used: &mut Vec<(bool, &'a str)>,
+) -> Vec<Privilege> {
+    let mut found = settings(service);
+    if !texts(service, "security_opt").contains(&NO_NEW_PRIVILEGES) {
+        found.push(Privilege::NewPrivileges);
     }
-    if init && !used {
+    let init = exceptions
+        .iter()
+        .any(|exception| names(exception, true, name));
+    match dropped(service, init) {
+        Some(true) => used.push((true, name)),
+        Some(false) => {}
+        None => found.push(Privilege::CapabilitiesKept),
+    }
+    let entrypoint = !commands::entrypoint(service).is_empty();
+    let shell = commands::runs_shell(service);
+    if exceptions
+        .iter()
+        .any(|exception| names(exception, false, name))
+    {
+        if entrypoint || shell {
+            used.push((false, name));
+        }
+    } else {
+        found.extend(entrypoint.then_some(Privilege::Entrypoint));
+        found.extend(shell.then_some(Privilege::ShellCommand));
+    }
+    if commands::sets_mods(service) {
+        found.push(Privilege::ImageMods);
+    }
+    found
+}
+
+/// The codes of the rights of `services`, for an entry that names `exceptions` and that is
+/// `generated` or written by a person. Each code is there one time, in a fixed order.
+pub(crate) fn check(
+    services: &[(String, Node)],
+    exceptions: &[Exception],
+    generated: bool,
+) -> Vec<Privilege> {
+    let mut used = Vec::new();
+    let mut found: Vec<Privilege> = services
+        .iter()
+        .flat_map(|(name, service)| service_rights(name, service, exceptions, &mut used))
+        .collect();
+    let each_used = exceptions.iter().all(|exception| {
+        let init = matches!(exception, Exception::InitCapabilities { .. });
+        !exception.services().is_empty()
+            && exception
+                .services()
+                .iter()
+                .all(|name| used.contains(&(init, name.as_str())))
+    });
+    if !each_used {
         found.push(Privilege::ExceptionNotNeeded);
+    }
+    let reviewed = exceptions
+        .iter()
+        .any(|exception| matches!(exception, Exception::ReviewedCommand { .. }));
+    if generated && reviewed {
+        found.push(Privilege::GeneratedException);
     }
     found.sort_unstable();
     found.dedup();

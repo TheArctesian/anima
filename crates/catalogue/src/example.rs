@@ -4,7 +4,10 @@
 
 use compose_rules::Node;
 
-use crate::{Code, privileges::environment};
+use crate::{
+    Code,
+    privileges::{commands, environment},
+};
 
 /// The line above a variable that the install makes.
 pub(crate) const GENERATED: &str = "# generated at install";
@@ -24,7 +27,7 @@ const SECRET_TEXTS: [&str; 7] = [
 ];
 
 /// True when the name marks a secret, in capital or small letters.
-fn is_secret_name(name: &str) -> bool {
+pub(crate) fn is_secret_name(name: &str) -> bool {
     let name = name.to_ascii_uppercase();
     name.split('_').any(|part| SECRET_PARTS.contains(&part))
         || SECRET_TEXTS.iter().any(|text| name.contains(text))
@@ -44,12 +47,14 @@ fn is_one_variable(value: &str) -> bool {
 }
 
 /// True when a service of the Compose file, as its author wrote it, gives a variable whose
-/// name marks a secret a value that is not one variable: a literal, or a default after `:-`.
+/// name marks a secret a value that is not one variable: a literal, or a default after `:-`;
+/// or gives such a name a value in a word of its commands (SF-NEW-revcatentry).
 pub(crate) fn secret_in_file(services: &[(String, Node)]) -> bool {
     services.iter().any(|(_, service)| {
         environment(service)
             .into_iter()
             .any(|(name, value)| is_secret_name(name) && !is_one_variable(value))
+            || commands::secret_literal(service, is_secret_name)
     })
 }
 

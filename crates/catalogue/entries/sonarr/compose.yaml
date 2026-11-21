@@ -1,0 +1,39 @@
+services:
+  sonarr:
+    image: lscr.io/linuxserver/sonarr@sha256:c7d1df25e428da6c9ace05daea0d34e59522978a3843ea1944812f855af4086c
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
+    ports:
+      - target: 8989
+        published: 8989
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: config
+        target: /config
+      - type: volume
+        source: tv
+        target: /tv
+      - type: volume
+        source: downloads
+        target: /downloads
+volumes:
+  config:
+  tv:
+  downloads:

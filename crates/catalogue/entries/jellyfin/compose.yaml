@@ -1,0 +1,39 @@
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin@sha256:2f708001387aa9853e744a4a4d572d9970927c479c56d6c9e199f789c5173535
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
+    ports:
+      - target: 8096
+        published: 8096
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: config
+        target: /config
+      - type: volume
+        source: data-tvshows
+        target: /data/tvshows
+      - type: volume
+        source: data-movies
+        target: /data/movies
+volumes:
+  config:
+  data-tvshows:
+  data-movies:

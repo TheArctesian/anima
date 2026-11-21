@@ -37,10 +37,25 @@ pub struct Anima {
     /// What the recipe needs beyond the default rules. Empty for most recipes.
     #[serde(default)]
     pub marks: Vec<Mark>,
-    /// The exceptions of a fixed list to the rights that each service drops. Empty for most
-    /// recipes.
+    /// The exceptions of a fixed list to the rights of a service, each with the services that it
+    /// applies to. Empty for most recipes.
     #[serde(default)]
     pub exceptions: Vec<Exception>,
+    /// What a person may do with the entry: an application, or a shell (Section 15.7 of the
+    /// proposal, OD-HOST-54).
+    #[serde(default)]
+    pub class: Class,
+    /// Where the entry comes from: written by a person when absent, or generated from the data
+    /// of a publisher (tier 2, OD-HOST-50).
+    pub origin: Option<Origin>,
+    /// The published ports other than the port of the test, with their protocols: the streams
+    /// that a route of task H40 can carry.
+    #[serde(default)]
+    pub streams: Vec<Stream>,
+    /// The parts of the application that are off, because they need a setting of the machine
+    /// that no rule of a file permits yet.
+    #[serde(default)]
+    pub optional: Vec<Optional>,
     /// Each top-level volume of the Compose file, and how a copy of it is made.
     pub volumes: Vec<Kept>,
     /// The variables of the environment file that the install makes. The example file has
@@ -170,14 +185,72 @@ pub enum Mark {
     Device,
 }
 
-/// An exception to "each service drops each capability" (SF-NEW-revcatroot).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+/// An exception to the rights of a service (SF-NEW-revcatroot, SF-NEW-revcatentry), for the
+/// services that it names and no other.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(tag = "exception", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Exception {
     /// An init that starts as root, gives the files to a different user and changes to it:
     /// the s6 init of the images of `LinuxServer`, `gosu` or `su-exec`. It keeps exactly `CHOWN`,
     /// `DAC_OVERRIDE`, `FOWNER`, `SETGID` and `SETUID`.
-    InitCapabilities,
+    InitCapabilities { services: Vec<String> },
+    /// A person read the `entrypoint`, the `command` and the health check of the services, which
+    /// run a shell. A generated entry never has it.
+    ReviewedCommand { services: Vec<String> },
+}
+
+impl Exception {
+    /// The services that the exception names.
+    #[must_use]
+    pub fn services(&self) -> &[String] {
+        match self {
+            Self::InitCapabilities { services } | Self::ReviewedCommand { services } => services,
+        }
+    }
+}
+
+/// What a person may do with an entry.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Class {
+    #[default]
+    Application,
+    /// Who reaches it is root in a container: a desktop in a browser, a code editor, a page
+    /// with no sign-in. It needs a credential that the install makes, gets no port on the
+    /// network, and only a person installs it (OD-HOST-54).
+    Shell,
+}
+
+/// The publisher of the data that an entry was generated from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Publisher {
+    Linuxserver,
+}
+
+/// A generated entry (task H39): the publisher, and the day of its data, `YYYY-MM-DD`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Origin {
+    pub from: Publisher,
+    pub read: String,
+}
+
+/// A published port that is a stream: the port in the container and its protocols.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Stream {
+    pub port: u16,
+    pub protocols: Vec<Protocol>,
+}
+
+/// A part of the application that is off.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(tag = "part", rename_all = "kebab-case", deny_unknown_fields)]
+pub enum Optional {
+    /// A device of the machine below `/dev/`, for example `/dev/dri` for hardware decoding.
+    /// The rules of a file permit no device, so the part needs a setting of the machine.
+    Device { path: String },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]

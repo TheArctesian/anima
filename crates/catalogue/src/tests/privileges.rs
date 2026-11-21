@@ -18,7 +18,7 @@ fn with_exception(recipe: Recipe) -> Recipe {
         entry: recipe.entry.map(|text| {
             text.replacen(
                 r#""marks": []"#,
-                r#""marks": [], "exceptions": ["init-capabilities"]"#,
+                r#""marks": [], "exceptions": [{ "exception": "init-capabilities", "services": ["notes"] }]"#,
                 1,
             )
         }),

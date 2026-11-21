@@ -1,0 +1,69 @@
+{
+  "id": "sonarr",
+  "name": "sonarr",
+  "description": "sonarr (formerly NZBdrone) is a PVR for usenet and bittorrent users.",
+  "version": "4.0.20.3014-ls5",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "media management"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-sonarr",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/sonarr-banner.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "sonarr",
+        "image": "lscr.io/linuxserver/sonarr@sha256:c7d1df25e428da6c9ace05daea0d34e59522978a3843ea1944812f855af4086c",
+        "tag": "4.0.20.3014-ls5",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "sonarr"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      },
+      {
+        "volume": "tv",
+        "copy": "files"
+      },
+      {
+        "volume": "downloads",
+        "copy": "files"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "sonarr",
+      "port": 8989,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

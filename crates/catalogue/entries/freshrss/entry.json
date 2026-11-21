@@ -1,0 +1,61 @@
+{
+  "id": "freshrss",
+  "name": "freshrss",
+  "description": "freshrss is a free, self-hostable aggregator for rss feeds.",
+  "version": "1.30.4-ls331",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "rss"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-freshrss",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/freshrss-banner.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "freshrss",
+        "image": "lscr.io/linuxserver/freshrss@sha256:2a7656d689b115cf5ade58b9dac1de5692df8e89fe92d77cc7f32b3d11622950",
+        "tag": "1.30.4-ls331",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "freshrss"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "freshrss",
+      "port": 80,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

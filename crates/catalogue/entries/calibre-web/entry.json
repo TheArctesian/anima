@@ -1,0 +1,65 @@
+{
+  "id": "calibre-web",
+  "name": "calibre-web",
+  "description": "calibre-web is a web app providing a clean interface for browsing, reading and downloading eBooks using an existing Calibre database.",
+  "version": "0.6.27-ls410",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "books"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-calibre-web",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/calibre-web-icon.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "calibre-web",
+        "image": "lscr.io/linuxserver/calibre-web@sha256:adb69d75b9c252e580fc691096f858833b901b5d106ae4080fb476bab104d946",
+        "tag": "0.6.27-ls410",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "calibre-web"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      },
+      {
+        "volume": "books",
+        "copy": "files"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "calibre-web",
+      "port": 8083,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

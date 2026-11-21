@@ -1,0 +1,73 @@
+{
+  "id": "qbittorrent",
+  "name": "qbittorrent",
+  "description": "The qbittorrent is a bittorrent client programmed in C++ / Qt that uses libtorrent (sometimes called libtorrent-rasterbar) by Arvid Norberg.",
+  "version": "5.3.0_v2.1.2-ls487",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "downloaders"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-qbittorrent",
+  "icon_url": "https://github.com/linuxserver/docker-templates/raw/master/linuxserver.io/img/qbittorrent-icon.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "qbittorrent",
+        "image": "lscr.io/linuxserver/qbittorrent@sha256:3d4c4545d51a690a0df15a2ff99038823a88a9822df8e794526447b9afbd7384",
+        "tag": "5.3.0_v2.1.2-ls487",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "qbittorrent"
+        ]
+      }
+    ],
+    "streams": [
+      {
+        "port": 6881,
+        "protocols": [
+          "tcp",
+          "udp"
+        ]
+      }
+    ],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      },
+      {
+        "volume": "downloads",
+        "copy": "files"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "qbittorrent",
+      "port": 8080,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

@@ -180,18 +180,47 @@ fn test_complete(test: &HealthTest, kind: Kind, document: &Node) -> bool {
     published && answer && (1..=LONGEST_TEST).contains(&test.limit_seconds)
 }
 
-/// True when the image, a published port or its address is written as a variable: the install
-/// fills it after the static test, so that the test would not see the value that runs.
+/// True when the image, a published port, its address, the command, the entrypoint or the
+/// host name is written with a variable: the install fills it after the static test, so that
+/// the test would not see the value that runs (SF-NEW-revcatvars, SF-NEW-revcatentry).
 fn variable_in_fixed_value(unfilled: &Node) -> bool {
-    let has_variable = |node: Option<&Node>| {
-        node.and_then(Node::text)
-            .is_some_and(|text| text.contains('$'))
+    let has_variable = |node: Option<&Node>| match node {
+        Some(Node::Text(text)) => text.contains('$'),
+        Some(Node::List(items)) => items
+            .iter()
+            .any(|item| item.text().is_some_and(|text| text.contains('$'))),
+        _ => false,
     };
     services(unfilled).iter().any(|(_, service)| {
-        has_variable(service.get("image"))
+        ["image", "command", "entrypoint", "hostname"]
+            .into_iter()
+            .any(|key| has_variable(service.get(key)))
             || ports(service).iter().any(|port| {
                 has_variable(port.get("published")) || has_variable(port.get("host_ip"))
             })
+    })
+}
+
+/// True when each stream of the entry is a port of the file with each of its protocols.
+fn streams_published(anima: &Anima, document: &Node) -> bool {
+    let published: Vec<(String, Protocol)> = services(document)
+        .iter()
+        .flat_map(|(_, service)| ports(service))
+        .filter_map(|port| {
+            let target = port.get("target").and_then(Node::text)?.to_owned();
+            let protocol = match port.get("protocol").and_then(Node::text) {
+                Some("udp") => Protocol::Udp,
+                _ => Protocol::Tcp,
+            };
+            Some((target, protocol))
+        })
+        .collect();
+    anima.streams.iter().all(|stream| {
+        !stream.protocols.is_empty()
+            && stream
+                .protocols
+                .iter()
+                .all(|protocol| published.contains(&(stream.port.to_string(), *protocol)))
     })
 }
 
@@ -206,9 +235,13 @@ fn written(anima: &Anima, unfilled: &Node) -> Vec<Code> {
         codes.push(Code::SecretInFile);
     }
     codes.extend(
-        privileges::check(services(unfilled), &anima.exceptions)
-            .into_iter()
-            .map(Code::PrivilegeNotPermitted),
+        privileges::check(
+            services(unfilled),
+            &anima.exceptions,
+            anima.origin.is_some(),
+        )
+        .into_iter()
+        .map(Code::PrivilegeNotPermitted),
     );
     codes
 }
@@ -245,6 +278,9 @@ pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code
     codes.extend(images(anima, &document));
     if !volumes_described(anima, &document) {
         codes.push(Code::VolumeNotDescribed);
+    }
+    if !streams_published(anima, &document) {
+        codes.push(Code::StreamNotPublished);
     }
     if anima.kind == Kind::Database && publishes(&document) {
         codes.push(Code::DatabasePortPublished);

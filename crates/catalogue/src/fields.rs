@@ -1,11 +1,11 @@
 //! The fields of an entry that need no other file: the identifier, the texts, the addresses
 //! and the dates.
 
-use compose_rules::forms::is_name;
+use compose_rules::forms::{is_name, is_target};
 
 use crate::{
     Code,
-    entry::{Entry, MachineTest},
+    entry::{Anima, Class, Entry, MachineTest, Mark, Optional},
 };
 
 /// The name of the Compose file in a recipe folder.
@@ -67,7 +67,13 @@ pub(crate) fn check(entry: &Entry, folder: &str) -> Vec<Code> {
         MachineTest::NotTested => None,
         MachineTest::Passed { date } | MachineTest::Failed { date } => Some(date.as_str()),
     };
+    let read = entry
+        .anima
+        .origin
+        .as_ref()
+        .map(|origin| origin.read.as_str());
     let dates = std::iter::once(entry.anima.pinned.as_str())
+        .chain(read)
         .chain(
             entry
                 .anima
@@ -78,6 +84,26 @@ pub(crate) fn check(entry: &Entry, folder: &str) -> Vec<Code> {
         .chain(tested);
     if !dates.into_iter().all(is_date) {
         codes.push(Code::DateNotPermitted);
+    }
+    codes.extend(parts(&entry.anima));
+    codes
+}
+
+/// The codes of the optional parts and of the class of `anima`.
+fn parts(anima: &Anima) -> Vec<Code> {
+    let mut codes = Vec::new();
+    let devices = anima.optional.iter().all(|part| match part {
+        Optional::Device { path } => path.starts_with("/dev/") && is_target(path),
+    });
+    if !devices {
+        codes.push(Code::OptionalNotPermitted);
+    }
+    let on_network = anima
+        .marks
+        .iter()
+        .any(|mark| matches!(mark, Mark::NetworkPort { .. }));
+    if anima.class == Class::Shell && (anima.generated.is_empty() || on_network) {
+        codes.push(Code::ShellNotContained);
     }
     codes
 }

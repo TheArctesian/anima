@@ -1,0 +1,673 @@
+{
+  "status": "OK",
+  "last_updated": "2026-11-17 09:52:05+00:00",
+  "data": {
+    "repositories": {
+      "linuxserver": [
+        {
+          "name": "calibre-web",
+          "description": "calibre-web is a web app providing a clean interface for browsing, reading and downloading eBooks using an existing Calibre database.   It is also possible to integrate google drive and edit metadata and your calibre library through the app itself.  This software is a fork of library and licensed under the GPL v3 License.",
+          "version": "0.6.27-ls410",
+          "category": "Books",
+          "github_url": "https://github.com/linuxserver/docker-calibre-web",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/calibre-web-icon.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-calibre-web?tab=readme-ov-file#application-setup",
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Europe/London",
+                "desc": "Specify a timezone to use EG Europe/London.",
+                "optional": false
+              },
+              {
+                "name": "DOCKER_MODS",
+                "value": "linuxserver/mods:universal-calibre",
+                "desc": "#optional & **x86-64 only** Adds the ability to perform ebook conversion",
+                "optional": true
+              },
+              {
+                "name": "OAUTHLIB_RELAX_TOKEN_SCOPE",
+                "value": "1",
+                "desc": "Optionally set this to allow Google OAUTH to work",
+                "optional": true
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/calibre-web/data",
+                "desc": "Where calibre-web stores the internal database and config.",
+                "optional": false
+              },
+              {
+                "path": "/books",
+                "host_path": "/path/to/calibre/library",
+                "desc": "Where your preexisting calibre database is located.",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "8083",
+                "internal": "8083",
+                "desc": "WebUI",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "code-server",
+          "description": "code-server is VS Code running on a remote server, accessible through the browser. - Code on your Chromebook, tablet, and laptop with a consistent dev environment. - If you have a Windows or Mac workstation, more easily develop for Linux. - Take advantage of large cloud servers to speed up tests, compilations, downloads, and more. - Preserve battery life when you're on the go. - All intensive computation runs on your server. - You're no longer running excess instances of Chrome.",
+          "version": "4.145.2-ls377",
+          "category": "Programming",
+          "github_url": "https://github.com/linuxserver/docker-code-server",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/code-server-banner.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-code-server?tab=readme-ov-file#application-setup",
+            "readonly_supported": true,
+            "nonroot_supported": true,
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              },
+              {
+                "name": "PASSWORD",
+                "value": "password",
+                "desc": "Optional web gui password, if `PASSWORD` or `HASHED_PASSWORD` is not provided, there will be no auth.",
+                "optional": true
+              },
+              {
+                "name": "HASHED_PASSWORD",
+                "value": "",
+                "desc": "Optional web gui password, overrides `PASSWORD`, instructions on how to create it is below.",
+                "optional": true
+              },
+              {
+                "name": "SUDO_PASSWORD",
+                "value": "password",
+                "desc": "If this optional variable is set, user will have sudo access in the code-server terminal with the specified password.",
+                "optional": true
+              },
+              {
+                "name": "SUDO_PASSWORD_HASH",
+                "value": "",
+                "desc": "Optionally set sudo password via hash (takes priority over `SUDO_PASSWORD` var). Format is `$type$salt$hashed`.",
+                "optional": true
+              },
+              {
+                "name": "PROXY_DOMAIN",
+                "value": "code-server.my.domain",
+                "desc": "If this optional variable is set, this domain will be proxied for subdomain proxying. See [Documentation](https://github.com/coder/code-server/blob/main/docs/guide.md#using-a-subdomain)",
+                "optional": true
+              },
+              {
+                "name": "DEFAULT_WORKSPACE",
+                "value": "/config/workspace",
+                "desc": "If this optional variable is set, code-server will open this directory by default",
+                "optional": true
+              },
+              {
+                "name": "PWA_APPNAME",
+                "value": "code-server",
+                "desc": "If this optional variable is set, the PWA app will the specified name.",
+                "optional": true
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/code-server/config",
+                "desc": "Contains all relevant configuration files.",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "8443",
+                "internal": "8443",
+                "desc": "web gui",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "duplicati",
+          "description": "duplicati is a backup client that securely stores encrypted, incremental, compressed backups on local storage, cloud storage services and remote file servers. It works with standard protocols like FTP, SSH, WebDAV as well as popular services like Microsoft OneDrive, Amazon S3, Google Drive, box.com, Mega, B2, and many others.",
+          "version": "v2.4.1.0_stable_2026-10-29-ls318",
+          "category": "Backup",
+          "github_url": "https://github.com/linuxserver/docker-duplicati",
+          "project_logo": "https://github.com/linuxserver/docker-templates/raw/master/linuxserver.io/img/duplicati-icon.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-duplicati?tab=readme-ov-file#application-setup",
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              },
+              {
+                "name": "SETTINGS_ENCRYPTION_KEY",
+                "value": "",
+                "desc": "Encryption key for settings database. Minimum 8 characters, alphanumeric.",
+                "optional": false
+              },
+              {
+                "name": "CLI_ARGS",
+                "value": "",
+                "desc": "Optionally specify any [CLI variables](https://duplicati.readthedocs.io/en/latest/07-other-command-line-utilities/) you want to launch the app with",
+                "optional": true
+              },
+              {
+                "name": "DUPLICATI__WEBSERVICE_PASSWORD",
+                "value": "",
+                "desc": "Password for the webui. If left unset will default to `changeme` and can be changed from the webui settings.",
+                "optional": true
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/duplicati/config",
+                "desc": "Contains all relevant configuration files.",
+                "optional": false
+              },
+              {
+                "path": "/backups",
+                "host_path": "/path/to/backups",
+                "desc": "Path to store local backups.",
+                "optional": false
+              },
+              {
+                "path": "/source",
+                "host_path": "/path/to/source",
+                "desc": "Path to source for files to backup.",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "8200",
+                "internal": "8200",
+                "desc": "http gui",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "freshrss",
+          "description": "freshrss is a free, self-hostable aggregator for rss feeds.",
+          "version": "1.30.4-ls331",
+          "category": "RSS",
+          "github_url": "https://github.com/linuxserver/docker-freshrss",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/freshrss-banner.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-freshrss?tab=readme-ov-file#application-setup",
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/freshrss/config",
+                "desc": "Persistent config files",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "80",
+                "internal": "80",
+                "desc": "WebUI",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "heimdall",
+          "description": "heimdall is a way to organise all those links to your most used web sites and web applications in a simple way.  Simplicity is the key to Heimdall.  Why not use it as your browser start page? It even has the ability to include a search bar using either Google, Bing or DuckDuckGo.",
+          "version": "v2.8.4-ls373",
+          "category": "Dashboard",
+          "github_url": "https://github.com/linuxserver/docker-heimdall",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/heimdall-banner.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-heimdall?tab=readme-ov-file#application-setup",
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              },
+              {
+                "name": "ALLOW_INTERNAL_REQUESTS",
+                "value": "false",
+                "desc": "By default, Heimdall blocks lookup requests to private or reserved IP addresses, if your instance is not exposed to the internet, or is behind some level of authentication, you can set this to `true` to allow requests to private IP addresses.",
+                "optional": true
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/heimdall/config",
+                "desc": "Persistent config files",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "80",
+                "internal": "80",
+                "desc": "http gui",
+                "optional": false
+              },
+              {
+                "external": "443",
+                "internal": "443",
+                "desc": "https gui",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "jellyfin",
+          "description": "jellyfin is a Free Software Media System that puts you in control of managing and streaming your media. It is an alternative to the proprietary Emby and Plex, to provide media from a dedicated server to end-user devices via multiple apps. Jellyfin is descended from Emby's 3.5.2 release and ported to the .NET Core framework to enable full cross-platform support. There are no strings attached, no premium licenses or features, and no hidden agendas: just a team who want to build something better and work together to achieve it.",
+          "version": "12.4ubu2604-ls59",
+          "category": "Media Servers,Music,Audiobooks",
+          "github_url": "https://github.com/linuxserver/docker-jellyfin",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/jellyfin-logo.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-jellyfin?tab=readme-ov-file#application-setup",
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              },
+              {
+                "name": "JELLYFIN_PublishedServerUrl",
+                "value": "http://192.168.0.5",
+                "desc": "Set the autodiscovery response domain or IP address, include http(s)://.",
+                "optional": true
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/jellyfin/library",
+                "desc": "Jellyfin data storage location. *This can grow very large, 50gb+ is likely for a large collection.*",
+                "optional": false
+              },
+              {
+                "path": "/data/tvshows",
+                "host_path": "/path/to/tvseries",
+                "desc": "Media goes here. Add as many as needed e.g. `/data/movies`, `/data/tv`, etc.",
+                "optional": false
+              },
+              {
+                "path": "/data/movies",
+                "host_path": "/path/to/movies",
+                "desc": "Media goes here. Add as many as needed e.g. `/data/movies`, `/data/tv`, etc.",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "8096",
+                "internal": "8096",
+                "desc": "Http webUI.",
+                "optional": false
+              },
+              {
+                "external": "8920",
+                "internal": "8920",
+                "desc": "Optional - Https webUI (you need to set up your own certificate).",
+                "optional": true
+              },
+              {
+                "external": "7359",
+                "internal": "7359/udp",
+                "desc": "Optional - Allows clients to discover Jellyfin on the local network.",
+                "optional": true
+              },
+              {
+                "external": "1900",
+                "internal": "1900/udp",
+                "desc": "Optional - Service discovery used by DNLA and clients.",
+                "optional": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "nextcloud",
+          "description": "nextcloud gives you access to all your files wherever you are.  Where are your photos and documents? With Nextcloud you pick a server of your choice, at home, in a data center or at a provider. And that is where your files will be. Nextcloud runs on that server, protecting your data and giving you access from your desktop or mobile devices. Through Nextcloud you also access, sync and share your existing data on that FTP drive at the office, a Dropbox or a NAS you have at home.",
+          "version": "35.0.3-ls1",
+          "category": "Cloud,Documents",
+          "github_url": "https://github.com/linuxserver/docker-nextcloud",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/nextcloud-icon.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-nextcloud?tab=readme-ov-file#application-setup",
+            "readonly_supported": false,
+            "nonroot_supported": false,
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/nextcloud/config",
+                "desc": "Persistent config files",
+                "optional": false
+              },
+              {
+                "path": "/data",
+                "host_path": "/path/to/data",
+                "desc": "Your personal data.",
+                "optional": false
+              }
+            ],
+            "ports": [
+              {
+                "external": "443",
+                "internal": "443",
+                "desc": "WebUI",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "qbittorrent",
+          "description": "The qbittorrent is a bittorrent client programmed in C++ / Qt that uses libtorrent (sometimes called libtorrent-rasterbar) by Arvid Norberg.",
+          "version": "5.3.0_v2.1.2-ls487",
+          "category": "Downloaders",
+          "github_url": "https://github.com/linuxserver/docker-qbittorrent",
+          "project_logo": "https://github.com/linuxserver/docker-templates/raw/master/linuxserver.io/img/qbittorrent-icon.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-qbittorrent?tab=readme-ov-file#application-setup",
+            "readonly_supported": true,
+            "nonroot_supported": true,
+            "env_vars": [
+              {
+                "name": "PUID",
+                "value": "1000",
+                "desc": "User ID",
+                "optional": false
+              },
+              {
+                "name": "PGID",
+                "value": "1000",
+                "desc": "Group ID",
+                "optional": false
+              },
+              {
+                "name": "TZ",
+                "value": "Etc/UTC",
+                "desc": "Timezone",
+                "optional": false
+              },
+              {
+                "name": "WEBUI_PORT",
+                "value": "8080",
+                "desc": "for changing the port of the web UI, see below for explanation",
+                "optional": false
+              },
+              {
+                "name": "TORRENTING_PORT",
+                "value": "6881",
+                "desc": "for changing the port of tcp/udp connection, see below for explanation",
+                "optional": false
+              }
+            ],
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/qbittorrent/appdata",
+                "desc": "Contains all relevant configuration files.",
+                "optional": false
+              },
+              {
+                "path": "/downloads",
+                "host_path": "/path/to/downloads",
+                "desc": "Location of downloads on disk.",
+                "optional": true
+              }
+            ],
+            "ports": [
+              {
+                "external": "8080",
+                "internal": "8080",
+                "desc": "WebUI",
+                "optional": false
+              },
+              {
+                "external": "6881",
+                "internal": "6881",
+                "desc": "tcp connection port",
+                "optional": false
+              },
+              {
+                "external": "6881",
+                "internal": "6881/udp",
+                "desc": "udp connection port",
+                "optional": false
+              }
+            ],
+            "custom": [
+              {
+                "name": "stop-timeout",
+                "name_compose": "stop_grace_period",
+                "value": "10s",
+                "desc": "If you have a large number of torrents you may need to increase the container stop timeout to ensure a clean shutdown.",
+                "optional": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "radarr",
+          "description": "radarr - A fork of Sonarr to work with movies à la Couchpotato.",
+          "version": "7.0.3.10918-ls328",
+          "category": "Media Management",
+          "github_url": "https://github.com/linuxserver/docker-radarr",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/radarr.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-radarr?tab=readme-ov-file#application-setup",
+            "readonly_supported": true,
+            "nonroot_supported": true,
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/radarr/data",
+                "desc": "Database and Radarr configs",
+                "optional": false
+              },
+              {
+                "path": "/movies",
+                "host_path": "/path/to/movies",
+                "desc": "Location of Movie library on disk (See note in Application setup)",
+                "optional": true
+              },
+              {
+                "path": "/downloads",
+                "host_path": "/path/to/download-client-downloads",
+                "desc": "Location of download managers output directory (See note in Application setup)",
+                "optional": true
+              }
+            ],
+            "ports": [
+              {
+                "external": "7878",
+                "internal": "7878",
+                "desc": "The port for the Radarr Web UI",
+                "optional": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "sonarr",
+          "description": "sonarr (formerly NZBdrone) is a PVR for usenet and bittorrent users. It can monitor multiple RSS feeds for new episodes of your favorite shows and will grab, sort and rename them. It can also be configured to automatically upgrade the quality of files already downloaded when a better quality format becomes available.",
+          "version": "4.0.20.3014-ls5",
+          "category": "Media Management",
+          "github_url": "https://github.com/linuxserver/docker-sonarr",
+          "project_logo": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/sonarr-banner.png",
+          "deprecated": false,
+          "config": {
+            "application_setup": "https://github.com/linuxserver/docker-sonarr?tab=readme-ov-file#application-setup",
+            "readonly_supported": true,
+            "nonroot_supported": true,
+            "volumes": [
+              {
+                "path": "/config",
+                "host_path": "/path/to/sonarr/data",
+                "desc": "Database and sonarr configs",
+                "optional": false
+              },
+              {
+                "path": "/tv",
+                "host_path": "/path/to/tvseries",
+                "desc": "Location of TV library on disk (See note in Application setup)",
+                "optional": true
+              },
+              {
+                "path": "/downloads",
+                "host_path": "/path/to/downloadclient-downloads",
+                "desc": "Location of download managers output directory (See note in Application setup)",
+                "optional": true
+              }
+            ],
+            "ports": [
+              {
+                "external": "8989",
+                "internal": "8989",
+                "desc": "The port for the Sonarr web interface",
+                "optional": false
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

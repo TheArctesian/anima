@@ -31,6 +31,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
+| HT-NEW-lsentries | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -2801,5 +2802,35 @@ with real projects, in a desktop window or on a phone.
    Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
 9. Do steps 1 to 4 in the light appearance and on a phone.
    Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.
+
+### HT-NEW-lsentries: three generated entries of LinuxServer.io start with the rights of the static test (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the recipe form `crates/catalogue/src/linuxserver.rs`, the
+generator `crates/catalogue/src/bin/generate.rs` and ten generated entries in `crates/catalogue/entries/` (Section
+15.10 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md)). The tests prove that each entry
+is what the form makes from the saved fleet list and that it passes the static test. No container was started: no
+test shows that an image of LinuxServer.io starts with `no-new-privileges:true`, the five capabilities of the init and
+`PUID` 1000, that a stream port answers, or that the shell entry asks for its password. Use a throwaway test machine
+that is not on the network of Anima or your local network (OD-HOST-53). Do each step in a copy of the entry folder.
+
+1. On the test machine, copy `crates/catalogue/entries/radarr/` to a new folder. Copy `environment.example` to
+   `.env`. Run `docker compose up -d`, wait two minutes, then run `docker compose ps` and
+   `curl -sI http://127.0.0.1:7878/`.
+   Expected: the service is `running` (not restarting); `curl` gives an HTTP answer. `docker compose exec radarr id
+   abc` gives uid 1000. `docker volume ls` shows the three volumes `config`, `movies` and `downloads` of the project.
+2. Copy `crates/catalogue/entries/qbittorrent/` in the same way and start it. Run `ss -lntu | grep 6881` on the
+   machine and `docker compose logs qbittorrent | grep -i password`.
+   Expected: port 6881 listens on `127.0.0.1` for TCP and for UDP; the web page answers on
+   `http://127.0.0.1:8080/` and the log gives the temporary password of the first sign-in.
+3. Copy `crates/catalogue/entries/code-server/`. In `.env`, write a password of your own after `PASSWORD=` (the
+   install would make it). Start it and open `http://127.0.0.1:8443/` through an SSH tunnel.
+   Expected: the page asks for the password, and the password opens it. Write down what the page does with an empty
+   `PASSWORD=`: the class `shell` needs the credential that the install makes because of that answer (OD-HOST-54).
+4. For each of the three, run `docker inspect --format '{{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}'` on the
+   container, then `docker compose down -v`.
+   Expected: the nine dropped capabilities and `no-new-privileges:true`; after `down -v` no container or volume of
+   the project stays.
 
 Result: Open.

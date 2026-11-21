@@ -13,6 +13,7 @@ mod example;
 mod fields;
 mod file;
 mod folder;
+pub mod linuxserver;
 pub mod postgresql;
 mod privileges;
 mod shipped;
@@ -89,6 +90,13 @@ pub enum Code {
     /// A service keeps rights that it does not need, or changes its code at the start
     /// (SF-NEW-revcatroot).
     PrivilegeNotPermitted(Privilege),
+    /// A stream of the entry is not a published port of the file with each of its protocols.
+    StreamNotPublished,
+    /// An optional part is not a device below `/dev/`.
+    OptionalNotPermitted,
+    /// An entry of the class `shell` has no credential that the install makes, or a port on
+    /// the network (OD-HOST-54).
+    ShellNotContained,
 }
 
 impl Code {
@@ -119,6 +127,9 @@ impl Code {
             Self::VariableNotPermitted => "variable_not_permitted",
             Self::SecretInFile => "secret_in_file",
             Self::PrivilegeNotPermitted(_) => "privilege_not_permitted",
+            Self::StreamNotPublished => "stream_not_published",
+            Self::OptionalNotPermitted => "optional_not_permitted",
+            Self::ShellNotContained => "shell_not_contained",
         }
     }
 

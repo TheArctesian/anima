@@ -1,0 +1,66 @@
+{
+  "id": "nextcloud",
+  "name": "nextcloud",
+  "description": "nextcloud gives you access to all your files wherever you are.",
+  "version": "35.0.3-ls1",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "cloud",
+    "documents"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-nextcloud",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/nextcloud-icon.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "images": [
+      {
+        "service": "nextcloud",
+        "image": "lscr.io/linuxserver/nextcloud@sha256:1c3cfb00eb8653e03042653065e848523edf177498b439fcfdddff5ecd355e1a",
+        "tag": "35.0.3-ls1",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "nextcloud"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      },
+      {
+        "volume": "data",
+        "copy": "files"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "nextcloud",
+      "port": 443,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}
