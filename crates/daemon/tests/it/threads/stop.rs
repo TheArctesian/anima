@@ -128,6 +128,37 @@ async fn thr_021_ending_the_children_spares_the_servers_marked_before_the_turn()
 }
 
 #[tokio::test]
+async fn thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its_own() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let script = "perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep 3";
+    let id = link.send(start("alone", "/bin/sh", &["-c", script])).await;
+    link.answer(id).await;
+    let child: u32 = texts(
+        &link
+            .until(|event| matches!(event, Event::Lines { .. }))
+            .await,
+    )[0]
+    .1
+    .parse()
+    .expect("a pid");
+    link.until(exited("alone")).await;
+    assert!(gone(child).await, "the child the program left is ended");
+    let stop = link
+        .send(Action::Stop {
+            thread: "alone".into(),
+        })
+        .await;
+    assert_eq!(
+        link.answer(stop).await,
+        Outcome::Stopped {
+            ended: 0,
+            all_ended: true
+        }
+    );
+}
+
+#[tokio::test]
 async fn thr_113_a_program_that_does_not_read_its_input_holds_up_no_command() {
     let holder = Holder::start(0);
     let mut link = holder.link().await;

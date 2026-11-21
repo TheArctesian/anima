@@ -16,6 +16,7 @@ use super::codex::Codex;
 
 mod asks;
 mod events;
+mod kept;
 
 /// How many updates of a thread the runner keeps for a client that starts to watch, and their
 /// most bytes as JSON: a line of a program can be 4 MiB, so a count alone does not bound them.
@@ -67,6 +68,10 @@ pub struct Saved {
     pub codex_turn: Option<String>,
     /// The open requests: the ID of the runner and the line of the program.
     pub open: Vec<(Uuid, String)>,
+    /// The open requests whose answer went to the holder: after a restart they close, so that
+    /// the program never gets a second answer (THR-030).
+    #[serde(default)]
+    pub answering: Vec<Uuid>,
 }
 
 /// One thread.
@@ -125,7 +130,29 @@ impl Thread {
                 .iter()
                 .map(|(id, open)| (*id, open.line.clone()))
                 .collect(),
+            answering: self
+                .open
+                .iter()
+                .filter(|(_, open)| open.answering)
+                .map(|(id, _)| *id)
+                .collect(),
         }
+    }
+
+    /// What the record holds of this thread but the lines of its requests: when it does not
+    /// change, the record need not be written again.
+    #[must_use]
+    pub fn record_key(&self) -> String {
+        let (codex_thread, codex_turn) = match &self.driver {
+            Driver::Codex(codex) => (codex.thread.as_deref(), codex.turn.as_deref()),
+            Driver::Claude(_) => (None, None),
+        };
+        let open: Vec<(&Uuid, bool)> = self
+            .open
+            .iter()
+            .map(|(id, open)| (id, open.answering))
+            .collect();
+        serde_json::to_string(&(&self.row, codex_thread, codex_turn, open)).unwrap_or_default()
     }
 
     /// A thread from its record, after a start of the runner; its open requests are read again
@@ -149,37 +176,12 @@ impl Thread {
                     Open {
                         request,
                         line,
-                        answering: false,
+                        answering: saved.answering.contains(&id),
                     },
                 );
             }
         }
         thread
-    }
-
-    /// The updates the runner keeps, for a client that starts to watch.
-    pub fn kept(&self) -> impl Iterator<Item = &Update> {
-        self.kept.iter().map(|(update, _)| update)
-    }
-
-    /// Gives `change` the next number of the thread and keeps it.
-    pub fn note(&mut self, change: Change) -> Update {
-        self.seq += 1;
-        let update = Update {
-            thread: self.row.id,
-            seq: self.seq,
-            change,
-        };
-        let bytes = serde_json::to_vec(&update).map_or(0, |json| json.len());
-        self.kept.push_back((update.clone(), bytes));
-        self.kept_bytes += bytes;
-        while self.kept.len() > KEPT || self.kept_bytes > KEPT_BYTES {
-            let Some((_, gone)) = self.kept.pop_front() else {
-                break;
-            };
-            self.kept_bytes -= gone;
-        }
-        update
     }
 
     fn decode(&mut self, line: &[u8]) -> Vec<DriveEvent> {

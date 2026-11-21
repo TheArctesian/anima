@@ -23,18 +23,16 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use agent_threads::control::{Limits, Outcome, Refusal, Reply, RunState};
+use agent_threads::control::{Limits, Reply, RunState};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use super::link::{self, HolderLink, LinkError};
-use super::wire::Action;
+use super::wire::{Action, Command};
 use log::Kind;
 use socket::{Caller, Client};
 use thread::{Step, Thread};
 
-/// The lock file of the runner in the folder of the threads: one runner for one folder.
-const LOCK: &str = "runner.lock";
 /// The most stopped threads that the runner keeps; the oldest go first.
 const STOPPED_KEPT: usize = 50;
 /// The longest wait between two tries to reach the holder.
@@ -96,6 +94,9 @@ pub struct Runner {
     limits: Limits,
     watchers: Vec<Client>,
     waits: BTreeMap<u64, Waits>,
+    /// The commands that change a program and that the holder did not answer yet: a new link
+    /// sends them again with their own IDs, and the holder does each one time (H10).
+    unanswered: BTreeMap<u64, Command>,
     /// The last line of each thread that the runner read, so that a line the holder gives
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
@@ -129,8 +130,8 @@ pub async fn run(
             "the folder of the daemon is too long for a socket path (more than 100 bytes)",
         )));
     }
-    private_folder(&dir)?;
-    let _lock = lock(&dir)?;
+    record::private_folder(&dir)?;
+    let _lock = record::lock(&dir)?;
     let saved = record::read(&dir)?;
     tokio::pin!(stop);
     let link = tokio::select! {
@@ -147,6 +148,7 @@ pub async fn run(
         limits: saved.limits,
         watchers: Vec::new(),
         waits: BTreeMap::new(),
+        unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
     };
@@ -158,39 +160,6 @@ pub async fn run(
     }
     runner.save();
     Ok(())
-}
-
-fn private_folder(dir: &Path) -> std::io::Result<()> {
-    use std::os::unix::fs::DirBuilderExt as _;
-    if !dir.exists() {
-        std::fs::DirBuilder::new()
-            .mode(0o700)
-            .recursive(true)
-            .create(dir)?;
-    }
-    if crate::config::private_file::folder_private(dir)? {
-        Ok(())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "the folder of the threads is not a private folder of this user",
-        ))
-    }
-}
-
-/// Takes the lock of the folder: a second runner on the same folder ends at once, so that two
-/// runners never stop the programs of each other (THR-113).
-fn lock(dir: &Path) -> Result<std::fs::File, RunnerError> {
-    use std::os::unix::fs::OpenOptionsExt as _;
-    let file = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .mode(0o600)
-        .open(dir.join(LOCK))?;
-    rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)
-        .map_err(|_| RunnerError::Busy)?;
-    Ok(file)
 }
 
 /// The link to the holder; while none answers, it tries again, each time a little later.
@@ -210,8 +179,15 @@ impl Runner {
     fn restore(&mut self, saved: Vec<thread::Saved>) {
         for saved in saved {
             let codex = calls::codex_of(&saved.row, saved.effort);
-            let thread = Thread::restore(saved, codex);
-            self.threads.insert(thread.row.id, thread);
+            let mut thread = Thread::restore(saved, codex);
+            let id = thread.row.id;
+            let steps = thread.settle_answering();
+            self.threads.insert(id, thread);
+            for step in steps {
+                if let Step::Change(change) = step {
+                    self.publish(id, change);
+                }
+            }
         }
     }
 
@@ -233,36 +209,27 @@ impl Runner {
         accepting.abort();
     }
 
-    /// A new link to the holder. Each call that waited for a command of the old link gets its
-    /// answer now: a start waits for the holder to say what it holds; the rest are refused.
+    /// A new link to the holder. The commands that the holder did not answer go again with
+    /// their own IDs, so that a line the holder already wrote is not written twice and each call
+    /// that waits gets its answer; a start waits for the holder to say what it holds.
     async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
         self.holder_fits = false;
-        let waits = std::mem::take(&mut self.waits);
-        for (command, waits) in waits {
-            match waits {
-                start @ Waits::Start { .. } => {
-                    self.waits.insert(command, start);
-                }
-                other => self.refuse_wait(other, Refusal::Holder),
-            }
-        }
+        let next = self.link.next_id();
         self.link = reach_patiently(&self.program, &self.dir).await;
+        self.link.go_on_from(next);
+        self.send_again().await;
     }
 
-    /// Answers a call that waited for the holder with a refusal; an answer that waited may be
-    /// given again.
-    fn refuse_wait(&mut self, waits: Waits, why: Refusal) {
-        let back = match waits {
-            Waits::Start { back, .. } | Waits::Stop { back } | Waits::Send { back, .. } => back,
-            Waits::Answer(pending) => {
-                if let Some(thread) = self.threads.get_mut(&pending.thread) {
-                    thread.answer_failed(pending.request);
-                }
-                pending.back
+    /// Sends each command that the holder did not answer again, in the order it went first.
+    async fn send_again(&mut self) {
+        let again: Vec<Command> = self.unanswered.values().cloned().collect();
+        for command in again {
+            if let Err(error) = self.link.resend(&command).await {
+                tracing::warn!(%error, "the holder did not take a command sent again");
+                return;
             }
-        };
-        back.answer(Outcome::Refused { why });
+        }
     }
 
     /// Does the steps of a thread, in order. Gives the ID of the command of the last line
@@ -311,16 +278,31 @@ impl Runner {
         };
         let reply = Reply::Update(Box::new(thread.note(change)));
         self.watchers
-            .retain(|watcher| socket::tell(watcher, reply.clone()));
+            .retain(|watcher| socket::tell(watcher, &reply));
     }
 
     /// Sends a command to the holder; a closed link is found by the loop and connected again.
+    /// A command that changes a program is kept until the holder answers it, and goes again on
+    /// the new link; any other is lost with the link (`None`).
     async fn command(&mut self, action: Action) -> Option<u64> {
-        match self.link.send(action).await {
-            Ok(id) => Some(id),
+        let kept = matches!(
+            action,
+            Action::Write { .. }
+                | Action::Stop { .. }
+                | Action::EndChildren { .. }
+                | Action::Mark { .. }
+        );
+        let command = self.link.prepare(action);
+        let id = command.id;
+        let sent = self.link.resend(&command).await;
+        if kept {
+            self.unanswered.insert(id, command);
+        }
+        match sent {
+            Ok(()) => Some(id),
             Err(error) => {
                 tracing::warn!(%error, "the holder did not take a command");
-                None
+                kept.then_some(id)
             }
         }
     }

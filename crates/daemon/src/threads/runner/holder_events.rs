@@ -146,6 +146,7 @@ impl Runner {
         else {
             return;
         };
+        let before = self.threads.get(&id).map(Thread::record_key);
         let mut last = self.read_up_to.get(&id).copied().unwrap_or(0);
         for (at, line) in lines.into_iter().enumerate() {
             let seq = first + at as u64;
@@ -168,8 +169,12 @@ impl Runner {
             }
         }
         self.read_up_to.insert(id, last);
-        // The record holds the open requests before the holder drops their lines (THR-030).
-        self.save();
+        // The record holds the open requests before the holder drops their lines (THR-030); a
+        // line that changed nothing of the record does not write it again.
+        let after = self.threads.get(&id).map(Thread::record_key);
+        if after != before {
+            self.save();
+        }
         self.command(Action::Ack {
             thread: key.to_owned(),
             seq: last,
@@ -212,9 +217,10 @@ impl Runner {
 
     /// The answer of the holder to a command that a call waits for.
     async fn done(&mut self, command: u64, outcome: HolderOutcome) {
+        let sent = self.unanswered.remove(&command);
         let Some(waits) = self.waits.remove(&command) else {
             if let HolderOutcome::Refused { why } = outcome {
-                tracing::warn!(?why, "the holder refused a command of the runner");
+                self.not_taken(sent, why);
             }
             return;
         };
@@ -237,6 +243,32 @@ impl Runner {
                 pending.back.answer(result);
             }
         }
+    }
+
+    /// The holder refused a command that no call waits for: the log says so, and a line that
+    /// did not reach the program is said in its thread.
+    fn not_taken(&mut self, sent: Option<wire::Command>, why: HolderRefusal) {
+        let Some(wire::Command {
+            action: Action::Write { thread, .. },
+            ..
+        }) = sent
+        else {
+            tracing::warn!(?why, "the holder refused a command of the runner");
+            return;
+        };
+        let Ok(id) = Uuid::parse_str(&thread) else {
+            return;
+        };
+        tracing::warn!(%id, ?why, "the holder did not write a line to the program");
+        self.publish(
+            id,
+            Change::Said {
+                event: DriveEvent::Notice {
+                    text: "A line did not reach the program: the holder did not take it."
+                        .to_owned(),
+                },
+            },
+        );
     }
 
     async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {

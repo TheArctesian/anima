@@ -100,10 +100,28 @@ impl HolderLink {
     /// # Errors
     /// The I/O error when the holder is gone.
     pub async fn send(&mut self, action: Action) -> io::Result<u64> {
+        let command = self.prepare(action);
+        self.resend(&command).await?;
+        Ok(command.id)
+    }
+
+    /// Gives `action` the next ID, to be sent with [`Self::resend`].
+    pub fn prepare(&mut self, action: Action) -> Command {
         let id = self.next;
         self.next += 1;
-        self.resend(&Command { id, action }).await?;
-        Ok(id)
+        Command { id, action }
+    }
+
+    /// The ID that the next command takes.
+    #[must_use]
+    pub const fn next_id(&self) -> u64 {
+        self.next
+    }
+
+    /// Goes on from the IDs of a link before this one, so that a clock that went back never
+    /// gives an ID that the holder already answered (H10).
+    pub fn go_on_from(&mut self, next: u64) {
+        self.next = self.next.max(next);
     }
 
     /// Sends a command again with its own ID; the holder does it one time (H10).

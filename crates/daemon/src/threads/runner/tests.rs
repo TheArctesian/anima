@@ -77,6 +77,8 @@ const CLAUDE_INIT: &str = r#"{"type":"system","subtype":"init","session_id":"s-1
 const CLAUDE_ASK: &str = r#"{"type":"control_request","request_id":"r-1","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"ls"},"permission_suggestions":[],"tool_use_id":"t-1"}}"#;
 const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}}"#;
 
+mod restart;
+
 #[test]
 fn th11_a_claude_thread_writes_its_prompt_and_names_its_session() {
     let mut thread = claude();
@@ -296,25 +298,5 @@ fn thr_046_a_line_the_runner_does_not_know_stops_the_turn_and_keeps_the_requests
         thread.row.open,
         [request],
         "only an answer, a stop or the end closes it"
-    );
-}
-
-#[test]
-fn thr_030_a_restored_thread_keeps_the_id_of_its_open_request() {
-    let mut thread = held_claude();
-    let request = asked(&thread.line(CLAUDE_ASK, &mut counter()))[0];
-    let saved = serde_json::to_string(&thread.saved()).expect("saved");
-    let mut again = Thread::restore(serde_json::from_str(&saved).expect("reads"), None);
-    assert_eq!(
-        again.row.state,
-        RunState::NeedsYou,
-        "not Starting after a restart"
-    );
-    let line = again
-        .answer(request, &Answer::Allow)
-        .expect("the request is still open");
-    assert_eq!(
-        json(&line)["response"]["response"]["updatedInput"]["command"],
-        "ls"
     );
 }
