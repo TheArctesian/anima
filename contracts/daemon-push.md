@@ -18,6 +18,8 @@ The socket of the hub for its own daemon (Section 1, task HM-T35) and the batch 
 [hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) were approved by R-305 (operator, 2026-11-20; CON-001). They use only kinds and members that exist, so they need no new version of this contract.
 The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-303) were approved
 with them by the same ruling. They are optional, so they need no new version of this contract.
+The first wait after a failure in Section 7 was changed from 10 to 2 seconds by R-312 (orchestrator, 2026-11-21,
+made overnight, not yet confirmed; CON-001). It changes no message, so it needs no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
@@ -268,8 +270,9 @@ Request:
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
 - `agentUsage`: optional (R-135; AIS-018, AIS-019). The use of the AI agent programs on the device: counts
-  only, never the text of a session, a title, the path of a folder, a login, the name of an account or a
-  usage limit (AIS-018, AIS-022). Absent means "nothing new": a daemon older than R-135 sends none and a hub
+  only, never the text of a session, a title, the path of a folder, a login, a token, the name of an account
+  or the identifier of an account (AIS-018, AIS-022). Its member `accounts` gives the key, the plan and the
+  limits of an account, and nothing else of it (R-313). Absent means "nothing new": a daemon older than R-135 sends none and a hub
   older than R-135 ignores it, so the change needs no `/daemon/v2/`.
   - `state` says what the daemon can read: `reading` (it reads the session files of its user),
     `system_unit` (it runs as the systemd system unit, which cannot see the files of a user, AIS-024) or
@@ -305,6 +308,23 @@ Request:
       `cacheWriteTokens` are the input tokens read from and written to the cache.
     - Every count (`prompts`, `toolCalls` and the four token counts) is a whole number from 0 to
       9 007 199 254 740 991 (2^53 − 1).
+  - `accounts`: optional (R-313, AIS-022). The accounts that the programs of the device use
+    now, 0 to 4 entries, no two with the same `source`. Absent means "nothing new"; a daemon older than
+    R-313 sends none, and a hub older than it ignores it. Present, even empty, it asks the hub for
+    its account salt (Section 8.2). The daemon sends an entry only when it has the salt of the hub that
+    it pushes to.
+    - `source`: as in `sessionDays`.
+    - `key`: 64 bytes of `[0-9a-f]`: the HMAC-SHA-256, written in lower-case hexadecimal, of the text
+      `<source>:<identifier>` with the account salt as the key, where `<identifier>` is the identifier that
+      the vendor gives the account (Codex: `account/read` or `creator_account_id` of a rollout; Claude
+      Code: the account of the runner of threads, THR-132). Never the identifier itself.
+    - `plan`: optional, 1 to 32 bytes of `[A-Za-z0-9 ._-]`: the name of the plan as the program states it.
+    - `limits` holds 0 to 8 entries with unique `window` names: `window`, 1 to 32 bytes of
+      `[a-z0-9_ ]` (`five_hour`, `seven_day`, `300 min`); `usedPercent`, optional, a whole number from 0
+      to 100; `resetsAt`, optional, a K8 time (Section 1); `reached`, true when the program said that the
+      limit is reached.
+    - Each entry replaces the earlier report of the same device and `source`. An account that the device
+      no longer reports keeps its last report until a batch says that the device uses a different key.
   - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
     pass them.
   - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files
@@ -454,7 +474,8 @@ and tries again after its wait (Section 7).
   at once while points remain.
 - While the hub cannot be reached (a network error, a timeout of 10 seconds, a 5xx), it keeps up to 360
   points (1 hour), dropping the oldest first, and drops any point older than 59 minutes before it sends.
-- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
+- After a failure it waits 2 seconds, doubling to at most 60 seconds (2, 4, 8, 16, 32, 60, 60 seconds;
+  R-312), then resumes the 10-second rhythm. Each
   wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so daemons that
   failed together do not all try again together.
 
@@ -520,8 +541,14 @@ different version, and the batch had an `update` member, it answers 200 with `Ac
 { "update": { "version": "0.3.0", "again": false } }
 ```
 
-- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member always gets
-  204, so a daemon older than R-139 keeps working.
+- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member and no
+  `agentUsage.accounts` member always gets 204, so a daemon older than R-139 keeps working.
+- `accountSalt` (R-313, AIS-022): in each answer to a batch with an `agentUsage.accounts` member,
+  the account salt of the hub, 32 bytes in standard base64. The hub makes it once, from a random source,
+  and keeps it in its database; it does not change. The daemon keeps it in its state folder with the token
+  of that hub and forgets it at a new enrolment. One account on two machines of one hub thus gives one key,
+  and a different hub gives a different key. The salt is not a secret of a device and gives no access; it is
+  in no log (LOG-007) all the same.
 - `version` is the only instruction (ROL-009). The hub never sends an address, a path, a command or a file
   name. The text has the rule of `daemonVersion`; a daemon ignores an `Accepted` that breaks it.
 - `again`: true only after the operator pressed "Try again" (ROL-032). The machine then sets `tries` to 0 for
