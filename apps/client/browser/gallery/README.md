@@ -62,3 +62,16 @@ the same deny-all proxy as the browser tests; nothing reaches a network.
 - **Wake relay and Wake-on-LAN progress**, **metrics push agent enrolment**: no fixtures.
 - **Update banner**: desktop only.
 - **Renew key confirmation**: the broker answer is a placeholder, so the dialog shows nothing the picture 49 does not.
+
+## The pictures of the Extensions page
+
+Each built extension shows a picture of its own page in its tile (OD-EXT-NEW-pictures). `pictures.gallery.ts` makes them from
+the sample data of the synthetic hub, never from the data of an operator. It runs only when asked:
+
+```sh
+bun run --cwd apps/client build
+GALLERY_PICTURES=1 bun run --cwd apps/client gallery pictures
+for f in apps/client/gallery-shots/pictures/*.png; do cwebp -q 80 -resize 560 0 "$f" -o "apps/client/static/extensions/$(basename "$f" .png).webp"; done
+```
+
+`cwebp` comes from `brew install webp`. Make the pictures again when the page of a built extension changes.
