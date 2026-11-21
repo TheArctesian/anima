@@ -298,8 +298,10 @@ the run fails: merge `origin/dev` into your branch and solve the conflict there.
 your run, nothing runs again for your branch: the train tests it with the `dev` that it lands on.
 The push of a branch runs only the jobs that its changes against `dev` need (`bun quality/bin/gates.ts --jobs`,
 `quality/src/gates/jobs.ts`): only the quality gates for a branch of documents, no Rust job when no changed
-path is read by a Rust build or test, no Go job without `link/`. A run for `dev`, for a train or for a call runs
-each job. The jobs read the compiled Rust dependencies from the caches that the workflow `rust-cache` writes
+path is read by a Rust build or test, no Go job without `link/`. A run for a train or for a call runs each job.
+A push to `dev` (`bun quality/bin/gates.ts --dev-push`) runs only the quality gates when a run on `dev` or on a
+train already passed for its tree, or when it changed only documents on such a tree; each other push to `dev`
+runs each job, so `dev` never holds a tree that no run proved. The jobs read the compiled Rust dependencies from the caches that the workflow `rust-cache` writes
 under `main`, the one branch whose caches each branch can read; they write no cache.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,

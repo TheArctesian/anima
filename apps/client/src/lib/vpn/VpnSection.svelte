@@ -96,8 +96,11 @@
 {/if}
 
 <style>
+  /* The placeholder rows keep their shape and lines, but show no words: the rows inside set their own colours, which a
+     transparent `color` here would not reach; the inherited text fill wins over each of them. */
   .waiting {
     color: transparent;
+    -webkit-text-fill-color: transparent;
   }
 
   .waiting :global(.dot) {

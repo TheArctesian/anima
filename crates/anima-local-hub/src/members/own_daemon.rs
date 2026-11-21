@@ -4,7 +4,9 @@
 //! The hub serves it the routes of K8 on a private socket in the socket folder of the database
 //! (this user's, mode 0700). When the daemon has no token yet, the hub writes one enrolment
 //! code of its own device to a file beside that socket at its start; `run` gives the code to
-//! `anima-daemon enrol -` on standard input and removes the file.
+//! `anima-daemon enrol -` on standard input and removes the file. A daemon that holds its token
+//! and its configuration is not enrolled again: no new code, token or device at each start.
+//! The daemon deletes a token that the hub refuses (HM-T35), so the next start enrols again.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -16,8 +18,9 @@ use crate::child::Spec;
 /// The daemon of the hub's own device. A Rust program; the pool's image may leave it out.
 pub const DAEMON: &str = "anima-daemon";
 
-/// The file of the daemon's token in its folder (`crates/daemon/src/config/home.rs`).
-const TOKEN_FILE: &str = "token";
+/// The files of an enrolment in the daemon's folder (`crates/daemon/src/config/home.rs`): the
+/// token, and the configuration that names the hub and the device.
+const ENROLMENT_FILES: [&str; 2] = ["token", "daemon.json"];
 
 /// The daemon of a hosted hub: its program, its folder, the hub's socket for it, the file of its
 /// code and the folder whose bytes it measures.
@@ -45,10 +48,13 @@ impl OwnDaemon {
         })
     }
 
-    /// The file whose presence says that the daemon has its token.
+    /// Whether the daemon holds an enrolment: its token and its configuration are both there.
+    /// An enrolment that stopped between the two files counts as none.
     #[must_use]
-    pub fn token_file(&self) -> PathBuf {
-        self.home.join(TOKEN_FILE)
+    pub fn is_enrolled(&self) -> bool {
+        ENROLMENT_FILES
+            .iter()
+            .all(|file| self.home.join(file).is_file())
     }
 
     /// The file in which the hub writes the code of an enrolment.
@@ -98,5 +104,43 @@ impl OwnDaemon {
 
     fn environment(&self) -> Vec<(&'static str, OsString)> {
         vec![("ANIMA_DAEMON_HOME", self.home.clone().into())]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+
+    fn own_in(root: &Path) -> OwnDaemon {
+        let hosted = Pool {
+            cloud_key_file: Some(PathBuf::from("/etc/anima/cloud.key")),
+            ..Pool::default()
+        };
+        let folders = Folders::new(root.join("hub"), root.join("s")).unwrap();
+        let carried = Carried::installed_in(&root.join("programs"));
+        OwnDaemon::of(&carried, &folders, &hosted, true).unwrap()
+    }
+
+    #[test]
+    fn hm_t35_only_a_token_with_its_configuration_spares_the_next_start_an_enrolment() {
+        let folder = tempfile::tempdir().unwrap();
+        let own = own_in(folder.path());
+        let home = folder.path().join("hub/daemon");
+        std::fs::create_dir_all(&home).unwrap();
+        assert!(!own.is_enrolled(), "a new hub enrols its daemon");
+        std::fs::write(home.join("token"), "t").unwrap();
+        assert!(
+            !own.is_enrolled(),
+            "an enrolment cut before its configuration"
+        );
+        std::fs::write(home.join("daemon.json"), "{}").unwrap();
+        assert!(own.is_enrolled(), "a restart keeps the token");
+        std::fs::remove_file(home.join("token")).unwrap();
+        assert!(
+            !own.is_enrolled(),
+            "a token that the daemon deleted on a refusal"
+        );
     }
 }

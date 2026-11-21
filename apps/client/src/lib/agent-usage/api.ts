@@ -1,6 +1,7 @@
 import { graphql } from '$lib/hub/generated';
 import type { AgentSource, AgentUsageFilter, AgentUsageState } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
+import type { BatteryListing } from '$lib/metrics/battery/battery';
 
 // One read gives the page everything it draws (AIS-020). `$filter` holds the choices of the page; `$everything` is the
 // same without the repository, so the list of repositories stays whole when one is chosen; `$everyone` asks one day with
@@ -41,6 +42,10 @@ const AGENT_USAGE = graphql(`
         device {
           id
           name
+          batteries {
+            name
+            state
+          }
         }
       }
     }
@@ -66,6 +71,10 @@ const AGENT_USAGE = graphql(`
         device {
           id
           name
+          batteries {
+            name
+            state
+          }
         }
       }
     }
@@ -105,9 +114,9 @@ export interface NamedDevice {
   readonly name: string;
 }
 
-/** A device whose daemon sent a usage state (AIS-024). */
+/** A device whose daemon sent a usage state (AIS-024), with the batteries that power it (MET-032). */
 export interface UsageDevice {
-  readonly device: NamedDevice;
+  readonly device: NamedDevice & { readonly batteries: readonly BatteryListing[] };
   readonly state: AgentUsageState;
 }
 
