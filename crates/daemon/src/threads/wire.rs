@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 pub const VERSION: u32 = 1;
 
 /// The most bytes of one frame. A longer frame, or one that does not read, closes the
-/// connection and harms no agent (H8).
-pub const MAX_FRAME: usize = 8 * 1024 * 1024;
+/// connection and harms no agent (H8). A line of a program is at most 4 MiB, and JSON writes a
+/// control byte in six bytes, so one line in a frame fits with room.
+pub const MAX_FRAME: usize = 32 * 1024 * 1024;
 
 /// The ID of a thread, as the runner named it: a UUID in text form.
 pub type ThreadKey = String;

@@ -78,9 +78,7 @@ async fn thr_113_no_line_is_lost_or_doubled_while_the_daemon_is_away_and_the_lim
             .expect("there");
         waited |= matches!(event, Event::Waiting { .. });
         for (seq, text) in texts(std::slice::from_ref(&event)) {
-            if got.last().is_none_or(|(last, _)| seq > *last) {
-                got.push((seq, text));
-            }
+            got.push((seq, text));
         }
         if let Some((seq, _)) = got.last() {
             link.send(Action::Ack {

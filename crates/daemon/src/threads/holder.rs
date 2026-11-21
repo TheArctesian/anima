@@ -47,6 +47,8 @@ pub struct Slot {
     pub input: Input,
     pub outbox: Outbox,
     pub waiting: bool,
+    /// The program ended and was reaped: its ID may belong to a different process now.
+    pub reaped: bool,
     pub exit: Option<Exit>,
 }
 
@@ -55,20 +57,27 @@ pub struct Shared {
     pub threads: BTreeMap<ThreadKey, Slot>,
     pub dir: PathBuf,
     connection: Option<(u64, mpsc::UnboundedSender<String>)>,
-    connections: u64,
     pub(super) done: BTreeMap<u64, Outcome>,
     done_order: VecDeque<u64>,
     /// The daemon speaks a different version: no new start (THR-113).
     pub draining: bool,
+    /// The holder ends: no new start, so that no program outlives it (THR-049).
+    pub closing: bool,
     pub limit: usize,
 }
 
 impl Shared {
-    /// Gives an event to the daemon if one is connected; else the outbox keeps the lines.
+    /// Gives an event to the daemon if one is connected; else the outbox keeps the lines. A
+    /// connection that closed is the same as none: its lines come again at the next `Hello`.
     pub fn send(&self, event: &Event) {
         if let Some((_, sender)) = &self.connection {
             let _ = sender.send(wire::frame(event));
         }
+    }
+
+    /// Whether the connection `me` is the one that the holder serves now.
+    fn serves(&self, me: u64) -> bool {
+        self.connection.as_ref().is_some_and(|(id, _)| *id == me)
     }
 
     /// Writes the record of the programs, so that a new holder ends what an old one left (H9).
@@ -82,13 +91,16 @@ impl Shared {
                 pid: slot.pid,
                 started: slot.started.clone(),
             });
-        let _ = record::write(
+        let written = record::write(
             &self.dir,
             &Record {
                 version: wire::VERSION,
                 threads: running.collect(),
             },
         );
+        if let Err(error) = written {
+            tracing::warn!(%error, "the record of the holder was not written");
+        }
     }
 
     pub fn remember(&mut self, id: u64, outcome: Outcome) {
@@ -121,6 +133,7 @@ impl Shared {
             input,
             outbox: Outbox::new(self.limit),
             waiting: false,
+            reaped: false,
             exit: None,
         }
     }
@@ -140,28 +153,60 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         threads: BTreeMap::new(),
         dir: dir.to_owned(),
         connection: None,
-        connections: 0,
         done: BTreeMap::new(),
         done_order: VecDeque::new(),
         draining: false,
+        closing: false,
         limit: if limit == 0 { LIMIT } else { limit },
     }));
-    let (quit, mut quitting) = mpsc::channel::<()>(1);
-    let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
-    loop {
-        tokio::select! {
-            accepted = listener.accept() => {
-                if let Ok((stream, _)) = accepted {
-                    tokio::spawn(serve(Arc::clone(&shared), stream, quit.clone()));
-                }
-            }
-            _ = terminate.recv() => break,
-            _ = quitting.recv() => break,
-        }
+    // One command at a time, from any connection: the check that a command was done and the
+    // command itself are one step, so a command sent again on a new connection while the first
+    // runs is still done one time (H10).
+    let turn = Arc::new(tokio::sync::Mutex::new(()));
+    accept(&listener, &shared, &turn).await?;
+    let _only = turn.lock().await;
+    if let Ok(mut state) = shared.lock() {
+        state.closing = true;
+        state.connection = None;
     }
     super::commands::end_all(&shared).await;
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
+}
+
+/// Accepts connections until `SIGTERM` or `Quit`. The number of a connection is given in the
+/// order of the accepts, so the newest connection is the one accepted last, not the one whose
+/// task ran last (H10).
+async fn accept(
+    listener: &UnixListener,
+    shared: &Arc<Mutex<Shared>>,
+    turn: &Arc<tokio::sync::Mutex<()>>,
+) -> io::Result<()> {
+    let (quit, mut quitting) = mpsc::channel::<()>(1);
+    let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    let mut count: u64 = 0;
+    loop {
+        tokio::select! {
+            accepted = listener.accept() => match accepted {
+                Ok((stream, _)) => {
+                    count += 1;
+                    let connection = Connection {
+                        me: count,
+                        turn: Arc::clone(turn),
+                        quit: quit.clone(),
+                    };
+                    tokio::spawn(serve(Arc::clone(shared), stream, connection));
+                }
+                Err(error) => {
+                    // For example no free descriptor: wait, so that the loop does not spin.
+                    tracing::warn!(%error, "the holder could not accept a connection");
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                }
+            },
+            _ = terminate.recv() => return Ok(()),
+            _ = quitting.recv() => return Ok(()),
+        }
+    }
 }
 
 /// Makes the folder private if it is new and takes its lock: a second holder ends at once.
@@ -197,9 +242,20 @@ fn bind(dir: &Path) -> Result<UnixListener, HolderError> {
     Ok(listener)
 }
 
+/// What one connection of the holder needs besides the shared state.
+struct Connection {
+    /// The number of the connection, in the order of the accepts.
+    me: u64,
+    /// The lock that lets one command run at a time.
+    turn: Arc<tokio::sync::Mutex<()>>,
+    quit: mpsc::Sender<()>,
+}
+
 /// One connection: the peer must be this user; a frame that is too long or does not read closes
-/// the connection and harms no agent (H8).
-async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, quit: mpsc::Sender<()>) {
+/// the connection and harms no agent (H8). It takes the place of an older connection, never of a
+/// newer one, and it stops at once when a newer one takes its place.
+async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Connection) {
+    let Connection { me, turn, quit } = connection;
     let same_user = stream
         .peer_cred()
         .is_ok_and(|peer| peer.uid() == rustix::process::getuid().as_raw());
@@ -208,13 +264,14 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, quit: mpsc::Sende
     }
     let (reading, mut writing) = stream.into_split();
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
-    let me = {
+    {
+        let _one = turn.lock().await;
         let Ok(mut state) = shared.lock() else { return };
-        state.connections += 1;
-        let me = state.connections;
+        if state.closing || state.connection.as_ref().is_some_and(|(id, _)| *id > me) {
+            return;
+        }
         state.connection = Some((me, sender));
-        me
-    };
+    }
     let writer = tokio::spawn(async move {
         while let Some(frame) = outgoing.recv().await {
             if writing.write_all(frame.as_bytes()).await.is_err() {
@@ -235,13 +292,18 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, quit: mpsc::Sende
             break;
         };
         let ends = matches!(command.action, Action::Quit);
+        let one = turn.lock().await;
+        if !shared.lock().is_ok_and(|state| state.serves(me)) {
+            break;
+        }
         let outcome = super::commands::run(&shared, command).await;
+        drop(one);
         if ends && outcome == Outcome::Ok {
             let _ = quit.send(()).await;
         }
     }
     if let Ok(mut state) = shared.lock()
-        && state.connection.as_ref().is_some_and(|(id, _)| *id == me)
+        && state.serves(me)
     {
         state.connection = None;
     }

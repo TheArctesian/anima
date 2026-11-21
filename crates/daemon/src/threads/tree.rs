@@ -58,19 +58,18 @@ fn ps() -> Option<&'static str> {
         .find(|path| Path::new(path).exists())
 }
 
-/// The process table now, as rows.
-async fn table() -> Vec<Row> {
-    let Some(ps) = ps() else { return Vec::new() };
-    let output = tokio::process::Command::new(ps)
+/// The process table now, as rows; `None` when `ps` is missing or fails, so that a stop never
+/// claims an end it could not see.
+async fn table() -> Option<Vec<Row>> {
+    let output = tokio::process::Command::new(ps()?)
         .args(["-axo", "pid=,ppid="])
         .env_clear()
         .kill_on_drop(true)
         .output()
-        .await;
-    output.map_or_else(
-        |_| Vec::new(),
-        |out| rows(&String::from_utf8_lossy(&out.stdout)),
-    )
+        .await
+        .ok()?;
+    let rows = rows(&String::from_utf8_lossy(&output.stdout));
+    (output.status.success() && !rows.is_empty()).then_some(rows)
 }
 
 /// The start time of a process as `ps` says it, so that an old record never ends a process
@@ -109,15 +108,22 @@ pub struct Ended {
     pub all: bool,
 }
 
-/// Ends each process below `root`, and `root` too when `with_root`. First the processes below
-/// are stopped (`SIGSTOP`) while the walk is repeated, so that none can start a new one; then
-/// they get `SIGKILL`. The root gets `SIGTERM`, so that the program can write its session file,
-/// and `SIGKILL` after `grace`.
+/// Ends each process below `root`, and `root` too when `with_root`. The root is stopped first
+/// (`SIGSTOP`), so it starts nothing new while the walk is repeated; each process found below it
+/// is stopped too, then all get `SIGKILL`. The root then gets `SIGTERM` and `SIGCONT`, so that
+/// the program can write its session file, and `SIGKILL` after `grace`. When the root goes on
+/// (`with_root` false) it gets `SIGCONT`. A process that the root starts after it goes on, in a
+/// group of its own, is not found: that is said in the answer only when the walk cannot run.
 pub async fn end(root: u32, with_root: bool, grace: Duration) -> Ended {
+    signal(root, Signal::STOP);
     let mut known: BTreeSet<u32> = BTreeSet::new();
+    let mut seen = true;
     for _ in 0..8 {
-        let found = below(&table().await, root);
-        let new: Vec<u32> = found.difference(&known).copied().collect();
+        let Some(table) = table().await else {
+            seen = false;
+            break;
+        };
+        let new: Vec<u32> = below(&table, root).difference(&known).copied().collect();
         if new.is_empty() {
             break;
         }
@@ -131,27 +137,23 @@ pub async fn end(root: u32, with_root: bool, grace: Duration) -> Ended {
     }
     if with_root {
         signal(root, Signal::TERM);
+        signal(root, Signal::CONT);
         let deadline = tokio::time::Instant::now() + grace;
         while alive(root) && tokio::time::Instant::now() < deadline {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         signal(root, Signal::KILL);
-        known.insert(root);
+    } else {
+        signal(root, Signal::CONT);
     }
     tokio::time::sleep(Duration::from_millis(100)).await;
-    let left = known
-        .iter()
-        .filter(|pid| alive(**pid) && !zombie_of(**pid, root))
-        .count();
+    // The root is reaped by its holder, so a root that ended may still answer a signal test.
+    let left = known.iter().filter(|pid| alive(**pid)).count();
+    let count = known.len() + usize::from(with_root);
     Ended {
-        count: u32::try_from(known.len()).unwrap_or(u32::MAX),
-        all: left == 0,
+        count: u32::try_from(count).unwrap_or(u32::MAX),
+        all: seen && left == 0,
     }
-}
-
-/// A root that ended but was not reaped yet still answers a signal test; its holder reaps it.
-fn zombie_of(pid: u32, root: u32) -> bool {
-    pid == root
 }
 
 #[cfg(test)]

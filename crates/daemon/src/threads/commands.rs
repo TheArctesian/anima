@@ -119,7 +119,7 @@ fn hello(shared: &Arc<Mutex<Shared>>, version: u32) -> Outcome {
         threads: state.held(),
     });
     for (thread, slot) in &state.threads {
-        if let Some((first, lines)) = slot.outbox.pending() {
+        for (first, lines) in slot.outbox.pending() {
             state.send(&Event::Lines {
                 thread: thread.clone(),
                 first,
@@ -150,7 +150,7 @@ async fn start_thread(
         let Ok(state) = shared.lock() else {
             return refused(Refusal::StartFailed);
         };
-        if state.draining {
+        if state.draining || state.closing {
             return refused(Refusal::Version);
         }
         if state.threads.contains_key(&thread) {
@@ -224,7 +224,7 @@ async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -
         state
             .threads
             .get(thread)
-            .map(|slot| (slot.pid, slot.exit.is_some()))
+            .map(|slot| (slot.pid, slot.reaped || slot.exit.is_some()))
     });
     match pid {
         None => refused(Refusal::UnknownThread),

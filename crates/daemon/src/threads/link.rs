@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
+use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::net::UnixStream;
 use tokio::net::unix::OwnedWriteHalf;
 use tokio::sync::mpsc;
@@ -56,13 +56,18 @@ impl HolderLink {
         let (reading, writer) = stream.into_split();
         let (sender, events) = mpsc::channel(1024);
         tokio::spawn(async move {
-            let mut lines = BufReader::new(reading);
+            // The reader holds at most one frame and its line end in memory (H8).
+            let limit = u64::try_from(MAX_FRAME)
+                .unwrap_or(u64::MAX)
+                .saturating_add(1);
+            let mut lines = BufReader::new(reading).take(limit);
             let mut line = Vec::new();
             loop {
                 line.clear();
+                lines.set_limit(limit);
                 match lines.read_until(b'\n', &mut line).await {
                     Ok(0) | Err(_) => break,
-                    Ok(_) if line.len() > MAX_FRAME + 1 => break,
+                    Ok(_) if !line.ends_with(b"\n") => break,
                     Ok(_) => {}
                 }
                 let Some(event) = wire::parse::<Event>(line.trim_ascii_end()) else {

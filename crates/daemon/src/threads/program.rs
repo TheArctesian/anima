@@ -158,12 +158,17 @@ pub async fn wait(
 ) {
     let pid = child.id();
     let status = child.wait().await;
+    if let Ok(mut state) = shared.lock()
+        && let Some(slot) = state.threads.get_mut(&thread)
+    {
+        slot.reaped = true;
+    }
+    // The group keeps the ID of the program while one of its members lives, so this signal
+    // reaches only what the program left in its group; an empty group gives an error.
     if let Some(group) = pid
         .and_then(|pid| i32::try_from(pid).ok())
         .and_then(Pid::from_raw)
     {
-        // What the program left in its own group ends with it; a group that is empty already
-        // gives an error, which is the wanted state.
         let _ = kill_process_group(group, Signal::KILL);
     }
     finish(&shared, &thread, readers).await;
