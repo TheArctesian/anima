@@ -9,6 +9,8 @@ import { isDocument } from "./tier.ts";
 export interface Jobs {
   /** The jobs rust-lint and rust-test. */
   rust: boolean;
+  /** Only these crates are linted and tested: each Rust path is a test of one of them (test-only.ts). */
+  rustCrates?: string[];
   /** The job go (the six Go gates of `link/`). */
   go: boolean;
   /** Each changed path is a document: the job bun runs only the quality gates. */
@@ -42,12 +44,22 @@ function readByRust(path: string): boolean {
   return !NOT_RUST.some((prefix) => path.startsWith(prefix));
 }
 
-/** The jobs for the changed `paths` of a pushed branch. Pure. */
-export function jobsFor(paths: string[]): Jobs {
+/** The crate whose tests alone read a path, or undefined (test-only.ts `testOwner`). */
+export type TestOwner = (path: string) => string | undefined;
+
+/**
+ * The jobs for the changed `paths` of a pushed branch. When each path that Rust reads is a test of
+ * a crate (`owner`), the Rust jobs take only those crates. Pure.
+ */
+export function jobsFor(paths: string[], owner: TestOwner = () => undefined): Jobs {
   if (paths.some((path) => RUNNERS.some((runner) => path.startsWith(runner)))) return EACH_JOB;
   const code = paths.filter((path) => !isDocument(path));
   if (code.length === 0) return { rust: false, go: false, documentsOnly: true };
-  return { rust: code.some(readByRust), go: code.some((path) => path.startsWith("link/")), documentsOnly: false };
+  const rust = code.filter(readByRust);
+  const owners = rust.map(owner);
+  const jobs = { rust: rust.length > 0, go: code.some((path) => path.startsWith("link/")), documentsOnly: false };
+  if (rust.length === 0 || owners.some((crate) => crate === undefined)) return jobs;
+  return { ...jobs, rustCrates: [...new Set(owners as string[])].sort() };
 }
 
 /**
@@ -86,6 +98,6 @@ export function devPushJobs({ tree, before, proved }: DevPush): DevJobs {
 
 /** The lines for `$GITHUB_OUTPUT`; `proved` names the run that makes each job unnecessary. */
 export function jobLines(jobs: Jobs, proved?: number): string[] {
-  const lines = [`rust=${String(jobs.rust)}`, `go=${String(jobs.go)}`, `documents_only=${String(jobs.documentsOnly)}`];
+  const lines = [`rust=${String(jobs.rust)}`, `go=${String(jobs.go)}`, `documents_only=${String(jobs.documentsOnly)}`, `rust_crates=${jobs.rustCrates?.join(",") ?? ""}`];
   return proved === undefined ? lines : [...lines, `proved=${String(proved)}`];
 }

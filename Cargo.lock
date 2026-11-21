@@ -1924,6 +1924,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
+ "hmac 0.13.0",
  "power",
  "proptest",
  "serde",

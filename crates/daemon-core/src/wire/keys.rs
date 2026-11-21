@@ -64,6 +64,14 @@ pub struct PushAccepted {
     /// The version the machine is to have (K8 Section 8.2, R-139).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub update: Option<UpdateInstruction>,
+    /// The account salt of the hub, 32 bytes in standard base64, in each answer to a batch with
+    /// `agentUsage.accounts` (K8 Section 8.2; AIS-022, R-313).
+    #[serde(
+        default,
+        rename = "accountSalt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub account_salt: Option<String>,
 }
 
 /// `POST /daemon/v1/keys/fetch`: the device of the bearer token and the name of one key.
