@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Not approved. CVM-001 to CVM-024. 2026-11-18: CVM-008 is marked for re-planning, because R-196 withdrew the overload warning AIS-017.
+evidence: Not approved. CVM-001 to CVM-024. 2026-11-18: CVM-008 is marked for re-planning, because R-196 withdrew the overload warning AIS-017. 2026-11-20: the section "Supply" was added; it adds no requirement.
 ---
 
 # Proposal: cloud computers and GPU add-ons
@@ -12,7 +12,7 @@ From: the planning session of 2026-11-16. The operator asked to offer cloud VMs 
 a person without several devices can add a computer for a monthly fee, including a machine
 with a good GPU (even an H100), as a wrapper around existing GPU rental, with a one-click
 offer when a job can no longer run where it is.
-Version: 1. Date: 2026-11-16.
+Version: 2. Date: 2026-11-20. Version 2 adds the section "Supply (checked 2026-11-20)".
 Status: the header of this document holds the state (PLN-020). History: Draft. The requirements are not yet approved. No ruling.
 Map: [work-plan.md](../work-plan.md), category Use, and the rented-resource rules (ETH-006,
 ETH-007). It also serves jobs and the "Needs attention" list. A rented computer can take a
@@ -92,9 +92,144 @@ These suggested prices are a starting point for a ruling. They are not published
 | RunPod | Resale only with written consent, through its reseller programme | First candidate for GPUs, after that consent |
 | Lambda | Bans reselling | Do not use |
 | Vast.ai | Bans reselling | Do not use |
-| AWS, Azure, Google Cloud | Need a formal partner programme | Later, if a programme is signed; not required for the first version |
+| AWS, Azure, Google Cloud | Need a formal partner programme | Not a supplier (operator, 2026-11-20). Their prices are a comparison only. |
 
 Anima.ing must not start a GPU add-on on a provider that forbids resale.
+
+## Supply (checked 2026-11-20)
+
+The operator said on 2026-11-20 to think about supply first: which supplier has the machines,
+whether its terms allow resale, what it costs, and how many Anima.ing can get. This section
+records what four research passes found on the suppliers' own pages on that day. It adds no
+requirement. It does not change the prices of the section "Prices"; see "What changed" below.
+
+Operator direction of the same day:
+
+- AWS, Azure and Google Cloud are not to be suppliers. Their prices are a comparison only.
+- Mac computers are left out of the offer for now. The findings are kept below.
+
+### Three supply routes
+
+1. **Rent and resell.** No money first, a thin margin, and the terms of the supplier must
+   allow it.
+2. **Run our own software on rented machines.** Databases, sandboxes and application hosting.
+   The margin is here, and the cost is our own operations work.
+3. **Own the hardware.** Found worth it only for Mac computers.
+
+### The supply map
+
+| Product | Supplier | Resale | Cost to Anima.ing | State |
+| --- | --- | --- | --- | --- |
+| Linux, small and always on | Hetzner Cloud CPX22 (2 vCPU, 4 GB) | Allowed by the standard terms | €16.99 to €19.99 a month | Ready |
+| Linux, larger | Hetzner Cloud CCX33 (8 dedicated vCPU, 32 GB) | Allowed | €117.99 to €138.99 a month | Ready; stock not confirmed |
+| Linux, for minutes or hours | Hetzner Cloud, by the hour, one hour minimum | Allowed | About €0.027 an hour for CPX22 | Ready; a new account has a low machine limit |
+| Sandboxes | Hetzner dedicated servers, divided by the pool service | Allowed | From about €78.70 a month for a server | Our own work |
+| PostgreSQL | PostgreSQL with pgBackRest, and Patroni for a standby, on Hetzner | The licence allows a paid hosted service | About €18 to €21 a month, or €38 to €45 with a standby | Our own work |
+| Cache | Valkey on Hetzner | The licence (BSD-3) allows it | A part of a machine | Our own work |
+| Object storage | Hetzner Object Storage | Allowed | €6.49 a month with 1 TB | Ready; 100 buckets for each account |
+| More disk | Hetzner volumes | Allowed | About €0.057 a GB a month (not from Hetzner's own page) | Ready; Hetzner snapshots do not include volumes |
+| Windows Server | Vultr ($16 a vCPU a month for the licence) or OVHcloud | Needs written permission (Vultr) or the partner programme (OVHcloud) | Machine and licence | Agreement first |
+| GPU | RunPod or Hyperstack | Needs a signed reseller agreement | H100: $2.50 (Hyperstack) to $2.89 (RunPod) an hour | Agreement first |
+| Mac | Own Mac mini computers in a data centre | They are ours; Apple must be told first | $899 to $1,800 one time, about $60 a month each | Left out for now |
+
+### Who allows resale
+
+| Kind | Allowed by the standard terms | Only with an agreement | Forbidden |
+| --- | --- | --- | --- |
+| Linux | Hetzner (§7.1 of its terms). DigitalOcean (§4.4, to confirm for whole machines) | Vultr, OVHcloud | Scaleway, Latitude.sh, AWS |
+| GPU | DigitalOcean, Hetzner. Nebius has no ban; ask for it in writing | RunPod, CoreWeave, Hyperstack, GMI Cloud | Lambda, Vast.ai, Crusoe, Voltage Park, TensorDock, Together, SF Compute |
+| Data services | Hetzner Object Storage | Neon, Tigris, Wasabi (platform or partner programmes) | Supabase, Upstash, Redis Cloud, Cloudflare R2 |
+| Mac | — | Scaleway and Flow (no ban found; ask) | MacStadium |
+
+Each supplier makes the reseller responsible for all that its customers do. Prepayment, a
+card check and a spending cap (CVM-009, CVM-010, CVM-014) must be in place before the first sale.
+
+### What changed since version 1
+
+- **Hetzner is the only Linux supplier whose terms plainly allow resale.** Each "Ready" row of
+  the map is on Hetzner. A second Linux supplier needs an agreement.
+- **Hetzner raised prices on 1 April and 15 June 2026**, and its cheapest plans (CX, CAX) show
+  as not available for new orders. The price of about $59 a month in "Prices" must be
+  calculated again from today's figures before it is used.
+- **A new Hetzner account has a machine limit.** Hetzner raises it only after one month and a
+  paid invoice. Ask early.
+- **Hetzner is not a supplier of GPUs by the hour**: a GPU server has a setup fee of about one
+  month.
+- **The margin of plain GPU resale is thin**: an estimate of 20 to 40% before costs and 10 to
+  25% after card fees, idle minutes and fraud. This is an estimate of the research, not a
+  figure from a supplier.
+- **A small PostgreSQL costs Anima.ing about one third of the market price** ($60 to $145 a
+  month elsewhere). The figure does not include our own engineering and on-call time.
+
+### Software that must not be used for a hosted service
+
+- MinIO community edition: the repository was archived on 2026-04-25 and gets no security
+  corrections. Use Garage or SeaweedFS if Anima.ing runs object storage itself.
+- Dragonfly and Redpanda: their licences forbid a hosted cache or queue service.
+- Redis 7.4 to 7.8: the licence forbids it. Redis 8 allows it under AGPLv3; Valkey is simpler.
+
+### Windows
+
+A supplier can rent Windows Server with its licence. No supplier can supply a licence for
+Windows 10 or 11 as a hosted machine. Anima.ing can offer Windows Server with the desktop,
+not Windows 11. No page says in writing that the licence of a supplier covers the customers of
+a reseller; get that in writing first.
+
+### Mac (left out for now)
+
+- Apple's macOS licence allows the lease of a whole Mac to one customer for at least 24 hours,
+  for developer work only (builds, signing, tests). One Mac cannot be divided between
+  customers. The lessor must tell Apple first, and each customer must accept the macOS licence.
+- To own Mac mini computers in a data centre pays back in about 7 to 13 months against rent.
+- MacStadium forbids resale. Hetzner no longer has Mac computers. Stock is low at small hosts.
+
+### Recommended order of supply
+
+1. Build the first offer from the rows "Ready" and "Our own work": Linux machines, sandboxes,
+   PostgreSQL, cache and object storage, all on Hetzner.
+2. At the same time start three agreements, because each takes weeks: a second Linux supplier
+   (Vultr or OVHcloud), a GPU reseller agreement (RunPod or Hyperstack), and a higher machine
+   limit at Hetzner.
+3. Windows Server follows the second Linux supplier. Mac waits for a decision of the operator.
+
+### Not verified
+
+- No supplier has confirmed resale to Anima.ing in writing. For Hetzner this document relies
+  on its published terms.
+- Whether Hetzner's CCX plans can be ordered today: Hetzner's page and a third-party article
+  disagree.
+- Hetzner's volume price and its default machine limit.
+- The commercial terms of each reseller programme; none is published.
+- How often GPUs are sold out.
+- Scaleway, Vultr (terms), Fluidstack and some other pages refused the research, so some of
+  their figures are from search results.
+- Euro and dollar figures were not converted.
+
+### Sources
+
+- Hetzner: [terms](https://www.hetzner.com/legal/terms-and-conditions/),
+  [cloud prices](https://www.hetzner.com/cloud/regular-performance/),
+  [price change](https://www.hetzner.com/pressroom/standardization-and-price-adjustment-of-our-server-products/),
+  [object storage](https://www.hetzner.com/storage/object-storage/),
+  [GPU servers](https://www.hetzner.com/dedicated-rootserver/matrix-gpu/).
+- Linux: [Vultr use policy](https://www.vultr.com/legal/use-policy/),
+  [Scaleway instance terms](https://www-uploads.scaleway.com/Conditions_Particulieres_Instances_v07042026_1db2d811d7.pdf),
+  [Megaport agreement, used by Latitude.sh](https://www.megaport.com/legal/global-services-agreement/),
+  [DigitalOcean terms](https://www.digitalocean.com/legal/terms-of-service-agreement).
+- Windows: [Microsoft SPLA guidance](https://www.microsoft.com/licensing/guidance/SPLA),
+  [Vultr Windows](https://www.vultr.com/servers/windows/).
+- GPU: [RunPod terms](https://www.runpod.io/legal/terms-of-service),
+  [RunPod prices](https://www.runpod.io/pricing),
+  [Hyperstack prices](https://www.hyperstack.cloud/gpu-pricing),
+  [NexGen Cloud channel programme](https://www.nexgencloud.com/channel-partnerships),
+  [Nebius agreement](https://docs.nebius.com/legal/agreement),
+  [Lambda terms](https://lambda.com/legal/terms-of-service), [Vast.ai terms](https://vast.ai/terms).
+- Data services: [PostgreSQL licence](https://www.postgresql.org/about/licence/),
+  [Redis licences](https://redis.io/legal/licenses/), [Valkey](https://github.com/valkey-io/valkey),
+  [MinIO](https://github.com/minio/minio), [pgBackRest](https://github.com/pgbackrest/pgbackrest),
+  [Tigris partner programme](https://www.tigrisdata.com/docs/partner-integrations/).
+- Mac: [macOS licence](https://www.apple.com/legal/sla/docs/macOS27.pdf),
+  [MacStadium terms](https://docs.macstadium.com/docs/billing-legal).
 
 ## Requirements
 
