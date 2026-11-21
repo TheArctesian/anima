@@ -1,3 +1,1 @@
 # Uptime Kuma. The first person who opens the web interface makes the account; this file holds no secret.
-# The port of the machine for the web interface.
-KUMA_PORT=3001

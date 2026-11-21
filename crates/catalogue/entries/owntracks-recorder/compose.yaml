@@ -8,9 +8,11 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - target: 8083
-        published: ${RECORDER_PORT:-8083}
+        published: 8083
         host_ip: 127.0.0.1
         protocol: tcp
     volumes:

@@ -1,11 +1,13 @@
 //! The Compose file of a recipe against its entry: the rules of task H28 with the settings
-//! that exactly the marks permit, the images by digest, the volumes and the test of a machine.
+//! that exactly the marks permit, the images by digest, the volumes, the rights of the
+//! services and the test of a machine.
 
 use compose_rules::{Node, Settings, forms::whole};
 
 use crate::{
     Code,
     entry::{Anima, HealthTest, Kind, Mark, Protocol, Reach},
+    example, privileges,
 };
 
 /// The longest time limit of a test of a machine, in seconds.
@@ -178,6 +180,39 @@ fn test_complete(test: &HealthTest, kind: Kind, document: &Node) -> bool {
     published && answer && (1..=LONGEST_TEST).contains(&test.limit_seconds)
 }
 
+/// True when the image, a published port or its address is written as a variable: the install
+/// fills it after the static test, so that the test would not see the value that runs.
+fn variable_in_fixed_value(unfilled: &Node) -> bool {
+    let has_variable = |node: Option<&Node>| {
+        node.and_then(Node::text)
+            .is_some_and(|text| text.contains('$'))
+    };
+    services(unfilled).iter().any(|(_, service)| {
+        has_variable(service.get("image"))
+            || ports(service).iter().any(|port| {
+                has_variable(port.get("published")) || has_variable(port.get("host_ip"))
+            })
+    })
+}
+
+/// The codes of the file as its author wrote it: the values that no variable may give, the
+/// secrets and the rights of the services.
+fn written(anima: &Anima, unfilled: &Node) -> Vec<Code> {
+    let mut codes = Vec::new();
+    if variable_in_fixed_value(unfilled) {
+        codes.push(Code::VariableNotPermitted);
+    }
+    if example::secret_in_file(services(unfilled)) {
+        codes.push(Code::SecretInFile);
+    }
+    codes.extend(
+        privileges::check(services(unfilled), &anima.exceptions)
+            .into_iter()
+            .map(Code::PrivilegeNotPermitted),
+    );
+    codes
+}
+
 /// The codes of the Compose file `compose`, filled from the example `environment`.
 pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code> {
     let mut codes: Vec<Code> = anima
@@ -191,8 +226,8 @@ pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code
         open_to_network: !marked.is_empty(),
         label_prefixes: Vec::new(),
     };
-    let document = match compose_rules::check(compose, environment, &settings) {
-        Ok(checked) => checked.document,
+    let (document, unfilled) = match compose_rules::check(compose, environment, &settings) {
+        Ok(checked) => (checked.document, checked.unfilled),
         Err(refusal) => {
             codes.push(Code::ComposeRefused(refusal));
             return codes;
@@ -206,6 +241,7 @@ pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code
             codes.push(Code::MarkNotMatched);
         }
     }
+    codes.extend(written(anima, &unfilled));
     codes.extend(images(anima, &document));
     if !volumes_described(anima, &document) {
         codes.push(Code::VolumeNotDescribed);

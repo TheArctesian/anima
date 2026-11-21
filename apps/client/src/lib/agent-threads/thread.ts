@@ -12,7 +12,11 @@ export interface ThreadRow {
   readonly model: string | null;
   readonly started: Date | null;
   readonly last: Date | null;
+  /** How the session file ends (THR-055): what the last lines say of the turn. */
+  readonly tail: Tail;
 }
+
+export type Tail = 'turn_ended' | 'stopped' | 'open_tool' | 'open' | 'nothing';
 
 export type ToolKind = 'command' | 'edit' | 'read' | 'search' | 'web' | 'agent' | 'plan' | 'question' | 'other';
 
@@ -47,6 +51,7 @@ export interface ThreadsShell {
 }
 
 const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
+const TAILS: readonly string[] = ['turn_ended', 'stopped', 'open_tool', 'open', 'nothing'];
 const TOOL_KINDS: readonly string[] = ['command', 'edit', 'read', 'search', 'web', 'agent', 'plan', 'question', 'other'];
 
 export function programName(program: Program): string {
@@ -86,6 +91,7 @@ function rowFrom(value: unknown): ThreadRow | null {
     model: text(value.model),
     started: time(value.started),
     last: time(value.last),
+    tail: typeof value.tail === 'string' && TAILS.includes(value.tail) ? (value.tail as Tail) : 'nothing',
   };
 }
 
@@ -144,33 +150,6 @@ export function threadFrom(answer: unknown): Thread | null {
     entries,
     dropped: typeof answer.dropped === 'number' ? answer.dropped : 0,
   };
-}
-
-/** A file that changed in this time is marked as changed now. It is not a state of the agent (THR-013). */
-export const CHANGED_NOW_MS = 2 * 60_000;
-
-export type GroupName = 'Changed now' | 'Today' | 'Earlier';
-
-export interface ThreadGroup {
-  readonly name: GroupName;
-  readonly rows: readonly ThreadRow[];
-}
-
-/** Whether the file of `row` changed in the last 2 minutes before `now`. */
-export function changedNow(row: ThreadRow, now: Date): boolean {
-  return row.last !== null && now.getTime() - row.last.getTime() < CHANGED_NOW_MS;
-}
-
-/** The rows in the three groups of the list, each in the order given; a group with no row is left out (THR-013). */
-export function groups(rows: readonly ThreadRow[], now: Date): readonly ThreadGroup[] {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const named = (row: ThreadRow): GroupName => {
-    if (changedNow(row, now)) return 'Changed now';
-    return row.last !== null && row.last.getTime() >= today ? 'Today' : 'Earlier';
-  };
-  return (['Changed now', 'Today', 'Earlier'] as const)
-    .map((name) => ({ name, rows: rows.filter((row) => named(row) === name) }))
-    .filter((group) => group.rows.length > 0);
 }
 
 /** The rows of `program` (all when `null`) whose title, folder or branch holds `search`, without regard to case. */

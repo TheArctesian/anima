@@ -37,6 +37,7 @@
       }
     ],
     "marks": [],
+    "exceptions": ["init-capabilities"],
     "volumes": [{ "volume": "data", "copy": "postgresql" }],
     "generated": ["POSTGRES_PASSWORD"],
     "test": {

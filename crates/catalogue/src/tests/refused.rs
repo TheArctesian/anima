@@ -235,3 +235,68 @@ fn host_047_an_entry_whose_last_test_on_a_machine_failed_leaves_the_list() {
     );
     assert_eq!(codes(&recipe), [Code::MachineTestFailed]);
 }
+
+#[test]
+fn sf_revcatvars_the_image_a_published_port_or_its_address_is_never_a_variable() {
+    let image = Recipe {
+        compose: Some(replaced(COMPOSE, IMAGE, "${NOTES_IMAGE}")),
+        environment: Some(format!("{ENVIRONMENT}NOTES_IMAGE={IMAGE}\n")),
+        ..sound()
+    };
+    let port = with_compose("published: 8080", "published: ${NOTES_PORT:-8080}");
+    let address = with_compose("host_ip: 127.0.0.1", "host_ip: ${NOTES_ADDRESS:-127.0.0.1}");
+    for recipe in [image, port, address] {
+        assert_eq!(
+            codes(&recipe),
+            [Code::VariableNotPermitted],
+            "{:?}",
+            recipe.compose
+        );
+    }
+}
+
+#[test]
+fn sf_revcatsecret_the_compose_file_gives_a_secret_only_as_one_variable() {
+    for line in [
+        "DB_PASSWORD: hunter2",
+        "API_KEY: ${NOTES_KEY:-abc123}",
+        "smtp_passwd: hunter2",
+        "- NOTES_TOKEN=hunter2",
+    ] {
+        let compose = if let Some(item) = line.strip_prefix("- ") {
+            replaced(
+                COMPOSE,
+                "      SECRET: ${NOTES_SECRET}",
+                &format!("      - SECRET=${{NOTES_SECRET}}\n      - {item}"),
+            )
+        } else {
+            replaced(
+                COMPOSE,
+                "      SECRET: ${NOTES_SECRET}",
+                &format!("      SECRET: ${{NOTES_SECRET}}\n      {line}"),
+            )
+        };
+        let recipe = Recipe {
+            compose: Some(compose),
+            ..sound()
+        };
+        assert_eq!(codes(&recipe), [Code::SecretInFile], "{line}");
+    }
+}
+
+#[test]
+fn sf_revcatsecret_each_name_that_marks_a_secret_has_no_value_in_the_example() {
+    for name in [
+        "SMTP_PASSWD",
+        "MYAPIKEY",
+        "STRIPE_API_KEY",
+        "AWS_CREDENTIALS",
+        "SSH_PRIVATE_KEY",
+    ] {
+        let recipe = Recipe {
+            environment: Some(format!("{ENVIRONMENT}{name}=hunter2\n")),
+            ..sound()
+        };
+        assert_eq!(codes(&recipe), [Code::SecretInExample], "{name}");
+    }
+}

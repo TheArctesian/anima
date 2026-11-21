@@ -3,5 +3,3 @@
 DOMAIN=http://localhost:8222
 # Set to true for the first account, then back to false.
 SIGNUPS_ALLOWED=false
-# The port of the machine for the web interface.
-VAULTWARDEN_PORT=8222

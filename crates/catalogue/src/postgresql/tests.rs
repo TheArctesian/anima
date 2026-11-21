@@ -6,7 +6,7 @@ use super::{
 };
 use crate::entry::Variables;
 
-const PASSWORD: &str = "s3cret-Pa$$word+16/x";
+const PASSWORD: &str = "s3cretPassw0rdOf24chars9";
 
 fn notes() -> Names {
     Names::for_application("notes").expect("a permitted name")
@@ -30,6 +30,23 @@ fn h24_the_names_come_from_the_application_identifier() {
 }
 
 #[test]
+fn sf_revcatpg_two_identifiers_never_get_the_same_database_or_user() {
+    let hyphen = Names::for_application("my-app").expect("a permitted name");
+    assert_eq!(hyphen.database.as_str(), "my_app");
+    assert_eq!(
+        Names::for_application("my_app"),
+        Err(NameError::NotPermitted)
+    );
+    let dump = DumpFile::new("/copies/notes.dump").expect("a permitted path");
+    let back = way_back(&notes(), &dump, 1).expect("a permitted name");
+    assert_eq!(
+        Names::for_application("notes-back-1").map(|names| names.database),
+        Ok(DatabaseName::new("notes_back_1").expect("a name"))
+    );
+    assert_ne!(back.target.as_str(), "notes_back_1");
+}
+
+#[test]
 fn h24_a_name_that_is_not_permitted_is_refused() {
     let too_long = "a".repeat(64);
     for refused in [
@@ -44,6 +61,8 @@ fn h24_a_name_that_is_not_permitted_is_refused() {
         "template1",
         "public",
         "pg_notes",
+        "my_app",
+        "my--app",
         &too_long,
     ] {
         assert_eq!(
@@ -65,7 +84,7 @@ fn h24_the_setup_makes_a_user_that_owns_only_its_database() {
         texts(&made.server),
         [
             "CREATE ROLE \"notes\" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT \
-             NOREPLICATION NOBYPASSRLS PASSWORD 's3cret-Pa$$word+16/x'",
+             NOREPLICATION NOBYPASSRLS PASSWORD 's3cretPassw0rdOf24chars9'",
             "CREATE DATABASE \"notes\" OWNER \"notes\" ENCODING 'UTF8' TEMPLATE template0",
             "REVOKE ALL ON DATABASE \"notes\" FROM PUBLIC",
             "GRANT CONNECT, TEMPORARY ON DATABASE \"notes\" TO \"notes\"",
@@ -83,19 +102,35 @@ fn h24_the_setup_makes_a_user_that_owns_only_its_database() {
 }
 
 #[test]
-fn h24_an_extension_that_is_not_a_name_makes_no_statement() {
+fn sf_revcatpg_an_extension_that_is_not_in_the_list_makes_no_statement() {
     let made = setup(
         &notes(),
         &password(),
-        &["x\"; DROP DATABASE notes; --".to_owned()],
+        &[
+            "x\"; DROP DATABASE notes; --".to_owned(),
+            "plpython3u".to_owned(),
+            "dblink".to_owned(),
+            "adminpack".to_owned(),
+        ],
     );
     assert_eq!(made.database, []);
+    let listed = setup(&notes(), &password(), &["vector".to_owned()]);
+    assert_eq!(
+        texts(&listed.database),
+        ["CREATE EXTENSION IF NOT EXISTS \"vector\""]
+    );
 }
 
 #[test]
-fn h24_a_password_with_a_quote_a_space_or_a_wrong_length_is_refused() {
+fn sf_revcatpg_a_password_that_is_not_letters_and_digits_or_has_a_wrong_length_is_refused() {
     for refused in [
         "short",
+        "abcdefghijklmnopqrstu",
+        "has$dollar0in0it0of0chars",
+        "has`backtick0in0it0chars",
+        "has#hash0in0it0of0chars0",
+        "has=equals0in0it0of0chars",
+        "has-hyphen0in0it0of0chars",
         "has'quote-in-it-16chars",
         "has\"quote-in-it-16chars",
         "has\\backslash-16chars",
@@ -109,6 +144,7 @@ fn h24_a_password_with_a_quote_a_space_or_a_wrong_length_is_refused() {
             "{refused}"
         );
     }
+    assert!(Password::new(&"a".repeat(22)).is_ok());
     assert!(!format!("{:?}", password()).contains(PASSWORD));
 }
 
@@ -146,7 +182,7 @@ fn h24_the_connection_values_go_into_the_variables_that_the_recipe_names() {
         [
             (
                 "DATABASE_URL",
-                "postgresql://notes:s3cret-Pa%24%24word%2B16%2Fx@postgresql:5432/notes"
+                "postgresql://notes:s3cretPassw0rdOf24chars9@postgresql:5432/notes"
             ),
             ("DB_HOST", "postgresql"),
             ("DB_NAME", "notes"),
@@ -190,10 +226,10 @@ fn h24_the_copy_is_pg_dump_in_the_custom_format() {
 fn h24_the_way_back_restores_into_a_new_database_and_keeps_it() {
     let dump = DumpFile::new("/copies/notes.dump").expect("a permitted path");
     let back = way_back(&notes(), &dump, 3).expect("a permitted name");
-    assert_eq!(back.target.as_str(), "notes_back_3");
+    assert_eq!(back.target.as_str(), "notes__back_3");
     assert_eq!(
         back.create.text(),
-        "CREATE DATABASE \"notes_back_3\" OWNER \"notes\" ENCODING 'UTF8' TEMPLATE template0"
+        "CREATE DATABASE \"notes__back_3\" OWNER \"notes\" ENCODING 'UTF8' TEMPLATE template0"
     );
     assert_eq!(
         back.restore,
@@ -201,7 +237,7 @@ fn h24_the_way_back_restores_into_a_new_database_and_keeps_it() {
             "pg_restore",
             "--no-password",
             "--username=postgres",
-            "--dbname=notes_back_3",
+            "--dbname=notes__back_3",
             "--no-owner",
             "--role=notes",
             "--exit-on-error",
@@ -220,13 +256,13 @@ fn h24_the_test_of_the_way_back_finds_each_table_of_the_copy_then_deletes_its_da
     let test = way_back_test(&notes(), &dump).expect("a permitted name");
     assert_eq!(
         test.target,
-        DatabaseName::new("notes_check").expect("a name")
+        DatabaseName::new("notes__check").expect("a name")
     );
     assert_eq!(test.list, ["pg_restore", "--list", "/copies/notes.dump"]);
-    assert!(test.tables.contains(&"--dbname=notes_check".to_owned()));
+    assert!(test.tables.contains(&"--dbname=notes__check".to_owned()));
     assert_eq!(
         test.drop.as_ref().map(super::Statement::text),
-        Some("DROP DATABASE IF EXISTS \"notes_check\" WITH (FORCE)")
+        Some("DROP DATABASE IF EXISTS \"notes__check\" WITH (FORCE)")
     );
     let list = ";\n; Archive created at 2026-11-20 10:00:00 UTC\n;\n\
         215; 1259 16386 TABLE public notes notes\n\

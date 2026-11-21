@@ -31,6 +31,9 @@
         ]
       }
     ],
+    "exceptions": [
+      "init-capabilities"
+    ],
     "volumes": [
       {
         "volume": "etc-pihole",

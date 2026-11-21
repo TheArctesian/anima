@@ -163,7 +163,7 @@ fn restore(names: &Names, copy: &DumpFile, target: DatabaseName, test: bool) -> 
 }
 
 /// The way back number `number`: `copy` restored into the new database
-/// `<database>_back_<number>`.
+/// `<database>__back_<number>`.
 ///
 /// # Errors
 /// [`NameError::NotPermitted`] when that name is longer than 63 bytes.
@@ -172,12 +172,12 @@ pub fn way_back(names: &Names, copy: &DumpFile, number: u32) -> Result<Restore, 
     Ok(restore(names, copy, target, false))
 }
 
-/// The test of the way back: `copy` restored into `<database>_check`, each table of the copy
+/// The test of the way back: `copy` restored into `<database>__check`, each table of the copy
 /// found there ([`missing_tables`]), and the database deleted.
 ///
 /// # Errors
 /// [`NameError::NotPermitted`] when that name is longer than 63 bytes.
 pub fn way_back_test(names: &Names, copy: &DumpFile) -> Result<Restore, NameError> {
-    let target = DatabaseName::new(&format!("{}_check", names.database))?;
+    let target = DatabaseName::new(&format!("{}__check", names.database))?;
     Ok(restore(names, copy, target, true))
 }

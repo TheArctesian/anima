@@ -2,5 +2,3 @@
 # generated at install
 WEB_PASSWORD=
 TZ=UTC
-# The port of the machine for the web interface.
-WEB_PORT=8053

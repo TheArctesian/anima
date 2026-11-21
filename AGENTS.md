@@ -271,13 +271,25 @@ bun run gates:fast                 # while you work: only what your changed path
 
 `bun run gates:fast` compares your tree with `origin/dev` (`FAST_BASE` names a different ref). Documents
 only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
-touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
+touched, the six Go gates when `link/` changed, the quick deploy tests that read the Rust workspace when a crate
+changed (`deploy-maps`: the release maps and the toolchain pins), then the five quality gates. A path that no rule knows
 runs the full list. It does not test the packages that depend on yours and it runs no doctest: the run
 on GitHub does. Its first line says what it chose and why. On a busy machine (a load above the number of
 processor cores; `FAST_BUSY_LOAD` sets a different limit) it leaves out the tests of whole packages and
 runs only the tests that your change names, and says so in its first and its last line: that run is not a
 gate, the run on GitHub is (R-268). It leaves nothing out for a change that only a Mac tests.
 `bun run gates:fast -- --whole` runs each test of the tier.
+
+`bun run gates:changed` runs only the checks of the paths that your branch changed against `origin/dev`
+(`FAST_BASE` names a different ref). Use it when the operator or a ruling says to leave the full gates to
+GitHub, or when many sessions share one computer. It runs the documents gate first, always. Then, for each
+crate and bun package that holds a changed file: format, lint, the check of types and its tests (and the
+build of the client when the client changed). The crates and packages that use a changed one get their lint
+and the check of types, not their tests. The quality gates run last. It never runs the full list: a change of
+a file that each package reads (`Cargo.lock`, `package.json`, `contracts/`) gets the lints of each package and
+the tests of only the packages whose own files changed, and a path that no rule knows gets only the quality
+gates. Its first lines say what it chose and what it left to GitHub. Its run is not the gate: push the branch,
+and the run of the workflow `gates` on GitHub is.
 
 The workflow `.github/workflows/gates.yml` runs the full list on Linux machines of GitHub for each pushed
 branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no

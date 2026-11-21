@@ -6,8 +6,8 @@
 //! Nothing here runs a command, reaches a machine or makes a password. The applications
 //! program on the machine makes the password and runs the statements and the commands
 //! (OD-HOST-42 A): here the password is only an input value. No statement holds text of the
-//! hub: each identifier is a checked name, quoted, and the password is a quoted literal of
-//! printable characters with no quote. There is no replica (OD-HOST-38 is open).
+//! hub: each identifier is a checked name, quoted, each extension is of a fixed list, and the
+//! password is a quoted literal of letters and digits. There is no replica (OD-HOST-38 is open).
 
 mod connection;
 mod copies;

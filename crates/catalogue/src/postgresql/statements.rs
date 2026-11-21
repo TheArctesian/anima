@@ -6,20 +6,22 @@ use std::fmt;
 
 use super::names::{DatabaseName, Names};
 
-/// The shortest and the longest password, in characters.
-const PASSWORD_LENGTHS: std::ops::RangeInclusive<usize> = 16..=128;
+/// The shortest and the longest password, in characters. 22 letters and digits hold at least
+/// 128 bits (62 symbols give 5.95 bits each).
+const PASSWORD_LENGTHS: std::ops::RangeInclusive<usize> = 22..=128;
 
 /// Why a password was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum PasswordError {
-    #[error("a password is 16 to 128 printable characters, with no space, quote or backslash")]
+    #[error("a password is 22 to 128 letters and digits of ASCII")]
     NotPermitted,
 }
 
 /// The password of the user of an application. The program on the machine makes it
-/// (OD-HOST-42 A); this crate never makes one. It is printable ASCII with no space, `'`, `"`
-/// or `\`, so that it is the same text in a quoted literal of SQL with each setting of the
-/// server. No `Debug` or `Display` shows it.
+/// (OD-HOST-42 A); this crate never makes one. It is only letters and digits of ASCII, so that
+/// it is the same text in a quoted literal of SQL with each setting of the server, in an
+/// environment file that Compose fills (`$`), in a connection address (`#`, `=`) and in a shell
+/// (a backtick) (SF-NEW-revcatpg). No `Debug` or `Display` shows it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Password(String);
 
@@ -28,9 +30,7 @@ impl Password {
     /// [`PasswordError::NotPermitted`] for a text of another length or with another character.
     pub fn new(text: &str) -> Result<Self, PasswordError> {
         let permitted = PASSWORD_LENGTHS.contains(&text.len())
-            && text
-                .bytes()
-                .all(|byte| byte.is_ascii_graphic() && !b"'\"\\".contains(&byte));
+            && text.bytes().all(|byte| byte.is_ascii_alphanumeric());
         permitted
             .then(|| Self(text.to_owned()))
             .ok_or(PasswordError::NotPermitted)
@@ -150,10 +150,12 @@ pub fn removal(names: &Names) -> Vec<Statement> {
     ]
 }
 
-/// The name of the database of the way back number `number`: `<database>_back_<number>`.
+/// The name of the database of the way back number `number`: `<database>__back_<number>`. No
+/// name of an application has `__` ([`Names::for_application`]), so it is never the name of a
+/// different application.
 ///
 /// # Errors
 /// [`super::NameError::NotPermitted`] when the name is longer than 63 bytes.
 pub fn way_back_database(names: &Names, number: u32) -> Result<DatabaseName, super::NameError> {
-    DatabaseName::new(&format!("{}_back_{number}", names.database))
+    DatabaseName::new(&format!("{}__back_{number}", names.database))
 }

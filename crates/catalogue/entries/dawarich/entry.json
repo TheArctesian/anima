@@ -37,6 +37,7 @@
       }
     ],
     "marks": [],
+    "exceptions": ["init-capabilities"],
     "volumes": [
       { "volume": "public", "copy": "files" },
       { "volume": "watched", "copy": "files" },

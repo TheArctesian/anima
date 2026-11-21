@@ -1,8 +1,9 @@
 //! Tests of the static test of a recipe (HOST-047): the recipes that ship (`shipped`), and a
-//! sound recipe with one fault at a time (`refused`), and the fields about a database
-//! (`database`).
+//! sound recipe with one fault at a time (`refused`), the rights of the services
+//! (`privileges`), and the fields about a database (`database`).
 
 mod database;
+mod privileges;
 mod refused;
 mod shipped;
 
@@ -54,9 +55,13 @@ const COMPOSE: &str = r"services:
     image: example/notes@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     environment:
       SECRET: ${NOTES_SECRET}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - target: 8080
-        published: ${NOTES_PORT:-8080}
+        published: 8080
         host_ip: 127.0.0.1
         protocol: tcp
     volumes:
@@ -67,7 +72,7 @@ volumes:
   notes:
 ";
 
-const ENVIRONMENT: &str = "# generated at install\nNOTES_SECRET=\nNOTES_PORT=8080\n";
+const ENVIRONMENT: &str = "# generated at install\nNOTES_SECRET=\n";
 
 fn sound() -> Recipe {
     Recipe {

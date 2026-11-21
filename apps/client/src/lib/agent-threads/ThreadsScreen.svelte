@@ -6,9 +6,10 @@
   import LoadingState from '$lib/states/LoadingState.svelte';
   import { keyAction, moved } from './keys';
   import type { ThreadsStore } from './store.svelte';
-  import { changedNow, narrowed, type Program } from './thread';
-  import ThreadList from './ThreadList.svelte';
-  import ThreadView from './ThreadView.svelte';
+  import { orderedThreads, threadState } from './state';
+  import { narrowed, type Program } from './thread';
+  import ThreadList from './view/ThreadList.svelte';
+  import ThreadView from './view/ThreadView.svelte';
 
   interface Props {
     store: ThreadsStore;
@@ -20,13 +21,19 @@
   let program = $state<Program | null>(null);
   let search = $state('');
   let toolsOpen = $state(false);
+  /** The group "Earlier" is folded at first (THR-056); a search shows what it holds. */
+  let earlierChosen = $state(false);
+  const earlierOpen = $derived(earlierChosen || search.trim() !== '');
   let field = $state<HTMLInputElement>();
   let screen = $state<HTMLElement>();
   const shown = $derived(narrowed(store.rows ?? [], program, search));
+  /** The states are of the time of the last read of the list; a test gives its own time. */
   const moment = $derived.by(() => {
     void store.rows;
     return now();
   });
+  /** The threads in the order of the list, for the keys that move by a place. */
+  const inOrder = $derived(orderedThreads(shown, moment, store.seen, { earlierOpen, chosen: store.chosen }).flatMap((entry) => (entry.kind === 'device' ? [entry.device.row] : [])));
 
   async function choose(id: string): Promise<void> {
     await store.open(id);
@@ -42,15 +49,15 @@
   function onkeydown(event: KeyboardEvent): void {
     const action = keyAction({ key: event.key, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
     if (action === null) return;
-    const at = shown.findIndex((row) => row.id === store.chosen);
+    const at = inOrder.findIndex((row) => row.id === store.chosen);
     switch (action.kind) {
       case 'move': {
-        const next = shown[moved(at, action.by, shown.length)];
+        const next = inOrder[moved(at, action.by, inOrder.length)];
         if (next !== undefined && next.id !== store.chosen) void choose(next.id);
         break;
       }
       case 'jump': {
-        const next = shown[action.place];
+        const next = inOrder[action.place];
         if (next !== undefined) void choose(next.id);
         break;
       }
@@ -77,7 +84,7 @@
 <!-- The page Threads (THR-011 to THR-017): the list beside one thread. It reads the session files of this computer
      through the desktop shell; it sends nothing to the hub and starts no program. -->
 <section class="threads" bind:this={screen}>
-  <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Read only." />
+  <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Read only. The states are read from the session files." />
   {#if store.rows === null && store.listProblem !== null}
     <ErrorState message={store.listProblem} onRetry={() => void store.loadList()} />
   {:else if store.rows === null}
@@ -92,6 +99,11 @@
         {program}
         {search}
         now={moment}
+        seen={store.seen}
+        {earlierOpen}
+        onToggleEarlier={() => {
+          earlierChosen = !earlierChosen;
+        }}
         bind:field
         onChoose={(id) => void choose(id)}
         onProgram={(next) => {
@@ -105,7 +117,7 @@
         {#if store.threadProblem !== null}
           <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
         {:else if store.thread !== null && store.thread.id === store.chosen}
-          <ThreadView thread={store.thread} {toolsOpen} changedNow={changedNow(store.thread, moment)} />
+          <ThreadView thread={store.thread} {toolsOpen} state={threadState(store.thread, moment, store.seen)} />
         {:else if store.chosen !== null}
           <LoadingState label="Loading the thread" rows={8} />
         {:else}

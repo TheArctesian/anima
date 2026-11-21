@@ -6,13 +6,25 @@ services:
       USER_GID: "1000"
       GITEA__database__DB_TYPE: sqlite3
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
     ports:
       - target: 3000
-        published: ${GITEA_PORT:-3002}
+        published: 3002
         host_ip: 127.0.0.1
         protocol: tcp
       - target: 22
-        published: ${GITEA_SSH_PORT:-2222}
+        published: 2222
         host_ip: 127.0.0.1
         protocol: tcp
     volumes:

@@ -8,5 +8,3 @@ SECRET_KEY_BASE=
 # The host names that Dawarich answers, separated by commas.
 APPLICATION_HOSTS=localhost
 TIME_ZONE=UTC
-# The port of the machine for the web interface.
-DAWARICH_PORT=3000
