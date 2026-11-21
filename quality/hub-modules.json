@@ -31,6 +31,13 @@
   ],
   "domains": {
     "events": [],
+    "compute": [
+      "devices",
+      "events",
+      "metrics",
+      "jobs",
+      "access"
+    ],
     "credentials": [
       "events"
     ],
@@ -163,10 +170,6 @@
     ],
     "rollout": [
       "builds"
-    ],
-    "compute": [
-      "events",
-      "access"
     ]
   },
   "graphql": {

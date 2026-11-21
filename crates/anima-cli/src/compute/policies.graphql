@@ -1,0 +1,20 @@
+query DevicePolicies {
+  devicePolicies {
+    device {
+      id
+      name
+    }
+    memorySharePercent
+    diskSharePercent
+    quietHours {
+      start
+      end
+      timeZone
+    }
+    mainsOnly
+    idleOnly
+    isDefault
+    takesModelWork
+    stopReason
+  }
+}

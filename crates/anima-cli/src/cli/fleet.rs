@@ -3,8 +3,8 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    agents, capabilities, catalogue, checks, containers, daemons, devices, link, maintenance,
-    model_library, sessions, sites, tags, web_interfaces,
+    agents, capabilities, catalogue, checks, compute, containers, daemons, devices, link,
+    maintenance, model_library, sessions, sites, tags, web_interfaces,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -43,6 +43,11 @@ pub enum FleetCommand {
     Capability {
         #[command(subcommand)]
         command: capabilities::CapabilityCommand,
+    },
+    /// Model compute on the devices: the device policy of each node (policy show, policy set).
+    Compute {
+        #[command(subcommand)]
+        command: compute::ComputeCommand,
     },
     /// The AI agent programs on the devices (usage).
     Agents {
@@ -103,6 +108,7 @@ impl FleetCommand {
             Self::Model { command } => command.run(invocation).await,
             Self::Daemon { command } => command.run(invocation).await,
             Self::Capability { command } => command.run(invocation).await,
+            Self::Compute { command } => command.run(invocation).await,
             Self::Agents { command } => command.run(invocation).await,
             Self::Containers { command } => command.run(invocation).await,
             Self::Catalogue { command } => command.run(invocation).await,

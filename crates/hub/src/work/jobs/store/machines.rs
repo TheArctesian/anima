@@ -51,6 +51,44 @@ pub(in crate::work::jobs) async fn machine_locked(
     .transpose()
 }
 
+type ListedRow = (
+    DeviceId,
+    String,
+    bool,
+    bool,
+    Option<DateTime<Utc>>,
+    Option<DateTime<Utc>>,
+    bool,
+);
+
+/// What the hub knows of each machine for work; a device that never asked has no entry.
+pub(in crate::work::jobs) async fn machines(
+    db: &sqlx::PgPool,
+) -> Result<std::collections::HashMap<DeviceId, Machine>, Error> {
+    let rows: Vec<ListedRow> = sqlx::query_as(
+        "SELECT device_id, switch, unclean, off_by_operator, off_until, first_on_at, excluded \
+             FROM jobs.machines",
+    )
+    .fetch_all(db)
+    .await?;
+    rows.into_iter()
+        .map(
+            |(device, switch, unclean, off_by_operator, off_until, first_on_at, excluded)| {
+                let machine = Machine {
+                    device,
+                    switch: read_word::<Switch>(&switch)?,
+                    unclean,
+                    off_by_operator,
+                    off_until,
+                    first_on_at,
+                    excluded,
+                };
+                Ok((device, machine))
+            },
+        )
+        .collect()
+}
+
 /// Writes the state of the machine for work at `now`; the exclusion is not changed.
 pub(in crate::work::jobs) async fn save_machine(
     conn: &mut PgConnection,

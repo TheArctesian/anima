@@ -73,6 +73,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "connectDawarich",
   "addApprovedModelSource",
   "setModelPublisherApproval",
+  "setDevicePolicy",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */

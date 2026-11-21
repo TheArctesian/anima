@@ -10,7 +10,7 @@ The hub groups its domains under parent nouns so `crates/hub/src/` stays within 
 
 | Group | Modules |
 | --- | --- |
-| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces`; `compute` (folder `compute/`, part `library`; R-NEW-modellibrary) |
+| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces`; `compute` (folder `compute/`, parts `library` and, task L1-5, `policy`; R-NEW-modellibrary) |
 
 The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/plans/extensions-plan.md`) are added by the task that adds their first code.
 
@@ -237,6 +237,7 @@ are private to `events`.
 | `reminders` (engine, new; R-148; K-E6; E0-7 T2 and T3) | `places` (`Place`, `Centre`, `list`, `current`), `locations` (`Sample`, `Seal`, `received`, `inside`, `RULE`), `notifications` (`queue_reminder`, `channels_exist`, `Reminder`, `Error`), `credentials` (`Vault`; `operational::keys`, `OperationalKey`, `VersionState`), `events` (`record`, `after`, `NewEvent`, `EventSummary`, `Bus`, the trail types), `extensions` (`on_keys` only: an extension that is off is not read; K-E6 Section 6 does not list this edge); the leaf `records`. The edge to `sources` of K-E6 Section 6 joins with the health of the accounts |
 | `notifications` (R-148; K-E6 Section 5, adds) | no new edge. New for the engine: `Reminder`, `Queued`, `queue_reminder(conn, vault, channels, (reminder, now)) -> Queued` and `RANDOM_TOPIC_MIN`. The vault opens the topic of an ntfy channel for the rule of REM-008 |
 | `credentials` (operational keys, adds; R-147, R-148; K-E5 Section 2) | `events` (the trail types, `audit`, `NewAudit`, `ClientAddr`, `Operator`); `access` (`Authenticated`, `operator_only`) only in `credentials/graphql.rs`, a graphql edge. A device is a `DeviceId` value only: the consumer rows reference `devices.devices` with a cascading foreign key, so `credentials` imports no `devices` code. `metrics` (its daemon ingest) calls `credentials::operational::{fetch, current_for, record_held}` |
+| `compute` (fleet, adds; compute plan task L1-5; waits for a ruling: R-NEW-devicepolicy) | `devices` (`Device`, `list`, `get`, `Error` only), `events` (the trail types), `metrics` (`hardware`, `Error` only), `jobs` (`machines`, `Machine`, `Error` only: the one switch "takes work", OD-C8, R-165) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -250,6 +251,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
+| `compute` (task L1-5; waits for R-NEW-devicepolicy) | `access` | the `Authenticated` guard |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |

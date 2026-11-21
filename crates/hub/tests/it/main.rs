@@ -6,6 +6,7 @@ mod browser;
 mod builds;
 mod catalogue;
 mod checks;
+mod compute;
 mod containers;
 mod contract;
 mod credentials;

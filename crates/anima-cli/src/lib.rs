@@ -11,6 +11,7 @@ pub mod catalogue;
 pub mod checks;
 pub mod cli;
 pub mod code;
+pub mod compute;
 pub mod containers;
 pub mod contexts;
 pub mod daemons;
