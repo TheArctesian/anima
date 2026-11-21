@@ -204,10 +204,15 @@ fn can_use_tool(id: ProgramRequestId, request: &Value) -> Request {
         .as_str()
         .or_else(|| input["file_path"].as_str())
         .map_or_else(|| input.to_string(), str::to_owned);
-    let offered = request["permission_suggestions"]
+    // Only a rule for this session is offered: a rule for a settings file would stay after the
+    // thread, and "allow for the session" must not write a file of the program (THR-030).
+    let offered: Vec<Value> = request["permission_suggestions"]
         .as_array()
+        .map_or(&[][..], Vec::as_slice)
+        .iter()
+        .filter(|rule| rule["destination"] == "session")
         .cloned()
-        .unwrap_or_default();
+        .collect();
     Request {
         id,
         kind,

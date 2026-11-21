@@ -30,7 +30,7 @@ fn a_codex_turn_in_full_access_gives_calls_outputs_and_the_end() {
     );
 }
 
-const CODEX_APPROVAL: &str = r#"{"method":"item/commandExecution/requestApproval","id":1,"params":{"kind":"command","threadId":"t","turnId":"u","itemId":"exec-1","command":"/bin/zsh -lc 'mkdir x3a'","cwd":"/w","proposedExecpolicyAmendment":["mkdir","x3a"],"availableDecisions":["accept",{"acceptWithExecpolicyAmendment":{"execpolicy_amendment":["mkdir","x3a"]}},"cancel"]}}"#;
+const CODEX_APPROVAL: &str = r#"{"method":"item/commandExecution/requestApproval","id":1,"params":{"kind":"command","threadId":"t","turnId":"u","itemId":"exec-1","command":"/bin/zsh -lc 'mkdir x3a'","cwd":"/w","proposedExecpolicyAmendment":["mkdir","x3a"],"availableDecisions":["accept","acceptForSession",{"acceptWithExecpolicyAmendment":{"execpolicy_amendment":["mkdir","x3a"]}},"cancel"]}}"#;
 
 #[test]
 fn a_codex_approval_offers_only_the_rules_of_the_request() {
@@ -56,8 +56,8 @@ fn a_codex_approval_offers_only_the_rules_of_the_request() {
     let session =
         line(&CodexInput::answer(&request, &Answer::AllowForSession { rule: 0 }).expect("fits"));
     assert_eq!(
-        session["result"]["decision"]["acceptWithExecpolicyAmendment"]["execpolicy_amendment"][1],
-        "x3a"
+        session["result"]["decision"], "acceptForSession",
+        "the amendment of the exec policy, a lasting rule, is not offered"
     );
     assert!(CodexInput::answer(&request, &Answer::AllowForSession { rule: 1 }).is_err());
 }
@@ -156,4 +156,25 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
     let start = line(&written[2]);
     assert_eq!(start["params"]["sandbox"], "danger-full-access");
     assert_eq!(start["params"]["approvalPolicy"], "never");
+}
+
+#[test]
+fn thr_051_a_codex_reply_keeps_only_the_ids_of_the_thread_and_the_turn() {
+    let events = codex(
+        r#"{"id":1,"result":{"userAgent":"x","codexHome":"/Users/someone/.codex"}}
+{"id":2,"result":{"thread":{"id":"th-1","cwd":"/w","path":"/Users/someone/.codex/s.jsonl"}}}
+{"id":3,"result":{"account":{"email":"someone@example.com","planType":"pro"}}}"#,
+    );
+    let text = serde_json::to_string(&events).expect("events serialise");
+    assert!(!text.contains("someone"), "{text}");
+    assert!(
+        matches!(&events[1], DriveEvent::Reply { result, .. } if result["thread"]["id"] == "th-1")
+    );
+}
+
+#[test]
+fn thr_046_a_request_id_that_does_not_read_stops_the_turn() {
+    assert!(stops(&codex(
+        r#"{"method":"item/commandExecution/requestApproval","id":1.5,"params":{}}"#
+    )));
 }
