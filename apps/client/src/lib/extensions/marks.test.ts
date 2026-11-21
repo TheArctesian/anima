@@ -1,9 +1,16 @@
 import { expect, it } from 'vitest';
-import { markOf, storedView, storeView, VIEW_KEY } from './marks';
+import { markOf, pictureOf, storedView, storeView, VIEW_KEY } from './marks';
 
 it('EXT-001: each extension has its mark, and one that the client does not know has the mark of the page', () => {
   expect(markOf('projects')).toBe('carbon:folder');
   expect(markOf('not_known_yet')).toBe('carbon:grid');
+});
+
+it('OD-EXT-NEW-pictures: a built extension with a picture has one for each appearance; one not built has none', () => {
+  expect(pictureOf('projects', true)).toEqual({ dark: '/extensions/projects-dark.webp', light: '/extensions/projects-light.webp' });
+  expect(pictureOf('map', false)).toBeNull();
+  expect(pictureOf('projects', false)).toBeNull();
+  expect(pictureOf('not_known_yet', true)).toBeNull();
 });
 
 it('EXT-001: the view of the Extensions page is kept on the device, and is the list when nothing is kept', () => {
