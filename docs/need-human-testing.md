@@ -2090,7 +2090,8 @@ terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an Ap
    build. Expected before: `http://127.0.0.1:` and a port. After the build is installed and the link runs,
    wait one minute and run it again. Expected: `unix:` and the path of `link.sock`, and the row of this Mac shows
    metrics. If the link does not run, the line stays as it was and the row shows no metrics; start the
-   application, and within one minute the line changes. What you see: nothing to do; the metrics come back.
+   application, and within one minute the line changes. If the line does not change after the application has run for five minutes,
+   report it: such a daemon must be enrolled again (sign in again), and the log of the daemon says so. What you see: nothing to do; the metrics come back.
 7. An update of the link. Install a build with a different link program over this one and open it. Within
    one minute, `ls ~/Library/Application\ Support/ing.anima.desktop/link/program/` shows `anima-link` and no
    `anima-link.previous`, and the row of this Mac shows metrics with no gap longer than about one minute. What you

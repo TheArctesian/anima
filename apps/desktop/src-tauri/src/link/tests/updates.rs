@@ -27,7 +27,7 @@ fn hmd_054_an_update_moves_the_running_copy_aside_once_and_keeps_its_file() {
     fs::write(&copy, b"before").unwrap();
     let running = fs::metadata(&copy).unwrap().ino();
 
-    keep_running_copy(&copy);
+    assert!(keep_running_copy(&copy));
     let aside = previous(&copy);
     assert!(!copy.exists(), "the place is free for the new copy");
     assert_eq!(
@@ -40,7 +40,7 @@ fn hmd_054_an_update_moves_the_running_copy_aside_once_and_keeps_its_file() {
     // A second update before the unit started again: the link may still run from the copy
     // aside, so that copy stays, and the new copy is written over in its place.
     fs::write(&copy, b"new").unwrap();
-    keep_running_copy(&copy);
+    assert!(!keep_running_copy(&copy), "the copy aside stays");
     assert_eq!(fs::read(&aside).unwrap(), b"before");
     assert_eq!(fs::read(&copy).unwrap(), b"new");
 }
@@ -99,7 +99,7 @@ fn hmd_054_a_link_whose_copy_is_updated_stays_valid_and_its_restart_is_valid() {
     // The update as `place` makes it: the running copy aside, the new copy at its place.
     let new = folder.path().join("anima-link.new");
     signed_copy(&new, "stand.in.after");
-    keep_running_copy(&copy);
+    assert!(keep_running_copy(&copy));
     fs::rename(&new, &copy).unwrap();
     assert!(
         valid(before.id()),
