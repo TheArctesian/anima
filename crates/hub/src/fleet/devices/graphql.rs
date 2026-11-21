@@ -48,7 +48,7 @@ use self::{
     ssh::DeviceSsh,
 };
 use super::{
-    DevicesById, DevicesBySite, Error, FieldError, SitesById,
+    DevicesById, DevicesBySite, Error, FieldError, SitesById, hub_device,
     model::{Device, NewSiteInput, Site},
     rules::{validate_change, validate_new_device, validate_new_site},
     store,
@@ -215,6 +215,9 @@ impl Mutation {
         let add_default_check = input.add_default_check();
         let (form, bad_site) = input.into_form();
         let new = checked(validate_new_device(&form), bad_site)?;
+        if hub_device::is_hub_kind(&new.kind) {
+            return Err(invalid(&[hub_device::kind_refused()]));
+        }
         let trail = Trail::from_context(ctx)?;
         let id = DeviceId::from(Uuid::now_v7());
         let mut tx = begin(ctx).await?;
@@ -261,6 +264,9 @@ impl Mutation {
         }
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
+        hub_device::check_change(&mut *tx, id, &change)
+            .await
+            .map_err(to_graphql)?;
         let device = store::update_device(&mut tx, id, trail.now, &change)
             .await
             .map_err(to_graphql)?;

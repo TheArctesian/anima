@@ -1,5 +1,8 @@
 //! The hub's group: its members started in order, kept, and stopped in the reverse order
 //! (DBL-012). The link, the last member, is kept apart: its end does not end the group (F-6).
+//! So is the daemon of a hosted hub, after the link (HMD-071).
+
+mod own_daemon;
 
 use std::io;
 use std::net::SocketAddr;
@@ -184,10 +187,7 @@ impl Group {
         let gateway_address = unless_stopped(stop, ready).await?;
         gateway.stop_reading();
 
-        let hub = members::hosted(
-            members::hub(carried, folders, plan.listen, gateway_address),
-            &plan.pool,
-        );
+        let (hub, own_daemon) = own_daemon::hub_and_daemon(plan, gateway_address);
         let hub = self.launch(&hub, plan, limits.hub_stop)?;
         let ready = hub.line_where(limits.hub_ready, members::hub_address);
         let hub_address = unless_stopped(stop, ready).await?;
@@ -197,6 +197,9 @@ impl Group {
         let link = members::link(carried, folders);
         let link = LinkMember::start(link, log_path(plan, members::LINK), *limits, plan.clock);
         let link = self.link.insert(link).state();
+        if let Some((own, enrolled)) = own_daemon {
+            self.start_own_daemon(plan, &own, enrolled).await;
+        }
         Ok(Ready {
             hub: hub_address,
             recovered,

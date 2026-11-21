@@ -8,6 +8,7 @@ mod fields;
 pub(crate) mod graphql_read;
 mod guard;
 mod harness;
+mod hub_device;
 mod leak;
 mod password_credential;
 mod remote;
