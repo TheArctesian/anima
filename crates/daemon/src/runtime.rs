@@ -6,6 +6,7 @@
 
 mod agent_usage;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -20,9 +21,10 @@ use crate::hub::{HubClient, HubError, TIMEOUT};
 use crate::keys::{keeper::Keeper, store::KeyStore};
 use crate::push::pacing::RHYTHM;
 use crate::push::{Event, Pusher};
-use crate::readers::{self, Platform, gpu};
+use crate::readers::{self, Platform, Source, container::Container, gpu};
 use crate::report;
 use crate::sampling::Sampler;
+use crate::sampling::batteries::BatteryWatch;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
 use crate::sampling::inventory::InventoryWatch;
@@ -54,16 +56,37 @@ pub enum RunError {
     SamplingStopped,
     #[error("the token was issued by another hub than the configuration names")]
     OriginMismatch,
+    /// With `--hosted-hub`: the hub refused the token, which is now deleted, so that
+    /// `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
+    #[error("the hub refused the token; it is deleted, and the next start of the hub enrols again")]
+    TokenRefused,
 }
 
-/// Samples and pushes until `stop` completes.
+/// Why the push loop ended.
+#[derive(Debug, PartialEq, Eq)]
+enum PushEnd {
+    /// Sampling closed its side.
+    SamplingStopped,
+    /// The hub refused the token, and the run ends on a refusal.
+    TokenRefused,
+}
+
+/// Samples and pushes until `stop` completes. With `hosted_hub`, the folder of the data of a
+/// hosted hub, it reads that container and not the machine (HMD-071), and a refused token ends
+/// the run: the token is deleted, so the next start of the hub enrols again (HM-T35).
 ///
 /// # Errors
-/// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, or
-/// when sampling ends before `stop` (the service manager then restarts the daemon).
-pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunError> {
+/// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, when
+/// sampling ends before `stop` (the service manager then restarts the daemon), or, with
+/// `hosted_hub`, when the hub refuses the token.
+pub async fn run(
+    home: &Home,
+    hosted_hub: Option<PathBuf>,
+    stop: impl Future<Output = ()>,
+) -> Result<(), RunError> {
     let (pusher, device) = prepare(home)?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
+    let refusal_ends = hosted_hub.is_some();
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
     let stopping = Arc::new(AtomicBool::new(false));
     let usage = tokio::spawn(count(
@@ -71,10 +94,18 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
         sender.clone(),
         Arc::clone(&stopping),
     ));
-    let mut sampling = tokio::spawn(sample(Platform::current(), sender));
+    let source = hosted_hub.map_or(Source::Machine(Platform::current()), |data| {
+        let processors = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+        let processors = u64::try_from(processors).unwrap_or(1);
+        Source::HostedHub(Container::new(PathBuf::from("/"), data, processors))
+    });
+    let mut sampling = tokio::spawn(sample(source, sender));
     report::running(device);
     let outcome = tokio::select! {
-        () = push(pusher, receiver) => Err(RunError::SamplingStopped),
+        ended = push(pusher, receiver, refusal_ends) => match ended {
+            PushEnd::SamplingStopped => Err(RunError::SamplingStopped),
+            PushEnd::TokenRefused => Err(forget_refused(home)),
+        },
         ended = &mut sampling => {
             report::sampling_ended(&ended);
             Err(RunError::SamplingStopped)
@@ -110,24 +141,39 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
     ))
 }
 
+/// Deletes the token that the hub refused; the key cache went with the refusal (R-147).
+fn forget_refused(home: &Home) -> RunError {
+    match TokenStore::open(home).forget() {
+        Ok(()) => RunError::TokenRefused,
+        Err(error) => error.into(),
+    }
+}
+
 /// Every 2 seconds: read, make a sample, and send the point each 10-second window closes.
-async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
-    let mac = platform == Platform::Macos;
+async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
+    let mac = matches!(source, Source::Machine(Platform::Macos));
+    let gpus = source.has_gpus();
     let mut sampler = Sampler::new();
     let mut drives = DriveWatch::new();
-    let mut watch = Watch::start(discover(mac, &events).await, Instant::now());
+    let mut batteries = BatteryWatch::new();
+    let mut watch = Watch::start(discover(mac, gpus, &events).await, Instant::now());
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         ticks.tick().await;
         if watch.due(Instant::now()) {
-            watch.replace(discover(mac, &events).await, Instant::now());
+            watch.replace(discover(mac, gpus, &events).await, Instant::now());
         }
         let found = &watch.found;
         let now = Utc::now();
-        let reading = readers::reading(platform, now).await;
+        let reading = source.reading(now, std::time::Instant::now()).await;
         if let Some(changed) = drives.changed(reading.drives.as_deref())
             && events.send(Event::Drives(changed)).await.is_err()
+        {
+            return;
+        }
+        if let Some(changed) = batteries.changed(reading.batteries.as_deref())
+            && events.send(Event::Batteries(changed)).await.is_err()
         {
             return;
         }
@@ -183,24 +229,38 @@ impl Watch {
     }
 }
 
-/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4).
-async fn discover(mac: bool, events: &mpsc::Sender<Event>) -> Discovery {
-    let found = Discovery::new(gpu::read(gpu::Sources::ALL, mac).await);
+/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4). With
+/// `look` false (a hosted hub) it finds none.
+async fn discover(mac: bool, look: bool, events: &mpsc::Sender<Event>) -> Discovery {
+    let read = if look {
+        gpu::read(gpu::Sources::ALL, mac).await
+    } else {
+        Vec::new()
+    };
+    let found = Discovery::new(read);
     events.send(Event::Gpus(found.announce.clone())).await.ok();
     found
 }
 
 /// Keeps what sampling sends and pushes it every 10 seconds, or after the wait a failure asks.
-async fn push(mut pusher: Pusher, mut events: mpsc::Receiver<Event>) {
+/// With `refusal_ends`, a refused token ends it; otherwise pushing waits and tries again.
+async fn push(
+    mut pusher: Pusher,
+    mut events: mpsc::Receiver<Event>,
+    refusal_ends: bool,
+) -> PushEnd {
     let mut next = Instant::now() + RHYTHM;
     loop {
         tokio::select! {
             event = events.recv() => match event {
                 Some(event) => pusher.accept(event),
-                None => return,
+                None => return PushEnd::SamplingStopped,
             },
             () = sleep_until(next) => {
                 let wait = pusher.push_due(Utc::now()).await;
+                if refusal_ends && pusher.is_stopped() {
+                    return PushEnd::TokenRefused;
+                }
                 while let Ok(event) = events.try_recv() {
                     pusher.accept(event);
                 }
@@ -251,7 +311,7 @@ mod tests {
     #[tokio::test]
     async fn k8_4_sampling_starts_by_announcing_the_gpus() {
         let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);
-        let sampling = tokio::spawn(sample(Platform::Linux, sender));
+        let sampling = tokio::spawn(sample(Source::Machine(Platform::Linux), sender));
         let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
         sampling.abort();
         assert!(matches!(first, Ok(Some(Event::Gpus(_)))));

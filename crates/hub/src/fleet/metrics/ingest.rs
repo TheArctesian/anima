@@ -26,7 +26,7 @@ use chrono::TimeDelta;
 use zeroize::Zeroizing;
 
 pub use enrolment::DaemonEnrolment;
-pub(super) use enrolment::{make_code, revoke};
+pub(super) use enrolment::{make_code, own_device_code, revoke};
 pub use routes::daemon_router;
 pub use stale::spawn_stale_watch;
 pub(super) use stale::without_fresh_daemon;

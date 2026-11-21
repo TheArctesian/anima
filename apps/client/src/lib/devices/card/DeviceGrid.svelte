@@ -7,6 +7,8 @@
   import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import DeviceCard from './DeviceCard.svelte';
+  import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
+  import type { LiveMemory } from '$lib/metrics/container/memory.svelte';
   import './geometry.css';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import { listItems, UNGROUPED } from '../list/look';
@@ -22,9 +24,13 @@
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
     screenSharing?: CardScreenSharing;
     wake?: WakeApi;
+    /** The latest charge of each battery of each device (MET-032). */
+    charges?: Pick<LiveCharges, 'of'>;
+    /** The bytes of memory in use of the hub's own device (HMD-073). */
+    memory?: Pick<LiveMemory, 'of'>;
   }
 
-  const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
+  const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing, charges, memory }: Props = $props();
   const held = new HeldOrder<CardDevice>(
     () => listItems(devices, query),
     () => `${query.sort} ${query.statuses.join(',')}`,
@@ -41,7 +47,7 @@
       {#if item.kind === 'group'}
         {item.title}<span class="count">{item.count}</span>
       {:else}
-        <DeviceCard device={item.device} beats={beats.get(item.device.id)} {onConnect} {onOpenWeb} {wake} {screenSharing} />
+        <DeviceCard device={item.device} beats={beats.get(item.device.id)} {onConnect} {onOpenWeb} {wake} {screenSharing} {charges} {memory} />
       {/if}
     </li>
   {/each}

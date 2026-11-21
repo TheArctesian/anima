@@ -4,6 +4,7 @@ mod api_keys;
 mod bearer;
 mod browser;
 mod builds;
+mod catalogue;
 mod checks;
 mod containers;
 mod contract;

@@ -19,8 +19,10 @@ const WILL_DO: Readonly<Record<string, string>> = {
   model_gateway: 'It will give each of your computers one address for AI model requests. The keys stay on the hub.',
 };
 
-/** The hint of an extension that is not built: "Coming soon", then what it will do when the plan says it (R-223). */
-export function comingSoon(key: string): string {
-  const line = WILL_DO[key];
-  return line === undefined ? 'Coming soon' : `Coming soon. ${line}`;
+/**
+ * What the extension `key`, which is not built, will do, or nothing when the plan says nothing. The row shows the tag
+ * "Coming soon" beside it (R-223).
+ */
+export function willDo(key: string): string {
+  return WILL_DO[key] ?? '';
 }

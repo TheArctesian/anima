@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CatalogueView from '$lib/catalogue/CatalogueView.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
@@ -10,8 +11,9 @@
   import type { ContainersStore } from './store.svelte';
 
   /**
-   * HOST-013: what Docker has on a device. The containers with the log or the details of the selected one, and the
-   * images, the volumes and the networks (HOST-020). Stage 1 only reads: no control here changes the device.
+   * HOST-013: what Docker has on a device. The containers with the log or the details of the selected one, the
+   * images, the volumes and the networks (HOST-020), and the catalogue that an install would take from (task H38).
+   * No control here changes the device.
    */
   const { store }: { store: ContainersStore } = $props();
 
@@ -20,6 +22,7 @@
     { value: 'images', label: 'Images' },
     { value: 'volumes', label: 'Volumes' },
     { value: 'networks', label: 'Networks' },
+    { value: 'catalogue', label: 'Catalogue' },
   ] as const;
   type View = (typeof VIEWS)[number]['value'];
 
@@ -44,6 +47,7 @@
   function show(next: View): void {
     view = next;
     if (next === 'networks') void store.storage.networks.open();
+    else if (next === 'catalogue') void store.catalogue.open();
     else if (next !== 'containers') void store.storage.storage.open();
   }
 </script>
@@ -86,6 +90,8 @@
         {/if}
       </section>
     {/if}
+  {:else if view === 'catalogue'}
+    <CatalogueView store={store.catalogue} />
   {:else}
     <StorageTables store={store.storage} kind={view} />
   {/if}

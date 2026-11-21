@@ -371,6 +371,9 @@ type Device {
   metrics(range: MetricRange!): [MetricSeries!]!
   # metrics
   gpus: [Gpu!]!
+  # metrics (MET-032)
+  "The batteries that power the device, by name, as its daemon last listed them; empty for a device with none."
+  batteries: [Battery!]!
   # metrics (MET-026, MET-029)
   storage: Storage!
   checks: [Check!]!
@@ -766,6 +769,8 @@ enum MetricKind {
   DISK_WRITE_BPS
   "The share of time one drive had I/O in flight; the label is the drive name (MET-028)."
   DISK_BUSY_PERCENT
+  "The charge of one battery, 0 to 100; the label is the battery name (MET-032)."
+  BATTERY_PERCENT
 }
 
 # MET-003
@@ -780,6 +785,26 @@ enum GpuVendor {
   AMD
   INTEL
   APPLE
+}
+
+# MET-032
+enum BatteryState {
+  CHARGING
+  DISCHARGING
+  FULL
+  "On mains, not charged."
+  NOT_CHARGING
+  UNKNOWN
+}
+
+"A battery that powers a device (MET-032). Its charge is the series BATTERY_PERCENT with its name as the label."
+type Battery {
+  name: String!
+  state: BatteryState!
+  "Seconds to empty while it discharges or to full while it charges."
+  secondsLeft: Int
+  "The capacity when full against the capacity of its design, 0 to 100."
+  healthPercent: Int
 }
 
 type Gpu {
@@ -1276,6 +1301,74 @@ type ComposeFromDockerRun {
   notes: [ComposeRunNote!]!
   "The options of Docker in the command that are not in the file, by name only (never a value), each one time; an option that Docker does not have is `(an unknown option)`. An option is not an error."
   notConverted: [String!]!
+}
+
+"What an entry of the catalogue installs (R-216). DATABASE: a database server for the applications of the machine."
+enum CatalogueEntryKind {
+  APPLICATION
+  DATABASE
+}
+
+"A need of an entry beyond the default rules of a Compose file (HOST-047). NETWORK_PORT: a port on each address of the machine, which needs the setting Open to the network at the machine (R-229). ENGINE_SOCKET: the socket of the container engine; such an entry is never installed (R-247). HOST_NETWORK and DEVICE: no rule permits them yet."
+enum CatalogueMarkKind {
+  NETWORK_PORT
+  ENGINE_SOCKET
+  HOST_NETWORK
+  DEVICE
+}
+
+"Why the hub does not install an entry of the catalogue (task H38). NOT_LISTED: the catalogue lists no entry with this identifier. ENGINE_SOCKET: the entry needs the socket of the container engine (R-247). INSTALL_NOT_BUILT: the install needs task H6 of the hosted applications plan, which is not built."
+enum CatalogueInstallRefusal {
+  NOT_LISTED
+  ENGINE_SOCKET
+  INSTALL_NOT_BUILT
+}
+
+"A port on the network that an entry needs (a NETWORK_PORT mark)."
+type CatalogueNetworkPort {
+  port: Int!
+  "tcp or udp."
+  protocols: [String!]!
+}
+
+"What the hub answers to the install of an entry. No machine is reached and nothing is kept."
+type CatalogueInstall {
+  "Why the hub does not install the entry; null when it would. Never null today."
+  refusal: CatalogueInstallRefusal
+  "The fixed text of the refusal, for a person."
+  reason: String
+  "The entry publishes a port on the network: the machine needs the setting Open to the network (R-229)."
+  needsOpenToNetwork: Boolean!
+}
+
+"An entry of the catalogue that ships with Anima (HOST-047, R-300). The recipes are built into the hub, and the hub lists only those that pass the static test of task H36."
+type CatalogueEntry {
+  "The identifier of the entry, a name of letters, digits, '-' and '_'."
+  id: String!
+  name: String!
+  description: String!
+  "The version of the application."
+  version: String!
+  author: String!
+  tags: [String!]!
+  kind: CatalogueEntryKind!
+  "An https:// address of the icon, or null."
+  iconUrl: String
+  documentationUrl: String!
+  "What the entry needs beyond the default rules of a Compose file. Empty for most entries."
+  marks: [CatalogueMarkKind!]!
+  "The ports on the network of the NETWORK_PORT marks."
+  networkPorts: [CatalogueNetworkPort!]!
+  "The day (YYYY-MM-DD) of the last test on a machine, which passed. Null: not tested on a machine. An entry whose last test failed is not listed."
+  lastMachineTest: String
+  "The day (YYYY-MM-DD) of the last pin of the digests of the images (R-233)."
+  pinned: String!
+  "What the hub answers to an install of this entry now."
+  install: CatalogueInstall!
+  "The text of the Compose file. It holds no secret: each secret is a variable that the install makes."
+  composeFile: String!
+  "The names of the variables of the environment file of the entry, in its order. Never a value."
+  environmentVariables: [String!]!
 }
 
 "One line of the log of a container: what it wrote to either output stream."
@@ -3540,6 +3633,12 @@ type Query {
   "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
   composeFromDockerRun(command: String!): ComposeFromDockerRun!
 
+  # The catalogue (HOST-047, R-300, R-299; task H38)
+  "Each entry of the catalogue that ships with Anima and passes the static test, in the order of the identifiers. The hub reads no machine and no network. Open to a read key."
+  catalogueEntries: [CatalogueEntry!]!
+  "The listed entry with this identifier; null when none is listed. Open to a read key."
+  catalogueEntry(id: String!): CatalogueEntry
+
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
   timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
@@ -3878,6 +3977,10 @@ type Mutation {
   grantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
   "Ends a grant; the daemon drops the key at its next report. NOT_FOUND when there is no such grant. Login or browser token only (D-23, R-147)."
   ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
+
+  # The catalogue (HOST-047, R-234; task H38)
+  "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
+  installCatalogueEntry(entryId: String!, deviceId: ID!): CatalogueInstall!
 }
 
 type Subscription {

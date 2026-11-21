@@ -3,13 +3,13 @@
 use chrono::{DateTime, Utc};
 use daemon_core::{
     inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict},
-    readings::{Drive, DriveKind},
+    readings::{self, Drive, DriveKind},
 };
 
 use crate::{
     fleet::metrics::{
-        Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries, capabilities::Capabilities,
-        gpu_label::chart_label, latest::Latest,
+        Battery, Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries,
+        capabilities::Capabilities, gpu_label::chart_label, latest::Latest,
     },
     ids::{DeviceId, MetricSeriesId},
 };
@@ -140,6 +140,29 @@ impl TryFrom<DriveRow> for Drive {
             kind: DriveKind::parse(&row.kind).ok_or(Error::Unreadable)?,
             size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::Unreadable)?,
             mounts: row.mounts,
+        })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+pub(super) struct BatteryRow {
+    pub(super) device_id: DeviceId,
+    name: String,
+    state: String,
+    seconds_left: Option<i32>,
+    health_percent: Option<i16>,
+}
+
+impl TryFrom<BatteryRow> for Battery {
+    type Error = Error;
+
+    fn try_from(row: BatteryRow) -> Result<Self, Error> {
+        let state = readings::BatteryState::parse(&row.state).ok_or(Error::Unreadable)?;
+        Ok(Self {
+            name: row.name,
+            state: state.into(),
+            seconds_left: row.seconds_left,
+            health_percent: row.health_percent.map(i32::from),
         })
     }
 }

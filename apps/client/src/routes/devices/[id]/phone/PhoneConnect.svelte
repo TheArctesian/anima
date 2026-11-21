@@ -15,8 +15,8 @@
 
   const { device, onConnect, onSettings }: Props = $props();
   const actions = $derived.by(() => {
-    const { main, others } = connectActions(headerLine(device), device.name);
-    return [main, ...others];
+    const actions = connectActions(headerLine(device), device.name);
+    return actions === null ? [] : [actions.main, ...actions.others];
   });
   const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
 

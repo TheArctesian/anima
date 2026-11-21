@@ -232,7 +232,13 @@ describe('settings tab: saving on change (D17, DEV-010, D-2, SEC-006)', () => {
 
 });
 
-describe('settings tab: opening a section (DEV-022)', () => {
+describe('settings tab: opening a section (DEV-022, HMD-045)', () => {
+  it('HMD-045: the hub\'s own device has no SSH, VNC or RDP row, only why', async () => {
+    await show(answers({ Device: { device: device({ kind: 'hub' }) } }), '?tab=settings');
+    const connections = document.querySelector('[data-section="device-settings-connections"]');
+    expect([connections?.querySelector('[data-connection]'), connections?.textContent?.includes('No session reaches the container')]).toEqual([null, true]);
+  });
+
   it('DEV-022: a header button with Settings already open opens its section, and the no-key SSH focuses Test connection', async () => {
     await show(answers(), '?tab=settings&section=ssh');
     const rdp = document.querySelector<HTMLButtonElement>('[data-connection="rdp"] [aria-expanded]');

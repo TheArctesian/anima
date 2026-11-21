@@ -7,6 +7,8 @@ mod bodies;
 mod edge;
 mod heads;
 mod health;
+#[cfg(unix)]
+mod own_daemon;
 mod refused;
 mod reload;
 mod serving;
