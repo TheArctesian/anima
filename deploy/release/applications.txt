@@ -43,6 +43,7 @@ cli out crates/anima-applications/
 cli out crates/anima-database/
 cli out crates/anima-gateway/
 cli out crates/anima-local-hub/
+cli out crates/catalogue/
 cli out crates/compose-rules/
 cli out crates/daemon/
 cli out crates/daemon-core/
@@ -80,6 +81,7 @@ ios out crates/anima-applications/
 ios out crates/anima-database/
 ios out crates/anima-gateway/
 ios out crates/anima-local-hub/
+ios out crates/catalogue/
 ios out crates/compose-rules/
 ios out crates/daemon/
 ios out crates/daemon-core/

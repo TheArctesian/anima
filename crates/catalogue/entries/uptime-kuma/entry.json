@@ -1,0 +1,48 @@
+{
+  "id": "uptime-kuma",
+  "name": "Uptime Kuma",
+  "description": "Watches websites and services and tells you when one stops answering.",
+  "version": "2.5.12",
+  "author": "Louis Lam",
+  "tags": [
+    "monitoring"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/louislam/uptime-kuma/wiki",
+  "icon_url": null,
+  "anima": {
+    "images": [
+      {
+        "service": "uptime-kuma",
+        "image": "louislam/uptime-kuma@sha256:8e4b6bef96417ec98a35dc103c99cc64fc229a01e584e56d95d9004d2003c02a",
+        "tag": "2.5.12",
+        "resolved": "2026-11-20"
+      }
+    ],
+    "marks": [],
+    "volumes": [
+      {
+        "volume": "kuma",
+        "copy": "sqlite"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "uptime-kuma",
+      "port": 3001,
+      "reach": "http",
+      "path": "/",
+      "statuses": [
+        200,
+        302
+      ],
+      "body": null,
+      "limit_seconds": 180
+    },
+    "pinned": "2026-11-20",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

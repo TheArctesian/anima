@@ -39,8 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (224)
-## 2. Open decisions (228)
+## 2. Open decisions (249)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -116,6 +115,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-42 | Must the operator see the password of a database (HOST-041 says "shows its connection text one time")? A: no; the password is made on the machine and stays in t… | A first; B when a tool outside the machine needs the database. With A the hub never holds the password. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-43 | Before an application is public on the internet, is a second consent at the machine needed (Section 12.3 of hosted-applications-stage-2.md, SF-NEW-routepublish)… | A. A port that you opened for a look in the hub can be an administration page that must never be on the internet. It blocks the first public route. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-44 | One ACME account for the pool, held by the cloud service, or one for each hub, held by that hub (Section 12.5, SF-NEW-routeacme)? | One for each hub, with a limit of new hubs each hour: with one for the pool, the cloud service holds a key that asks for a certificate of each customer's name.… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-45 | May an entry with the mark `network-port` publish a port below 1024 when the machine has "Open to the network" on (R-229)? The rules of task H28 permit publishe… | A. Port 53 is the reason to install Pi-hole; the mark names the exact port, and the setting at the machine stays the gate. It needs a change of contract K10 Sec… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-46 | For your local network, on a hosted hub, where do the bytes go (Section 16.6 of hosted-applications-stage-2.md)? A: no proxy for the local network; the machine'… | A. One proxy; a hub that you host on your local network gives you the names there. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-47 | Streams on a hosted hub before the door has an address for each hub (Section 16.6)? A: no; streams only on a hub that a person hosts until then. B: the door giv… | A. A range of ports on one address is hard to keep apart and to limit. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-48 | UDP through the link (Section 16.6)? A: TCP streams first; UDP after a change of the link contract and its security read. B: no UDP through the link; UDP only w… | A. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |

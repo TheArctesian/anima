@@ -1,0 +1,16 @@
+[package]
+name = "catalogue"
+description = "The recipes of the catalogue that ships with Anima, and the static test of each recipe (HOST-047, task H36)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+compose-rules = { path = "../compose-rules" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

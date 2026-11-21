@@ -1,0 +1,6 @@
+# Pi-hole. The install makes the password of the web interface; this file holds none.
+# generated at install
+WEB_PASSWORD=
+TZ=UTC
+# The port of the machine for the web interface.
+WEB_PORT=8053

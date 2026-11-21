@@ -390,7 +390,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
@@ -429,7 +429,14 @@ never a text that the operator wrote. The converted file holds only the values o
 the agent gave. Only the field `composeFile` of `anima_compose_from_run` keeps its lines in the
 cleaning of results (`mcp/untrusted.rs`); the tool gives the file only when that cleaning does not
 change it (at most 4,000 characters, no control or invisible character), and else gives why and the
-length of the whole file. No tool returns the details of a container
+length of the whole file. `anima_catalogue_list` and `anima_catalogue_show` (read, tool set
+`devices`; task H38 of [hosted-applications-plan.md](hosted-applications-plan.md)) list the entries
+of the catalogue that ships with Anima and describe one, with the names of its environment variables
+(never a value) and its Compose file, whose field `composeFile` keeps its lines and is cut at 4,000
+characters (`anima catalogue list` and `anima catalogue show`). `anima_catalogue_install` (change,
+tool set `devices`) asks for the install of an entry on a device, which R-234 opens to an API key and
+an agent (`anima catalogue install`); the hub refuses it with a fixed reason until task H6 exists,
+and it reaches no machine. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a
 secret as the environment can (MCP-004), so the root is closed to every API key and only
 `anima containers inspect` reads it.

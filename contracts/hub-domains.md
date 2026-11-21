@@ -227,6 +227,7 @@ are private to `events`.
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
 | `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
 | `containers` (work, new; R-149, operator, 2026-11-18; HOST-001, HOST-010) | `devices` (`Device`, `get`, `Error` only), `ssh` (`link`, `FixedCommand`, `HexDigits`, `CommandOutput`, `LinkError` only), `credentials` (`Vault` only) |
+| `catalogue` (work, new; R-NEW-buildnow, R-NEW-catalogueways; HOST-047; task H38) | — (no domain; the crate `catalogue` and the leaf `ids` only) |
 | `routes` (work, new; R-NEW-hubrouting, R-NEW-buildnow; HOST-046; task H21) | `devices` (`get`, `Device`, `Error` only), `events` (the trail types), `credentials` (`Vault`, `Secret`, `Sealed`, `Error` only); the leaves `targets` (`resolve_checked`, `connect`, `on_link`, `AddressPolicy`) and `config`; the crate `anima-route-proxy` (`wire` only) |
 | `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
 | `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `sealing_keys` and `records` |
@@ -261,6 +262,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `locations` (R-145; K-E4 Section 13) | `access` | the `Authenticated` guard on `locationSamples`, `locationIngestTokens`, `transferContext`, `recordLocationSamples`, `createLocationIngestToken`, `revokeLocationIngestToken`; `operator_only` on `createLocationIngestToken`, which joins `API_KEY_REFUSED_ROOTS` (it returns a secret) |
 | `sources` (R-261; K-E1 Section 7b, adds) | `access` | `operator_only` on `connectDawarich`, which joins `API_KEY_REFUSED_ROOTS` (it takes a secret) |
 | `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks`, `containerImageUpdates`, `composeFileCheck` and `composeFromDockerRun`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
+| `catalogue` (task H38) | `access` | the `Authenticated` guard on `catalogueEntries`, `catalogueEntry` and `installCatalogueEntry`; none joins `API_KEY_REFUSED_ROOTS`: a key and an agent may ask for the install of an entry of the tested catalogue (R-234) |
 
 | `routes` (R-NEW-hubrouting; task H21) | `access` | the `Authenticated` guard on `applicationRoutes`, `applicationRoute`, `addApplicationRoute`, `checkApplicationRoute`, `removeApplicationRoute`; `operator_only` and `operator_status` on the three mutations, which join `API_KEY_REFUSED_ROOTS` (making an application public is for a person with a second factor, SF-NEW-routepublish) |
 
@@ -844,6 +846,22 @@ The list of the containers also asks Docker for two more labels of Compose, the 
 Each read is one fixed command line of `docker` words that only read (`container inspect`, `top`, `system df`, `network ls`, `ps`), joined with `&&`. The only operator value in one is the container identifier.
 
 `ssh` gains for this domain (same ruling): `HexDigits` (1 to 64 hex digits kept as values), `FixedCommand::hex(self, &HexDigits)` and `FixedCommand::number(self, u32)`. Both render from values, so operator text still cannot enter a command.
+
+## catalogue (work; R-NEW-buildnow, R-NEW-catalogueways; HOST-047; task H38)
+
+Folder `crates/hub/src/work/catalogue/` (group `work/`). The catalogue that ships with Anima. The recipes of the crate `catalogue` are built into the hub binary by the build script of that crate; at the first read the hub runs the static test of task H36 on each one and keeps, for the life of the process, only those with no finding. The domain has no table, no store, no event and no log line, and it reaches no machine and no network. No domain imports `catalogue`; `schema.rs` merges `catalogue::graphql::Query` and `catalogue::graphql::Mutation`.
+
+```rust
+/// Each entry that passed the static test, in the order of the identifiers.
+pub fn entries() -> &'static [Listed];
+/// The listed entry with this identifier.
+pub fn entry(id: &str) -> Option<&'static Listed>;
+/// The answer to the install of an entry: NOT_LISTED, ENGINE_SOCKET (R-247) or INSTALL_NOT_BUILT (task H6), and whether
+/// the machine needs "Open to the network" (R-229). It never installs: task H6 is not built.
+pub fn install(listed: Option<&Listed>) -> Install;
+```
+
+A `Listed` holds the entry, the text of its Compose file (with no secret: each secret is a variable that the install makes) and the names of the variables of its example environment file, never a value. `installCatalogueEntry` checks only the form of the device ID; it reads no device row and writes no audit entry, because it changes nothing.
 
 ## guac-protocol crate (WP-08)
 

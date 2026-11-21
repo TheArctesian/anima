@@ -138,6 +138,7 @@
       "ssh",
       "credentials"
     ],
+    "catalogue": [],
     "locations": [
       "places",
       "events",
@@ -239,6 +240,9 @@
       "access"
     ],
     "containers": [
+      "access"
+    ],
+    "catalogue": [
       "access"
     ],
     "files": [

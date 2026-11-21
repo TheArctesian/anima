@@ -1,0 +1,20 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f
+    environment:
+      DOMAIN: ${DOMAIN:-http://localhost:8222}
+      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-false}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - target: 80
+        published: ${VAULTWARDEN_PORT:-8222}
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: vaultwarden
+        target: /data
+volumes:
+  vaultwarden:
