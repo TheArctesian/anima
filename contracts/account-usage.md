@@ -1,6 +1,6 @@
 # The figures of an account for the page of a hosted hub
 
-Status: **proposed**, version 0.4, 2026-11-20. HMD-073 in form B of [hosted-mode.md](../docs/proposals/hosted-mode.md) Section 6.11 (approved, R-NEW-hubusage) says that the page of the hub takes the figures of the account from the account, "in one form, which the contract defines once". This file is that form, as the sessions of the pool (`anima-cloud`), of the account site (`anima-site`) and of the hub agreed it on 2026-11-20. The body is the answer of the pool for an account and a month; the pool owns its members. It stays proposed until the route and the path are built; it changes only by a ruling after that (CON-001). Task HM-T38 builds the client against it.
+Status: **proposed**, version 0.5, 2026-11-20. HMD-073 in form B of [hosted-mode.md](../docs/proposals/hosted-mode.md) Section 6.11 (approved, R-NEW-hubusage) says that the page of the hub takes the figures of the account from the account, "in one form, which the contract defines once". This file is that form, as the sessions of the pool (`anima-cloud`), of the account site (`anima-site`) and of the hub agreed it on 2026-11-20. The body is the answer of the pool for an account and a month; the pool owns its members. It stays proposed until the route and the path are built; it changes only by a ruling after that (CON-001). Task HM-T38 builds the client against it.
 
 ## 1. Who answers, and to whom
 
@@ -17,6 +17,7 @@ The request names no account, no hub and no month: each way in answers only for 
 
 ```json
 {
+  "version": 1,
   "period": "2026-11",
   "until": 1795161600,
   "currency": "usd",
@@ -35,17 +36,18 @@ The request names no account, no hub and no month: each way in answers only for 
 
 | Member | Meaning | How the page uses it |
 | --- | --- | --- |
-| `period` | The month of the figures, `YYYY-MM`. | Read; not shown. |
+| `version` | The version of this form, `1`, first member of the body of the pool, so that the door and the site give the same bytes. | Ignored. |
+| `period` | The month of the figures, `YYYY-MM`: the calendar month in UTC. | Read; not shown. |
 | `until` | The end of the counted time, in Unix seconds, at most now. | The time of the figures. |
-| `currency` | The currency of `amount` and `total`, three letters (ISO 4217, any case). | Made upper case. |
+| `currency` | The currency of `amount` and `total`, three letters (ISO 4217, any case); `usd` today. | Made upper case. |
 | `lines[].kind`, `lines[].seconds` | Whole seconds of the month up to `until`, by kind `running` or `asleep`. | Hours awake: the sum of the `seconds` of kind `running`. Hours asleep: of kind `asleep`. |
 | `total` | The amount of the month so far, before tax, in the smallest unit of `currency`. It comes from the usage record of the pool, from which the invoice comes. | The amount, when the plan is charged and `prices_set` is `true`. |
 | `prices_set` | `false` when the pool has no prices. | With `false` and a charged plan, the amount is "Not available just now" and the estimate note is not shown. |
-| `hubs[]` | The hubs of the account, as they are now, whatever the period. | The hub of the page: the entry whose `id` is the first label of the host of the page (`https://<hub id>.hub.anima.ing`), else the only entry. With several entries and none named, the figures are "Not available just now". |
+| `hubs[]` | The hubs of the account, as they are now, whatever the period. Never empty in a `200`: the site answers `409` for an account with no hub. | The hub of the page: the entry whose `id` is the first label of the host of the page (`https://<hub id>.hub.anima.ing`), else the only entry. With several entries and none named, the figures are "Not available just now". |
 | `hubs[].plan` | The plan of the hub. `free` is not charged. | The name of the plan, with a capital first letter. With `free`, "Nothing is charged on this plan" in the place of an amount. |
 | `hubs[].disk_limit_bytes` | The disk limit of the plan. | "Disk used of the plan". |
-| `hubs[].disk_used_bytes` | The bytes that the quota counts as used, the system of the hub included; `null` when the pool cannot read them. | With `null`, the page shows the limit and no percentage. This figure is not the "data of your hub" that the hub measures (HMD-072); the page shows the two apart. |
-| `owes` | Added by the site: `true` when the account owes an amount of an earlier month. No sum. | With `true`, the page points to the account page. A missing `owes` is `false`. |
+| `hubs[].disk_used_bytes` | The bytes that the quota counts as used: all that the hub refers to, the system of the image of the hub included. `null` until the server gives the pool these figures, and when the pool cannot read them. | With `null`, the page shows the limit and no percentage. This figure is not the "data of your hub" that the hub measures (HMD-072); the page shows the two apart. It is larger than the data of the hub by about the size of the system of the image, so the two figures differ even for a hub with almost no data of its own. |
+| `owes` | Added by the site only: `true` when the last payment of the account failed. No sum. The door leaves it out: the pool does not know it. | With `true`, the page points to the account page. A missing `owes` is `false`, so a browser shows no pointer. Whether the door adds it (from the claim of the hand-over that it holds) is an open decision. |
 
 A member that the client does not use (`account`, `lines[].size`, `lines[].hours`, `lines[].amount`, `hubs[].state`, `hubs[].size` and any new member) is ignored. A body without a member that the page uses, or with such a member of another kind, is shown as "Not available just now".
 
