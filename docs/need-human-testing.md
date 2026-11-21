@@ -2686,3 +2686,22 @@ headless WebKit with sample devices. No person saw it in a desktop window, at th
    Expected: no row slides; rows and views fade only.
 
 Result: Open.
+
+### HT-NEW-d4flake: D-4 of the deploy tests gives 504 for 502 on a busy machine
+
+For: the owner of the deploy tests (`deploy/test/localapi-server.test.ts`). R-NEW-d4flake permits a
+documents-only push with this one failure until it is corrected.
+
+What fails: "D-4 an endless upstream body gives 502 promptly" (and "an upstream body over the cap
+gives 502") receives 504 where it expects 502. It fails in the full deploy suite on a clean
+`origin/dev` at a high load: 741 pass and 1 fail at load 63; 1 failure in 3 full runs. Alone and
+under load it failed 9 of 10 and 5 of 10 runs. On a quieter machine it passed alone, 3 of 3 and
+15 of 15 runs. The gates on GitHub do not show it.
+
+Steps:
+
+1. On a Mac with a load above 60 (for example, during a full `bun run gates` of a different
+   worktree), run `bun run --cwd deploy test` on `origin/dev`. Expected now: D-4 can fail with 504.
+2. After a correction, run step 1 again five times. Expected: D-4 passes each time.
+
+Result: Open.
