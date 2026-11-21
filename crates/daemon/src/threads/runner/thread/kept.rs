@@ -3,6 +3,8 @@
 
 use agent_threads::control::{Change, Update};
 
+use super::Open;
+
 use super::{KEPT, KEPT_BYTES, Thread};
 
 impl Thread {
@@ -24,6 +26,29 @@ impl Thread {
             from = at;
         }
         self.kept.range(from..).map(|(update, _)| update)
+    }
+
+    /// What a new watch must know of this thread however few updates it gets: its row and each
+    /// request that waits, as new changes (THR-030).
+    #[must_use]
+    pub fn now_changes(&self) -> Vec<Change> {
+        let mut changes = vec![Change::State {
+            state: self.row.state,
+            row: self.row.clone(),
+        }];
+        changes.extend(self.open.iter().filter(|(_, open)| !open.answering).map(
+            |(id, Open { request, .. })| Change::Asked {
+                request: *id,
+                detail: request.clone(),
+            },
+        ));
+        changes
+    }
+
+    /// After a restart: the numbers go on from `at_least`, as the record does not hold each
+    /// number that a client saw.
+    pub fn number_from(&mut self, at_least: u64) {
+        self.seq = self.seq.max(at_least);
     }
 
     /// Gives `change` the next number of the thread and keeps it.

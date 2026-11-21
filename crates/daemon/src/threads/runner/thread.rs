@@ -72,6 +72,10 @@ pub struct Saved {
     /// the program never gets a second answer (THR-030).
     #[serde(default)]
     pub answering: Vec<Uuid>,
+    /// The number of the last update, so that a client that watches across a restart of the
+    /// runner never takes a new update for an old one.
+    #[serde(default)]
+    pub seq: u64,
 }
 
 /// One thread.
@@ -130,6 +134,7 @@ impl Thread {
                 .iter()
                 .map(|(id, open)| (*id, open.line.clone()))
                 .collect(),
+            seq: self.seq,
             answering: self
                 .open
                 .iter()
@@ -168,6 +173,7 @@ impl Thread {
             RunState::Starting | RunState::Stopped | RunState::Unknown => None,
         };
         thread.held = thread.row.state != RunState::Stopped;
+        thread.seq = saved.seq;
         for (id, line) in saved.open {
             let events = thread.decode(line.as_bytes());
             if let Some(DriveEvent::Request(request)) = events.into_iter().next() {
