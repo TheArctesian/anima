@@ -46,8 +46,11 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
     check fails the daemon stops with an error and sends nothing. Then, for each request, after it connects
     and before it writes a byte, the daemon reads the peer of the connection from the kernel (R-NEW-socketpeer):
     the user of the peer must be the user that runs the daemon; on macOS, a daemon with a Developer ID
-    signature also requires that the process of the peer has a valid Developer ID signature of the same team
-    (`codesign --verify` with the requirement of the release). If the peer fails, the daemon closes the
+    signature also requires that the process of the peer is `anima-link` (its signing identifier) with a valid
+    Developer ID signature of the same team, and that its file is the program that runs (`codesign --verify`
+    with the requirement of the release). The daemon takes its own team from its own signature only when
+    `codesign --verify` of the running daemon agrees, so a file put in the place of the daemon stops it with an
+    error; it does not make it a daemon with no signature. If the peer fails, the daemon closes the
     connection, sends nothing, and the request fails (Section 7). A daemon with no Developer ID signature (a
     build for development) and each daemon on Linux check the user only: on Linux a program of the same user
     can read the token file in any case (Section 2). Thus a program of a different user can neither open the

@@ -2000,7 +2000,8 @@ containers of your user, and `sudo apt remove podman` removes the program.
 Built: on the branch `hosted/daemon-socket-peer` (R-NEW-socketpeer). Before each request on the socket of the link, the
 daemon reads the user and the process of the peer from the kernel (`crates/daemon/src/hub/peer.rs`,
 `hub/unix.rs`). The user must be its own. On macOS a daemon with a Developer ID signature also runs
-`/usr/bin/codesign --verify` on the process of the peer, with the Developer ID requirement of its own team; a
+`/usr/bin/codesign` on the process of the peer: it must be `anima-link` (signing identifier) with the Developer ID
+requirement of the daemon's own team, and its file must be the program that runs; a
 peer that fails gets no byte, and the push fails with "the program at the socket of anima-link is not the Anima
 link, so nothing was sent to it". A daemon with no Developer ID signature (a build for development) and each
 daemon on Linux check the user only. On macOS a daemon that was enrolled with the old link origin
@@ -2028,6 +2029,9 @@ terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an Ap
    about one minute the row of this Mac shows metrics again.
 5. On `pop-os`, open Devices on the hub. Expected: the row `pop-os` shows metrics (the user check passes for
    the real link).
+6. If step 1 fails: run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link
+   2>&1 | grep '^Identifier'` and report the line. The daemon accepts only `anima-link` or `anima-link-` and hex
+   digits; a different identifier of the release is a defect of this branch.
 
 ## Not built yet
 
