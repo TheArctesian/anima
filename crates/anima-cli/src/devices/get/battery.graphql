@@ -1,0 +1,13 @@
+# The charge of the batteries of `anima device get` (MET-032): the series BATTERY_PERCENT,
+# one for each battery, labelled with its name.
+query DeviceBatteryCharge($id: ID!) {
+  device(id: $id) {
+    metrics(range: HOUR) {
+      kind
+      label
+      points {
+        value
+      }
+    }
+  }
+}

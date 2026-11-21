@@ -108,3 +108,12 @@ pub struct DeviceMetrics;
     variables_derives = "Debug"
 )]
 pub struct DeviceUptime;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/devices/get/battery.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct DeviceBatteryCharge;
