@@ -3343,3 +3343,16 @@ screen reader, or a real window of the application.
 8. Do steps 1, 5 and 7 in the light appearance.
 
 Result: Open.
+
+### HT-105: the headscale VPS-001 test is slow under heavy load (VPS-001)
+
+Seen on the branch `quality/d4-deploy-flake`, in `deploy/headscale/tests`. One run of the VPS-001 test took 23.8 s while the
+load average of the Mac was near 70. The test passed, but a time limit can fail it under such load. This entry records the
+flake only. It is not fixed.
+
+1. On a Mac with a normal load, run `bun test deploy/headscale/tests` five times.
+   Expected: each VPS-001 test passes in a few seconds.
+2. Run it again while the load average is above 50.
+   Expected: it passes. If it fails with a timeout, record the time and the load here.
+
+Result: Open.
