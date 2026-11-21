@@ -84,6 +84,16 @@ test("the Windows installer carries the seven programs, and a Windows cargo buil
   expect(workflow.jobs["windows-gates"]?.steps.some((step) => step.run?.includes("binaries"))).toBe(false);
 });
 
+test("only the gates job leaves folders out of Defender's scanning, never the job that builds what people download", () => {
+  const excludes = (job: string) => workflow.jobs[job]?.steps.some((step) => step.run?.includes("Add-MpPreference")) ?? false;
+  expect(excludes("windows-gates")).toBe(true);
+  expect(excludes("windows")).toBe(false);
+  expect(excludes("windows-trial")).toBe(false);
+  // Before the checkout, so that the files of the checkout and of each build are not scanned either.
+  const steps = workflow.jobs["windows-gates"]?.steps ?? [];
+  expect(steps.findIndex((step) => step.run?.includes("Add-MpPreference"))).toBeLessThan(steps.findIndex((step) => step.uses?.startsWith("actions/checkout@")));
+});
+
 interface Gates { jobs: Record<string, { env?: Record<string, string>; if?: string; with?: Record<string, string>; steps?: Step[] }> }
 const gates = Bun.YAML.parse(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8")) as Gates;
 
