@@ -18,9 +18,6 @@ desktop out crates/rdp-test-device/
 # The bundle does not carry the applications program yet; task H33 of the hosted applications
 # plan adds it and removes this line.
 desktop out crates/anima-applications/
-# The hub does not read the catalogue yet; task H7 of the hosted applications plan adds it and
-# removes this line.
-desktop out crates/catalogue/
 desktop out AGENTS.md
 desktop out CLAUDE.md
 desktop out README.md
