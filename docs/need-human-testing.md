@@ -204,6 +204,11 @@ pool has on 2026-11-20 carries an earlier build, so these steps are for a new im
 7. Signed in, delete only the cookie whose name starts with `__Host-anima-door` in the tools of the
    browser, then press a link of the bar. Expected: the sign-in of the account or the hub again; no
    page with the words "Can't read the hub's answer".
+8. Signed in, open Settings. Expected: the Account section says "Signed in as owner with your
+   Anima.ing account" and has the link "Manage account and sign-in methods". Press it. Expected: the
+   page of the account at `cloud.anima.ing/account` opens in a new tab, and the hub stays in its tab.
+9. Make the window narrow (390 px wide, or the phone view of the tools of the browser), open
+   Settings and press "Sign out" in the Account rows. Expected: as in steps 3 and 4.
 
 Result: Open.
 

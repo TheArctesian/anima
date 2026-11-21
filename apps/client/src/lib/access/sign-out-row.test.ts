@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   loadClientAt: vi.fn(),
   desktop: true,
   gateway: 'none' as 'none' | 'left' | 'kept',
+  hosted: false,
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
@@ -28,6 +29,10 @@ vi.mock('$lib/platform/platform', async () => {
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
 vi.mock('$lib/hosted/gateway/here', () => ({ signOutOfGateway: () => Promise.resolve(mocks.gateway) }));
+vi.mock('$lib/hosted/mark', async (actual) => ({
+  ...(await actual<typeof import('$lib/hosted/mark')>()),
+  hubIsHosted: () => mocks.hosted,
+}));
 vi.mock('./navigation', () => ({ goToSignIn: mocks.goToSignIn, goToWelcome: mocks.goToWelcome, loadClientAt: mocks.loadClientAt }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -59,6 +64,7 @@ beforeEach(() => {
   mocks.loadClientAt.mockReset();
   mocks.desktop = true;
   mocks.gateway = 'none';
+  mocks.hosted = false;
 });
 
 afterEach(async () => {
@@ -149,4 +155,30 @@ it('HMD-062: a gateway that does not confirm the sign-out is told, and the perso
   expect(target.querySelector('[role="alert"]')?.textContent).toBe(GATEWAY_KEPT);
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
   expect(target.querySelector('button')?.disabled).toBe(false);
+});
+
+it('HMD-061: on a hosted hub the row says the way in is the Anima.ing account and links to its page', async () => {
+  mocks.hosted = true;
+  const fake = fakeHub({ Me: ok({ me: { username: 'owner' } }) });
+  mocks.hub = fake.hub;
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(SignOutRow, { target });
+  await settled();
+  expect(target.querySelector('.who')?.textContent).toMatch(/Signed in as\s*owner\s*with your Anima\.ing account/);
+  const link = target.querySelector('a');
+  expect(link?.textContent).toBe('Manage account and sign-in methods');
+  expect(link?.getAttribute('href')).toBe('https://cloud.anima.ing/account');
+  expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+});
+
+it('SET-002: a hub of one\'s own shows only the user name, with no account link', async () => {
+  const fake = fakeHub({ Me: ok({ me: { username: 'ann' } }) });
+  mocks.hub = fake.hub;
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(SignOutRow, { target });
+  await settled();
+  expect(target.querySelector('.who')?.textContent?.trim()).toBe('Signed in as ann');
+  expect(target.querySelector('a')).toBeNull();
 });
