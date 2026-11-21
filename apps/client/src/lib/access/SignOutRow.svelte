@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { signOutOfGateway } from '$lib/hosted/gateway/here';
   import { forgetRecentCopy } from '$lib/hub/hub';
   import { tick } from 'svelte';
   import { useHub } from '$lib/hub/context';
@@ -12,7 +13,7 @@
   import { signInNeeded } from './guard';
   import { goToSignIn, goToWelcome, loadClientAt } from './navigation';
   import { SIGN_IN_PATH } from './routes';
-  import { signOut } from './sign-out';
+  import { GATEWAY_KEPT, signOut } from './sign-out';
   import { signOutMobile } from './mobile/sign-out';
 
   const hub = useHub();
@@ -43,9 +44,19 @@
       throw reason;
     }
     if (kept === null && !desktop) {
-      // A new page, so no socket keeps the old cookie (E-4); the button stays off while it loads, as Sign in does.
-      loadClientAt(SIGN_IN_PATH);
-      return;
+      const gateway = await signOutOfGateway();
+      if (gateway === 'none') {
+        // A new page, so no socket keeps the old cookie (E-4); the button stays off while it loads, as Sign in does.
+        loadClientAt(SIGN_IN_PATH);
+        return;
+      }
+      if (gateway === 'left') {
+        // A new page would go to the gateway, which starts a sign-in at once: the page stays, with its socket closed.
+        await hub.close().catch(() => undefined);
+        goToSignIn();
+        return;
+      }
+      kept = GATEWAY_KEPT;
     }
     busy = false;
     // The desktop socket reads the key store anew, so the router may move within the page.

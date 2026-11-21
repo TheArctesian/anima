@@ -97,6 +97,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
+| HT-NEW-webclientgateway | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
 
@@ -168,6 +169,42 @@ for the time when both exist.
    a key. Expected: the session still works.
 5. In a second browser profile, open `https://hub.anima.ing/graphql` with no session. Expected: no
    data of a hub.
+
+### HT-NEW-webclientgateway: the web client of a hosted hub behind the gateway (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27)
+
+Built: on the branch `hosted/hm-t27-web-client-door`. The web client asks one time for each page load
+whether the gateway of the hosted hubs is in front of its hub (a path that only the gateway
+answers). Behind the gateway: a refusal of the gateway is read as its code; a browser that must
+sign in goes to the entry of the gateway and never to the page with the hub password; "Sign out"
+ends the session of the hub and then the session of the gateway; the empty list of devices says
+how a computer comes to the hub.
+
+The tests cover, with a stand-in for the gateway that answers as the gateway of the pool does: the
+codes of the gateway, the question whether a gateway is in front, the sign-out, the rule against a
+loop of entries, the sign-in page, and the row Sign out. Not covered: a real gateway, a real
+browser, the content security policy of a real hub, and the cookies.
+
+It needs: a hub of the pool whose image carries this build of the web client. The image that the
+pool has on 2026-11-20 carries an earlier build, so these steps are for a new image.
+
+1. In a browser with no session, open `https://hub.anima.ing` and sign in with the account.
+   Expected: the list of devices of the hub. No page asks for a hub address or a hub password.
+2. With a hub that has no computer: look at the list. Expected: "No devices yet", and one sentence
+   that says to install the application on a computer and to sign in there.
+3. Open Settings and press "Sign out". Expected: the page "Signed out" with one button "Sign in".
+   The address bar still shows `hub.anima.ing`.
+4. In the tools of the browser, look at the cookies of `hub.anima.ing`. Expected: no cookie
+   `__Host-anima` and no cookie whose name starts with `__Host-anima-door`.
+5. Press "Sign in". Expected: the sign-in of the account, or, when the account site is still
+   signed in, the hub again with no question. Write which of the two you saw.
+6. Signed in, leave a page that does not update for 31 minutes, then press a link of the bar.
+   Expected: "Signing in" for a moment, then the hub again, with no password page. The page that
+   opens is the list of devices, not the page that you pressed.
+7. Signed in, delete only the cookie whose name starts with `__Host-anima-door` in the tools of the
+   browser, then press a link of the bar. Expected: the sign-in of the account or the hub again; no
+   page with the words "Can't read the hub's answer".
+
+Result: Open.
 
 ### HT-001: `anima snapshot` against GitHub
 

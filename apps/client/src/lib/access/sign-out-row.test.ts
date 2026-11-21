@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import { failure, fakeHub, ok } from './access.fixture';
 import SignOutRow from './SignOutRow.svelte';
-import { COOKIE_KEPT } from './sign-out';
+import { COOKIE_KEPT, GATEWAY_KEPT } from './sign-out';
 
 // The Sign out row on both platforms (E-4): the desktop app clears its key store and moves within the page; a browser
 // asks the hub to clear the cookie and then loads the sign-in page anew.
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   goToWelcome: vi.fn(),
   loadClientAt: vi.fn(),
   desktop: true,
+  gateway: 'none' as 'none' | 'left' | 'kept',
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
@@ -26,6 +27,7 @@ vi.mock('$lib/platform/platform', async () => {
   const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
+vi.mock('$lib/hosted/gateway/here', () => ({ signOutOfGateway: () => Promise.resolve(mocks.gateway) }));
 vi.mock('./navigation', () => ({ goToSignIn: mocks.goToSignIn, goToWelcome: mocks.goToWelcome, loadClientAt: mocks.loadClientAt }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -56,6 +58,7 @@ beforeEach(() => {
   mocks.goToWelcome.mockReset();
   mocks.loadClientAt.mockReset();
   mocks.desktop = true;
+  mocks.gateway = 'none';
 });
 
 afterEach(async () => {
@@ -127,4 +130,23 @@ it('NAV-005: after an unconfirmed sign-out the keyboard focus is back on Sign ou
   mocks.desktop = false;
   const target = await signOutWith(failure('unreachable'));
   expect(document.activeElement).toBe(target.querySelector('button'));
+});
+
+it('HMD-062: behind the gateway, Sign out ends the session of the hub and of the gateway and loads no new page', async () => {
+  mocks.desktop = false;
+  mocks.gateway = 'left';
+  await signOutWith(ok({ logout: true }));
+  expect(sent.map((request) => request.operation)).toEqual(['Me', 'Logout']);
+  // A new page would go to the gateway, which starts a sign-in at once.
+  expect(mocks.loadClientAt).not.toHaveBeenCalled();
+  expect(mocks.goToSignIn).toHaveBeenCalledOnce();
+});
+
+it('HMD-062: a gateway that does not confirm the sign-out is told, and the person can retry', async () => {
+  mocks.desktop = false;
+  mocks.gateway = 'kept';
+  const target = await signOutWith(ok({ logout: true }));
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe(GATEWAY_KEPT);
+  expect(mocks.goToSignIn).not.toHaveBeenCalled();
+  expect(target.querySelector('button')?.disabled).toBe(false);
 });
