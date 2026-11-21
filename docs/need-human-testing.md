@@ -104,6 +104,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
+| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with `--public-origin https://hub.anima.ing` and an image of this build, the gateway of the pool at `hub.anima.ing` that passes `/connect/github*`, an application of this build, and a GitHub account that may get a new App | Open |
 
 ### What a check on the hosted hub needs
 
@@ -2049,6 +2050,40 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
+
+### HT-104: Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29)
+
+Built on the branch `hosted/hm-t29-github-hosted`. The hub tells the application whether the browser flow can start:
+`Source.connectPageUrl` (K-E1 Section 7a; R-311, made overnight, not yet confirmed), null on a hub in the link mode
+with no public origin. The application offers "Connect GitHub" only when the value is set, and says where the browser
+must be signed in (`apps/client/src/lib/sources/connect/`). `anima source kinds` and the MCP tool
+`anima_sources_overview` show the value. The hub tests run the whole flow on a hub of the pool in the link mode with
+the public origin `https://hub.anima.ing`, and with a public origin of one hub below `hub.anima.ing`, through a
+stand-in of the gateway that passes the name of the browser (`crates/hub/tests/it/sources/registration/hosted.rs`).
+The tests did not cover: the real gateway, the sign-in at the gateway, the real GitHub, and a browser.
+
+1. Start the application of this build, signed in to the hosted hub. Open Settings > Integrations > GitHub.
+   Expected: the row shows "Connect GitHub" and the line "Your browser must be signed in at hub.anima.ing with your
+   Anima.ing account." It does not show "Coming soon".
+2. Run `anima source kinds --hub <the address that the application uses>` with a token of the hub.
+   Expected: the row `github` shows `https://hub.anima.ing/connect/github` in the column BROWSER CONNECT.
+3. In the default browser, sign in at `https://hub.anima.ing` with the Anima.ing account. In the application, select
+   "Connect GitHub".
+   Expected: the browser opens `https://hub.anima.ing/connect/github` with a one-time link, then GitHub with the
+   button "Create GitHub App". The application says "Waiting for you on GitHub."
+4. On GitHub, select "Create GitHub App", then "Install".
+   Expected: GitHub goes back to `https://hub.anima.ing/connect/github/installed`, and the page says "GitHub is
+   connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
+   callback address and the setup address are below `https://hub.anima.ing/connect/github`.
+5. On a second computer of the same account, open Settings > Integrations > GitHub.
+   Expected: the same connection shows; no second sign-in to GitHub is asked for (HMD-068).
+6. Do step 3 again in a browser with no session at `hub.anima.ing`.
+   Expected: the gateway asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
+   installation), and open the same row.
+   Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
+
+Result: Open.
 
 ## Not built yet
 

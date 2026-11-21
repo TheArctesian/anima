@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { attempt } from '../sources.fixture';
-import { describeAttempt, githubAddress } from './attempt';
+import { describeAttempt, githubAddress, signInLine } from './attempt';
 
 const TASK = 'https://github.com/settings/apps/anima-k3f9/advanced';
 const TRY = 'Delete any new App on GitHub that starts with "anima-".';
@@ -66,4 +66,13 @@ it('PRJ-039: CANCELLED with an App says it is still on GitHub; without one it sa
 
 it('PRJ-041: an attempt that an AI agent started begins its line with that fact', () => {
   expect(describeAttempt(attempt({ startedBy: 'AGENT' })).line).toBe('An AI agent started this. Opening GitHub in your browser.');
+});
+
+it('HM-T29: the browser must be signed in at hub.anima.ing for a hosted hub, at the shared or at its own name', () => {
+  const gateway = 'Your browser must be signed in at hub.anima.ing with your Anima.ing account.';
+  expect(signInLine('https://hub.anima.ing/connect/github')).toBe(gateway);
+  expect(signInLine('https://hk3f9x2mq7b4n8c1d5e6a.hub.anima.ing/connect/github')).toBe(gateway);
+  expect(signInLine('https://anima.example.org:8443/connect/github')).toBe('Your browser must be signed in at anima.example.org:8443.');
+  expect(signInLine('https://evilhub.anima.ing/connect/github')).toBe('Your browser must be signed in at evilhub.anima.ing.');
+  expect(signInLine('not an address')).toBe('');
 });

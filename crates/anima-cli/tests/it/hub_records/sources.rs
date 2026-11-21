@@ -50,7 +50,7 @@ async fn itg_001_source_kinds_prints_the_k1_value_with_json() {
     let source = json!({
         "key": "github", "name": "GitHub", "acquisition": "TOKEN_PULL", "scopes": ["repo:read"],
         "writeReason": null, "gives": ["repositories"], "pollIntervalSeconds": 300,
-        "consumers": ["projects"],
+        "consumers": ["projects"], "connectPageUrl": "https://hub.anima.ing/connect/github",
     });
     let hub = FakeHub::start().await;
     hub.answer("SourceKinds", data(json!({ "sources": [source] })));
@@ -63,7 +63,9 @@ async fn itg_001_source_kinds_prints_the_k1_value_with_json() {
         .run(&["source", "kinds", "--hub", &hub.origin])
         .await;
     assert!(
-        run.stdout.contains("GitHub") && run.stdout.contains("300s"),
+        run.stdout.contains("GitHub")
+            && run.stdout.contains("300s")
+            && run.stdout.contains("https://hub.anima.ing/connect/github"),
         "{run:?}"
     );
 }

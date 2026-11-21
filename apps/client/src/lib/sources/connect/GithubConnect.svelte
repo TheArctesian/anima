@@ -2,8 +2,7 @@
   import { untrack } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { useHub } from '$lib/hub/context';
-  import { isOnThisComputer } from '$lib/hub/hub';
-  import { describeAttempt, hubPageAddress, NO_ATTEMPT, NO_BROWSER_ADDRESS, RESTARTED, TAB_BLOCKED } from './attempt';
+  import { describeAttempt, hubPageAddress, NO_ATTEMPT, NO_BROWSER_ADDRESS, RESTARTED, signInLine, TAB_BLOCKED } from './attempt';
   import { githubConnectApi } from './api';
   import { linkOpening, type LinkOpening } from './browser';
   import { GithubConnectStore } from './github-connect.svelte';
@@ -20,10 +19,12 @@
   const hub = untrack(() => useHub());
   const store = new GithubConnectStore(githubConnectApi(hub));
   /**
-   * The app reaches the hub at a port of this computer (a hosted hub through the link, or a hub of this computer): no
-   * browser can open a page of such a hub, so the flow is not offered and no one-time link is asked for (DEF-003).
+   * The hub tells whether the browser flow can start (`Source.connectPageUrl`, K-E1 Section 7a). Until it answers, and on
+   * a hub that cannot or does not say, no browser step is offered and no one-time link is asked for.
    */
-  const noBrowserAddress = isOnThisComputer(hub.address);
+  const canBrowse = $derived(typeof store.browserPage === 'string');
+  const noBrowserAddress = $derived(store.browserPage === null);
+  const signIn = $derived(typeof store.browserPage === 'string' ? signInLine(store.browserPage) : '');
   const view = $derived(store.attempt !== null ? describeAttempt(store.attempt) : store.restarted ? RESTARTED : NO_ATTEMPT);
   const pageUrl = $derived(store.blocked && store.attempt !== null ? hubPageAddress(store.attempt.pageUrl) : null);
 
@@ -46,7 +47,10 @@
   {:else if view.line !== ''}
     <p class="line" role="status">{view.line}</p>
   {/if}
-  {#if pageUrl !== null && !noBrowserAddress}
+  {#if canBrowse && signIn !== '' && (view.start || view.continueInBrowser)}
+    <p class="line">{signIn}</p>
+  {/if}
+  {#if pageUrl !== null && canBrowse}
     <p class="line">
       {TAB_BLOCKED}
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the hub's own page, not a route of this app -->
@@ -57,14 +61,14 @@
     <p class="line" role="alert">{store.refusal}</p>
   {/if}
   <div class="actions">
-    {#if view.start && !noBrowserAddress}
+    {#if view.start && canBrowse}
       <FormButton busy={store.busy} onclick={() => void store.start(opener())}>Connect GitHub</FormButton>
     {/if}
-    {#if view.installUrl !== null && !noBrowserAddress}
+    {#if view.installUrl !== null && canBrowse}
       {@const url = view.installUrl}
       <FormButton tone="primary" onclick={() => { openOnGithub(url); }}>Install on GitHub</FormButton>
     {/if}
-    {#if view.continueInBrowser && !noBrowserAddress}
+    {#if view.continueInBrowser && canBrowse}
       <FormButton busy={store.busy} onclick={() => void store.continueInBrowser(opener())}>Continue in browser</FormButton>
     {/if}
     {#if view.appSettingsUrl !== null}
