@@ -2408,6 +2408,22 @@ What the token gives to a person who has it, at the hub (`crates/hub/src/fleet/m
 - On macOS the carried daemon has a Developer ID signature of the Team ID of the release, the hardened runtime and no entitlement (`apps/desktop/src-tauri/src/builder/carried/mach_o.rs:86-140`). Thus `DYLD_INSERT_LIBRARIES` in the unit does not put code into the daemon, and a program of the same user cannot attach to it as a debugger without the rights of an administrator.
 - A backup on macOS: the login Keychain is encrypted with the password of the user, and the keyring crate (feature `apple-native`) writes to the login Keychain, which does not go to iCloud.
 
+### SF-235: After an update of the daemon the old holder of the threads runs on, with its old code, until the computer starts again. Medium
+
+Requirements: THR-113, THR-049; task TH17 of [agent-threads.md](proposals/agent-threads.md).
+
+What it is: the holder (`anima-daemon holder <dir>`) keeps the programs of the threads alive when the daemon stops, also for an update (THR-113). An update replaces `~/.local/bin/anima-daemon` and starts the daemon again; the new daemon finds the old holder at `holder.sock` and keeps it (`crates/daemon/src/threads/link.rs`, `reach_patiently`). The holder is started again only when it ends: at the end of the session or a start of the computer. When the protocol version of the two differs (`wire::VERSION`), the holder only refuses new starts (`state.draining`, `commands.rs`), and it does not end when its last thread ends: no thread can start until the person ends it by hand. When the version is the same, the old holder runs its old code with no sign. Measured on this Mac on 2026-11-21: an install at 01:32:03 left the old holder, and the old daemon even started a fresh old holder in the second before its own replacement. No part of the application shows that the holder is older than the daemon.
+
+Where: `crates/daemon/src/threads/link.rs`, `crates/daemon/src/threads/commands.rs` (`hello`), `crates/daemon/src/threads/holder.rs`.
+
+Effect, and who can cause it: no attacker; each update. A correction in the holder does not reach the computer: for example the stop that ends processes by the mark of their thread (THR-049) and the safe reading of the input of a program. With a new protocol version, Threads stops working after an update until the person finds and ends the holder.
+
+Mitigation now: none in the application. By hand: when no thread runs, `kill <pid of the holder>`, then `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`.
+
+The fix (not built): the holder says its build in `Hello` (the version of the package and the identity of its program file); the runner compares it with its own. When they differ, the runner tells the client ("the holder is older than the daemon; it is replaced when no thread runs"), the holder starts nothing new, and it ends by itself when its last thread ends, so that the daemon starts the holder of the new build. The page and `anima agents running` show the line while the old holder runs.
+
+State: Open. Found in the trial on the installed pair, 2026-11-21. The fix is built on the branch `threads/start-health` (task TH98; HT-108), not yet in `dev`.
+
 ### SF-179: A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium
 
 Requirements: SF-004, R-172 (task W0), HMD-054, MET-013; task HM-T23.

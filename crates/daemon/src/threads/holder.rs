@@ -165,6 +165,8 @@ impl Shared {
 /// [`HolderError`] when the folder is not private, a different holder holds it, or the socket
 /// cannot be made.
 pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
+    // The build of the file this holder started from, before an update replaces it (TH98).
+    let _ = wire::this_build();
     let _lock = lock(dir)?;
     record::end_left_over(dir).await;
     let listener = bind(dir)?;
@@ -188,7 +190,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         state.closing = true;
         state.connection = None;
     }
-    super::commands::end_all(&shared).await;
+    super::stop::end_all(&shared).await;
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
 }

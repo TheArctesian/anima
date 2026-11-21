@@ -13,7 +13,9 @@ pub mod codex;
 mod holder_events;
 pub mod log;
 pub mod login;
+pub mod peer;
 pub mod record;
+mod silence;
 pub mod socket;
 mod start;
 #[cfg(test)]
@@ -36,8 +38,6 @@ use thread::{Step, Thread};
 
 /// The most stopped threads that the runner keeps; the oldest go first.
 const STOPPED_KEPT: usize = 50;
-/// The longest wait between two tries to reach the holder.
-const RETRY_MOST: Duration = Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum RunnerError {
@@ -90,6 +90,13 @@ pub struct Runner {
     link: HolderLink,
     /// The holder speaks the version of this runner; until it says so, nothing starts.
     holder_fits: bool,
+    /// The holder is of an older build or protocol than this runner (TH98).
+    holder_older: bool,
+    /// The holder speaks a different protocol but is of the file of this runner: the runner is
+    /// the older one (TH98).
+    holder_newer: bool,
+    /// When the runner last asked the older holder to end on this connection.
+    holder_quit: Option<std::time::Instant>,
     env: Vec<(String, String)>,
     /// The environment of the daemon, to ask the login shell again when a program is not found.
     daemon_env: Vec<(String, String)>,
@@ -106,6 +113,13 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// The copies that were asked for their version and the threads that wait for their first
+    /// line (TH97).
+    silence: silence::Silence,
+    /// The starts whose copy is being asked for its version.
+    asks: start::Asks,
+    /// When each thread last got the words of a lost sign-in (TH99).
+    sign_in_told: BTreeMap<Uuid, std::time::Instant>,
     /// What the programs said of their accounts: in memory only (THR-051).
     accounts: accounts::Accounts,
 }
@@ -145,7 +159,7 @@ pub async fn run(
     let env = login::environment(&daemon_env).await;
     tokio::pin!(stop);
     let link = tokio::select! {
-        link = reach_patiently(program, &dir) => link,
+        link = link::reach_patiently(program, &dir) => link,
         () = &mut stop => return Ok(()),
     };
     let mut runner = Runner {
@@ -153,6 +167,9 @@ pub async fn run(
         program: program.to_owned(),
         link,
         holder_fits: false,
+        holder_older: false,
+        holder_newer: false,
+        holder_quit: None,
         env,
         daemon_env,
         asked_again: None,
@@ -163,6 +180,9 @@ pub async fn run(
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        silence: silence::Silence::default(),
+        asks: start::Asks::default(),
+        sign_in_told: BTreeMap::new(),
         accounts: accounts::Accounts::default(),
     };
     runner.restore(saved.threads);
@@ -173,19 +193,6 @@ pub async fn run(
     }
     runner.save();
     Ok(())
-}
-
-/// The link to the holder; while none answers, it tries again, each time a little later.
-async fn reach_patiently(program: &Path, dir: &Path) -> HolderLink {
-    let mut wait = Duration::from_secs(1);
-    loop {
-        match link::reach(program, dir).await {
-            Ok(link) => return link,
-            Err(error) => tracing::warn!(%error, "the holder did not answer; trying again"),
-        }
-        tokio::time::sleep(wait).await;
-        wait = (wait * 2).min(RETRY_MOST);
-    }
 }
 
 impl Runner {
@@ -209,8 +216,12 @@ impl Runner {
     /// The loop of the runner: the holder, the clients, and the stop.
     async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
         let (sender, mut incoming) = mpsc::channel(256);
-        let accepting = tokio::spawn(socket::accept(listener, sender));
+        let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
+        let mut look = tokio::time::interval(Duration::from_secs(10));
+        let Some(mut asked) = self.asks.receiver.take() else {
+            return;
+        };
         loop {
             tokio::select! {
                 event = self.link.events.recv() => match event {
@@ -218,6 +229,11 @@ impl Runner {
                     None => self.reconnect().await,
                 },
                 Some(call) = incoming.recv() => self.call(call).await,
+                Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
+                _ = look.tick() => {
+                    self.end_the_silent().await;
+                    self.replace_older_holder().await;
+                }
                 () = &mut stop => break,
             }
         }
@@ -230,8 +246,9 @@ impl Runner {
     async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
         self.holder_fits = false;
+        self.holder_newer = false;
         let next = self.link.next_id();
-        self.link = reach_patiently(&self.program, &self.dir).await;
+        self.link = link::reach_patiently(&self.program, &self.dir).await;
         self.link.go_on_from(next);
         self.send_again().await;
     }
@@ -350,14 +367,5 @@ impl Runner {
         if let Err(error) = record::write(&self.dir, &record) {
             tracing::warn!(%error, "the record of the runner was not written");
         }
-    }
-
-    fn running(&self) -> u32 {
-        let count = self
-            .threads
-            .values()
-            .filter(|thread| thread.row.state != RunState::Stopped)
-            .count();
-        u32::try_from(count).unwrap_or(u32::MAX)
     }
 }

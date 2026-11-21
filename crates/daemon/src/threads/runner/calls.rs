@@ -31,6 +31,7 @@ impl Runner {
         let Incoming {
             call: Call { id, action },
             client,
+            agent,
         } = incoming;
         let back = Caller {
             call: id,
@@ -38,12 +39,16 @@ impl Runner {
         };
         let named = thread_of(&action);
         let answer = match action {
+            ref asked if agent && for_the_person(asked) => Outcome::Refused {
+                why: Refusal::FromAnAgent,
+            },
             Action::List => Outcome::Threads {
                 threads: self
                     .threads
                     .values()
                     .map(|thread| thread.row.clone())
                     .collect(),
+                holder: self.holder_words(),
             },
             Action::Watch => {
                 self.watch(id, client);
@@ -253,6 +258,15 @@ struct Answering {
     request: Uuid,
 }
 
+/// Whether only the person may make this call: an answer to a request, a raise of the limit
+/// and a start. A process of an agent may not, so that an agent never approves itself.
+const fn for_the_person(action: &Action) -> bool {
+    matches!(
+        action,
+        Action::Answer { .. } | Action::RaiseLimit | Action::Start { .. }
+    )
+}
+
 /// The thread a call names, for the line of the log of a refusal (THR-044).
 const fn thread_of(action: &Action) -> Option<Uuid> {
     match action {
@@ -273,16 +287,19 @@ const fn answer_word(answer: &Answer) -> &'static str {
     }
 }
 
-const fn refusal_word(why: &Refusal) -> &'static str {
+pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
     match why {
         Refusal::UnknownThread => "unknown thread",
+        Refusal::FromAnAgent => "from a process of an agent",
         Refusal::FolderNotPermitted => "folder not permitted",
         Refusal::ProgramNotFound => "program not found",
+        Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
         Refusal::BadValue => "bad value",
         Refusal::RequestGone => "request gone",
         Refusal::AnswerDoesNotFit => "answer does not fit",
         Refusal::NotRunning => "not running",
         Refusal::Holder => "holder",
+        Refusal::HolderOlder { .. } => "holder older than the daemon",
         Refusal::OverLimit { .. } => "over the soft limit",
     }
 }

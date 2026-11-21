@@ -104,7 +104,8 @@ pub fn below(rows: &[Row], root: u32) -> BTreeSet<u32> {
 }
 
 /// The processes of `spare` that still run as the same process, with each process below them.
-fn spare_with_children(table: &Table, spare: &Known) -> BTreeSet<u32> {
+#[must_use]
+pub fn spare_with_children(table: &Table, spare: &Known) -> BTreeSet<u32> {
     let mut out = table.still(spare);
     for pid in out.clone() {
         out.extend(below(&table.rows, pid));
@@ -119,37 +120,40 @@ fn ps() -> Option<&'static str> {
         .find(|path| Path::new(path).exists())
 }
 
-/// The process table now; `None` when `ps` is missing or fails, so that a stop never claims an
-/// end it could not see.
-pub async fn table() -> Option<Table> {
-    let output = tokio::process::Command::new(ps()?)
-        .args(["-axo", "pid=,ppid=,lstart="])
+/// The longest wait for one `ps`: on a busy Mac one took 20 to 27 seconds (2026-11-21). After
+/// it the answer is `None`, and each caller takes that as "not seen": a stop claims no end and
+/// the guard of the runner takes the client for an agent (fail closed).
+const PS_WAIT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// The output of `ps` with `args`, in the C locale, when it ended well within [`PS_WAIT`].
+pub async fn ps_output(args: &[&str]) -> Option<Vec<u8>> {
+    let run = tokio::process::Command::new(ps()?)
+        .args(args)
         .env_clear()
         .env("LC_ALL", "C")
         .kill_on_drop(true)
-        .output()
-        .await
-        .ok()?;
-    let table = Table::read(&String::from_utf8_lossy(&output.stdout));
-    (output.status.success() && !table.rows.is_empty()).then_some(table)
+        .output();
+    let output = tokio::time::timeout(PS_WAIT, run).await.ok()?.ok()?;
+    output.status.success().then_some(output.stdout)
+}
+
+/// The process table now; `None` when `ps` is missing or fails, so that a stop never claims an
+/// end it could not see.
+pub async fn table() -> Option<Table> {
+    let output = ps_output(&["-axo", "pid=,ppid=,lstart="]).await?;
+    let table = Table::read(&String::from_utf8_lossy(&output));
+    (!table.rows.is_empty()).then_some(table)
 }
 
 /// The start time of a process as `ps` says it, so that an old record never ends a process
 /// that took an old ID (H9).
 pub async fn started(pid: u32) -> Option<String> {
-    let output = tokio::process::Command::new(ps()?)
-        .args(["-o", "lstart=", "-p", &pid.to_string()])
-        .env_clear()
-        .env("LC_ALL", "C")
-        .kill_on_drop(true)
-        .output()
-        .await
-        .ok()?;
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-    (output.status.success() && !text.is_empty()).then_some(text)
+    let output = ps_output(&["-o", "lstart=", "-p", &pid.to_string()]).await?;
+    let text = String::from_utf8_lossy(&output).trim().to_owned();
+    (!text.is_empty()).then_some(text)
 }
 
-fn signal(pid: u32, signal: Signal) {
+pub(super) fn signal(pid: u32, signal: Signal) {
     if let Some(pid) = i32::try_from(pid).ok().and_then(Pid::from_raw) {
         // A process that already ended is what a stop wants: the error is not a fault.
         let _ = kill_process(pid, signal);

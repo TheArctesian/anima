@@ -287,8 +287,13 @@ impl Thread {
 
     /// The thread was not running when the runner started: its holder ended (THR-049).
     pub fn lost(&mut self) -> Vec<Step> {
+        self.ended_because("The holder of the program ended; the thread stopped.".to_owned())
+    }
+
+    /// The program ended, for a reason that the runner knows better than the exit code.
+    pub fn ended_because(&mut self, why: String) -> Vec<Step> {
         let mut steps = self.exited(None, None);
-        self.row.ended = Some("The holder of the program ended; the thread stopped.".to_owned());
+        self.row.ended = Some(why);
         if let Some(Step::Change(Change::State { row, .. })) = steps.last_mut() {
             row.ended.clone_from(&self.row.ended);
         }

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { askFrame, madeShell, saidFrame, stateFrame, THREAD } from './frames.fixture';
 import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from './live.svelte';
-import { TEXT_CHARS } from './timeline';
-import { OVER_LIMIT, type Outcome } from './run';
+import { TEXT_CHARS, waitingWords } from './timeline';
+import { OVER_LIMIT, outcomeFrom, type Outcome } from './run';
 
 const AWAY = { front: false, chosen: null };
 
@@ -102,6 +102,35 @@ describe('the calls of the page to the runner', () => {
   it('TH14: a refusal of the runner comes back in words', async () => {
     const live = new LiveThreads(madeShell(() => ({ outcome: 'refused', why: 'request_gone' })), () => AWAY);
     expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
+  });
+
+  it('TH97: a starting thread says what it waits for and for how long', () => {
+    const started = new Date('2026-11-21T10:00:00Z');
+    expect(waitingWords('claude_code', started, new Date('2026-11-21T10:00:42Z'))).toMatch(/^Waiting for the first answer of the program: 42 s\. Claude Code reads its sign-in first/);
+    expect(waitingWords('codex', started, new Date('2026-11-21T10:03:05Z'))).toContain('3 min 5 s. Codex loads its plugins first');
+  });
+
+  it('TH98: the words of an older holder show from the list and go when a stop leaves the list without them', async () => {
+    const words = 'The holder of the threads is older than the daemon.';
+    let older = true;
+    const shell = madeShell((action) => (action.call === 'list' ? (older ? { outcome: 'threads', threads: [], holder: words } : { outcome: 'threads', threads: [] }) : { outcome: 'ok' }));
+    const live = new LiveThreads(shell, () => AWAY, clock().now);
+    await live.begin();
+    expect(live.holder).toBe(words);
+    shell.emit(stateFrame(1, 'working'));
+    older = false;
+    shell.emit(stateFrame(2, 'stopped'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(live.holder).toBeNull();
+  });
+
+  it('TH97: a program that does not answer is refused with the words of the runner, which name its path', async () => {
+    const said = 'The Codex at /opt/homebrew/bin/codex did not answer in 20 seconds.';
+    const read = outcomeFrom({ outcome: 'refused', why: { refusal: 'program_does_not_answer', said } });
+    expect(read).toEqual({ outcome: 'refused', why: 'program_does_not_answer', said });
+    const live = new LiveThreads(madeShell(() => read ?? { outcome: 'ok' }), () => AWAY);
+    expect(await live.call({ call: 'start', program: 'codex', folder: '/w', mode: 'ask', model: null, effort: null, prompt: 'hi' })).toEqual({ ok: false, words: said });
   });
 });
 

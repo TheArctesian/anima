@@ -268,3 +268,34 @@ fn thr_125_a_claude_file_change_shows_its_lines_and_no_hidden_marks() {
     );
     assert_eq!(one_request(claude(CLAUDE_BASH)).diff, None);
 }
+
+/// The reply of Claude Code 2.1.311 with no sign-in it could read (TH99, measured on this Mac on
+/// 2026-11-21 with an empty configuration folder): a made assistant line with an error, then a
+/// result with the subtype "success" and `is_error`.
+const NOT_LOGGED_IN: &str = concat!(
+    r#"{"type":"assistant","message":{"model":"<synthetic>","role":"assistant","content":[{"type":"text","text":"Not logged in · Please run /login"}]},"session_id":"s","error":"authentication_failed"}"#,
+    "\n",
+    r#"{"type":"result","subtype":"success","is_error":true,"result":"Not logged in · Please run /login","terminal_reason":"api_error","session_id":"s","permission_denials":[]}"#,
+);
+
+#[test]
+fn th99_not_logged_in_ends_the_turn_as_failed_with_the_fault_of_the_sign_in() {
+    let events = claude(NOT_LOGGED_IN);
+    assert!(events.iter().any(|event| matches!(
+        event,
+        DriveEvent::TurnEnded {
+            outcome: TurnOutcome::Failed,
+            detail: Some(detail),
+            ..
+        } if detail == "authentication_failed"
+    )));
+    let next_turn = claude(&NOT_LOGGED_IN.replace(r#","error":"authentication_failed""#, ""));
+    assert!(next_turn.iter().any(|event| matches!(
+        event,
+        DriveEvent::TurnEnded {
+            outcome: TurnOutcome::Failed,
+            detail: Some(detail),
+            ..
+        } if detail == "api_error"
+    )));
+}

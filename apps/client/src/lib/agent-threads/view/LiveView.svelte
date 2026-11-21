@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { CallResult } from '../live/live.svelte';
   import type { Answer, RunState } from '../live/run';
-  import { liveParts, type LiveThread } from '../live/timeline';
+  import { liveParts, waitingWords, type LiveThread } from '../live/timeline';
   import { folderName, programName } from '../thread';
   import AskCard from './AskCard.svelte';
   import Composer from './Composer.svelte';
@@ -32,6 +32,16 @@
     unknown: 'Not known',
   };
   const clock = (at: Date): string => at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  /** The time now, once a second while the thread is starting, for the line of what it waits for (TH97). */
+  let now = $state(new Date());
+  $effect(() => {
+    if (row.state !== 'starting') return;
+    now = new Date();
+    const tick = setInterval(() => (now = new Date()), 1000);
+    return () => {
+      clearInterval(tick);
+    };
+  });
 </script>
 
 <!-- A thread that the runner of this computer drives (TH14): the timeline as the program says it, each request that
@@ -69,6 +79,7 @@
       {:else}
         <p class="turn">The program has said nothing yet.</p>
       {/each}
+      {#if row.state === 'starting'}<p class="turn" role="status">{waitingWords(row.program, row.started, now)}</p>{/if}
       {#if thread.streaming !== ''}<p class="reply streaming" aria-live="polite">{thread.streaming}</p>{/if}
       {#each thread.asks as open (open.request)}
         <AskCard {open} {program} {folder} {onAnswer} />
