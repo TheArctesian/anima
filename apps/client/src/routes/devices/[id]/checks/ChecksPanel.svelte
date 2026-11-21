@@ -5,6 +5,8 @@
   import type { HubResult } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { listRow } from '$lib/motion/roles/transitions';
   import type { OpenHistory } from '../detail.svelte';
   import CheckEditor from './CheckEditor.svelte';
   import CheckHistory from './CheckHistory.svelte';
@@ -29,6 +31,8 @@
   let editing = $state(false);
   let deleting = $state<DeviceCheck | null>(null);
   const opened = $derived(checks.find((check) => check.id === history?.checkId));
+  /** A check that is added or deleted fades where it stands; the rows after it slide to their places (5.7.3, Reorder). */
+  const track = reorderMotion(() => checks.map((check) => check.id).join('\n'));
 
   function edit(check: DeviceCheck | null): void {
     edited = check;
@@ -49,7 +53,8 @@
     <div class="heads" aria-hidden="true"><span>Name</span><span>Type</span><span>Status</span><span>Response</span><span>Expires</span><span></span></div>
   {/if}
   <ul class="rows" aria-label="Checks">
-    {#each checks as check (check.id)}
+    {#each checks as check, index (check.id)}
+      <li transition:listRow={{ index }} {@attach track(check.id)}>
       <CheckRow
         {check}
         open={history?.checkId === check.id}
@@ -61,6 +66,7 @@
         onEdit={() => { edit(check); }}
         onDelete={() => { deleting = check; }}
       />
+      </li>
     {:else}
       <li class="none">No checks yet</li>
     {/each}

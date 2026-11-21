@@ -2651,3 +2651,26 @@ headless WebKit with sample devices. No person saw it in a desktop window, at th
    Expected: no row slides; rows and views fade only.
 
 Result: Open.
+
+### HT-NEW-motionlists: the motion of the other lists (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/lists-motion` with the roles of `ui/motion` (`listRow`, `reorderMotion`, `crossFade`):
+the Checks tab (`apps/client/src/routes/devices/[id]/checks/ChecksPanel.svelte`), the Containers tab
+(`apps/client/src/lib/containers/ContainerTable.svelte`), the Sessions tab
+(`apps/client/src/routes/devices/[id]/sessions/SessionsPanel.svelte`) and Projects
+(`apps/client/src/lib/projects/ProjectsScreen.svelte`). The logs panel and the lists of Settings (channels, API keys,
+VPN keys and sites) already used these roles. Tests prove which row plays a fade; no person saw it.
+
+1. On the Checks tab of a device, add a check, then delete it.
+   Expected: the new row fades in where it lands; the deleted row fades out where it stands, then the rows under it
+   slide up to close the gap.
+2. On the Containers tab of a device with Docker, stop a container on the device, then select "Refresh".
+   Expected: its state word cross-fades in place ("Running" to "Exited"); nothing else moves.
+3. On Projects, select "Leave out" on a tile.
+   Expected: the tile fades out where it stands, then the tiles after it slide to their places.
+4. Open a session to a device and end it, with the Sessions tab of that device open.
+   Expected: the new row fades in at the top and the rows under it slide down.
+5. Do steps 1, 3 and 4 with Settings, Appearance, "Reduce motion" on.
+   Expected: nothing slides; rows fade only.
+
+Result: Open.
