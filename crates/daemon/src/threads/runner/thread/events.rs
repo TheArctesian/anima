@@ -1,11 +1,10 @@
 //! What the program of a thread says: each line of its standard output read as events, and
 //! what each event changes in the thread. Pure.
 
-use agent_threads::control::Change;
 use agent_threads::drive::{DriveEvent, ProgramRequestId, ProgramState};
 use uuid::Uuid;
 
-use super::{Driver, Open, Step, Thread, closed, said};
+use super::{Driver, Step, Thread, closed, said};
 
 impl Thread {
     /// One line of standard output of the program.
@@ -26,32 +25,27 @@ impl Thread {
         new_id: &mut impl FnMut() -> Uuid,
     ) -> Vec<Step> {
         match event {
-            DriveEvent::Request(request) => {
-                let id = new_id();
-                self.open.insert(
-                    id,
-                    Open {
-                        request: request.clone(),
-                        line: line.to_owned(),
-                    },
-                );
-                vec![Step::Change(Change::Asked {
-                    request: id,
-                    detail: request,
-                })]
-            }
+            DriveEvent::Request(request) => self.asked(request, line, new_id()),
             DriveEvent::RequestClosed { id } => self.program_closed(&id),
             DriveEvent::Reply { id, ok, result } => self.reply(&id, ok, &result),
+            // A line that could wait for an answer stops the turn (THR-046: fail closed). The
+            // open requests stay: only an answer, a stop by the person or the end of the process
+            // closes one (THR-087).
             DriveEvent::Unknown {
                 stops_turn: true, ..
             } => {
                 let mut steps = vec![said(event)];
-                steps.extend(self.interrupt());
+                steps.extend(self.turn_stop());
+                steps.push(Step::Log("turn stopped: a line the runner does not know"));
                 steps
             }
             other => {
+                let mark = matches!(other, DriveEvent::TurnStarted { .. })
+                    && matches!(self.driver, Driver::Codex(_));
                 self.track(&other);
-                vec![said(other)]
+                let mut steps: Vec<Step> = mark.then_some(Step::Mark).into_iter().collect();
+                steps.push(said(other));
+                steps
             }
         }
     }
@@ -89,9 +83,10 @@ impl Thread {
         };
         match codex.reply(*number, ok, result) {
             Ok(lines) => lines.into_iter().map(Step::Write).collect(),
+            // Codex did not start its thread: the program ends, and its end stops the thread.
             Err(fault) => {
                 self.last_error = Some(fault.clone());
-                vec![said(DriveEvent::Notice { text: fault })]
+                vec![said(DriveEvent::Notice { text: fault }), Step::EndProgram]
             }
         }
     }

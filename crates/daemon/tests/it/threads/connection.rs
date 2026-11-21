@@ -38,7 +38,11 @@ async fn h10_a_newer_connection_takes_the_place_of_the_older_and_the_older_stops
     .await;
     assert!(closed.is_ok(), "the older connection is closed in time");
     let _ = older.link.send(start("late", "/bin/cat", &[])).await;
-    let id = newer.send(Action::Hello { version: 1 }).await;
+    let id = newer
+        .send(Action::Hello {
+            version: anima_daemon::threads::wire::VERSION,
+        })
+        .await;
     let events = newer
         .until(|event| matches!(event, Event::Done { id: done, .. } if *done == id))
         .await;
@@ -64,7 +68,11 @@ async fn h10_a_start_sent_again_on_a_new_connection_is_done_one_time() {
     let mut second = holder.link().await;
     second.link.resend(&command).await.expect("sent");
     assert_eq!(second.answer(7).await, Outcome::Started { pid });
-    let id = second.send(Action::Hello { version: 1 }).await;
+    let id = second
+        .send(Action::Hello {
+            version: anima_daemon::threads::wire::VERSION,
+        })
+        .await;
     let events = second
         .until(|event| matches!(event, Event::Done { id: done, .. } if *done == id))
         .await;

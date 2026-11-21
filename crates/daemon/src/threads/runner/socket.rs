@@ -10,11 +10,45 @@ use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, Buf
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
+/// The way back to one client. A client that does not read fills its queue and is let go, so
+/// that it never grows the memory of the daemon (THR-045).
+pub type Client = mpsc::Sender<Reply>;
+
+/// The most frames that wait for one client.
+pub const CLIENT_QUEUE: usize = 4096;
+
+/// Sends `reply` to `client`; false when the client is gone or does not read.
+#[must_use = "a client that is not told is let go"]
+pub fn tell(client: &Client, reply: Reply) -> bool {
+    client.try_send(reply).is_ok()
+}
+
+/// The way back of one call: its ID and its client.
+#[derive(Clone, Debug)]
+pub struct Caller {
+    pub call: u64,
+    pub client: Client,
+}
+
+impl Caller {
+    /// Gives the call its result. A client that is gone or does not read misses it; it is let
+    /// go by its own connection.
+    pub fn answer(&self, result: agent_threads::control::Outcome) {
+        let _ = tell(
+            &self.client,
+            Reply::Done {
+                id: self.call,
+                result,
+            },
+        );
+    }
+}
+
 /// A call of a client, with the way back to that client.
 #[derive(Debug)]
 pub struct Incoming {
     pub call: Call,
-    pub client: mpsc::UnboundedSender<Reply>,
+    pub client: Client,
 }
 
 /// Binds the socket of the runner in `dir`, in place of one an older runner left.
@@ -57,10 +91,16 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>) {
         return;
     }
     let (reading, mut writing) = stream.into_split();
-    let (client, mut replies) = mpsc::unbounded_channel::<Reply>();
+    let (client, mut replies) = mpsc::channel::<Reply>(CLIENT_QUEUE);
     let writer = tokio::spawn(async move {
         while let Some(reply) = replies.recv().await {
-            let mut text = serde_json::to_string(&reply).unwrap_or_default();
+            let mut text = match serde_json::to_string(&reply) {
+                Ok(text) => text,
+                Err(error) => {
+                    tracing::warn!(%error, "a frame for a client did not write");
+                    continue;
+                }
+            };
             text.push('\n');
             if writing.write_all(text.as_bytes()).await.is_err() {
                 break;

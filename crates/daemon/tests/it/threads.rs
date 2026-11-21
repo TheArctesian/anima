@@ -11,6 +11,7 @@ use anima_daemon::threads::wire::{Action, Event, Line, Outcome};
 use tempfile::TempDir;
 
 mod connection;
+mod requests;
 mod runner;
 mod start;
 mod stop;

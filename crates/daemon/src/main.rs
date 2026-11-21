@@ -48,12 +48,16 @@ async fn main() -> ExitCode {
     match command {
         Command::Run => {
             // The runner of the threads ends with the daemon; its programs stay in the holder.
-            let runner = tokio::spawn(threads(home.dir().to_owned()));
+            // The system unit runs as an account of its own and starts no agent (THR-128).
+            let runner =
+                serves_a_person(home.dir()).then(|| tokio::spawn(threads(home.dir().to_owned())));
             let outcome = match runtime::run(&home, stop()).await {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(error) => failure(&error),
             };
-            runner.abort();
+            if let Some(runner) = runner {
+                runner.abort();
+            }
             outcome
         }
         Command::Threads => threads(home.dir().to_owned()).await,
@@ -195,11 +199,22 @@ async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
         Ok(program) => program,
         Err(error) => return failure(&error),
     };
-    let env = login::environment(|name| std::env::var(name).ok()).await;
+    let daemon: Vec<(String, String)> = std::env::vars().collect();
+    let env = login::environment(&daemon).await;
     match runner::run(&daemon_dir, &program, env, stop()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => failure(&error),
     }
+}
+
+#[cfg(unix)]
+fn serves_a_person(daemon_dir: &std::path::Path) -> bool {
+    anima_daemon::threads::runner::serves_a_person(daemon_dir)
+}
+
+#[cfg(not(unix))]
+const fn serves_a_person(_: &std::path::Path) -> bool {
+    false
 }
 
 #[cfg(not(unix))]

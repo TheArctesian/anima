@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// The version of the protocol. A holder and a daemon of different versions say so and do not
 /// guess: the holder then takes no new start (THR-113).
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// The most bytes of one frame. A longer frame, or one that does not read, closes the
 /// connection and harms no agent (H8). A line of a program is at most 4 MiB, and JSON writes a
@@ -44,7 +44,11 @@ pub enum Action {
     CloseInput { thread: ThreadKey },
     /// The daemon read each line of the thread up to and with `seq`; the holder drops them.
     Ack { thread: ThreadKey, seq: u64 },
-    /// End each process below the program, not the program (the interrupt of Codex, THR-049).
+    /// Keep the processes below the program now as spared: the servers a program keeps for its
+    /// whole session (the MCP servers of Codex), which an end of the children leaves alive.
+    Mark { thread: ThreadKey },
+    /// End each process below the program that is not spared, not the program (the interrupt
+    /// of a Codex turn, THR-049).
     EndChildren { thread: ThreadKey },
     /// End the program and each process below it (THR-049).
     Stop { thread: ThreadKey },
@@ -123,6 +127,8 @@ pub enum Refusal {
     StartFailed,
     /// The input of the program is closed, or the program ended.
     InputClosed,
+    /// The program does not read its input: the queue in front of it is full.
+    InputFull,
     /// A program of a thread still runs.
     Busy,
 }

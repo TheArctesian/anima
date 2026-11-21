@@ -3,14 +3,14 @@
 
 use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
 use agent_threads::drive::{Answer, Effort, Model, Program};
-use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use super::codex::Codex;
 use super::log::{Kind, Line};
-use super::socket::Incoming;
+use super::socket::{self, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
-use super::{Runner, Waits};
+use super::thread::{Step, Thread};
+use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
 /// What the runner can see of the source of a call: the local socket (THR-044).
@@ -30,6 +30,11 @@ impl Runner {
             call: Call { id, action },
             client,
         } = incoming;
+        let back = Caller {
+            call: id,
+            client: client.clone(),
+        };
+        let named = thread_of(&action);
         let answer = match action {
             Action::List => Outcome::Threads {
                 threads: self
@@ -42,26 +47,7 @@ impl Runner {
                 self.watch(id, client);
                 return;
             }
-            start @ Action::Start { .. } => {
-                let Some(new) = NewThread::of(start) else {
-                    return;
-                };
-                match self.start(new, id, client.clone()).await {
-                    Ok(()) => return,
-                    Err(why) => Outcome::Refused { why },
-                }
-            }
-            Action::Send { thread, text } => self.send(thread, &text).await,
-            Action::Answer {
-                thread,
-                request,
-                answer,
-            } => self.answer(thread, request, &answer).await,
             Action::Interrupt { thread } => self.interrupt(thread).await,
-            Action::Stop { thread } => match self.stop(thread, id, client.clone()).await {
-                Ok(()) => return,
-                Err(why) => Outcome::Refused { why },
-            },
             Action::RaiseLimit => {
                 self.limits = self.limits.raised();
                 self.save();
@@ -69,25 +55,57 @@ impl Runner {
                     limits: self.limits,
                 }
             }
+            waits => match self.held_call(waits, back.clone()).await {
+                Ok(()) => return,
+                Err(why) => Outcome::Refused { why },
+            },
         };
         if let Outcome::Refused { why } = &answer {
-            self.note(Kind::Refusal, None, refusal_word(why));
+            self.note(Kind::Refusal, named, refusal_word(why));
         }
-        let _ = client.send(Reply::Done { id, result: answer });
+        back.answer(answer);
     }
 
-    /// A client that watches: the updates the runner keeps first, then each new one.
-    fn watch(&mut self, id: u64, client: mpsc::UnboundedSender<Reply>) {
-        let _ = client.send(Reply::Done {
-            id,
-            result: Outcome::Ok,
-        });
+    /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
+    async fn held_call(&mut self, action: Action, back: Caller) -> Result<(), Refusal> {
+        match action {
+            Action::Send { thread, text } => self.send(thread, text, back).await,
+            Action::Answer {
+                thread,
+                request,
+                answer,
+            } => {
+                self.answer(Answering { thread, request }, &answer, back)
+                    .await
+            }
+            Action::Stop { thread } => self.stop(thread, back).await,
+            start => match NewThread::of(start) {
+                Some(new) => self.start(new, back).await,
+                None => Err(Refusal::BadValue),
+            },
+        }
+    }
+
+    /// A client that watches: the newest updates the runner keeps first, as many of each thread
+    /// as the queue of the client holds, then each new one.
+    fn watch(&mut self, id: u64, client: Client) {
+        let share = (CLIENT_QUEUE - 64) / self.threads.len().max(1);
+        let mut told = socket::tell(
+            &client,
+            Reply::Done {
+                id,
+                result: Outcome::Ok,
+            },
+        );
         for thread in self.threads.values() {
-            for update in thread.kept() {
-                let _ = client.send(Reply::Update(Box::new(update.clone())));
+            let kept: Vec<_> = thread.kept().collect();
+            for update in &kept[kept.len().saturating_sub(share)..] {
+                told = told && socket::tell(&client, Reply::Update(Box::new((*update).clone())));
             }
         }
-        self.watchers.push(client);
+        if told {
+            self.watchers.push(client);
+        }
     }
 
     pub(super) fn note(&self, kind: Kind, thread: Option<Uuid>, what: &str) {
@@ -103,37 +121,60 @@ impl Runner {
         }
     }
 
-    async fn send(&mut self, id: Uuid, text: &str) -> Outcome {
-        let Some(thread) = self.threads.get_mut(&id) else {
-            return Outcome::Refused {
-                why: Refusal::UnknownThread,
-            };
-        };
-        match thread.send(text) {
-            Ok(steps) => {
-                self.apply(id, steps).await;
-                self.note(Kind::Prompt, Some(id), "sent");
-                Outcome::Ok
+    /// A prompt of the person. The client gets its answer when the holder took the line.
+    async fn send(&mut self, id: Uuid, text: String, back: Caller) -> Result<(), Refusal> {
+        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
+        let lines = thread.send(&text)?;
+        let steps = lines.into_iter().map(Step::Write).collect();
+        match self.apply(id, steps).await {
+            Err(_) => Err(Refusal::Holder),
+            Ok(Some(command)) => {
+                let waits = Waits::Send {
+                    thread: id,
+                    back,
+                    text,
+                };
+                self.waits.insert(command, waits);
+                Ok(())
             }
-            Err(why) => Outcome::Refused { why },
+            // A Codex prompt that waits in the thread for its ID: it is the thread's now.
+            Ok(None) => {
+                self.note(Kind::Prompt, Some(id), "sent");
+                let _ = self.apply(id, Thread::sent(&text)).await;
+                back.answer(Outcome::Ok);
+                Ok(())
+            }
         }
     }
 
-    async fn answer(&mut self, id: Uuid, request: Uuid, answer: &Answer) -> Outcome {
-        let Some(thread) = self.threads.get_mut(&id) else {
-            return Outcome::Refused {
-                why: Refusal::UnknownThread,
-            };
-        };
-        match thread.answer(request, answer) {
-            Ok(steps) => {
-                self.apply(id, steps).await;
-                self.save();
-                self.note(Kind::Answer, Some(id), answer_word(answer));
-                Outcome::Ok
+    /// An answer of the person. The request closes, and the client gets its answer, when the
+    /// holder took the line (THR-030).
+    async fn answer(
+        &mut self,
+        to: Answering,
+        answer: &Answer,
+        back: Caller,
+    ) -> Result<(), Refusal> {
+        let Answering {
+            thread: id,
+            request,
+        } = to;
+        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
+        let line = thread.answer(request, answer)?;
+        let Ok(Some(command)) = self.apply(id, vec![Step::Write(line)]).await else {
+            if let Some(thread) = self.threads.get_mut(&id) {
+                thread.answer_failed(request);
             }
-            Err(why) => Outcome::Refused { why },
-        }
+            return Err(Refusal::Holder);
+        };
+        let pending = Pending {
+            thread: id,
+            request,
+            word: answer_word(answer),
+            back,
+        };
+        self.waits.insert(command, Waits::Answer(pending));
+        Ok(())
     }
 
     async fn interrupt(&mut self, id: Uuid) -> Outcome {
@@ -148,18 +189,17 @@ impl Runner {
             };
         }
         let steps = thread.interrupt();
-        self.apply(id, steps).await;
+        if self.apply(id, steps).await.is_err() {
+            return Outcome::Refused {
+                why: Refusal::Holder,
+            };
+        }
         self.save();
         self.note(Kind::Stop, Some(id), "turn stopped");
         Outcome::Ok
     }
 
-    async fn stop(
-        &mut self,
-        id: Uuid,
-        call: u64,
-        client: mpsc::UnboundedSender<Reply>,
-    ) -> Result<(), Refusal> {
+    async fn stop(&mut self, id: Uuid, back: Caller) -> Result<(), Refusal> {
         let thread = self.threads.get(&id).ok_or(Refusal::UnknownThread)?;
         if thread.row.state == RunState::Stopped {
             return Err(Refusal::NotRunning);
@@ -171,8 +211,25 @@ impl Runner {
             .await
             .ok_or(Refusal::Holder)?;
         self.note(Kind::Stop, Some(id), "program stopped");
-        self.waits.insert(command, Waits::Stop { call, client });
+        self.waits.insert(command, Waits::Stop { back });
         Ok(())
+    }
+}
+
+/// The request of a thread that an answer is for.
+struct Answering {
+    thread: Uuid,
+    request: Uuid,
+}
+
+/// The thread a call names, for the line of the log of a refusal (THR-044).
+const fn thread_of(action: &Action) -> Option<Uuid> {
+    match action {
+        Action::Send { thread, .. }
+        | Action::Answer { thread, .. }
+        | Action::Interrupt { thread }
+        | Action::Stop { thread } => Some(*thread),
+        _ => None,
     }
 }
 

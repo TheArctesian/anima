@@ -148,7 +148,10 @@ impl Codex {
                 ])
             }
             Call::ThreadStart => {
-                self.thread = result["thread"]["id"].as_str().map(str::to_owned);
+                let Some(thread) = result["thread"]["id"].as_str() else {
+                    return Err("Codex gave no ID for its thread.".to_owned());
+                };
+                self.thread = Some(thread.to_owned());
                 let queued = std::mem::take(&mut self.queued);
                 Ok(queued.iter().flat_map(|text| self.prompt(text)).collect())
             }

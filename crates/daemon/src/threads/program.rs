@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use rustix::process::{Pid, Signal, kill_process_group};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt as _, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::process::{Child, ChildStdin};
 
 use super::holder::Shared;
@@ -188,7 +188,7 @@ pub async fn wait(
     let Ok(mut state) = shared.lock() else { return };
     if let Some(slot) = state.threads.get_mut(&thread) {
         slot.exit = Some(exit);
-        slot.input = Arc::new(tokio::sync::Mutex::new(None));
+        slot.input = None;
     }
     state.send(&Event::Exited { thread, exit });
     state.write_record();
@@ -219,8 +219,28 @@ async fn finish(
     }
 }
 
-/// The input of a program, shared between the commands that write to it.
-pub type Input = Arc<tokio::sync::Mutex<Option<ChildStdin>>>;
+/// The most lines that wait in front of the input of one program.
+pub const INPUT_LINES: usize = 16;
+
+/// The input of a program: a queue in front of a task that writes each line to the pipe, so that
+/// no command of the holder waits for a program that does not read (THR-113). `None` when the
+/// input is closed.
+pub type Input = Option<tokio::sync::mpsc::Sender<String>>;
+
+/// Starts the writer of the input of a program and gives its queue. The writer ends when the
+/// queue closes or the pipe fails.
+#[must_use]
+pub fn input(mut pipe: ChildStdin) -> tokio::sync::mpsc::Sender<String> {
+    let (sender, mut lines) = tokio::sync::mpsc::channel::<String>(INPUT_LINES);
+    tokio::spawn(async move {
+        while let Some(line) = lines.recv().await {
+            if pipe.write_all(line.as_bytes()).await.is_err() {
+                break;
+            }
+        }
+    });
+    sender
+}
 
 #[cfg(test)]
 mod tests {

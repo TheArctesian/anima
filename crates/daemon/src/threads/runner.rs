@@ -4,11 +4,12 @@
 //! stage 1b.
 //!
 //! Pure: [`thread`] (one thread) and [`codex`] (the calls to a Codex server). I/O: this file
-//! (the loop and the holder), [`calls`] (the calls of the clients), [`socket`], [`login`],
-//! [`record`] and [`log`].
+//! (the loop and the holder), [`holder_events`], [`calls`] (the calls of the clients),
+//! [`socket`], [`login`], [`record`] and [`log`].
 
 mod calls;
 pub mod codex;
+mod holder_events;
 pub mod log;
 pub mod login;
 pub mod record;
@@ -20,14 +21,24 @@ pub mod thread;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
-use agent_threads::control::{Limits, Reply, RunState};
+use agent_threads::control::{Limits, Outcome, Refusal, Reply, RunState};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use super::link::{self, HolderLink, LinkError};
-use super::wire::{Action, Event, Exit, Held, Line, Outcome, Stream};
+use super::wire::Action;
+use log::Kind;
+use socket::{Caller, Client};
 use thread::{Step, Thread};
+
+/// The lock file of the runner in the folder of the threads: one runner for one folder.
+const LOCK: &str = "runner.lock";
+/// The most stopped threads that the runner keeps; the oldest go first.
+const STOPPED_KEPT: usize = 50;
+/// The longest wait between two tries to reach the holder.
+const RETRY_MOST: Duration = Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum RunnerError {
@@ -35,6 +46,8 @@ pub enum RunnerError {
     Io(#[from] std::io::Error),
     #[error("{0}")]
     Holder(#[from] LinkError),
+    #[error("a different runner holds the threads of this daemon")]
+    Busy,
 }
 
 /// What a command to the holder was for, so that its answer goes to the right place.
@@ -42,25 +55,46 @@ pub enum RunnerError {
 enum Waits {
     Start {
         thread: Uuid,
-        call: u64,
-        client: mpsc::UnboundedSender<Reply>,
+        back: Caller,
         prompt: String,
     },
     Stop {
-        call: u64,
-        client: mpsc::UnboundedSender<Reply>,
+        back: Caller,
     },
+    /// The last line of a prompt; the prompt is shown as sent when the holder takes it.
+    Send {
+        thread: Uuid,
+        back: Caller,
+        text: String,
+    },
+    /// The line of an answer; the request closes when the holder takes it (THR-030).
+    Answer(Pending),
 }
+
+/// An answer that waits for the holder to take its line.
+#[derive(Debug)]
+struct Pending {
+    thread: Uuid,
+    request: Uuid,
+    word: &'static str,
+    back: Caller,
+}
+
+/// The link to the holder was lost while a command was sent.
+#[derive(Debug)]
+struct LinkDown;
 
 /// The runner: its threads, its link to the holder and its clients.
 pub struct Runner {
     dir: PathBuf,
     program: PathBuf,
     link: HolderLink,
+    /// The holder speaks the version of this runner; until it says so, nothing starts.
+    holder_fits: bool,
     env: Vec<(String, String)>,
     threads: BTreeMap<Uuid, Thread>,
     limits: Limits,
-    watchers: Vec<mpsc::UnboundedSender<Reply>>,
+    watchers: Vec<Client>,
     waits: BTreeMap<u64, Waits>,
     /// The last line of each thread that the runner read, so that a line the holder gives
     /// again is not read twice.
@@ -68,12 +102,19 @@ pub struct Runner {
     log: log::RunnerLog,
 }
 
+/// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
+/// of that person: never the system unit, which runs as an account of its own (THR-128).
+#[must_use]
+pub fn serves_a_person(daemon_dir: &Path) -> bool {
+    daemon_dir != Path::new(crate::units::plan::SYSTEM_HOME) && !rustix::process::getuid().is_root()
+}
+
 /// Runs the runner of the daemon in `daemon_dir` until `stop` completes. `program` is the path
 /// of `anima-daemon`, which the runner starts as the holder when none answers. The programs of
 /// the threads stay in the holder when the runner ends (THR-113).
 ///
 /// # Errors
-/// [`RunnerError`] when the folder, the record, the socket or the holder cannot be set up.
+/// [`RunnerError`] when the folder, its lock, the record or the socket cannot be set up.
 pub async fn run(
     daemon_dir: &Path,
     program: &Path,
@@ -89,12 +130,18 @@ pub async fn run(
         )));
     }
     private_folder(&dir)?;
+    let _lock = lock(&dir)?;
     let saved = record::read(&dir)?;
-    let link = link::reach(program, &dir).await?;
+    tokio::pin!(stop);
+    let link = tokio::select! {
+        link = reach_patiently(program, &dir) => link,
+        () = &mut stop => return Ok(()),
+    };
     let mut runner = Runner {
         dir: dir.clone(),
         program: program.to_owned(),
         link,
+        holder_fits: false,
         env,
         threads: BTreeMap::new(),
         limits: saved.limits,
@@ -103,27 +150,12 @@ pub async fn run(
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
     };
-    for saved in saved.threads {
-        let codex = calls::codex_of(&saved.row, saved.effort);
-        let thread = Thread::restore(saved, codex);
-        runner.threads.insert(thread.row.id, thread);
-    }
+    runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
-    let (sender, mut incoming) = mpsc::channel(256);
-    let accepting = tokio::spawn(socket::accept(listener, sender));
-    tokio::pin!(stop);
-    loop {
-        tokio::select! {
-            event = runner.link.events.recv() => match event {
-                Some(event) => runner.holder_event(event).await,
-                None => runner.reconnect().await?,
-            },
-            Some(call) = incoming.recv() => runner.call(call).await,
-            () = &mut stop => break,
-        }
+    runner.serve(listener, &mut stop).await;
+    if let Err(error) = std::fs::remove_file(dir.join(agent_threads::control::SOCKET)) {
+        tracing::warn!(%error, "the socket of the runner was not removed");
     }
-    accepting.abort();
-    let _ = std::fs::remove_file(dir.join(agent_threads::control::SOCKET));
     runner.save();
     Ok(())
 }
@@ -146,149 +178,140 @@ fn private_folder(dir: &Path) -> std::io::Result<()> {
     }
 }
 
+/// Takes the lock of the folder: a second runner on the same folder ends at once, so that two
+/// runners never stop the programs of each other (THR-113).
+fn lock(dir: &Path) -> Result<std::fs::File, RunnerError> {
+    use std::os::unix::fs::OpenOptionsExt as _;
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .mode(0o600)
+        .open(dir.join(LOCK))?;
+    rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)
+        .map_err(|_| RunnerError::Busy)?;
+    Ok(file)
+}
+
+/// The link to the holder; while none answers, it tries again, each time a little later.
+async fn reach_patiently(program: &Path, dir: &Path) -> HolderLink {
+    let mut wait = Duration::from_secs(1);
+    loop {
+        match link::reach(program, dir).await {
+            Ok(link) => return link,
+            Err(error) => tracing::warn!(%error, "the holder did not answer; trying again"),
+        }
+        tokio::time::sleep(wait).await;
+        wait = (wait * 2).min(RETRY_MOST);
+    }
+}
+
 impl Runner {
-    async fn reconnect(&mut self) -> Result<(), RunnerError> {
+    fn restore(&mut self, saved: Vec<thread::Saved>) {
+        for saved in saved {
+            let codex = calls::codex_of(&saved.row, saved.effort);
+            let thread = Thread::restore(saved, codex);
+            self.threads.insert(thread.row.id, thread);
+        }
+    }
+
+    /// The loop of the runner: the holder, the clients, and the stop.
+    async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
+        let (sender, mut incoming) = mpsc::channel(256);
+        let accepting = tokio::spawn(socket::accept(listener, sender));
+        tokio::pin!(stop);
+        loop {
+            tokio::select! {
+                event = self.link.events.recv() => match event {
+                    Some(event) => self.holder_event(event).await,
+                    None => self.reconnect().await,
+                },
+                Some(call) = incoming.recv() => self.call(call).await,
+                () = &mut stop => break,
+            }
+        }
+        accepting.abort();
+    }
+
+    /// A new link to the holder. Each call that waited for a command of the old link gets its
+    /// answer now: a start waits for the holder to say what it holds; the rest are refused.
+    async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
-        self.link = link::reach(&self.program, &self.dir).await?;
-        Ok(())
-    }
-
-    async fn holder_event(&mut self, event: Event) {
-        match event {
-            Event::Hello { threads, .. } => self.hello(threads).await,
-            Event::Done { id, outcome } => self.done(id, outcome).await,
-            Event::Lines {
-                thread,
-                first,
-                lines,
-            } => self.lines(&thread, first, lines).await,
-            Event::Waiting { .. } => {}
-            Event::Exited { thread, exit } => self.exited(&thread, exit).await,
-        }
-    }
-
-    /// After a connection: a thread that the holder does not hold any more stopped; a program
-    /// the holder holds that no thread knows is ended (THR-049).
-    async fn hello(&mut self, held: Vec<Held>) {
-        let ids: Vec<Uuid> = self.threads.keys().copied().collect();
-        for id in ids {
-            let found = held.iter().find(|entry| entry.thread == id.to_string());
-            let Some(thread) = self.threads.get_mut(&id) else {
-                continue;
-            };
-            if thread.row.state == RunState::Stopped {
-                continue;
-            }
-            let steps = match found {
-                None => thread.lost(),
-                Some(Held {
-                    exit: Some(exit), ..
-                }) => thread.exited(exit.code, exit.signal),
-                Some(_) => continue,
-            };
-            self.apply(id, steps).await;
-        }
-        for entry in held {
-            let known = Uuid::parse_str(&entry.thread)
-                .ok()
-                .and_then(|id| self.threads.get(&id))
-                .is_some_and(|thread| thread.row.state != RunState::Stopped);
-            if !known {
-                let action = if entry.exit.is_some() {
-                    Action::Forget {
-                        thread: entry.thread,
-                    }
-                } else {
-                    Action::Stop {
-                        thread: entry.thread,
-                    }
-                };
-                self.command(action).await;
+        self.holder_fits = false;
+        let waits = std::mem::take(&mut self.waits);
+        for (command, waits) in waits {
+            match waits {
+                start @ Waits::Start { .. } => {
+                    self.waits.insert(command, start);
+                }
+                other => self.refuse_wait(other, Refusal::Holder),
             }
         }
-        self.save();
+        self.link = reach_patiently(&self.program, &self.dir).await;
     }
 
-    async fn lines(&mut self, key: &str, first: u64, lines: Vec<Line>) {
-        let Some(id) = Uuid::parse_str(key)
-            .ok()
-            .filter(|id| self.threads.contains_key(id))
-        else {
-            return;
+    /// Answers a call that waited for the holder with a refusal; an answer that waited may be
+    /// given again.
+    fn refuse_wait(&mut self, waits: Waits, why: Refusal) {
+        let back = match waits {
+            Waits::Start { back, .. } | Waits::Stop { back } | Waits::Send { back, .. } => back,
+            Waits::Answer(pending) => {
+                if let Some(thread) = self.threads.get_mut(&pending.thread) {
+                    thread.answer_failed(pending.request);
+                }
+                pending.back
+            }
         };
-        let mut last = self.read_up_to.get(&id).copied().unwrap_or(0);
-        for (at, line) in lines.into_iter().enumerate() {
-            let seq = first + at as u64;
-            if seq <= last {
-                continue;
-            }
-            last = seq;
-            let Some(thread) = self.threads.get_mut(&id) else {
-                return;
-            };
-            let steps = match line.stream {
-                Stream::Out => thread.line(&line.text, &mut Uuid::now_v7),
-                Stream::Err => {
-                    thread.error_line(&line.text);
-                    Vec::new()
+        back.answer(Outcome::Refused { why });
+    }
+
+    /// Does the steps of a thread, in order. Gives the ID of the command of the last line
+    /// written, or [`LinkDown`] when a command did not reach the holder.
+    async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
+        let key = id.to_string();
+        let mut last_write = None;
+        for step in steps {
+            let action = match step {
+                Step::Write(line) => Action::Write {
+                    thread: key.clone(),
+                    line,
+                },
+                Step::Mark => Action::Mark {
+                    thread: key.clone(),
+                },
+                Step::EndChildren => Action::EndChildren {
+                    thread: key.clone(),
+                },
+                Step::EndProgram => Action::Stop {
+                    thread: key.clone(),
+                },
+                Step::Log(what) => {
+                    self.note(Kind::Stop, Some(id), what);
+                    continue;
+                }
+                Step::Change(change) => {
+                    self.publish(id, change);
+                    continue;
                 }
             };
-            self.apply(id, steps).await;
+            let write = matches!(action, Action::Write { .. });
+            let command = self.command(action).await.ok_or(LinkDown)?;
+            if write {
+                last_write = Some(command);
+            }
         }
-        self.read_up_to.insert(id, last);
-        // The record holds the open requests before the holder drops their lines (THR-030).
-        self.save();
-        self.command(Action::Ack {
-            thread: key.to_owned(),
-            seq: last,
-        })
-        .await;
+        Ok(last_write)
     }
 
-    async fn exited(&mut self, key: &str, exit: Exit) {
-        let Some(id) = Uuid::parse_str(key).ok() else {
-            return;
-        };
+    /// Gives a change of a thread its number and sends it to each watcher; a watcher that does
+    /// not read is let go (THR-045).
+    fn publish(&mut self, id: Uuid, change: agent_threads::control::Change) {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
-        let steps = thread.exited(exit.code, exit.signal);
-        self.apply(id, steps).await;
-        self.save();
-        self.command(Action::Forget {
-            thread: key.to_owned(),
-        })
-        .await;
-    }
-
-    /// Does the steps of a thread: lines to its program, an end of its children, updates.
-    async fn apply(&mut self, id: Uuid, steps: Vec<Step>) {
-        for step in steps {
-            match step {
-                Step::Write(line) => {
-                    self.command(Action::Write {
-                        thread: id.to_string(),
-                        line,
-                    })
-                    .await;
-                }
-                Step::EndChildren => {
-                    self.command(Action::EndChildren {
-                        thread: id.to_string(),
-                    })
-                    .await;
-                }
-                Step::Change(change) => {
-                    let Some(thread) = self.threads.get_mut(&id) else {
-                        continue;
-                    };
-                    let update = thread.note(change);
-                    let reply = Reply::Update(Box::new(update));
-                    self.watchers
-                        .retain(|watcher| watcher.send(reply.clone()).is_ok());
-                }
-            }
-        }
+        let reply = Reply::Update(Box::new(thread.note(change)));
+        self.watchers
+            .retain(|watcher| socket::tell(watcher, reply.clone()));
     }
 
     /// Sends a command to the holder; a closed link is found by the loop and connected again.
@@ -302,7 +325,20 @@ impl Runner {
         }
     }
 
-    fn save(&self) {
+    /// Writes the record, after it lets go of the oldest stopped threads.
+    fn save(&mut self) {
+        let mut stopped: Vec<(chrono::DateTime<chrono::Utc>, Uuid)> = self
+            .threads
+            .values()
+            .filter(|thread| thread.row.state == RunState::Stopped)
+            .map(|thread| (thread.row.started, thread.row.id))
+            .collect();
+        stopped.sort();
+        let over = stopped.len().saturating_sub(STOPPED_KEPT);
+        for (_, id) in stopped.into_iter().take(over) {
+            self.threads.remove(&id);
+            self.read_up_to.remove(&id);
+        }
         let record = record::Record {
             limits: self.limits,
             threads: self.threads.values().map(Thread::saved).collect(),
@@ -320,9 +356,4 @@ impl Runner {
             .count();
         u32::try_from(count).unwrap_or(u32::MAX)
     }
-}
-
-/// Whether a holder answer is a refusal.
-const fn refused(outcome: &Outcome) -> bool {
-    matches!(outcome, Outcome::Refused { .. })
 }

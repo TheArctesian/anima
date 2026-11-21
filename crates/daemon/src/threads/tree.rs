@@ -51,6 +51,16 @@ pub fn below(rows: &[Row], root: u32) -> BTreeSet<u32> {
     found
 }
 
+/// The processes of `spare` that still run, with each process below them.
+fn spare_with_children(rows: &[Row], spare: &BTreeSet<u32>) -> BTreeSet<u32> {
+    let running: BTreeSet<u32> = rows.iter().map(|row| row.pid).collect();
+    let mut out: BTreeSet<u32> = spare.intersection(&running).copied().collect();
+    for pid in out.clone() {
+        out.extend(below(rows, pid));
+    }
+    out
+}
+
 /// The program `ps` at a fixed path: the holder has no `PATH`.
 fn ps() -> Option<&'static str> {
     ["/bin/ps", "/usr/bin/ps"]
@@ -60,7 +70,7 @@ fn ps() -> Option<&'static str> {
 
 /// The process table now, as rows; `None` when `ps` is missing or fails, so that a stop never
 /// claims an end it could not see.
-async fn table() -> Option<Vec<Row>> {
+pub async fn table() -> Option<Vec<Row>> {
     let output = tokio::process::Command::new(ps()?)
         .args(["-axo", "pid=,ppid="])
         .env_clear()
@@ -108,13 +118,14 @@ pub struct Ended {
     pub all: bool,
 }
 
-/// Ends each process below `root`, and `root` too when `with_root`. The root is stopped first
+/// Ends each process below `root` that is not in `spare` (with the processes below it), and
+/// `root` too when `with_root`. The root is stopped first
 /// (`SIGSTOP`), so it starts nothing new while the walk is repeated; each process found below it
 /// is stopped too, then all get `SIGKILL`. The root then gets `SIGTERM` and `SIGCONT`, so that
 /// the program can write its session file, and `SIGKILL` after `grace`. When the root goes on
 /// (`with_root` false) it gets `SIGCONT`. A process that the root starts after it goes on, in a
 /// group of its own, is not found: that is said in the answer only when the walk cannot run.
-pub async fn end(root: u32, with_root: bool, grace: Duration) -> Ended {
+pub async fn end(root: u32, with_root: bool, spare: &BTreeSet<u32>, grace: Duration) -> Ended {
     signal(root, Signal::STOP);
     let mut known: BTreeSet<u32> = BTreeSet::new();
     let mut seen = true;
@@ -123,7 +134,12 @@ pub async fn end(root: u32, with_root: bool, grace: Duration) -> Ended {
             seen = false;
             break;
         };
-        let new: Vec<u32> = below(&table, root).difference(&known).copied().collect();
+        let spared = spare_with_children(&table, spare);
+        let new: Vec<u32> = below(&table, root)
+            .difference(&known)
+            .filter(|pid| !spared.contains(pid))
+            .copied()
+            .collect();
         if new.is_empty() {
             break;
         }
@@ -165,6 +181,15 @@ mod tests {
         let table = "  10 1\n  11 10\n  12 11\n  13 12\n  20 1\n  21 20\nbad line\n";
         assert_eq!(below(&rows(table), 10), BTreeSet::from([11, 12, 13]));
         assert_eq!(below(&rows(table), 13), BTreeSet::new());
+    }
+
+    #[test]
+    fn thr_021_a_spared_server_keeps_its_own_children_and_a_gone_one_spares_nothing() {
+        let table = rows("10 1\n11 10\n12 11\n13 10\n14 13\n");
+        assert_eq!(
+            spare_with_children(&table, &BTreeSet::from([11, 99])),
+            BTreeSet::from([11, 12])
+        );
     }
 
     #[test]

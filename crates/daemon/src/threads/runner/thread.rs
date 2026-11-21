@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use agent_threads::control::{Change, Refusal, RunState, ThreadRow, Update};
 use agent_threads::drive::{
-    Answer, ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
+    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
 };
 use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
@@ -14,10 +14,13 @@ use uuid::Uuid;
 
 use super::codex::Codex;
 
+mod asks;
 mod events;
 
-/// How many updates of a thread the runner keeps for a client that starts to watch.
+/// How many updates of a thread the runner keeps for a client that starts to watch, and their
+/// most bytes as JSON: a line of a program can be 4 MiB, so a count alone does not bound them.
 const KEPT: usize = 4000;
+const KEPT_BYTES: usize = 4 * 1024 * 1024;
 
 /// The source of a prompt that came through the local socket (THR-042).
 pub const THIS_COMPUTER: &str = "this computer";
@@ -27,8 +30,14 @@ pub const THIS_COMPUTER: &str = "this computer";
 pub enum Step {
     /// A line to the standard input of the program.
     Write(String),
-    /// End the processes below the program, not the program (the stop of a Codex turn).
+    /// Keep the processes below the program now as spared (the MCP servers of Codex).
+    Mark,
+    /// End the processes below the program that are not spared (the stop of a Codex turn).
     EndChildren,
+    /// End the program: it cannot go on (Codex did not start its thread).
+    EndProgram,
+    /// A line of the log of the runner, of the kind "stop", for a stop that the runner made.
+    Log(&'static str),
     /// An update for the clients.
     Change(Change),
 }
@@ -39,6 +48,8 @@ pub enum Step {
 pub struct Open {
     pub request: Request,
     pub line: String,
+    /// An answer was given and waits for the holder to take it; a second one is refused.
+    pub answering: bool,
 }
 
 #[derive(Debug)]
@@ -67,8 +78,11 @@ pub struct Thread {
     open: BTreeMap<Uuid, Open>,
     program: Option<ProgramState>,
     seq: u64,
-    kept: VecDeque<Update>,
+    kept: VecDeque<(Update, usize)>,
+    kept_bytes: usize,
     controls: u64,
+    /// The holder started the program: a line may be written to it.
+    held: bool,
     last_error: Option<String>,
 }
 
@@ -87,7 +101,9 @@ impl Thread {
             program: None,
             seq: 0,
             kept: VecDeque::new(),
+            kept_bytes: 0,
             controls: 0,
+            held: false,
             last_error: None,
         }
     }
@@ -124,10 +140,18 @@ impl Thread {
             RunState::Working | RunState::NeedsYou => Some(ProgramState::Working),
             RunState::Starting | RunState::Stopped | RunState::Unknown => None,
         };
+        thread.held = thread.row.state != RunState::Stopped;
         for (id, line) in saved.open {
             let events = thread.decode(line.as_bytes());
             if let Some(DriveEvent::Request(request)) = events.into_iter().next() {
-                thread.open.insert(id, Open { request, line });
+                thread.open.insert(
+                    id,
+                    Open {
+                        request,
+                        line,
+                        answering: false,
+                    },
+                );
             }
         }
         thread
@@ -135,7 +159,7 @@ impl Thread {
 
     /// The updates the runner keeps, for a client that starts to watch.
     pub fn kept(&self) -> impl Iterator<Item = &Update> {
-        self.kept.iter()
+        self.kept.iter().map(|(update, _)| update)
     }
 
     /// Gives `change` the next number of the thread and keeps it.
@@ -146,9 +170,14 @@ impl Thread {
             seq: self.seq,
             change,
         };
-        self.kept.push_back(update.clone());
-        while self.kept.len() > KEPT {
-            self.kept.pop_front();
+        let bytes = serde_json::to_vec(&update).map_or(0, |json| json.len());
+        self.kept.push_back((update.clone(), bytes));
+        self.kept_bytes += bytes;
+        while self.kept.len() > KEPT || self.kept_bytes > KEPT_BYTES {
+            let Some((_, gone)) = self.kept.pop_front() else {
+                break;
+            };
+            self.kept_bytes -= gone;
         }
         update
     }
@@ -162,6 +191,7 @@ impl Thread {
 
     /// The first steps of a new thread: its prompt, and the first line of the program.
     pub fn begin(&mut self, prompt: &str) -> Vec<Step> {
+        self.held = true;
         self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
         let mut steps = vec![prompt_change(prompt)];
         match &mut self.driver {
@@ -174,63 +204,52 @@ impl Thread {
         steps
     }
 
-    /// A prompt of the person to a running thread.
+    /// The lines of a prompt of the person to a running thread. The prompt is shown as sent
+    /// only when the holder took them ([`Self::sent`]); a Codex prompt before its thread has an
+    /// ID waits in the thread and has no line yet.
     ///
     /// # Errors
-    /// [`Refusal::NotRunning`] when the program ended.
-    pub fn send(&mut self, text: &str) -> Result<Vec<Step>, Refusal> {
-        if self.row.state == RunState::Stopped {
+    /// [`Refusal::NotRunning`] when the program ended or the holder did not start it yet.
+    pub fn send(&mut self, text: &str) -> Result<Vec<String>, Refusal> {
+        if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
-        let mut steps = vec![prompt_change(text)];
-        match &mut self.driver {
-            Driver::Claude(_) => steps.push(Step::Write(ClaudeInput::prompt(text))),
-            Driver::Codex(codex) => steps.extend(codex.prompt(text).into_iter().map(Step::Write)),
-        }
-        Ok(steps)
+        Ok(match &mut self.driver {
+            Driver::Claude(_) => vec![ClaudeInput::prompt(text)],
+            Driver::Codex(codex) => codex.prompt(text).into_iter().collect(),
+        })
     }
 
-    /// The answer of the person to the request `id` of the runner. One answer for each request,
-    /// while its process lives (THR-030).
-    ///
-    /// # Errors
-    /// [`Refusal::RequestGone`] for a request that is answered, closed or of an ended process;
-    /// [`Refusal::AnswerDoesNotFit`] for an answer of the wrong kind.
-    pub fn answer(&mut self, id: Uuid, answer: &Answer) -> Result<Vec<Step>, Refusal> {
-        if self.row.state == RunState::Stopped {
-            return Err(Refusal::RequestGone);
-        }
-        let open = self.open.get(&id).ok_or(Refusal::RequestGone)?;
-        let line = match &self.driver {
-            Driver::Claude(_) => ClaudeInput::answer(&open.request, answer),
-            Driver::Codex(_) => agent_threads::drive::CodexInput::answer(&open.request, answer),
-        }
-        .map_err(|_| Refusal::AnswerDoesNotFit)?;
-        self.open.remove(&id);
-        let mut steps = vec![Step::Write(line), closed(id, "answered by the person")];
-        steps.extend(self.state_change());
-        Ok(steps)
+    /// The holder took the lines of a prompt: it is shown with its source (THR-042).
+    #[must_use]
+    pub fn sent(text: &str) -> Vec<Step> {
+        vec![prompt_change(text)]
     }
 
-    /// Stops the running turn; the program stays. Each open request closes (THR-087: a stop by
-    /// the person). Codex leaves its command alive after `turn/interrupt` (TH10), so the
-    /// processes below it end too (THR-049).
+    /// The person stops the running turn; the program stays. Each open request closes (THR-087:
+    /// a stop by the person).
     pub fn interrupt(&mut self) -> Vec<Step> {
-        let mut steps = Vec::new();
+        let mut steps = self.turn_stop();
+        steps.extend(self.close_all("the turn was stopped"));
+        steps.extend(self.state_change());
+        steps
+    }
+
+    /// The lines that stop the running turn. Codex leaves the command of a turn alive after
+    /// `turn/interrupt` (TH10), so the processes below it that the turn started end too
+    /// (THR-049); its MCP servers, marked when the turn started, are spared. With no running
+    /// turn of Codex there is nothing to stop.
+    fn turn_stop(&mut self) -> Vec<Step> {
         match &mut self.driver {
             Driver::Claude(_) => {
                 self.controls += 1;
                 let id = format!("anima-interrupt-{}", self.controls);
-                steps.push(Step::Write(ClaudeInput::interrupt(&id)));
+                vec![Step::Write(ClaudeInput::interrupt(&id))]
             }
-            Driver::Codex(codex) => {
-                steps.extend(codex.interrupt().map(Step::Write));
-                steps.push(Step::EndChildren);
-            }
+            Driver::Codex(codex) => codex
+                .interrupt()
+                .map_or_else(Vec::new, |line| vec![Step::Write(line), Step::EndChildren]),
         }
-        steps.extend(self.close_all("the turn was stopped"));
-        steps.extend(self.state_change());
-        steps
     }
 
     /// The program ended: each open request closes and the thread is stopped (THR-030, THR-085).
@@ -271,13 +290,6 @@ impl Thread {
         if !text.is_empty() {
             self.last_error = Some(text);
         }
-    }
-
-    fn close_all(&mut self, why: &str) -> Vec<Step> {
-        std::mem::take(&mut self.open)
-            .into_keys()
-            .map(|id| closed(id, why))
-            .collect()
     }
 
     /// The state now: an open request first (sticky, THR-086), then what the program said.
