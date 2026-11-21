@@ -72,6 +72,9 @@ pub enum Action {
     Stop { thread: Uuid },
     /// The person raised the soft limit (THR-114).
     RaiseLimit,
+    /// What the project files of a folder make the program do with no question, to show before
+    /// a thread starts there (THR-046).
+    Folder { folder: PathBuf },
 }
 
 /// A frame of the runner to a client.
@@ -94,6 +97,10 @@ pub enum Outcome {
     },
     Limits {
         limits: Limits,
+    },
+    /// The notice of a folder, as lines for the person; empty when there is nothing to say.
+    Folder {
+        notice: Vec<String>,
     },
     /// The program of a stopped thread ended; `all_ended` is false when a process below it was
     /// still there or the walk could not run (THR-049).

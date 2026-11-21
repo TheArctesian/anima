@@ -68,8 +68,15 @@ impl Runner {
         }
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id)?;
+        let notice = crate::threads::notice::of_folder(&row.folder);
         let codex = codex_of(&row, new.effort);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
+        if !notice.is_empty() {
+            // The thread keeps the notice as its first line (THR-046).
+            let text = notice.join("\n");
+            let event = agent_threads::drive::DriveEvent::Notice { text };
+            self.publish(id, agent_threads::control::Change::Said { event });
+        }
         let Some(command) = self.command(action).await else {
             self.threads.remove(&id);
             return Err(Refusal::Holder);
@@ -155,7 +162,7 @@ impl Runner {
 /// An absolute folder of this computer that exists, as its real path, and not in the folder of
 /// the daemon, which holds its keys and the record, the log and the sockets of the runner
 /// (THR-040, THR-041).
-fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Refusal> {
+pub(super) fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Refusal> {
     if !folder.is_absolute() {
         return Err(Refusal::FolderNotPermitted);
     }

@@ -2712,6 +2712,29 @@ to 11 were not tried.
 
 Result: Open.
 
+### HT-NEW-threadsnotice: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+
+Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of
+`anima agents start`) and on `threads/client` (the box in the dialog "New thread"). The runner reads
+`.claude/settings.json`, `.claude/settings.local.json` and `.mcp.json` of the folder, and names the hooks with their
+commands, the MCP servers, the count of allow rules and the environment names. Claude Code runs these with no question
+in each mode. The project files of Codex are not read. The tests use made folders; no real thread was started with a
+folder that has hooks, and nothing was run on Linux.
+
+1. Make a scratch folder with `.claude/settings.json` that holds one hook, for example
+   `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch started.txt"}]}]}}`. Run
+   `anima agents start --program claude-code --folder <the folder> "Say hello"`.
+   Expected: before the thread ID, the command prints that the folder makes Claude Code run `touch started.txt` at
+   SessionStart. `anima agents watch` shows the same notice as the first line of the thread. The file `started.txt`
+   appears: the hook ran, as the operator ruled.
+2. In the application, open Threads, choose "New thread", give the same folder and a prompt, and press Start.
+   Expected: the dialog shows a box with the same lines and does not start the thread. Press Start again: the thread
+   starts, and its first line is the notice.
+3. Do step 2 with a folder that has no such files.
+   Expected: the first press of Start starts the thread, with no box.
+
+Result: Open.
+
 ### HT-074: the native Windows desktop client (WIN1)
 
 Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
