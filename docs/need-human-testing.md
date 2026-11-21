@@ -32,6 +32,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | --- | --- | --- | --- |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-NEW-lsentries | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
+| HT-NEW-catalogueview | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -2899,6 +2900,44 @@ with real projects, in a desktop window or on a phone.
 
 Result: Open.
 
+### HT-NEW-catalogueview: the choice Catalogue shows the tier, the class shell, the streams and the optional parts (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the hub fields `class`, `tier`, `origin`, `streams`,
+`optionalParts` and `digests` of `CatalogueEntry` (`crates/hub/src/work/catalogue/`), and the client views
+`apps/client/src/lib/catalogue/CatalogueList.svelte` and `CatalogueEntryPane.svelte`, to Frames 3 to 6 of
+[device-containers-v2](mockup/device-containers-v2/index.html). The layout was approved overnight by the orchestrator
+after a separate design review (R-NEW-hostovernight); a person has not looked at it. The client tests read the
+rendered text in jsdom only: no test looks at the screen, the colours, the scroll of the list or the sticky group
+heads. The gallery tool could not run in the worktree of the build (it has no installed packages), so there are no
+pictures yet: take them in these steps.
+
+1. Open the desktop client in the dark appearance. Open a device that has Docker, the tab Containers, then the choice
+   Catalogue.
+   Expected: on the left, a search field, the choice of the tier "All 16 / Tested by Anima 6 / Generated 10", the line
+   "16 entries", and the entries in groups by category (Backup, Books, Cloud, Dashboard, Database, Downloaders, Git,
+   Location, Media management, Media servers, Monitoring, Passwords, Programming), each row with a neutral mark
+   "Tested by Anima" or "Generated". The row code-server has the mark Shell and the line "Needs a password that the
+   machine makes. It has no public route." Take a picture.
+2. Make the window lower until the list scrolls, and scroll it.
+   Expected: only the list scrolls; the head of each group stays at the top while its rows pass.
+3. Select jellyfin.
+   Expected: on the right, the description: the install button is disabled and the line under it says that Anima did
+   not test the entry and that a person confirms the digest of its image; Tier "From LinuxServer.io, data of
+   2026-11-17. Anima did not test it."; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
+   default" and the mark "Needs machine setting". Take a picture.
+4. Select qbittorrent, then press the down and up arrow keys.
+   Expected: Streams "6881 TCP and UDP"; each arrow key selects the next or the previous row and moves the focus to it.
+5. Select code-server.
+   Expected: the marks Generated and Shell in the head, the reason that only a person signed in to the client can install
+   it, and the fact "Class: Shell. Needs a password that the machine makes. It has no public route."
+6. Choose "Tested by Anima", then type `zzz` in the search field.
+   Expected: six entries, then "No entry matches the search" with the button "Clear the search", which shows the list
+   again.
+7. Do steps 1, 3 and 5 again in the light appearance and take the pictures.
+   Expected: the same parts in the same places; no text is hard to read.
+
+Result: Open.
+
 ### HT-NEW-lsentries: three generated entries of LinuxServer.io start with the rights of the static test (task H39)
 
 Built on the branch `hosted/catalogue-linuxserver`: the recipe form `crates/catalogue/src/linuxserver.rs`, the
@@ -2919,7 +2958,7 @@ that is not on the network of Anima or your local network (OD-HOST-53). Do each 
    Expected: port 6881 listens on `127.0.0.1` for TCP and for UDP; the web page answers on
    `http://127.0.0.1:8080/` and the log gives the temporary password of the first sign-in.
 3. Copy `crates/catalogue/entries/code-server/`. In `.env`, write a password of your own after `PASSWORD=` (the
-   install would make it). Start it and open `http://127.0.0.1:8443/` through an SSH tunnel.
+   install would make it). Start it and open `http://127.0.0.1:8444/` through an SSH tunnel (the port of the machine is 8444, because 8443 is the port of the hub of Anima, SF-NEW-revlsform).
    Expected: the page asks for the password, and the password opens it. Write down what the page does with an empty
    `PASSWORD=`: the class `shell` needs the credential that the install makes because of that answer (OD-HOST-54).
 4. For each of the three, run `docker inspect --format '{{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}'` on the

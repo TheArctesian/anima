@@ -18,6 +18,22 @@ const CATALOGUE_ENTRIES = graphql(`
         port
         protocols
       }
+      class
+      tier
+      origin {
+        publisher
+        read
+      }
+      streams {
+        port
+        protocols
+      }
+      optionalParts {
+        kind
+        path
+        on
+        needsMachineSetting
+      }
       lastMachineTest
       pinned
       install {

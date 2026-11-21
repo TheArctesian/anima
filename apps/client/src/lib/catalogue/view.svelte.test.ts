@@ -41,21 +41,64 @@ async function openCatalogue(): Promise<void> {
   await settle();
 }
 
-it('H38: the catalogue is read when the operator first opens it, and lists each entry with its machine test', async () => {
+const rows = () => [...document.querySelectorAll<HTMLButtonElement>('.entries button')];
+const row = (name: string) => rows().find((each) => each.querySelector('.name')?.textContent.startsWith(name));
+
+it('H39: the catalogue is read when the operator first opens it, in groups by category, each row with its tier', async () => {
   await openCatalogue();
   expect(calls.entriesAsked).toBe(1);
-  const rows = [...document.querySelectorAll('.entries li')].map((row) => row.textContent);
-  expect(rows).toHaveLength(2);
-  expect(rows[0]).toContain('OwnTracks Recorder');
-  expect(rows[0]).toContain('Passed on a machine on 2026-11-20');
-  expect(rows[1]).toContain('PostgreSQL');
-  expect(rows[1]).toContain('Database');
-  expect(rows[1]).toContain('Not tested on a machine');
+  const heads = [...document.querySelectorAll('.groups h4')].map((head) => head.textContent);
+  expect(heads).toEqual(['Database1', 'Location1', 'Media servers1', 'Programming1']);
+  expect(row('PostgreSQL')?.textContent).toContain('Tested by Anima');
+  expect(row('PostgreSQL')?.textContent).toContain('Database');
+  expect(row('jellyfin')?.textContent).toContain('Generated');
+  expect(row('jellyfin')?.textContent).toContain('1 stream · 1 optional part');
+  const shell = row('code-server')?.textContent ?? '';
+  expect(shell).toContain('Shell');
+  expect(shell).toContain('Needs a password that the machine makes. It has no public route.');
+});
+
+it('H39: the choice of the tier and the search keep only the entries that match; no match offers to clear', async () => {
+  await openCatalogue();
+  [...document.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find((each) => each.textContent.startsWith('Generated'))?.click();
+  flushSync();
+  expect(rows().map((each) => each.querySelector('.name')?.textContent)).toEqual(['jellyfin', 'code-serverShell']);
+  const search = document.querySelector<HTMLInputElement>('input[type="search"]');
+  if (search === null) throw new Error('no search field');
+  search.value = 'nothing like it';
+  search.dispatchEvent(new Event('input'));
+  flushSync();
+  expect(document.body.textContent).toContain('No entry matches the search');
+  button('Clear the search')?.click();
+  flushSync();
+  expect(rows()).toHaveLength(4);
+});
+
+it('H39: the description gives the stream with its protocols and the optional part with its state', async () => {
+  await openCatalogue();
+  row('jellyfin')?.click();
+  flushSync();
+  const about = document.querySelector('section[aria-label="About jellyfin"]');
+  expect(about?.textContent).toContain('From LinuxServer.io, data of 2026-11-17. Anima did not test it.');
+  expect(about?.textContent).toContain('7359TCP and UDP');
+  expect(about?.textContent).toContain('Off by default');
+  expect(about?.textContent).toContain('Needs machine setting');
+  expect(about?.querySelector('[role="switch"]')?.getAttribute('aria-disabled')).toBe('true');
+});
+
+it('H39: the arrow keys move the selection from row to row', async () => {
+  await openCatalogue();
+  row('PostgreSQL')?.click();
+  flushSync();
+  row('PostgreSQL')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  await settle();
+  expect(document.querySelector('section[aria-label="About OwnTracks Recorder"]')).not.toBeNull();
+  expect(document.activeElement).toBe(row('OwnTracks Recorder'));
 });
 
 it('H38: the install button is present and refused with the reason of the hub; a click asks nothing', async () => {
   await openCatalogue();
-  document.querySelector<HTMLButtonElement>('.entries li:nth-child(2) button')?.click();
+  row('PostgreSQL')?.click();
   flushSync();
   const install = button('Install on this device');
   expect(install?.getAttribute('aria-disabled')).toBe('true');
