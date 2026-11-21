@@ -1,6 +1,6 @@
 //! What one collection read from a device, before any rate is worked out.
 
-use super::Drive;
+use super::{Battery, Drive};
 
 /// CPU as the device reports it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -79,4 +79,7 @@ pub struct Reading {
     pub drive_counters: Vec<DriveCounters>,
     /// The data of a hosted hub (HMD-072); `None` on each other device.
     pub hub_storage: Option<HubStorage>,
+    /// The batteries that power the device (MET-032); `None` when nothing could be read (the
+    /// container of a hosted hub, a failed read), which is not the same as a device with none.
+    pub batteries: Option<Vec<Battery>>,
 }

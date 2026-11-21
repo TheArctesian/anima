@@ -8,7 +8,8 @@
 //! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
 //! its metrics from the Anima daemon instead ([`daemon_router`], K8); [`spawn_stale_watch`] marks
 //! a daemon that stopped pushing (MET-018). [`storage`] shows a device's storage drive by drive
-//! (MET-026). [`capabilities`] gives the tool inventory each daemon sent (CAP-020 to CAP-031).
+//! (MET-026), and [`batteries`] the batteries its daemon listed (MET-032). [`capabilities`]
+//! gives the tool inventory each daemon sent (CAP-020 to CAP-031).
 
 mod capabilities;
 mod collector;
@@ -40,8 +41,8 @@ pub use daemon_core::{
 pub use feed::Feed;
 pub use ingest::{daemon_router, spawn_stale_watch};
 pub use model::{
-    Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
-    Readings,
+    Battery, BatteryState, Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample,
+    MetricSeries, MetricsAdded, Readings,
 };
 pub use retention::{Retention, Trimmed};
 pub use storage::{DriveKind, Mount, Storage, StorageDrive};
@@ -138,6 +139,18 @@ pub async fn series(
 /// `Database` when the query fails; `Unreadable` for a stored vendor this version does not know.
 pub async fn gpus(db: &PgPool, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Gpu>>, Error> {
     store::gpus(db, devices).await
+}
+
+/// The batteries stored for each of `devices`, by name; a device with none has no entry
+/// (MET-032).
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored state this version does not know.
+pub async fn batteries(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Battery>>, Error> {
+    store::batteries(db, devices).await
 }
 
 /// The tool inventory of each device whose daemon sent one and that `filter` admits, in no set

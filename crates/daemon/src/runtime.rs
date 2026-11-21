@@ -24,6 +24,7 @@ use crate::push::{Event, Pusher};
 use crate::readers::{self, Platform, Source, container::Container, gpu};
 use crate::report;
 use crate::sampling::Sampler;
+use crate::sampling::batteries::BatteryWatch;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
 use crate::sampling::inventory::InventoryWatch;
@@ -127,6 +128,7 @@ async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
     let gpus = source.has_gpus();
     let mut sampler = Sampler::new();
     let mut drives = DriveWatch::new();
+    let mut batteries = BatteryWatch::new();
     let mut watch = Watch::start(discover(mac, gpus, &events).await, Instant::now());
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -140,6 +142,11 @@ async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
         let reading = source.reading(now, std::time::Instant::now()).await;
         if let Some(changed) = drives.changed(reading.drives.as_deref())
             && events.send(Event::Drives(changed)).await.is_err()
+        {
+            return;
+        }
+        if let Some(changed) = batteries.changed(reading.batteries.as_deref())
+            && events.send(Event::Batteries(changed)).await.is_err()
         {
             return;
         }

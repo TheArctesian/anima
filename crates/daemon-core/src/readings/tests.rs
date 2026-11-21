@@ -2,6 +2,7 @@
 
 use super::{Cpu, Disk, Interface, Load, Memory, captures};
 
+mod batteries;
 mod container;
 mod df;
 mod drives;

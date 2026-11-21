@@ -61,3 +61,18 @@ async fn met_027_a_linux_reading_lists_drives_and_their_counters() {
         "/proc/diskstats listed nothing"
     );
 }
+
+#[tokio::test]
+async fn met_032_a_linux_reading_lists_only_batteries_with_a_charge_of_0_to_100() {
+    let read = reading(Platform::Linux, Utc::now()).await;
+    // A server or a container lists no battery, and one without the folder reads none.
+    for battery in read.batteries.iter().flatten() {
+        assert!(!battery.name.is_empty() && battery.name.len() <= 128);
+        assert!(
+            battery
+                .percent
+                .is_none_or(|charge| (0.0..=100.0).contains(&charge))
+        );
+        assert!(battery.health_percent.is_none_or(|health| health <= 100));
+    }
+}

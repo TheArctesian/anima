@@ -34,7 +34,7 @@ use super::{
     turns::Turn,
 };
 use crate::{
-    fleet::metrics::{self, Gpu, MetricSample, MetricsAdded, Readings},
+    fleet::metrics::{self, Battery, Gpu, MetricSample, MetricsAdded, Readings},
     ids::DeviceId,
 };
 use batch::{Push, Written};
@@ -95,12 +95,16 @@ async fn push(
     let drives: Option<Vec<Drive>> = accepted
         .drives
         .map(|drives| drives.into_iter().map(Drive::from).collect());
+    let batteries: Option<Vec<Battery>> = accepted
+        .batteries
+        .map(|batteries| batteries.into_iter().map(Battery::from).collect());
     let pushed = Push {
         device,
         name: &name,
         token: token.hash(),
         gpus: gpus.as_deref(),
         drives: drives.as_deref(),
+        batteries: batteries.as_deref(),
         inventory: accepted.inventory.as_ref(),
         daemon_version: daemon_version.as_deref(),
         agent_usage: accepted.agent_usage.as_ref(),
