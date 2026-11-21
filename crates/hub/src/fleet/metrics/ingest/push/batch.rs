@@ -139,7 +139,7 @@ async fn write_announcements(
         metrics_store::write_inventory(&mut *tx, push.device, inventory, now).await?;
     }
     if let Some(usage) = push.agent_usage {
-        agent_usage::record(&mut *tx, push.device, usage).await?;
+        agent_usage::record(&mut *tx, push.device, usage, now).await?;
     }
     Ok(())
 }

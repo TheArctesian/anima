@@ -2,7 +2,8 @@
 //! units, the cost marked as an estimate; and the notes below it (AIS-021, AIS-024).
 
 use super::documents::agent_usage::{
-    AgentSource, AgentUsageAgentUsage, AgentUsageDimension, AgentUsageState, UsageSums,
+    AgentSource, AgentUsageAgentUsage, AgentUsageAgentUsageAccounts, AgentUsageDimension,
+    AgentUsageState, UsageSums,
 };
 use crate::output::{Cell, Table, Tone};
 
@@ -153,7 +154,51 @@ pub fn notes(answer: &AgentUsageAgentUsage) -> Vec<String> {
             lines.push(format!("{}: {sentence}", entry.device.name));
         }
     }
+    lines.extend(answer.accounts.iter().map(account_line));
     lines
+}
+
+/// One account and its devices, by its short key: the limit is shared by its devices
+/// (R-313). `Account 3f9a0c55 (Codex, Pro) on nas, studio: five_hour 35 % used,
+/// resets 2026-11-21T14:00:00Z.`
+#[must_use]
+pub fn account_line(account: &AgentUsageAgentUsageAccounts) -> String {
+    let plan = account
+        .plan
+        .as_deref()
+        .map_or_else(String::new, |plan| format!(", {plan}"));
+    let devices: Vec<&str> = account
+        .devices
+        .iter()
+        .map(|one| one.name.as_str())
+        .collect();
+    let limits: Vec<String> = account
+        .limits
+        .iter()
+        .map(|limit| {
+            let used = match (limit.reached, limit.used_percent) {
+                (true, _) => "reached".to_owned(),
+                (false, Some(used)) => format!("{used} % used"),
+                (false, None) => "not reached".to_owned(),
+            };
+            let resets = limit
+                .resets_at
+                .as_deref()
+                .map_or_else(String::new, |at| format!(", resets {at}"));
+            format!("{} {used}{resets}", limit.window)
+        })
+        .collect();
+    let limits = if limits.is_empty() {
+        "no limit reported".to_owned()
+    } else {
+        limits.join("; ")
+    };
+    format!(
+        "Account {} ({}{plan}) on {}: {limits}.",
+        account.short_key,
+        source_name(&account.source),
+        devices.join(", ")
+    )
 }
 
 /// The sentence for a daemon that sends no counts; `None` for one that reads.
