@@ -6,10 +6,12 @@
   import { placeInside } from './placement';
 
   interface Props {
-    /** What the tip is about, for the button's name: "About <label>". */
+    /** The button's name: "About <label>" under the information icon; under a `face`, `label` itself. */
     label: string;
     /** The tip: short text, a fingerprint, a list. Errors do not go here (UI-028). */
     children: Snippet;
+    /** What the button shows in place of the information icon, for a badge that opens its own tip; drawn only, not spoken. */
+    face?: Snippet;
   }
 
   /*
@@ -17,7 +19,7 @@
    * views hide (WEB-005). WCAG 1.4.13: Escape dismisses it, the pointer can move onto it, and it stays until the
    * operator moves away, presses Escape or clicks elsewhere.
    */
-  const { label, children }: Props = $props();
+  const { label, children, face }: Props = $props();
   const id = $props.id();
   let root: HTMLElement | undefined;
   let button = $state<HTMLButtonElement>();
@@ -111,8 +113,8 @@
 
 <span class="helptip" bind:this={root} {@attach watch}>
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
-  <button type="button" tabindex="0" bind:this={button} aria-label="About {label}" aria-expanded={open} aria-controls="{id}-tip" onclick={toggle}>
-    <Icon name="carbon:information" size="sm" />
+  <button type="button" tabindex="0" class:face={face !== undefined} bind:this={button} aria-label={face === undefined ? `About ${label}` : label} aria-expanded={open} aria-controls="{id}-tip" onclick={toggle}>
+    {#if face === undefined}<Icon name="carbon:information" size="sm" />{:else}{@render face()}{/if}
   </button>
   {#if open}
     <div class="anchor" transition:popover={{ from: button }} {@attach place}>
@@ -146,6 +148,14 @@
   button:hover,
   button[aria-expanded='true'] {
     color: var(--text);
+  }
+
+  /* A face draws itself: the button keeps only its target height and takes the face's width and colour. */
+  button.face,
+  button.face:hover,
+  button.face[aria-expanded='true'] {
+    inline-size: auto;
+    color: inherit;
   }
 
   button:focus-visible {

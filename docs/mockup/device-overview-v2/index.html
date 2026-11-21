@@ -599,5 +599,39 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 
 <figcaption>Frame 3, dark, 1280 px: the tab Overview of the own device of a hosted hub (HMD-073, task HM-T36 of hosted-mode.md). The bar offers no way in. Resources has CPU, as a share of the processors that the hub may use, and the memory as used of the limit of its container; no disk, no storage table: the disk of the hub is the bytes of its data, in "Plan and usage". Beside them, "What the hub keeps": the counts of its devices and of its checks and the days of its history.</figcaption>
 </figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 800px; height: 560px;">
+<aside class="side" style="width: 200px">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+    <nav class="nav" aria-label="Main"><a href="#" class="on" aria-current="page">Devices</a><a href="#">Agent usage</a></nav>
+</aside>
+<main class="page">
+  <header class="bar" style="padding: var(--space-6) var(--space-6) 0">
+    <div class="row1" style="flex-wrap: wrap; gap: var(--space-2) var(--space-4)">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>win-legacy</h1></nav>
+      <span class="st up">Up</span>
+      <span style="position: relative; display: inline-flex">
+        <button class="tag warn" type="button" aria-expanded="true" aria-label="Warning: A way into this device is not well protected. The device itself can be up and working." style="border: 0; border-radius: var(--radius-pill); font: inherit; font-size: var(--t-sm); gap: var(--space-1); outline: var(--border-focus) solid var(--accent); outline-offset: var(--border-thin)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg>Warning</button>
+        <span role="status" style="position: absolute; top: calc(100% + var(--space-2)); left: 0; width: calc(var(--space-16) * 4.5); padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-overlay); font-size: var(--t-sm); line-height: 1.5">
+          A way into this device is not well protected. The device itself can be up and working.
+          <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-4)"><li>Standard RDP security is weak: the sign-in is poorly protected.</li></ul>
+        </span>
+      </span>
+      <span class="mono sec">10.40.0.12</span>
+    </div>
+    <div style="position: relative">
+      <nav class="tabs" aria-label="Device" style="gap: var(--space-1); overflow: hidden; mask-image: linear-gradient(to right, var(--text) calc(100% - var(--space-8)), transparent)"><a href="#" class="on" aria-current="page" style="padding: 0 var(--space-3)">Overview</a><a href="#" style="padding: 0 var(--space-3)">Checks</a><a href="#" style="padding: 0 var(--space-3)">Containers</a><a href="#" style="padding: 0 var(--space-3)">Sessions</a><a href="#" style="padding: 0 var(--space-3)">Logs</a><a href="#" style="padding: 0 var(--space-3)">Settings</a></nav>
+      <span aria-hidden="true" style="position: absolute; right: 0; top: 50%; translate: 0 -50%; display: inline-flex; align-items: center; justify-content: center; width: var(--target-min-desktop); height: var(--target-min-desktop); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-pill); background: var(--surface-overlay)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span>
+    </div>
+  </header>
+  <div class="body" style="padding: var(--space-4) var(--space-6)" aria-busy="true" aria-label="Overview loading">
+    <div class="card" style="height: var(--space-16)"></div>
+    <div class="card" style="height: var(--space-16)"></div>
+    <div class="card" style="height: calc(var(--space-16) * 2)"></div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 4, dark, 800 px: a narrow window. The tabs do not fit with their icons, so the icons go and the words stay; when the words still do not fit, the far end fades and an arrow there scrolls the tabs (NAV-005; an arrow at the start shows the same way). At 800 px the words fit and no arrow shows; the frame draws the arrow of a narrower strip. The Warning badge opens its tip on hover, focus or a click: what Warning means, then each warning (RA-020). Under the tabs, the open tab's skeleton while the device loads: the cards of the loaded tab without their text (D-9). Made overnight on 2026-11-21, not yet confirmed by the operator.</figcaption>
+</figure>
 </body>
 </html>

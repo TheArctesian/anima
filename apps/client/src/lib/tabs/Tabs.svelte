@@ -6,7 +6,8 @@
   import { springMotion, type InstantMotion, type SpringMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
-  import { hiddenEdges } from '$lib/scroll/edges';
+  import StripArrows from '$lib/scroll/StripArrows.svelte';
+  import { NO_HIDDEN_EDGES, stripEdges, type StripEdges } from '$lib/scroll/strip';
   import { scrolledToShow, tabIds, type TabSpec } from './tabs';
 
   interface Props {
@@ -59,22 +60,32 @@
     };
   });
 
-  /** The strip shows an edge fade where tabs lie past its edge (NAV-005: a focused tab is always scrolled into view). */
-  function markEdges(): void {
-    if (list === undefined) return;
-    const edges = hiddenEdges(list.scrollLeft, list.clientWidth, list.scrollWidth);
-    list.toggleAttribute('data-more-before', edges.start);
-    list.toggleAttribute('data-more-after', edges.end);
+  /*
+   * A strip too narrow for its tabs first drops the icons, so the words fit (UI-003 keeps the words); a strip still too
+   * narrow fades the far end and shows an arrow there (NAV-005: a focused tab is always scrolled into view).
+   */
+  let edges = $state<StripEdges>(NO_HIDDEN_EDGES);
+  let compact = $state(false);
+  /** The width the tabs need with their icons, read when they stopped fitting; wide enough again, the icons come back. */
+  let fullWidth = 0;
+
+  function onEdges(next: StripEdges, strip: HTMLElement): void {
+    edges = next;
+    const icons = items.some((tab) => tab.icon !== undefined);
+    if (!compact && icons && strip.scrollWidth > strip.clientWidth + 1) {
+      fullWidth = strip.scrollWidth;
+      compact = true;
+    } else if (compact && strip.clientWidth >= fullWidth) {
+      compact = false;
+    }
   }
 
+  /** The tabs change width when the icons go or come back, and the strip's own size does not: the indicator follows. */
   $effect(() => {
-    markEdges();
-    if (list === undefined || typeof ResizeObserver !== 'function') return;
-    const observer = new ResizeObserver(markEdges);
-    observer.observe(list);
-    return () => {
-      observer.disconnect();
-    };
+    void compact;
+    untrack(() => {
+      place({ type: 'instant' });
+    });
   });
 
   /** Roving focus (APG tabs, manual activation): arrows, Home and End move focus; Enter or Space selects. */
@@ -88,9 +99,10 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label={label} tabindex="-1" bind:this={list}
+<div class="tab-strip">
+<div class="tabs" class:compact role="tablist" aria-label={label} tabindex="-1" bind:this={list}
+  {@attach stripEdges(onEdges)}
   onkeydown={keydown}
-  onscroll={markEdges}
   onfocusin={(event) => {
     if (list === undefined || !(event.target instanceof HTMLElement)) return;
     const fade = Number.parseFloat(getComputedStyle(list).scrollPaddingInlineStart) || 0;
@@ -119,9 +131,18 @@
   {/each}
   <span class="indicator" bind:this={indicator} aria-hidden="true"></span>
 </div>
+<StripArrows strip={list} {edges} {preference} />
+</div>
 
 <style>
-  /* The strip scrolls inside itself when the tabs do not fit, never the page. */
+  /* The arrows sit on the strip's ends. */
+  .tab-strip {
+    position: relative;
+    min-inline-size: 0;
+    margin-block-end: var(--space-4);
+  }
+
+  /* The strip scrolls inside itself when the tabs do not fit, never the page; `strip-fade.css` fades a hidden end. */
   .tabs {
     position: relative;
     display: flex;
@@ -129,31 +150,14 @@
     overflow-x: auto;
     overflow-y: hidden;
     gap: var(--space-1);
-    margin-block-end: var(--space-4);
     padding-block-end: var(--border-thin);
     /* The rule is drawn inside the strip, so the clipped strip keeps the underline where the border was. */
     box-shadow: inset 0 calc(var(--border-thin) * -1) 0 var(--border-subtle);
-    scroll-padding-inline: var(--space-8);
-    scrollbar-width: none;
   }
 
-  /* An edge fade where tabs lie past the edge. */
-  .tabs:global([data-more-after]) {
-    mask-image: linear-gradient(to right, var(--text) calc(100% - var(--space-8)), transparent);
-  }
-
-  .tabs:global([data-more-before]) {
-    mask-image: linear-gradient(to left, var(--text) calc(100% - var(--space-8)), transparent);
-  }
-
-  .tabs:global([data-more-before][data-more-after]) {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      var(--text) var(--space-8),
-      var(--text) calc(100% - var(--space-8)),
-      transparent
-    );
+  /* Too narrow for the icons: the words alone (UI-003). */
+  .compact :global(svg) {
+    display: none;
   }
 
   /* The word is always there (UI-003); a tab is text, not a button. */

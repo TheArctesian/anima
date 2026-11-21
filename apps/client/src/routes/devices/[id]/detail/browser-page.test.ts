@@ -126,3 +126,29 @@ describe('the device page with the browser answers (criterion 2, G-1)', () => {
     expect(current.opened).toHaveLength(webViewTabs);
   });
 });
+
+describe('the device page while the device loads (D-9)', () => {
+  it('D-9: the open tab has a busy panel under the tabs, which the device\'s panel replaces', async () => {
+    const fake = fakeHub(answers());
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    current.hub = {
+      ...fake.hub,
+      request: async (document: Parameters<typeof fake.hub.request>[0], variables: Parameters<typeof fake.hub.request>[1]) => {
+        if (document.definitions.some((each) => 'name' in each && each.name?.value === 'Device')) await held;
+        return fake.hub.request(document, variables);
+      },
+    };
+    route.search = '?tab=sessions';
+    app = mount(Page, { target: document.body, props: { data: { id: parseDeviceId(route.param) } } });
+    await settle();
+    expect(document.querySelector('[role="tablist"]')).not.toBeNull();
+    expect(panel()?.getAttribute('aria-busy')).toBe('true');
+    expect(panel()?.id).toBe('device-panel-sessions');
+    release();
+    await settle();
+    expect(panel()?.id).toBe('device-panel-sessions');
+  });
+});

@@ -15,7 +15,7 @@
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
-  import { metricsOffText } from './overview';
+  import { metricsOffText, noChartsText } from './overview';
 
   interface Props {
     source: MetricsSource;
@@ -81,7 +81,7 @@
       {:else if !waiting}
         <div class="layer" transition:crossFade>
           {#if charts.length === 0 || metrics.span === null}
-            <p class="waiting">Waiting for metrics</p>
+            <p class="waiting">{noChartsText(metrics.readings !== null, phrase)}</p>
           {:else}
             <div class="chart-grid">
               {#each charts as chart (chart.key)}
