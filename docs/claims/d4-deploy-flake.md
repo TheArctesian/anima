@@ -1,5 +1,5 @@
 ---
-task: D4-deploy-flake
+task: D-4
 plan: docs/plans/vpn-plan.md
 machine: Stephens-MacBook-Pro.local
 agent: Claude Code
