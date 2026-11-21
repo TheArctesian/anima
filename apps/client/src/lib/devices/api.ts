@@ -33,6 +33,10 @@ export const Devices = graphql(`
           readings {
             ...CardReadings
           }
+          batteries {
+            name
+            state
+          }
           accessWarnings
           webInterfaces {
             ...WebInterfaceFields

@@ -3,20 +3,28 @@
   import { motionPreference } from '$lib/motion/preference';
   import { crossFade } from '$lib/motion/roles/transitions';
   import './geometry.css';
+  import type { BatteryBar } from '../battery/battery';
   import { barRow, type BarReadings } from './bars';
 
   interface Props {
     readings: BarReadings | null;
     source: MetricsSource | null | undefined;
+    /** The battery of a laptop, a phone or a tablet; `null` for a device with none (MET-032). */
+    battery?: BatteryBar | null;
   }
 
-  const { readings, source }: Props = $props();
+  const { readings, source, battery = null }: Props = $props();
   const preference = motionPreference();
-  const row = $derived(barRow(readings, source));
+  const row = $derived(barRow(readings, source, battery));
+  /**
+   * Two bars a line: a battery beside a GPU with its own memory takes a third line. It follows the device, not the
+   * values of a batch, so the block keeps one size from the empty state on (MOT-007).
+   */
+  const lines = $derived(battery !== null && readings?.vramGpu?.hasVram === true ? 3 : 2);
 </script>
 
 <!-- One block size for the bars and the empty state, so the row never changes size (MOT-007). -->
-<div class="row" class:empty={row.kind === 'empty'} class:reduced={preference.reduced}>
+<div class="row" class:empty={row.kind === 'empty'} class:three={lines === 3} class:reduced={preference.reduced}>
   {#if row.kind === 'empty'}
     <p>{row.text}</p>
   {:else}
@@ -29,7 +37,7 @@
         aria-valuemin={bar.percent === null ? undefined : 0}
         aria-valuemax={bar.percent === null ? undefined : 100}
         aria-valuenow={bar.percent}
-        aria-valuetext={bar.percent === null ? undefined : bar.degraded ? `${bar.text}, degraded` : bar.text}
+        aria-valuetext={bar.percent === null ? undefined : (bar.spoken ?? (bar.degraded ? `${bar.text}, degraded` : bar.text))}
         title={bar.tooltip}
       >
         <span class="label"
@@ -58,6 +66,10 @@
     min-inline-size: 0;
     block-size: var(--metric-bars-block-size);
     overflow: hidden;
+  }
+
+  .row.three {
+    block-size: var(--metric-bars-block-size-three);
   }
 
   .row.empty {

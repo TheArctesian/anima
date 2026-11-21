@@ -20,6 +20,7 @@ export function device(id: string, over: Partial<CardDevice> = {}): CardDevice {
     macAddress: null,
     metricsSource: 'NONE',
     readings: null,
+    batteries: [],
     accessWarnings: [],
     rdp: { enabled: false },
     vnc: { enabled: false, username: null },

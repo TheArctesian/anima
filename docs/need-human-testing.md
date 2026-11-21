@@ -2874,6 +2874,37 @@ kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test
 
 Result: Open.
 
+### HT-089: the battery beside the meters of the Devices list, the Overview and Agent usage (MET-032, BT5)
+
+Built on the branch `metrics/battery-display`: `apps/client/src/lib/metrics/battery/` (the meter, the shape, the
+charges of the batches), `lib/devices/list/Meters.svelte` and `lib/devices/card/` (the list and the grid),
+`lib/metrics/bars/MetricBars.svelte` (the Overview), `lib/agent-usage/view/ShareTable.svelte` (Agent usage). The
+tests prove the meter with a fake hub and pushed batches in jsdom. No test showed a real laptop in a window, and the
+design was approved overnight by the orchestrator only.
+
+1. Open the Devices page with a laptop that runs a daemon of this build (HT-088) and a server with no battery,
+   in the list view. Wait 10 seconds.
+   Expected: the usage column has a fourth head "Battery". The laptop row shows a battery shape and its charge after
+   Disk; the server row shows nothing there. With no laptop in the list there is no fourth head.
+2. Connect the mains of the laptop and wait 10 seconds; then disconnect it.
+   Expected: while it charges the shape has a bolt; on battery the shape is a plain battery. The charge follows the
+   laptop within 10 seconds.
+3. Let the laptop discharge to 20 %, then to 10 % (or test on a laptop that is that low).
+   Expected: the charge and the bar take the quiet warning colour and the shape shows one bar; a screen reader says
+   "low" at 20 % and "very low" at 10 %. Connect the mains: the warning goes.
+4. Switch to the grid view.
+   Expected: the tile of the laptop has a fifth meter "Battery" on the same line as CPU, Memory and Disk, with the same
+   height; the tile keeps its size.
+5. Open the laptop, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars have "Battery" with its charge, and "charging" or "low" beside the word when it applies. A laptop
+   with a GPU that has its own memory shows the battery on a third line of bars.
+6. Open Agent usage with the laptop reporting.
+   Expected: its row in "By device" has the battery shape and its charge after its name; the other rows have none.
+7. Compare each screen with the mockups devices-v2, device-overview-v2 and agent-usage-v2 and their records.
+   Expected: the place and the order of the battery agree, with the differences in the records only.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,

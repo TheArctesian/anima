@@ -19,7 +19,7 @@
 
   interface Props {
     source: MetricsSource;
-    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'battery' | 'error' | 'liveError'>;
     range: MetricRange;
     now: () => Date;
     clock?: LoadingClock;
@@ -62,7 +62,7 @@
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
-    <MetricBars readings={metrics.readings} {source} />
+    <MetricBars readings={metrics.readings} {source} battery={metrics.battery} />
     {#if metrics.liveError !== null}
       <p class="live" role="status">{metrics.liveError.message}</p>
     {/if}

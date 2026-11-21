@@ -43,6 +43,7 @@
               vramPercent: readings[3] ?? null,
               vramGpu: readings[3] === undefined ? null : { index: 0, name: 'RTX 4070', vendor: 'NVIDIA', hasVram: true },
             },
+      batteries: [],
       accessWarnings: [],
       rdp: { enabled: protocols.includes('RDP') },
       vnc: { enabled: protocols.includes('VNC'), username: null },

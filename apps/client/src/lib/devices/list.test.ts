@@ -20,6 +20,7 @@ function device(name: string, status: CardDevice['status'] = 'UP', uptime: numbe
     macAddress: null,
     metricsSource: 'NONE',
     readings: null,
+    batteries: [],
     accessWarnings: [],
     rdp: { enabled: false },
     vnc: { enabled: false, username: null },

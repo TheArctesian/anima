@@ -7,6 +7,7 @@ import { appendPage, applyReadings, applyStatus, applyVncEnabled, fromPage, type
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import { coalesced } from '../live/coalesce';
 import { watchLive } from '../live/live';
+import { LiveCharges } from '$lib/metrics/battery/charges.svelte';
 import { browserClock, skeletonGate, type LoadingClock, type SkeletonGate } from '$lib/motion/loading/loading';
 
 /**
@@ -21,6 +22,8 @@ export class Listing {
   loadingMore = $state(false);
   skeleton = $state(false);
   readonly beats = new SvelteMap<string, readonly Beat[]>();
+  /** The latest charge of each battery of each device, from the batches since `start` (MET-032). */
+  readonly charges = new LiveCharges();
 
   readonly #hub: Hub;
   readonly #devices;
@@ -85,6 +88,7 @@ export class Listing {
   /** Starts the live status, readings and heartbeat updates; `stop` ends them. */
   start(): void {
     this.#stopped = false;
+    this.charges.start(this.#hub);
     this.#stopLive = watchLive(this.#hub, {
       onStatus: (change) => {
         this.#onStatus(change);
@@ -109,6 +113,7 @@ export class Listing {
     this.#stopped = true;
     this.#stopLive?.();
     this.#stopLive = undefined;
+    this.charges.stop();
     this.#gate.stop();
     this.#generation += 1;
     this.#loadedKey = undefined;
