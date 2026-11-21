@@ -2674,3 +2674,37 @@ VPN keys and sites) already used these roles. Tests prove which row plays a fade
    Expected: nothing slides; rows fade only.
 
 Result: Open.
+
+### HT-NEW-projectgroups: groups of cards on the Projects screen (PRO-059 to PRO-063)
+
+Built on the branch `ui/project-groups`: `apps/client/src/lib/projects/groups/` (the groups kept in the storage of
+the application, the select bar, the group head, the name dialog) and `ProjectsScreen.svelte` and
+`ProjectTile.svelte`. The tests prove with a scripted hub: New group with two selected cards and no call to the hub,
+Select all, a name that a different group has, Add to group, Remove from group, Rename, Delete group (no project
+changes), and that the groups, the view by group and a closed head are kept on the computer. No person saw the screen
+with real projects, in a desktop window or on a phone.
+
+1. Open "Projects" with about 50 imported projects. Select "Select".
+   Expected: each card gets a check mark at its start, and a bar shows "0 selected", "Select all", "New group",
+   "Remove from group" and "Done".
+2. Select three cards, then "New group". Type a name of your own and select "Make group".
+   Expected: the dialog closes, the check marks clear, and each of the three cards shows the group name under its
+   state.
+3. Select "Group" in "Show by".
+   Expected: a head for each group in name order with its count, then "Ungrouped" with the rest. Each group head has
+   "Rename" and "Delete".
+4. Select the head of a group.
+   Expected: its cards close; a second select opens them again. Quit the application and open "Projects" again: the
+   groups are there, the view is still by group and the head is still closed.
+5. Select "Select", then "Select all", then choose a group in "Add to group".
+   Expected: each card moves to that group; "Ungrouped" goes.
+6. Select "Rename" on a group and give it the name of a different group.
+   Expected: the dialog stays open and says "A group already has this name."
+7. Select "Delete" on a group, then "Delete group".
+   Expected: the head goes and its cards are under "Ungrouped". No project is left out or gone.
+8. Open the same hub in the browser, or on a different computer.
+   Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
+9. Do steps 1 to 4 in the light appearance and on a phone.
+   Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.
