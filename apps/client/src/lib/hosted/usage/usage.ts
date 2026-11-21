@@ -1,7 +1,7 @@
 import { formatBytes } from '$lib/metrics/units';
 
 /**
- * The figures of the account for the month of now, as the page shows them (HMD-073 in form B, task HM-T38 of
+ * The figures of the account for the month of now, as the page shows them (HMD-073 in form B, task HM-T39 of
  * hosted-mode.md). They come from the answer of the pool (`contracts/account-usage.md`); the hub holds none of them.
  */
 export interface AccountUsage {
