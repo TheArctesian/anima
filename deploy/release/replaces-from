@@ -1,0 +1,5 @@
+# The lowest version of anima-daemon that the release of each commit can replace (ROL-041),
+# written into the release record of each target as `replaces_from` (task U2). 0.0.0 means each
+# version. Raise it in the commit that makes a daemon of an older version unable to take this
+# release directly: a machine then goes through the releases between (ROL-041).
+0.0.0

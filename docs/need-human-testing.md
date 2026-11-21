@@ -104,7 +104,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
-| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with `--public-origin https://hub.anima.ing` and an image of this build, the gateway of the pool at `hub.anima.ing` that passes `/connect/github*`, an application of this build, and a GitHub account that may get a new App | Open |
+| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 
 ### What a check on the hosted hub needs
 
@@ -1668,6 +1668,15 @@ from `main`, started with Gates `reuse`: the summary says "The Linux gates are n
 when it must run. Not proven before that trial: the time of `gates-macos`, and the test filter of
 `deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
 
+Changed on 2026-11-20, on the branch `update/u2-release-record`, and not run on GitHub (task U2): the jobs `daemon`
+and `daemon-publish`, and a second step of the job `sign` that writes and signs the release record of each target
+([releases.md](procedures/releases.md), "The daemon alone"). Expected in the next trial: `daemon` passes (the macOS
+program is universal, the Linux program needs no library of the AppImage), and the artifact `records` of `sign`
+holds `release-record.json` and its `.sig` for `linux-x86_64` and `darwin-universal`. Expected at the first public
+release: the six files are at `https://releases.anima.ing/<target>/<version>/`, and the SHA-256 of each
+`anima-daemon` is the one in its record. A fault to look for: `ldd` reports a library that a Linux machine of the
+operator does not have.
+
 Result: Open.
 
 Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
@@ -2066,19 +2075,21 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
    Expected: the row shows "Connect GitHub" and the line "Your browser must be signed in at hub.anima.ing with your
    Anima.ing account." It does not show "Coming soon".
 2. Run `anima source kinds --hub <the address that the application uses>` with a token of the hub.
-   Expected: the row `github` shows `https://hub.anima.ing/connect/github` in the column BROWSER CONNECT.
+   Expected: the row `github` shows `https://<hub id>.hub.anima.ing/connect/github` in the column BROWSER CONNECT.
 3. In the default browser, sign in at `https://hub.anima.ing` with the Anima.ing account. In the application, select
    "Connect GitHub".
-   Expected: the browser opens `https://hub.anima.ing/connect/github` with a one-time link, then GitHub with the
+   Expected: the browser opens `https://<hub id>.hub.anima.ing/connect/github` with a one-time link, then GitHub with the
    button "Create GitHub App". The application says "Waiting for you on GitHub."
 4. On GitHub, select "Create GitHub App", then "Install".
-   Expected: GitHub goes back to `https://hub.anima.ing/connect/github/installed`, and the page says "GitHub is
-   connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
-   callback address and the setup address are below `https://hub.anima.ing/connect/github`.
+   Expected: GitHub goes back to `https://<hub id>.hub.anima.ing/connect/github/installed`, and the page says "GitHub
+   is connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
+   callback address and the setup address are below `https://<hub id>.hub.anima.ing/connect/github`, and the App has
+   no webhook.
 5. On a second computer of the same account, open Settings > Integrations > GitHub.
    Expected: the same connection shows; no second sign-in to GitHub is asked for (HMD-068).
 6. Do step 3 again in a browser with no session at `hub.anima.ing`.
-   Expected: the gateway asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   Expected: the account site asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   An attempt that was open when the hub moved to its own address is lost: start again.
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
@@ -3337,5 +3348,18 @@ screen reader, or a real window of the application.
 7. Open a device on a slow connection to the hub (or a hub that is starting).
    Expected: under the tabs, grey cards in the shape of the open tab until the device shows; no empty space.
 8. Do steps 1, 5 and 7 in the light appearance.
+
+Result: Open.
+
+### HT-105: the headscale VPS-001 test is slow under heavy load (VPS-001)
+
+Seen on the branch `quality/d4-deploy-flake`, in `deploy/headscale/tests`. One run of the VPS-001 test took 23.8 s while the
+load average of the Mac was near 70. The test passed, but a time limit can fail it under such load. This entry records the
+flake only. It is not fixed.
+
+1. On a Mac with a normal load, run `bun test deploy/headscale/tests` five times.
+   Expected: each VPS-001 test passes in a few seconds.
+2. Run it again while the load average is above 50.
+   Expected: it passes. If it fails with a timeout, record the time and the load here.
 
 Result: Open.

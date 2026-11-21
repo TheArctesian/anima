@@ -1,6 +1,6 @@
-//! HMD-068, HMD-069: a hub of the pool, in the link mode with the public origin of its gateway,
-//! runs the whole flow for a browser whose requests the gateway passes with the name that the
-//! browser used. Nothing in the flow of the hub changes; only the origin is given.
+//! HMD-068, HMD-069: a hub of the pool, in the link mode with the public origin that the pool
+//! gives it, runs the whole flow for a browser whose requests the door passes with the name that
+//! the browser used. Nothing in the flow of the hub changes; only the origin is given.
 
 use std::{collections::BTreeMap, time::Duration};
 
@@ -16,9 +16,9 @@ use super::{
 };
 
 const SLOW: Duration = Duration::from_secs(3600);
-/// The shared address of the gateway, which HMD-068 names as the one callback address.
+/// The address of each hosted hub before the address per hub (AC-D45 of anima-cloud).
 const SHARED: &str = "https://hub.anima.ing";
-/// An address of one hub at the gateway: `h` and 20 letters or digits.
+/// The address of one hub since then (HMD-069): `h` and 20 letters or digits.
 const PER_HUB: &str = "https://hk3f9x2mq7b4n8c1d5e6a.hub.anima.ing";
 const SOURCES: &str = "query { sources { key connectPageUrl } }";
 

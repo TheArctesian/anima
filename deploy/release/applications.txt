@@ -52,6 +52,7 @@ cli out crates/hub/
 cli out crates/providers/
 cli out crates/rdp-test-device/
 cli out crates/redaction/
+cli out crates/release-record/
 cli out crates/theme/
 cli out crates/updater-signature/
 cli out AGENTS.md
@@ -89,6 +90,7 @@ ios out crates/hub/
 ios out crates/providers/
 ios out crates/rdp-test-device/
 ios out crates/redaction/
+ios out crates/release-record/
 ios out crates/theme/
 ios out crates/updater-signature/
 ios out AGENTS.md
