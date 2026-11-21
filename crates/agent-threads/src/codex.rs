@@ -73,10 +73,10 @@ fn event(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
         }
         "agent_message" => reader.text(at, false, field("message")),
         "task_complete" => {
-            reader.push(at, EntryKind::TurnEnd { stopped: false });
+            reader.end(at, false);
         }
         "turn_aborted" => {
-            reader.push(at, EntryKind::TurnEnd { stopped: true });
+            reader.end(at, true);
         }
         "thread_name_updated" => reader.name(field("thread_name")),
         _ => {}
