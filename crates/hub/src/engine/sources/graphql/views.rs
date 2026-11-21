@@ -52,6 +52,8 @@ pub struct SourceView {
     pub declaration: Declaration,
     pub consumers: Vec<String>,
     pub accounts: Vec<AccountView>,
+    /// Where a browser continues Connect for this source; `None` when it cannot start here.
+    pub connect_page_url: Option<String>,
 }
 
 #[Object(name = "Source")]
@@ -94,6 +96,12 @@ impl SourceView {
 
     async fn accounts(&self) -> &[AccountView] {
         &self.accounts
+    }
+
+    /// The hub page where a browser continues Connect for this source; null when the hub
+    /// cannot start the flow in a browser (HMD-070) or the source has no such flow.
+    async fn connect_page_url(&self) -> Option<&str> {
+        self.connect_page_url.as_deref()
     }
 }
 

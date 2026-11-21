@@ -32,7 +32,8 @@ async fn mcp_017_sources_overview_returns_kinds_and_accounts_with_their_runs() {
         "SourceKinds",
         data(json!({ "sources": [{ "key": "github", "name": "GitHub",
             "acquisition": "TOKEN_PULL", "scopes": ["metadata:read"], "writeReason": null,
-            "gives": ["repositories"], "pollIntervalSeconds": 900, "consumers": ["projects"] }] })),
+            "gives": ["repositories"], "pollIntervalSeconds": 900, "consumers": ["projects"],
+            "connectPageUrl": "https://hub.anima.ing/connect/github" }] })),
     );
     accounts_answer(&hub);
     let mut session = Desk::new().start(&hub, LOGIN_TOKEN, &[]).await.0;
@@ -44,6 +45,10 @@ async fn mcp_017_sources_overview_returns_kinds_and_accounts_with_their_runs() {
         .await;
     let result = structured(&answer);
     assert_eq!(result["sources"][0]["key"], "github");
+    assert_eq!(
+        result["sources"][0]["connectPageUrl"],
+        "https://hub.anima.ing/connect/github"
+    );
     assert_eq!(result["accounts"][0]["label"], "home-app");
     assert_eq!(result["accounts"][0]["runs"][0]["inserted"], 1);
     let asked = &sent(&hub, "SourceAccounts")[0];

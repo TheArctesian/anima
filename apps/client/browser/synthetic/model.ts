@@ -129,24 +129,43 @@ export function allDevices(state: HubState): Row[] {
   return state.fixtures.devices.map((row) => deviceView(state, row));
 }
 
-/** A few events so the logs panel has rows; every host is an example host (CON-003). */
-export function eventRows(state: HubState): Row[] {
-  const first = state.fixtures.devices[0];
+type EventLine = readonly [severity: string, source: string, message: string];
+
+function eventsOf(device: Row | undefined, lines: readonly EventLine[], first: number): Row[] {
   const at = (second: number): string => `2026-11-06T09:00:${String(second).padStart(2, '0')}Z`;
-  const rows: [string, string, string][] = [
+  return lines.map(([severity, source, message], index) => ({
+    id: `0190a000-0000-7000-8020-${String(first + index).padStart(12, '0')}`,
+    at: at(first + index - 1),
+    severity,
+    source,
+    deviceId: device?.id ?? null,
+    deviceName: device?.name ?? null,
+    message,
+  }));
+}
+
+/** A few events of the first device, so the logs panel has rows; every host is an example host (CON-003). */
+export function eventRows(state: HubState): Row[] {
+  return eventsOf(state.fixtures.devices[0], [
     ['INFO', 'CHECK', 'Check recovered'],
     ['WARNING', 'DEVICE', 'Device entered maintenance'],
     ['ERROR', 'ACCESS', 'Sign-in refused'],
-  ];
-  return rows.map(([severity, source, message], index) => ({
-    id: `0190a000-0000-7000-8020-00000000000${String(index + 1)}`,
-    at: at(index),
-    severity,
-    source,
-    deviceId: first?.id ?? null,
-    deviceName: first?.name ?? null,
-    message,
-  }));
+  ], 1);
+}
+
+/**
+ * The events of one device, as the hub answers `events(filter: { deviceId })` for the Logs tab of its page (LOG-009).
+ * Another device than the first has two events of its own. They are left out of the whole log: there each device name
+ * is a link, and the specs find each device's link once on the devices page.
+ */
+export function deviceEventRows(state: HubState, deviceId: string): Row[] {
+  const index = state.fixtures.devices.findIndex((device) => device.id === deviceId);
+  if (index === 0) return eventRows(state);
+  if (index < 0) return [];
+  return eventsOf(state.fixtures.devices[index], [
+    ['WARNING', 'CHECK', 'Check went down'],
+    ['INFO', 'CHECK', 'Check is up again'],
+  ], 10 + index * 2);
 }
 
 export function sessionRows(state: HubState): Row[] {

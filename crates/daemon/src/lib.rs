@@ -17,6 +17,8 @@ pub mod readers;
 pub mod report;
 pub mod runtime;
 pub mod sampling;
+#[cfg(unix)]
+pub mod threads;
 pub mod token_store;
 #[cfg_attr(windows, path = "units/windows.rs")]
 pub mod units;

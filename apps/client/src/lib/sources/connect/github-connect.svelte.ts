@@ -10,6 +10,11 @@ import type { LinkOpening } from './browser';
  */
 export class GithubConnectStore {
   attempt = $state.raw<ConnectAttempt | null>(null);
+  /**
+   * Where a browser continues the flow; null: the hub cannot start it in a browser (HMD-070, or a hub of before the field);
+   * undefined until the hub answered. The client has no rule of its own for it.
+   */
+  browserPage = $state<string | null | undefined>(undefined);
   /** The hub dropped an attempt that the client held open (it restarted). */
   restarted = $state(false);
   /** The browser did not show the link: the page offers `attempt.pageUrl` instead. */
@@ -30,9 +35,10 @@ export class GithubConnectStore {
     this.attempt = result.value;
   }
 
-  /** Reads the attempt and listens for changes (once). */
+  /** Reads the attempt and whether the browser flow can start, and listens for changes (once). */
   async ensureLoaded(): Promise<void> {
-    await this.load();
+    const [page] = await Promise.all([this.api.browserPage(), this.load()]);
+    this.browserPage = page;
     this.#unwatch ??= this.api.watch({
       next: (attempt) => {
         this.restarted = false;

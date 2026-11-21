@@ -2420,6 +2420,8 @@ type Source {
   "Keys of the extensions that use it."
   consumers: [String!]!
   accounts: [SourceAccount!]!
+  "The hub page where a browser continues Connect for this source: <public origin>/connect/github, so its host is where the browser must be signed in. Holds no secret and no one-time value. Null: the hub cannot start the flow in a browser (HMD-070), or the source has no such flow. A hub of before this field has none: a client counts that as null (R-311, K-E1 Section 7a)."
+  connectPageUrl: String
 }
 
 type SyncProblem {

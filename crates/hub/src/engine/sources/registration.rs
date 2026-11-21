@@ -24,9 +24,21 @@ pub mod words;
 use source_exchange::Registration;
 
 use super::{acquisition, intake::Registry};
+use crate::config::Config;
 
 /// The source the flow connects.
 pub const GITHUB: &str = "github";
+
+/// The origin at which a browser opens the pages of the flow, or `None` when no browser can
+/// open this hub (HMD-070): a hub in the link mode that was given no public origin. Its pages
+/// and the App that GitHub would make would name the default origin, which is a different
+/// server. A hub of the pool is given the address of its gateway (HMD-069); a hub on a server
+/// is reached at its own origin and is not in the link mode.
+#[must_use]
+pub fn browser_origin(config: &Config) -> Option<&str> {
+    let unaddressed = config.link_socket.is_some() && !config.public_origin_given;
+    (!unaddressed).then_some(config.public_origin.as_str())
+}
 
 /// How GitHub makes an App for the operator, from the hub's registry; `None` when the hub does
 /// not know GitHub or GitHub could not make one.

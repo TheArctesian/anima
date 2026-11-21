@@ -93,7 +93,10 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
+| HT-098 | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
+| HT-097 | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-100 | The page Threads: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -101,6 +104,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
+| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with `--public-origin https://hub.anima.ing` and an image of this build, the gateway of the pool at `hub.anima.ing` that passes `/connect/github*`, an application of this build, and a GitHub account that may get a new App | Open |
 
 ### What a check on the hosted hub needs
 
@@ -2047,6 +2051,40 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
 
+### HT-104: Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29)
+
+Built on the branch `hosted/hm-t29-github-hosted`. The hub tells the application whether the browser flow can start:
+`Source.connectPageUrl` (K-E1 Section 7a; R-311, made overnight, not yet confirmed), null on a hub in the link mode
+with no public origin. The application offers "Connect GitHub" only when the value is set, and says where the browser
+must be signed in (`apps/client/src/lib/sources/connect/`). `anima source kinds` and the MCP tool
+`anima_sources_overview` show the value. The hub tests run the whole flow on a hub of the pool in the link mode with
+the public origin `https://hub.anima.ing`, and with a public origin of one hub below `hub.anima.ing`, through a
+stand-in of the gateway that passes the name of the browser (`crates/hub/tests/it/sources/registration/hosted.rs`).
+The tests did not cover: the real gateway, the sign-in at the gateway, the real GitHub, and a browser.
+
+1. Start the application of this build, signed in to the hosted hub. Open Settings > Integrations > GitHub.
+   Expected: the row shows "Connect GitHub" and the line "Your browser must be signed in at hub.anima.ing with your
+   Anima.ing account." It does not show "Coming soon".
+2. Run `anima source kinds --hub <the address that the application uses>` with a token of the hub.
+   Expected: the row `github` shows `https://hub.anima.ing/connect/github` in the column BROWSER CONNECT.
+3. In the default browser, sign in at `https://hub.anima.ing` with the Anima.ing account. In the application, select
+   "Connect GitHub".
+   Expected: the browser opens `https://hub.anima.ing/connect/github` with a one-time link, then GitHub with the
+   button "Create GitHub App". The application says "Waiting for you on GitHub."
+4. On GitHub, select "Create GitHub App", then "Install".
+   Expected: GitHub goes back to `https://hub.anima.ing/connect/github/installed`, and the page says "GitHub is
+   connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
+   callback address and the setup address are below `https://hub.anima.ing/connect/github`.
+5. On a second computer of the same account, open Settings > Integrations > GitHub.
+   Expected: the same connection shows; no second sign-in to GitHub is asked for (HMD-068).
+6. Do step 3 again in a browser with no session at `hub.anima.ing`.
+   Expected: the gateway asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
+   installation), and open the same row.
+   Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list
@@ -2656,6 +2694,155 @@ not compared with its mockup.
 Result: Open.
 
 
+### HT-098: the holder on Linux, against a second user, and with a process that leaves the tree (THR-049, THR-113, THR-128)
+
+Built on the branch `threads/runner` (tasks TH11 and TH17 of [agent-threads.md](proposals/agent-threads.md)). The tests
+run on a Mac as one user, and in the gates on GitHub on Linux (Ubuntu, procps `ps`). The first Linux run found one defect:
+a child that a shell does not reap (the shell waits in `read`) stays a zombie, and the holder counted it as alive; a
+zombie now counts as ended (`/proc/<pid>/stat`). On a Mac a zombie is still counted as alive.
+
+What the holder does to end the processes of a program: it walks the process table (`ps -axo pid=,ppid=,lstart=`) from
+the program down, in each process group, stops each process it finds, then kills it. While the program runs it looks at
+the processes below it every 2 seconds, and keeps each one with its start time. So a process that was seen below the program and
+then left the tree (its parent ended) is still ended at a stop or at the end of the program. A process that took a reused
+ID is not ended when its start time differs. The start time is in whole seconds, so a process that took the ID in the same
+second as the old one ended can be ended by mistake. If a sweep of these processes fails (`ps` fails, or a process does
+not end), the holder keeps them, says that not all ended, and sweeps them again at the next stop. It uses no cgroup
+(Linux) and no job object (Windows); a Mac has neither.
+
+At a stop the program gets `SIGTERM` and 3 seconds to write its session file. Each process that the program starts in
+those 3 seconds (for example a hook at the end of a session) is killed when the walk finds it, so such a hook does not
+run to its end.
+
+What it cannot stop: a process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork,
+is never seen. It runs on after the stop, and the stop cannot report it (it can report only what it saw). On Linux a
+cgroup of the user (`systemd-run --user --scope`) would close this gap; it is not built.
+
+1. On `pop-os`, in the checkout, run `cargo nextest run -p anima-daemon threads`.
+   Expected: each test passes. Write the count and any failure here.
+2. On `pop-os`, run `cargo test -p anima-daemon tree` and `ps -axo pid=,ppid=,lstart= | head -3`.
+   Expected: the tests pass; each line of `ps` has a number, a number and a date of five words.
+3. On the Mac, make a second user (System Settings, Users and Groups). As the first user, start a daemon of the build
+   with a state folder of your own and one thread (step 1 of HT-097). Note the state folder.
+4. Log in as the second user. Run `ls -l <state folder>/threads` and `nc -U <state folder>/threads/holder.sock`, then
+   `nc -U <state folder>/threads/runner.sock`.
+   Expected: `ls` says permission denied (the folder is 0700). If you give the second user a way into the folder,
+   `nc` still gets no answer: the holder and the runner close a connection of a different user.
+5. As the first user, start a thread whose program runs
+   `perl -MPOSIX -e 'exit if fork; POSIX::setsid(); exit if fork; sleep 600'`, then stop the thread with
+   `anima agents stop <ID>`. Run `ps -ax | grep 'sleep 600'`.
+   Expected (the known limit): the `perl` process still runs, and the stop said that all ended. Kill it by hand with
+   `kill <pid>`.
+6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
+   then stop the thread.
+   Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
+
+Result: Open.
+
+### HT-097: the thread runner of the daemon starts and drives Claude Code and Codex (TH11 to TH13)
+
+Built on the local branch `threads/runner` (tasks TH11 to TH13 of [agent-threads.md](proposals/agent-threads.md)): the
+holder and the runner in `anima-daemon`, the local socket, and the commands `anima agents start`, `send`, `approve`,
+`interrupt`, `stop`, `running` and `watch`. The tests use a made `claude`, a made `codex` and a made login shell. No real Claude Code or
+Codex was started by the runner and nothing was run on Linux. The page of the client (steps 8 to 11) was tested with
+a made runner only; no person saw it in a desktop window.
+
+1. Start a daemon of the build with a state folder and a label of your own (not the installed application). In a
+   terminal run `anima agents start --program claude-code --folder <a test folder> "Say hello and list the files"`.
+   Expected: the command gives a thread ID. `anima agents watch` shows the reply; `anima agents running` shows the thread
+   as working, then idle.
+2. Do steps 1 and 3 again with `--program codex`.
+   Expected: the same for Codex.
+3. Start a Claude thread with `--mode ask` and a prompt that runs a shell command. Run `anima agents approve <ID>
+   <request>` with the request ID that `anima agents watch` shows.
+   Expected: the thread shows the request; after the answer the command runs and the request closes.
+4. Give a thread a task that starts a long command (for example `sleep 600` in a child shell). Run `anima agents
+   interrupt <ID>`, then `ps -ax | grep sleep`.
+   Expected: the turn stops and the `sleep` is gone. For Codex, its MCP servers still run.
+5. Stop the daemon and start it again while a thread works.
+   Expected: the program went on in the holder; after the restart the thread shows the same state and its output.
+6. Start a second daemon on the same state folder.
+   Expected: its runner refuses to start, with the words "a different runner holds the threads of this daemon".
+7. Run `anima agents stop <ID>`.
+   Expected: the program and each child of it end.
+8. (Branch `threads/client`, task TH14.) Open the desktop application of the build, then the page Threads. Select "New
+   thread", choose Claude Code, a test folder and "Ask before each change", and type a prompt that runs a command.
+   Expected: the thread is at the top of the list and opens. The request shows with "Allow once" and "Decline". Its text
+   is plain text. "Allow once" lets the command run. Compare the page with frame 3 of
+   `docs/mockup/agent-threads/index.html` and write each difference in the record of the mockup.
+9. In the composer type two lines with Shift+Enter between them, then press Enter. While the agent works, select Stop.
+   Expected: the prompt goes as two lines; Stop ends the turn and the processes it started.
+10. Put a different application in front, and give a thread a task that ends in a request or ends its turn.
+   Expected: one system notification of this Mac with the title of the thread and "Asks to run a command" or "Your
+   turn". With the thread open in front, no notification comes. Close the window and open it again: the thread and its
+   timeline are there, and no notification comes again for an old request.
+11. Start threads until the runner refuses one.
+   Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
+   running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
+
+A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
+build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a
+scratch folder with one file. Steps 1 and 2: each program listed the file and replied; the thread went to "your turn".
+Step 3: in the mode "ask" Claude Code asked for `echo hi > hello.txt`; after `anima agents approve` the file was there.
+Read-only commands such as `ls` and `wc` were not asked: Claude Code allows them itself. Step 4: with Codex the `sleep`
+ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected in the branch (the runner now ends what
+the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
+ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
+to 11 were not tried.
+
+Result: Open.
+
+### HT-102: the account, the plan and the limits of Claude Code and Codex stay on this computer (THR-051, THR-132)
+
+Built on the branch `threads/accounts`, on top of `threads/runner` (version 3.1 of
+[agent-threads.md](proposals/agent-threads.md)). The two adapters read what each program says about its account. Codex
+gives the name, the plan and the limits (`account/read`, `account/rateLimits/read` and its notices). Claude Code gives
+only its limits (`rate_limit_event`). The runner keeps the newest report of each program in memory only. It does not
+save it, log it, put it in an update of a thread, notify with it or send it to the hub. The command
+`anima agents accounts` shows it to the person on this computer. No token field is read, and Codex keeps its tokens in
+its own store. The tests use made lines. The field names of Claude Code were measured on 2026-11-21 with 2.1.311,
+without the values. The answer of a real Codex to `account/read` was not tried, nothing was run on Linux, and the page
+of the client does not show the account yet. A known limit: the runner asks Codex for its account when a Codex thread
+starts. After a restart of the daemon, a Codex thread that the holder kept is not asked again, so the name and the plan
+of Codex show again only when a new Codex thread starts. The limits come back with the next notice of Codex.
+
+1. Start a daemon of the build with a state folder and a label of your own. Start one Codex thread and one Claude Code
+   thread (`anima agents start`, as in the check of the runner). When each has replied, run `anima agents accounts`.
+   Expected: Codex shows your ChatGPT account, your plan and two limits with their reset times. Claude Code shows
+   "Account not known" and its limits (for example `seven_day 46%`).
+2. Compare the limits with the usage page of each vendor.
+   Expected: the percentages are the same, within the time between the two reads.
+3. Search the log of the runner (`runner.log` in the folder of the threads) and the log of the daemon for your address.
+   Run `anima agents watch` during a turn and look for your address there too.
+   Expected: your address is in none of them.
+4. Stop the daemon and start it again. Run `anima agents accounts` before any thread replies.
+   Expected: "No program of this computer said its account yet": the accounts were not saved.
+5. Do steps 1 and 3 on `pop-os`.
+   Expected: the same.
+### HT-103: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+### HT-099: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+
+Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of
+`anima agents start`) and on `threads/client` (the box in the dialog "New thread"). The runner reads
+`.claude/settings.json`, `.claude/settings.local.json` and `.mcp.json` of the folder, and names the hooks with their
+commands, the MCP servers, the count of allow rules and the environment names. Claude Code runs these with no question
+in each mode. The project files of Codex are not read. The tests use made folders; no real thread was started with a
+folder that has hooks, and nothing was run on Linux.
+
+1. Make a scratch folder with `.claude/settings.json` that holds one hook, for example
+   `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch started.txt"}]}]}}`. Run
+   `anima agents start --program claude-code --folder <the folder> "Say hello"`.
+   Expected: before the thread ID, the command prints that the folder makes Claude Code run `touch started.txt` at
+   SessionStart. `anima agents watch` shows the same notice as the first line of the thread. The file `started.txt`
+   appears: the hook ran, as the operator ruled.
+2. In the application, open Threads, choose "New thread", give the same folder and a prompt, and press Start.
+   Expected: the dialog shows a box with the same lines and does not start the thread. Press Start again: the thread
+   starts, and its first line is the notice.
+3. Do step 2 with a folder that has no such files.
+   Expected: the first press of Start starts the thread, with no box.
+
+Result: Open.
+
 ### HT-074: the native Windows desktop client (WIN1)
 
 Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
@@ -3087,5 +3274,68 @@ with real projects, in a desktop window or on a phone.
    Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
 9. Do steps 1 to 4 in the light appearance and on a phone.
    Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.
+
+### HT-100: the list and the thread scroll on their own (THR-013, THR-014)
+
+Built on the branch `threads/scroll`, in `apps/client/src/lib/agent-threads` (`ThreadsScreen.svelte`, `ThreadList.svelte`,
+`ThreadView.svelte`) and `apps/client/src/lib/scroll/room.ts`. The tests run in jsdom, which does not lay out a page: they
+prove that the thread goes to its end and that the button "Newest" comes and goes, with a made layout. They do not prove
+the heights in a real window, the scroll of the list, or the keyboard and the screen reader.
+
+1. Open the desktop application on a window wider than 960 px. Open Threads. Select a long thread.
+   Expected: the thread shows its newest part at the bottom. The page has no scroll bar of its own.
+2. Scroll the thread up and down.
+   Expected: only the thread moves. The list, its search field and the filter All / Claude Code / Codex stay in view. The
+   header of the thread (title, facts, "Usage of this folder") and the note and keys at its foot stay in view.
+3. Scroll the list.
+   Expected: only the rows move. The search field and the filter stay in view.
+4. In the thread, scroll up some way. Then wait until the program writes to the session file (use the thread in Claude
+   Code or Codex), or select the thread again.
+   Expected: a button "Newest" shows at the bottom of the thread. While the reader is up, a new entry does not move the
+   view. A click on "Newest" goes to the end, at once, with no glide.
+5. Select a different long thread.
+   Expected: it opens at its newest end.
+6. With the keyboard only: press Tab until the focus is on the thread content (a ring shows), then press the arrow keys
+   and Page Up and Page Down. Then Tab on to the rows of the list.
+   Expected: the thread scrolls with the keys; the focus leaves it with Tab; no focus is trapped.
+7. Turn on VoiceOver (Cmd+F5) and move to the thread.
+   Expected: VoiceOver says "Thread content". Turn it off again.
+8. Turn on System Settings, Accessibility, Display, Reduce motion, and do step 4 again.
+   Expected: the same: the jump to the end has no glide.
+9. Make the window narrower than 960 px, then open a session tab and close it again.
+   Expected: in the narrow window the list stands over the thread and the page scrolls as before. In the wide window
+   again, the page fills the window with no scroll bar of its own.
+### HT-101: the device page in a narrow window, the Warning badge tip and the skeleton under the tabs (NAV-005, RA-020, D-9)
+
+Built on the branch `ui/device-page-pass`: `apps/client/src/lib/tabs/Tabs.svelte` and
+`apps/client/src/lib/sessions/strip/SessionTabs.svelte` with `apps/client/src/lib/scroll/StripArrows.svelte` (a strip
+too narrow for its tabs drops the icons first, then fades its far end and shows an arrow there; the session tabs share a
+narrow strip), `apps/client/src/lib/devices/actions/WarningBadge.svelte` (the badge opens a tip that says what Warning
+means), and the skeleton under the tabs while a device loads. The jsdom tests prove the icons going and coming back,
+the arrows and their scroll, the name and the tip of the badge, and the busy panel. The gallery pictures at 800 and
+1600 px show the tabs, the strip of two sessions and the skeleton. No person used a mouse without sideways scroll, a
+screen reader, or a real window of the application.
+
+1. Open a device in the desktop application. Make the window narrow (about 800 px), then narrower.
+   Expected: at about 800 px the tabs show their words only, all of them, with no cut tab. Narrower, the right end of
+   the tabs fades and a round arrow shows there; the page itself does not scroll sideways.
+2. With a mouse that has no sideways scroll, select the arrow.
+   Expected: the tabs move left by most of their width; an arrow now shows at the left end too. Make the window wide
+   again: the arrows go and the icons come back.
+3. Press Tab to the selected tab, then the arrow keys to the last tab.
+   Expected: the focused tab is always in view; the arrows are never in the Tab order.
+4. Open four sessions at 800 px.
+   Expected: the session tabs share the strip, each with its name start, its protocol and its close button; past
+   about three tabs the strip fades at its end and shows an arrow.
+5. Open a device with a Warning badge (for example a device with standard RDP security). Point at the badge, then
+   press Tab to it, then select it.
+   Expected: each time a tip opens that says what Warning means, then each warning. Escape closes it.
+6. With VoiceOver on, move to the badge.
+   Expected: VoiceOver says "Warning", what it means and each warning, and that it is a button.
+7. Open a device on a slow connection to the hub (or a hub that is starting).
+   Expected: under the tabs, grey cards in the shape of the open tab until the device shows; no empty space.
+8. Do steps 1, 5 and 7 in the light appearance.
 
 Result: Open.

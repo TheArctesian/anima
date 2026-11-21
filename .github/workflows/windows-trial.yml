@@ -159,7 +159,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The PostgreSQL tree failed' }
           $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
           $proof = $env:EVENT -eq 'workflow_dispatch'
-          $keepGoing = if ($proof) { @('--keep-going') } else { @() }
+          $keepGoing = @(); if ($proof) { $keepGoing = @('--keep-going') }
           & bun run gates @keepGoing 2>&1 | Tee-Object -FilePath windows-gates.log
           $gates = $LASTEXITCODE
           if ($gates -ne 0 -and -not $proof) { throw 'Windows gates failed' }

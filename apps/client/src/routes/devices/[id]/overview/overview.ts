@@ -50,3 +50,11 @@ export function hostKeyText(ssh: OverviewDevice['ssh']): string {
 export function metricsOffText(hosted: boolean): string {
   return hosted ? 'Metrics are off. They appear when the daemon is installed on this device.' : 'Metrics are off. Install the daemon or turn on SSH metrics in Settings.';
 }
+
+/**
+ * What the chart area says when the range has no samples (MET-007). With readings known the bars show values, so the
+ * range is empty and nothing is on its way; only a device with no readings yet is waiting.
+ */
+export function noChartsText(readingsKnown: boolean, phrase: string): string {
+  return readingsKnown ? `No samples in the ${phrase}` : 'Waiting for metrics';
+}
