@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   desktop: true,
   gateway: 'none' as 'none' | 'left' | 'kept',
   hosted: false,
+  daemon: null as string | null,
+  leaveDaemon: vi.fn(),
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
@@ -33,6 +35,7 @@ vi.mock('$lib/hosted/mark', async (actual) => ({
   ...(await actual<typeof import('$lib/hosted/mark')>()),
   hubIsHosted: () => mocks.hosted,
 }));
+vi.mock('$lib/desktop/daemon/leave', () => ({ leaveDaemonOnThisComputer: mocks.leaveDaemon }));
 vi.mock('./navigation', () => ({ goToSignIn: mocks.goToSignIn, goToWelcome: mocks.goToWelcome, loadClientAt: mocks.loadClientAt }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -65,6 +68,8 @@ beforeEach(() => {
   mocks.desktop = true;
   mocks.gateway = 'none';
   mocks.hosted = false;
+  mocks.daemon = null;
+  mocks.leaveDaemon.mockReset().mockImplementation(() => Promise.resolve(mocks.daemon));
 });
 
 afterEach(async () => {
@@ -181,4 +186,19 @@ it('SET-002: a hub of one\'s own shows only the user name, with no account link'
   await settled();
   expect(target.querySelector('.who')?.textContent?.trim()).toBe('Signed in as ann');
   expect(target.querySelector('a')).toBeNull();
+});
+
+it('HMD-056: on desktop the daemon leaves before the logout, and a hub that still lists it keeps the page with that sentence', async () => {
+  mocks.daemon = 'The hub still lists the daemon.';
+  const target = await signOutWith(failure('unreachable'));
+  expect(mocks.leaveDaemon).toHaveBeenCalledBefore(mocks.clearAccessToken);
+  expect(mocks.clearAccessToken).toHaveBeenCalledOnce();
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('The hub still lists the daemon.');
+  expect(mocks.goToSignIn).not.toHaveBeenCalled();
+});
+
+it('HMD-056: in a browser no daemon is removed', async () => {
+  mocks.desktop = false;
+  await signOutWith(ok({ logout: true }));
+  expect(mocks.leaveDaemon).not.toHaveBeenCalled();
 });
