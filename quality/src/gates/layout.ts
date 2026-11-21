@@ -64,3 +64,22 @@ export function changedPaths(root: string, base: string): string[] | undefined {
   if (tracked === undefined || added === undefined) return undefined;
   return [...new Set(`${tracked}${added}`.split("\0").filter((path) => path !== ""))].sort();
 }
+
+/**
+ * The Rust packages whose folders hold `paths`: for each path, the nearest folder above it with a
+ * `Cargo.toml` that has a `[package]` and its name. Reads only files, so it needs no Rust toolchain
+ * (the job `base` of the workflow `gates` has none).
+ */
+export function cratesHolding(root: string, paths: readonly string[]): Member[] {
+  const found = new Map<string, Member>();
+  for (const path of paths) {
+    for (let folder = dirname(path); folder !== "." && folder !== "/" && !found.has(folder); folder = dirname(folder)) {
+      const manifest = join(root, folder, "Cargo.toml");
+      if (!existsSync(manifest)) continue;
+      const name = /^\[package\][^[]*?^name\s*=\s*"([^"]+)"/ms.exec(readFileSync(manifest, "utf8"))?.[1];
+      if (name !== undefined) found.set(folder, { folder, name });
+      break;
+    }
+  }
+  return [...found.values()];
+}

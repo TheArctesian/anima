@@ -10,8 +10,10 @@ use crate::hub::answer::Answer;
 /// The time between pushes while the hub answers well (MET-014).
 pub const RHYTHM: Duration = Duration::from_secs(10);
 
-/// The first wait after a failure; each failure doubles it up to [`BACKOFF_MAX`].
-pub const BACKOFF_START: Duration = Duration::from_secs(10);
+/// The first wait after a failure; each failure doubles it up to [`BACKOFF_MAX`]. It is short so
+/// that one push that ran to [`TIMEOUT`](crate::hub::TIMEOUT) is retried inside the hub's stale
+/// bound of 3 rhythms (MET-018): 10 s rhythm, 10 s timeout, 2 s wait (R-312).
+pub const BACKOFF_START: Duration = Duration::from_secs(2);
 
 pub const BACKOFF_MAX: Duration = Duration::from_secs(60);
 
@@ -79,8 +81,8 @@ pub struct Backoff {
 }
 
 impl Backoff {
-    /// Records a failure and returns how long to wait: the step, 10 s, then 20 s, 40 s, 60 s,
-    /// 60 s, moved by up to [`JITTER`] either way by `spread` (0 to 1, from a random source; 0.5
+    /// Records a failure and returns how long to wait: the step, 2 s, then 4 s, 8 s, 16 s, 32 s,
+    /// 60 s, 60 s, moved by up to [`JITTER`] either way by `spread` (0 to 1, from a random source; 0.5
     /// keeps the step), so daemons that failed together do not all try again together.
     pub fn failed(&mut self, spread: f64) -> Duration {
         let step = self
@@ -90,7 +92,7 @@ impl Backoff {
         step.mul_f64(2.0f64.mul_add(JITTER * spread.clamp(0.0, 1.0), 1.0 - JITTER))
     }
 
-    /// Records a success: the next failure starts again at 10 s.
+    /// Records a success: the next failure starts again at [`BACKOFF_START`].
     pub const fn recovered(&mut self) {
         self.last = None;
     }
@@ -135,24 +137,37 @@ mod tests {
     }
 
     #[test]
-    fn k8_7_the_backoff_doubles_from_10_to_60_seconds_and_resets() {
+    fn k8_7_the_backoff_doubles_from_2_to_60_seconds_and_resets() {
         let mut backoff = Backoff::default();
-        let waits: Vec<u64> = (0..5).map(|_| backoff.failed(0.5).as_secs()).collect();
-        assert_eq!(waits, [10, 20, 40, 60, 60]);
+        let waits: Vec<u64> = (0..8).map(|_| backoff.failed(0.5).as_secs()).collect();
+        assert_eq!(waits, [2, 4, 8, 16, 32, 60, 60, 60]);
         assert!(backoff.is_failing());
         backoff.recovered();
         assert!(!backoff.is_failing());
-        assert_eq!(backoff.failed(0.5).as_secs(), 10);
+        assert_eq!(backoff.failed(0.5).as_secs(), 2);
+    }
+
+    #[test]
+    fn met_018_one_timed_out_push_is_retried_inside_the_stale_bound() {
+        let stale = RHYTHM * 3;
+        let latest_retry = Backoff::default().failed(1.0);
+        assert!(RHYTHM + crate::hub::TIMEOUT + latest_retry < stale);
     }
 
     #[test]
     fn k8_7_each_wait_is_spread_20_percent_either_way_around_its_step() {
-        let waits = |spread: f64| -> Vec<u64> {
+        let waits = |spread: f64| -> Vec<u128> {
             let mut backoff = Backoff::default();
-            (0..5).map(|_| backoff.failed(spread).as_secs()).collect()
+            (0..7).map(|_| backoff.failed(spread).as_millis()).collect()
         };
-        assert_eq!(waits(0.0), [8, 16, 32, 48, 48]);
-        assert_eq!(waits(1.0), [12, 24, 48, 72, 72]);
+        assert_eq!(
+            waits(0.0),
+            [1_600, 3_200, 6_400, 12_800, 25_600, 48_000, 48_000]
+        );
+        assert_eq!(
+            waits(1.0),
+            [2_400, 4_800, 9_600, 19_200, 38_400, 72_000, 72_000]
+        );
         assert_eq!(
             waits(-3.0),
             waits(0.0),

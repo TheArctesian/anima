@@ -150,7 +150,7 @@ impl UsageArgs {
 ///
 /// # Errors
 /// [`Failure::Usage`] when `--days` comes with an `--until` that is not `YYYY-MM-DD`.
-fn day_range(
+pub(super) fn day_range(
     (since, until): (Option<String>, Option<String>),
     days: Option<u16>,
     today: NaiveDate,

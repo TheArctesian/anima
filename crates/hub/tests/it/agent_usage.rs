@@ -1,8 +1,10 @@
 //! The use of the AI agent programs through the hub's routes (R-135; AIS-018 to AIS-024; K8
 //! Section 4): a daemon pushes `agentUsage` in its batch, and `agentUsage` sums it.
 
+mod accounts;
 mod guard;
 mod query;
+mod sessions;
 mod storage;
 
 use axum::http::StatusCode;

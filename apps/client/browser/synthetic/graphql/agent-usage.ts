@@ -84,7 +84,7 @@ function sumsView({ sessions, prompts, toolCalls, tokens, cost: estimate, unpric
   return { sessions, prompts, toolCalls, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, estimatedCostUsd: estimate, unpricedTokens: unpriced };
 }
 
-/** The Query field `agentUsage` of the synthetic hub. */
+/** The Query fields `agentUsage` and `agentSessions` of the synthetic hub. */
 export function agentUsageFields(state: HubState): Record<string, unknown> {
   return {
     agentUsage: ({ filter, by = [] }: Args): Row => {
@@ -128,5 +128,43 @@ export function agentUsageFields(state: HubState): Record<string, unknown> {
         pricesAsOf: PRICES_AS_OF,
       };
     },
+    agentSessions: (args: Args & { first?: number }): Row => sessionsOf(state, args),
   };
+}
+
+/** The Query field `agentSessions`: the entries of DAYS split into their sessions (AIS-025, AIS-026). */
+function sessionsOf(state: HubState, { filter, first = 50 }: Args & { first?: number }): Row {
+  const now = state.now().getTime();
+  const lastDay = filter?.lastDay ?? dayOf(now);
+  const firstDay = filter?.firstDay ?? dayOf(Date.parse(`${lastDay}T00:00:00Z`) - 29 * DAY_MS);
+  const devices = state.fixtures.devices.filter((device) => STATES[String(device.name)] !== undefined && (filter?.deviceId == null || device.id === filter.deviceId));
+  const idOf = (name: string): string => String(devices.find((device) => device.name === name)?.id ?? '');
+  // Each entry of DAYS is split into its sessions, each with an equal part of the counts. The newest session of today was
+  // last used 10 minutes ago, so the page has one recent session (AIS-026).
+  const sessions = DAYS.flatMap((day) => {
+    const when = dayOf(now - day.daysAgo * DAY_MS);
+    const admitted = idOf(day.device) !== '' && when >= firstDay && when <= lastDay && (filter?.source == null || day.source === filter.source) && (filter?.repository == null || day.repository === filter.repository);
+    if (!admitted) return [];
+    return Array.from({ length: day.sessions }, (_, index) => {
+      const lastUse = now - day.daysAgo * DAY_MS - (index * 3 + (day.daysAgo === 0 && index === 0 ? 0 : 1)) * 3_600_000 - 600_000;
+      const part = (count: number): number => Math.round(count / day.sessions);
+      const tokens = day.tokens.map(part) as [number, number, number, number];
+      const sums: Sums = { sessions: 1, prompts: 0, toolCalls: 0, tokens: [0, 0, 0, 0], cost: null, unpriced: 0 };
+      add(sums, { ...day, sessions: 1, prompts: part(day.prompts), toolCalls: part(day.toolCalls), tokens });
+      // The field `sessions` of the sums is no field of AgentSession; GraphQL leaves it out of the answer.
+      const view = sumsView(sums);
+      return {
+        id: `${day.device}-${String(day.daysAgo)}-${day.model}-${String(index)}`,
+        device: deviceOf(state, idOf(day.device)),
+        source: day.source,
+        model: day.model,
+        repository: day.repository,
+        startedAt: new Date(lastUse - 2 * 3_600_000).toISOString(),
+        lastUseAt: new Date(lastUse).toISOString(),
+        recent: now - lastUse <= 30 * 60_000,
+        ...view,
+      };
+    });
+  }).toSorted((a, b) => b.lastUseAt.localeCompare(a.lastUseAt));
+  return { firstDay, lastDay, sessions: sessions.slice(0, first), sessionsLeftOut: Math.max(0, sessions.length - first) };
 }

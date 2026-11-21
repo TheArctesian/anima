@@ -6,7 +6,7 @@
 )]
 
 use async_graphql::Enum;
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use daemon_core::agent_usage::{Source, UsageState};
 
 use crate::ids::DeviceId;
@@ -168,4 +168,38 @@ pub struct Report {
     pub total: Group,
     /// Of each device the device filter admits.
     pub states: Vec<DeviceState>,
+}
+
+/// One stored session that has use on a day asked for, with its sums over those days and its
+/// tokens by model (AIS-025).
+#[derive(Clone, Debug, PartialEq)]
+pub struct StoredSession {
+    /// The hub's row ID of the session: stable while the session is kept.
+    pub id: i64,
+    pub device: DeviceId,
+    pub source: Source,
+    pub model: Option<String>,
+    pub repository: Option<String>,
+    pub started_at: DateTime<Utc>,
+    /// The end of the session's last entry: its last use as the daemon counted it.
+    pub last_use_at: DateTime<Utc>,
+    pub prompts: f64,
+    pub tool_calls: f64,
+    pub models: Vec<(String, TokenSums)>,
+}
+
+/// A stored session with its tokens summed and the estimate of their cost (AIS-021, AIS-025).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Session {
+    pub stored: StoredSession,
+    pub tokens: TokenSums,
+    pub estimated_cost_usd: Option<f64>,
+    pub unpriced_tokens: f64,
+}
+
+/// The sessions of an ask, newest use first, and how many the ask admits in all (AIS-025).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SessionList {
+    pub sessions: Vec<Session>,
+    pub admitted: i64,
 }
