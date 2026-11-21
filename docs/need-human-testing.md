@@ -2622,6 +2622,28 @@ window with real devices.
 Result: Open.
 
 
+### HT-NEW-hubusage: the plan and its use on the page of a hosted hub (HM-T38, HMD-073)
+
+Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
+usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in
+`apps/desktop/src-tauri/src/cloud.rs`. The tests prove the form of [account-usage.md](../contracts/account-usage.md), each state of the
+card and the choice of the way in, with stand-in answers. No test reached the route of the site or the path of the gateway, which
+are in the private repositories, and no test read real figures of an account.
+
+1. In the desktop application, signed in to the Anima.ing account of a hosted hub, open "Devices", then the row of the hub.
+   Expected: the card "Plan and usage" shows "Data of your hub" and "Disk used of the plan" as two figures, the name of the plan,
+   the hours awake and asleep, the amount of the month with the sentence "So far this month, before tax. This is an estimate, not
+   a bill. Your invoice arrives after the month ends." (or "Nothing is charged on this plan" on a free plan), and the time of the
+   figures. The amount is the one that the account page shows.
+2. Open the hub at its address in a browser, signed in at the gateway, and open the same page.
+   Expected: the same figures.
+3. In the browser, end the session of the gateway in a second tab, then load the page again.
+   Expected: the card says to sign in to the account; the data of the hub still shows.
+4. Open the row of a device that is not the hub.
+   Expected: no card "Plan and usage".
+
+Result: Open.
+
 ### HT-NEW-owndaemon: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
 
 Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,

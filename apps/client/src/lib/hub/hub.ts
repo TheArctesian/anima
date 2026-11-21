@@ -17,6 +17,8 @@ export type { Connection, HubStatus } from './status/status';
 export { dataAge } from './status/age';
 export type { Sink } from './socket/socket';
 export { desktopRecentCopy, forgetRecentCopy } from './recent/desktop';
+export type { GatewayAnswer } from './gateway';
+export { readGateway } from './gateway';
 
 /** GraphQL variables: an object, or an empty one for a document without variables. */
 export type Variables = Record<string, unknown>;

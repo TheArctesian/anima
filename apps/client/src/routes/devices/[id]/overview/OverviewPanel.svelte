@@ -4,6 +4,9 @@
   import type { MetricRange } from '$lib/metrics/api';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import type { VpnNode } from '$lib/vpn/api';
+  import PlanUsageCard from '$lib/hosted/usage/PlanUsageCard.svelte';
+  import { readAccountUsage } from '$lib/hosted/usage/read';
+  import { hubDataBytes } from '$lib/hosted/usage/usage';
   import StorageSection from '$lib/metrics/storage/StorageSection.svelte';
   import DeviceVpn from '$lib/vpn/device/DeviceVpn.svelte';
   import './geometry.css';
@@ -59,6 +62,10 @@
     <aside class="overview-side" aria-label="Connect and about">
       {#if onConnect !== undefined && onSection !== undefined}
         <ConnectCard {device} {onConnect} {onOpenWeb} onSettings={onSection} />
+      {/if}
+      {#if device.kind === 'hub'}
+        <!-- HMD-073: the page of the hub asks the account for the figures of its plan; the hub holds none. -->
+        <PlanUsageCard read={() => readAccountUsage()} dataBytes={hubDataBytes(metrics.view?.series ?? [])} {now} />
       {/if}
       <HostKeyCard ssh={device.ssh} />
       <AboutCard {device} />

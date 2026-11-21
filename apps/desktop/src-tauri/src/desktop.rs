@@ -53,6 +53,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         cloud::cloud_sign_in_resume,
         cloud::cloud_hub,
         cloud::cloud_hub_access,
+        cloud::cloud_hub_usage,
         cloud::cloud_device,
         keystore::access_token_write,
         keystore::access_token_clear,
