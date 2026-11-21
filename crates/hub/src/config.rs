@@ -88,6 +88,16 @@ pub struct Config {
     pub files_dir: Option<PathBuf>,
 }
 
+impl Config {
+    /// Whether browsers reach this hub through the gateway of the pool, at the public origin
+    /// that the pool gave it (HMD-061, HMD-069). The default origin is the old shared address of
+    /// every hub, so a hosted hub that was given none takes no browser (review HM-T32).
+    #[must_use]
+    pub const fn gateway_given(&self) -> bool {
+        self.hosted_cloud_key_file.is_some() && self.public_origin_given
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{variable} is set but empty")]

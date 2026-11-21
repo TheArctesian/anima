@@ -265,6 +265,12 @@ that owns the area.
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-177 | On macOS the access lists of the folders of the copy and of the socket are not read. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-176 | On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-238 | A hosted hub that the pool gave no public origin took browsers at the old shared address. Medium | The browser session of a hosted hub (task HM-T32) | Open (built) |
+| SF-239 | An open page keeps the browser session from its end after 30 minutes with no request. Medium | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-236 | A browser session of a hosted hub cannot be ended from outside the browser, and each entry leaves the token of before usable. Medium | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-237 | A browser session can make an API key that lasts longer than the session. Low | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-241 | A remote session that a browser opened stays open after the browser session of the hub ends. Low | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-240 | Behind the gateway each browser has the loopback address of the container. Low | The browser session of a hosted hub (task HM-T32) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2503,6 +2509,131 @@ Mitigation now: the operator can end the token at the hub (switch the device awa
 The fix (not built): on a Linux computer with a session of a person, keep the token and the key cache in the Secret Service (encrypted with the login password), as the shell keeps its keys, and keep the file store for a server with no session and for the system unit. Where the file store stays, write the token and the cache in a folder that backup tools leave out (for example below `$XDG_STATE_HOME` with a `CACHEDIR.TAG`, or a documented exclusion), and say in K8 Section 2 that a backup of the folder holds the token.
 
 State: Open. Found in the review HM-T23 on 2026-11-20.
+
+## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
+
+Task HM-T32 of [hosted-mode.md](proposals/hosted-mode.md) is the review that HMD-067 asks for before a person other than the operator uses `hub.anima.ing`. This part of it is the side of this repository: the browser session of a hosted hub (`hostedBrowserTicket`, `hostedBrowserSignIn`, the cookie, its life, the sign-out), the web client behind the gateway (HM-T27, HM-T30, HM-T31), Connect GitHub on a hosted hub (HM-T29), and what the hub trusts from the gateway: the public origin, the guard of the host name, the check of `Origin`, the cookies, CORS, the security headers and the paths below `/_door/`. It also looks at the move to one address for each hub (`https://<hub id>.hub.anima.ing`, HMD-068, HMD-069). The review read the code on `dev` of 2026-11-21 (`crates/hub/src/fleet/link/graphql/hosted.rs`, `crates/hub/src/fleet/access/`, `crates/hub/src/lib.rs`, `crates/hub/src/config.rs`, `crates/hub/src/web_client/`, `crates/hub/src/engine/sources/registration*`, `crates/hub/src/fleet/sessions/`, `apps/client/src/lib/hub/gateway/`, `apps/client/src/lib/hosted/`). It read the gateway of the private repository to know what the hub may assume; the findings of the gateway are recorded there, not here. It ran the hub tests of `crates/hub/tests/it/link/hosted_origin.rs`; it contacted no server. An agent did it, and a second agent read the same code with only the list of the flows; this list holds the findings of both. "Severity" is the word of the reviewers.
+
+### The model: who can send what to a hosted hub
+
+A hosted hub listens on the loopback address of its container and on the socket of its link only (`crates/hub/src/config/link.rs`). Three senders reach it: the gateway, through a socket that the pool connects to that loopback address; the devices of the account, through the link; and the programs in the container, where the customer is root. The second and the third belong to the account of the hub, so a request that goes around the gateway gives them nothing that they do not have. The cloud key is new for each hub (anima-cloud ACL-019), so the key of one hub opens no other hub.
+
+Each other address below `hub.anima.ing` is the hub of a different account, and its customer is root there, so its pages can hold any script. For a browser it is the same site as this hub, because `hub.anima.ing` is not a public suffix: `SameSite=Strict` does not keep its requests out. The hub must keep them out by the name and the origin of each request.
+
+### What is safe
+
+- The ticket: 256 random bits, only its SHA-256 hash in memory, one use, 60 seconds, at most 1024 open (`crates/hub/src/fleet/access/login/browser_ticket.rs`). Only the key of the cloud makes one; the key is compared by hash in constant time, and an empty key never matches (`fleet/link/graphql/hosted.rs:214-226`). The ticket is never in an address or in a browser: the gateway trades it in a request of its own.
+- No session fixation: the cookie is made by the hub in the trade, and its value is a new token. A cookie of another hub holds a token that this hub does not know.
+- The cookie: `__Host-anima`, `Path=/`, `Secure`, `HttpOnly`, `SameSite=Strict`, no `Domain` (`fleet/access/browser.rs:16-22`). So no other host can set it, and it goes to no other host. Two cookies of that name, or a `Cookie` header that is not text, give no identity (`browser/cookie.rs`). With an `Authorization` header the cookie does not count.
+- CSRF and a WebSocket of another origin: the cookie is read only for a request whose one `Origin` header is the public origin of the hub, byte for byte, for `POST /graphql` and for the upgrade of `GET /graphql` (`browser.rs:36-55`, `connection/sign_in.rs:24-28`). `POST /graphql` takes only `application/json`, a query is never read from a URL, and CORS admits only the two origins of the desktop application, with no credentials (`crates/hub/src/lib.rs:62-75`). The test `hmd_061_a_sibling_hub_or_the_old_address_cannot_use_the_cookie_of_this_hub` shows it for the origin of a different hub, the old shared address, `null` and `http`.
+- The name of the host: a hosted hub answers a loopback name, or exactly the host of its public origin (with no port or with 443); each other name gets a bare 403 before a route runs (`fleet/access/rebinding.rs:34-91`). The test `hmd_069_a_hub_at_its_own_address_answers_only_its_own_name` shows it for the old shared address, a different hub, a name below this one, a name that starts with this one, a name with a final dot and a different port.
+- The headers that the gateway adds: the hub trusts none. It takes no client address from `X-Forwarded-For`, `Forwarded` or `X-Real-IP` (`fleet/access/identity.rs:343-349`), and the gateway removes them.
+- The life of the session: 12 hours at most and 30 minutes with no request (`fleet/access/tokens.rs:31-36`, `identity.rs:271-300`). The tests `hmd_062_a_browser_session_ends_after_30_minutes_with_no_request` and `hmd_062_a_browser_session_ends_12_hours_after_its_sign_in_however_it_is_used` show both through the whole router. Exception: an open page (see the first Medium entry below).
+- The sign-out: `logout` deletes the token and clears the cookie (`fleet/access/graphql.rs:142-156`); the test `hmd_062_a_sign_out_ends_the_browser_session_and_clears_its_cookie` shows it. The web client then ends the session of the gateway with one `POST` (`apps/client/src/lib/hub/gateway/gateway.ts:73-81`).
+- The signed-out calls: one sign-in mutation for each operation (`fleet/access/guard.rs:658-684`). A hosted hub refuses each sign-in with a password. `claimDeviceToken` admits only an address of the link, so a browser behind the gateway cannot get the token of a device.
+- The web client: no `postMessage` and no listener of messages; the tab of Connect GitHub has no `opener`; the policy has `script-src 'self'` with hashes, `form-action 'none'`, `frame-ancestors 'none'`, `base-uri 'none'`, and the answers have `Referrer-Policy: no-referrer`, `nosniff` and COOP `same-origin` (`crates/hub/src/web_client/headers.rs`). The paths below `/_door/` are only read by the client (`/_door/client`, `/_door/enter`, `/_door/sign-out`, `/_door/usage`); a hub with no gateway answers them with the web client, which the client reads as "no gateway".
+- Connect GitHub: the page of the flow follows the public origin of the hub (`engine/sources/registration.rs:31-41`); `POST /connect/github/open` checks `Origin` and needs a browser token; the cookie `__Host-anima-connect` and the states bind one browser; a hub in the link mode with no address of its own refuses the flow (HMD-070). An attempt that is open when the hub moves to its own address is lost (HM-T29 says so).
+- Across the move: the cookie of a hub at `https://hub.anima.ing` belongs to that host and never goes to `https://<hub id>.hub.anima.ing`. A hub at its own address refuses the name `hub.anima.ing` and the origin `https://hub.anima.ing` (the two tests above), so an old cookie cannot reach it through a fault of the gateway either. The person signs in again.
+
+### SF-238: A hosted hub that the pool gave no public origin took browsers at the old shared address. Medium
+
+Requirements: HMD-061, HMD-069, HMD-070; task HM-T32.
+
+What it is: with no `ANIMA_PUBLIC_ORIGIN`, the public origin of a hub is `https://hub.anima.ing` (`crates/hub/src/config.rs:305-309`). A hosted hub made that origin its gateway in each case (`crates/hub/src/lib.rs:162-165`): it answered the name `hub.anima.ing`, marked a request from `https://hub.anima.ing` as one of its own origin, and traded a ticket for its cookie there. Only Connect GitHub looked at whether the pool gave the origin (`engine/sources/registration.rs:39`).
+
+Where: `crates/hub/src/lib.rs`, `all_routes`.
+
+Effect, and who can cause it: a fault of the pool (a hub made before ACL-049 of anima-cloud, or an old image). Such a hub takes a browser at the one origin where the pages of each hub were before the move: where a hostile hub could leave a service worker, a page in the cache or a cookie that script can read (anima-cloud AC-D45, R1). A gateway that sends a request of `hub.anima.ing` to a hub would then give that hub the old cookies of the shared origin.
+
+Mitigation before: the gateway after the move sends no request of `hub.anima.ing` to a hub (HMD-068).
+
+The fix (built on the branch `hosted/hm-t32-gateway-review`): a hosted hub takes the name and the origin of its public origin only when the pool gave it (`public_origin_given`). With no origin given, it answers a loopback name with no origin, as the cloud calls it, and takes no browser. The test `hmd_069_a_hosted_hub_that_was_given_no_address_takes_no_browser` failed before the fix. Not built: a refusal to start; it would also stop the devices of such a hub.
+
+State: Open (built). Found in the review HM-T32 on 2026-11-21.
+
+### SF-239: An open page keeps the browser session from its end after 30 minutes with no request. Medium
+
+Requirements: HMD-062; tasks HM-T26, HM-T32.
+
+What it is: the web client keeps a subscription open while a page is open. The hub checks the token of an open socket again at each interval and writes that check as a use of the token (`crates/hub/src/fleet/access/connection.rs:322-340`). HM-T26 chose this, so that a person who watches a terminal is not signed out. The effect is that the rule "30 minutes with no request" applies only to a browser with no open page of the hub. The gateway does the same for its own session (an open connection counts as use; anima-cloud R3).
+
+Where: `crates/hub/src/fleet/access/connection.rs`, `lapse`.
+
+Effect, and who can cause it: a person who finds an open page on a computer that someone left. The session stays usable until its 12 hours end. A person who did not close the page cannot be sure that the session ended after 30 minutes, which is what HMD-062 says.
+
+Mitigation now: the 12 hours; "Sign out"; the end of the session of the gateway at the account page.
+
+The fix (not built; it needs the reading of HMD-062 by the operator): count only requests and messages that the client sends as use, not the check of the hub. The web client then sends a sign of use only after an act of the person (a key, a click, a visible page), and the terminal and the desktop count their own input. The gateway must do the same for its session.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-236: A browser session of a hosted hub cannot be ended from outside the browser, and each entry leaves the token of before usable. Medium
+
+Requirements: HMD-061, HMD-062; tasks HM-T25, HM-T26, HM-T32.
+
+What it is: HMD-062 says that the account page lists the open browser sessions and ends each one. HM-T25 put that list in the gateway, and the hub has no call of the cloud that lists or ends its browser tokens (`crates/hub/src/fleet/link/graphql/hosted.rs`). The sign-out of the gateway ends the session of the gateway only. `signInBrowser` deletes the token that the cookie of the request held (SEC-002), but the trade of `hostedBrowserSignIn` is a request of the gateway that carries no cookie of the browser, so each entry (`/_door/enter`) leaves the token of before alive until its 30 minutes end.
+
+Where: `crates/hub/src/fleet/link/graphql/hosted.rs:145-170`, `crates/hub/src/fleet/access/login/hosted.rs:291-316`.
+
+Effect, and who can cause it: a person who has a copy of the cookie (a backup of the profile of the browser, a computer that was lost). The account page ends the session of the gateway, which then passes no request; the token stays good at the hub until its idle time or its 12 hours. A gateway with a fault, or a later route that passes requests by the cookie of the hub, would let it in. The tokens of entries that nobody holds make the list of the hub longer for 30 minutes each.
+
+Mitigation now: the gateway passes a request to a hub only with an open session of its own; the token is `HttpOnly`.
+
+The fix (not built; a change of contract K1 and of the gateway): a call of the cloud, `endHostedBrowserSessions(cloudKey)`, that deletes each browser token of the hub, called by the gateway at each sign-out and at each end from the account page; and, for each entry, the gateway sends the cookie of the hub that the browser has, so that `hostedBrowserSignIn` deletes its token as `signInBrowser` does.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-237: A browser session can make an API key that lasts longer than the session. Low
+
+Requirements: HMD-062, INT-003, D-23; task HM-T32.
+
+What it is: a browser token may call `createApiKey` (`crates/hub/src/fleet/access/graphql.rs:158-166`), and the key lasts as long as its rules say, longer than the 12 hours of the session. The key is a bearer for the link and for each request that the gateway passes for the account.
+
+Where: `crates/hub/src/fleet/access/graphql.rs`, `crates/hub/src/fleet/access/keys/`.
+
+Effect, and who can cause it: a person with a moment at an open page, or script that runs in the page of the hub. The key outlives the sign-out and the end of the session at the account page. It is shown in the list of keys of the hub, and the operator can delete it there.
+
+Mitigation now: the policy of the web client blocks script that the hub did not serve; the key is in the list of keys.
+
+The fix (not built; a choice of the operator): on a hosted hub, a key that a browser session makes ends with that session, or such a key needs a new sign-in at the account site.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-241: A remote session that a browser opened stays open after the browser session of the hub ends. Low
+
+Requirements: HMD-062, D-10; task HM-T32.
+
+What it is: a terminal, a desktop or a file session ends when the person ends it, when the client leaves, or when the hub stops (`crates/hub/src/fleet/sessions/end.rs`). Nothing ends it when the token that opened it expires or is deleted. The subscription socket of the same browser does end then (`fleet/access/connection.rs:319-345`).
+
+Where: `crates/hub/src/fleet/sessions/`.
+
+Effect, and who can cause it: a person at a page where a session is open, after a sign-out in a different tab or after the 12 hours. The gateway ends the carried connection within 60 seconds when its own session ends, but not when only the session of the hub ends.
+
+Mitigation now: the end of the session of the gateway.
+
+The fix (not built): keep the token that opened a session with it, and end the session when that token is gone or expired, as `lapse` does for a subscription.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-240: Behind the gateway each browser has the loopback address of the container. Low
+
+Requirements: LOG-005, D-2, D-8; task HM-T32.
+
+What it is: the hub takes the client address from the peer of the connection (`crates/hub/src/fleet/access/identity.rs:343-349`). Behind the gateway that peer is the proxy of the container, so each browser of the account, each program of the container and each call of the pool has the same loopback address.
+
+Where: `crates/hub/src/fleet/access/identity.rs`; the tickets of sessions compare that address (`fleet/sessions/files/opening.rs:47`, `fleet/sessions/live.rs:264`).
+
+Effect, and who can cause it: no one gets in by it. The audit trail of a hosted hub names no browser, and the binding of the ticket of a session to the address of its client adds nothing behind the gateway: a ticket can be used from a different browser of the same account in its 30 seconds. The ticket stays one use and short.
+
+Mitigation now: the gateway removes each header that names an address, so no browser can write one.
+
+The fix (not built): the pool turns on the PROXY protocol on the proxy of the gateway, and the hub reads the address from it on that listener only; or the design says that the binding is void behind the gateway.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### What gates the opening to other people (HMD-067)
+
+On the side of this repository, no entry of this review is of the class "must correct" on its own. Before a person other than the operator uses `hub.anima.ing`: SF-238 must be merged and in the image of the hub; the operator decides SF-239 (it is the reading of "30 minutes with no request" in HMD-062) and SF-236 (HMD-062 asks that the account page ends a session; today the hub token outlives that end). The findings of the gateway, which are recorded in the private repository, gate the opening too.
 
 ## Closed
 

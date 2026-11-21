@@ -3,9 +3,14 @@
 //! it, once, for the cookie of the hub, and that cookie signs the browser in. A hub that is not
 //! hosted has neither call. No ticket and no token reaches an entry (LOG-007).
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
-use anima_hub::{all_routes, fleet::access};
+use anima_hub::{
+    all_routes,
+    clock::{Clock, FixedClock},
+    fleet::access,
+    schema::Dependencies,
+};
 use axum::{
     Router,
     body::Body,
@@ -18,26 +23,34 @@ use sqlx::PgPool;
 use tower::ServiceExt as _;
 
 use super::control::{FakeLink, code, ok, written};
-use super::hosted::{CLOUD_KEY, hosted_parts};
+use super::hosted::{CLOUD_KEY, hosted_env, parts_of};
 use crate::hub::{dependencies, start};
 
 /// The default public origin of a hub: the address of the gateway.
 const GATEWAY: &str = "https://hub.anima.ing";
 const FROM_GATEWAY: [(&str, &str); 2] = [("origin", GATEWAY), ("host", "hub.anima.ing")];
-const TICKET_CALL: &str =
+pub(super) const TICKET_CALL: &str =
     "mutation($k: String!) { hostedBrowserTicket(cloudKey: $k) { ticket expiresAt } }";
-const SIGN_IN_CALL: &str =
+pub(super) const SIGN_IN_CALL: &str =
     "mutation($t: String!) { hostedBrowserSignIn(ticket: $t) { expiresAt } }";
 
 fn quiet_link() -> FakeLink {
     FakeLink::start(|_| ok(&json!([])))
 }
 
+/// A hosted hub that the pool gave the address of the gateway as its public origin, served as
+/// [`serving`] does.
+async fn hosted(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) -> Router {
+    let mut env = hosted_env(link, folder);
+    env.insert("ANIMA_PUBLIC_ORIGIN".to_owned(), GATEWAY.to_owned());
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
+    serving(pool, parts_of(pool, &env, clock)).await
+}
+
 /// A hosted hub with every route as `main.rs` serves it, behind the permitted networks of the
 /// link mode and the guard of the host name: as the pool reaches it, from the loopback address
 /// of its own container.
-async fn hosted(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) -> Router {
-    let parts = hosted_parts(pool, link, folder);
+pub(super) async fn serving(pool: &PgPool, parts: Dependencies) -> Router {
     access::permit_networks(pool, &parts.config.permitted_networks)
         .await
         .unwrap();
@@ -47,7 +60,7 @@ async fn hosted(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) -> R
 
 /// Posts a GraphQL request from this computer with the extra `headers`; returns the headers of
 /// the answer and its body, `Null` when the body is not JSON (a bare refusal).
-async fn post(
+pub(super) async fn post(
     hub: &Router,
     headers: &[(&str, &str)],
     query: &str,
@@ -70,7 +83,7 @@ async fn post(
     )
 }
 
-async fn ticket(hub: &Router) -> String {
+pub(super) async fn ticket(hub: &Router) -> String {
     let (_, made) = post(
         hub,
         &[("host", "127.0.0.1:8443")],
@@ -93,7 +106,7 @@ async fn ticket(hub: &Router) -> String {
 }
 
 /// The value of the `__Host-anima` cookie that the answer sets, with its attributes.
-fn set_cookie(headers: &HeaderMap) -> Option<String> {
+pub(super) fn set_cookie(headers: &HeaderMap) -> Option<String> {
     let value = headers.get(header::SET_COOKIE)?.to_str().ok()?;
     value.starts_with("__Host-anima=").then(|| value.to_owned())
 }
