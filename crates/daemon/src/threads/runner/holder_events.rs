@@ -3,6 +3,7 @@
 //! keeps its limit of output (THR-113).
 
 mod older;
+mod signed_out;
 
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
 use agent_threads::drive::DriveEvent;
@@ -177,21 +178,13 @@ impl Runner {
                     Vec::new()
                 }
             };
-            signed_out |= steps.iter().any(not_logged_in);
+            signed_out |= steps.iter().any(signed_out::not_logged_in);
             if self.apply(id, steps).await.is_err() {
                 break;
             }
         }
         if signed_out {
-            // Words that say whether the person must sign in, or only send again (TH99).
-            let found = super::login::sign_in::of_claude(&self.env).await;
-            let text = super::login::sign_in::words(found).to_owned();
-            self.publish(
-                id,
-                Change::Said {
-                    event: DriveEvent::Notice { text },
-                },
-            );
+            self.tell_sign_in(id).await;
         }
         self.read_up_to.insert(id, last);
         // The record holds the open requests before the holder drops their lines (THR-030); a
@@ -346,14 +339,4 @@ const fn taken(outcome: &HolderOutcome) -> Option<Refusal> {
 
 pub(super) const fn refused(why: Refusal) -> Outcome {
     Outcome::Refused { why }
-}
-
-/// A step that ends a turn of Claude Code with the fault of its sign-in ("Not logged in").
-fn not_logged_in(step: &super::thread::Step) -> bool {
-    matches!(
-        step,
-        super::thread::Step::Change(Change::Said {
-            event: DriveEvent::TurnEnded { detail: Some(detail), .. },
-        }) if detail == "authentication_failed"
-    )
 }
