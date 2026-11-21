@@ -1,14 +1,17 @@
 //! A hosted hub is a device of its own list (HMD-045, R-137): at the start it makes sure that
 //! its device and the check `Hub running` exist, reports the check as Up, and then reports it
-//! again at each half of the check's interval, so the device is Up while the hub runs.
+//! again at each half of the check's interval, so the device is Up while the hub runs. It records
+//! the Linux distribution of its container on its device (HMD-046). When the
+//! daemon of its container is not enrolled yet, it writes one enrolment code of its device to
+//! the private file that `anima-local-hub` named (HMD-071, HM-T35).
 
-use std::{sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 use anima_hub::{
     clock::Clock,
     config::Config,
-    fleet::{checks, devices, events::Bus},
-    ids::CheckId,
+    fleet::{checks, devices, events::Bus, metrics},
+    ids::{CheckId, DeviceId},
 };
 use sqlx::PgPool;
 
@@ -43,13 +46,27 @@ pub async fn start(
     clock: &Arc<dyn Clock>,
 ) -> Option<Alive> {
     config.hosted_cloud_key_file.as_ref()?;
-    let check = match ensure(db, bus, clock.as_ref()).await {
-        Ok(check) => check,
+    let (device, check) = match ensure(db, bus, clock.as_ref()).await {
+        Ok(made) => made,
         Err(fault) => {
             job_failed(JOB, fault);
             return None;
         }
     };
+    if let Some(distribution) = own_distribution(Path::new("/")).await
+        && devices::record_distribution(db, device, &distribution)
+            .await
+            .is_err()
+    {
+        job_failed(JOB, "distribution");
+    }
+    let code_file = config
+        .own_daemon
+        .as_ref()
+        .and_then(|own| own.code_file.as_deref());
+    if let Some(file) = code_file {
+        write_own_code(db, device, clock.as_ref(), file).await;
+    }
     let alive = Alive {
         db: db.clone(),
         bus: bus.clone(),
@@ -60,8 +77,49 @@ pub async fn start(
     Some(alive)
 }
 
+/// The files that name the distribution, in the order of os-release(5).
+const OS_RELEASE: [&str; 2] = ["etc/os-release", "usr/lib/os-release"];
+
+/// The distribution of the system under `root` (`/` for the container of the hub): the first
+/// file of [`OS_RELEASE`] that reads; `None` when it names none.
+pub(super) async fn own_distribution(root: &Path) -> Option<devices::Distribution> {
+    for file in OS_RELEASE {
+        if let Ok(text) = tokio::fs::read(root.join(file)).await {
+            return metrics::distribution_of(&text);
+        }
+    }
+    None
+}
+
+/// Makes a code for the daemon of the container and writes it to `file`, mode 0600, in place of
+/// a file that an earlier start left. A failure is logged by its fault word: the daemon then
+/// does not enrol, and the next start tries again. The code reaches no log (LOG-007).
+async fn write_own_code(db: &PgPool, device: DeviceId, clock: &dyn Clock, file: &Path) {
+    let Ok(code) = metrics::own_daemon_code(db, device, clock.now()).await else {
+        return job_failed(JOB, "own_daemon_code");
+    };
+    let line = zeroize::Zeroizing::new(format!("{}\n", code.expose()));
+    let _ = tokio::fs::remove_file(file).await;
+    let mut options = tokio::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let written = match options.open(file).await {
+        Ok(mut opened) => tokio::io::AsyncWriteExt::write_all(&mut opened, line.as_bytes()).await,
+        Err(error) => Err(error),
+    };
+    if written.is_err() {
+        let _ = tokio::fs::remove_file(file).await;
+        job_failed(JOB, "own_daemon_code_file");
+    }
+}
+
 /// The device and its check, added in one transaction or not at all.
-async fn ensure(db: &PgPool, bus: &Bus, clock: &dyn Clock) -> Result<CheckId, &'static str> {
+async fn ensure(
+    db: &PgPool,
+    bus: &Bus,
+    clock: &dyn Clock,
+) -> Result<(DeviceId, CheckId), &'static str> {
     let mut tx = db.begin().await.map_err(|_| "database")?;
     let (device, added) = devices::ensure_hub_device(&mut tx, bus, clock.now())
         .await
@@ -76,7 +134,7 @@ async fn ensure(db: &PgPool, bus: &Bus, clock: &dyn Clock) -> Result<CheckId, &'
     if added {
         tracing::info!(job = JOB, "the hub added itself to its devices");
     }
-    Ok(check)
+    Ok((device.id, check))
 }
 
 impl Alive {

@@ -43,14 +43,21 @@ describe('protocolButton (DEV-022)', () => {
 
 describe('connectActions (D16, DEV-022)', () => {
   const plan = (shown = device()) => {
-    const { main, others } = connectActions(headerLine(shown), shown.name);
-    return [actionWords(main), ...others.map(actionWords)];
+    const actions = connectActions(headerLine(shown), shown.name);
+    return actions === null ? [] : [actionWords(actions.main), ...actions.others.map(actionWords)];
   };
 
   it('D16: the first protocol that connects leads, the others that connect come next, then the set-ups', () => {
     expect(plan()).toEqual(['SSH', 'Set up RDP']);
     expect(plan(device({ rdp: { ...device().rdp, enabled: true }, vnc: { ...device().vnc, enabled: true } }))).toEqual(['SSH', 'RDP', 'VNC']);
     expect(plan(device({ rdp: { ...device().rdp, enabled: true } }, { enabled: false, hostKey: null }))).toEqual(['RDP', 'Set up SSH']);
+  });
+
+  it('HMD-046: the hub\'s own device offers no protocol and no screen sharing', () => {
+    const hub = device({ kind: 'hub', os: 'LINUX' }, { enabled: false, hostKey: null });
+    expect(plan(hub)).toEqual([]);
+    expect(headerLine(hub).screenSharing).toBe(false);
+    expect(headerLine(device({ os: 'LINUX' }, { enabled: false, hostKey: null })).waysIn).toBe(true);
   });
 
   it('D16: with nothing that connects, SSH\'s test or set-up leads', () => {

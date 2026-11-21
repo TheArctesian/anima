@@ -132,12 +132,36 @@ fn decimal_octets(mac: &str) -> String {
     octets.join(", ")
 }
 
+/// If `text` holds `number` as a whole number: no digit stands directly before or after it.
+/// A port of five digits is also a part of many timings and times in a log line (sqlx writes
+/// `"elapsed_secs":0.000372311`, which holds the port 37231), so a plain `contains` fails at random.
+fn holds_number(text: &str, number: &str) -> bool {
+    text.match_indices(number).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + number.len()..].chars().next();
+        !before.is_some_and(|each| each.is_ascii_digit())
+            && !after.is_some_and(|each| each.is_ascii_digit())
+    })
+}
+
+#[test]
+fn a_port_is_found_as_a_whole_number_and_not_inside_a_timing() {
+    assert!(holds_number("connect 127.0.0.1:37231 refused", "37231"));
+    assert!(holds_number("37231", "37231"));
+    assert!(!holds_number(r#""elapsed_secs":0.000372311"#, "37231"));
+    assert!(!holds_number("372310 and 137231", "37231"));
+}
+
 /// `text` holds no address, port, MAC address (in hex or decimal octets), relay output or
 /// secret (LOG-007).
 fn assert_quiet(text: &str, server: &Server) {
+    let port = server.port.to_string();
+    assert!(
+        !holds_number(text, &port),
+        "{text:?} holds the port {port:?}"
+    );
     for secret in [
         LOOPBACK,
-        &server.port.to_string(),
         MAC,
         RELAY_MAC,
         &decimal_octets(MAC),

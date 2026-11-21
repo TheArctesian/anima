@@ -22,7 +22,7 @@ use crate::{
                 input::checked,
                 trail,
             },
-            store,
+            hub_device, store,
         },
         events::Trail,
     },
@@ -43,6 +43,7 @@ pub(in crate::fleet::devices::graphql) async fn set_password(
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
     let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
+    hub_device::check_secret(&device).map_err(to_graphql)?;
     store_password(&mut tx, vault, (id, &device.host), (kind, secret))
         .await
         .map_err(|error| credential_error(error, id))?;

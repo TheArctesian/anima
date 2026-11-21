@@ -26,7 +26,12 @@
   let prompt = $state('');
   let busy = $state(false);
   let problem = $state<string | null>(null);
+  /** The folder whose notice was read, and the notice: what its project files make the program do (THR-046). */
+  let read = $state<string | null>(null);
+  let notice = $state<readonly string[]>([]);
   const MODES = Object.keys(MODE_WORDS) as Mode[];
+  const NOT_CHECKED =
+    'The project files of this folder could not be checked: they can make Claude Code run commands with no question.';
 
   async function start(): Promise<void> {
     if (busy) return;
@@ -38,15 +43,37 @@
     }
     busy = true;
     problem = null;
+    // The first press reads the folder; when its files run something by themselves, the notice is shown first and the
+    // thread starts at the next press (OD-THR21: project settings are honoured, with a notice).
+    if (read !== folder && !(await readNotice())) {
+      busy = false;
+      return;
+    }
     const result = await onStart(checked.action);
     busy = false;
     if (!result.ok) {
+      // The files can change before the next press: it reads them again.
+      read = null;
       problem = result.words;
       return;
     }
     if (result.outcome.outcome === 'started') onStarted(result.outcome.thread);
     prompt = '';
     onClose();
+  }
+
+  /** Reads the notice of the folder; true when the start may go on now. A check that fails is shown as a notice and
+   *  does not stop the start: the next press starts. */
+  async function readNotice(): Promise<boolean> {
+    const asked = folder;
+    const result = await onStart({ call: 'folder', folder: asked.trim() });
+    read = asked;
+    if (!result.ok) {
+      notice = [NOT_CHECKED];
+      return false;
+    }
+    notice = result.outcome.outcome === 'folder' ? result.outcome.notice : [];
+    return notice.length === 0;
   }
 </script>
 
@@ -86,6 +113,15 @@
     <Field label="First prompt">
       <textarea class="prompt" bind:value={prompt} rows="4" aria-label="First prompt"></textarea>
     </Field>
+    {#if read === folder && notice.length > 0}
+      <div class="notice" role="note" aria-label="What this folder runs by itself">
+        <p>{notice[0]}</p>
+        <ul>
+          {#each notice.slice(1) as line, index (index)}<li>{line}</li>{/each}
+        </ul>
+        <p>Press Start again to start the thread with these settings.</p>
+      </div>
+    {/if}
     {#if problem !== null}<p class="problem" role="alert">{problem}</p>{/if}
     <div class="acts">
       <FormButton type="button" onclick={onClose}>Cancel</FormButton>
@@ -116,6 +152,24 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
+  }
+
+  .notice {
+    padding: var(--space-3);
+    border: var(--border-thin) solid var(--status-degraded);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .notice p,
+  .notice ul {
+    margin: 0;
+  }
+
+  .notice ul {
+    margin-block: var(--space-2);
+    padding-inline-start: var(--space-4);
   }
 
   .problem {

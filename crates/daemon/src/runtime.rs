@@ -6,6 +6,7 @@
 
 mod agent_usage;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -20,9 +21,10 @@ use crate::hub::{HubClient, HubError, TIMEOUT};
 use crate::keys::{keeper::Keeper, store::KeyStore};
 use crate::push::pacing::RHYTHM;
 use crate::push::{Event, Pusher};
-use crate::readers::{self, Platform, gpu};
+use crate::readers::{self, Platform, Source, container::Container, gpu};
 use crate::report;
 use crate::sampling::Sampler;
+use crate::sampling::batteries::BatteryWatch;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
 use crate::sampling::inventory::InventoryWatch;
@@ -56,12 +58,17 @@ pub enum RunError {
     OriginMismatch,
 }
 
-/// Samples and pushes until `stop` completes.
+/// Samples and pushes until `stop` completes. With `hosted_hub`, the folder of the data of a
+/// hosted hub, it reads that container and not the machine (HMD-071).
 ///
 /// # Errors
 /// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, or
 /// when sampling ends before `stop` (the service manager then restarts the daemon).
-pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunError> {
+pub async fn run(
+    home: &Home,
+    hosted_hub: Option<PathBuf>,
+    stop: impl Future<Output = ()>,
+) -> Result<(), RunError> {
     let (pusher, device) = prepare(home)?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
@@ -71,7 +78,12 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
         sender.clone(),
         Arc::clone(&stopping),
     ));
-    let mut sampling = tokio::spawn(sample(Platform::current(), sender));
+    let source = hosted_hub.map_or(Source::Machine(Platform::current()), |data| {
+        let processors = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+        let processors = u64::try_from(processors).unwrap_or(1);
+        Source::HostedHub(Container::new(PathBuf::from("/"), data, processors))
+    });
+    let mut sampling = tokio::spawn(sample(source, sender));
     report::running(device);
     let outcome = tokio::select! {
         () = push(pusher, receiver) => Err(RunError::SamplingStopped),
@@ -111,23 +123,30 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
 }
 
 /// Every 2 seconds: read, make a sample, and send the point each 10-second window closes.
-async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
-    let mac = platform == Platform::Macos;
+async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
+    let mac = matches!(source, Source::Machine(Platform::Macos));
+    let gpus = source.has_gpus();
     let mut sampler = Sampler::new();
     let mut drives = DriveWatch::new();
-    let mut watch = Watch::start(discover(mac, &events).await, Instant::now());
+    let mut batteries = BatteryWatch::new();
+    let mut watch = Watch::start(discover(mac, gpus, &events).await, Instant::now());
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         ticks.tick().await;
         if watch.due(Instant::now()) {
-            watch.replace(discover(mac, &events).await, Instant::now());
+            watch.replace(discover(mac, gpus, &events).await, Instant::now());
         }
         let found = &watch.found;
         let now = Utc::now();
-        let reading = readers::reading(platform, now).await;
+        let reading = source.reading(now, std::time::Instant::now()).await;
         if let Some(changed) = drives.changed(reading.drives.as_deref())
             && events.send(Event::Drives(changed)).await.is_err()
+        {
+            return;
+        }
+        if let Some(changed) = batteries.changed(reading.batteries.as_deref())
+            && events.send(Event::Batteries(changed)).await.is_err()
         {
             return;
         }
@@ -183,9 +202,15 @@ impl Watch {
     }
 }
 
-/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4).
-async fn discover(mac: bool, events: &mpsc::Sender<Event>) -> Discovery {
-    let found = Discovery::new(gpu::read(gpu::Sources::ALL, mac).await);
+/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4). With
+/// `look` false (a hosted hub) it finds none.
+async fn discover(mac: bool, look: bool, events: &mpsc::Sender<Event>) -> Discovery {
+    let read = if look {
+        gpu::read(gpu::Sources::ALL, mac).await
+    } else {
+        Vec::new()
+    };
+    let found = Discovery::new(read);
     events.send(Event::Gpus(found.announce.clone())).await.ok();
     found
 }
@@ -251,7 +276,7 @@ mod tests {
     #[tokio::test]
     async fn k8_4_sampling_starts_by_announcing_the_gpus() {
         let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);
-        let sampling = tokio::spawn(sample(Platform::Linux, sender));
+        let sampling = tokio::spawn(sample(Source::Machine(Platform::Linux), sender));
         let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
         sampling.abort();
         assert!(matches!(first, Ok(Some(Event::Gpus(_)))));

@@ -1,9 +1,12 @@
-//! The Linux collection: six `/proc` files, `df -P -B1` and `lsblk -J -b` (MET-002, MET-027).
+//! The Linux collection: six `/proc` files, `df -P -B1`, `lsblk -J -b` and the power supplies of
+//! `/sys/class/power_supply` (MET-002, MET-027, MET-032).
 
 use std::time::Duration;
 
 use daemon_core::readings::{
-    Drive, Reading, df,
+    Battery, Drive, Reading,
+    batteries::{self, POWER_SUPPLY, SUPPLY_FILES},
+    df,
     drives::{self, LSBLK_ARGS, LSBLK_OLD_ARGS},
     linux,
 };
@@ -60,6 +63,8 @@ pub async fn reading() -> Reading {
         interfaces: net.map_or_default(|bytes| linux::interfaces(&bytes)),
         drives: drive_list().await,
         drive_counters: diskstats.map_or_default(|bytes| linux::drive_counters(&bytes)),
+        hub_storage: None,
+        batteries: battery_list().await,
     }
 }
 
@@ -77,6 +82,33 @@ async fn drive_list() -> Option<Vec<Drive>> {
             None
         }
     }
+}
+
+/// The batteries among the power supplies; `None` when the folder cannot be listed. A file
+/// that cannot be read is left out, so its value is unknown.
+async fn battery_list() -> Option<Vec<Battery>> {
+    let mut entries = match tokio::fs::read_dir(POWER_SUPPLY).await {
+        Ok(entries) => entries,
+        Err(error) => {
+            tracing::debug!(%error, "the power supplies gave no batteries");
+            return None;
+        }
+    };
+    let mut found = Vec::new();
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        let mut texts = Vec::new();
+        for file in SUPPLY_FILES {
+            if let Ok(text) = tokio::fs::read_to_string(entry.path().join(file)).await {
+                texts.push((file, text));
+            }
+        }
+        let files: Vec<(&str, &str)> = texts.iter().map(|(f, t)| (*f, t.as_str())).collect();
+        found.extend(batteries::linux_battery(&name, &files));
+    }
+    Some(batteries::batteries(found))
 }
 
 async fn proc(path: &str) -> Option<Vec<u8>> {

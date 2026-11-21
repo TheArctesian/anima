@@ -28,11 +28,13 @@ pub enum Kind {
     DiskWriteBps,
     /// The share of time one drive had I/O in flight (MET-028).
     DiskBusyPercent,
+    /// The charge of one battery (MET-032).
+    BatteryPercent,
 }
 
 impl Kind {
     /// Every kind, in the order of the list above.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::CpuPercent,
         Self::MemoryPercent,
         Self::MemoryBytes,
@@ -53,6 +55,7 @@ impl Kind {
         Self::DiskReadBps,
         Self::DiskWriteBps,
         Self::DiskBusyPercent,
+        Self::BatteryPercent,
     ];
 
     /// The text kept in the `series.kind` column and sent in a batch's `kind`.
@@ -79,6 +82,7 @@ impl Kind {
             Self::DiskReadBps => "disk_read_bps",
             Self::DiskWriteBps => "disk_write_bps",
             Self::DiskBusyPercent => "disk_busy_percent",
+            Self::BatteryPercent => "battery_percent",
         }
     }
 
@@ -99,11 +103,13 @@ impl Kind {
                 | Self::GpuPercent
                 | Self::VramPercent
                 | Self::DiskBusyPercent
+                | Self::BatteryPercent
         )
     }
 
     /// Whether a series of this kind has a label: the mount point of a disk kind, the
-    /// interface name of a network kind or the drive name of a drive kind (K8 Section 4).
+    /// interface name of a network kind, the drive name of a drive kind or the battery name of
+    /// `battery_percent` (K8 Section 4).
     #[must_use]
     pub const fn is_labelled(self) -> bool {
         matches!(
@@ -115,6 +121,7 @@ impl Kind {
                 | Self::DiskReadBps
                 | Self::DiskWriteBps
                 | Self::DiskBusyPercent
+                | Self::BatteryPercent
         )
     }
 

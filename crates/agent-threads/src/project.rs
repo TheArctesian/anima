@@ -149,7 +149,7 @@ fn commands(entries: &Value) -> impl Iterator<Item = &str> {
 #[must_use]
 pub fn cleaned(text: &str, length: usize) -> String {
     let shown = text.chars().map(|each| {
-        if each.is_control() || is_direction_mark(each) {
+        if each.is_control() || crate::marks::is_hidden_mark(each) {
             ' '
         } else {
             each
@@ -160,10 +160,6 @@ pub fn cleaned(text: &str, length: usize) -> String {
         line.push('…');
     }
     line
-}
-
-fn is_direction_mark(each: char) -> bool {
-    matches!(each, '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{FEFF}')
 }
 
 #[cfg(test)]

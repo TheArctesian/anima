@@ -3,6 +3,8 @@
 use super::{Cpu, Disk, Interface, Load, Memory, captures};
 
 mod apfs;
+mod batteries;
+mod container;
 mod df;
 mod drives;
 mod gpu;

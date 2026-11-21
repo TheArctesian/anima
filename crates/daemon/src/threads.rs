@@ -8,6 +8,7 @@
 pub mod commands;
 pub mod holder;
 pub mod link;
+pub mod notice;
 pub mod outbox;
 pub mod program;
 pub mod record;

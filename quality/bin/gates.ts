@@ -4,6 +4,7 @@ import { cpus, loadavg } from "node:os";
 import { compileCache } from "../src/gates/cache.ts";
 import { formatGateEvent, gateList, GROUPS, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
 import { changedGates } from "../src/gates/changed.ts";
+import { EACH_JOB, jobLines, jobsFor } from "../src/gates/jobs.ts";
 import { changedPaths, readLayout } from "../src/gates/layout.ts";
 import { choose, describeChoice, fastGates, isBusy, macOnly } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
@@ -38,6 +39,14 @@ if (process.argv[2] === "--alone") {
   const crates = readLayout(REPO_ROOT).crates.map((crate) => crate.name);
   const run = (argv: string[]) => Bun.spawnSync(argv, { cwd: REPO_ROOT, stdout: "inherit", stderr: "inherit" }).exitCode ?? 1;
   process.exit(checkAlone(crates, run, (line) => { console.log(line); }));
+}
+
+// `--jobs`: the jobs of the workflow `gates` that the changes against `FAST_BASE` need, as lines for
+// `$GITHUB_OUTPUT` (the job `base`). With no base here it names each job.
+if (process.argv[2] === "--jobs") {
+  const paths = changedPaths(REPO_ROOT, process.env["FAST_BASE"] || "origin/dev");
+  for (const line of jobLines(paths === undefined ? EACH_JOB : jobsFor(paths))) console.log(line);
+  process.exit(0);
 }
 
 /** The gates of the fast tier (`--fast`): chosen by the paths that differ from `FAST_BASE` (default `origin/dev`). */
@@ -104,7 +113,10 @@ console.log(cache.note);
 const full = gateList(baseRef);
 const groups = groupsAsked();
 const tier = process.argv.includes("--changed") ? changedList(full) : process.argv.includes("--fast") ? fastList(full) : full;
-const grouped = groups === undefined ? tier : ofGroups(tier, groups);
+// The job bun of a branch that changed only documents runs only the quality gates (`--jobs`).
+const documentsOnly = process.env["GATES_DOCUMENTS_ONLY"] === "true";
+if (documentsOnly) console.log("gates: the branch changed only documents, so only the quality gates run here");
+const grouped = groups === undefined ? tier : ofGroups(tier, documentsOnly ? groups.filter((group) => group === "quality") : groups);
 // `--gate`: a job on GitHub that runs a part of one group, for example only the Rust tests.
 const named = option("--gate")?.split(",");
 const missingName = named?.find((name) => !full.some((gate) => gate.name === name));
