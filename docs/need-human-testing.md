@@ -2842,6 +2842,39 @@ VPN keys and sites) already used these roles. Tests prove which row plays a fade
 
 Result: Open.
 
+### HT-081: one Storage row for each disk of a Mac (MET-027, MET-031)
+
+Built on the branch `metrics/mac-storage`: `crates/daemon-core/src/readings/apfs.rs` makes one drive of each APFS
+container from `df -P -k` (the data volume, or else the first mount of the operator, stands for it), the daemon and
+the SSH collector of the hub use it on macOS, and the wrappers of iOS apps and the device file system of Xcode are no
+mounts. The Storage section shows the bytes used and the share beside a mount, not the size again. The tests prove it
+with the `df` output of a Mac with one internal drive, an external drive and a network share. No person saw the
+section for a real Mac.
+
+1. On a Mac with one internal drive, the daemon running and no external drive, open the device in Anima, tab
+   Overview, section Storage.
+   Expected: the line above the table says "1 drive" and the size of the internal drive (about 1.8 TiB for a 2 TB
+   drive). One row, named `disk3` or a near name, kind "Disk", with the mount `/System/Volumes/Data`, its bytes used
+   and its share. No row for `/`, `/nix`, `/Volumes/Recovery` or a path under `/private/var/folders`.
+2. Connect an external drive with an APFS or HFS+ volume, wait one minute and reload the page.
+   Expected: a second row for the external drive with its own size and its mount under `/Volumes`.
+3. Open a Linux device that has drives in Anima.
+   Expected: its Storage rows are as before; beside each mount the bytes used and the share.
+### HT-082: the link program on Windows (HM-T15, HMD-050)
+
+Built on the branch `hosted/hm-t15-windows-link`: `link/build.sh` builds `bin/anima-link-windows-amd64.exe` and
+`bin/anima-link-windows-arm64.exe`; the Windows application carries the amd64 program from
+`deploy/bin/windows-bundle.ps1`. The programs were only built on a Mac. No Windows computer ran them.
+
+1. On a Windows computer on amd64, install the Windows application of this build, sign in with the Anima.ing
+   account, and let the first run join the hosted hub.
+   Expected: the first run ends on the hub; Settings shows the link of this computer as connected.
+2. On the same computer, open a command window and run `anima-link device` from the folder of the application.
+   Expected: it prints the name of this computer on the link and its state; no error about a missing file.
+3. If a Windows computer on arm64 is available, copy `anima-link-windows-arm64.exe` to it and run
+   `anima-link-windows-arm64.exe device`.
+   Expected: the same output as step 2 (before a join it says that this computer is not joined).
+
 ### HT-078: groups of cards on the Projects screen (PRO-059 to PRO-063)
 
 Built on the branch `ui/project-groups`: `apps/client/src/lib/projects/groups/` (the groups kept in the storage of
