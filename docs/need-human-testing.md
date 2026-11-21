@@ -104,7 +104,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
-| HT-NEW-githubhosted | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with `--public-origin https://hub.anima.ing` and an image of this build, the gateway of the pool at `hub.anima.ing` that passes `/connect/github*`, an application of this build, and a GitHub account that may get a new App | Open |
+| HT-NEW-githubhosted | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 
 ### What a check on the hosted hub needs
 
@@ -2066,19 +2066,21 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
    Expected: the row shows "Connect GitHub" and the line "Your browser must be signed in at hub.anima.ing with your
    Anima.ing account." It does not show "Coming soon".
 2. Run `anima source kinds --hub <the address that the application uses>` with a token of the hub.
-   Expected: the row `github` shows `https://hub.anima.ing/connect/github` in the column BROWSER CONNECT.
+   Expected: the row `github` shows `https://<hub id>.hub.anima.ing/connect/github` in the column BROWSER CONNECT.
 3. In the default browser, sign in at `https://hub.anima.ing` with the Anima.ing account. In the application, select
    "Connect GitHub".
-   Expected: the browser opens `https://hub.anima.ing/connect/github` with a one-time link, then GitHub with the
+   Expected: the browser opens `https://<hub id>.hub.anima.ing/connect/github` with a one-time link, then GitHub with the
    button "Create GitHub App". The application says "Waiting for you on GitHub."
 4. On GitHub, select "Create GitHub App", then "Install".
-   Expected: GitHub goes back to `https://hub.anima.ing/connect/github/installed`, and the page says "GitHub is
-   connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
-   callback address and the setup address are below `https://hub.anima.ing/connect/github`.
+   Expected: GitHub goes back to `https://<hub id>.hub.anima.ing/connect/github/installed`, and the page says "GitHub
+   is connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
+   callback address and the setup address are below `https://<hub id>.hub.anima.ing/connect/github`, and the App has
+   no webhook.
 5. On a second computer of the same account, open Settings > Integrations > GitHub.
    Expected: the same connection shows; no second sign-in to GitHub is asked for (HMD-068).
 6. Do step 3 again in a browser with no session at `hub.anima.ing`.
-   Expected: the gateway asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   Expected: the account site asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   An attempt that was open when the hub moved to its own address is lost: start again.
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
