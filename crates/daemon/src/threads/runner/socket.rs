@@ -4,23 +4,47 @@
 
 use std::io;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use agent_threads::control::{Call, MAX_FRAME, Reply, SOCKET};
 use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
-/// The way back to one client. A client that does not read fills its queue and is let go, so
-/// that it never grows the memory of the daemon (THR-045).
-pub type Client = mpsc::Sender<Reply>;
+/// The way back to one client: its frames, written, and how many bytes of them wait. A client
+/// that does not read fills its queue and is let go, so that it never grows the memory of the
+/// daemon (THR-045).
+#[derive(Clone, Debug)]
+pub struct Client {
+    frames: mpsc::Sender<String>,
+    waiting: Arc<AtomicUsize>,
+}
 
 /// The most frames that wait for one client.
 pub const CLIENT_QUEUE: usize = 4096;
+/// The most bytes of frames that wait for one client.
+pub const CLIENT_BYTES: usize = 64 * 1024 * 1024;
 
 /// Sends `reply` to `client`; false when the client is gone or does not read.
 #[must_use = "a client that is not told is let go"]
-pub fn tell(client: &Client, reply: Reply) -> bool {
-    client.try_send(reply).is_ok()
+pub fn tell(client: &Client, reply: &Reply) -> bool {
+    let Ok(mut text) = serde_json::to_string(reply) else {
+        tracing::warn!("a frame for a client did not write");
+        return true;
+    };
+    text.push('\n');
+    let bytes = text.len();
+    if client.waiting.load(Ordering::Relaxed).saturating_add(bytes) > CLIENT_BYTES {
+        return false;
+    }
+    client.waiting.fetch_add(bytes, Ordering::Relaxed);
+    if client.frames.try_send(text).is_ok() {
+        true
+    } else {
+        client.waiting.fetch_sub(bytes, Ordering::Relaxed);
+        false
+    }
 }
 
 /// The way back of one call: its ID and its client.
@@ -36,7 +60,7 @@ impl Caller {
     pub fn answer(&self, result: agent_threads::control::Outcome) {
         let _ = tell(
             &self.client,
-            Reply::Done {
+            &Reply::Done {
                 id: self.call,
                 result,
             },
@@ -91,17 +115,15 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>) {
         return;
     }
     let (reading, mut writing) = stream.into_split();
-    let (client, mut replies) = mpsc::channel::<Reply>(CLIENT_QUEUE);
+    let (frames, mut queue) = mpsc::channel::<String>(CLIENT_QUEUE);
+    let queued_bytes = Arc::new(AtomicUsize::new(0));
+    let client = Client {
+        frames,
+        waiting: Arc::clone(&queued_bytes),
+    };
     let writer = tokio::spawn(async move {
-        while let Some(reply) = replies.recv().await {
-            let mut text = match serde_json::to_string(&reply) {
-                Ok(text) => text,
-                Err(error) => {
-                    tracing::warn!(%error, "a frame for a client did not write");
-                    continue;
-                }
-            };
-            text.push('\n');
+        while let Some(text) = queue.recv().await {
+            queued_bytes.fetch_sub(text.len(), Ordering::Relaxed);
             if writing.write_all(text.as_bytes()).await.is_err() {
                 break;
             }

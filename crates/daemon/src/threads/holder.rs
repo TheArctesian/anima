@@ -9,7 +9,7 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -21,6 +21,7 @@ use tokio::sync::mpsc;
 use super::outbox::{LIMIT, Outbox};
 use super::program::Input;
 use super::record::{self, Record};
+use super::tree;
 use super::wire::{self, Action, Command, Event, Exit, Held, MAX_FRAME, Outcome, ThreadKey};
 
 /// The name of the socket file in the folder of the holder.
@@ -48,10 +49,23 @@ pub struct Slot {
     pub outbox: Outbox,
     pub waiting: bool,
     /// The processes below the program at its last mark, which an end of the children spares.
-    pub spared: BTreeSet<u32>,
+    pub spared: tree::Known,
+    /// Each process seen below the program while it ran, so that what it leaves when it ends by
+    /// itself is found after it is gone (THR-049).
+    pub seen: tree::Known,
+    /// The program ended by itself and a process it left could not be proved ended.
+    pub left_behind: bool,
     /// The program ended and was reaped: its ID may belong to a different process now.
     pub reaped: bool,
     pub exit: Option<Exit>,
+}
+
+/// The state of the holder, also after a task panicked while it held the lock: the end of the
+/// programs must never be skipped because of a poisoned lock (THR-113).
+pub fn locked(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
+    shared
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// What the tasks of the holder share.
@@ -135,7 +149,9 @@ impl Shared {
             input,
             outbox: Outbox::new(self.limit),
             waiting: false,
-            spared: BTreeSet::new(),
+            spared: tree::Known::new(),
+            seen: tree::Known::new(),
+            left_behind: false,
             reaped: false,
             exit: None,
         }

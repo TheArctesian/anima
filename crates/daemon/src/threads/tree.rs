@@ -32,6 +32,58 @@ pub fn rows(table: &str) -> Vec<Row> {
         .collect()
 }
 
+/// Processes by their ID with the start time that `ps` gave, so that a process that took the ID
+/// of one that ended is never taken for it (H9).
+pub type Known = BTreeMap<u32, String>;
+
+/// The process table at one time: each process, its parent and its start time.
+#[derive(Clone, Debug, Default)]
+pub struct Table {
+    pub rows: Vec<Row>,
+    pub starts: Known,
+}
+
+impl Table {
+    /// The table of `ps -axo pid=,ppid=,lstart=`; a line that does not read is left out.
+    #[must_use]
+    pub fn read(text: &str) -> Self {
+        let mut table = Self::default();
+        for line in text.lines() {
+            let mut fields = line.split_whitespace();
+            let (Some(Ok(pid)), Some(Ok(parent))) = (
+                fields.next().map(str::parse::<u32>),
+                fields.next().map(str::parse::<u32>),
+            ) else {
+                continue;
+            };
+            table.rows.push(Row { pid, parent });
+            table
+                .starts
+                .insert(pid, fields.collect::<Vec<_>>().join(" "));
+        }
+        table
+    }
+
+    /// Each process below `root`, with its start time.
+    #[must_use]
+    pub fn below(&self, root: u32) -> Known {
+        below(&self.rows, root)
+            .into_iter()
+            .filter_map(|pid| Some((pid, self.starts.get(&pid)?.clone())))
+            .collect()
+    }
+
+    /// The processes of `known` that still run with the same start time.
+    #[must_use]
+    pub fn still(&self, known: &Known) -> BTreeSet<u32> {
+        known
+            .iter()
+            .filter(|(pid, start)| self.starts.get(pid) == Some(start))
+            .map(|(pid, _)| *pid)
+            .collect()
+    }
+}
+
 /// Each process below `root`, at any depth, not `root` itself.
 #[must_use]
 pub fn below(rows: &[Row], root: u32) -> BTreeSet<u32> {
@@ -51,12 +103,11 @@ pub fn below(rows: &[Row], root: u32) -> BTreeSet<u32> {
     found
 }
 
-/// The processes of `spare` that still run, with each process below them.
-fn spare_with_children(rows: &[Row], spare: &BTreeSet<u32>) -> BTreeSet<u32> {
-    let running: BTreeSet<u32> = rows.iter().map(|row| row.pid).collect();
-    let mut out: BTreeSet<u32> = spare.intersection(&running).copied().collect();
+/// The processes of `spare` that still run as the same process, with each process below them.
+fn spare_with_children(table: &Table, spare: &Known) -> BTreeSet<u32> {
+    let mut out = table.still(spare);
     for pid in out.clone() {
-        out.extend(below(rows, pid));
+        out.extend(below(&table.rows, pid));
     }
     out
 }
@@ -68,18 +119,19 @@ fn ps() -> Option<&'static str> {
         .find(|path| Path::new(path).exists())
 }
 
-/// The process table now, as rows; `None` when `ps` is missing or fails, so that a stop never
-/// claims an end it could not see.
-pub async fn table() -> Option<Vec<Row>> {
+/// The process table now; `None` when `ps` is missing or fails, so that a stop never claims an
+/// end it could not see.
+pub async fn table() -> Option<Table> {
     let output = tokio::process::Command::new(ps()?)
-        .args(["-axo", "pid=,ppid="])
+        .args(["-axo", "pid=,ppid=,lstart="])
         .env_clear()
+        .env("LC_ALL", "C")
         .kill_on_drop(true)
         .output()
         .await
         .ok()?;
-    let rows = rows(&String::from_utf8_lossy(&output.stdout));
-    (output.status.success() && !rows.is_empty()).then_some(rows)
+    let table = Table::read(&String::from_utf8_lossy(&output.stdout));
+    (output.status.success() && !table.rows.is_empty()).then_some(table)
 }
 
 /// The start time of a process as `ps` says it, so that an old record never ends a process
@@ -88,6 +140,7 @@ pub async fn started(pid: u32) -> Option<String> {
     let output = tokio::process::Command::new(ps()?)
         .args(["-o", "lstart=", "-p", &pid.to_string()])
         .env_clear()
+        .env("LC_ALL", "C")
         .kill_on_drop(true)
         .output()
         .await
@@ -125,7 +178,7 @@ pub struct Ended {
 /// the program can write its session file, and `SIGKILL` after `grace`. When the root goes on
 /// (`with_root` false) it gets `SIGCONT`. A process that the root starts after it goes on, in a
 /// group of its own, is not found: that is said in the answer only when the walk cannot run.
-pub async fn end(root: u32, with_root: bool, spare: &BTreeSet<u32>, grace: Duration) -> Ended {
+pub async fn end(root: u32, with_root: bool, spare: &Known, grace: Duration) -> Ended {
     signal(root, Signal::STOP);
     let mut known: BTreeSet<u32> = BTreeSet::new();
     let mut seen = true;
@@ -135,7 +188,7 @@ pub async fn end(root: u32, with_root: bool, spare: &BTreeSet<u32>, grace: Durat
             break;
         };
         let spared = spare_with_children(&table, spare);
-        let new: Vec<u32> = below(&table, root)
+        let new: Vec<u32> = below(&table.rows, root)
             .difference(&known)
             .filter(|pid| !spared.contains(pid))
             .copied()
@@ -154,10 +207,7 @@ pub async fn end(root: u32, with_root: bool, spare: &BTreeSet<u32>, grace: Durat
     if with_root {
         signal(root, Signal::TERM);
         signal(root, Signal::CONT);
-        let deadline = tokio::time::Instant::now() + grace;
-        while alive(root) && tokio::time::Instant::now() < deadline {
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
+        known.extend(during_grace(root, grace).await);
         signal(root, Signal::KILL);
     } else {
         signal(root, Signal::CONT);
@@ -169,6 +219,52 @@ pub async fn end(root: u32, with_root: bool, spare: &BTreeSet<u32>, grace: Durat
     Ended {
         count: u32::try_from(count).unwrap_or(u32::MAX),
         all: seen && left == 0,
+    }
+}
+
+/// While the root writes its session file after `SIGTERM`, each process that it starts is found
+/// by a walk each half second and ended; the last walk is just before its `SIGKILL`.
+async fn during_grace(root: u32, grace: Duration) -> BTreeSet<u32> {
+    let deadline = tokio::time::Instant::now() + grace;
+    let mut ended = BTreeSet::new();
+    loop {
+        if let Some(table) = table().await {
+            for pid in below(&table.rows, root) {
+                signal(pid, Signal::KILL);
+                ended.insert(pid);
+            }
+        }
+        if !alive(root) || tokio::time::Instant::now() >= deadline {
+            return ended;
+        }
+        tokio::time::sleep(Duration::from_millis(500).min(grace)).await;
+    }
+}
+
+/// Ends each process of `known` that still runs as the same process, with the processes below
+/// it: what a program left when it ended by itself, which is not below it any more (THR-049).
+pub async fn sweep(known: &Known) -> Ended {
+    if known.is_empty() {
+        return Ended {
+            count: 0,
+            all: true,
+        };
+    }
+    let Some(table) = table().await else {
+        return Ended {
+            count: 0,
+            all: false,
+        };
+    };
+    let found = spare_with_children(&table, known);
+    for pid in &found {
+        signal(*pid, Signal::KILL);
+    }
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let left = found.iter().filter(|pid| alive(**pid)).count();
+    Ended {
+        count: u32::try_from(found.len()).unwrap_or(u32::MAX),
+        all: left == 0,
     }
 }
 
@@ -185,10 +281,22 @@ mod tests {
 
     #[test]
     fn thr_021_a_spared_server_keeps_its_own_children_and_a_gone_one_spares_nothing() {
-        let table = rows("10 1\n11 10\n12 11\n13 10\n14 13\n");
+        let table = Table::read("10 1 a\n11 10 b\n12 11 c\n13 10 d\n14 13 e\n");
+        let spare = Known::from([(11, "b".to_owned()), (99, "z".to_owned())]);
         assert_eq!(
-            spare_with_children(&table, &BTreeSet::from([11, 99])),
+            spare_with_children(&table, &spare),
             BTreeSet::from([11, 12])
+        );
+    }
+
+    #[test]
+    fn h9_a_process_that_took_the_id_of_a_spared_one_is_not_spared() {
+        let table = Table::read("10 1 a\n11 10 Fri Nov 20 10:00:01 2026\n");
+        let old = Known::from([(11, "Fri Nov 20 09:00:00 2026".to_owned())]);
+        assert!(spare_with_children(&table, &old).is_empty());
+        assert_eq!(
+            table.below(10),
+            Known::from([(11, "Fri Nov 20 10:00:01 2026".to_owned())])
         );
     }
 

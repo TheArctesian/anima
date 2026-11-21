@@ -1,11 +1,10 @@
 //! What the holder does for each command of the daemon. A command is done one time: the same
 //! ID again gets the first answer and does nothing (H10).
 
-use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use super::holder::Shared;
+use super::holder::{Shared, locked};
 use super::program::{self, Start};
 use super::tree;
 use super::wire::{self, Action, Command, Event, Outcome, Refusal, Stream, ThreadKey};
@@ -235,7 +234,7 @@ async fn mark(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
     };
     let below = tree::table()
         .await
-        .map_or_else(BTreeSet::new, |table| tree::below(&table, root));
+        .map_or_else(tree::Known::new, |table| table.below(root));
     if let Ok(mut state) = shared.lock()
         && let Some(slot) = state.threads.get_mut(thread)
     {
@@ -245,23 +244,29 @@ async fn mark(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
 }
 
 async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -> Outcome {
-    let found = shared.lock().ok().and_then(|state| {
+    let found = {
+        let state = locked(shared);
         state.threads.get(thread).map(|slot| {
             let spare = if with_root {
-                BTreeSet::new()
+                tree::Known::new()
             } else {
                 slot.spared.clone()
             };
-            (slot.pid, slot.reaped || slot.exit.is_some(), spare)
+            (
+                slot.pid,
+                slot.reaped || slot.exit.is_some(),
+                spare,
+                slot.left_behind,
+            )
         })
-    });
+    };
     match found {
         None => refused(Refusal::UnknownThread),
-        Some((_, true, _)) => Outcome::Stopped {
+        Some((_, true, _, left_behind)) => Outcome::Stopped {
             ended: 0,
-            all_ended: true,
+            all_ended: !left_behind,
         },
-        Some((root, false, spare)) => {
+        Some((root, false, spare, _)) => {
             let ended = tree::end(root, with_root, &spare, GRACE).await;
             Outcome::Stopped {
                 ended: ended.count,
@@ -288,22 +293,15 @@ fn forget(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
 /// Ends each program the holder holds, with the processes below it (THR-049), at the end of the
 /// holder.
 pub async fn end_all(shared: &Arc<Mutex<Shared>>) {
-    let running: Vec<ThreadKey> = shared.lock().map_or_else(
-        |_| Vec::new(),
-        |state| {
-            state
-                .threads
-                .iter()
-                .filter(|(_, slot)| slot.exit.is_none())
-                .map(|(key, _)| key.clone())
-                .collect()
-        },
-    );
+    let running: Vec<ThreadKey> = locked(shared)
+        .threads
+        .iter()
+        .filter(|(_, slot)| slot.exit.is_none())
+        .map(|(key, _)| key.clone())
+        .collect();
     for thread in running {
         close_input(shared, &thread);
         end(shared, &thread, true).await;
     }
-    if let Ok(state) = shared.lock() {
-        state.write_record();
-    }
+    locked(shared).write_record();
 }

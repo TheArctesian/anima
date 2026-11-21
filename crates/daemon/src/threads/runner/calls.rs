@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::codex::Codex;
 use super::log::{Kind, Line};
-use super::socket::{self, CLIENT_QUEUE, Caller, Client, Incoming};
+use super::socket::{self, CLIENT_BYTES, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
 use super::thread::{Step, Thread};
 use super::{Pending, Runner, Waits};
@@ -15,6 +15,8 @@ use crate::threads::wire;
 
 /// What the runner can see of the source of a call: the local socket (THR-044).
 const SOURCE: &str = "local socket";
+/// The most clients that watch at one time.
+const WATCHERS: usize = 16;
 
 /// The Codex calls of a thread of Codex.
 pub(super) fn codex_of(row: &ThreadRow, effort: Option<Effort>) -> Option<Codex> {
@@ -89,21 +91,25 @@ impl Runner {
     /// A client that watches: the newest updates the runner keeps first, as many of each thread
     /// as the queue of the client holds, then each new one.
     fn watch(&mut self, id: u64, client: Client) {
-        let share = (CLIENT_QUEUE - 64) / self.threads.len().max(1);
+        let threads = self.threads.len().max(1);
+        let (share, bytes) = ((CLIENT_QUEUE - 64) / threads, (CLIENT_BYTES / 2) / threads);
         let mut told = socket::tell(
             &client,
-            Reply::Done {
+            &Reply::Done {
                 id,
                 result: Outcome::Ok,
             },
         );
         for thread in self.threads.values() {
-            let kept: Vec<_> = thread.kept().collect();
-            for update in &kept[kept.len().saturating_sub(share)..] {
-                told = told && socket::tell(&client, Reply::Update(Box::new((*update).clone())));
+            for update in thread.kept_newest(share, bytes) {
+                told = told && socket::tell(&client, &Reply::Update(Box::new((*update).clone())));
             }
         }
         if told {
+            // The oldest watch gives way, so that the watches of this user stay few (THR-045).
+            if self.watchers.len() >= WATCHERS {
+                self.watchers.remove(0);
+            }
             self.watchers.push(client);
         }
     }
@@ -161,6 +167,8 @@ impl Runner {
         } = to;
         let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
         let line = thread.answer(request, answer)?;
+        // The record says that the answer went, before the line goes (THR-030).
+        self.save();
         let Ok(Some(command)) = self.apply(id, vec![Step::Write(line)]).await else {
             if let Some(thread) = self.threads.get_mut(&id) {
                 thread.answer_failed(request);

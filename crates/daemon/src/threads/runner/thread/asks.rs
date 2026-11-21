@@ -79,6 +79,30 @@ impl Thread {
         }
     }
 
+    /// After a restart of the runner: each request whose answer went to the holder closes, as
+    /// the answer may have reached the program (THR-030).
+    pub fn settle_answering(&mut self) -> Vec<Step> {
+        let given: Vec<Uuid> = self
+            .open
+            .iter()
+            .filter(|(_, open)| open.answering)
+            .map(|(id, _)| *id)
+            .collect();
+        if given.is_empty() {
+            return Vec::new();
+        }
+        let mut steps: Vec<Step> = given
+            .into_iter()
+            .filter_map(|id| {
+                self.open
+                    .remove(&id)
+                    .map(|_| closed(id, "answered before the runner started again"))
+            })
+            .collect();
+        steps.extend(self.state_change());
+        steps
+    }
+
     pub(super) fn close_all(&mut self, why: &str) -> Vec<Step> {
         std::mem::take(&mut self.open)
             .into_keys()

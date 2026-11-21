@@ -83,7 +83,7 @@ impl Runner {
     /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
     /// (THR-040) and the environment of the login (R-NEW-threadsdrive).
     fn prepared(&self, new: &NewThread, id: Uuid) -> Result<(ThreadRow, wire::Action), Refusal> {
-        let folder = chosen_folder(&new.folder, &self.dir)?;
+        let folder = chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         let model = new
             .model
             .as_deref()
@@ -132,13 +132,14 @@ impl Runner {
 }
 
 /// An absolute folder of this computer that exists, as its real path, and not in the folder of
-/// the threads, which holds the record, the log and the sockets of the runner (THR-040, THR-041).
-fn chosen_folder(folder: &Path, threads: &Path) -> Result<PathBuf, Refusal> {
+/// the daemon, which holds its keys and the record, the log and the sockets of the runner
+/// (THR-040, THR-041).
+fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Refusal> {
     if !folder.is_absolute() {
         return Err(Refusal::FolderNotPermitted);
     }
     let real = std::fs::canonicalize(folder).map_err(|_| Refusal::FolderNotPermitted)?;
-    let inside = std::fs::canonicalize(threads).is_ok_and(|threads| real.starts_with(threads));
+    let inside = std::fs::canonicalize(daemon).is_ok_and(|daemon| real.starts_with(daemon));
     if real.is_dir() && !inside {
         Ok(real)
     } else {

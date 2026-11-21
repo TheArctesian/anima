@@ -11,8 +11,9 @@ use rustix::process::{Pid, Signal, kill_process_group};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::process::{Child, ChildStdin};
 
-use super::holder::Shared;
+use super::holder::{Shared, locked};
 use super::outbox::{MAX_LINE, TOO_LONG};
+use super::tree;
 use super::wire::{Event, Exit, Line, Stream, ThreadKey};
 
 /// What the daemon names for a start.
@@ -148,7 +149,11 @@ fn waits(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> bool {
     true
 }
 
-/// Waits for the end of the program, ends what is left in its process group, waits a short time
+/// How often the holder looks at the processes below a running program.
+const LOOK: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Waits for the end of the program and looks at the processes below it while it runs; then
+/// ends what is left in its process group and what it left in other groups, waits a short time
 /// for the last lines, and tells the daemon.
 pub async fn wait(
     shared: Arc<Mutex<Shared>>,
@@ -157,12 +162,22 @@ pub async fn wait(
     readers: [tokio::task::JoinHandle<()>; 2],
 ) {
     let pid = child.id();
-    let status = child.wait().await;
-    if let Ok(mut state) = shared.lock()
-        && let Some(slot) = state.threads.get_mut(&thread)
-    {
-        slot.reaped = true;
-    }
+    let status = loop {
+        tokio::select! {
+            status = child.wait() => break status,
+            () = tokio::time::sleep(LOOK) => look_below(&shared, &thread, pid).await,
+        }
+    };
+    let seen = {
+        let mut state = locked(&shared);
+        state
+            .threads
+            .get_mut(&thread)
+            .map_or_else(tree::Known::new, |slot| {
+                slot.reaped = true;
+                std::mem::take(&mut slot.seen)
+            })
+    };
     // The group keeps the ID of the program while one of its members lives, so this signal
     // reaches only what the program left in its group; an empty group gives an error.
     if let Some(group) = pid
@@ -170,6 +185,10 @@ pub async fn wait(
         .and_then(Pid::from_raw)
     {
         let _ = kill_process_group(group, Signal::KILL);
+    }
+    let swept = tree::sweep(&seen).await;
+    if let Some(slot) = locked(&shared).threads.get_mut(&thread) {
+        slot.left_behind = !swept.all;
     }
     finish(&shared, &thread, readers).await;
     let exit = status.map_or(
@@ -185,7 +204,7 @@ pub async fn wait(
             }
         },
     );
-    let Ok(mut state) = shared.lock() else { return };
+    let mut state = locked(&shared);
     if let Some(slot) = state.threads.get_mut(&thread) {
         slot.exit = Some(exit);
         slot.input = None;
@@ -240,6 +259,20 @@ pub fn input(mut pipe: ChildStdin) -> tokio::sync::mpsc::Sender<String> {
         }
     });
     sender
+}
+
+/// Keeps the processes below the program now, with those seen before that still run, so that
+/// the set holds no process that ended (H9).
+async fn look_below(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, pid: Option<u32>) {
+    let (Some(pid), Some(table)) = (pid, tree::table().await) else {
+        return;
+    };
+    let now = table.below(pid);
+    if let Some(slot) = locked(shared).threads.get_mut(thread) {
+        let still = table.still(&slot.seen);
+        slot.seen.retain(|pid, _| still.contains(pid));
+        slot.seen.extend(now);
+    }
 }
 
 #[cfg(test)]

@@ -199,7 +199,10 @@ async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
         Ok(program) => program,
         Err(error) => return failure(&error),
     };
-    let daemon: Vec<(String, String)> = std::env::vars().collect();
+    // A name or a value that is not UTF-8 is left out: it cannot be a value of Anima.
+    let daemon: Vec<(String, String)> = std::env::vars_os()
+        .filter_map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
+        .collect();
     let env = login::environment(&daemon).await;
     match runner::run(&daemon_dir, &program, env, stop()).await {
         Ok(()) => ExitCode::SUCCESS,
