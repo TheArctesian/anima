@@ -233,7 +233,7 @@ async fn stop() {
 /// The runner of the agent threads (TH11), until `SIGTERM` or Ctrl-C.
 #[cfg(unix)]
 async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
-    use anima_daemon::threads::runner::{self, login};
+    use anima_daemon::threads::runner;
     let program = match std::env::current_exe() {
         Ok(program) => program,
         Err(error) => return failure(&error),
@@ -248,8 +248,7 @@ async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
             ))
         })
         .collect();
-    let env = login::environment(&daemon).await;
-    match runner::run(&daemon_dir, &program, env, stop()).await {
+    match runner::run(&daemon_dir, &program, daemon, stop()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => failure(&error),
     }
