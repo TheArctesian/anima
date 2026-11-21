@@ -248,6 +248,18 @@ that owns the area.
 | SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-231 | The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-232 | Who may make an application public was not stated. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-234 | The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-229 | Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-233 | The target of a route could change after it was made public, or be a port of a session. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-228 | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-224 | The static test of a recipe let a service run as root with each capability, and change its code at the start. High | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-226 | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-225 | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-223 | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -2192,6 +2204,181 @@ The correction: only the top-level field `composeFile` of `anima_compose_from_ru
 
 State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
 
+## The security review of the routing on the hub (task H21, 2026-11-20)
+
+A separate reviewer read Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code existed. The text is corrected in the same branch; the build of task H21 builds the rules.
+
+### SF-231: The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: A parser fault in the proxy, which reads each request from the internet, gives its process. If that process can open the dial socket of the link, the control socket of the link, the listener of the hub or the network of the pool, an attacker on the internet gets SSH on each machine whose port 22 is on. The text said that the proxy takes an identifier of an application, but nothing enforced it.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet who finds a fault in the proxy. Effect: the sessions and the machines of each customer of that hub.
+
+Mitigation now: Section 12.3 now says that the user of the proxy cannot open those sockets or the database, has no network route but its one interface to the hub and the outbound ACME and DNS, and that a test shows it.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-232: Who may make an application public was not stated. High
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: An API key, an MCP agent or a person who took over the hub could add a public name to an application whose port is open only for a look in the hub: an administration page, or an application that holds the socket of the engine, is then on the internet. The consent of the machine (OD-HOST-29) covers "the hub may reach this port", not "the internet may reach it".
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A holder of an API key or a taken-over hub. Effect: a page that must stay private is public.
+
+Mitigation now: Section 12.3: only a person with a login or a browser session, after a second factor; no API key and no MCP tool; no application that holds the socket of the engine. OD-HOST-43 asks him for a second consent at the machine.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-234: The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: The text did not say who makes the token, so a hub could give a token that it copied from a different hub. A name that Anima gives could be given again to a new customer, who then gets the cookies, saved passwords and callbacks of the old one. One failed DNS read could remove a name.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A customer with a hub of the pool. Effect: the traffic of a different customer's name.
+
+Mitigation now: Section 12.4: the cloud service makes a random token of at least 128 bits bound to the hub and the name; hub identifiers are never used again; no wildcard names; a name is removed only after several failed reads; a name that Anima gives is proven by allocation, never given again, and leaves the door with the hub.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-229: Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: Adding to an `X-Forwarded-For` that the client sent keeps a false address that an application can trust. A `Host` that is not the SNI name, or content on port 80, makes a second path. A log of the request line keeps reset tokens and OAuth codes.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet. Effect: an application trusts a false address; secrets of an application in the log of the hub (LOG-007).
+
+Mitigation now: Section 12.2 and 12.3: each `Forwarded`, `X-Forwarded-*` and `X-Real-IP` is removed and set again; the PROXY protocol only from the door; 421 when `Host` differs from SNI; port 80 gives only ACME and a redirect; the log has only the name, the bytes, the status and the time.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-233: The target of a route could change after it was made public, or be a port of a session. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: On a hub that a person hosts, a changed host of a device (an API key, or a name that a DNS rebinding changes) points a public name at a different host of the network, a metadata address or the hub itself. A record of an application that names port 22 would pass the rule "a port that the record names".
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A holder of an API key, or a DNS rebinding. Effect: a public name reaches a host or a port that must stay private.
+
+Mitigation now: Section 12.3: the target is fixed when the name is made public; loopback addresses and ports of the hub, link-local addresses and `169.254.169.254` are refused; a change needs the rights of a publish; the port of an application is never 22, 5900, 3389 or a port of the link or the daemon.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-228: Certificates under the shared address of the pool, and the owner of the ACME key. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: Let's Encrypt limits new accounts for each address, and all hubs of the pool share one. A domain of the names that Anima gives that is not on the Public Suffix List shares one weekly limit. A wildcard certificate would put one key in each hub. The text gave the ACME work to both the hub and the proxy.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Many new hubs at one time, or one customer with many names. Effect: no certificate for a time, for each customer.
+
+Mitigation now: Section 12.5: the hub holds the account and its key; no wildcard certificate; no name that Anima gives before its domain is on the Public Suffix List; the door routes the ACME challenges by its table only; the old hub deletes the key when a name moves. OD-HOST-44 asks him for one account for the pool or one for each hub.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-230: Public traffic can slow the sessions on the same link. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: A flood to one name fills the tunnel of the link to a machine, and SSH and VNC on the same tunnel stall. The text said that the door never cuts the sessions, which is true and does not help.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet. Effect: the operator loses his sessions to that machine during the flood.
+
+Mitigation now: Section 12.7: the hub limits the streams and the bandwidth of public routes for each link and gives the sessions priority; the absolute sentence is gone.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-227: Smaller points: claims about the door, wake, abuse and a hub on the same site. Low
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: The text wrote what the door does as a fact, but the door is in the private cloud plan. The door cannot answer a page inside TLS with option R1. Requests from the internet could wake a failing hub again and again. The switch for abuse had no message to the customer. A hub that a person hosts on the same registered domain as an application is same-site for cookies. The seal of keys protects nothing if its key is in the same backup.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Various. Effect: claims that are not true, and smaller denial of service.
+
+Mitigation now: Section 12: each sentence about the door is a request to the cloud plan; the proxy is installed only when the operator asks; a wake only when a machine is online and a limited number of times each hour; a record, a message and a review for each removal; a warning for the same site; the place of the key of the seal is a question for the cloud plan.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+## The code review of the catalogue and the routes (2026-11-21)
+
+A separate reviewer read the code of the recipe format and its static test (`crates/catalogue`, `crates/compose-rules`) and the PostgreSQL functions of the catalogue (`crates/catalogue/src/postgresql*`) on the branch `hosted/apps-h38`. The design is in Sections 13 and 14 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). The corrections are built in the same branch. No entry of the catalogue was tested on a machine (task H37).
+
+### SF-224: The static test of a recipe let a service run as root with each capability, and change its code at the start. High
+
+Requirements: HOST-047, tasks H36 and H38; R-300.
+
+What it is: The static test let through the variables `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES`, a `VERSION` that makes the image get a different version at the start, `PUID` or `PGID` of 0 and `user` of `0` or `root`. `no-new-privileges` and the drop of capabilities were optional. Thus a listed recipe could run code that no digest names, as root with each default capability.
+
+Where: `crates/catalogue/src/file.rs`; `crates/compose-rules/src/declared.rs`.
+
+Effect, and who can cause it: The author of a recipe, or the owner of an image that a recipe names. Effect: code that the static test did not see runs on the machine with the rights of root in the container.
+
+Mitigation now: `crates/catalogue/src/privileges.rs` refuses each of these with `privilege_not_permitted` and one fixed reason (`image_mods`, `install_packages`, `install_pip_packages`, `version_not_fixed`, `root_identity`, `root_user`, `new_privileges`, `capabilities_kept`, `exception_not_needed`). Each service must have `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`. The one exception of the fixed list, `init-capabilities` in the entry, keeps exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID` and `SETUID` for an init as root (s6 of the LinuxServer images, `gosu`, `su-exec`); contract K10 has no `cap_add`, so the service drops each other default capability by name. The rules read the file before its variables are filled (`compose_rules::Checked::unfilled`). The seven shipped recipes have the new values; five name the exception. Tests: `crates/catalogue/src/tests/privileges.rs`.
+
+State: Open. Built in `a7855335`; no test on a machine has shown that each image starts with these rights (task H37). Found by a separate reviewer on 2026-11-21.
+
+### SF-226: A variable could give the image, a published port or its address after the static test. Medium
+
+Requirements: HOST-047, task H36; R-233.
+
+What it is: The static test checked the image, the published ports and their `host_ip` only after it filled the variables with the values of the example environment file. A value of the install could then give a different image, port or address from the one that the test saw.
+
+Where: `crates/catalogue/src/file.rs`.
+
+Effect, and who can cause it: The person who installs, or a program that writes the environment file. Effect: an image that is not pinned, or a port on the network, in a listed recipe.
+
+Mitigation now: The static test refuses `$` in the text of `image`, of a published port and of `host_ip` as the author wrote it (`variable_not_permitted`). The shipped recipes write each published port; their variables of a port are gone. Tests: `crates/catalogue/src/tests/refused.rs`.
+
+State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+
+### SF-225: The list of secret names was short, and a secret written in the Compose file was not refused. Low
+
+Requirements: HOST-047, task H36.
+
+What it is: The check of the example file did not know `PASSWD`, `APIKEY`, `API_KEY`, `CREDENTIAL` or `PRIVATE_KEY` in all forms, and a literal value in the `environment` of the Compose file was never checked.
+
+Where: `crates/catalogue/src/example.rs`.
+
+Effect, and who can cause it: The author of a recipe. Effect: a fixed secret that each install of the recipe shares.
+
+Mitigation now: The name list is wider and case does not count. In the Compose file a variable whose name marks a secret has exactly `${NAME}` as its value, with no default (`secret_in_file`). Tests: `crates/catalogue/src/tests/refused.rs`.
+
+State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+
+### SF-223: The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low
+
+Requirements: HOST-048, task H24; R-216.
+
+What it is: The password could hold `$`, a backtick, `#` or `=`, which change it in an environment file that Compose fills, in a shell or in a connection address. The names `my-app` and `my_app` gave the same database and user, and a name such as `notes-back-1` was the name of the way back of `notes`. An extension was any name of a pattern, so also `plpython3u` or `dblink`.
+
+Where: `crates/catalogue/src/postgresql/statements.rs`, `names.rs`, `copies.rs`.
+
+Effect, and who can cause it: The author of a recipe or of an application name. Effect: a broken or changed password, the database of a different application, or an extension that reaches files or programs of the server.
+
+Mitigation now: The password is 22 to 128 letters and digits (at least 128 bits). An application identifier with `_` or `--` is refused, so the names are different for different identifiers; the way back uses `__back_` and `__check`, which no application name has. An extension is one of a fixed list (`vector`, `pg_trgm`, `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry `postgresql` names). Tests: `crates/catalogue/src/postgresql/tests.rs`.
+
+State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
 ## The security review of the daemon on a computer of a person (task HM-T23, 2026-11-20)
 
 Task HM-T23 of [hosted-mode.md](proposals/hosted-mode.md) asks the security questions of its Section 7.1 before the installation with no question (HMD-053) is used on a computer where jobs of other people can run later. The review read the code on `dev` of 2026-11-20: the token store and the key store of `crates/daemon`, the enrolment, the units (`crates/daemon/src/units`, `crates/daemon/units`), the transport to the hub (`crates/daemon/src/hub.rs`, `hub/link_socket.rs`), the install of the desktop shell (`apps/desktop/src-tauri/src/daemon.rs`, `daemon/`), and the socket of the link (`link/cmd/anima-link/device.go`, `link/statedir`). It ran no program, and it did not read a token file or a key file. An agent did it; no second reviewer read it. The entries are about code that exists. "Severity" is the word of the reviewer.

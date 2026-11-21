@@ -2778,7 +2778,7 @@ window with real devices.
 Result: Open.
 
 
-### HT-NEW-hubusage: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
+### HT-085: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
 
 Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
 usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in
@@ -2800,7 +2800,7 @@ are in the private repositories, and no test read real figures of an account.
 
 Result: Open.
 
-### HT-NEW-owndaemon: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
+### HT-086: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
 
 Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,
 `crates/hub/src/fleet/access/listen/serve/own_daemon.rs`, `crates/hub/src/upkeep/hub_device.rs`,
@@ -2849,6 +2849,7 @@ with the real hub, its database and a revoked token.
 Result: Open.
 
 ### HT-NEW-battery: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 
 Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
 `/sys/class/power_supply` and of `pmset -g batt`), `crates/daemon/src/readers/linux.rs`,

@@ -1,0 +1,16 @@
+query CatalogueList {
+  catalogueEntries {
+    id
+    name
+    kind
+    version
+    tags
+    marks
+    lastMachineTest
+    pinned
+    install {
+      refusal
+      needsOpenToNetwork
+    }
+  }
+}
