@@ -23,15 +23,26 @@ pub fn entry(thread: &str) -> (String, String) {
     (MARK.to_owned(), thread.to_owned())
 }
 
-/// Ends each process of this user that carries the mark of `thread`. `all` is false when the
-/// environments could not be read or a marked process still runs after its `SIGKILL`.
-pub async fn end_marked(thread: &str) -> Ended {
-    let Some(marked) = carrying(thread).await else {
+/// Ends each process of this user that carries the mark of `thread`, except the `spare`d ones
+/// (the servers that ran before the turn, THR-021). `all` is false when the environments could
+/// not be read or a marked process still runs after its `SIGKILL`.
+pub async fn end_marked(thread: &str, spare: &tree::Known) -> Ended {
+    let Some(mut marked) = carrying(thread).await else {
         return Ended {
             count: 0,
             all: false,
         };
     };
+    if !spare.is_empty() {
+        // A spared process is the same one only when its start time did not change; when the
+        // table cannot be read, each spared ID is kept, so that no server ends by mistake.
+        let starts = tree::table().await.map(|table| table.starts);
+        marked.retain(|pid| match (&starts, spare.get(pid)) {
+            (_, None) => true,
+            (Some(starts), Some(start)) => starts.get(pid) != Some(start),
+            (None, Some(_)) => false,
+        });
+    }
     for pid in &marked {
         tree::signal(*pid, Signal::KILL);
     }
@@ -168,7 +179,7 @@ mod tests {
             "a client of the runner with the mark is of an agent"
         );
         assert!(!carries_a_mark(std::process::id()).await);
-        let ended = end_marked(&thread).await;
+        let ended = end_marked(&thread, &tree::Known::new()).await;
         let _ = reaper.join();
         assert_eq!(
             ended,
@@ -178,7 +189,7 @@ mod tests {
             }
         );
         assert_eq!(
-            end_marked(&thread).await,
+            end_marked(&thread, &tree::Known::new()).await,
             Ended {
                 count: 0,
                 all: true

@@ -51,23 +51,23 @@ pub(super) async fn end(
         None => refused(Refusal::UnknownThread),
         Some(Ending {
             gone: true,
-            left_behind: false,
+            left_behind,
+            seen,
+            spare,
             ..
         }) => {
-            let marked = super::marker::end_marked(thread).await;
-            Outcome::Stopped {
-                ended: marked.count,
-                all_ended: marked.all,
-            }
-        }
-        Some(Ending {
-            gone: true, seen, ..
-        }) => {
-            // The program ended and its sweep did not prove that all ended: sweep again.
-            let swept = tree::sweep(&seen).await;
-            let marked = super::marker::end_marked(thread).await;
+            // The program ended; when its sweep did not prove that all ended, sweep again.
+            let swept = if left_behind {
+                tree::sweep(&seen).await
+            } else {
+                tree::Ended {
+                    count: 0,
+                    all: true,
+                }
+            };
+            let marked = super::marker::end_marked(thread, &spare).await;
             let all = swept.all && marked.all;
-            if let Some(slot) = locked(shared).threads.get_mut(thread) {
+            if left_behind && let Some(slot) = locked(shared).threads.get_mut(thread) {
                 program::settle_sweep(slot, all);
             }
             Outcome::Stopped {
@@ -81,7 +81,7 @@ pub(super) async fn end(
             // found by its start time (THR-049).
             let swept = tree::sweep(&ending.seen).await;
             // A process that left the tree between two looks is found by its mark.
-            let marked = super::marker::end_marked(thread).await;
+            let marked = super::marker::end_marked(thread, &ending.spare).await;
             Outcome::Stopped {
                 ended: ended
                     .count
