@@ -29,7 +29,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::{containers, projects},
+    work::{catalogue, containers, projects},
 };
 
 // One line per domain in each root (K3).
@@ -39,6 +39,7 @@ pub struct Query(
     agent_usage::graphql::Query,
     agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
+    catalogue::graphql::Query,
     checks::graphql::Query,
     containers::graphql::Query,
     credentials::graphql::Query,
@@ -70,6 +71,7 @@ pub struct Mutation(
     access::graphql::Mutation,
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
+    catalogue::graphql::Mutation,
     checks::graphql::Mutation,
     credentials::graphql::Mutation,
     devices::graphql::Mutation,
@@ -287,6 +289,7 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         // devices fields that join metrics (API-005)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::batteries_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::daemon_version_loader(pool.clone()).delay(BATCH_WINDOW))
 }

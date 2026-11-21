@@ -21,7 +21,7 @@ use crate::{
     api_errors::{begin, commit, internal, invalid, schema_dependency},
     fleet::{
         credentials::{Vault, clear_ssh, operational, store_ssh},
-        devices::{Device, Error, FieldError, Missing, store},
+        devices::{Device, Error, FieldError, Missing, hub_device, store},
         events::Trail,
     },
     ids::DeviceId,
@@ -68,6 +68,7 @@ pub(super) async fn set(
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
     let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
+    hub_device::check_secret(&device).map_err(to_graphql)?;
     store_ssh(&mut tx, vault, (id, &device.host), secret)
         .await
         .map_err(|error| credential_error(error, id))?;

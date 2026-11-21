@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use daemon_core::readings::{
-    Drive, df, drives, linux,
+    Drive, apfs, df, drives, linux,
     macos::{self, Sysctl},
 };
 
@@ -63,7 +63,9 @@ impl Parts {
             Source::Uptime => reading.uptime_seconds = linux::uptime_seconds(bytes),
             Source::Loadavg => reading.load = linux::load_average(bytes),
             Source::DiskBytes => reading.disks = df::disks(bytes, 1),
-            Source::DiskKilobytes => reading.disks = df::disks(bytes, 1024),
+            Source::DiskKilobytes => {
+                (reading.disks, reading.drives) = apfs::containers(df::disks(bytes, 1024));
+            }
             Source::Diskstats => reading.drive_counters = linux::drive_counters(bytes),
             Source::Drives | Source::DrivesOld => reading.drives = drives::drives(bytes),
             Source::Sysctl => self.sysctl = Some(macos::sysctl(bytes)),

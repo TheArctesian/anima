@@ -102,6 +102,30 @@ pub(super) async fn hub_access(
     serde_json::from_slice(&body).map_err(|_| CloudError::Refused)
 }
 
+/// `POST /v1/hub/usage`: the figures of the account for the month (HMD-073 in form B,
+/// `contracts/account-usage.md`). The body goes to the page unchanged; the page checks its form.
+pub(super) async fn hub_usage(
+    http: &Client,
+    base: &str,
+    access: &str,
+) -> Result<serde_json::Value, CloudError> {
+    let response = http
+        .post(format!("{base}/v1/hub/usage"))
+        .bearer_auth(access)
+        .timeout(USAGE_WAIT)
+        .send()
+        .await?;
+    let (status, body) = (response.status(), response.bytes().await?);
+    if !status.is_success() {
+        return Err(refusal(status, &body));
+    }
+    serde_json::from_slice(&body).map_err(|_| CloudError::Refused)
+}
+
+/// How long the page waits for the figures of the account before it says that they are not
+/// available.
+const USAGE_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
 /// The site's errors: 401 signs in again, 402 `payment_failed` asks for the payment, 409
 /// `not_ready` asks `/v1/hub` again, 5xx (`cloud_unavailable`, `not_configured`) is no answer,
 /// and any other 4xx is a refusal.

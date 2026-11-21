@@ -233,6 +233,23 @@ pub async fn cloud_hub(webview: Webview, cloud: State<'_, Cloud>) -> Result<HubS
         .await
 }
 
+/// `GET /v1/hub/usage`: the figures of the account for the page of the hub (HMD-073 in form B).
+/// They come from the account, never from the hub; nothing of them is logged (LOG-007).
+#[tauri::command]
+pub async fn cloud_hub_usage(
+    webview: Webview,
+    cloud: State<'_, Cloud>,
+) -> Result<serde_json::Value, CloudError> {
+    from_main(&webview)?;
+    let http = cloud.http.clone();
+    cloud
+        .with_access(&webview, |token| {
+            let http = http.clone();
+            async move { api::hub_usage(&http, CLOUD_URL, &token).await }
+        })
+        .await
+}
+
 /// `POST /v1/hub/access` for this device, with its name on the link (`device_name`). While the hub
 /// is not ready, it asks `/v1/hub` again (which makes or wakes it) every 2 s, for up to 90 s.
 #[tauri::command]

@@ -1,4 +1,4 @@
-//! Why the daemon was not installed, as the client sees it: a stable code and fixed text, never
+//! Why the daemon was not installed or not removed, as the client sees it: a stable code and fixed text, never
 //! the code, a path or an OS error (LOG-007).
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
@@ -38,6 +38,10 @@ pub enum DaemonError {
     Enrol,
     #[error("the daemon enrolled but did not start; run `anima-daemon install` in a terminal")]
     Install,
+    #[error("the daemon did not take its unit and its token off this computer")]
+    Uninstall,
+    #[error("the copy of the daemon in its installation folder could not be deleted")]
+    Remove,
     #[error("the daemon did not finish in time")]
     TimedOut,
     #[error("the install did not finish")]
@@ -47,7 +51,7 @@ pub enum DaemonError {
 impl DaemonError {
     /// Every error, for the tests that check each one.
     #[cfg(all(test, unix))]
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 15] = [
         Self::Caller,
         Self::Unavailable,
         Self::NotBundled,
@@ -59,6 +63,8 @@ impl DaemonError {
         Self::Copy,
         Self::Enrol,
         Self::Install,
+        Self::Uninstall,
+        Self::Remove,
         Self::TimedOut,
         Self::Failed,
     ];
@@ -77,6 +83,8 @@ impl DaemonError {
             Self::Copy => "copy",
             Self::Enrol => "enrol",
             Self::Install => "install",
+            Self::Uninstall => "uninstall",
+            Self::Remove => "remove",
             Self::TimedOut => "timed-out",
             Self::Failed => "failed",
         }

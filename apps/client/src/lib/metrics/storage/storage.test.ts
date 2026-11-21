@@ -22,7 +22,7 @@ describe('storageRows', () => {
     expect(system?.kind).toBe('NVMe');
     expect(system?.size).toBe(formatBytes(1_000_000_000_000));
     expect(system?.mounts.map((one) => one.path)).toEqual(['/', '/boot/efi']);
-    expect(system?.mounts[0]?.text).toBe(`${formatBytes(1_000_000_000_000)} · 81 %`);
+    expect(system?.mounts[0]?.text).toBe(`${formatBytes(810_000_000_000)} used · 81 %`);
     expect(system?.mounts[0]?.spoken).toBe(`/, ${formatBytes(810_000_000_000)} used of ${formatBytes(1_000_000_000_000)}, 81 %`);
     expect(system?.activity).toBe('Read 1.0 MiB/s · Write 512.0 KiB/s · Busy 13 %');
     expect(system?.showPaths).toBe(true);

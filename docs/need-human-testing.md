@@ -86,6 +86,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
+| HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -1169,6 +1170,58 @@ double quotes in a command, because the path has a space.
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
+
+### HT-083: the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21)
+
+Built: on the branch `hosted/hm-t21-daemon-removal`. The daemon has the command
+`anima-daemon uninstall` (`crates/daemon/src/units/removal.rs`): it stops the user unit or the
+`LaunchAgent`, deletes its file, then deletes the token (the Keychain item `ing.anima.daemon` on a
+Mac, the file `token` on Linux) and the key cache. The shell has `daemon_remove`
+(`apps/desktop/src-tauri/src/daemon/removal.rs`): it runs `uninstall` with
+`~/.local/bin/anima-daemon`, then deletes that copy. The client
+(`apps/client/src/lib/desktop/daemon/leave.ts`) runs it at Sign out and at Change hub of a hosted
+hub, before the logout, and revokes the daemon at the hub.
+
+The tests cover, with stand-ins in temporary folders: the order of the commands for a
+`LaunchAgent` and for a systemd user unit, a second removal, a unit that is not loaded, a stop that
+cannot run, the token forgotten only after the unit is out, the copy that runs `uninstall` and is
+then deleted, a daemon that refuses (the copy stays), the client that removes first and revokes
+second, an unreachable hub and its sentence, and a second sign-out with no sentence. Not covered:
+the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the hub of the pool, and the
+Linux code paths, which were read but not run on a Mac (the file token store and the systemd steps).
+
+It needs: an application of this build, the sign-in to the hosted hub, and HT-061 step 1 passed (the
+daemon reports).
+
+On this Mac:
+
+1. Before the sign-out, run `ls ~/Library/LaunchAgents/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `security find-generic-password -s ing.anima.daemon -a daemon-token`.
+   Expected: `ing.anima.daemon.plist` is listed, the copy is there, and `security` prints the item
+   (it does not print the token with no `-w`).
+2. In the application open Settings, press Sign out. Expected: the sign-in page shows, with no
+   question of the Keychain and no message.
+3. Run the three commands of step 1 again. Expected: no `ing.anima.daemon.plist` (the
+   `ing.anima.link.plist` of the link may stay), "No such file or directory" for the copy, and
+   "The specified item could not be found in the keychain." from `security`. `pgrep -x anima-daemon`
+   prints nothing.
+4. Sign in again (from a browser at the address of the hub, or from the application), open the
+   device of this Mac, Settings, the panel "Daemon". Expected: "Daemon revoked." Open Logs. Expected:
+   a line "Revoked the daemon token of <the name of this Mac>." at the time of step 2.
+5. The installation at this sign-in: wait 3 minutes. Known gap (HM-T21 row): the device keeps the
+   source Daemon, so the application does not install the daemon again; write down what you see.
+   To install it again for the next steps, change the metrics source of this Mac to None in its
+   Settings, then quit and open the application; HT-061 step 1 then applies.
+6. With the daemon installed again, turn the network off (Wi-Fi off), press Sign out. Expected: the
+   Settings page stays and says "The daemon is removed from this computer, but the hub could not be
+   reached and still lists it. Revoke the daemon on the page of this computer in Devices when the
+   hub answers." The commands of step 1 show the same as in step 3. Turn the network on, sign in,
+   open the panel "Daemon". Expected: the daemon is not shown as revoked (no "Daemon revoked."); its
+   readings are stale. Press "Revoke daemon" there.
+7. On the Linux computer, steps 1 to 3 with `ls ~/.config/systemd/user/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `ls ~/.config/anima-daemon/`. Expected after the sign-out:
+   no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
+   `systemctl --user status anima-daemon` says that the unit could not be found.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
@@ -2559,6 +2612,30 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
+### HT-087: the pictures, the count line and the tag "Coming soon" on the page Extensions (EXT-001)
+
+Built on the branch `ui/extensions-tiles`, approved overnight by the orchestrator, human check pending
+(R-306): in `apps/client/src/lib/extensions/ExtensionsSection.svelte`, a tile of a built extension in the grid
+shows a picture of its page (`apps/client/static/extensions/`), one for the dark and one for the light appearance; the
+line over the rows counts the extensions that are on and the ones that are not built; an extension that is not built
+has the tag "Coming soon" where a switch would be. The gallery tool made the pictures from the sample data of the
+synthetic hub (`browser/gallery/pictures/extensions.gallery.ts`). The tests prove the count line, the tag and which extension has a
+picture. Pictures of the built page at 800 and 1440 px are in the folder `ui-overnight-2026-11-21/extensions-tiles/` of
+the workspace. No person saw it in a window of the application.
+
+1. Open "Extensions" and select "Grid", in the dark appearance.
+   Expected: the tiles "Projects" and "Integrations" show a small dark picture of their page; each other tile shows its
+   mark. No picture holds the names of your own repositories or devices.
+2. Change the appearance to light, then to "System" with a light system.
+   Expected: each picture changes to its light picture at once.
+3. Look at the line over the extensions, then set "Projects" on.
+   Expected: the line says how many are on and how many are coming, and the first number grows by one.
+4. Select "List".
+   Expected: each extension that is not built has the tag "Coming soon" at the end of its line, and its words say what
+   it will do.
+
+Result: Open.
+
 ### HT-079: the page Threads with the real sessions of this computer (R-286)
 
 Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
@@ -2587,6 +2664,14 @@ not compared with its mockup.
    Expected: the same parts in the same order. Write each difference in the row of the mockup.
 7. On the Linux computer `pop-os`, do steps 1, 2 and 5.
    Expected: the same.
+8. (Branch `threads/needs-you`.) In a terminal, give Claude Code a short task and wait until it ends. Do not open its thread.
+   Expected: in at most 30 seconds the thread is in the group "Needs you" at the top, with a bell and the words "Your
+   turn", and the item Threads of the bar shows the count 1. Give a long task: while the agent works, the thread is in
+   the group "Working" at the bottom. Open the thread that waits: it goes to "Earlier" with "Done", and the count goes.
+9. (Branch `threads/needs-you`.) Start a task in which Claude Code asks for an approval, and do not answer for more than one minute.
+   Expected: the thread is in "Needs you", first, with the words "May wait for you". Hold the pointer on the list while a
+   different thread changes its state: no row moves under the pointer; the rows slide when the pointer leaves the list.
+   No system notification comes: that part is not built (task TH6).
 
 Result: Open.
 
@@ -2742,6 +2827,78 @@ window with real devices.
 Result: Open.
 
 
+### HT-085: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
+
+Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
+usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in
+`apps/desktop/src-tauri/src/cloud.rs`. The tests prove the form of [account-usage.md](../contracts/account-usage.md), each state of the
+card and the choice of the way in, with stand-in answers. No test reached the route of the site or the path of the gateway, which
+are in the private repositories, and no test read real figures of an account.
+
+1. In the desktop application, signed in to the Anima.ing account of a hosted hub, open "Devices", then the row of the hub.
+   Expected: the card "Plan and usage" shows "Data of your hub" and "Disk used of the plan" as two figures, the name of the plan,
+   the hours awake and asleep, the amount of the month with the sentence "So far this month, before tax. This is an estimate, not
+   a bill. Your invoice arrives after the month ends." (or "Nothing is charged on this plan" on a free plan), and the time of the
+   figures. The amount is the one that the account page shows.
+2. Open the hub at its address in a browser, signed in at the gateway, and open the same page.
+   Expected: the same figures.
+3. In the browser, end the session of the gateway in a second tab, then load the page again.
+   Expected: the card says to sign in to the account; the data of the hub still shows.
+4. Open the row of a device that is not the hub.
+   Expected: no card "Plan and usage".
+
+Result: Open.
+
+### HT-086: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
+
+Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,
+`crates/hub/src/fleet/access/listen/serve/own_daemon.rs`, `crates/hub/src/upkeep/hub_device.rs`,
+`crates/anima-local-hub/src/group/own_daemon.rs`, `crates/anima-local-hub/src/members/own_daemon.rs` and
+`crates/daemon/src/readers/container.rs`. The tests prove the socket, its routes, the settings, the specs of the member
+and the reader against files that a test lays out. No test ran the programs in a container of the pool, with its
+control group, its user and its folders.
+
+1. Make an image of the pool from a commit that holds this work, with `anima-daemon` built and copied into
+   `/opt/anima/bin`. Put it in a hub of the pool and start the hub.
+   Expected: `/var/lib/anima/hub/log/anima-daemon.log` exists and shows no error. `/run/anima/own-daemon.code` does
+   not exist. `/var/lib/anima/hub/daemon/token` exists, mode 0600.
+2. Open the hub in the client, go to "Devices" and open the row of the hub.
+   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The row shows the logo and the name of the
+   distribution of the image (for example Debian), and the device page offers no SSH, RDP, VNC or screen sharing; its tab Settings has no row of SSH, VNC or RDP. The memory total is that of the container
+   (1.5 GiB on the plan of the read of 2026-11-20), not that of the server. The disk shows the bytes of the hub's data
+   with no total and no percent.
+3. Restart the hub.
+   Expected: the daemon starts again with no new enrolment: the event log shows no second "enrolled" entry, and the
+   figures continue.
+4. Make an image with no `anima-daemon` and start a hub with it.
+   Expected: the hub starts and serves as before; there is no `anima-daemon.log` and no file `own-daemon.code`.
+
+Result: Open.
+
+### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+
+Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
+`/sys/class/power_supply` and of `pmset -g batt`), `crates/daemon/src/readers/linux.rs`,
+`crates/daemon/src/readers/macos.rs`, `crates/daemon/src/sampling/batteries.rs`, and in the hub the migration
+`0720_metrics_batteries.sql` and `Device.batteries`. The tests prove the rules against texts in the form of the
+kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test read the battery of a real laptop.
+
+1. On a Linux laptop that runs a daemon of this build, enrolled in a hub of this build, run
+   `cat /sys/class/power_supply/BAT*/capacity /sys/class/power_supply/BAT*/status`. Then ask the hub:
+   `query { device(id: "<id>") { batteries { name state secondsLeft healthPercent } } }`.
+   Expected: one battery for each `BAT*` folder, with the same name and the state of the `status` file. A wireless
+   mouse or keyboard is not in the list.
+2. On the same laptop, connect and disconnect the mains. Ask the hub again after 10 seconds each time.
+   Expected: the state changes to `CHARGING` (or `FULL` or `NOT_CHARGING`) and back to `DISCHARGING`.
+3. Open the chart of the device for one hour, or ask for `metrics(range: HOUR) { kind label }`.
+   Expected: a series `BATTERY_PERCENT` with the battery name as its label, with the value of `capacity`.
+4. Do steps 1 to 3 on a MacBook that runs a daemon of this build. Compare with `pmset -g batt`.
+   Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
+5. Do step 1 on a desktop computer or a server with no battery.
+   Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
@@ -2794,6 +2951,39 @@ VPN keys and sites) already used these roles. Tests prove which row plays a fade
    Expected: nothing slides; rows fade only.
 
 Result: Open.
+
+### HT-081: one Storage row for each disk of a Mac (MET-027, MET-031)
+
+Built on the branch `metrics/mac-storage`: `crates/daemon-core/src/readings/apfs.rs` makes one drive of each APFS
+container from `df -P -k` (the data volume, or else the first mount of the operator, stands for it), the daemon and
+the SSH collector of the hub use it on macOS, and the wrappers of iOS apps and the device file system of Xcode are no
+mounts. The Storage section shows the bytes used and the share beside a mount, not the size again. The tests prove it
+with the `df` output of a Mac with one internal drive, an external drive and a network share. No person saw the
+section for a real Mac.
+
+1. On a Mac with one internal drive, the daemon running and no external drive, open the device in Anima, tab
+   Overview, section Storage.
+   Expected: the line above the table says "1 drive" and the size of the internal drive (about 1.8 TiB for a 2 TB
+   drive). One row, named `disk3` or a near name, kind "Disk", with the mount `/System/Volumes/Data`, its bytes used
+   and its share. No row for `/`, `/nix`, `/Volumes/Recovery` or a path under `/private/var/folders`.
+2. Connect an external drive with an APFS or HFS+ volume, wait one minute and reload the page.
+   Expected: a second row for the external drive with its own size and its mount under `/Volumes`.
+3. Open a Linux device that has drives in Anima.
+   Expected: its Storage rows are as before; beside each mount the bytes used and the share.
+### HT-082: the link program on Windows (HM-T15, HMD-050)
+
+Built on the branch `hosted/hm-t15-windows-link`: `link/build.sh` builds `bin/anima-link-windows-amd64.exe` and
+`bin/anima-link-windows-arm64.exe`; the Windows application carries the amd64 program from
+`deploy/bin/windows-bundle.ps1`. The programs were only built on a Mac. No Windows computer ran them.
+
+1. On a Windows computer on amd64, install the Windows application of this build, sign in with the Anima.ing
+   account, and let the first run join the hosted hub.
+   Expected: the first run ends on the hub; Settings shows the link of this computer as connected.
+2. On the same computer, open a command window and run `anima-link device` from the folder of the application.
+   Expected: it prints the name of this computer on the link and its state; no error about a missing file.
+3. If a Windows computer on arm64 is available, copy `anima-link-windows-arm64.exe` to it and run
+   `anima-link-windows-arm64.exe device`.
+   Expected: the same output as step 2 (before a join it says that this computer is not joined).
 
 ### HT-078: groups of cards on the Projects screen (PRO-059 to PRO-063)
 

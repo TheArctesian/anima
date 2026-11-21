@@ -1,8 +1,9 @@
 //! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run`,
-//! `anima-daemon install [--system]` (MET-012, MET-019), and `anima-daemon key read <name>` and
-//! `anima-daemon key forget` (K-E5 Section 2.1).
+//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056), and
+//! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1).
 
 use std::io::{BufRead, Read as _};
+use std::path::PathBuf;
 
 use daemon_core::wire::{EnrolmentCode, is_key_name};
 use zeroize::Zeroizing;
@@ -10,7 +11,7 @@ use zeroize::Zeroizing;
 use crate::config::origin::{Origin, OriginError};
 use crate::units::plan::Target;
 
-pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]\n       anima-daemon key read <name>\n       anima-daemon key forget";
+pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run [--hosted-hub <data folder>]\n       anima-daemon install [--system]\n       anima-daemon uninstall\n       anima-daemon key read <name>\n       anima-daemon key forget";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
@@ -19,10 +20,13 @@ pub const ARGV_WARNING: &str = "warning: a code on the command line shows in pro
 pub enum Command {
     /// Exchange an enrolment code for a token and store both (K8 Section 3).
     Enrol { code: CodeSource, hub: Origin },
-    /// Sample and push until stopped (K8 Sections 4 to 7).
-    Run,
+    /// Sample and push until stopped (K8 Sections 4 to 7). With `--hosted-hub DIR`, the daemon
+    /// is the one in the container of a hosted hub, whose data is in `DIR` (HMD-071).
+    Run { hosted_hub: Option<PathBuf> },
     /// Write the unit that starts `run` at login or boot, and start it (MET-019, D-10).
     Install { target: Target },
+    /// Stop and delete the user unit, then forget the token and the key cache (HMD-056).
+    Uninstall,
     /// Write the cached value of one operational key to standard output (K-E5 Section 2.1).
     KeyRead { name: String },
     /// Delete the whole key cache, as when the daemon leaves the machine.
@@ -54,12 +58,27 @@ pub enum CliError {
 pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError> {
     let mut args = args.into_iter();
     match args.next().as_deref() {
-        Some("run") if args.next().is_none() => Ok(Command::Run),
+        Some("run") => run(args),
+        Some("uninstall") if args.next().is_none() => Ok(Command::Uninstall),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),
         _ => Err(CliError::Usage),
     }
+}
+
+fn run(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let hosted_hub = match (args.next().as_deref(), args.next()) {
+        (None, _) => None,
+        (Some("--hosted-hub"), Some(folder)) if folder.starts_with('/') => {
+            Some(PathBuf::from(folder))
+        }
+        _ => return Err(CliError::Usage),
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    Ok(Command::Run { hosted_hub })
 }
 
 fn key(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
@@ -180,10 +199,41 @@ mod tests {
     }
 
     #[test]
-    fn met_019_run_takes_no_arguments() {
-        assert!(matches!(parse(args("run")), Ok(Command::Run)));
+    fn met_019_run_takes_no_other_argument() {
+        assert!(matches!(
+            parse(args("run")),
+            Ok(Command::Run { hosted_hub: None })
+        ));
         assert!(matches!(parse(args("run now")), Err(CliError::Usage)));
+    }
+
+    #[test]
+    fn hmd_071_run_takes_the_absolute_data_folder_of_a_hosted_hub() {
+        let hosted = parse(args("run --hosted-hub /var/lib/anima"));
+        assert!(
+            matches!(hosted, Ok(Command::Run { hosted_hub: Some(folder) }) if folder == std::path::Path::new("/var/lib/anima"))
+        );
+        assert!(matches!(
+            parse(args("run --hosted-hub")),
+            Err(CliError::Usage)
+        ));
+        assert!(matches!(
+            parse(args("run --hosted-hub data")),
+            Err(CliError::Usage)
+        ));
+        assert!(matches!(
+            parse(args("run --hosted-hub /data more")),
+            Err(CliError::Usage)
+        ));
         assert!(matches!(parse(args("")), Err(CliError::Usage)));
+    }
+
+    #[test]
+    fn hmd_056_uninstall_takes_no_arguments() {
+        assert!(matches!(parse(args("uninstall")), Ok(Command::Uninstall)));
+        for line in ["uninstall --system", "uninstall now"] {
+            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
+        }
     }
 
     #[test]

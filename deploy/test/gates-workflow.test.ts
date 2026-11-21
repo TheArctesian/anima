@@ -42,7 +42,8 @@ function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    if (command === undefined) return [];
+    // `--alone` checks each crate by itself and `--jobs` names the jobs that a branch needs: neither runs a gate of the list.
+    if (command === undefined || /^\s*--(alone|jobs)\b/.test(command)) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
     return full
@@ -109,10 +110,21 @@ describe("the gates workflow (gates.yml)", () => {
     expect(passed?.if).toBe("always()");
   });
 
-  test("a workflow that calls the gates reads the cache and does not write it", () => {
+  test("the jobs of the gates read the Rust cache and never write it: only the workflow rust-cache does", () => {
     for (const step of steps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) {
-      expect(step.with?.["save-if"]).toBe("${{ inputs.ref == '' }}");
+      expect(step.with?.["save-if"]).toBe(false);
     }
+  });
+});
+
+
+describe("the gates workflow: each crate alone", () => {
+  test("the job rust-lint checks each crate alone, as the release builds `anima` and the application", () => {
+    const lint = workflow.jobs["rust-lint"]?.steps.map((step) => step.run ?? "") ?? [];
+    const merged = lint.findIndex((run) => run.includes("gates-merge.sh"));
+    const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
+    expect(merged).toBeGreaterThan(-1);
+    expect(alone).toBeGreaterThan(merged);
   });
 });
 
@@ -198,5 +210,33 @@ describe("while a train is on the way, nothing else wakes it: the script stays, 
 
   test("the rule of dev is off: no step and no start", () => {
     expect(steps([true], 600, '{"mergeWithoutCheck": false, "fullGates": "github"}')).toEqual([]);
+  });
+});
+
+describe("the workflow rust-cache (rust-cache.yml)", () => {
+  const cacheRaw = readFileSync(join(ROOT, ".github", "workflows", "rust-cache.yml"), "utf8");
+  const cache = Bun.YAML.parse(cacheRaw) as { on: Record<string, unknown>; jobs: Record<string, Job> };
+  const cacheSteps = Object.values(cache.jobs).flatMap((job) => job.steps ?? []);
+  const keysOf = (all: Step[]) => all.filter((step) => step.uses?.startsWith("Swatinem/rust-cache@")).map((step) => step.with?.["shared-key"]);
+
+  test("it writes the caches only on main, the one branch whose caches each branch can read", () => {
+    for (const step of cacheSteps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) {
+      expect(step.with?.["save-if"]).toBe("${{ github.ref == 'refs/heads/main' }}");
+    }
+    expect(Object.keys(cache.on).sort()).toEqual(["push", "schedule", "workflow_dispatch"]);
+  });
+
+  test("it warms the keys of the Rust jobs of the gates, from the tree of dev", () => {
+    expect(keysOf(cacheSteps).sort()).toEqual(["gates-lint", "gates-test"]);
+    for (const key of keysOf(cacheSteps)) expect(keysOf(steps)).toContain(key);
+    for (const step of cacheSteps.filter((each) => each.uses?.startsWith("actions/checkout@"))) expect(step.with?.["ref"]).toBe("dev");
+  });
+
+  test("it holds no secret, writes nothing but the cache, and pins each action", () => {
+    expect(cacheRaw).not.toMatch(/secrets\.|:\s*write\b/);
+    for (const step of cacheSteps) {
+      if (step.uses !== undefined) expect(step.uses).toMatch(/@[0-9a-f]{40}\b/);
+      expect(step.run ?? "").not.toContain("${{");
+    }
   });
 });

@@ -1,0 +1,39 @@
+services:
+  pihole:
+    image: pihole/pihole@sha256:66c798d79a95c2691f280329c3611dba1746117c61c9f331907ca35a06a52778
+    environment:
+      TZ: ${TZ:-UTC}
+      FTLCONF_webserver_api_password: ${WEB_PASSWORD}
+      FTLCONF_dns_listeningMode: all
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
+    ports:
+      - target: 53
+        published: 53
+        host_ip: 0.0.0.0
+        protocol: tcp
+      - target: 53
+        published: 53
+        host_ip: 0.0.0.0
+        protocol: udp
+      - target: 80
+        published: 8053
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: etc-pihole
+        target: /etc/pihole
+volumes:
+  etc-pihole:
