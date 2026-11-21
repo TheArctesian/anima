@@ -1,6 +1,6 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
-import type { DayRow, DeviceRow, ModelRow, RepositoryRow, UsageDevice, UsageSums } from './api';
+import type { DayRow, DeviceRow, ModelRow, RepositoryRow, SessionRow, UsageDevice, UsageSums } from './api';
 
 // Test support: an answer in the hub's shape and a hub that gives it, recording what the page asked for.
 
@@ -38,6 +38,31 @@ export interface HubUsage {
   everything: UsageSums;
   newest: readonly { repository: string | null; day: string }[];
   repositoriesLeftOut: number;
+  sessions: readonly SessionRow[];
+  sessionsLeftOut: number;
+}
+
+/** One session of the mac-mini; what `change` leaves out is a Claude Code session of yesterday in acme/anima. */
+export function session(change: Partial<SessionRow> = {}): SessionRow {
+  return {
+    id: 's-1',
+    prompts: 12,
+    toolCalls: 80,
+    inputTokens: 1000,
+    outputTokens: 9000,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    estimatedCostUsd: 0.4,
+    unpricedTokens: 0,
+    device: MAC,
+    source: 'CLAUDE_CODE',
+    model: 'claude-opus-4',
+    repository: 'github.com/acme/anima',
+    startedAt: '2026-11-16T08:00:00Z',
+    lastUseAt: '2026-11-16T09:30:00Z',
+    recent: false,
+    ...change,
+  };
 }
 
 export const ANSWER: HubUsage = {
@@ -69,6 +94,11 @@ export const ANSWER: HubUsage = {
     { repository: null, day: '2026-11-17' },
   ],
   repositoriesLeftOut: 0,
+  sessions: [
+    session({ id: 's-2', startedAt: '2026-11-17T08:30:00Z', lastUseAt: '2026-11-17T09:48:00Z', recent: true }),
+    session({ source: 'CODEX', model: 'gpt-5-codex', repository: 'github.com/acme/blog', estimatedCostUsd: null }),
+  ],
+  sessionsLeftOut: 0,
 };
 
 export interface FakeUsageHub extends Pick<Hub, 'request'> {
@@ -98,6 +128,7 @@ export function fakeUsageHub(answer: HubUsage = ANSWER, everyone: readonly Usage
         repositories: { rowsLeftOut: now.repositoriesLeftOut, rows: now.repositories, total: now.everything },
         newest: { rows: now.newest },
         everyone: { devices: hub.everyone },
+        sessions: { sessionsLeftOut: now.sessionsLeftOut, sessions: now.sessions },
       };
       return Promise.resolve({ ok: true, value } as unknown as HubResult<TResult>);
     },

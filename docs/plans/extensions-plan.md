@@ -899,6 +899,20 @@ collector exist. Counts have no text, so they are Class C and need no vault.
   sandbox and sends no counts (HT-005). For such a device the page and the command must give the
   reason: "This daemon runs as a system unit and cannot see the sessions of a user."
 
+- **AIS-025.** The hub must give the single sessions that the filter of AIS-020 admits, the session
+  with the newest use first: for each, the device, the source, the model, the repository, the start,
+  the last use, and the prompts, tool calls, tokens and estimate (AIS-021) of the days asked for. It
+  gives at most 200 sessions in one answer and counts the rest. The command is
+  `anima agents sessions` and the MCP tool is `anima_agents_sessions` (CMD-030); the page shows them
+  in a part "Sessions". Not approved by the operator: made overnight (R-NEW-agentsessions).
+- **AIS-026.** A session whose last use is at most 30 minutes before the clock of the hub is
+  "recent". The daemon counts every 15 minutes, so the page and the command must not say that a
+  session runs now: they say "Used in the last 30 minutes". Not approved by the operator: made
+  overnight (R-NEW-agentsessions).
+
+Not built, from the dashed box of the mockup agent-usage-v2: the hours of a day (the counts are by
+day; the daemon must count by hour, a change of K8), and the limit of a subscription (AIS-022 forbids it).
+
 The build order is CMD-030. Each task has its tests. The counts come from a device, so the MCP
 result gives them in named fields with a length limit (MCP-008).
 
@@ -910,6 +924,7 @@ result gives them in named fields with a length limit (MCP-008).
 | AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | In progress: built in 4b3823cd, 8bd2579e, 51f77f8f. The browser specs did not run and the mockup is not compared. Waits for HT-026. | See the state |
 | AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | In progress: the review found six faults of the daemon, corrected in cbbc1122. The entry is HT-026, which is open. | See the state |
 | AU-6 | The page drawn again after the mockup agent-usage-v2 (operator, 2026-11-19: "B: look and work like T3 Code", then "Approved, build it"): the repositories at the side with the newest use first, the totals with one bar for each UTC day, the use by program and model and by device. Only what `agentUsage` gives: no change of the hub, of the contract or of the daemon. The three states of a hosted hub stay (HMD-053) | In progress: built on the branch `hosted/agent-usage-v2`. The built page was compared with the mockup from pictures at 1280 px in the dark and the light appearance; not compared in a window of the application. Waits for HT-026. | See the state |
+| AU-7 | The single sessions and the recent ones (AIS-025, AIS-026): the query `agentSessions` in the hub, `anima agents sessions` and `anima_agents_sessions`, the part "Sessions" of the page and its mockup; approved overnight by the orchestrator, human check pending (HT-NEW-agentsessions) | In progress | |
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 

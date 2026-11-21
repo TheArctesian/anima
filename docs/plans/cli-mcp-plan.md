@@ -389,7 +389,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_agents_sessions`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
@@ -436,7 +436,8 @@ secret as the environment can (MCP-004), so the root is closed to every API key 
 (CAP-030, CAP-031). `anima_agents_usage` (read, tool set `devices`) gives the use of the AI agent programs on each
 device with the estimate of its cost and each daemon's state (R-135; AIS-020, AIS-021, AIS-024); it takes
 and returns no secret, and the model, repository and device names are named fields capped by
-`mcp/untrusted.rs` (MCP-008). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
+`mcp/untrusted.rs` (MCP-008). `anima_agents_sessions` (read, tool set `devices`) gives the single sessions
+that the daemons counted, the newest use first, with the same limits (AIS-025, AIS-026). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
 the computer that runs `anima mcp`, and an agent with a shell can run the command.
 
 Reserved tools, proposed and not built (jobs proposal JOB-012 to JOB-027):

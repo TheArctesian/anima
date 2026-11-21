@@ -1,0 +1,29 @@
+# `anima agents sessions` and the MCP tool `anima_agents_sessions` (AIS-025, AIS-026).
+query AgentSessions($filter: AgentUsageFilter, $first: Int!) {
+  agentSessions(filter: $filter, first: $first) {
+    firstDay
+    lastDay
+    sessionsLeftOut
+    sessions {
+      id
+      device {
+        id
+        name
+      }
+      source
+      model
+      repository
+      startedAt
+      lastUseAt
+      recent
+      prompts
+      toolCalls
+      inputTokens
+      outputTokens
+      cacheReadTokens
+      cacheWriteTokens
+      estimatedCostUsd
+      unpricedTokens
+    }
+  }
+}

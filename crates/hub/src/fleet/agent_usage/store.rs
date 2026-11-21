@@ -13,6 +13,9 @@ use super::{
 };
 use crate::ids::DeviceId;
 
+mod sessions;
+pub(super) use sessions::sessions;
+
 /// Keeps `state` as the usage state of `device`; the same state again changes nothing.
 pub(super) async fn write_state(
     conn: &mut PgConnection,

@@ -1994,6 +1994,31 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
 
+### HT-NEW-agentsessions: the single sessions on the page Agent usage (AIS-025, AIS-026)
+
+Built on the branch `ui/agent-sessions`: the query `agentSessions` of the hub (`crates/hub/src/fleet/agent_usage/`),
+`anima agents sessions`, the MCP tool `anima_agents_sessions`, and the part "Sessions" of the page Agent usage
+(`apps/client/src/lib/agent-usage/view/SessionList.svelte`). Approved overnight by the orchestrator, human check
+pending (R-NEW-agentsessions). The tests prove with a real PostgreSQL and a scripted daemon: the order by last use, the
+sums over the days asked for, the estimate, the limit and the count left out, and "recent" at 30 minutes. Pictures of
+the mockup and of the built page are in the folder `ui-overnight-2026-11-21/agent-sessions/` of the workspace. No person
+saw the part with the sessions of a real computer. It needs HT-026 first: a daemon that sends counts.
+
+1. On a computer whose daemon reads sessions (HT-026), work for a few minutes in Claude Code in a repository, then wait
+   20 minutes. Open "Agent usage".
+   Expected: under "By device", a part "Sessions" lists that session first, with the repository, the model, "Claude
+   Code", the name of the computer, a green dot with the word "Recent" and "minutes ago" in "Last use".
+2. Wait 40 minutes more with no use, then open the page again.
+   Expected: the dot and the word "Recent" are gone, also on a page that stayed open: the page reads the clock again
+   each minute. Nothing on the page says that a session runs now.
+3. Choose one repository at the left.
+   Expected: the list holds only the sessions of that repository.
+4. In a terminal, run `anima agents sessions`.
+   Expected: the same sessions in the same order, the recent one marked "(recent)", and the notes under the table.
+5. Make the window narrow (about 800 px).
+   Expected: the table of sessions fits with no scroll to the side: "Recent" stands over the time, and the column
+   Prompts is left out. No name is cut into pieces.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list

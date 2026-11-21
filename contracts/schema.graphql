@@ -1373,6 +1373,42 @@ type AgentUsageRow {
   unpricedTokens: Float!
 }
 
+"The single sessions of agentSessions (AIS-025)."
+type AgentSessions {
+  "The days summed, YYYY-MM-DD, both included."
+  firstDay: String!
+  lastDay: String!
+  "The sessions, the newest last use first (the order of storage breaks a tie)."
+  sessions: [AgentSession!]!
+  "How many sessions the filter admits that are not in sessions."
+  sessionsLeftOut: Int!
+}
+
+"One session with its sums over the days asked for (AIS-025). Every text comes from a device."
+type AgentSession {
+  "The hub's ID of the session, stable while the hub keeps it."
+  id: ID!
+  device: Device!
+  source: AgentSource!
+  "The model with the most output tokens of the whole session; null when it has none."
+  model: String
+  repository: String
+  startedAt: DateTime!
+  "The end of the last entry the daemon counted (it counts every 15 minutes)."
+  lastUseAt: DateTime!
+  "lastUseAt is at most 30 minutes before the clock of the hub (AIS-026). It does not say that the session runs now."
+  recent: Boolean!
+  prompts: Float!
+  toolCalls: Float!
+  inputTokens: Float!
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  "An estimate in US dollars from public list prices (AIS-021); null when no token has a known price."
+  estimatedCostUsd: Float
+  unpricedTokens: Float!
+}
+
 "A device's usage state (AIS-024)."
 type AgentUsageDevice {
   device: Device!
@@ -3523,6 +3559,9 @@ type Query {
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+  # The single sessions of the AI agent programs (AIS-025, AIS-026)
+  "The single sessions that filter admits (default: the 30 days that end today), the newest last use first, each with its sums over those days and the estimate of its cost. At most first (1 to 200) sessions; sessionsLeftOut counts the rest. VALIDATION for a bad filter or first. Open to a read key."
+  agentSessions(filter: AgentUsageFilter, first: Int! = 50): AgentSessions!
   "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
   containers(deviceId: ID!): [Container!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."

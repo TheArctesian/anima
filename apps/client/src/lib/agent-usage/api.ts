@@ -69,6 +69,30 @@ const AGENT_USAGE = graphql(`
         }
       }
     }
+    sessions: agentSessions(filter: $filter, first: 50) {
+      sessionsLeftOut
+      sessions {
+        id
+        device {
+          id
+          name
+        }
+        source
+        model
+        repository
+        startedAt
+        lastUseAt
+        recent
+        prompts
+        toolCalls
+        inputTokens
+        outputTokens
+        cacheReadTokens
+        cacheWriteTokens
+        estimatedCostUsd
+        unpricedTokens
+      }
+    }
   }
 `);
 
@@ -117,6 +141,18 @@ export type DeviceRow = UsageSums & { readonly device: NamedDevice };
 /** `repository` is null for the use that has none. */
 export type RepositoryRow = UsageSums & { readonly repository: string | null };
 
+/** One session with its sums over the days of the page (AIS-025). `recent`: used in the last 30 minutes (AIS-026). */
+export type SessionRow = Omit<UsageSums, 'sessions'> & {
+  readonly id: string;
+  readonly device: NamedDevice;
+  readonly source: AgentSource;
+  readonly model: string | null;
+  readonly repository: string | null;
+  readonly startedAt: string;
+  readonly lastUseAt: string;
+  readonly recent: boolean;
+};
+
 /** The use of the AI agent programs for the choices of the page, as the hub sums it. */
 export interface AgentUsageView {
   readonly firstDay: string;
@@ -140,6 +176,10 @@ export interface AgentUsageView {
   readonly repositoriesLeftOut: number;
   /** Every device that reports, whatever the choices. */
   readonly everyDevice: readonly UsageDevice[];
+  /** The single sessions that the choices admit, the newest use first: at most 50. */
+  readonly sessions: readonly SessionRow[];
+  /** How many sessions are not in `sessions`. */
+  readonly sessionsLeftOut: number;
 }
 
 // The two types below serve only `report/columns.ts` and `UsageNotes.svelte`, which the page no longer uses and which
@@ -176,7 +216,7 @@ export function agentUsageApi(hub: Pick<Hub, 'request'>) {
       const everyone: AgentUsageFilter = day === undefined ? {} : { firstDay: day, lastDay: day };
       const result = await hub.request(AGENT_USAGE, { filter, everything: everyRepository(filter), everyone });
       if (!result.ok) return result;
-      const { days, models, devices, repositories, newest, everyone: all } = result.value;
+      const { days, models, devices, repositories, newest, everyone: all, sessions } = result.value;
       const withDay = days.rows.flatMap((row) => (row.day == null ? [] : [{ ...row, day: row.day }]));
       const withDevice = devices.rows.flatMap((row) => (row.device == null ? [] : [{ ...row, device: row.device }]));
       const lastUse = newest.rows.flatMap((row) => (row.day == null ? [] : [{ repository: row.repository ?? null, day: row.day }]));
@@ -196,6 +236,8 @@ export function agentUsageApi(hub: Pick<Hub, 'request'>) {
           newest: lastUse,
           repositoriesLeftOut: repositories.rowsLeftOut,
           everyDevice: all.devices,
+          sessions: sessions.sessions.map((row) => ({ ...row, model: row.model ?? null, repository: row.repository ?? null })),
+          sessionsLeftOut: sessions.sessionsLeftOut,
         },
       };
     },

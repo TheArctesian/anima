@@ -37,6 +37,7 @@ use crate::{
 pub struct Query(
     access::graphql::Query,
     agent_usage::graphql::Query,
+    agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
     checks::graphql::Query,
     containers::graphql::Query,

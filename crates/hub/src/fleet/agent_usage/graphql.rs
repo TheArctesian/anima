@@ -1,8 +1,11 @@
-//! The agent usage GraphQL part: `Query.agentUsage` (K1; R-135; AIS-020, AIS-021, AIS-024).
+//! The agent usage GraphQL part: `Query.agentUsage` (K1; R-135; AIS-020, AIS-021, AIS-024) and,
+//! in [`sessions`], `Query.agentSessions` (AIS-025, AIS-026).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
+
+mod sessions;
 
 use std::sync::Arc;
 
@@ -24,6 +27,8 @@ use crate::{
         devices::{self, Device},
     },
 };
+
+pub use sessions::SessionsQuery;
 
 /// The most rows one answer lists; the rest are counted in `rowsLeftOut`.
 const MAX_ROWS: usize = 1000;

@@ -149,3 +149,87 @@ async fn ais_020_agents_usage_refuses_days_with_since_or_a_bad_until() {
     }
     assert!(hub.seen().is_empty(), "nothing was asked of the hub");
 }
+
+/// The K1 `agentSessions` answer: a recent Claude Code session and an older Codex one with no
+/// known price, and two more left out.
+fn sessions() -> Value {
+    let session = |source: &str, last: &str, recent: bool, cost: Option<f64>| {
+        json!({
+            "id": last, "device": { "id": MAC, "name": "mac-office-1" }, "source": source,
+            "model": "claude-opus-4-5", "repository": "github.com/example/anima",
+            "startedAt": "2026-11-17T08:00:00Z", "lastUseAt": last, "recent": recent,
+            "prompts": 12.0, "toolCalls": 41.0, "inputTokens": 1520.0, "outputTokens": 18_311.0,
+            "cacheReadTokens": 0.0, "cacheWriteTokens": 0.0, "estimatedCostUsd": cost,
+            "unpricedTokens": 0.0,
+        })
+    };
+    json!({ "agentSessions": {
+        "firstDay": "2026-10-19", "lastDay": "2026-11-17", "sessionsLeftOut": 2,
+        "sessions": [
+            session("CLAUDE_CODE", "2026-11-17T09:50:00Z", true, Some(0.42)),
+            session("CODEX", "2026-11-16T09:00:00Z", false, None),
+        ]
+    } })
+}
+
+#[tokio::test]
+async fn ais_025_agents_sessions_lists_each_session_and_never_says_one_runs_now() {
+    let hub = FakeHub::start().await;
+    hub.answer("AgentSessions", data(sessions()));
+    let run = Anima::new()
+        .with("ANIMA_TOKEN", TOKEN)
+        .run(&[
+            "agents",
+            "sessions",
+            "--source",
+            "codex",
+            "--limit",
+            "20",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let lines: Vec<&str> = run.stdout.lines().collect();
+    assert!(lines[0].starts_with("LAST USE"), "{}", run.stdout);
+    assert!(
+        lines[1].contains("(recent)") && lines[1].contains("0.42"),
+        "{}",
+        run.stdout
+    );
+    assert!(
+        lines[2].contains("Codex") && lines[2].contains("no price"),
+        "{}",
+        run.stdout
+    );
+    assert!(!lines[2].contains("(recent)"), "{}", run.stdout);
+    assert!(
+        run.stdout.contains("2 more sessions are not shown"),
+        "{}",
+        run.stdout
+    );
+    assert!(
+        run.stdout.contains("does not say that a session runs now"),
+        "{}",
+        run.stdout
+    );
+    let sent = hub.seen().pop().expect("a request");
+    assert_eq!(sent.variables["first"], json!(20));
+    assert_eq!(sent.variables["filter"]["source"], json!("CODEX"));
+}
+
+#[tokio::test]
+async fn ais_025_agents_sessions_prints_k1_json() {
+    let hub = FakeHub::start().await;
+    hub.answer("AgentSessions", data(sessions()));
+    let run = Anima::new()
+        .with("ANIMA_TOKEN", TOKEN)
+        .run(&["agents", "sessions", "--json", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(run.json(), sessions()["agentSessions"]);
+    assert_eq!(
+        hub.seen().pop().expect("a request").variables["first"],
+        json!(50)
+    );
+}

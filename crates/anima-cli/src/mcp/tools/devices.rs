@@ -1,6 +1,7 @@
 //! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
-//! AI agent programs, their containers, the text of a Compose file, sites, wake, and the changes.
+//! AI agent programs and their single sessions, their containers, the text of a Compose file, sites, wake, and the changes.
 
+mod agent_sessions;
 mod agent_usage;
 mod capabilities;
 mod change;
@@ -24,6 +25,7 @@ pub enum DeviceTool {
     Metrics,
     CapabilityList,
     AgentUsage,
+    AgentSessions,
     ContainerList,
     ContainerStorage,
     ContainerNetworks,
@@ -38,13 +40,14 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 18] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
         Self::Metrics,
         Self::CapabilityList,
         Self::AgentUsage,
+        Self::AgentSessions,
         Self::ContainerList,
         Self::ContainerStorage,
         Self::ContainerNetworks,
@@ -64,6 +67,7 @@ impl DeviceTool {
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
             Self::AgentUsage => agent_usage::definition(),
+            Self::AgentSessions => agent_sessions::definition(),
             Self::ContainerList
             | Self::ContainerStorage
             | Self::ContainerNetworks
@@ -85,7 +89,7 @@ impl DeviceTool {
             Self::Get => read::get(hub, arguments).await,
             Self::Metrics => metrics::metrics(hub, arguments).await,
             Self::CapabilityList => capabilities::list(hub, arguments).await,
-            Self::AgentUsage => agent_usage::usage(hub, arguments).await,
+            Self::AgentUsage | Self::AgentSessions => self.agents(hub, arguments).await,
             Self::ContainerList
             | Self::ContainerStorage
             | Self::ContainerNetworks
@@ -98,6 +102,15 @@ impl DeviceTool {
             Self::Wake => change::wake(hub, arguments).await,
             Self::Update => change::update(hub, arguments).await,
             Self::Delete => change::delete(hub, arguments).await,
+        }
+    }
+
+    /// Runs a tool of the use of the AI agent programs: the sums, or the single sessions.
+    async fn agents(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+        if matches!(self, Self::AgentSessions) {
+            agent_sessions::sessions(hub, arguments).await
+        } else {
+            agent_usage::usage(hub, arguments).await
         }
     }
 }

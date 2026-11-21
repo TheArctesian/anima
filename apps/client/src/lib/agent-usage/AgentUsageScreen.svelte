@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
@@ -9,7 +10,8 @@
   import type { UsageStore } from './store.svelte';
   import UsageFilters from './UsageFilters.svelte';
   import RepositoryList from './view/RepositoryList.svelte';
-  import { dayBars, repositoryLines, type Picked } from './view/shape';
+  import SessionList from './view/SessionList.svelte';
+  import { dayBars, repositoryLines, sharedHost, type Picked } from './view/shape';
   import ShareTable, { type ShareRow } from './view/ShareTable.svelte';
   import TotalsCard from './view/TotalsCard.svelte';
 
@@ -55,6 +57,18 @@
       sums: view?.devices.find((row) => row.device.id === device.id) ?? null,
     })),
   );
+  /** The host of every repository of the page, left out of each name in the list of sessions. */
+  const host = $derived(view === null ? '' : sharedHost(repositoryLines(view)));
+  /** The time of now, taken again each minute, so "12 minutes ago" and Recent stay true on a page left open (AIS-026). */
+  let minute = $state(untrack(() => now().getTime()));
+  $effect(() => {
+    const timer = setInterval(() => {
+      minute = now().getTime();
+    }, 60_000);
+    return () => {
+      clearInterval(timer);
+    };
+  });
   const only = $derived(shown === null ? '' : `${sourceName(shown.source)} ${shown.model ?? 'No model'}`);
 
   function pick(key: string | null): void {
@@ -64,7 +78,8 @@
 </script>
 
 <!-- The use of the AI agent programs (AIS-020): the repositories at the side; the totals with one bar for each day; the
-     use by program and model and by device (AIS-021, AIS-024). Counts only: the hub holds no single session and no text. -->
+     use by program and model and by device (AIS-021, AIS-024); the single sessions (AIS-025, AIS-026). Counts only: the hub
+     holds no text of a session. -->
 <section class="usage">
   <PageHeader title="Agent usage">
     {#snippet actions()}
@@ -126,6 +141,7 @@
               rows={deviceRows}
               count={query.count}
             />
+            <SessionList rows={view.sessions} leftOut={view.sessionsLeftOut} {host} now={minute} />
           </div>
         </div>
       {/if}
