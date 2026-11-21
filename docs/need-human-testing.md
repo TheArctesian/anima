@@ -91,7 +91,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
-| HT-NEW-threadview | The page Threads with the real sessions of Claude Code and Codex of this computer (R-NEW-t3native) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -2471,7 +2471,7 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
-### HT-NEW-threadview: the page Threads with the real sessions of this computer (R-NEW-t3native)
+### HT-079: the page Threads with the real sessions of this computer (R-286)
 
 Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
 Threads of the desktop application, the commands `anima agents threads` and `anima agents thread`, and the MCP tool
