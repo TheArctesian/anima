@@ -3084,3 +3084,36 @@ with real projects, in a desktop window or on a phone.
    Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
 
 Result: Open.
+
+### HT-NEW-devicepagepass: the device page in a narrow window, the Warning badge tip and the skeleton under the tabs (NAV-005, RA-020, D-9)
+
+Built on the branch `ui/device-page-pass`: `apps/client/src/lib/tabs/Tabs.svelte` and
+`apps/client/src/lib/sessions/strip/SessionTabs.svelte` with `apps/client/src/lib/scroll/StripArrows.svelte` (a strip
+too narrow for its tabs drops the icons first, then fades its far end and shows an arrow there; the session tabs share a
+narrow strip), `apps/client/src/lib/devices/actions/WarningBadge.svelte` (the badge opens a tip that says what Warning
+means), and the skeleton under the tabs while a device loads. The jsdom tests prove the icons going and coming back,
+the arrows and their scroll, the name and the tip of the badge, and the busy panel. The gallery pictures at 800 and
+1600 px show the tabs, the strip of two sessions and the skeleton. No person used a mouse without sideways scroll, a
+screen reader, or a real window of the application.
+
+1. Open a device in the desktop application. Make the window narrow (about 800 px), then narrower.
+   Expected: at about 800 px the tabs show their words only, all of them, with no cut tab. Narrower, the right end of
+   the tabs fades and a round arrow shows there; the page itself does not scroll sideways.
+2. With a mouse that has no sideways scroll, select the arrow.
+   Expected: the tabs move left by most of their width; an arrow now shows at the left end too. Make the window wide
+   again: the arrows go and the icons come back.
+3. Press Tab to the selected tab, then the arrow keys to the last tab.
+   Expected: the focused tab is always in view; the arrows are never in the Tab order.
+4. Open four sessions at 800 px.
+   Expected: the session tabs share the strip, each with its name start, its protocol and its close button; past
+   about three tabs the strip fades at its end and shows an arrow.
+5. Open a device with a Warning badge (for example a device with standard RDP security). Point at the badge, then
+   press Tab to it, then select it.
+   Expected: each time a tip opens that says what Warning means, then each warning. Escape closes it.
+6. With VoiceOver on, move to the badge.
+   Expected: VoiceOver says "Warning", what it means and each warning, and that it is a button.
+7. Open a device on a slow connection to the hub (or a hub that is starting).
+   Expected: under the tabs, grey cards in the shape of the open tab until the device shows; no empty space.
+8. Do steps 1, 5 and 7 in the light appearance.
+
+Result: Open.

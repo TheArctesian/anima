@@ -167,7 +167,6 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields, daysLeft
     case 'SystemdConfig':
     case 'SnmpConfig':
     case 'TailscalePingConfig':
-      // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
       return withProbeConfig(values, config);
     case 'DomainExpiryConfig':
       return { ...values, domainExpiry: withDomainExpiryConfig(config, daysLeft) };

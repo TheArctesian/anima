@@ -273,7 +273,9 @@ it('UI-015: a tab opened with the device\'s OS shows its logo in place of the co
 
 it('MOT-007, MV-004: the tab has one width whatever the title, so a title moves neither the close button nor the protocol', () => {
   const css = readFileSync(`${import.meta.dirname}/SessionTabs.svelte`, 'utf8');
-  expect(css).toMatch(/\.slot \{[^}]*\n\s+inline-size: min\(/);
+  // A fixed basis that only shrinks, down to a set least width: the count of tabs sets the width, never a title (NAV-005).
+  expect(css).toMatch(/\.slot \{[^}]*\n\s+flex: 0 1 calc\(/);
+  expect(css).toMatch(/\.slot \{[^}]*\n\s+min-inline-size: min\(/);
   expect(css).not.toMatch(/\.slot \{[^}]*max-inline-size/);
   const tab = readFileSync(`${import.meta.dirname}/SessionTab.svelte`, 'utf8');
   expect(tab).toMatch(/\.title \{[^}]*flex: 1 1 0;/);
