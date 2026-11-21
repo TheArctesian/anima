@@ -1,0 +1,7 @@
+# `anima model alias`: points an alias at a model (SEL-003).
+mutation ModelAlias($alias: String!, $model: String!) {
+  setModelAlias(alias: $alias, model: $model) {
+    alias
+    model
+  }
+}

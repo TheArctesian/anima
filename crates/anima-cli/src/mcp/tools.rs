@@ -7,6 +7,7 @@ pub mod events;
 pub mod extensions;
 pub mod link;
 pub mod maintenance;
+pub mod models;
 pub mod notifications;
 pub mod projects;
 pub mod releases;
@@ -36,6 +37,7 @@ pub enum Tool {
     Sessions(sessions::SessionTool),
     Notifications(notifications::NotificationTool),
     Web(web::WebTool),
+    Models(models::ModelTool),
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
     Retention(retention::RetentionTool),
@@ -65,6 +67,7 @@ impl Tool {
         tools.extend(sessions::SessionTool::ALL.map(Self::Sessions));
         tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
         tools.extend(web::WebTool::ALL.map(Self::Web));
+        tools.extend(models::ModelTool::ALL.map(Self::Models));
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
         tools.extend(retention::RetentionTool::ALL.map(Self::Retention));
@@ -93,6 +96,7 @@ impl Tool {
             Self::Sessions(_) => ToolSet::Sessions,
             Self::Notifications(_) => ToolSet::Notifications,
             Self::Web(_) => ToolSet::Web,
+            Self::Models(_) => ToolSet::Models,
             Self::Releases(_) => ToolSet::Releases,
             Self::Vpn(_) => ToolSet::Vpn,
             Self::Retention(_) => ToolSet::Retention,
@@ -121,6 +125,7 @@ impl Tool {
             Self::Sessions(tool) => tool.definition(),
             Self::Notifications(tool) => tool.definition(),
             Self::Web(tool) => tool.definition(),
+            Self::Models(tool) => tool.definition(),
             Self::Releases(tool) => tool.definition(),
             Self::Vpn(tool) => tool.definition(),
             Self::Retention(tool) => tool.definition(),
@@ -156,6 +161,7 @@ impl Tool {
             Self::Sessions(tool) => tool.call(hub, arguments).await,
             Self::Notifications(tool) => tool.call(hub, arguments).await,
             Self::Web(tool) => tool.call(hub, arguments).await,
+            Self::Models(tool) => tool.call(hub, arguments).await,
             Self::Releases(tool) => tool.call(hub, arguments).await,
             Self::Vpn(tool) => tool.call(hub, arguments).await,
             Self::Retention(tool) => tool.call(hub, arguments).await,
