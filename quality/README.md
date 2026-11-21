@@ -99,6 +99,10 @@ minutes on the same Mac when it is quiet: Rust tests 7, bun tests 3.5, Go tests 
 What it does not do: it does not test a package that depends on a touched one, and it runs the doctests
 only with the whole Rust group. The full list does that. `--group rust,go,bun,quality` and
 `--gate name,name` run a part of the list by name; the jobs of the workflow use them.
+`--keep-going` is for a proof run only, such as the Windows job started by hand: each gate runs after a
+failure, Clippy goes on past a crate that fails (`--keep-going`), the Rust tests go on past a failing test
+(`--no-fail-fast`), and the last line names each gate that failed. The run still fails. It is never the
+gate of a merge.
 
 ### The gates on GitHub
 
