@@ -1,7 +1,8 @@
 //! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
-//! AI agent programs, their containers, the text of a Compose file, the catalogue of
-//! applications, sites, wake, and the changes.
+//! AI agent programs and their single sessions, their containers, the text of a Compose file, the
+//! catalogue of applications, sites, wake, and the changes.
 
+mod agent_sessions;
 mod agent_usage;
 mod capabilities;
 mod catalogue_entries;
@@ -30,6 +31,7 @@ pub enum DeviceTool {
     ComputePolicyList,
     ComputePolicySet,
     AgentUsage,
+    AgentSessions,
     ContainerList,
     ContainerStorage,
     ContainerNetworks,
@@ -47,7 +49,7 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 22] = [
+    pub const ALL: [Self; 23] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
@@ -55,6 +57,7 @@ impl DeviceTool {
         Self::CapabilityList,
         Self::ComputePolicyList,
         Self::AgentUsage,
+        Self::AgentSessions,
         Self::ContainerList,
         Self::ContainerStorage,
         Self::ContainerNetworks,
@@ -79,6 +82,7 @@ impl DeviceTool {
             Self::CapabilityList => capabilities::definition(),
             Self::ComputePolicyList | Self::ComputePolicySet => compute_policy::definition_of(self),
             Self::AgentUsage => agent_usage::definition(),
+            Self::AgentSessions => agent_sessions::definition(),
             Self::ContainerList
             | Self::ContainerStorage
             | Self::ContainerNetworks
@@ -106,7 +110,7 @@ impl DeviceTool {
             Self::ComputePolicyList | Self::ComputePolicySet => {
                 compute_policy::call(self, hub, arguments).await
             }
-            Self::AgentUsage => agent_usage::usage(hub, arguments).await,
+            Self::AgentUsage | Self::AgentSessions => self.agents(hub, arguments).await,
             Self::ContainerList
             | Self::ContainerStorage
             | Self::ContainerNetworks
@@ -118,6 +122,15 @@ impl DeviceTool {
                 catalogue_entries::call(self, hub, arguments).await
             }
             other => change::call(other, hub, arguments).await,
+        }
+    }
+
+    /// Runs a tool of the use of the AI agent programs: the sums, or the single sessions.
+    async fn agents(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+        if matches!(self, Self::AgentSessions) {
+            agent_sessions::sessions(hub, arguments).await
+        } else {
+            agent_usage::usage(hub, arguments).await
         }
     }
 }

@@ -7,8 +7,9 @@ use daemon_core::agent_usage::Source;
 use super::{
     Dimension, DimensionSet,
     grouping::fold,
-    model::{Grain, GroupKey, Sums, TokenSums},
+    model::{Grain, GroupKey, StoredSession, Sums, TokenSums},
     prices::{PRICES_AS_OF, estimate},
+    sessions::{is_recent, priced},
 };
 
 fn tokens(input: f64, output: f64, cache_read: f64, cache_write: f64) -> TokenSums {
@@ -153,4 +154,55 @@ fn ais_020_folding_the_models_adds_their_counts_and_their_estimates() {
         .find(|group| group.key.model.as_deref() == Some("claude-new-1"))
         .unwrap();
     assert_eq!(unknown.estimated_cost_usd, None);
+}
+
+fn stored(models: Vec<(&str, TokenSums)>) -> StoredSession {
+    let at = chrono::DateTime::parse_from_rfc3339("2026-11-20T08:00:00Z")
+        .unwrap()
+        .to_utc();
+    StoredSession {
+        id: 1,
+        device: crate::ids::DeviceId::from(uuid::Uuid::nil()),
+        source: Source::ClaudeCode,
+        model: Some("claude-opus-4-5".to_owned()),
+        repository: None,
+        started_at: at,
+        last_use_at: at,
+        prompts: 3.0,
+        tool_calls: 9.0,
+        models: models
+            .into_iter()
+            .map(|(model, sums)| (model.to_owned(), sums))
+            .collect(),
+    }
+}
+
+#[test]
+fn ais_025_a_session_sums_its_models_and_prices_only_the_known_ones() {
+    let session = priced(stored(vec![
+        ("claude-opus-4-5", tokens(1e6, 0.0, 0.0, 0.0)),
+        ("claude-opus-9-9", tokens(100.0, 200.0, 0.0, 0.0)),
+    ]));
+    assert_eq!(session.tokens, tokens(1e6 + 100.0, 200.0, 0.0, 0.0));
+    assert_close(session.estimated_cost_usd, 5.0);
+    assert!((session.unpriced_tokens - 300.0).abs() < 1e-9);
+}
+
+#[test]
+fn ais_025_a_session_with_no_priced_token_has_no_estimate() {
+    let session = priced(stored(vec![("other", tokens(10.0, 0.0, 0.0, 0.0))]));
+    assert_eq!(session.estimated_cost_usd, None);
+    assert_eq!(priced(stored(vec![])).estimated_cost_usd, None);
+}
+
+#[test]
+fn ais_026_a_use_is_recent_up_to_30_minutes_before_the_clock_of_the_hub() {
+    let now = chrono::DateTime::parse_from_rfc3339("2026-11-20T12:00:00Z")
+        .unwrap()
+        .to_utc();
+    assert!(is_recent(now - chrono::TimeDelta::minutes(30), now));
+    assert!(!is_recent(
+        now - chrono::TimeDelta::minutes(30) - chrono::TimeDelta::seconds(1),
+        now
+    ));
 }

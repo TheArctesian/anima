@@ -4,6 +4,7 @@
 mod accounts;
 mod guard;
 mod query;
+mod sessions;
 mod storage;
 
 use axum::http::StatusCode;

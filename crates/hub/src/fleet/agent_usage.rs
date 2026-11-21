@@ -15,6 +15,7 @@ pub mod graphql;
 mod grouping;
 mod model;
 pub mod prices;
+pub mod sessions;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -23,7 +24,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use daemon_core::agent_usage::AgentUsage;
 use sqlx::{PgConnection, PgPool};
 
-pub use model::{Ask, Dimension, DimensionSet, Report};
+pub use model::{Ask, Dimension, DimensionSet, Report, Session, SessionList, StoredSession};
 
 use crate::ids::DeviceId;
 
@@ -88,6 +89,16 @@ pub async fn usage(db: &PgPool, ask: &Ask) -> Result<Report, Error> {
         total,
         states,
     })
+}
+
+/// At most `limit` sessions that `ask` admits, the newest use first, each with its sums and
+/// estimate over the days of `ask` (AIS-025), and how many it admits in all. `ask.by` is not
+/// read.
+///
+/// # Errors
+/// `Database` when a query fails; `Unreadable` for a stored source this version does not know.
+pub async fn sessions(db: &PgPool, ask: &Ask, limit: usize) -> Result<SessionList, Error> {
+    store::sessions(db, ask, limit).await
 }
 
 /// The last day of the default range: `today`, and its first day: 29 days before, so the range
