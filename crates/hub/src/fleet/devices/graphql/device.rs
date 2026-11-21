@@ -13,8 +13,8 @@ use super::{
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{
-        ChecksOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf,
-        SuggestionsOf, UptimeOf, WebInterfacesOf,
+        BatteriesOf, ChecksOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf,
+        StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf,
     },
 };
 use crate::{
@@ -28,7 +28,7 @@ use crate::{
             model::{Device, Site},
             warnings::{AccessWarning, access_warnings},
         },
-        metrics::{self, Gpu, MetricRange, MetricSeries, Readings, Storage},
+        metrics::{self, Battery, Gpu, MetricRange, MetricSeries, Readings, Storage},
         web_interfaces::{Suggestion, WebInterface},
     },
     scalars::IpAddr,
@@ -173,6 +173,16 @@ impl Device {
             .await
             .map_err(internal)?;
         Ok(gpus.unwrap_or_default())
+    }
+
+    /// The batteries that power the device, by name, as its daemon last listed them; empty for
+    /// a device with none (MET-032).
+    async fn batteries(&self, ctx: &Context<'_>) -> Result<Vec<Battery>> {
+        let batteries = schema_dependency::<DataLoader<BatteriesOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(batteries.unwrap_or_default())
     }
 
     async fn ssh(&self) -> DeviceSsh {

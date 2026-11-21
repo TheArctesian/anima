@@ -16,6 +16,7 @@
     "allow-cloud-sign-in-resume",
     "allow-cloud-hub",
     "allow-cloud-hub-access",
+    "allow-cloud-hub-usage",
     "allow-cloud-device"
   ]
 }

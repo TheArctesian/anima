@@ -7,6 +7,7 @@
 
 mod agent_usage;
 mod batch;
+mod batteries;
 mod bodies;
 mod check;
 mod inventory;
@@ -23,6 +24,7 @@ pub use agent_usage::{BatchAgentUsage, BatchModel, BatchSessionDay};
 pub use batch::{
     Announcements, Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, DriveKind, GpuVendor,
 };
+pub use batteries::{BatchBattery, BatteryState};
 pub use bodies::{
     DEVICE_NAME_CHARS, EnrolRequest, Enrolled, RenewRequest, Renewed, is_device_name,
 };

@@ -59,6 +59,12 @@ test.skipIf(process.platform === "win32")("the gates reject failed Windows build
     const ran = Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" });
     expect(ran.exitCode === 0).toBe(success);
   }
+  // A Rust job skipped because the job base said that the changes do not need it passes; any other skip fails.
+  const run = (rust: string, results: object) =>
+    Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RUST_NEEDED: rust, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" }).exitCode;
+  expect(run("false", { "rust-test": { result: "skipped" }, "rust-lint": { result: "skipped" } })).toBe(0);
+  expect(run("true", { "rust-test": { result: "skipped" } })).not.toBe(0);
+  expect(run("false", { bun: { result: "skipped" } })).not.toBe(0);
 });
 
 test("the Windows release uses the remote baseline present in a fresh checkout", () => {

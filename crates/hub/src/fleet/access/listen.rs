@@ -29,7 +29,7 @@ use serve::Serving;
 use bind::check_bind;
 pub use certificate::{Fault, TlsFiles};
 pub use health::{HealthError, check_health};
-pub use link::{LinkSocket, link_socket};
+pub use link::{LinkSocket, link_socket, own_daemon_socket};
 pub use tls::TlsListener;
 
 /// Why the hub cannot listen. Names addresses and fault kinds, never file content.
@@ -64,6 +64,17 @@ pub enum Error {
     LinkPath(PathBuf),
     #[error("cannot make the link's socket {path} ({kind})")]
     LinkSocket { path: PathBuf, kind: io::ErrorKind },
+    #[error(
+        "ANIMA_OWN_DAEMON_SOCKET={0}: its folder must be a folder of the hub's user that no \
+         other user can reach (mode 0700)"
+    )]
+    OwnDaemonFolder(PathBuf),
+    #[error(
+        "ANIMA_OWN_DAEMON_SOCKET={0} is a file that is not a socket; the hub does not replace it"
+    )]
+    OwnDaemonPath(PathBuf),
+    #[error("cannot make the socket of the hub's own daemon {path} ({kind})")]
+    OwnDaemonSocket { path: PathBuf, kind: io::ErrorKind },
     #[error("cannot listen on {addr} ({kind})")]
     Bind {
         addr: SocketAddr,
@@ -136,6 +147,7 @@ impl Listening {
             listening: self,
             edge,
             link: None,
+            own_daemon: None,
         }
     }
 }
@@ -145,6 +157,7 @@ pub struct Entrance {
     listening: Listening,
     edge: Edge,
     link: Option<LinkSocket>,
+    own_daemon: Option<LinkSocket>,
 }
 
 impl Entrance {
@@ -154,6 +167,14 @@ impl Entrance {
     #[must_use]
     pub fn with_link(self, link: Option<LinkSocket>) -> Self {
         Self { link, ..self }
+    }
+
+    /// This entrance with the socket of the hub's own daemon as a way in, in the hosted mode
+    /// (HMD-071, HM-T35). Its connections reach only the routes of K8, each as from this
+    /// computer, which is the hub's own device.
+    #[must_use]
+    pub fn with_own_daemon(self, own_daemon: Option<LinkSocket>) -> Self {
+        Self { own_daemon, ..self }
     }
 
     /// Serves `router` until `stop` resolves, with each request's TCP peer as
@@ -169,6 +190,7 @@ impl Entrance {
             listening,
             edge,
             link,
+            own_daemon,
         } = self;
         let (tcp, acceptor, _reload) = match listening {
             Listening::Plain(tcp) => (tcp, None, None),
@@ -179,6 +201,16 @@ impl Entrance {
             }) => (tcp, Some(acceptor), Some(reload)),
         };
         let serving = Serving::new(router, edge, acceptor, serve::SERVED);
-        serve::run(serve::Ways { tcp, link }, serving, stop, drain_limit).await;
+        serve::run(
+            serve::Ways {
+                tcp,
+                link,
+                own_daemon,
+            },
+            serving,
+            stop,
+            drain_limit,
+        )
+        .await;
     }
 }

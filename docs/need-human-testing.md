@@ -96,6 +96,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-NEW-threadsholder | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
 | HT-NEW-threadsdrive | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-NEW-threadsscroll | The page Threads: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -2589,6 +2590,30 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
+### HT-087: the pictures, the count line and the tag "Coming soon" on the page Extensions (EXT-001)
+
+Built on the branch `ui/extensions-tiles`, approved overnight by the orchestrator, human check pending
+(R-306): in `apps/client/src/lib/extensions/ExtensionsSection.svelte`, a tile of a built extension in the grid
+shows a picture of its page (`apps/client/static/extensions/`), one for the dark and one for the light appearance; the
+line over the rows counts the extensions that are on and the ones that are not built; an extension that is not built
+has the tag "Coming soon" where a switch would be. The gallery tool made the pictures from the sample data of the
+synthetic hub (`browser/gallery/pictures/extensions.gallery.ts`). The tests prove the count line, the tag and which extension has a
+picture. Pictures of the built page at 800 and 1440 px are in the folder `ui-overnight-2026-11-21/extensions-tiles/` of
+the workspace. No person saw it in a window of the application.
+
+1. Open "Extensions" and select "Grid", in the dark appearance.
+   Expected: the tiles "Projects" and "Integrations" show a small dark picture of their page; each other tile shows its
+   mark. No picture holds the names of your own repositories or devices.
+2. Change the appearance to light, then to "System" with a light system.
+   Expected: each picture changes to its light picture at once.
+3. Look at the line over the extensions, then set "Projects" on.
+   Expected: the line says how many are on and how many are coming, and the first number grows by one.
+4. Select "List".
+   Expected: each extension that is not built has the tag "Coming soon" at the end of its line, and its words say what
+   it will do.
+
+Result: Open.
+
 ### HT-079: the page Threads with the real sessions of this computer (R-286)
 
 Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
@@ -2679,7 +2704,8 @@ Result: Open.
 Built on the local branch `threads/runner` (tasks TH11 to TH13 of [agent-threads.md](proposals/agent-threads.md)): the
 holder and the runner in `anima-daemon`, the local socket, and the commands `anima agents start`, `send`, `approve`,
 `interrupt`, `stop`, `running` and `watch`. The tests use a made `claude`, a made `codex` and a made login shell. No real Claude Code or
-Codex was started by the runner, nothing was run on Linux, and the page of the client is not built yet.
+Codex was started by the runner and nothing was run on Linux. The page of the client (steps 8 to 11) was tested with
+a made runner only; no person saw it in a desktop window.
 
 1. Start a daemon of the build with a state folder and a label of your own (not the installed application). In a
    terminal run `anima agents start --program claude-code --folder <a test folder> "Say hello and list the files"`.
@@ -2699,6 +2725,20 @@ Codex was started by the runner, nothing was run on Linux, and the page of the c
    Expected: its runner refuses to start, with the words "a different runner holds the threads of this daemon".
 7. Run `anima agents stop <ID>`.
    Expected: the program and each child of it end.
+8. (Branch `threads/client`, task TH14.) Open the desktop application of the build, then the page Threads. Select "New
+   thread", choose Claude Code, a test folder and "Ask before each change", and type a prompt that runs a command.
+   Expected: the thread is at the top of the list and opens. The request shows with "Allow once" and "Decline". Its text
+   is plain text. "Allow once" lets the command run. Compare the page with frame 3 of
+   `docs/mockup/agent-threads/index.html` and write each difference in the record of the mockup.
+9. In the composer type two lines with Shift+Enter between them, then press Enter. While the agent works, select Stop.
+   Expected: the prompt goes as two lines; Stop ends the turn and the processes it started.
+10. Put a different application in front, and give a thread a task that ends in a request or ends its turn.
+   Expected: one system notification of this Mac with the title of the thread and "Asks to run a command" or "Your
+   turn". With the thread open in front, no notification comes. Close the window and open it again: the thread and its
+   timeline are there, and no notification comes again for an old request.
+11. Start threads until the runner refuses one.
+   Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
+   running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
 
 A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
 build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a
@@ -2739,6 +2779,26 @@ of Codex show again only when a new Codex thread starts. The limits come back wi
    Expected: "No program of this computer said its account yet": the accounts were not saved.
 5. Do steps 1 and 3 on `pop-os`.
    Expected: the same.
+### HT-NEW-threadsnotice: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+
+Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of
+`anima agents start`) and on `threads/client` (the box in the dialog "New thread"). The runner reads
+`.claude/settings.json`, `.claude/settings.local.json` and `.mcp.json` of the folder, and names the hooks with their
+commands, the MCP servers, the count of allow rules and the environment names. Claude Code runs these with no question
+in each mode. The project files of Codex are not read. The tests use made folders; no real thread was started with a
+folder that has hooks, and nothing was run on Linux.
+
+1. Make a scratch folder with `.claude/settings.json` that holds one hook, for example
+   `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch started.txt"}]}]}}`. Run
+   `anima agents start --program claude-code --folder <the folder> "Say hello"`.
+   Expected: before the thread ID, the command prints that the folder makes Claude Code run `touch started.txt` at
+   SessionStart. `anima agents watch` shows the same notice as the first line of the thread. The file `started.txt`
+   appears: the hook ran, as the operator ruled.
+2. In the application, open Threads, choose "New thread", give the same folder and a prompt, and press Start.
+   Expected: the dialog shows a box with the same lines and does not start the thread. Press Start again: the thread
+   starts, and its first line is the notice.
+3. Do step 2 with a folder that has no such files.
+   Expected: the first press of Start starts the thread, with no box.
 
 Result: Open.
 
@@ -2893,6 +2953,78 @@ window with real devices.
 Result: Open.
 
 
+### HT-085: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
+
+Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
+usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in
+`apps/desktop/src-tauri/src/cloud.rs`. The tests prove the form of [account-usage.md](../contracts/account-usage.md), each state of the
+card and the choice of the way in, with stand-in answers. No test reached the route of the site or the path of the gateway, which
+are in the private repositories, and no test read real figures of an account.
+
+1. In the desktop application, signed in to the Anima.ing account of a hosted hub, open "Devices", then the row of the hub.
+   Expected: the card "Plan and usage" shows "Data of your hub" and "Disk used of the plan" as two figures, the name of the plan,
+   the hours awake and asleep, the amount of the month with the sentence "So far this month, before tax. This is an estimate, not
+   a bill. Your invoice arrives after the month ends." (or "Nothing is charged on this plan" on a free plan), and the time of the
+   figures. The amount is the one that the account page shows.
+2. Open the hub at its address in a browser, signed in at the gateway, and open the same page.
+   Expected: the same figures.
+3. In the browser, end the session of the gateway in a second tab, then load the page again.
+   Expected: the card says to sign in to the account; the data of the hub still shows.
+4. Open the row of a device that is not the hub.
+   Expected: no card "Plan and usage".
+
+Result: Open.
+
+### HT-086: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
+
+Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,
+`crates/hub/src/fleet/access/listen/serve/own_daemon.rs`, `crates/hub/src/upkeep/hub_device.rs`,
+`crates/anima-local-hub/src/group/own_daemon.rs`, `crates/anima-local-hub/src/members/own_daemon.rs` and
+`crates/daemon/src/readers/container.rs`. The tests prove the socket, its routes, the settings, the specs of the member
+and the reader against files that a test lays out. No test ran the programs in a container of the pool, with its
+control group, its user and its folders.
+
+1. Make an image of the pool from a commit that holds this work, with `anima-daemon` built and copied into
+   `/opt/anima/bin`. Put it in a hub of the pool and start the hub.
+   Expected: `/var/lib/anima/hub/log/anima-daemon.log` exists and shows no error. `/run/anima/own-daemon.code` does
+   not exist. `/var/lib/anima/hub/daemon/token` exists, mode 0600.
+2. Open the hub in the client, go to "Devices" and open the row of the hub.
+   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The row shows the logo and the name of the
+   distribution of the image (for example Debian), and the device page offers no SSH, RDP, VNC or screen sharing; its tab Settings has no row of SSH, VNC or RDP. The memory total is that of the container
+   (1.5 GiB on the plan of the read of 2026-11-20), not that of the server. The disk shows the bytes of the hub's data
+   with no total and no percent.
+3. Restart the hub.
+   Expected: the daemon starts again with no new enrolment: the event log shows no second "enrolled" entry, and the
+   figures continue.
+4. Make an image with no `anima-daemon` and start a hub with it.
+   Expected: the hub starts and serves as before; there is no `anima-daemon.log` and no file `own-daemon.code`.
+
+Result: Open.
+
+### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+
+Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
+`/sys/class/power_supply` and of `pmset -g batt`), `crates/daemon/src/readers/linux.rs`,
+`crates/daemon/src/readers/macos.rs`, `crates/daemon/src/sampling/batteries.rs`, and in the hub the migration
+`0720_metrics_batteries.sql` and `Device.batteries`. The tests prove the rules against texts in the form of the
+kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test read the battery of a real laptop.
+
+1. On a Linux laptop that runs a daemon of this build, enrolled in a hub of this build, run
+   `cat /sys/class/power_supply/BAT*/capacity /sys/class/power_supply/BAT*/status`. Then ask the hub:
+   `query { device(id: "<id>") { batteries { name state secondsLeft healthPercent } } }`.
+   Expected: one battery for each `BAT*` folder, with the same name and the state of the `status` file. A wireless
+   mouse or keyboard is not in the list.
+2. On the same laptop, connect and disconnect the mains. Ask the hub again after 10 seconds each time.
+   Expected: the state changes to `CHARGING` (or `FULL` or `NOT_CHARGING`) and back to `DISCHARGING`.
+3. Open the chart of the device for one hour, or ask for `metrics(range: HOUR) { kind label }`.
+   Expected: a series `BATTERY_PERCENT` with the battery name as its label, with the value of `capacity`.
+4. Do steps 1 to 3 on a MacBook that runs a daemon of this build. Compare with `pmset -g batt`.
+   Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
+5. Do step 1 on a desktop computer or a server with no battery.
+   Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
@@ -3010,5 +3142,38 @@ with real projects, in a desktop window or on a phone.
    Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
 9. Do steps 1 to 4 in the light appearance and on a phone.
    Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.
+
+### HT-NEW-threadsscroll: the list and the thread scroll on their own (THR-013, THR-014)
+
+Built on the branch `threads/scroll`, in `apps/client/src/lib/agent-threads` (`ThreadsScreen.svelte`, `ThreadList.svelte`,
+`ThreadView.svelte`) and `apps/client/src/lib/scroll/room.ts`. The tests run in jsdom, which does not lay out a page: they
+prove that the thread goes to its end and that the button "Newest" comes and goes, with a made layout. They do not prove
+the heights in a real window, the scroll of the list, or the keyboard and the screen reader.
+
+1. Open the desktop application on a window wider than 960 px. Open Threads. Select a long thread.
+   Expected: the thread shows its newest part at the bottom. The page has no scroll bar of its own.
+2. Scroll the thread up and down.
+   Expected: only the thread moves. The list, its search field and the filter All / Claude Code / Codex stay in view. The
+   header of the thread (title, facts, "Usage of this folder") and the note and keys at its foot stay in view.
+3. Scroll the list.
+   Expected: only the rows move. The search field and the filter stay in view.
+4. In the thread, scroll up some way. Then wait until the program writes to the session file (use the thread in Claude
+   Code or Codex), or select the thread again.
+   Expected: a button "Newest" shows at the bottom of the thread. While the reader is up, a new entry does not move the
+   view. A click on "Newest" goes to the end, at once, with no glide.
+5. Select a different long thread.
+   Expected: it opens at its newest end.
+6. With the keyboard only: press Tab until the focus is on the thread content (a ring shows), then press the arrow keys
+   and Page Up and Page Down. Then Tab on to the rows of the list.
+   Expected: the thread scrolls with the keys; the focus leaves it with Tab; no focus is trapped.
+7. Turn on VoiceOver (Cmd+F5) and move to the thread.
+   Expected: VoiceOver says "Thread content". Turn it off again.
+8. Turn on System Settings, Accessibility, Display, Reduce motion, and do step 4 again.
+   Expected: the same: the jump to the end has no glide.
+9. Make the window narrower than 960 px, then open a session tab and close it again.
+   Expected: in the narrow window the list stands over the thread and the page scrolls as before. In the wide window
+   again, the page fills the window with no scroll bar of its own.
 
 Result: Open.

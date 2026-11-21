@@ -75,6 +75,9 @@ pub enum Action {
     /// What each program of this computer said of its account (THR-132). Only for a client of
     /// the same user: the name of an account is often an address of the person.
     Accounts,
+    /// What the project files of a folder make the program do with no question, to show before
+    /// a thread starts there (THR-046).
+    Folder { folder: PathBuf },
 }
 
 /// A frame of the runner to a client.
@@ -100,6 +103,10 @@ pub enum Outcome {
     },
     Accounts {
         accounts: Vec<AccountRow>,
+    },
+    /// The notice of a folder, as lines for the person; empty when there is nothing to say.
+    Folder {
+        notice: Vec<String>,
     },
     /// The program of a stopped thread ended; `all_ended` is false when a process below it was
     /// still there or the walk could not run (THR-049).

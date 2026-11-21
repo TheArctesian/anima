@@ -58,9 +58,10 @@ fn a_claude_turn_that_asks_gives_each_request_with_its_subject() {
     assert_eq!(asked[0], (RequestKind::Command, "touch t1.txt"));
     assert_eq!(asked[1], (RequestKind::FileChange, "/w/note.txt"));
     assert_eq!(asked[3].0, RequestKind::Question);
-    assert!(
-        !requests(&events)[0].offered.is_empty(),
-        "Claude Code offered session rules"
+    assert_eq!(
+        requests(&events)[0].session_rules,
+        ["Bash(touch t1.txt)"],
+        "only the allow rule is offered, not the folder or the mode"
     );
 }
 
@@ -88,16 +89,18 @@ fn a_claude_answer_sends_back_the_input_and_only_an_offered_rule() {
         "mkdir d10"
     );
     assert_eq!(
-        request.offered.len(),
-        1,
-        "the rule for the settings file is not offered"
+        request.session_rules,
+        ["Bash(mkdir d10 *)"],
+        "the rule that sets the mode is not offered"
     );
     let session =
         line(&ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 0 }).expect("fits"));
+    let sent = &session["response"]["response"]["updatedPermissions"][0];
     assert_eq!(
-        session["response"]["response"]["updatedPermissions"][0]["mode"],
-        "acceptEdits"
+        sent["destination"], "session",
+        "no settings file is written"
     );
+    assert_eq!(sent["rules"][0]["ruleContent"], "mkdir d10 *");
     assert!(ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 1 }).is_err());
     let choose = Answer::Choose {
         answers: vec![("Red?".into(), "Red".into())],
@@ -191,4 +194,77 @@ fn a_claude_session_is_named_again_only_when_its_id_changes() {
         })
         .collect();
     assert_eq!(ids, ["a", "b"]);
+}
+
+fn session_rules_of(suggestion: &str) -> Vec<String> {
+    let text = CLAUDE_BASH.replace(
+        r#"{"type":"setMode","mode":"acceptEdits","destination":"session"}"#,
+        suggestion,
+    );
+    one_request(claude(&text)).session_rules
+}
+
+#[test]
+fn thr_030_a_claude_session_rule_is_offered_in_words_and_sent_with_known_fields_only() {
+    let text = CLAUDE_BASH.replace(
+        r#"{"type":"setMode","mode":"acceptEdits","destination":"session"}"#,
+        r#"{"type":"addRules","rules":[{"toolName":"Bash","ruleContent":"mkdir d10 *"},{"toolName":"Edit","ruleContent":"src/**","extra":1}],"behavior":"allow","destination":"projectSettings","hooks":{"x":1}}"#,
+    );
+    let request = one_request(claude(&text));
+    assert_eq!(
+        request.session_rules,
+        ["Bash(mkdir d10 *)", "Bash(mkdir d10 *), Edit(src/**)"]
+    );
+    let session =
+        line(&ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 1 }).expect("fits"));
+    assert_eq!(
+        session["response"]["response"]["updatedPermissions"][0],
+        json!({"type": "addRules", "behavior": "allow", "destination": "session",
+               "rules": [{"toolName": "Bash", "ruleContent": "mkdir d10 *"},
+                         {"toolName": "Edit", "ruleContent": "src/**"}]})
+    );
+}
+
+#[test]
+fn thr_030_a_rule_for_every_use_of_a_tool_or_for_the_settings_is_not_offered() {
+    let refused = [
+        r#"{"type":"addRules","rules":[{"toolName":"Bash"}],"behavior":"allow","destination":"session"}"#,
+        r#"{"type":"addRules","rules":[{"toolName":"Edit","ruleContent":"**"}],"behavior":"allow","destination":"session"}"#,
+        r#"{"type":"addRules","rules":[{"toolName":"Write","ruleContent":"/w/.claude/settings.local.json"}],"behavior":"allow","destination":"session"}"#,
+        r#"{"type":"addRules","rules":[{"toolName":"Bash","ruleContent":"ls"}],"behavior":"deny","destination":"session"}"#,
+        r#"{"type":"addDirectories","directories":["/"],"destination":"session"}"#,
+    ];
+    for suggestion in refused {
+        assert_eq!(
+            session_rules_of(suggestion),
+            ["Bash(mkdir d10 *)"],
+            "{suggestion}"
+        );
+    }
+    let long = format!(
+        r#"{{"type":"addRules","rules":[{{"toolName":"Bash","ruleContent":"{}"}}],"behavior":"allow","destination":"session"}}"#,
+        "a".repeat(2000)
+    );
+    assert_eq!(
+        session_rules_of(&long),
+        ["Bash(mkdir d10 *)"],
+        "a rule is offered whole or not at all"
+    );
+}
+
+#[test]
+fn thr_125_a_claude_file_change_shows_its_lines_and_no_hidden_marks() {
+    let edit = r#"{"type":"control_request","request_id":"e1","request":{"subtype":"can_use_tool","tool_name":"Edit","input":{"file_path":"/w/a\u202e.txt","old_string":"one\u0007","new_string":"two\nthree"},"tool_use_id":"toolu_03"}}"#;
+    let request = one_request(claude(edit));
+    assert_eq!(request.subject, "/w/a.txt");
+    assert_eq!(request.diff.as_deref(), Some("- one\n+ two\n+ three"));
+    let write = r#"{"type":"control_request","request_id":"e2","request":{"subtype":"can_use_tool","tool_name":"Write","input":{"file_path":"/w/b.txt","content":"new"},"tool_use_id":"toolu_04"}}"#;
+    assert_eq!(one_request(claude(write)).diff.as_deref(), Some("+ new"));
+    let every = edit.replace(r#""new_string""#, r#""replace_all":true,"new_string""#);
+    assert!(
+        one_request(claude(&every))
+            .diff
+            .is_some_and(|diff| diff.ends_with("(each place in the file)"))
+    );
+    assert_eq!(one_request(claude(CLAUDE_BASH)).diff, None);
 }

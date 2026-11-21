@@ -5,7 +5,7 @@ use std::time::Duration;
 use super::*;
 use crate::{
     points::samples,
-    readings::{captures::*, df, drives, linux, macos},
+    readings::{batteries::pmset, captures::*, df, drives, linux, macos},
 };
 
 pub const THIRTY: Duration = Duration::from_secs(30);
@@ -20,6 +20,8 @@ pub fn linux_reading() -> Reading {
         interfaces: linux::interfaces(PROC_NET_DEV),
         drives: drives::drives(LSBLK_POP_OS),
         drive_counters: linux::drive_counters(PROC_DISKSTATS),
+        hub_storage: None,
+        batteries: None,
     }
 }
 
@@ -238,6 +240,8 @@ fn met_002_a_wholly_unreadable_device_gives_no_samples() {
         interfaces: linux::interfaces(b"nothing here"),
         drives: drives::drives(b"{"),
         drive_counters: linux::drive_counters(b"8 0 sda x\n"),
+        hub_storage: None,
+        batteries: pmset(b""),
     };
     assert_eq!(reading, Reading::default());
     assert_eq!(samples(Some(&reading), &reading, THIRTY).len(), 0);
@@ -277,5 +281,26 @@ fn met_002_an_apfs_volume_shows_used_over_used_plus_available_as_df_and_macos_do
     assert_close(
         value(&out, Kind::DiskPercent, "/System/Volumes/Data").unwrap(),
         80.0,
+    );
+}
+
+#[test]
+fn met_032_each_battery_with_a_charge_gives_one_battery_percent_labelled_with_its_name() {
+    let text = b"Now drawing from 'Battery Power'\n \
+-InternalBattery-0 (id=1)\t85%; discharging; 4:12 remaining present: true\n";
+    let mut found = pmset(text).unwrap();
+    let mut second = found[0].clone();
+    second.name = "InternalBattery-1".to_owned();
+    second.percent = None;
+    found.push(second);
+    let reading = Reading {
+        batteries: Some(found),
+        ..Reading::default()
+    };
+    let out = samples(None, &reading, THIRTY);
+    assert_eq!(count(&out, Kind::BatteryPercent), 1, "no charge, no sample");
+    assert_close(
+        value(&out, Kind::BatteryPercent, "InternalBattery-0").unwrap(),
+        85.0,
     );
 }

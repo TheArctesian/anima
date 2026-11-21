@@ -1,0 +1,10 @@
+# Dawarich. The install makes each secret; this file holds none.
+# The password of the PostgreSQL user of Dawarich.
+# generated at install
+DATABASE_PASSWORD=
+# The key that signs the sessions of Rails.
+# generated at install
+SECRET_KEY_BASE=
+# The host names that Dawarich answers, separated by commas.
+APPLICATION_HOSTS=localhost
+TIME_ZONE=UTC

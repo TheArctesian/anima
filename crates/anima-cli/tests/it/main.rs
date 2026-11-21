@@ -6,6 +6,7 @@
 //! runs the same program against the real hub instead of the scripted one.
 
 mod basics;
+mod catalogue;
 mod containers;
 mod coverage;
 mod end_to_end;

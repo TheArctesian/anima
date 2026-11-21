@@ -1,5 +1,5 @@
 // The extensions of the synthetic hub: one that can be set on, the fixed one, and some that are not built (EXT-001).
-// Nothing here is on but the fixed one, so the bar of the other screens is as it was.
+// Nothing here is on but the fixed one, unless a screen sets more on, so the bar of the other screens is as it was.
 
 interface ExtensionRow {
   readonly key: string;
@@ -20,6 +20,6 @@ const ROWS: readonly ExtensionRow[] = [
   { key: 'history', name: 'History', built: false, fixed: false },
 ];
 
-export function extensionRows(): readonly Record<string, unknown>[] {
-  return ROWS.map((row) => ({ ...row, dataClass: 'A', on: row.fixed, needs: [], worksWith: [], neededBy: [], navigation: null, changedAt: null }));
+export function extensionRows(on: readonly string[] = []): readonly Record<string, unknown>[] {
+  return ROWS.map((row) => ({ ...row, dataClass: 'A', on: row.fixed || on.includes(row.key), needs: [], worksWith: [], neededBy: [], navigation: null, changedAt: null }));
 }

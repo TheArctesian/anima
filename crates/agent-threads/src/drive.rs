@@ -19,6 +19,7 @@ mod codex_in;
 mod codex_out;
 mod launch;
 mod request;
+mod session_rule;
 #[cfg(test)]
 mod tests;
 

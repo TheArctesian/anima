@@ -6,8 +6,8 @@ use uuid::Uuid;
 use super::{Accepted, Announcements, Batch, RefusalCode};
 
 mod agent_usage;
+mod announcements;
 mod bodies;
-mod drives;
 mod inventory;
 mod keys;
 mod range;

@@ -1,0 +1,7 @@
+mutation CatalogueInstallAsk($entryId: String!, $deviceId: ID!) {
+  installCatalogueEntry(entryId: $entryId, deviceId: $deviceId) {
+    refusal
+    reason
+    needsOpenToNetwork
+  }
+}

@@ -53,6 +53,14 @@ impl Runner {
             Action::Accounts => Outcome::Accounts {
                 accounts: self.accounts.rows(),
             },
+            Action::Folder { folder } => {
+                match super::start::chosen_folder(&folder, self.dir.parent().unwrap_or(&self.dir)) {
+                    Ok(real) => Outcome::Folder {
+                        notice: crate::threads::notice::of_folder(&real),
+                    },
+                    Err(why) => Outcome::Refused { why },
+                }
+            }
             Action::RaiseLimit => {
                 self.limits = self.limits.raised();
                 self.save();
