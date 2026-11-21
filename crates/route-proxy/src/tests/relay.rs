@@ -6,8 +6,16 @@ use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _, duplex};
 
 use crate::{
     head::Rewritten,
-    relay::{Idle, relay, status},
+    relay::{Body, Idle, relay, status},
 };
+
+/// A body with the bytes that came with the head and an hour to come.
+fn body(early: &[u8]) -> Body<'_> {
+    Body {
+        early,
+        by: tokio::time::Instant::now() + Duration::from_secs(3600),
+    }
+}
 
 fn upgrade() -> Rewritten {
     Rewritten {
@@ -46,7 +54,7 @@ async fn the_body_goes_as_its_length_says_and_no_byte_more() {
         drop(app_side);
         seen
     });
-    let relayed = relay(&mut client_side, b"hel", &mut app, &request(5))
+    let relayed = relay(&mut client_side, body(b"hel"), &mut app, &request(5))
         .await
         .unwrap();
     let seen = application.await.unwrap();
@@ -83,7 +91,7 @@ async fn an_upgrade_goes_both_ways_only_after_a_101() {
         frame
     });
     let relaying = tokio::spawn(async move {
-        relay(&mut client_side, b"", &mut app, &upgrade())
+        relay(&mut client_side, body(b""), &mut app, &upgrade())
             .await
             .unwrap()
     });
@@ -119,7 +127,7 @@ async fn an_upgrade_that_the_application_refuses_is_a_plain_answer() {
         .write_all(b"GET /secret HTTP/1.1\r\nhost: a\r\n\r\n")
         .await
         .unwrap();
-    let relayed = relay(&mut client_side, b"", &mut app, &upgrade())
+    let relayed = relay(&mut client_side, body(b""), &mut app, &upgrade())
         .await
         .unwrap();
     assert_eq!(relayed.status, Some(200));
@@ -159,4 +167,29 @@ async fn each_byte_starts_the_idle_time_again() {
         idle.read_exact(&mut buffer).await.unwrap();
     }
     writer.await.unwrap();
+}
+
+#[tokio::test]
+async fn a_body_that_comes_one_byte_at_a_time_ends_at_the_deadline_of_its_request() {
+    let (mut client, mut client_side) = duplex(4096);
+    let (mut app, _app_side) = duplex(4096);
+    let dripping = tokio::spawn(async move {
+        for _ in 0..50 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            if client.write_all(b"x").await.is_err() {
+                break;
+            }
+        }
+    });
+    let by = tokio::time::Instant::now() + Duration::from_millis(150);
+    let mut idle = Idle::new(&mut client_side, Duration::from_millis(100));
+    let error = relay(&mut idle, Body { early: b"", by }, &mut app, &request(1000))
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.kind(),
+        std::io::ErrorKind::TimedOut,
+        "each byte came within the idle time, but the request had its deadline"
+    );
+    dripping.abort();
 }

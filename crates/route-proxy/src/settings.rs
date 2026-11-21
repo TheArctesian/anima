@@ -2,7 +2,12 @@
 //! `ANIMA_ROUTE_PROXY_LISTEN` is set: off by default, so no deploy opens a public listener by
 //! accident.
 
-use std::{collections::BTreeMap, net::SocketAddr, path::PathBuf, time::Duration};
+use std::{
+    collections::BTreeMap,
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+    time::Duration,
+};
 
 use crate::limits::{Caps, Limits, Timeouts};
 
@@ -10,16 +15,20 @@ const HUB_SOCKET: &str = "ANIMA_ROUTE_PROXY_HUB_SOCKET";
 const LISTEN: &str = "ANIMA_ROUTE_PROXY_LISTEN";
 const LISTEN_PLAIN: &str = "ANIMA_ROUTE_PROXY_LISTEN_PLAIN";
 const DOOR: &str = "ANIMA_ROUTE_PROXY_DOOR";
+const DOOR_ADDRESSES: &str = "ANIMA_ROUTE_PROXY_DOOR_ADDRESSES";
 const CONNECTIONS: &str = "ANIMA_ROUTE_PROXY_CONNECTIONS";
 const NEW_PER_SECOND: &str = "ANIMA_ROUTE_PROXY_NEW_PER_SECOND";
 const BYTES_PER_DAY: &str = "ANIMA_ROUTE_PROXY_BYTES_PER_DAY";
 const HANDSHAKE_SECONDS: &str = "ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS";
 const HEAD_SECONDS: &str = "ANIMA_ROUTE_PROXY_HEAD_SECONDS";
+const REQUEST_SECONDS: &str = "ANIMA_ROUTE_PROXY_REQUEST_SECONDS";
 const IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_IDLE_SECONDS";
 const OPEN_TOTAL: &str = "ANIMA_ROUTE_PROXY_OPEN_TOTAL";
 const OPEN_PER_CLIENT: &str = "ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT";
 const OPEN_PLAIN: &str = "ANIMA_ROUTE_PROXY_OPEN_PLAIN";
 const DAY_MS: u64 = 24 * 60 * 60 * 1000;
+/// The default cap of one client network: below the 32 streams of one link of the hub.
+const PER_CLIENT: u32 = 8;
 
 /// What the proxy runs with.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,6 +40,9 @@ pub struct Settings {
     pub listen_plain: Option<SocketAddr>,
     /// The connections come from the door with a PROXY header. Never on a self-hosted hub.
     pub door: bool,
+    /// The addresses of the door: the only peers whose PROXY header is read. Empty: each
+    /// connection in door mode is closed (SF-NEW-revroutelimits).
+    pub door_addresses: Vec<IpAddr>,
     pub limits: Limits,
     pub timeouts: Timeouts,
     /// The connections of the TLS listener before the name is known.
@@ -66,6 +78,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
         listen,
         listen_plain: read(env, LISTEN_PLAIN)?,
         door: read::<bool>(env, DOOR)?.unwrap_or(false),
+        door_addresses: addresses(env, DOOR_ADDRESSES)?,
         limits: Limits {
             connections: read(env, CONNECTIONS)?.unwrap_or(64),
             new_per_second: read(env, NEW_PER_SECOND)?.unwrap_or(20),
@@ -75,16 +88,17 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
         timeouts: timeouts(env)?,
         tls_caps: Caps {
             total: positive(env, OPEN_TOTAL)?.unwrap_or(1024),
-            per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(32),
+            per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(PER_CLIENT),
         },
         plain_caps: Caps {
             total: positive(env, OPEN_PLAIN)?.unwrap_or(256),
-            per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(32),
+            per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(PER_CLIENT),
         },
     }))
 }
 
-/// The timeouts: 10 s for the handshake and the head, 300 s with no byte by default.
+/// The timeouts: 10 s for the handshake and the head, 60 s for a whole request, 300 s with no
+/// byte by default.
 fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
     let default = Timeouts::default();
     let seconds = |name, default: Duration| {
@@ -93,7 +107,22 @@ fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
     Ok(Timeouts {
         handshake: seconds(HANDSHAKE_SECONDS, default.handshake)?,
         head: seconds(HEAD_SECONDS, default.head)?,
+        request: seconds(REQUEST_SECONDS, default.request)?,
         idle: seconds(IDLE_SECONDS, default.idle)?,
+    })
+}
+
+/// A comma-separated list of addresses; empty when it is not set.
+fn addresses(
+    env: &BTreeMap<String, String>,
+    name: &'static str,
+) -> Result<Vec<IpAddr>, SettingsError> {
+    env.get(name).map_or(Ok(Vec::new()), |text| {
+        text.split(',')
+            .map(str::trim)
+            .filter(|part| !part.is_empty())
+            .map(|part| part.parse().map_err(|_| SettingsError::Invalid(name)))
+            .collect()
     })
 }
 

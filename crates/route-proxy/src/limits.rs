@@ -1,12 +1,13 @@
 //! The limits of the proxy. Before a name is known: the connections open in all and for each
-//! client address, and the times that a connection may take (SF-NEW-revroutelimits). For each
+//! client network (a /64 of IPv6, an address of IPv4), and the times that a connection and a
+//! request may take (SF-NEW-revroutelimits). For each
 //! name (Section 12.7): connections at one time, new connections each second, and bytes in each
 //! period. The numbers are parameters: the operator decides them with the prices (OD-HOST-40).
 //! Time is a parameter too, in milliseconds from any fixed start. No I/O.
 
 use std::{
     collections::HashMap,
-    net::IpAddr,
+    net::{IpAddr, Ipv6Addr},
     sync::{Arc, Mutex, PoisonError},
     time::Duration,
 };
@@ -18,6 +19,9 @@ pub struct Timeouts {
     pub handshake: Duration,
     /// For the whole head of a request.
     pub head: Duration,
+    /// For the head and the body of a request together, from the first byte of the head: a
+    /// client that sends one byte before each idle time ends cannot hold a stream for longer.
+    pub request: Duration,
     /// With no byte in either direction on one stream.
     pub idle: Duration,
 }
@@ -27,6 +31,7 @@ impl Default for Timeouts {
         Self {
             handshake: Duration::from_secs(10),
             head: Duration::from_secs(10),
+            request: Duration::from_secs(60),
             idle: Duration::from_secs(300),
         }
     }
@@ -37,11 +42,25 @@ impl Default for Timeouts {
 pub struct Caps {
     /// In all.
     pub total: u32,
-    /// For each client address.
+    /// For each client network ([`client_key`]). Below the streams of one link of the hub
+    /// (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32), so one client cannot hold each stream of a device.
     pub per_client: u32,
 }
 
-/// The connections open now on one listener, in all and for each client address.
+/// The key of a client for its cap: the /64 of an IPv6 address, which one host gets for itself,
+/// and the whole address of IPv4 (/32). An IPv4 address in IPv6 form is IPv4.
+#[must_use]
+pub fn client_key(client: IpAddr) -> IpAddr {
+    match client.to_canonical() {
+        IpAddr::V6(address) => {
+            let network = u128::from(address) & !((1_u128 << 64) - 1);
+            IpAddr::V6(Ipv6Addr::from(network))
+        }
+        v4 @ IpAddr::V4(_) => v4,
+    }
+}
+
+/// The connections open now on one listener, in all and for each client network.
 #[derive(Debug)]
 pub struct Gate {
     caps: Caps,
@@ -73,9 +92,9 @@ impl Gate {
         self.total = self.total.saturating_sub(1);
     }
 
-    /// Admits one more connection of `client`; `false` at its cap.
+    /// Admits one more connection of `client`; `false` at the cap of its network.
     pub fn enter_client(&mut self, client: IpAddr) -> bool {
-        let open = self.clients.entry(client).or_default();
+        let open = self.clients.entry(client_key(client)).or_default();
         if *open >= self.caps.per_client {
             return false;
         }
@@ -85,10 +104,11 @@ impl Gate {
 
     /// A connection that [`Gate::enter_client`] admitted ended.
     pub fn leave_client(&mut self, client: IpAddr) {
-        if let Some(open) = self.clients.get_mut(&client) {
+        let key = client_key(client);
+        if let Some(open) = self.clients.get_mut(&key) {
             *open = open.saturating_sub(1);
             if *open == 0 {
-                self.clients.remove(&client);
+                self.clients.remove(&key);
             }
         }
     }

@@ -2,7 +2,7 @@
 
 use std::net::IpAddr;
 
-use crate::limits::{Caps, Gate, Limiter, Limits, Refusal};
+use crate::limits::{Caps, Gate, Limiter, Limits, Refusal, client_key};
 
 const LIMITS: Limits = Limits {
     connections: 2,
@@ -70,4 +70,37 @@ fn a_listener_caps_its_connections_in_all_and_for_each_client() {
     gate.leave();
     gate.leave_client(one);
     assert!(gate.enter() && gate.enter_client(one));
+}
+
+#[test]
+fn a_client_is_its_64_of_ipv6_and_its_address_of_ipv4() {
+    let one: IpAddr = "2001:db8:1:2:aaaa::1".parse().unwrap();
+    let two: IpAddr = "2001:db8:1:2:bbbb::9".parse().unwrap();
+    let other: IpAddr = "2001:db8:1:3::1".parse().unwrap();
+    assert_eq!(client_key(one), client_key(two));
+    assert_ne!(client_key(one), client_key(other));
+    let v4: IpAddr = "198.51.100.7".parse().unwrap();
+    assert_eq!(client_key(v4), v4);
+    let mapped: IpAddr = "::ffff:198.51.100.7".parse().unwrap();
+    assert_eq!(client_key(mapped), v4, "an IPv4 address in IPv6 form is IPv4");
+}
+
+#[test]
+fn the_addresses_of_one_64_share_the_cap_of_one_client() {
+    let mut gate = Gate::new(Caps {
+        total: 100,
+        per_client: 2,
+    });
+    let addresses: Vec<IpAddr> = ["2001:db8::1", "2001:db8::2", "2001:db8::3"]
+        .iter()
+        .map(|text| text.parse().unwrap())
+        .collect();
+    assert!(gate.enter_client(addresses[0]));
+    assert!(gate.enter_client(addresses[1]));
+    assert!(
+        !gate.enter_client(addresses[2]),
+        "a new address in the same /64 is the same client"
+    );
+    gate.leave_client(addresses[0]);
+    assert!(gate.enter_client(addresses[2]));
 }

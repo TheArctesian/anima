@@ -1,7 +1,8 @@
 //! The listeners of the proxy: TLS for the names that serve, and plain HTTP for the ACME
 //! challenge and the redirect (Section 12.2 and 12.3). Each listener caps its connections in all
-//! and for each client before the TLS handshake, and each step has a time limit
-//! (SF-NEW-revroutelimits). Each connection is counted and limited for its name. The log has only the name, the bytes, the status and the time: never a path, a
+//! and for each client network before the TLS handshake, each step has a time limit, a request
+//! has one deadline for its head and its body, and in door mode only the door's addresses may
+//! send a PROXY header (SF-NEW-revroutelimits). Each connection is counted and limited for its name. The log has only the name, the bytes, the status and the time: never a path, a
 //! query, a header or a cookie (LOG-007, SF-NEW-routeheaders). I/O edge.
 
 use std::{
@@ -26,7 +27,7 @@ use crate::{
     hub::Hub,
     limits::{Gate, Limiter, Pass, Timeouts},
     plain,
-    relay::{Idle, relay},
+    relay::{Body, Idle, relay},
     settings::Settings,
     tls,
     wire::Counts,
@@ -44,6 +45,8 @@ pub struct Proxy<H: Hub> {
     hub: H,
     /// Whether each connection comes from the door with a PROXY header.
     door: bool,
+    /// The peers whose PROXY header is read in door mode.
+    door_addresses: Vec<IpAddr>,
     tls: RwLock<Arc<ServerConfig>>,
     names: RwLock<HashMap<String, Uuid>>,
     challenges: RwLock<HashMap<String, String>>,
@@ -65,6 +68,7 @@ impl<H: Hub> Proxy<H> {
         Ok(Self {
             hub,
             door: settings.door,
+            door_addresses: settings.door_addresses.clone(),
             tls: RwLock::new(config),
             names: RwLock::default(),
             challenges: RwLock::default(),
@@ -184,10 +188,14 @@ async fn one_plain<H: Hub>(proxy: &Proxy<H>, mut stream: TcpStream, peer: IpAddr
 }
 
 /// The client of a connection: from the PROXY header of the door within the handshake time,
-/// or the peer; `None` closes the connection.
+/// or the peer; `None` closes the connection. In door mode a peer that is not an address of the
+/// door is closed before a byte is read.
 async fn client<H: Hub>(proxy: &Proxy<H>, stream: &mut TcpStream, peer: IpAddr) -> Option<IpAddr> {
     if !proxy.door {
         return Some(peer);
+    }
+    if !door_header::from_door(peer, &proxy.door_addresses) {
+        return None;
     }
     timeout(proxy.timeouts.handshake, client_of_door(stream))
         .await
@@ -249,6 +257,7 @@ async fn request<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     (name, application): (&str, Uuid),
     client: IpAddr,
 ) -> Option<u16> {
+    let by = tokio::time::Instant::now() + proxy.timeouts.request;
     let (rewritten, early) = match read_request(proxy.timeouts.head, tls, name, client).await {
         Ok(read) => read,
         Err(status) => {
@@ -261,7 +270,8 @@ async fn request<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
         return Some(502);
     };
     let mut app = Idle::new(app, proxy.timeouts.idle);
-    let relayed = relay(tls, &early, &mut app, &rewritten).await.ok()?;
+    let body = Body { early: &early, by };
+    let relayed = relay(tls, body, &mut app, &rewritten).await.ok()?;
     proxy.add(name, |counts| {
         counts.requests += 1;
         counts.bytes_in += relayed.bytes_in;

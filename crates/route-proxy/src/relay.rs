@@ -1,8 +1,10 @@
 //! One request from the client to the application and its answer back (Section 12.3). The head
 //! is the one that [`crate::head::rewrite`] wrote; the body goes as its `Content-Length` says and
 //! no byte more, so a second request on the same connection never reaches the application
-//! unread. A WebSocket upgrade goes both ways as it is after the application's `101`. Each
-//! stream can end after a time with no byte ([`Idle`]). Nothing here reads or logs a body.
+//! unread. The body must come before the deadline of its request ([`Body::by`]), so a client that
+//! sends one byte at a time cannot hold the stream. A WebSocket upgrade goes both ways as it is
+//! after the application's `101`. Each stream can end after a time with no byte ([`Idle`]).
+//! Nothing here reads or logs a body.
 
 use std::{
     future::Future as _,
@@ -17,7 +19,7 @@ use tokio::{
         AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _, ReadBuf, copy,
         copy_bidirectional,
     },
-    time::{Instant, Sleep, sleep},
+    time::{Instant, Sleep, sleep, timeout_at},
 };
 
 use crate::head::Rewritten;
@@ -37,16 +39,25 @@ pub struct Relayed {
     pub status: Option<u16>,
 }
 
-/// Sends the request to `app` and its answer to `client`. `early` holds the bytes of the body
-/// that came with the head. A WebSocket upgrade goes both ways only when the application
-/// answers `101`; any other answer goes back as a plain one and the connection ends
-/// (SF-NEW-revrouteupgrade).
+/// The body of a request as the relay gets it.
+#[derive(Clone, Copy, Debug)]
+pub struct Body<'a> {
+    /// The bytes of the body that came with the head.
+    pub early: &'a [u8],
+    /// The time by which the whole body must have come (SF-NEW-revroutelimits).
+    pub by: Instant,
+}
+
+/// Sends the request to `app` and its answer to `client`. A WebSocket upgrade goes both ways
+/// only when the application answers `101`; any other answer goes back as a plain one and the
+/// connection ends (SF-NEW-revrouteupgrade).
 ///
 /// # Errors
-/// An I/O error of either side.
+/// An I/O error of either side; [`io::ErrorKind::TimedOut`] when the body is not all there by
+/// [`Body::by`].
 pub async fn relay<C, A>(
     client: &mut C,
-    early: &[u8],
+    body: Body<'_>,
     app: &mut A,
     request: &Rewritten,
 ) -> io::Result<Relayed>
@@ -59,13 +70,16 @@ where
         bytes_in: request.head.len() as u64,
         ..Relayed::default()
     };
+    let early = body.early;
     if !request.upgrade {
         let first = early
             .len()
             .min(usize::try_from(request.body).unwrap_or(usize::MAX));
         app.write_all(&early[..first]).await?;
         let rest = request.body - first as u64;
-        let sent = copy(&mut (&mut *client).take(rest), app).await?;
+        let sent = timeout_at(body.by, copy(&mut (&mut *client).take(rest), app))
+            .await
+            .map_err(|_| io::Error::from(io::ErrorKind::TimedOut))??;
         if sent < rest {
             return Err(io::ErrorKind::UnexpectedEof.into());
         }

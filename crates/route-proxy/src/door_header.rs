@@ -1,7 +1,8 @@
 //! The PROXY protocol header (version 1) that the door of the cloud service puts before each
 //! connection, with the address of the client (Section 12.2). The proxy reads it only when its
 //! setting says that the connections come from the door; on a hub that a person hosts it never
-//! reads it, so a client cannot claim an address (SF-NEW-routeheaders). Pure.
+//! reads it, so a client cannot claim an address (SF-NEW-routeheaders). In door mode it reads it
+//! only from a peer that is an address of the door (SF-NEW-revroutelimits). Pure.
 
 use std::net::IpAddr;
 
@@ -21,4 +22,12 @@ pub fn client(line: &str) -> Option<IpAddr> {
         ("TCP4", IpAddr::V4(_)) | ("TCP6", IpAddr::V6(_)) => Some(address),
         _ => None,
     }
+}
+
+/// Whether `peer` is one of the addresses of the door, the only peers whose header is read. No
+/// address: no peer.
+#[must_use]
+pub fn from_door(peer: IpAddr, doors: &[IpAddr]) -> bool {
+    let peer = peer.to_canonical();
+    doors.iter().any(|door| door.to_canonical() == peer)
 }

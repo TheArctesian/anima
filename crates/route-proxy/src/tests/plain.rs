@@ -52,3 +52,22 @@ fn the_proxy_header_gives_the_client_only_in_its_own_form() {
     assert_eq!(door_header::client("PROXY TCP6 198.51.100.7 x 1 2"), None);
     assert_eq!(door_header::client("GET / HTTP/1.1"), None);
 }
+
+#[test]
+fn only_an_address_of_the_door_may_send_a_proxy_header() {
+    let door: std::net::IpAddr = "10.0.0.5".parse().unwrap();
+    let client: std::net::IpAddr = "198.51.100.7".parse().unwrap();
+    assert!(door_header::from_door(door, &[door]));
+    assert!(door_header::from_door(
+        "::ffff:10.0.0.5".parse().unwrap(),
+        &[door]
+    ));
+    assert!(
+        !door_header::from_door(client, &[door]),
+        "a client cannot claim the address of a different client"
+    );
+    assert!(
+        !door_header::from_door(door, &[]),
+        "with no address of the door, no peer is the door"
+    );
+}
