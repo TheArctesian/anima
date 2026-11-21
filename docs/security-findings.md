@@ -3059,6 +3059,90 @@ The correction: None now (no new power). The sandbox design must hide `/sys/fs/c
 
 State: Open (Note). Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
 
+### SF-NEW-l1workw1: Writing the record of a tree could wait on a FIFO or truncate a hard-linked file. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `Record::save` opened `tree.json` without `O_NONBLOCK`, so a FIFO stalled the supervising thread, and with truncate, so a hard link at that name truncated a different file.
+
+The correction: The record is written to a new temporary name (`O_CREAT|O_EXCL|O_NOFOLLOW|O_NONBLOCK`, mode 0600) and renamed over `tree.json`. Test: `a_record_is_written_in_place_of_a_link_or_a_fifo_and_never_through_one`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-NEW-l1workw2: The sweep removed a record through a server folder that is a link. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: The sweep called `remove_file` on `servers/<entry>/tree.json`, which follows `<entry>` when it is a link.
+
+The correction: The sweep opens each entry with `O_NOFOLLOW|O_DIRECTORY` and reads and removes the record through that one handle (`unlinkat`). Test: `a_server_folder_that_is_a_link_is_neither_read_nor_emptied`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-NEW-l1workw3: The test of a linked record did not check that the named file survives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/tests/it/model_work/tree.rs`.
+
+What it is: `a_record_that_is_a_link_is_not_swept` did not assert that the file the link names still exists, and no case covered a linked server folder.
+
+The correction: The test asserts that the file survives, and a new test covers a server folder that is a link to a folder with a record.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-NEW-l1workw4: The tests of the size caps did not reach the read limit or the real caps. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/tests/it/model_work/tree.rs`.
+
+What it is: No case read exactly the cap, a linked folder, or one byte over the real 4 KiB and 64 KiB caps, and the FIFO case had no time limit.
+
+The correction: Cases at exactly the cap and with a linked folder; the real caps through `launch_failure` (4096 and 4097 bytes) and through the sweep (65536 and 65537 bytes); the FIFO cases wait at most 5 seconds. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `records_and_failure_files_over_their_real_caps_are_refused`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-NEW-l1workw5: The documentation of `read_capped` claimed more than `O_NOFOLLOW` gives. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `O_NOFOLLOW` checks the last part of a path only.
+
+The correction: The comment says so: the parent folders are trusted because the daemon made them with `folders::private_below`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-NEW-l1workw6: A device node is opened before `fstat` refuses it. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `read_capped` opens the file (with `O_NONBLOCK`) before it can see that it is a device; the open of some devices has effects.
+
+The correction: None now; the comment records it. With the sandbox the runtime cannot place a device node in the state folder.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-NEW-l1workw7: The launcher wrote its failure file through a link. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The launcher wrote `launch-failure` with `std::fs::write`, which follows a link and truncates an existing file.
+
+The correction: The launcher creates it as a new file only (`O_CREAT|O_EXCL`, `O_NOFOLLOW`, `O_NONBLOCK`, mode 0600); the daemon removes it before each start. Linux code, not compiled on the Mac.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
 ### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.

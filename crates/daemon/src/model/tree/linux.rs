@@ -182,8 +182,23 @@ fn hide_cgroups() -> io::Result<()> {
 /// Writes the exit code of the failed launcher step `step` to the file `failure`, then exits
 /// with it.
 fn fail(failure: &str, step: Containment) -> ! {
+    use std::io::Write as _;
+    use std::os::unix::fs::OpenOptionsExt as _;
     let code = step.exit_code().unwrap_or(1);
-    let _ = std::fs::write(failure, code.to_string());
+    // A new file only (the daemon removes it before each start), no link, no wait on a FIFO.
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .custom_flags(
+            (rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK)
+                .bits()
+                .cast_signed(),
+        )
+        .open(failure);
+    if let Ok(mut file) = file {
+        let _ = file.write_all(code.to_string().as_bytes());
+    }
     std::process::exit(code);
 }
 
