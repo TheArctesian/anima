@@ -2757,6 +2757,34 @@ to 11 were not tried.
 
 Result: Open.
 
+### HT-102: the account, the plan and the limits of Claude Code and Codex stay on this computer (THR-051, THR-132)
+
+Built on the branch `threads/accounts`, on top of `threads/runner` (version 3.1 of
+[agent-threads.md](proposals/agent-threads.md)). The two adapters read what each program says about its account. Codex
+gives the name, the plan and the limits (`account/read`, `account/rateLimits/read` and its notices). Claude Code gives
+only its limits (`rate_limit_event`). The runner keeps the newest report of each program in memory only. It does not
+save it, log it, put it in an update of a thread, notify with it or send it to the hub. The command
+`anima agents accounts` shows it to the person on this computer. No token field is read, and Codex keeps its tokens in
+its own store. The tests use made lines. The field names of Claude Code were measured on 2026-11-21 with 2.1.311,
+without the values. The answer of a real Codex to `account/read` was not tried, nothing was run on Linux, and the page
+of the client does not show the account yet. A known limit: the runner asks Codex for its account when a Codex thread
+starts. After a restart of the daemon, a Codex thread that the holder kept is not asked again, so the name and the plan
+of Codex show again only when a new Codex thread starts. The limits come back with the next notice of Codex.
+
+1. Start a daemon of the build with a state folder and a label of your own. Start one Codex thread and one Claude Code
+   thread (`anima agents start`, as in the check of the runner). When each has replied, run `anima agents accounts`.
+   Expected: Codex shows your ChatGPT account, your plan and two limits with their reset times. Claude Code shows
+   "Account not known" and its limits (for example `seven_day 46%`).
+2. Compare the limits with the usage page of each vendor.
+   Expected: the percentages are the same, within the time between the two reads.
+3. Search the log of the runner (`runner.log` in the folder of the threads) and the log of the daemon for your address.
+   Run `anima agents watch` during a turn and look for your address there too.
+   Expected: your address is in none of them.
+4. Stop the daemon and start it again. Run `anima agents accounts` before any thread replies.
+   Expected: "No program of this computer said its account yet": the accounts were not saved.
+5. Do steps 1 and 3 on `pop-os`.
+   Expected: the same.
+### HT-103: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
 ### HT-099: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
 
 Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of

@@ -7,6 +7,7 @@
 //! (the loop and the holder), [`holder_events`], [`calls`] (the calls of the clients),
 //! [`socket`], [`login`], [`record`] and [`log`].
 
+mod accounts;
 mod calls;
 pub mod codex;
 mod holder_events;
@@ -105,6 +106,8 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// What the programs said of their accounts: in memory only (THR-051).
+    accounts: accounts::Accounts,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -160,6 +163,7 @@ pub async fn run(
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        accounts: accounts::Accounts::default(),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -269,6 +273,13 @@ impl Runner {
                 }
                 Step::Change(change) => {
                     self.publish(id, change);
+                    continue;
+                }
+                Step::Account(facts) => {
+                    if let Some(thread) = self.threads.get(&id) {
+                        let program = thread.row.program;
+                        self.accounts.note(program, *facts, chrono::Utc::now());
+                    }
                     continue;
                 }
             };

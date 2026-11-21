@@ -50,6 +50,9 @@ impl Runner {
                 return;
             }
             Action::Interrupt { thread } => self.interrupt(thread).await,
+            Action::Accounts => Outcome::Accounts {
+                accounts: self.accounts.rows(),
+            },
             Action::Folder { folder } => {
                 match super::start::chosen_folder(&folder, self.dir.parent().unwrap_or(&self.dir)) {
                     Ok(real) => Outcome::Folder {

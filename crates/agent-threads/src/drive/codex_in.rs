@@ -149,9 +149,16 @@ impl CodexInput {
         )
     }
 
+    /// The account and the plan; the tokens stay in the store of Codex (THR-115).
     #[must_use]
     pub fn account_read(id: i64) -> String {
         call(id, CodexMethod::AccountRead, &json!({}))
+    }
+
+    /// The limits of the account and when they reset (THR-115).
+    #[must_use]
+    pub fn account_limits_read(id: i64) -> String {
+        call(id, CodexMethod::AccountRateLimitsRead, &json!(null))
     }
 
     /// The reply to a server request. "Allow for the session" sends back one decision that the
