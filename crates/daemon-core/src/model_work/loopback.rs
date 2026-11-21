@@ -136,6 +136,11 @@ impl LsofFile<'_> {
         if protocol == Protocol::Tcp && !self.listen {
             return None;
         }
+        // A UDP socket with no port (`*:*`, or an address and `*`) is not bound.
+        let local = self.name.and_then(|name| name.split("->").next());
+        if protocol == Protocol::Udp && local.is_some_and(|local| local.ends_with(":*")) {
+            return None;
+        }
         let unreadable = Socket {
             protocol,
             address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),

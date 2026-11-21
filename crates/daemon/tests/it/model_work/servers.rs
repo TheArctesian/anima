@@ -8,7 +8,7 @@ use daemon_core::model_work::settings::ServerSettings;
 use daemon_core::wire::WorkType;
 use uuid::Uuid;
 
-use super::kit::{FAKE_RUNTIME, PROGRAM, archive, entry, node_on, release};
+use super::kit::{FAKE_RUNTIME, PROGRAM, archive, node_on, release, target};
 use anima_daemon::model::cycle::Node;
 use anima_daemon::model::install::place_archive;
 
@@ -39,9 +39,7 @@ fn installed_node(root: &std::path::Path, mode: &str, first_port: u16) -> Node {
     let node = node_on(root, first_port..=first_port + 49);
     place_archive(
         archive(&[(PROGRAM, 0o755, Some(FAKE_RUNTIME.as_bytes()))]),
-        &node.folders,
-        &release(),
-        &entry(),
+        &target(&node.folders, 0),
     )
     .expect("installed");
     set_mode(&node, mode);
@@ -138,4 +136,53 @@ async fn a_runtime_that_stops_is_started_again_then_failed_after_the_limit() {
             .iter()
             .any(|(state, _)| *state == ServerState::Restarting)
     );
+}
+
+fn child_of(node: &Node) -> rustix::process::Pid {
+    let text =
+        std::fs::read_to_string(node.folders.release(&release()).join("bin/child")).expect("child");
+    rustix::process::Pid::from_raw(text.trim().parse().expect("a pid")).expect("a pid")
+}
+
+async fn gone(pid: rustix::process::Pid) -> bool {
+    for _ in 0..50 {
+        if rustix::process::test_kill_process(pid).is_err() {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    false
+}
+
+#[tokio::test]
+async fn the_children_of_a_server_end_when_its_main_process_ends() {
+    let root = tempfile::tempdir().expect("a folder");
+    let mut node = installed_node(root.path(), "loopback", 42250);
+    node.run(&start()).await.expect("started");
+    let child = child_of(&node);
+    let leader = node.servers.map[&SERVER]
+        .running
+        .as_ref()
+        .expect("running")
+        .0
+        .group;
+    let leader = rustix::process::Pid::from_raw(leader).expect("a pid");
+    rustix::process::kill_process(leader, rustix::process::Signal::KILL).expect("killed");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let temporary = node.folders.server(SERVER).join("tmp");
+    node.servers.cycle(1_000, |_| temporary.clone()).await;
+    assert!(
+        gone(child).await,
+        "the child of the ended server still runs"
+    );
+}
+
+#[tokio::test]
+async fn the_whole_group_ends_when_the_node_drops() {
+    let root = tempfile::tempdir().expect("a folder");
+    let mut node = installed_node(root.path(), "loopback", 42300);
+    node.run(&start()).await.expect("started");
+    let child = child_of(&node);
+    drop(node);
+    assert!(gone(child).await, "the child outlived the node");
 }

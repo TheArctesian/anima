@@ -27,18 +27,23 @@ pub async fn table(group: i32) -> io::Result<Vec<Socket>> {
     }
 }
 
+/// The most time of one read of `lsof`; a slower read counts as a table that does not read.
+#[cfg(not(target_os = "linux"))]
+const LSOF_SECONDS: u64 = 5;
+
 #[cfg(not(target_os = "linux"))]
 async fn lsof(group: i32) -> io::Result<Vec<Socket>> {
-    let output = tokio::process::Command::new("/usr/sbin/lsof")
+    let run = tokio::process::Command::new("/usr/sbin/lsof")
         .args(["-nP", "-a", "-g", &group.to_string(), "-i", "-F", "PnT"])
         .env_clear()
         .stdin(std::process::Stdio::null())
         .kill_on_drop(true)
-        .output()
-        .await?;
-    // `lsof` ends with 1 and no output when no socket matches.
-    let none = output.status.code() == Some(1) && output.stdout.is_empty();
-    if !output.status.success() && !none {
+        .output();
+    let output = tokio::time::timeout(std::time::Duration::from_secs(LSOF_SECONDS), run)
+        .await
+        .map_err(|_| io::Error::other("lsof did not end in 5 seconds"))??;
+    // `lsof` ends with 1 when a selection matched nothing; its output is still the table.
+    if !output.status.success() && output.status.code() != Some(1) {
         return Err(io::Error::other("lsof did not read the socket table"));
     }
     Ok(daemon_core::model_work::loopback::read_lsof(

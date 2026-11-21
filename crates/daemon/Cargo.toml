@@ -35,6 +35,8 @@ serde_json.workspace = true
 sha2.workspace = true
 flate2 = "1"
 tar = { version = "0.4", default-features = false }
+# The `.zip` releases of llama.cpp (R-NEW-archivezip); deflate only, through flate2.
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 tempfile.workspace = true
 thiserror.workspace = true
 # `process` runs the fixed read-only commands, `signal` ends the daemon on SIGTERM, `fs` reads /proc.

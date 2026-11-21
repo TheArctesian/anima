@@ -83,3 +83,15 @@ fn the_lsof_output_reads() {
     assert_eq!(read[2].address, ip("::1"));
     assert!(matches!(verdict(&read), Verdict::Exposed(_)));
 }
+
+#[test]
+fn the_edges_of_the_lsof_output_read() {
+    // An unbound UDP socket does not count; a TCP listener on each address and a name that
+    // does not read (a zone) count as exposed; a socket with no protocol line is skipped.
+    let text = "p1\nf3\nPUDP\nn*:*\nf4\nPTCP\nn*:41000\nTST=LISTEN\nf5\nPTCP\nn[fe80::1%en0]:41001\nTST=LISTEN\nf6\nn127.0.0.1:9\nf7\nPUDP\nn127.0.0.1:41002\n";
+    let read = read_lsof(text);
+    assert_eq!(read.len(), 3, "{read:?}");
+    assert!(read[..2].iter().all(|socket| !is_loopback(socket.address)));
+    assert_eq!(read[2].address, ip("127.0.0.1"));
+    assert!(read_lsof("").is_empty());
+}

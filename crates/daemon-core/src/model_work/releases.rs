@@ -66,6 +66,13 @@ pub fn accepted(release: &Release) -> Result<(), Cause> {
     Ok(())
 }
 
+/// The form of a runtime archive, by the end of its address (R-NEW-archivezip).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ArchiveFormat {
+    TarGz,
+    Zip,
+}
+
 /// One entry of `model-sources.json`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -75,7 +82,7 @@ pub struct SourceEntry {
     pub os: String,
     pub architecture: String,
     pub backend: String,
-    /// The HTTPS address of the archive (a `.tar.gz`).
+    /// The HTTPS address of the archive (a `.tar.gz`, `.tgz` or `.zip`).
     pub address: String,
     pub sha256: String,
     pub size_bytes: u64,
@@ -90,8 +97,29 @@ pub struct Sources {
     pub sources: Vec<SourceEntry>,
 }
 
+impl SourceEntry {
+    /// The form of the archive, from the end of the path of its address; `None` for another.
+    #[must_use]
+    pub fn format(&self) -> Option<ArchiveFormat> {
+        let path = self
+            .address
+            .split(['?', '#'])
+            .next()
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        if path.ends_with(".tar.gz") || path.ends_with(".tgz") {
+            Some(ArchiveFormat::TarGz)
+        } else if path.ends_with(".zip") {
+            Some(ArchiveFormat::Zip)
+        } else {
+            None
+        }
+    }
+}
+
 fn entry_holds(entry: &SourceEntry) -> bool {
-    entry.address.starts_with("https://")
+    entry.format().is_some()
+        && entry.address.starts_with("https://")
         && super::names::is_lower_hex(&entry.sha256, 64)
         && (1..=MAX_ARCHIVE_BYTES).contains(&entry.size_bytes)
         && super::files::is_file_path(&entry.program)

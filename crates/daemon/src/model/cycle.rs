@@ -45,6 +45,8 @@ pub struct Node {
     pub servers: Servers,
     pub switch_on: bool,
     pub started: Instant,
+    /// The free disk that model work leaves ([`install::DEFAULT_RESERVE`] by default).
+    pub reserve: u64,
     /// The range of loopback ports of the daemon configuration ([`server::PORTS`] by default).
     pub ports: std::ops::RangeInclusive<u16>,
 }
@@ -72,10 +74,10 @@ pub fn report(
     json!({ "id": id, "attempt": attempt, "state": state, "result": result })
 }
 
-fn api_key() -> Option<String> {
+fn api_key() -> Option<zeroize::Zeroizing<String>> {
     let mut bytes = zeroize::Zeroizing::new([0u8; 32]);
     getrandom::fill(bytes.as_mut()).ok()?;
-    Some(super::fetch::hex(bytes.as_ref()))
+    Some(zeroize::Zeroizing::new(super::fetch::hex(bytes.as_ref())))
 }
 
 fn os_word(os: WorkOs) -> &'static str {
@@ -149,6 +151,7 @@ impl Node {
         let program = self.folders.release(release).join(&entry.program);
         let bin = program.parent().unwrap_or(Path::new("/")).to_path_buf();
         let place = self.folders.server(id);
+        let state = self.folders.state.clone();
         let settings = settings.clone();
         let ports = self.ports.clone();
         let launch = move || {
@@ -160,8 +163,10 @@ impl Node {
                     program: program.clone(),
                     arguments: command::llama_arguments(&settings, port),
                     environment: command::environment(&temporary, &bin, &key),
+                    state: state.clone(),
                     temporary,
                     ring: place.join("output.log"),
+                    key,
                 },
                 port,
             ))
@@ -197,6 +202,7 @@ impl Node {
                     sources: &self.sources,
                     os: os_word(self.os),
                     architecture: architecture_word(self.architecture),
+                    reserve: self.reserve,
                 };
                 install::install(release, &place).await.map(|()| None)
             }

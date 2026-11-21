@@ -96,7 +96,11 @@ impl Server {
     async fn look(&mut self, now: u64, temporary_bytes: u64) -> Option<()> {
         let (running, port) = self.running.as_mut()?;
         if let Ok(Some(_)) = running.child.try_wait() {
-            self.running = None;
+            // The main process ended: each other process of its group ends with it, so no
+            // child keeps a listener that the loopback check no longer reads (SF-NEW-l1workb).
+            if let Some((mut running, _)) = self.running.take() {
+                server::kill(&mut running).await;
+            }
             return Some(());
         }
         let (verdict, listens) = verdict_of(running, *port).await;

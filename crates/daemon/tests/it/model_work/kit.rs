@@ -14,7 +14,8 @@ use daemon_core::wire::{WorkArchitecture, WorkOs};
 use uuid::Uuid;
 
 /// The scripted runtime. It reads `mode` beside it: `exit` ends at once, `any` listens on
-/// 0.0.0.0, else it listens on 127.0.0.1. It writes the names of its environment to `env`.
+/// 0.0.0.0, else it listens on 127.0.0.1. It writes the names of its environment to `env`, and
+/// before it listens it starts a child that only sleeps and writes its process id to `child`.
 pub const FAKE_RUNTIME: &str = r#"#!/usr/bin/perl
 use strict;
 use IO::Socket::INET;
@@ -25,6 +26,9 @@ for my $i (0 .. $#ARGV - 1) { $port = $ARGV[$i + 1] if $ARGV[$i] eq '--port'; }
 open(my $m, '<', "$dir/mode"); my $mode = <$m> // 'loopback'; close($m); chomp $mode;
 open(my $e, '>', "$dir/env"); print $e join("\n", sort keys %ENV); close($e);
 exit 1 if $mode eq 'exit';
+my $kid = fork();
+if (defined $kid && $kid == 0) { sleep 100000; exit 0; }
+open(my $k, '>', "$dir/child"); print $k $kid; close($k);
 my $host = $mode eq 'any' ? '0.0.0.0' : '127.0.0.1';
 my $s = IO::Socket::INET->new(LocalAddr => $host, LocalPort => $port, Listen => 5, ReuseAddr => 1) or exit 2;
 while (1) { my $c = $s->accept(); close($c) if $c; }
@@ -74,6 +78,16 @@ pub fn folders(root: &Path) -> Folders {
         runtimes: root.join("runtimes"),
         models: root.join("models"),
         state: root.join("model-state"),
+    }
+}
+
+/// What a test unpack writes, with the reserve `reserve`.
+pub fn target(folders: &Folders, reserve: u64) -> anima_daemon::model::install::Target {
+    anima_daemon::model::install::Target {
+        folders: folders.clone(),
+        release: release(),
+        entry: entry(),
+        reserve,
     }
 }
 
@@ -129,6 +143,7 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
         servers: Servers::default(),
         switch_on: true,
         started: Instant::now(),
+        reserve: 0,
         ports,
     }
 }
