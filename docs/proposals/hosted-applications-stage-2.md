@@ -1249,4 +1249,89 @@ The text follows.
 
 ## 14. The PostgreSQL entry (R-216, R-NEW-databaselevels, task H24)
 
-The text follows.
+This section is a design with options. It adds no approved requirement and no code exists for
+it. HOST-041 is approved (R-216); the levels of HOST-048 are OD-HOST-38 of the plan. The design is
+the same for each level: level 2 adds a replica to the server of level 1.
+
+### 14.1 What the entry is
+
+- **A server of PostgreSQL on a machine.** It is an entry of the catalogue of kind `database`,
+  installed with the work type `application_apply` as each entry. Its image is the official image
+  `postgres` of one major version, named by a digest (R-233). A variant with an extension (for
+  example PostGIS, which Dawarich needs) is a second entry of the same kind with its own image.
+- **One server for many applications of the machine.** He said "letting one server be the db".
+  Thus the default is one server on a machine, and each application that needs PostgreSQL gets a
+  database and a user of its own on it. OD-HOST-41 asks whether a server of its own for each
+  application is better.
+- **No published port.** The server publishes no port on the machine. An application reaches it
+  on a network of Docker that is only for that pair: `anima-db-<application>`. The server joins
+  the network of each application that has a database on it; two applications never share a
+  network, so one application cannot reach the containers of a different one.
+- **Change of the contract.** Section 6.4.4 of K10 does not permit a file from the hub to join a
+  network of a different project. The applications program must make and join these networks
+  itself, as a fixed step of the install of an application that names a database. That is a change
+  of the contract, for its owner and a security review (CON-001). No code before it.
+
+### 14.2 A database for an application
+
+1. The recipe of the application says that it needs PostgreSQL, the lowest major version, the
+   extensions, and the names of the variables in which it wants the connection values (for example
+   `DATABASE_URL`, or `POSTGRES_HOST` and four more). Section 13 has the field.
+2. At the install the operator selects a server on the same machine, or Anima installs one.
+3. The applications program makes the database and the user with fixed statements in the server
+   (no text of the hub in a statement). The names are made from the identifier of the application
+   and must match `[a-z][a-z0-9_]{0,62}`. The user owns only its database and has no other right.
+4. The password of the user is made on the machine by the applications program, written only into
+   the environment file of the application (R-231 for its keep), and never sent to the hub.
+   OD-HOST-42 asks whether the operator must see it.
+5. The applications program writes the connection values into the variables that the recipe
+   names, and starts the application.
+6. At the removal of the application, the database and the user are deleted only with the setting
+   "The hub may delete volumes" at the machine (R-230), as the volumes of each application.
+
+### 14.3 Copies and the way back (level 1)
+
+HOST-042 (copies with a way back) is not approved; OD-HOST-1 is open. This is the design that its
+approval would build for PostgreSQL:
+
+- **The copy.** `pg_dump` in the custom format for each database, at an interval that the operator
+  sets, run by the applications program in the server container. A copy of the volume of a server
+  that runs is not used: it is not safe (OD-HOST-12).
+- **Where it goes.** First into a folder of the applications program on the machine, then to a
+  second machine that the operator selects. The path to the second machine is the question of
+  OD-HOST-1.
+- **The way back.** `pg_restore` into a new database, then a switch of the application to it, at
+  the request of the operator only (ETH-004). The old database stays until the operator deletes it.
+- **The test of the way back.** At intervals the program restores the last copy into a database
+  for the test, checks that each table of the copy is there, and deletes the test database. A copy
+  that fails this test makes a notification. A copy function is built only with its way back and
+  this test (HOST-042).
+
+### 14.4 A primary and a replica (level 2)
+
+Only when OD-HOST-38 says B. The second server is on a machine that the operator selects, and
+follows the first by the streaming replication of PostgreSQL over the network between the two
+machines. A switch to the replica is an action of the operator only (ETH-004, HOST-006): Anima
+never switches by itself. The replica needs a path between two machines that this plan does not
+have yet; the design of that path comes with the decision.
+
+### 14.5 Versions
+
+- A new digest of the same major version is pinned and tested as each entry (Section 13).
+- A new major version needs a dump and a restore, or `pg_upgrade`. Anima never changes the major
+  version by itself: the operator starts it, and Anima makes a copy first.
+
+### 14.6 Questions for the operator
+
+- **OD-HOST-41: one server for each machine, or one for each application?** A: one server on a
+  machine, a database and a user for each application (his words). B: a server of its own in the
+  project of each application, as most Compose files of applications do now. Recommendation: A.
+  It matches his words, uses less memory, and level 2 makes one replica of one server, not one for
+  each application. Against A: the change of the contract of Section 14.1, and one server that
+  stops stops each application on it.
+- **OD-HOST-42: must the operator see the password of a database?** A: no; it stays on the
+  machine, in the environment file of the application. B: the hub shows the connection text one
+  time, to a person with a login (closed to each API key and MCP tool, as the log of a container).
+  Recommendation: A first. HOST-041 says "shows its connection text one time"; with A that text is
+  shown only at the machine, so the hub never holds it. B is an addition when a tool outside the
+  machine needs the database.
