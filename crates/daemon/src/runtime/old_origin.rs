@@ -200,6 +200,13 @@ pub async fn at_start(
 /// The socket that an old enrolment moves to: on macOS below the home folder of the account,
 /// not the folder that the environment names, because the token is in the Keychain; on Linux
 /// in the daemon's own folder.
+#[cfg_attr(
+    not(target_os = "macos"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "the macOS form reads the user database, which can fail"
+    )
+)]
 fn socket_of_move(home: &Home) -> std::io::Result<PathBuf> {
     #[cfg(target_os = "macos")]
     {
