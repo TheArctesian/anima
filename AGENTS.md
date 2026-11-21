@@ -271,7 +271,8 @@ bun run gates:fast                 # while you work: only what your changed path
 
 `bun run gates:fast` compares your tree with `origin/dev` (`FAST_BASE` names a different ref). Documents
 only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
-touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
+touched, the six Go gates when `link/` changed, the quick deploy tests that read the Rust workspace when a crate
+changed (`deploy-maps`: the release maps and the toolchain pins), then the five quality gates. A path that no rule knows
 runs the full list. It does not test the packages that depend on yours and it runs no doctest: the run
 on GitHub does. Its first line says what it chose and why. On a busy machine (a load above the number of
 processor cores; `FAST_BUSY_LOAD` sets a different limit) it leaves out the tests of whole packages and

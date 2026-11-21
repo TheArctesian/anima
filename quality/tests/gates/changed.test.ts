@@ -32,7 +32,7 @@ describe("the checks of the changed paths (gates:changed)", () => {
 
   test("the tests run for the touched crate; Clippy also checks the crates that use it, through others too", () => {
     const paths = ["crates/protocol/src/lib.rs"];
-    expect(names(paths)).toEqual(["documents", "fmt", "clippy", "rust-test", ...REST]);
+    expect(names(paths)).toEqual(["documents", "fmt", "clippy", "rust-test", "deploy-maps", ...REST]);
     expect(argvOf(paths, "clippy")).toBe("cargo clippy -p anima-protocol -p anima-hub -p anima-cli -p anima-app --all-targets -- -D warnings");
     expect(argvOf(paths, "rust-test")).toBe("bun quality/bin/with-postgres.ts cargo nextest run -p anima-protocol --no-tests=pass");
     expect(run(paths).notes.join("\n")).toContain("anima-hub, anima-cli, anima-app");
@@ -57,7 +57,7 @@ describe("the checks of the changed paths (gates:changed)", () => {
   });
 
   test("a change for each package or an unknown path never runs the full list here", () => {
-    expect(names(["Cargo.lock"])).toEqual(["documents", "fmt", "clippy", ...REST]);
+    expect(names(["Cargo.lock"])).toEqual(["documents", "fmt", "clippy", "deploy-maps", ...REST]);
     expect(names(["somewhere-new/file.txt"])).toEqual(["documents", ...REST]);
     expect(run(["somewhere-new/file.txt"]).notes[0]).toContain("runs on GitHub");
   });

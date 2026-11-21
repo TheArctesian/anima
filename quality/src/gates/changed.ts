@@ -1,5 +1,5 @@
 import type { Gate } from "./gates.ts";
-import type { Choice, Layout, Member } from "./tier.ts";
+import { workspaceMaps, type Choice, type Layout, type Member } from "./tier.ts";
 
 /**
  * The checks of the changed paths (`--changed`): what a session runs on its own computer while the
@@ -103,16 +103,20 @@ export function changedGates(choice: Choice, full: Gate[], layout: Layout, paths
     case "full":
       notes.push("a path that no rule knows: only the quality gates run here, the full list runs on GitHub");
       return { gates: [...documents, ...quality], notes };
-    case "code":
+    case "code": {
+      const bunOwn = owners(paths, layout.packages);
+      const deployTested = (choice.bun === "all" ? bunOwn : choice.bun).includes("@anima/deploy");
       return {
         gates: [
           ...documents,
           ...rustGates(full, { touched: choice.rust, own: owners(paths, layout.crates) }, layout.crates, notes),
           ...(choice.go ? full.filter((gate) => gate.group === "go") : []),
-          ...bunGates(full, { touched: choice.bun, own: owners(paths, layout.packages) }, layout.packages, notes),
+          ...bunGates(full, { touched: choice.bun, own: bunOwn }, layout.packages, notes),
+          ...workspaceMaps(choice.rust, deployTested),
           ...quality,
         ],
         notes,
       };
+    }
   }
 }
