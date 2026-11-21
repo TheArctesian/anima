@@ -243,16 +243,17 @@ impl Thread {
         steps
     }
 
-    /// The lines that stop the running turn. Codex leaves the command of a turn alive after
-    /// `turn/interrupt` (TH10), so the processes below it that the turn started end too
-    /// (THR-049); its MCP servers, marked when the turn started, are spared. With no running
-    /// turn of Codex there is nothing to stop.
+    /// The lines that stop the running turn. Codex (TH10) and Claude Code (seen on a Mac on
+    /// 2026-11-21: a `sleep` of the Bash tool ran on) leave the command of a turn alive after
+    /// their interrupt, so the processes below the program that the turn started end too
+    /// (THR-049); its MCP servers, marked before the turn, are spared. With no running turn of
+    /// Codex there is nothing to stop.
     fn turn_stop(&mut self) -> Vec<Step> {
         match &mut self.driver {
             Driver::Claude(_) => {
                 self.controls += 1;
                 let id = format!("anima-interrupt-{}", self.controls);
-                vec![Step::Write(ClaudeInput::interrupt(&id))]
+                vec![Step::Write(ClaudeInput::interrupt(&id)), Step::EndChildren]
             }
             Driver::Codex(codex) => codex
                 .interrupt()

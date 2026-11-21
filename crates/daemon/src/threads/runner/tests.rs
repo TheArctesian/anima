@@ -88,8 +88,12 @@ fn th11_a_claude_thread_writes_its_prompt_and_names_its_session() {
         "Look at the tests\nand more"
     );
     assert_eq!(thread.row.title, "Look at the tests");
-    thread.line(CLAUDE_INIT, &mut counter());
+    let steps = thread.line(CLAUDE_INIT, &mut counter());
     assert_eq!(thread.row.session.as_deref(), Some("s-1"));
+    assert!(
+        steps.contains(&Step::Mark),
+        "the servers of Claude Code are marked when it says its session, so a stop of a turn spares them"
+    );
 }
 
 #[test]
@@ -226,7 +230,10 @@ fn thr_049_a_stop_of_a_codex_turn_ends_what_the_turn_started_and_spares_its_serv
     assert!(steps.contains(&Step::EndChildren));
     let claude_stop = held_claude().interrupt();
     assert_eq!(writes(&claude_stop)[0]["request"]["subtype"], "interrupt");
-    assert!(!claude_stop.contains(&Step::EndChildren));
+    assert!(
+        claude_stop.contains(&Step::EndChildren),
+        "Claude Code leaves the command of a turn alive after its interrupt"
+    );
 }
 
 #[test]
