@@ -129,9 +129,10 @@ impl Running {
     #[must_use]
     pub fn launch_failure(&self, status: std::process::ExitStatus) -> Option<Containment> {
         let step = Containment::of_exit_code(status.code()?)?;
-        let written =
-            std::fs::read_to_string(self.record.with_file_name(tree::LAUNCH_FAILURE)).ok()?;
-        (written.trim().parse().ok() == step.exit_code()).then_some(step)
+        let path = self.record.with_file_name(tree::LAUNCH_FAILURE);
+        let written = tree::read_capped(&path, tree::LAUNCH_FAILURE_BYTES)?;
+        let code = std::str::from_utf8(&written).ok()?.trim().parse().ok();
+        (code == step.exit_code()).then_some(step)
     }
 
     fn tree(&self) -> Tree {

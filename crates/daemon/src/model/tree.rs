@@ -36,6 +36,35 @@ pub struct Identity {
     pub start: String,
 }
 
+/// The most bytes of the record of a tree that the daemon reads.
+pub const RECORD_BYTES: usize = 64 << 10;
+/// The most bytes of the failure file of the launcher that the daemon reads.
+pub const LAUNCH_FAILURE_BYTES: usize = 4 << 10;
+
+/// Reads the file `path` that a runtime may have replaced: no link is followed (the folder or
+/// the file), a FIFO or a device is refused without a wait (`O_NONBLOCK`, then a regular file
+/// only), and a file over `cap` bytes is refused. `None` for each refusal or error.
+#[must_use]
+pub fn read_capped(path: &Path, cap: usize) -> Option<Vec<u8>> {
+    use rustix::fs::{FileType, Mode, OFlags};
+    use std::io::Read as _;
+    let (folder, name) = (path.parent()?, path.file_name()?);
+    let flags = OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::RDONLY;
+    let dir = rustix::fs::open(folder, flags | OFlags::DIRECTORY, Mode::empty()).ok()?;
+    let fd = rustix::fs::openat(&dir, name, flags | OFlags::NONBLOCK, Mode::empty()).ok()?;
+    let stat = rustix::fs::fstat(&fd).ok()?;
+    let size = usize::try_from(stat.st_size).ok()?;
+    if FileType::from_raw_mode(stat.st_mode) != FileType::RegularFile || size > cap {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::from(fd)
+        .take(u64::try_from(cap).ok()? + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    (bytes.len() <= cap).then_some(bytes)
+}
+
 /// The start time of process `pid` now, or `None` when no such process exists.
 #[must_use]
 pub fn start_of(pid: i32) -> Option<String> {
@@ -97,11 +126,7 @@ impl Record {
     }
 
     fn load(path: &Path) -> Option<Self> {
-        let meta = std::fs::symlink_metadata(path).ok()?;
-        if !meta.is_file() || meta.len() > 1 << 20 {
-            return None;
-        }
-        serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+        serde_json::from_slice(&read_capped(path, RECORD_BYTES)?).ok()
     }
 
     /// Ends each process of the record whose identity still holds, and its cgroup. It waits and

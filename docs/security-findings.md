@@ -2656,6 +2656,30 @@ The correction: `containment_failed` carries a detail (`no_delegation`, `no_nsde
 
 State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
 
+### SF-NEW-l1workv1: The failure file of the launcher and the record of a tree were read through links, with no size limit. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `server.rs`.
+
+What it is: The daemon read `launch-failure` with `read_to_string` and `tree.json` after a `symlink_metadata` check. A runtime could replace either with a link to a FIFO (the supervision loop waits for ever) or to `/dev/zero` (no end to the read). No new power while the runtime is the user of the daemon, but an escape route once the sandbox exists.
+
+The correction: `read_capped` opens the folder and the file with `O_NOFOLLOW`, the file also with `O_NONBLOCK` and `O_CLOEXEC`, requires a regular file (`fstat`), and reads at most 4 KiB for the failure file and 64 KiB for the record. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `a_record_that_is_a_link_is_not_swept`.
+
+State: Open. Built on the branch `compute/l1-6`. Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-NEW-l1workv2: The interface files of a sibling server cgroup are writable by the runtime. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The daemon makes each server cgroup, so its files belong to the user of the daemon. The cgroup namespace stops moves, but a runtime can write `cgroup.kill` or `pids.max` of a different server cgroup through the full `/sys/fs/cgroup` mount. That ends or limits another server, which a `kill` by the same user already can.
+
+The correction: None now (no new power). The sandbox design must hide `/sys/fs/cgroup` with a mount namespace.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
 ### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.

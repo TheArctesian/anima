@@ -218,3 +218,38 @@ fn the_cgroup_mount_must_delegate_to_namespaces() {
     ));
     assert!(!cgroup_has_nsdelegate(""));
 }
+
+#[test]
+fn a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small() {
+    use anima_daemon::model::tree::read_capped;
+    let root = tempfile::tempdir().expect("a folder");
+    let plain = root.path().join("plain");
+    std::fs::write(&plain, b"123").expect("written");
+    assert_eq!(read_capped(&plain, 16), Some(b"123".to_vec()));
+    std::fs::write(root.path().join("large"), vec![b'1'; 17]).expect("written");
+    assert_eq!(
+        read_capped(&root.path().join("large"), 16),
+        None,
+        "over the cap"
+    );
+    std::os::unix::fs::symlink(&plain, root.path().join("link")).expect("a link");
+    assert_eq!(read_capped(&root.path().join("link"), 16), None, "a link");
+    let fifo = root.path().join("fifo");
+    let made = Command::new("/usr/bin/mkfifo")
+        .arg(&fifo)
+        .status()
+        .expect("mkfifo");
+    assert!(made.success());
+    assert_eq!(read_capped(&fifo, 16), None, "a FIFO, with no wait");
+}
+
+#[test]
+fn a_record_that_is_a_link_is_not_swept() {
+    let root = tempfile::tempdir().expect("a folder");
+    let server = root.path().join("one");
+    std::fs::create_dir(&server).expect("a folder");
+    let elsewhere = root.path().join("elsewhere.json");
+    Record::default().save(&elsewhere);
+    std::os::unix::fs::symlink(&elsewhere, server.join(RECORD)).expect("a link");
+    assert_eq!(sweep(root.path()).expect("swept"), 0);
+}
