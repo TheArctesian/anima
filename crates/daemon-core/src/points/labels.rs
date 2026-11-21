@@ -13,13 +13,18 @@ const PSEUDO_MOUNTS: [&str; 5] = ["/dev", "/run", "/sys", "/proc", "/snap"];
 const LOOP_DEVICE: &str = "/dev/loop";
 const DATA_VOLUME: &str = "/System/Volumes/Data";
 /// Mounts of images the system writes, always nearly full and not disks the operator fills:
-/// macOS iOS Simulator runtimes and system cryptexes, and the `Pop!_OS` recovery partition, which
-/// holds a copy of the installer.
-const IMAGE_MOUNTS: [&str; 3] = [
+/// macOS iOS Simulator runtimes and system cryptexes, the wrappers of iOS apps on a Mac (whose
+/// file system is the app's `Wrapper` and whose numbers are those of the disk under it), and the
+/// `Pop!_OS` recovery partition, which holds a copy of the installer.
+const IMAGE_MOUNTS: [&str; 4] = [
     "/Library/Developer/CoreSimulator",
+    "/private/var/folders",
     "/private/var/run",
     "/recovery",
 ];
+/// The file system that Xcode mounts for a connected phone in a user's library
+/// (`/Users/<user>/Library/Developer/CoreDevice/DeviceFS`): not a disk of this device.
+const DEVICE_FS: &str = "/Library/Developer/CoreDevice/";
 /// The start of the mount point of a running `AppImage`: its read-only image, always 100% full.
 const APPIMAGE_MOUNT: &str = "/tmp/.mount_";
 
@@ -43,6 +48,7 @@ pub(crate) fn is_operator_mount(mount: &str) -> bool {
     !PSEUDO_MOUNTS.iter().any(|root| under(mount, root))
         && !IMAGE_MOUNTS.iter().any(|root| under(mount, root))
         && !mount.starts_with(APPIMAGE_MOUNT)
+        && !mount.contains(DEVICE_FS)
         && (mount == DATA_VOLUME || !under(mount, "/System/Volumes"))
 }
 

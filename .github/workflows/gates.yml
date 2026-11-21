@@ -132,6 +132,10 @@ jobs:
           save-if: ${{ inputs.ref == '' }}
       - name: Run the gates fmt and clippy
         run: bun quality/bin/gates.ts --group rust --gate fmt,clippy
+      # The workspace turns on the union of the features of its crates; the release builds `anima`
+      # and the application alone, so each crate must build alone (anima-cli at 6364bb038).
+      - name: Check each crate alone
+        run: bun quality/bin/gates.ts --alone
 
   rust-test:
     needs: base

@@ -1,6 +1,7 @@
 //! The unit files that keep the daemon running, and `anima-daemon install` (MET-019, D-10): it
 //! fills the running binary's path into these texts, writes the file and starts it. The
-//! operator's page command and the desktop app both call it.
+//! operator's page command and the desktop app both call it. `anima-daemon uninstall` takes the
+//! user unit out again ([`removal`], HMD-056).
 //! The files are in `crates/daemon/units/`; the two systemd files end in `.unit` here only because
 //! the repository's name rules ban the word `service`: `install` writes them as
 //! `anima-daemon.service`.
@@ -9,6 +10,7 @@ pub mod folders;
 pub mod install;
 pub mod plan;
 pub mod ready;
+pub mod removal;
 pub mod render;
 mod sandbox;
 pub mod session;

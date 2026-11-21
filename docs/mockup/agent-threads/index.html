@@ -359,6 +359,15 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .trow .m .ago { margin-left: auto; font-variant-numeric: tabular-nums; }
 .v2 .trow.on { background: var(--surface-selected); }
 .v2 .trow.focus { box-shadow: inset 0 0 0 var(--border-focus) var(--focus-ring); }
+/* The state of a thread: an icon and a word, never the colour alone (THR-056). */
+.v2 .trow .m > span { white-space: nowrap; }
+.v2 .trow .m .mono { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.v2 .stt { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.v2 .stt .ic { width: var(--space-3); height: var(--space-3); }
+.v2 .stt.needs, .v2 .nav .n.needs { color: var(--status-degraded-text); font-weight: 500; }
+.v2 .stt.work { color: var(--text); }
+.v2 .fold { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: var(--control-sm); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-md); background: none; color: var(--text-secondary); font: inherit; text-align: start; cursor: pointer; }
+.v2 .fold .n { font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
 .v2 .pg { width: var(--space-2); height: var(--space-2); border-radius: var(--radius-pill); flex: none; background: var(--status-unknown); }
 .v2 .pg.live { background: var(--accent); }
 .v2 .thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -405,7 +414,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
   <div class="jump"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Jump to<span class="kbd">⌘K</span></div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5 6h6M5 8h4"/></svg>Threads<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5 6h6M5 8h4"/></svg>Threads<span class="n needs" title="3 threads need you">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
   <div class="foot">
     <nav class="nav" aria-label="Live sessions"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Live sessions<span class="n">1</span></a></nav>
     <div class="hubcard"><span class="st up"><b>Hosted by Anima.ing</b></span><span class="sec">Connected</span></div>
@@ -418,24 +427,22 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
     <div class="tlist">
       <div class="field" style="margin: 0 var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><input placeholder="Search threads" aria-label="Search threads"><span class="kbd">/</span></div>
       <div class="seg sm" role="group" aria-label="Program" style="margin: 0 var(--space-2)"><button class="on" type="button">All</button><button type="button">Claude Code</button><button type="button">Codex</button></div>
-      <div class="group"><span class="label">Changed now<span class="n sec">2</span></span>
-        <a href="#" class="trow on" aria-current="true"><span class="t"><span class="pg live" title="Changed in the last 2 minutes"></span><span>Fix the flaky sign-in test</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">now</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg live" title="Changed in the last 2 minutes"></span><span>Add the export of the usage table</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">1 min</span></span></a>
+      <div class="group"><span class="label">Needs you<span class="n sec">3</span></span>
+        <a href="#" class="trow"><span class="t"><span>Review the K10 claim routes</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>May wait for you</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">6 min</span></span></a>
+        <a href="#" class="trow on" aria-current="true"><span class="t"><span>Fix the flaky sign-in test</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>Your turn</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">1 min</span></span></a>
+        <a href="#" class="trow"><span class="t"><span>Update the release notes for 0.3</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>Your turn</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">42 min</span></span></a>
       </div>
-      <div class="group"><span class="label">Today<span class="n sec">3</span></span>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Update the release notes for 0.3</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">42 min</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Review the K10 claim routes</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">2 h</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Why does the gates run take 12 minutes?</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">5 h</span></span></a>
+      <div class="group"><button class="fold" type="button" aria-expanded="false"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><span class="label" style="flex: 1">Earlier</span><span class="n sec">26</span></button>
+        
       </div>
-      <div class="group"><span class="label">Earlier<span class="n sec">24</span></span>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Move the log store to one place</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-cloud</span><span class="ago">Yesterday</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Draft the docs page for Projects</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">Nov 18</span></span></a>
+      <div class="group"><span class="label">Working<span class="n sec">1</span></span>
+        <a href="#" class="trow"><span class="t"><span>Add the export of the usage table</span></span><span class="m"><span class="stt work"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8.5h3l1.5-4 3 8 1.5-4h4"/></svg>Working</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">now</span></span></a>
       </div>
     </div>
     <section class="thread" aria-label="Thread">
       <div class="thead">
         <div class="row1"><h2>Fix the flaky sign-in test</h2><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Usage of this thread</button></div>
-        <div class="facts"><span>Claude Code</span><span><span class="st live">Changed now</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
+        <div class="facts"><span>Claude Code</span><span><span class="st deg">Your turn</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
       </div>
       <div class="timeline">
         <div class="you">The sign-in test fails about one time in five on Linux. Find out why and fix it.<span class="at">10:02</span></div>
@@ -457,14 +464,14 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </main>
 </div>
-<figcaption>Frame 1. Stage 1, dark, 1280 px. The list holds the sessions of Claude Code and Codex of this computer, read from their files, the last changed first, in three groups: changed in the last 2 minutes, today, earlier. A dot in the accent colour marks a file that changed in the last 2 minutes; it is not a state of the agent (THR-013). The thread shows the prompts, the replies, the reasoning folded, the tool calls in one block with one line each, the patch of an edit, and the end of each turn. The composer is a dashed note: stage 1 reads and starts nothing (THR-015). The button "Usage of this thread" opens Agent usage with the folder of the thread chosen.</figcaption>
+<figcaption>Frame 1. Stage 1a, dark, 1280 px. The list holds the sessions of Claude Code and Codex of this computer, read from their files. The order (THR-056): the threads that need you at the top, a tool call that may wait for an approval before a turn that ended, the newest first; the threads that are done, stopped or idle between, in a group "Earlier" that is folded (the answer of the operator to OD-THR24); the threads that work at the bottom. Each row has its state as an icon with a word. While the pointer is on the list no row moves; the rows slide to their places when it leaves. The item Threads of the bar has the count of the threads that need you. The states are what a session file can tell (THR-055): the file does not say that a tool call waits for an approval, only that it has no result for a minute. The thread shows the prompts, the replies, the reasoning folded, the tool calls in one block with one line each, the patch of an edit, and the end of each turn. The composer is a dashed note: stage 1a reads and starts nothing (THR-015).</figcaption>
 </figure>
 <figure>
 <div class="v2" data-theme="light" style="width: 1280px; height: 1000px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
   <div class="jump"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Jump to<span class="kbd">⌘K</span></div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5 6h6M5 8h4"/></svg>Threads<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5 6h6M5 8h4"/></svg>Threads<span class="n needs" title="3 threads need you">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
   <div class="foot">
     <nav class="nav" aria-label="Live sessions"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Live sessions<span class="n">1</span></a></nav>
     <div class="hubcard"><span class="st up"><b>Hosted by Anima.ing</b></span><span class="sec">Connected</span></div>
@@ -477,24 +484,22 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
     <div class="tlist">
       <div class="field" style="margin: 0 var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><input placeholder="Search threads" aria-label="Search threads"><span class="kbd">/</span></div>
       <div class="seg sm" role="group" aria-label="Program" style="margin: 0 var(--space-2)"><button class="on" type="button">All</button><button type="button">Claude Code</button><button type="button">Codex</button></div>
-      <div class="group"><span class="label">Changed now<span class="n sec">2</span></span>
-        <a href="#" class="trow on" aria-current="true"><span class="t"><span class="pg live" title="Changed in the last 2 minutes"></span><span>Fix the flaky sign-in test</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">now</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg live" title="Changed in the last 2 minutes"></span><span>Add the export of the usage table</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">1 min</span></span></a>
+      <div class="group"><span class="label">Needs you<span class="n sec">3</span></span>
+        <a href="#" class="trow"><span class="t"><span>Review the K10 claim routes</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>May wait for you</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">6 min</span></span></a>
+        <a href="#" class="trow on" aria-current="true"><span class="t"><span>Fix the flaky sign-in test</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>Your turn</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">1 min</span></span></a>
+        <a href="#" class="trow"><span class="t"><span>Update the release notes for 0.3</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>Your turn</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">42 min</span></span></a>
       </div>
-      <div class="group"><span class="label">Today<span class="n sec">3</span></span>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Update the release notes for 0.3</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">42 min</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Review the K10 claim routes</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">2 h</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Why does the gates run take 12 minutes?</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">5 h</span></span></a>
+      <div class="group"><button class="fold" type="button" aria-expanded="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg><span class="label" style="flex: 1">Earlier</span><span class="n sec">26</span></button>
+        <a href="#" class="trow"><span class="t"><span>Why does the gates run take 12 minutes?</span></span><span class="m"><span class="stt "><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 5"/></svg>Done</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">5 h</span></span></a><a href="#" class="trow"><span class="t"><span>Move the log store to one place</span></span><span class="m"><span class="stt "><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4v8M10.5 4v8"/></svg>Stopped</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-cloud</span><span class="ago">Yesterday</span></span></a><a href="#" class="trow"><span class="t"><span>Draft the docs page for Projects</span></span><span class="m"><span class="stt "><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" stroke-dasharray="2 2"/></svg>Idle</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">Nov 18</span></span></a>
       </div>
-      <div class="group"><span class="label">Earlier<span class="n sec">24</span></span>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Move the log store to one place</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-cloud</span><span class="ago">Yesterday</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Draft the docs page for Projects</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">Nov 18</span></span></a>
+      <div class="group"><span class="label">Working<span class="n sec">1</span></span>
+        <a href="#" class="trow"><span class="t"><span>Add the export of the usage table</span></span><span class="m"><span class="stt work"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8.5h3l1.5-4 3 8 1.5-4h4"/></svg>Working</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">now</span></span></a>
       </div>
     </div>
     <section class="thread" aria-label="Thread">
       <div class="thead">
         <div class="row1"><h2>Fix the flaky sign-in test</h2><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Usage of this thread</button></div>
-        <div class="facts"><span>Claude Code</span><span><span class="st live">Changed now</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
+        <div class="facts"><span>Claude Code</span><span><span class="st deg">Your turn</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
       </div>
       <div class="timeline">
         <div class="you">The sign-in test fails about one time in five on Linux. Find out why and fix it.<span class="at">10:02</span></div>
@@ -516,14 +521,14 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </main>
 </div>
-<figcaption>Frame 2. The same screen in the light appearance. The keys follow the keyboard model of a thread tool where Anima.ing has no key of its own: Cmd+Shift+[ and ] for the previous and next thread, Cmd+1 to 9 for a thread of the list, Cmd+F to find in the thread. Cmd+K stays the jump field of Anima.ing (THR-016).</figcaption>
+<figcaption>Frame 2. The same screen in the light appearance, with the group "Earlier" open: a click on its head, the Right key on it, or a search opens it. The keys follow the keyboard model of a thread tool where Anima.ing has no key of its own: Cmd+Shift+[ and ] for the previous and next thread, Cmd+1 to 9 for a thread of the list, Cmd+F to find in the thread. Cmd+K stays the jump field of Anima.ing (THR-016).</figcaption>
 </figure>
 <figure>
 <div class="v2" class="later" data-theme="dark" style="width: 1280px; height: 1060px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
   <div class="jump"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Jump to<span class="kbd">⌘K</span></div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5 6h6M5 8h4"/></svg>Threads<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5 6h6M5 8h4"/></svg>Threads<span class="n needs" title="3 threads need you">3</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
   <div class="foot">
     <nav class="nav" aria-label="Live sessions"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Live sessions<span class="n">1</span></a></nav>
     <div class="hubcard"><span class="st up"><b>Hosted by Anima.ing</b></span><span class="sec">Connected</span></div>
@@ -536,24 +541,22 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
     <div class="tlist">
       <div class="field" style="margin: 0 var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><input placeholder="Search threads" aria-label="Search threads"><span class="kbd">/</span></div>
       <div class="seg sm" role="group" aria-label="Program" style="margin: 0 var(--space-2)"><button class="on" type="button">All</button><button type="button">Claude Code</button><button type="button">Codex</button></div>
-      <div class="group"><span class="label">Changed now<span class="n sec">2</span></span>
-        <a href="#" class="trow on" aria-current="true"><span class="t"><span class="pg live" title="Changed in the last 2 minutes"></span><span>Fix the flaky sign-in test</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">now</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg live" title="Changed in the last 2 minutes"></span><span>Add the export of the usage table</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">1 min</span></span></a>
+      <div class="group"><span class="label">Needs you<span class="n sec">3</span></span>
+        <a href="#" class="trow"><span class="t"><span>Review the K10 claim routes</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>May wait for you</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">6 min</span></span></a>
+        <a href="#" class="trow on" aria-current="true"><span class="t"><span>Fix the flaky sign-in test</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>Your turn</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">1 min</span></span></a>
+        <a href="#" class="trow"><span class="t"><span>Update the release notes for 0.3</span></span><span class="m"><span class="stt needs"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.5 14h3"/></svg>Your turn</span><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">42 min</span></span></a>
       </div>
-      <div class="group"><span class="label">Today<span class="n sec">3</span></span>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Update the release notes for 0.3</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">42 min</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Review the K10 claim routes</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">2 h</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Why does the gates run take 12 minutes?</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">5 h</span></span></a>
+      <div class="group"><button class="fold" type="button" aria-expanded="false"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><span class="label" style="flex: 1">Earlier</span><span class="n sec">26</span></button>
+        
       </div>
-      <div class="group"><span class="label">Earlier<span class="n sec">24</span></span>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Move the log store to one place</span></span><span class="m"><span>Claude Code</span><span class="mono" style="font-size: var(--t-xs)">anima-cloud</span><span class="ago">Yesterday</span></span></a>
-        <a href="#" class="trow"><span class="t"><span class="pg"></span><span>Draft the docs page for Projects</span></span><span class="m"><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima-site</span><span class="ago">Nov 18</span></span></a>
+      <div class="group"><span class="label">Working<span class="n sec">1</span></span>
+        <a href="#" class="trow"><span class="t"><span>Add the export of the usage table</span></span><span class="m"><span class="stt work"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8.5h3l1.5-4 3 8 1.5-4h4"/></svg>Working</span><span>Codex</span><span class="mono" style="font-size: var(--t-xs)">anima.ing</span><span class="ago">now</span></span></a>
       </div>
     </div>
     <section class="thread" aria-label="Thread">
       <div class="thead">
         <div class="row1"><h2>Fix the flaky sign-in test</h2><span class="tag planned">Later stage</span></div>
-        <div class="facts"><span>Claude Code</span><span><span class="st live">Changed now</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
+        <div class="facts"><span>Claude Code</span><span><span class="st deg">Your turn</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
       </div>
       <div class="timeline">
         <div class="you">The sign-in test fails about one time in five on Linux. Find out why and fix it.<span class="at">10:02</span></div>
