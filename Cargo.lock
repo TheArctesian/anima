@@ -248,6 +248,7 @@ dependencies = [
 name = "anima-daemon"
 version = "0.1.0"
 dependencies = [
+ "agent-threads",
  "anima-windows",
  "axum",
  "bytes",

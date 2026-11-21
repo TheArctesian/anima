@@ -2,9 +2,15 @@
 //! (R-135; AIS-020, CMD-030), and the sessions of this computer read as threads (THR-007).
 
 pub mod documents;
+#[cfg(unix)]
+pub mod drive;
 pub mod report;
+#[cfg(unix)]
+pub mod runner;
 pub mod threads;
 pub mod usage;
+#[cfg(unix)]
+pub mod watch_text;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -20,6 +26,32 @@ pub enum AgentCommand {
     /// Show one thread of this computer: the prompts, the replies, the reasoning and the tool
     /// calls with their results.
     Thread(threads::ThreadArgs),
+    /// Start Claude Code or Codex in a folder of this computer as a new thread, through the
+    /// thread runner of the daemon. Full access is the default: the program asks nothing.
+    #[cfg(unix)]
+    Start(drive::StartArgs),
+    /// Send a prompt to a thread that this computer runs.
+    #[cfg(unix)]
+    Send(drive::SendArgs),
+    /// Answer a request of a thread: allow (the default), deny, allow for the session, or
+    /// choose the answers of a question.
+    #[cfg(unix)]
+    Approve(drive::ApproveArgs),
+    /// Stop the running turn of a thread; the program stays.
+    #[cfg(unix)]
+    Interrupt(drive::ThreadIdArgs),
+    /// End the program of a thread and each process below it.
+    #[cfg(unix)]
+    Stop(drive::ThreadIdArgs),
+    /// List the threads that the runner of this computer started, with their state.
+    #[cfg(unix)]
+    Running,
+    /// Show the updates of the threads of this computer as they happen.
+    #[cfg(unix)]
+    Watch(drive::WatchArgs),
+    /// Raise the soft limit of threads one step, after the question of the limit.
+    #[cfg(unix)]
+    RaiseLimit,
 }
 
 impl AgentCommand {
@@ -32,6 +64,22 @@ impl AgentCommand {
             Self::Usage(args) => args.run(invocation).await,
             Self::Threads(args) => args.run(invocation),
             Self::Thread(args) => args.run(invocation),
+            #[cfg(unix)]
+            Self::Start(args) => args.run(invocation).await,
+            #[cfg(unix)]
+            Self::Send(args) => args.run(invocation).await,
+            #[cfg(unix)]
+            Self::Approve(args) => args.run(invocation).await,
+            #[cfg(unix)]
+            Self::Interrupt(args) => drive::interrupt(args, invocation).await,
+            #[cfg(unix)]
+            Self::Stop(args) => drive::stop(args, invocation).await,
+            #[cfg(unix)]
+            Self::Running => drive::running(invocation).await,
+            #[cfg(unix)]
+            Self::Watch(args) => drive::watch(args, invocation).await,
+            #[cfg(unix)]
+            Self::RaiseLimit => drive::raise_limit(invocation).await,
         }
     }
 }

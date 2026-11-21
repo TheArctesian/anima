@@ -46,10 +46,17 @@ async fn main() -> ExitCode {
         Err(error) => return failure(&error),
     };
     match command {
-        Command::Run => match runtime::run(&home, stop()).await {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(error) => failure(&error),
-        },
+        Command::Run => {
+            // The runner of the threads ends with the daemon; its programs stay in the holder.
+            let runner = tokio::spawn(threads(home.dir().to_owned()));
+            let outcome = match runtime::run(&home, stop()).await {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(error) => failure(&error),
+            };
+            runner.abort();
+            outcome
+        }
+        Command::Threads => threads(home.dir().to_owned()).await,
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
         Command::KeyRead { name } => key_read(&name, &home),
@@ -178,6 +185,26 @@ fn failure(error: &dyn std::error::Error) -> ExitCode {
 #[cfg(windows)]
 async fn stop() {
     let _ = tokio::signal::ctrl_c().await;
+}
+
+/// The runner of the agent threads (TH11), until `SIGTERM` or Ctrl-C.
+#[cfg(unix)]
+async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
+    use anima_daemon::threads::runner::{self, login};
+    let program = match std::env::current_exe() {
+        Ok(program) => program,
+        Err(error) => return failure(&error),
+    };
+    let env = login::environment(|name| std::env::var(name).ok()).await;
+    match runner::run(&daemon_dir, &program, env, stop()).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    }
+}
+
+#[cfg(not(unix))]
+async fn threads(_: std::path::PathBuf) -> ExitCode {
+    ExitCode::FAILURE
 }
 
 /// `anima-daemon holder <folder>`: the holder of the agent programs (THR-113).

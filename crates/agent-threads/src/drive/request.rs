@@ -31,7 +31,7 @@ impl ProgramRequestId {
 }
 
 /// What a request asks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RequestKind {
     /// May the program run a command.
@@ -45,7 +45,7 @@ pub enum RequestKind {
 }
 
 /// One question of an agent, with its choices.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Question {
     /// The key of the answer: the text of the question (Claude Code) or its `id` (Codex).
     pub key: String,
@@ -57,7 +57,7 @@ pub struct Question {
 
 /// A request of the program, as the program made it (THR-032: the view shows what the request
 /// names, from the request itself).
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Request {
     pub id: ProgramRequestId,
     pub kind: RequestKind,
