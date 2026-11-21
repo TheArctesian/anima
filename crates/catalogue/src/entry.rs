@@ -25,6 +25,13 @@ pub struct Entry {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Anima {
+    /// What the entry installs: an application, or a database server (R-216, task H24).
+    #[serde(default)]
+    pub kind: Kind,
+    /// For an entry of kind `database`: the server that it installs.
+    pub server: Option<Server>,
+    /// For an application: the database that it needs on a server of the machine.
+    pub database: Option<Need>,
     /// The image of each service, by digest (R-233).
     pub images: Vec<Pinned>,
     /// What the recipe needs beyond the default rules. Empty for most recipes.
@@ -42,6 +49,94 @@ pub struct Anima {
     pub pinned: String,
     /// The last test on a machine.
     pub last_test: MachineTest,
+}
+
+/// What an entry installs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Kind {
+    #[default]
+    Application,
+    /// A database server that applications of the machine use (Section 14 of the proposal).
+    Database,
+}
+
+/// The engine of a database server.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Engine {
+    Postgresql,
+}
+
+/// The server that an entry of kind `database` installs.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Server {
+    pub engine: Engine,
+    /// The major version of the image.
+    pub major: u16,
+    /// The extensions that the image has and that an application may name, for example
+    /// `pg_trgm` or `postgis`.
+    #[serde(default)]
+    pub extensions: Vec<String>,
+}
+
+/// The database that an application needs: the engine, the lowest major version, the
+/// extensions, and the names of the variables in which it wants the connection values.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Need {
+    pub engine: Engine,
+    pub lowest_major: u16,
+    #[serde(default)]
+    pub extensions: Vec<String>,
+    pub variables: Variables,
+}
+
+/// The name of the variable for each connection value that the application wants. At least
+/// one is given. The install writes each one, so each is also in `generated`.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Variables {
+    /// The whole connection address, `postgresql://user:password@host:port/database`.
+    pub url: Option<String>,
+    pub host: Option<String>,
+    pub port: Option<String>,
+    pub name: Option<String>,
+    pub user: Option<String>,
+    pub password: Option<String>,
+}
+
+impl Variables {
+    /// Each variable that is given.
+    #[must_use]
+    pub fn named(&self) -> Vec<&str> {
+        [
+            &self.url,
+            &self.host,
+            &self.port,
+            &self.name,
+            &self.user,
+            &self.password,
+        ]
+        .into_iter()
+        .filter_map(Option::as_deref)
+        .collect()
+    }
+}
+
+impl Need {
+    /// True when `server` has the engine, a major version from the lowest one, and each
+    /// extension that this need names.
+    #[must_use]
+    pub fn met_by(&self, server: &Server) -> bool {
+        self.engine == server.engine
+            && server.major >= self.lowest_major
+            && self
+                .extensions
+                .iter()
+                .all(|extension| server.extensions.contains(extension))
+    }
 }
 
 /// The image of one service.

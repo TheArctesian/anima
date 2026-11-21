@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-NEW-hubrouting, R-NEW-catalogueways and R-NEW-databaselevels give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry.
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-NEW-hubrouting, R-NEW-catalogueways and R-NEW-databaselevels give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry. Version 8 (2026-11-20): Section 13 has the fields and the codes of a database (`kind`, `server`, `database`), and Section 14.6 says what task H24 built and where it differs from the design.
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -967,8 +967,8 @@ It is a step for the operator, or for a session on a machine that he names for i
 
 ## 11. The port of an application through the link: design options (task H35, R-250)
 
-This section is a design with options. It adds no approved requirement and no code exists for
-it. The facts about the link are from the session that built task HM-T12 of
+This section is a design with options. It adds no approved requirement. Section 14.6 says what
+task H24 built of it. The facts about the link are from the session that built task HM-T12 of
 [hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049; tasks HM-T13 and HM-T14 are not started;
 the unit of the link is HMD-058, task HM-T24). This session did not read that code again:
 each fact of Section 11.1 is a claim of that session.
@@ -1049,8 +1049,8 @@ A security review by a separate reviewer reads this section before it becomes a 
 
 ## 12. The routing of the domains of applications on the hub (R-NEW-hubrouting, task H21)
 
-This section is a design with options. It adds no approved requirement and no code exists for
-it. It builds on Section 11 (the port of an application through the link, task H35) and on the
+This section is a design with options. It adds no approved requirement. Section 14.6 says what
+task H24 built of it. It builds on Section 11 (the port of an application through the link, task H35) and on the
 path of task HM-T12 of [hosted-mode.md](hosted-mode.md). The front door at `hub.anima.ing` is a
 part of the cloud service; its plan is in a private repository, and this section does not change
 it. Each sentence about what the door does is a request to that plan, not a fact: Section 12.9 lists
@@ -1312,9 +1312,9 @@ corrections of the text are in this version.
 This section is the format of task H36. The crate `crates/catalogue` reads it and runs the static
 test. The recipes are data files in `crates/catalogue/entries/`, one folder for each recipe.
 Section 13 of the design specification has no folder for data of this kind. The recipes stay in the
-crate that reads them, so that one change holds a recipe and its test, and so that the release maps
-(`deploy/release/applications.txt`) can leave the crate out of each application until task H7 uses
-it.
+crate that reads them, so that one change holds a recipe and its test. The hub carries them: the
+build of the crate puts the text of each recipe folder in the binary (task H38), and the hub lists
+only the recipes that pass the static test.
 
 ### 13.1 One recipe folder
 
@@ -1349,6 +1349,9 @@ in the tables makes the entry unreadable.
 
 | Field (`anima`) | Rule |
 | --- | --- |
+| `kind` | `application` (the default) or `database`: a database server for the applications of the machine (Section 14, task H24) |
+| `server` | For an entry of kind `database` only: `engine` (`postgresql`), `major` (the major version of the image) and `extensions` (each extension that the image has and that an application may name) |
+| `database` | For an application that needs a database only: `engine` (`postgresql`), `lowest_major`, `extensions`, and `variables`: the name of the variable for each connection value that the application wants, of `url`, `host`, `port`, `name`, `user` and `password`, at least one. The install writes each of them, so each is also in `generated` (Section 14.2) |
 | `images` | For each service of the Compose file: `service`, `image`, `tag` and `resolved`. `image` is `repository@sha256:` and 64 hexadecimal digits, with no tag (R-233). `tag` is the tag that was read from the registry to get the digest. `resolved` is the day of that read |
 | `marks` | What the recipe needs beyond the default rules (Section 13.3). Empty for most recipes |
 | `volumes` | Each top-level volume of the Compose file, with the kind of copy that it needs (Section 13.4) |
@@ -1396,7 +1399,7 @@ The test is data only. Task H37 runs it on a throwaway machine after the install
 | Field | Rule |
 | --- | --- |
 | `service` | A service of the Compose file |
-| `port` | The port in the container. A `ports` entry of the service publishes it |
+| `port` | The port in the container. A `ports` entry of the service publishes it. For an entry of kind `database`, an `expose` entry of the service names it: a server publishes no port (Section 14.1), and the test reaches it on the network of the project |
 | `reach` | `http` or `tcp` |
 | `path` | For `http`: a path that starts with `/`. For `tcp`: none |
 | `statuses` | For `http`: each HTTP status that counts as healthy, from 100 to 599. For `tcp`: none |
@@ -1441,6 +1444,8 @@ file. One recipe can have more than one code.
 | `secret_in_example` | The example file has a value for a secret |
 | `generated_not_marked` | A generated variable is not marked, or a marked line is not in `generated` |
 | `machine_test_failed` | The last test on a machine failed. The entry leaves the list |
+| `database_not_described` | The fields about a database are not complete: an entry of kind `database` has no `server` or has a `database`; an application has a `server`; or a need has no variable, a variable twice, a variable that is not in `generated`, a lowest major of 0 or an extension that is not a name |
+| `database_port_published` | An entry of kind `database` publishes a port on the machine (Section 14.1) |
 
 A test of the crate reads the folder `entries/` and requires each recipe to pass, with one known
 refusal: Pi-hole (Section 13.3). Thus `bun run gates` runs the static test of each recipe.
@@ -1476,6 +1481,7 @@ index of all platforms of the tag.
 | Uptime Kuma | `louislam/uptime-kuma` (2.5.12) | None | `sqlite` | Passes |
 | Vaultwarden | `vaultwarden/server` (1.37.5) | None | `sqlite` | Passes |
 | Gitea | `gitea/gitea` (28.4.0) | None | `sqlite` | Passes |
+| PostgreSQL (kind `database`, task H24) | `postgres` (18.7) | None | `postgresql` | Passes |
 
 Dawarich passes the default rules. Its Compose file is not the file of the project: it has no
 `container_name`, no `stdin_open`, no `tty`, no `shm_size`, no options of the log driver and no
@@ -1525,8 +1531,8 @@ such as WireGuard, because it needs a capability of the kernel that no mark name
 
 ## 14. The PostgreSQL entry (R-216, R-NEW-databaselevels, task H24)
 
-This section is a design with options. It adds no approved requirement and no code exists for
-it. HOST-041 is approved (R-216); the levels of HOST-048 are OD-HOST-38 of the plan. The design is
+This section is a design with options. It adds no approved requirement. Section 14.6 says what
+task H24 built of it. HOST-041 is approved (R-216); the levels of HOST-048 are OD-HOST-38 of the plan. The design is
 the same for each level: level 2 adds a replica to the server of level 1.
 
 ### 14.1 What the entry is
@@ -1597,7 +1603,46 @@ have yet; the design of that path comes with the decision.
 - A new major version needs a dump and a restore, or `pg_upgrade`. Anima never changes the major
   version by itself: the operator starts it, and Anima makes a copy first.
 
-### 14.6 Questions for the operator
+### 14.6 What task H24 built, and where it differs from this design
+
+Task H24 built the part that needs no machine (2026-11-20, branch `hosted/apps-h38`):
+
+- **The entry.** `crates/catalogue/entries/postgresql`: kind `database`, the official image
+  `postgres` with the tag 18.7, named by the digest of the index of all platforms of that tag,
+  read on 2026-11-20 from the registry of Docker Hub with a request for the manifest (no pull,
+  no login). The image is the Debian variant, not Alpine, so that the collations of text are
+  those of the C library of most servers. The password of the superuser is generated at the
+  install. The server has `expose` 5432 and no `ports` entry.
+- **The format.** The fields `kind`, `server` and `database` and the codes
+  `database_not_described` and `database_port_published` of Section 13.
+- **The pure functions.** `catalogue::postgresql`: the names of an application, the statements
+  of the setup and of the removal, the connection values, and the argument lists of the copy,
+  the way back and its test, with their tests. Nothing runs them yet.
+
+Where the build differs from Sections 14.1 to 14.3:
+
+- **The names.** Section 14.2 says that the names are made from the identifier. The identifier of
+  an entry may have `-`, which a name of PostgreSQL without quotes may not have: each `-`
+  becomes `_`. Two identifiers that differ only in `-` and `_` thus get the same names; the
+  install must refuse a database that exists. The names `postgres`, `template0`, `template1`,
+  `public` and each name that starts with `pg_` are refused.
+- **The password in a statement.** The password is an input value; the crate never makes one
+  (OD-HOST-42 A). It is 16 to 128 printable characters with no space, quote or backslash, so
+  that the quoted literal of the `CREATE ROLE` statement is the same text with each setting of
+  the server. The program must give that statement to `psql` on its standard input, never as
+  an argument. `Debug` of a statement or of a connection value does not show it.
+- **The test of a machine.** It reaches the port that the server exposes on the network of its
+  project, not a published port (Section 13.5).
+- **The way back.** The new database is `<database>_back_<number>`, the database of the test is
+  `<database>_check`. A name longer than 63 bytes is refused, not cut.
+- **The test of the way back** compares the tables of `pg_restore --list` with the tables of the
+  restored database. A table whose name has a space is reported as missing: the list does not
+  quote names. That is a false failure, never a false pass.
+
+Not built: the networks `anima-db-<application>` and the change of contract K10 that they need
+(Section 14.1, CON-001), each part on a machine (task H6), and a replica (OD-HOST-38).
+
+### 14.7 Questions for the operator
 
 - **OD-HOST-41: one server for each machine, or one for each application?** A: one server on a
   machine, a database and a user for each application (his words). B: a server of its own in the

@@ -1,6 +1,8 @@
 //! Tests of the static test of a recipe (HOST-047): the recipes that ship (`shipped`), and a
-//! sound recipe with one fault at a time (`refused`).
+//! sound recipe with one fault at a time (`refused`), and the fields about a database
+//! (`database`).
 
+mod database;
 mod refused;
 mod shipped;
 

@@ -7,16 +7,20 @@
 //! machine: the test on a machine is task H37. Each failure is a fixed code with the
 //! identifier of the recipe, never text of a file.
 
+mod database;
 pub mod entry;
 mod example;
 mod fields;
 mod file;
 mod folder;
+pub mod postgresql;
+mod shipped;
 
 #[cfg(test)]
 mod tests;
 
 pub use folder::{ReadError, read};
+pub use shipped::shipped;
 
 use entry::{Entry, MachineTest};
 
@@ -69,6 +73,11 @@ pub enum Code {
     GeneratedNotMarked,
     /// The last test on a machine failed: the entry leaves the list.
     MachineTestFailed,
+    /// The fields about a database are not complete: a server of kind `database`, or the
+    /// need of an application (its variables, each generated at install).
+    DatabaseNotDescribed,
+    /// A database server publishes a port on the machine (Section 14.1 of the proposal).
+    DatabasePortPublished,
 }
 
 impl Code {
@@ -94,6 +103,8 @@ impl Code {
             Self::SecretInExample => "secret_in_example",
             Self::GeneratedNotMarked => "generated_not_marked",
             Self::MachineTestFailed => "machine_test_failed",
+            Self::DatabaseNotDescribed => "database_not_described",
+            Self::DatabasePortPublished => "database_port_published",
         }
     }
 
@@ -150,6 +161,7 @@ fn codes(recipe: &Recipe) -> Vec<Code> {
         return vec![Code::EntryNotReadable];
     };
     let mut codes = fields::check(&entry, &recipe.folder);
+    codes.extend(database::check(&entry.anima));
     if matches!(entry.anima.last_test, MachineTest::Failed { .. }) {
         codes.push(Code::MachineTestFailed);
     }

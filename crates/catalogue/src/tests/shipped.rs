@@ -5,7 +5,7 @@ use std::path::Path;
 
 use compose_rules::{Refusal, Rule};
 
-use crate::{Code, check, read};
+use crate::{Code, check, read, shipped};
 
 #[test]
 fn host_047_each_shipped_recipe_passes_or_has_its_known_refusal() {
@@ -22,6 +22,7 @@ fn host_047_each_shipped_recipe_passes_or_has_its_known_refusal() {
             "gitea",
             "owntracks-recorder",
             "pihole",
+            "postgresql",
             "uptime-kuma",
             "vaultwarden"
         ]
@@ -42,4 +43,11 @@ fn host_047_each_shipped_recipe_passes_or_has_its_known_refusal() {
         };
         assert_eq!(codes, expected, "{}", recipe.folder);
     }
+}
+
+#[test]
+fn h38_the_recipes_built_into_the_crate_are_the_recipes_of_the_folder() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("entries");
+    let recipes = read(&root).expect("the entries folder of the crate is readable");
+    assert_eq!(shipped(), recipes);
 }

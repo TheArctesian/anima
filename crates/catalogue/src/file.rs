@@ -5,7 +5,7 @@ use compose_rules::{Node, Settings, forms::whole};
 
 use crate::{
     Code,
-    entry::{Anima, HealthTest, Mark, Protocol, Reach},
+    entry::{Anima, HealthTest, Kind, Mark, Protocol, Reach},
 };
 
 /// The longest time limit of a test of a machine, in seconds.
@@ -135,16 +135,31 @@ fn volumes_described(anima: &Anima, document: &Node) -> bool {
     declared == described
 }
 
-/// The test reaches a port that its service publishes, and says what a healthy answer is.
-fn test_complete(test: &HealthTest, document: &Node) -> bool {
+/// True when a service of the file has a `ports` entry.
+fn publishes(document: &Node) -> bool {
+    services(document)
+        .iter()
+        .any(|(_, service)| !ports(service).is_empty())
+}
+
+/// The test reaches a port that its service publishes, and says what a healthy answer is. A
+/// database server publishes no port: its test reaches a port that the service exposes on the
+/// network of its project.
+fn test_complete(test: &HealthTest, kind: Kind, document: &Node) -> bool {
     let port = test.port.to_string();
     let published = services(document)
         .iter()
         .find(|(name, _)| *name == test.service)
-        .is_some_and(|(_, service)| {
-            ports(service)
+        .is_some_and(|(_, service)| match kind {
+            Kind::Application => ports(service)
                 .iter()
-                .any(|entry| entry.get("target").and_then(Node::text) == Some(port.as_str()))
+                .any(|entry| entry.get("target").and_then(Node::text) == Some(port.as_str())),
+            Kind::Database => match service.get("expose") {
+                Some(Node::List(exposed)) => exposed
+                    .iter()
+                    .any(|entry| entry.text() == Some(port.as_str())),
+                _ => false,
+            },
         });
     let answer = match test.reach {
         Reach::Http => {
@@ -195,7 +210,10 @@ pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code
     if !volumes_described(anima, &document) {
         codes.push(Code::VolumeNotDescribed);
     }
-    if !test_complete(&anima.test, &document) {
+    if anima.kind == Kind::Database && publishes(&document) {
+        codes.push(Code::DatabasePortPublished);
+    }
+    if !test_complete(&anima.test, anima.kind, &document) {
         codes.push(Code::TestNotComplete);
     }
     codes
