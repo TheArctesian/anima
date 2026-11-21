@@ -8,6 +8,7 @@ mod folders;
 mod removal;
 mod rig;
 mod trust;
+mod updates;
 
 use std::{
     ffi::OsString,

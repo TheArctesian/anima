@@ -87,6 +87,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
+| HT-NEW-daemonupdate | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of two versions, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -1226,6 +1227,51 @@ On this Mac:
    `ls -l ~/.local/bin/anima-daemon` and `ls ~/.config/anima-daemon/`. Expected after the sign-out:
    no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
    `systemctl --user status anima-daemon` says that the unit could not be found.
+
+### HT-NEW-daemonupdate: a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20)
+
+Built: on the branch `hosted/hm-t20-daemon-update`. The daemon has the command
+`anima-daemon --version` (`crates/daemon/src/cli.rs`), which prints `anima-daemon <version>`. At each
+start the shell (`apps/desktop/src-tauri/src/daemon/update.rs`) runs `--version` with the daemon that the
+application carries and with the copy `~/.local/bin/anima-daemon`. When the carried daemon is newer, or the
+copy prints no version (a daemon from before this task), the shell moves the copy to
+`anima-daemon.previous`, writes the new copy beside it and renames it into place, then runs
+`anima-daemon install` with the new copy, which writes the unit again and starts it. Then it deletes
+`anima-daemon.previous`. It does not enrol again. An equal or older carried daemon changes nothing. When
+the copy or the start fails, the copy of before goes back and its unit starts again. The log of the
+application has one line for each result.
+
+The tests cover, with stand-in daemons in temporary folders: a newer carried daemon (the copy is replaced
+and only `install` runs), the same version, an older carried daemon, a copy that prints no version, a
+carried daemon that prints no version, no copy, a copy that fails after the copy of before was moved
+aside, a unit that does not start, and an update that a stop cut. Not covered: the real `launchctl`,
+`systemctl`, Keychain and `~/.local/bin`, the code signature of a real copy on a Mac, and a real hub.
+
+It needs: two applications of this branch with different versions, made with
+`apps/desktop/src-tauri/trial-bundle.sh <version>` (for example `0.0.2` first, then `0.0.3`), the
+sign-in to the hosted hub, and HT-061 step 1 passed (the daemon reports).
+
+On this Mac:
+
+1. Install and open the application of the lower version. Sign in to the hosted hub and wait until the
+   device of this Mac shows its metrics (HT-061 step 1). Run `~/.local/bin/anima-daemon --version` and
+   `launchctl print gui/$(id -u)/ing.anima.daemon | grep pid`. Expected: `anima-daemon 0.0.2` and a pid.
+   Write down the pid.
+2. Quit the application. Install the application of the higher version over it and open it. Wait one
+   minute. Expected: no sign-in, no question and no message.
+3. Run the two commands of step 1 again, and `ls ~/.local/bin/`. Expected: `anima-daemon 0.0.3`, a pid
+   that is not the pid of step 1, and no file `anima-daemon.previous`. The log of the application
+   (Settings, Logs of the application) has the line "the daemon on this computer was replaced by the
+   newer one of the app".
+4. In the application open Devices. Expected: one device for this Mac, with new metrics after one minute.
+   On the page of this Mac, Settings, the panel "Daemon" shows the same daemon as before: no new
+   enrolment, and no "Daemon revoked.".
+5. Run `codesign --verify --verbose ~/.local/bin/anima-daemon`. Expected: "valid on disk".
+6. Quit the application. Install the application of the lower version again and open it. Wait one minute.
+   Run `~/.local/bin/anima-daemon --version`. Expected: `anima-daemon 0.0.3`; the log has the line "the
+   daemon on this computer is newer than the one of the app; it stays".
+7. On the Linux computer, steps 1 to 4 with the AppImages of the two versions and
+   `systemctl --user show -p MainPID anima-daemon` in place of `launchctl print`. Expected: the same.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 

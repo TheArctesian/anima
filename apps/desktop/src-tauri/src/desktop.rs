@@ -137,6 +137,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
             stay_awake::start(app.handle());
             link::start(&app.state::<Arc<link::DeviceLink>>());
             local_hub::update::at_start(&app.state::<local_hub::Changing>());
+            daemon::update_at_start(&app.state::<daemon::Installing>());
             Ok(())
         })
 }

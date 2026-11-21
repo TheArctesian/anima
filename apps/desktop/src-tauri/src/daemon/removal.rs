@@ -52,9 +52,17 @@ pub fn remove_here(leave: &Leave<'_>) -> Result<bool, DaemonError> {
         stop: leave.stop,
     };
     run::run(&uninstall).map_err(|error| DaemonError::of_run(error, DaemonError::Uninstall))?;
-    match fs::remove_file(leave.copy) {
-        Ok(()) => Ok(copied),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(copied),
+    // The copy of before that an update cut by a stop of the app left (HMD-055) goes too.
+    #[cfg(unix)]
+    delete(&super::update::previous(leave.copy))?;
+    delete(leave.copy).map(|()| copied)
+}
+
+/// Deletes `file`; a file that is not there is not an error.
+fn delete(file: &Path) -> Result<(), DaemonError> {
+    match fs::remove_file(file) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(_) => Err(DaemonError::Remove),
     }
 }

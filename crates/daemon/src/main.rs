@@ -38,6 +38,10 @@ async fn main() -> ExitCode {
     if let Command::Holder { folder, limit } = &command {
         return holder(folder, *limit).await;
     }
+    if matches!(command, Command::Version) {
+        println!("{}", cli::version_line());
+        return ExitCode::SUCCESS;
+    }
     let home = match Home::locate(
         |name| std::env::var(name).ok(),
         Platform::current() == Platform::Macos,
@@ -52,7 +56,7 @@ async fn main() -> ExitCode {
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
         Command::KeyRead { name } => key_read(&name, &home),
-        Command::Holder { .. } => ExitCode::FAILURE,
+        Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
