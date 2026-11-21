@@ -127,10 +127,11 @@ describe('the calls of the page to the runner', () => {
 
   it('TH97: a program that does not answer is refused with the words of the runner, which name its path', async () => {
     const said = 'The Codex at /opt/homebrew/bin/codex did not answer in 20 seconds.';
-    const read = outcomeFrom({ outcome: 'refused', why: { refusal: 'program_does_not_answer', said } });
-    expect(read).toEqual({ outcome: 'refused', why: 'program_does_not_answer', said });
+    const answered = ['/Applications/ChatGPT.app/codex'];
+    const read = outcomeFrom({ outcome: 'refused', why: { refusal: 'program_does_not_answer', said, answered } });
+    expect(read).toEqual({ outcome: 'refused', why: 'program_does_not_answer', said, answered });
     const live = new LiveThreads(madeShell(() => read ?? { outcome: 'ok' }), () => AWAY);
-    expect(await live.call({ call: 'start', program: 'codex', folder: '/w', mode: 'ask', model: null, effort: null, prompt: 'hi' })).toEqual({ ok: false, words: said });
+    expect(await live.call({ call: 'start', program: 'codex', folder: '/w', mode: 'ask', model: null, effort: null, prompt: 'hi' })).toEqual({ ok: false, words: said, answered });
   });
 });
 

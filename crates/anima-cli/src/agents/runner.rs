@@ -129,7 +129,7 @@ pub fn refusal(why: &Refusal) -> Failure {
             "That program is not on the PATH of your login, or that path is not a copy the runner finds.",
             None,
         ),
-        Refusal::ProgramDoesNotAnswer { said } | Refusal::HolderOlder { said } => {
+        Refusal::ProgramDoesNotAnswer { said, .. } | Refusal::HolderOlder { said } => {
             return Failure::Forbidden {
                 message: said.clone(),
                 hint: None,

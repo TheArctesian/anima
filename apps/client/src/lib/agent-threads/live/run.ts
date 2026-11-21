@@ -98,8 +98,11 @@ export type Outcome =
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
   /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
   | { readonly outcome: 'folder'; readonly notice: readonly string[] }
-  /** `said`: the words of the runner for a refusal that names a program and its path (TH97). */
-  | { readonly outcome: 'refused'; readonly why: Refusal; readonly said?: string };
+  /**
+   * `said`: the words of the runner for a refusal that names a program and its path; `answered`: the other copies of a
+   * program that did not answer, which did (TH97).
+   */
+  | { readonly outcome: 'refused'; readonly why: Refusal; readonly said?: string; readonly answered?: readonly string[] };
 
 export type Answer =
   | { readonly answer: 'allow' }
@@ -118,6 +121,8 @@ export type Action =
       readonly model: string | null;
       readonly effort: Effort | null;
       readonly prompt: string;
+      /** The copy of the program to run; only a copy that the runner finds is taken (TH97). */
+      readonly program_path?: string;
     }
   | { readonly call: 'send'; readonly thread: string; readonly text: string }
   | { readonly call: 'answer'; readonly thread: string; readonly request: string; readonly answer: Answer }
@@ -285,8 +290,9 @@ function refusedFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
   const why = oneOf<Refusal>(value.refusal, REFUSALS);
   const said = str(value.said);
+  const answered = strings(value.answered) ?? [];
   if (why === null) return null;
-  return said === null ? { outcome: 'refused', why } : { outcome: 'refused', why, said };
+  return { outcome: 'refused', why, ...(said === null ? {} : { said }), ...(answered.length === 0 ? {} : { answered }) };
 }
 
 /** The result of a call, or `null` when it does not read. */

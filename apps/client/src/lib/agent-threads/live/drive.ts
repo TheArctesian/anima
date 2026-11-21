@@ -4,6 +4,7 @@
  */
 
 import type { Program } from '../thread';
+import type { CallResult } from './live.svelte';
 import type { Action, Answer, Ask, Effort, Mode } from './run';
 
 /** The words of each mode of approvals; full access is the default (decision of the operator, agent-threads.md Section 6.2). */
@@ -28,6 +29,8 @@ export interface NewThreadForm {
   readonly model: string;
   readonly effort: Effort | '';
   readonly prompt: string;
+  /** The copy of the program, empty for the usual one. */
+  readonly programPath: string;
 }
 
 /** The start call of a form, or the words of what is wrong with it. The runner checks each value again. */
@@ -35,11 +38,32 @@ export function startOf(form: NewThreadForm): { readonly ok: true; readonly acti
   const folder = form.folder.trim();
   if (!folder.startsWith('/')) return { ok: false, words: 'Give an absolute folder of this computer, for example /Users/you/project.' };
   if (form.prompt.trim() === '') return { ok: false, words: 'Type the first prompt.' };
+  const programPath = form.programPath.trim();
+  if (programPath !== '' && !programPath.startsWith('/')) return { ok: false, words: 'Give the absolute path of the copy of the program, or leave it empty.' };
   const model = form.model.trim();
   return {
     ok: true,
-    action: { call: 'start', program: form.program, folder, mode: form.mode, model: model === '' ? null : model, effort: form.effort === '' ? null : form.effort, prompt: form.prompt },
+    action: {
+      call: 'start',
+      program: form.program,
+      folder,
+      mode: form.mode,
+      model: model === '' ? null : model,
+      effort: form.effort === '' ? null : form.effort,
+      prompt: form.prompt,
+      ...(programPath === '' ? {} : { program_path: programPath }),
+    },
   };
+}
+
+/**
+ * The copy that the dialog offers after a refusal: when the copy that the start chose did not answer and a different one
+ * did, the first of those (TH97); `null` when there is none, or when the start already named that copy.
+ */
+export function offeredCopy(result: CallResult, chosen: string): string | null {
+  if (result.ok) return null;
+  const copy = result.answered?.[0];
+  return copy === undefined || copy === chosen.trim() ? null : copy;
 }
 
 /** The words of the head of a request, as the program asks it. */

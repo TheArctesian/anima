@@ -4,7 +4,7 @@
   import Input from '$lib/forms/input/Input.svelte';
   import Select from '$lib/forms/input/Select.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
-  import { EFFORTS, MODE_WORDS, startOf, type NewThreadForm } from '../live/drive';
+  import { EFFORTS, MODE_WORDS, offeredCopy, startOf, type NewThreadForm } from '../live/drive';
   import type { CallResult } from '../live/live.svelte';
   import type { Action, Effort, Mode } from '../live/run';
   import type { Program } from '../thread';
@@ -24,6 +24,10 @@
   let model = $state('');
   let effort = $state<Effort | ''>('');
   let prompt = $state('');
+  /** The copy of the program, empty for the usual one (TH97). */
+  let programPath = $state('');
+  /** A copy that answered when the chosen one did not: the dialog offers it. */
+  let offer = $state<string | null>(null);
   let busy = $state(false);
   let problem = $state<string | null>(null);
   /** The folder whose notice was read, and the notice: what its project files make the program do (THR-046). */
@@ -35,7 +39,7 @@
 
   async function start(): Promise<void> {
     if (busy) return;
-    const form: NewThreadForm = { program, folder, mode, model, effort, prompt };
+    const form: NewThreadForm = { program, folder, mode, model, effort, prompt, programPath };
     const checked = startOf(form);
     if (!checked.ok) {
       problem = checked.words;
@@ -43,6 +47,7 @@
     }
     busy = true;
     problem = null;
+    offer = null;
     // The first press reads the folder; when its files run something by themselves, the notice is shown first and the
     // thread starts at the next press (OD-THR21: project settings are honoured, with a notice).
     if (read !== folder && !(await readNotice())) {
@@ -55,11 +60,19 @@
       // The files can change before the next press: it reads them again.
       read = null;
       problem = result.words;
+      offer = offeredCopy(result, programPath);
       return;
     }
     if (result.outcome.outcome === 'started') onStarted(result.outcome.thread);
     prompt = '';
     onClose();
+  }
+
+  /** Starts again with the copy that answered. */
+  function useOffer(copy: string): void {
+    programPath = copy;
+    offer = null;
+    void start();
   }
 
   /** Reads the notice of the folder; true when the start may go on now. A check that fails is shown as a notice and
@@ -88,7 +101,14 @@
     }}
   >
     <Field label="Program">
-      <Select bind:value={program}>
+      <Select
+        bind:value={program}
+        onchange={() => {
+          // A copy belongs to one program.
+          programPath = '';
+          offer = null;
+        }}
+      >
         <option value="claude_code">Claude Code</option>
         <option value="codex">Codex</option>
       </Select>
@@ -113,6 +133,12 @@
     <Field label="First prompt">
       <textarea class="prompt" bind:value={prompt} rows="4" aria-label="First prompt"></textarea>
     </Field>
+    <details class="advanced" open={programPath !== ''}>
+      <summary>Advanced</summary>
+      <Field label="Program path" constraint="Empty for the usual copy. Only a copy that the runner finds is taken">
+        <Input bind:value={programPath} mono placeholder="/Applications/…/codex" autocomplete="off" spellcheck={false} />
+      </Field>
+    </details>
     {#if read === folder && notice.length > 0}
       <div class="notice" role="note" aria-label="What this folder runs by itself">
         <p>{notice[0]}</p>
@@ -122,7 +148,13 @@
         <p>Press Start again to start the thread with these settings.</p>
       </div>
     {/if}
-    {#if problem !== null}<p class="problem" role="alert">{problem}</p>{/if}
+    {#if offer !== null}
+      <div class="offer" role="alert">
+        <p>The usual copy of {program === 'codex' ? 'Codex' : 'Claude Code'} does not answer. A different copy answers:</p>
+        <p class="copy">{offer}</p>
+        <FormButton type="button" tone="primary" busy={busy} onclick={() => useOffer(offer ?? '')}>Start with this copy</FormButton>
+      </div>
+    {:else if problem !== null}<p class="problem" role="alert">{problem}</p>{/if}
     <div class="acts">
       <FormButton type="button" onclick={onClose}>Cancel</FormButton>
       <FormButton type="submit" tone="primary" busy={busy}>Start</FormButton>
@@ -170,6 +202,32 @@
   .notice ul {
     margin-block: var(--space-2);
     padding-inline-start: var(--space-4);
+  }
+
+  .advanced summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .offer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: var(--border-thin) solid var(--status-degraded);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+  }
+
+  .offer p {
+    margin: 0;
+  }
+
+  .offer .copy {
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
   }
 
   .problem {

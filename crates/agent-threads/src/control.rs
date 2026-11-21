@@ -135,9 +135,12 @@ pub enum Refusal {
     /// The program is not on the `PATH` of the login of the person.
     ProgramNotFound,
     /// The program did not answer `--version` in time: `said` names it, its path and what to
-    /// try, in words for the person (TH97).
+    /// try, in words for the person; `answered` holds the other copies that answered, which a
+    /// start can name (TH97).
     ProgramDoesNotAnswer {
         said: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        answered: Vec<PathBuf>,
     },
     /// A value that becomes an argument is not of its alphabet (THR-040).
     BadValue,

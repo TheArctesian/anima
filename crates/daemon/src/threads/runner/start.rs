@@ -203,7 +203,8 @@ impl Runner {
     fn not_answered(&self, program: Program, path: &Path, copies: &[PathBuf]) -> Refusal {
         let others = self.silence.answered_others(path, copies);
         let said = super::silence::not_answered(program, path, &others);
-        Refusal::ProgramDoesNotAnswer { said }
+        let answered = others.into_iter().map(|(copy, _)| copy).collect();
+        Refusal::ProgramDoesNotAnswer { said, answered }
     }
 
     /// The start of a thread whose copy answered its version.

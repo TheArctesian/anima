@@ -2865,7 +2865,12 @@ answered at once.
 3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
    its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it
    comes to `idle`.
-4. On the page Threads, start a Codex thread with "New thread". Expected: the dialog shows the words of step 1.
+4. On the page Threads, start a Codex thread with "New thread". Expected: after about 20 seconds the dialog says
+   "The usual copy of Codex does not answer. A different copy answers:", the path of the copy of ChatGPT.app, and
+   a button "Start with this copy". Press it. Expected: the thread starts with that copy, and "Advanced" shows its
+   path. (Branch `threads/copy-choice`, 2026-11-21.)
+4a. Open "New thread" again, open "Advanced", type `codex` in "Program path" and press Start. Expected: "Give the
+   absolute path of the copy of the program, or leave it empty."
 5. After `brew upgrade codex` (by the person), repeat step 1. Expected: the thread starts, and its first line names
    the copy of Homebrew as "the first on the PATH of your login" and the copy of ChatGPT.app as another copy.
 

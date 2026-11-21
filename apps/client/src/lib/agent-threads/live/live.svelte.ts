@@ -14,7 +14,10 @@ export const REPLAY_GAP_MS = 500;
 export const STOPPED_KEPT = 50;
 
 /** What a call came to: its outcome, or the refusal in words for the person. */
-export type CallResult = { readonly ok: true; readonly outcome: Outcome } | { readonly ok: false; readonly words: string };
+export type CallResult =
+  | { readonly ok: true; readonly outcome: Outcome }
+  /** `answered`: the copies of a program that answered when the chosen one did not (TH97). */
+  | { readonly ok: false; readonly words: string; readonly answered?: readonly string[] };
 
 /**
  * The threads that the runner of this computer drives, as the page shows them (TH14): the watch folds each update into
@@ -116,7 +119,8 @@ export class LiveThreads {
     }
     if (outcome.outcome !== 'refused') return { ok: true, outcome };
     if (outcome.why === 'over_limit' && action.call === 'start') this.overLimit = action;
-    return { ok: false, words: outcome.said ?? REFUSAL_WORDS[outcome.why] };
+    const words = outcome.said ?? REFUSAL_WORDS[outcome.why];
+    return outcome.answered === undefined ? { ok: false, words } : { ok: false, words, answered: outcome.answered };
   }
 
   /**
