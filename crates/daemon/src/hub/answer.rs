@@ -29,6 +29,12 @@ pub enum Cause {
         "this address is the hosted Anima.ing hub in a browser, not a hub for a daemon: enrol again with --hub and the address of your own hub, or sign in with the Anima.ing application, which installs the daemon for a hosted hub"
     )]
     HostedAddress,
+    /// The program at the socket of the link is not the one the daemon expects, and nothing was
+    /// written to it (K8 Section 1).
+    #[error(
+        "the program at the socket of anima-link is not the Anima link, so nothing was sent to it"
+    )]
+    NotTheLink,
 }
 
 /// Whether `body` is the refusal of the gateway of the hosted hubs for a request with no

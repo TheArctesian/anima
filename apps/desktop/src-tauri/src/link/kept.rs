@@ -21,7 +21,7 @@ use std::{
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
-use super::copy::{current_copy, destination, earlier_copy, place, same, unplace};
+use super::copy::{self as copies, current_copy, destination, earlier_copy, place, same, unplace};
 use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 #[cfg(unix)]
@@ -36,8 +36,10 @@ use windows::{environment, socket_present};
 #[cfg(unix)]
 #[path = "kept/unix.rs"]
 mod unix;
+#[cfg(all(unix, test))]
+pub use unix::{daemon_folder, private_socket};
 #[cfg(unix)]
-pub use unix::{daemon_folder, environment, private_socket};
+pub use unix::{environment, socket_of_user};
 
 /// `unit install` runs up to three steps of 30 s each, one of them twice.
 const UNIT_LIMIT: Duration = Duration::from_secs(150);
@@ -159,8 +161,9 @@ impl Kept {
         let copy = destination(application);
         let changed = self.program != copy || !same(carried, &self.program);
         if !changed {
-            if self.daemon_socket.is_some() && !self.has_daemon_socket() {
-                let _ = self.install();
+            let restart = self.daemon_socket.is_some() && !self.has_daemon_socket();
+            if (restart || copies::waits_for_restart(&self.program)) && self.install().is_ok() {
+                copies::forget_previous(&self.program);
             }
             return self;
         }
@@ -182,6 +185,7 @@ impl Kept {
         if self.program != moved.program {
             unplace(&self.program);
         }
+        copies::forget_previous(&moved.program);
         moved
     }
 
@@ -237,14 +241,7 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
     let application = crate::user_folders::of_this_user().ok_or(LinkError::NoHome)?;
     #[cfg(unix)]
-    let daemon_socket = {
-        let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
-        private_socket(&daemon_folder(
-            &home,
-            cfg!(target_os = "macos"),
-            config_home.as_deref(),
-        ))
-    };
+    let daemon_socket = socket_of_user(&home);
     #[cfg(windows)]
     let daemon_socket = windows::private_socket();
     Ok(Kept {

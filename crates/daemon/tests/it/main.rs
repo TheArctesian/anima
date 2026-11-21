@@ -12,6 +12,10 @@ mod kit;
 #[cfg(target_os = "linux")]
 mod log;
 #[cfg(target_os = "linux")]
+mod old_origin;
+#[cfg(unix)]
+mod peer;
+#[cfg(target_os = "linux")]
 mod push;
 #[cfg(unix)]
 mod readers;

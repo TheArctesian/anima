@@ -60,3 +60,11 @@ pub fn place(carried: &Path, application: &Path) -> Result<PathBuf, LinkError> {
     }
     Ok(destination)
 }
+
+/// Windows replaces no running copy (the unit is removed first), so no copy waits.
+pub fn waits_for_restart(_program: &Path) -> bool {
+    false
+}
+
+/// Nothing to delete on Windows: see [`waits_for_restart`].
+pub fn forget_previous(_program: &Path) {}

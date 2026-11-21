@@ -144,9 +144,88 @@ impl Home {
     }
 }
 
+/// The socket of an old link origin on macOS: `link.sock` in the default folder of the daemon
+/// below the home folder of the account as the user database names it (`/usr/bin/id -P`, run with
+/// no environment and a limit of 5 seconds), so that no value of the environment
+/// (`ANIMA_DAEMON_HOME`, `HOME`) decides where a token from the Keychain goes (R-317).
+///
+/// # Errors
+/// An I/O error when `id` cannot run, takes too long, or names no absolute home folder.
+#[cfg(target_os = "macos")]
+pub fn account_link_socket() -> io::Result<PathBuf> {
+    use std::io::Read as _;
+    use std::time::{Duration, Instant};
+    let mut child = std::process::Command::new("/usr/bin/id")
+        .arg("-P")
+        .env_clear()
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()?;
+    let end = Instant::now() + Duration::from_secs(5);
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if Instant::now() >= end {
+            // The time limit is the error; a failed kill of a program that is ending adds nothing.
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(io::ErrorKind::TimedOut.into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    let mut line = Vec::new();
+    if let Some(mut out) = child.stdout.take() {
+        out.read_to_end(&mut line)?;
+    }
+    let home = status
+        .success()
+        .then(|| home_of_account(&line))
+        .flatten()
+        .ok_or_else(|| io::Error::other("the user database names no home folder"))?;
+    Ok(home
+        .join("Library/Application Support")
+        .join(FOLDER)
+        .join(LINK_SOCKET))
+}
+
+/// The home folder in a line of the user database in the form of `id -P` (at least ten fields;
+/// the home folder is the one before the shell, the last), as bytes, when it is an absolute path.
+#[cfg_attr(
+    not(any(target_os = "macos", all(test, unix))),
+    expect(dead_code, reason = "read only on macOS and by its tests")
+)]
+#[cfg(unix)]
+fn home_of_account(line: &[u8]) -> Option<PathBuf> {
+    use std::os::unix::ffi::OsStrExt as _;
+    let line = line.strip_suffix(b"\n").unwrap_or(line);
+    let fields: Vec<&[u8]> = line.split(|byte| *byte == b':').collect();
+    let home = fields.len().checked_sub(2).filter(|_| fields.len() >= 10)?;
+    let home = Path::new(std::ffi::OsStr::from_bytes(fields[home]));
+    home.is_absolute().then(|| home.to_path_buf())
+}
+
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_home_of_the_account_is_the_field_before_the_shell_and_absolute() {
+        let line = b"me:********:501:20::0:0:Me Myself:/Users/me:/bin/zsh\n";
+        assert_eq!(home_of_account(line), Some(PathBuf::from("/Users/me")));
+        let colon_in_name = b"me:*:501:20::0:0:Me: Myself:/Users/me:/bin/zsh";
+        assert_eq!(
+            home_of_account(colon_in_name),
+            Some(PathBuf::from("/Users/me"))
+        );
+        assert_eq!(home_of_account(b"me:*:501:20:Me:/Users/me:/bin/zsh"), None);
+        assert_eq!(
+            home_of_account(b"me:*:501:20::0:0:Me:relative:/bin/zsh"),
+            None
+        );
+        assert_eq!(home_of_account(b""), None);
+    }
 
     fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
         move |name| {

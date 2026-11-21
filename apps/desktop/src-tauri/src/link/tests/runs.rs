@@ -38,6 +38,7 @@ fn launch(program: PathBuf, folder: &Path, port: u16) -> Launch {
         folder: folder.to_path_buf(),
         port,
         env: Vec::new(),
+        daemon_socket: None,
         restart_after: Duration::from_millis(100),
     }
 }
@@ -163,4 +164,31 @@ fn repeated_early_exits_stop_automatic_restarts_until_explicitly_started_again()
     assert_eq!(down.reason, Some(Reason::RepeatedFailure));
     assert_eq!(starts(), 6);
     device.stop();
+}
+
+/// R-317: the link that the app runs itself makes the socket for the daemon, as the
+/// unit does, so a daemon with an old link origin can move to it.
+#[test]
+fn the_link_that_the_app_runs_gets_the_socket_for_the_daemon() {
+    let folder = tempfile::tempdir().unwrap();
+    let body = format!("echo \"$7 $8\" > \"$3/socket\"\n{}", ready_then_wait());
+    let program = stand_in(folder.path(), &body);
+    let port = free_port();
+    let socket = folder.path().join("daemon/link.sock");
+    let device = DeviceLink::default();
+
+    device.start(Launch {
+        daemon_socket: Some(socket.clone()),
+        ..launch(program, folder.path(), port)
+    });
+    let up = until(&device, |state| state.phase == Phase::Up);
+    device.stop();
+
+    assert!(up.serves(port), "{up:?}");
+    assert_eq!(
+        fs::read_to_string(folder.path().join("socket"))
+            .unwrap()
+            .trim(),
+        format!("-daemon-socket {}", socket.display())
+    );
 }

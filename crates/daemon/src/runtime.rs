@@ -5,8 +5,10 @@
 //! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
 
 mod agent_usage;
+mod link_wait;
+#[cfg(unix)]
+pub mod old_origin;
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -15,6 +17,8 @@ use chrono::Utc;
 use tokio::sync::mpsc;
 use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until};
 use uuid::Uuid;
+
+use std::path::PathBuf;
 
 use crate::config::home::{Home, HomeError};
 use crate::hub::{HubClient, HubError, TIMEOUT};
@@ -30,6 +34,7 @@ use crate::sampling::gpu::Discovery;
 use crate::sampling::inventory::InventoryWatch;
 use crate::token_store::{TokenStore, TokenStoreError};
 use agent_usage::{count, counting};
+use link_wait::LinkWatch;
 
 /// The time between samplings (MET-014).
 const SAMPLE_EVERY: Duration = Duration::from_secs(2);
@@ -56,6 +61,11 @@ pub enum RunError {
     SamplingStopped,
     #[error("the token was issued by another hub than the configuration names")]
     OriginMismatch,
+    #[cfg(unix)]
+    #[error("{0}")]
+    Move(#[from] old_origin::MoveError),
+    #[error("the socket of anima-link passes its check now; starting again to move to it")]
+    LinkAppeared,
     /// With `--hosted-hub`: the hub refused the token, which is now deleted, so that
     /// `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
     #[error("the hub refused the token; it is deleted, and the next start of the hub enrols again")]
@@ -84,7 +94,7 @@ pub async fn run(
     hosted_hub: Option<PathBuf>,
     stop: impl Future<Output = ()>,
 ) -> Result<(), RunError> {
-    let (pusher, device) = prepare(home)?;
+    let (pusher, device, link) = prepare(home).await?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let refusal_ends = hosted_hub.is_some();
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
@@ -106,6 +116,7 @@ pub async fn run(
             PushEnd::SamplingStopped => Err(RunError::SamplingStopped),
             PushEnd::TokenRefused => Err(forget_refused(home)),
         },
+        () = link_wait::passed(&link) => Err(RunError::LinkAppeared),
         ended = &mut sampling => {
             report::sampling_ended(&ended);
             Err(RunError::SamplingStopped)
@@ -125,19 +136,29 @@ pub async fn run(
     outcome
 }
 
-/// The pusher for the enrolled device, from the configuration and the token store.
-fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
+/// The pusher for the enrolled device, from the configuration and the token store. An old
+/// enrolment moves to the socket of the link first, when it can ([`old_origin`]).
+async fn prepare(home: &Home) -> Result<(Pusher, Uuid, LinkWatch), RunError> {
     let config = home.read_config()?.ok_or(RunError::NotEnrolled)?;
     let store = TokenStore::open(home);
     let credential = store.load()?.ok_or(RunError::NotEnrolled)?;
+    #[cfg(unix)]
+    let old_origin::Start {
+        enrolled: old_origin::Enrolled { config, credential },
+        watch: link,
+        socket,
+    } = old_origin::at_start(home, &store, old_origin::Enrolled { config, credential }).await?;
+    #[cfg(windows)]
+    let (link, socket) = ((), home.link_socket());
     if credential.hub != config.hub {
         return Err(RunError::OriginMismatch);
     }
-    let hub = HubClient::reaching(config.hub.reach(), &home.link_socket(), TIMEOUT)?;
+    let hub = HubClient::reaching(config.hub.reach(), &socket, TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store)
             .with_keys(Keeper::open(KeyStore::open(home))),
         config.device,
+        link,
     ))
 }
 
@@ -271,79 +292,4 @@ async fn push(
 }
 
 #[cfg(all(test, target_os = "linux"))]
-mod tests {
-    use chrono::DateTime;
-    use daemon_core::wire::DaemonToken;
-
-    use super::*;
-    use crate::config::Config;
-    use crate::config::origin::Origin;
-    use crate::token_store::Credential;
-
-    fn setup(issued_by: &str) -> (tempfile::TempDir, Home) {
-        enrolled("https://hub.example", issued_by)
-    }
-
-    /// A daemon's folder as an enrolment at `hub` left it, with a token that `issued_by` gave.
-    fn enrolled(hub: &str, issued_by: &str) -> (tempfile::TempDir, Home) {
-        let dir = tempfile::tempdir().expect("a folder");
-        let home = Home::at(dir.path().join("daemon"));
-        let hub = Origin::parse_kept(hub).expect("origin");
-        let config = Config {
-            hub,
-            device: Uuid::from_u128(1),
-            device_name: "pop-os".to_owned(),
-        };
-        home.write_config(&config).expect("config");
-        let credential = Credential {
-            token: DaemonToken::from_random([1; 32]),
-            expires_at: DateTime::UNIX_EPOCH,
-            hub: Origin::parse_kept(issued_by).expect("origin"),
-        };
-        TokenStore::open(&home)
-            .save_new(&credential)
-            .expect("token");
-        (dir, home)
-    }
-
-    /// The first thing sampling sends is the GPU list, `[]` included (K8 Section 4): the hub
-    /// is told the set before any point arrives.
-    #[tokio::test]
-    async fn k8_4_sampling_starts_by_announcing_the_gpus() {
-        let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);
-        let sampling = tokio::spawn(sample(Source::Machine(Platform::Linux), sender));
-        let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
-        sampling.abort();
-        assert!(matches!(first, Ok(Some(Event::Gpus(_)))));
-    }
-
-    #[test]
-    fn met_006_a_stable_discovery_is_not_repeated_on_the_next_tick() {
-        let now = Instant::now();
-        let mut watch = Watch::start(Discovery::new(Vec::new()), now);
-        assert!(!watch.due(now + SAMPLE_EVERY), "no GPU: soon, not at once");
-        watch.replace(Discovery::new(Vec::new()), now);
-        assert!(!watch.due(now + SAMPLE_EVERY));
-        assert!(watch.due(now + Duration::from_hours(25)));
-    }
-
-    #[test]
-    fn rol_018_a_daemon_enrolled_at_a_port_of_the_link_starts_after_its_update() {
-        let (_dir, home) = enrolled("http://127.0.0.1:8443", "http://127.0.0.1:8443");
-        assert!(prepare(&home).is_ok(), "the old files still read");
-        let (_dir, home) = enrolled("http://127.0.0.1:8443", "http://127.0.0.1:9000");
-        assert!(matches!(prepare(&home), Err(RunError::OriginMismatch)));
-    }
-
-    #[test]
-    fn met_020_a_token_issued_by_another_hub_is_not_sent_to_the_configured_one() {
-        let (_dir, home) = setup("https://other.example");
-        assert!(matches!(prepare(&home), Err(RunError::OriginMismatch)));
-    }
-
-    #[test]
-    fn met_020_a_token_issued_by_the_configured_hub_is_used() {
-        let (_dir, home) = setup("https://hub.example");
-        assert!(prepare(&home).is_ok());
-    }
-}
+mod tests;

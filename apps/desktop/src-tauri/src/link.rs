@@ -128,6 +128,10 @@ fn launch(program: PathBuf, folder: &Path, port: u16) -> Launch {
         folder: folder.to_path_buf(),
         port,
         env: environment(|name| std::env::var_os(name)),
+        #[cfg(unix)]
+        daemon_socket: crate::user_folders::home().and_then(|home| kept::socket_of_user(&home)),
+        #[cfg(windows)]
+        daemon_socket: None,
         restart_after: RESTART_AFTER,
     }
 }
