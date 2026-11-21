@@ -86,13 +86,13 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
+| HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
-| HT-NEW-threadview | The page Threads with the real sessions of Claude Code and Codex of this computer (R-NEW-t3native) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
 | HT-NEW-threadsholder | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
 | HT-NEW-threadsdrive | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
@@ -1172,6 +1172,58 @@ double quotes in a command, because the path has a space.
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
+
+### HT-083: the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21)
+
+Built: on the branch `hosted/hm-t21-daemon-removal`. The daemon has the command
+`anima-daemon uninstall` (`crates/daemon/src/units/removal.rs`): it stops the user unit or the
+`LaunchAgent`, deletes its file, then deletes the token (the Keychain item `ing.anima.daemon` on a
+Mac, the file `token` on Linux) and the key cache. The shell has `daemon_remove`
+(`apps/desktop/src-tauri/src/daemon/removal.rs`): it runs `uninstall` with
+`~/.local/bin/anima-daemon`, then deletes that copy. The client
+(`apps/client/src/lib/desktop/daemon/leave.ts`) runs it at Sign out and at Change hub of a hosted
+hub, before the logout, and revokes the daemon at the hub.
+
+The tests cover, with stand-ins in temporary folders: the order of the commands for a
+`LaunchAgent` and for a systemd user unit, a second removal, a unit that is not loaded, a stop that
+cannot run, the token forgotten only after the unit is out, the copy that runs `uninstall` and is
+then deleted, a daemon that refuses (the copy stays), the client that removes first and revokes
+second, an unreachable hub and its sentence, and a second sign-out with no sentence. Not covered:
+the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the hub of the pool, and the
+Linux code paths, which were read but not run on a Mac (the file token store and the systemd steps).
+
+It needs: an application of this build, the sign-in to the hosted hub, and HT-061 step 1 passed (the
+daemon reports).
+
+On this Mac:
+
+1. Before the sign-out, run `ls ~/Library/LaunchAgents/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `security find-generic-password -s ing.anima.daemon -a daemon-token`.
+   Expected: `ing.anima.daemon.plist` is listed, the copy is there, and `security` prints the item
+   (it does not print the token with no `-w`).
+2. In the application open Settings, press Sign out. Expected: the sign-in page shows, with no
+   question of the Keychain and no message.
+3. Run the three commands of step 1 again. Expected: no `ing.anima.daemon.plist` (the
+   `ing.anima.link.plist` of the link may stay), "No such file or directory" for the copy, and
+   "The specified item could not be found in the keychain." from `security`. `pgrep -x anima-daemon`
+   prints nothing.
+4. Sign in again (from a browser at the address of the hub, or from the application), open the
+   device of this Mac, Settings, the panel "Daemon". Expected: "Daemon revoked." Open Logs. Expected:
+   a line "Revoked the daemon token of <the name of this Mac>." at the time of step 2.
+5. The installation at this sign-in: wait 3 minutes. Known gap (HM-T21 row): the device keeps the
+   source Daemon, so the application does not install the daemon again; write down what you see.
+   To install it again for the next steps, change the metrics source of this Mac to None in its
+   Settings, then quit and open the application; HT-061 step 1 then applies.
+6. With the daemon installed again, turn the network off (Wi-Fi off), press Sign out. Expected: the
+   Settings page stays and says "The daemon is removed from this computer, but the hub could not be
+   reached and still lists it. Revoke the daemon on the page of this computer in Devices when the
+   hub answers." The commands of step 1 show the same as in step 3. Turn the network on, sign in,
+   open the panel "Daemon". Expected: the daemon is not shown as revoked (no "Daemon revoked."); its
+   readings are stale. Press "Revoke daemon" there.
+7. On the Linux computer, steps 1 to 3 with `ls ~/.config/systemd/user/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `ls ~/.config/anima-daemon/`. Expected after the sign-out:
+   no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
+   `systemctl --user status anima-daemon` says that the unit could not be found.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
@@ -2893,6 +2945,39 @@ VPN keys and sites) already used these roles. Tests prove which row plays a fade
    Expected: nothing slides; rows fade only.
 
 Result: Open.
+
+### HT-081: one Storage row for each disk of a Mac (MET-027, MET-031)
+
+Built on the branch `metrics/mac-storage`: `crates/daemon-core/src/readings/apfs.rs` makes one drive of each APFS
+container from `df -P -k` (the data volume, or else the first mount of the operator, stands for it), the daemon and
+the SSH collector of the hub use it on macOS, and the wrappers of iOS apps and the device file system of Xcode are no
+mounts. The Storage section shows the bytes used and the share beside a mount, not the size again. The tests prove it
+with the `df` output of a Mac with one internal drive, an external drive and a network share. No person saw the
+section for a real Mac.
+
+1. On a Mac with one internal drive, the daemon running and no external drive, open the device in Anima, tab
+   Overview, section Storage.
+   Expected: the line above the table says "1 drive" and the size of the internal drive (about 1.8 TiB for a 2 TB
+   drive). One row, named `disk3` or a near name, kind "Disk", with the mount `/System/Volumes/Data`, its bytes used
+   and its share. No row for `/`, `/nix`, `/Volumes/Recovery` or a path under `/private/var/folders`.
+2. Connect an external drive with an APFS or HFS+ volume, wait one minute and reload the page.
+   Expected: a second row for the external drive with its own size and its mount under `/Volumes`.
+3. Open a Linux device that has drives in Anima.
+   Expected: its Storage rows are as before; beside each mount the bytes used and the share.
+### HT-082: the link program on Windows (HM-T15, HMD-050)
+
+Built on the branch `hosted/hm-t15-windows-link`: `link/build.sh` builds `bin/anima-link-windows-amd64.exe` and
+`bin/anima-link-windows-arm64.exe`; the Windows application carries the amd64 program from
+`deploy/bin/windows-bundle.ps1`. The programs were only built on a Mac. No Windows computer ran them.
+
+1. On a Windows computer on amd64, install the Windows application of this build, sign in with the Anima.ing
+   account, and let the first run join the hosted hub.
+   Expected: the first run ends on the hub; Settings shows the link of this computer as connected.
+2. On the same computer, open a command window and run `anima-link device` from the folder of the application.
+   Expected: it prints the name of this computer on the link and its state; no error about a missing file.
+3. If a Windows computer on arm64 is available, copy `anima-link-windows-arm64.exe` to it and run
+   `anima-link-windows-arm64.exe device`.
+   Expected: the same output as step 2 (before a join it says that this computer is not joined).
 
 ### HT-078: groups of cards on the Projects screen (PRO-059 to PRO-063)
 

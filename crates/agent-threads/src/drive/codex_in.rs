@@ -10,7 +10,7 @@ use super::DriveError;
 use super::launch::{Effort, Mode, Model};
 use super::request::{Answer, ProgramRequestId, Request, RequestKind};
 
-/// The closed list of the Codex methods that Anima may call (THR-021, R-NEW-threadsdrive).
+/// The closed list of the Codex methods that Anima may call (THR-021, R-290).
 /// Not in it until OD-THR40 is answered: `chatgptAuthTokens` and each method that takes or
 /// gives a token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
