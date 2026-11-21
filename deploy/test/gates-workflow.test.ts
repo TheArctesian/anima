@@ -43,8 +43,8 @@ function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    // `--alone` checks each crate by itself; `--jobs` and `--dev-push` name the jobs of a push: none runs a gate of the list.
-    if (command === undefined || /^\s*--(alone|jobs|dev-push)\b/.test(command)) return [];
+    // `--alone` checks each crate by itself, `--windows-lint` lints for Windows; `--jobs` and `--dev-push` name the jobs of a push: none runs a gate of the list.
+    if (command === undefined || /^\s*--(alone|jobs|dev-push|windows-lint)\b/.test(command)) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
     return full
@@ -131,6 +131,31 @@ describe("the gates workflow: each crate alone", () => {
     const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
     expect(merged).toBeGreaterThan(-1);
     expect(alone).toBeGreaterThan(merged);
+  });
+});
+
+describe("the gates workflow: Clippy for Windows on Linux", () => {
+  const job = workflow.jobs["windows-lint"];
+
+  test("it runs when the changes need Rust, after the merge with dev, with the GNU target and mingw-w64", () => {
+    expect(job?.if).toBe("needs.base.outputs.rust == 'true'");
+    const runs = job?.steps.map((step) => step.run ?? "") ?? [];
+    const merged = runs.findIndex((run) => run.includes("gates-merge.sh"));
+    const target = runs.findIndex((run) => run.includes("rustup target add x86_64-pc-windows-gnu") && run.includes("mingw-w64"));
+    const lint = runs.findIndex((run) => run.includes("bun quality/bin/gates.ts --windows-lint"));
+    expect(merged).toBeGreaterThan(-1);
+    expect(target).toBeGreaterThan(merged);
+    expect(lint).toBeGreaterThan(target);
+  });
+
+  test("the job passed takes its skip only when the changes need no Rust", () => {
+    const script = workflow.jobs["passed"]?.steps[0]?.run ?? "exit 9";
+    const run = (rust: string, result: string) =>
+      Bun.spawnSync(["sh", "-c", script], { env: { ...process.env, RUST_NEEDED: rust, RESULTS: JSON.stringify({ "windows-lint": { result } }) }, stdout: "pipe", stderr: "pipe" }).exitCode;
+    expect(run("false", "skipped")).toBe(0);
+    expect(run("true", "skipped")).not.toBe(0);
+    expect(run("true", "failure")).not.toBe(0);
+    expect(run("true", "success")).toBe(0);
   });
 });
 
