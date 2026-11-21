@@ -102,7 +102,7 @@ pub(super) async fn hub_access(
     serde_json::from_slice(&body).map_err(|_| CloudError::Refused)
 }
 
-/// `GET /v1/hub/usage`: the figures of the account for the month (HMD-073 in form B,
+/// `POST /v1/hub/usage`: the figures of the account for the month (HMD-073 in form B,
 /// `contracts/account-usage.md`). The body goes to the page unchanged; the page checks its form.
 pub(super) async fn hub_usage(
     http: &Client,
@@ -110,7 +110,7 @@ pub(super) async fn hub_usage(
     access: &str,
 ) -> Result<serde_json::Value, CloudError> {
     let response = http
-        .get(format!("{base}/v1/hub/usage"))
+        .post(format!("{base}/v1/hub/usage"))
         .bearer_auth(access)
         .timeout(USAGE_WAIT)
         .send()
