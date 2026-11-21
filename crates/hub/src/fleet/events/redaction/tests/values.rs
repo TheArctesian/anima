@@ -174,8 +174,22 @@ fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
     assert_eq!(redact_text(&long), "password=\"[redacted]\" next");
 }
 
-/// Inputs built to make a scan quadratic finish in linear time (S1). 200 KB each; a
-/// quadratic scan took seconds in a release build, the bound leaves wide room for a debug one.
+/// The fastest of three redactions of `text`: a loaded machine slows a run, never speeds it.
+fn fastest_redaction(text: &str) -> std::time::Duration {
+    (0..3)
+        .map(|_| {
+            let started = std::time::Instant::now();
+            let _ = redact_text(text);
+            started.elapsed()
+        })
+        .min()
+        .expect("three runs")
+}
+
+/// Inputs built to make a scan quadratic finish in linear time (S1). The time of four times the
+/// text is compared with the time of the text: about 4 for a linear scan, about 16 for a quadratic
+/// one. A ratio, not a bound in seconds: on a loaded machine (load about 32) a bound of 2 s failed
+/// at 10.4 s for a scan that took 1.7 s alone.
 #[test]
 fn log_007_redaction_of_pathological_text_takes_linear_time() {
     let units = [
@@ -193,13 +207,14 @@ fn log_007_redaction_of_pathological_text_takes_linear_time() {
         "password=a",
     ];
     for unit in units {
-        let text = unit.repeat(200_000 / unit.len());
-        let started = std::time::Instant::now();
-        let _ = redact_text(&text);
-        let elapsed = started.elapsed();
+        let short = unit.repeat(25_000 / unit.len());
+        let long = unit.repeat(100_000 / unit.len());
+        let (once, four_times) = (fastest_redaction(&short), fastest_redaction(&long));
         assert!(
-            elapsed < std::time::Duration::from_secs(2),
-            "{unit:?}: {elapsed:?}"
+            four_times < once * 8 + std::time::Duration::from_millis(5),
+            "{unit:?}: {once:?} for {} bytes, {four_times:?} for {}",
+            short.len(),
+            long.len()
         );
     }
 }
