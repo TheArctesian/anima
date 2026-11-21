@@ -193,3 +193,23 @@ fn hmd_045_the_hub_reports_its_check_twice_in_each_interval() {
     // The check is gone: the hub asks again later, and a new start adds it.
     assert_eq!(next_report(None), Duration::from_secs(30));
 }
+
+#[tokio::test]
+async fn hmd_046_the_hosted_hub_reads_the_distribution_of_its_container() {
+    use super::hub_device::own_distribution;
+
+    let root = tempfile::tempdir().unwrap();
+    assert_eq!(own_distribution(root.path()).await, None);
+    let lib = root.path().join("usr/lib");
+    std::fs::create_dir_all(&lib).unwrap();
+    std::fs::write(lib.join("os-release"), "NAME=\"Debian\"\nID=debian\n").unwrap();
+    let read = own_distribution(root.path()).await.unwrap();
+    assert_eq!(read.as_str(), "debian");
+    let etc = root.path().join("etc");
+    std::fs::create_dir_all(&etc).unwrap();
+    std::fs::write(etc.join("os-release"), "ID='ubuntu'\n").unwrap();
+    assert_eq!(
+        own_distribution(root.path()).await.unwrap().as_str(),
+        "ubuntu"
+    );
+}

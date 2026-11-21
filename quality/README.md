@@ -145,12 +145,13 @@ each train with its state and the branches of the next one.
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
   so no run of the gates follows for `dev`.
 - **A move of `dev` while the gates of a train run** (R-260; `"carryDocuments": true` in
-  `quality/merge-rule.json`, on since 2026-11-20). The run is never stopped. When it passed and `dev` moved
-  only in documents (the rule of the fast tier, `src/gates/tier.ts`), the conductor merges the same branches
-  again on the new `dev`, with the document gates on each merge commit, and lands that if each file that is
-  not a document is the one that the gates tested (`src/merge/carry.ts`). If one is different, or a branch
-  does not merge again, it says which and lands nothing. When `dev` moved in code, the train is made again
-  on the new `dev` and its gates run one more time.
+  `quality/merge-rule.json`, on since 2026-11-20). The run is never stopped. When it passed and `dev` moved,
+  the conductor merges the branches of the train that are not in the new `dev` again on it, with the document
+  gates on each merge commit, and lands that if each file that is not a document is the one that the gates
+  tested (`src/merge/carry.ts`; a document is one by the rule of the fast tier, `src/gates/tier.ts`). So a
+  `dev` that moved in documents, or by a merge by hand of a branch that the train also holds, does not stop
+  the landing. If a file is different (`dev` moved in other code), or a branch does not merge again, it says
+  which and lands nothing: the train is made again on the new `dev` and its gates run one more time.
 - **Each branch has a reason.** `bun quality/bin/train.ts --plan` names each branch that is not in `dev`:
   ready, or why it is not taken (its gates still run, ended with a failure, passed for an older commit, did
   not run, it failed alone in a train), or the documents in which it has a conflict with `dev`. The
@@ -177,8 +178,13 @@ when both compared the same mockup. The merge settles that (`src/merge/mockups.t
 the record whose comparison is at the later commit (`git merge-base --is-ancestor`; with no order, the one of
 the branch), writes the table again, and the documents gate on the merge commit checks the kept comparison. A
 branch that still changes the table of before the records is settled the same way: each row that it changed
-after the merge base becomes its record. `conflictsForAHand` leaves the index and the records to the merge, and
-`--plan` forecasts the same. One hot document is still a single file: `docs/proposals/hosted-mode.md` (each
+after the merge base becomes its record. Two branches that each add a record touch the same lines of the
+generated table: the merge takes neither table, merges the parts of the index that a person writes three ways
+(`git merge-file`), and `bun run register` writes the table again; a conflict in a part that a person writes
+stops the merge. `conflictsForAHand` leaves the index and the records to the merge, and `--plan` forecasts the
+same. The run of the gates of a branch, which merges `dev` into the branch (`.github/workflows/gates-merge.sh`),
+settles the same conflicts the same way (`bun quality/bin/register.ts --settle`), and the generated files take
+the side of the branch before they are written again; any other conflict still fails the run. One hot document is still a single file: `docs/proposals/hosted-mode.md` (each
 task of the hosted work changes the version line, the header and the row of its task); it needs one file for
 each task. Not built: the document has an owner.
 

@@ -1,3 +1,4 @@
+import { CatalogueStore } from '$lib/catalogue/store.svelte';
 import type { Container, ContainerCalls, ContainerDetail, ContainerLog, ImageUpdate } from './api';
 import { DEFAULT_LINES, type LineChoice } from './rows';
 import { StorageStore } from './storage/storage.svelte';
@@ -43,8 +44,12 @@ export class ContainersStore {
   /** HOST-020: the images, the volumes and the networks of the same device. */
   readonly storage: StorageStore;
 
+  /** Task H38: the catalogue that an install on this device would take from. */
+  readonly catalogue: CatalogueStore;
+
   constructor(private readonly calls: ContainerCalls) {
     this.storage = new StorageStore(calls);
+    this.catalogue = new CatalogueStore(calls);
   }
 
   /** Reads the list; an answer to an earlier read is dropped. The last list stays on screen while the next one loads. */

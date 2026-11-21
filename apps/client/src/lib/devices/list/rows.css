@@ -72,6 +72,19 @@
   gap: var(--space-3);
 }
 
+/* A fourth slot for the battery when a device of the list has one (MET-032); the history gives the name the room back. */
+.device-rows.with-battery .c-beats {
+  inline-size: clamp(var(--space-16), calc(100cqi - var(--space-16) * 14 - var(--space-2) - var(--space-3)), calc(var(--space-16) * 2));
+}
+
+.device-rows.with-battery .c-detail {
+  inline-size: calc(var(--usage-slot) * 4 + var(--space-3) * 3 + var(--space-4));
+}
+
+.device-rows.with-battery .usage-heads {
+  grid-template-columns: repeat(4, var(--usage-slot));
+}
+
 .device-rows .no-usage {
   color: var(--text-quiet);
 }

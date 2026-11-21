@@ -46,6 +46,7 @@ pub fn run() {
             cloud::in_app::cloud_sign_in_session,
             cloud::cloud_hub,
             cloud::cloud_hub_access,
+            cloud::cloud_hub_usage,
             phone_browser::system_browser_open,
             runner::runner_capabilities_read,
         ])

@@ -8,7 +8,8 @@ use async_graphql::{Enum, ID, SimpleObject};
 use chrono::{DateTime, Utc};
 use daemon_core::{
     points::{Kind, Sample},
-    wire::{self, BatchGpu},
+    readings,
+    wire::{self, BatchBattery, BatchGpu},
 };
 
 /// What a series measures (the API's `MetricKind`). Stored as [`MetricKind::as_str`]: the name
@@ -44,10 +45,12 @@ pub enum MetricKind {
     DiskWriteBps,
     /// The share of time one drive had I/O in flight (MET-028).
     DiskBusyPercent,
+    /// The charge of one battery (MET-032).
+    BatteryPercent,
 }
 
 impl MetricKind {
-    const ALL: [Self; 20] = [
+    const ALL: [Self; 21] = [
         Self::CpuPercent,
         Self::MemoryPercent,
         Self::MemoryBytes,
@@ -68,6 +71,7 @@ impl MetricKind {
         Self::DiskReadBps,
         Self::DiskWriteBps,
         Self::DiskBusyPercent,
+        Self::BatteryPercent,
     ];
 
     /// The text kept in the `series.kind` column.
@@ -115,6 +119,7 @@ impl From<MetricKind> for Kind {
             MetricKind::DiskReadBps => Self::DiskReadBps,
             MetricKind::DiskWriteBps => Self::DiskWriteBps,
             MetricKind::DiskBusyPercent => Self::DiskBusyPercent,
+            MetricKind::BatteryPercent => Self::BatteryPercent,
         }
     }
 }
@@ -186,6 +191,68 @@ impl From<BatchGpu> for Gpu {
             name: gpu.name,
             vendor: gpu.vendor.into(),
             has_vram: gpu.has_vram,
+        }
+    }
+}
+
+/// What a battery is doing (MET-032).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
+pub enum BatteryState {
+    Charging,
+    Discharging,
+    Full,
+    /// On mains, not charged.
+    NotCharging,
+    Unknown,
+}
+
+impl From<readings::BatteryState> for BatteryState {
+    fn from(state: readings::BatteryState) -> Self {
+        match state {
+            readings::BatteryState::Charging => Self::Charging,
+            readings::BatteryState::Discharging => Self::Discharging,
+            readings::BatteryState::Full => Self::Full,
+            readings::BatteryState::NotCharging => Self::NotCharging,
+            readings::BatteryState::Unknown => Self::Unknown,
+        }
+    }
+}
+
+impl From<BatteryState> for readings::BatteryState {
+    fn from(state: BatteryState) -> Self {
+        match state {
+            BatteryState::Charging => Self::Charging,
+            BatteryState::Discharging => Self::Discharging,
+            BatteryState::Full => Self::Full,
+            BatteryState::NotCharging => Self::NotCharging,
+            BatteryState::Unknown => Self::Unknown,
+        }
+    }
+}
+
+/// A battery that powers a device, as its daemon last listed it (MET-032). Its charge is the
+/// series `BATTERY_PERCENT` labelled with its name.
+#[derive(Clone, Debug, PartialEq, Eq, SimpleObject)]
+pub struct Battery {
+    pub name: String,
+    pub state: BatteryState,
+    /// Seconds to empty while it discharges or to full while it charges.
+    pub seconds_left: Option<i32>,
+    /// The capacity when full against the capacity of its design, 0 to 100.
+    pub health_percent: Option<i32>,
+}
+
+/// A battery a daemon listed in a batch (MET-032, K8 Section 4). The batch check keeps the time
+/// left within `i32`.
+impl From<BatchBattery> for Battery {
+    fn from(battery: BatchBattery) -> Self {
+        Self {
+            name: battery.name,
+            state: readings::BatteryState::from(battery.state).into(),
+            seconds_left: battery
+                .seconds_left
+                .and_then(|seconds| i32::try_from(seconds).ok()),
+            health_percent: battery.health_percent.map(i32::from),
         }
     }
 }

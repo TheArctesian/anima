@@ -2,8 +2,8 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use super::{
-    Carried, Pool, SOCKET_PATH_LIMIT, database, gateway, gateway_address, hosted, hub, hub_address,
-    link, migration,
+    Carried, DAEMON, OwnDaemon, Pool, SOCKET_PATH_LIMIT, database, gateway, gateway_address,
+    hosted, hub, hub_address, link, migration,
 };
 use crate::Folders;
 
@@ -242,4 +242,46 @@ fn hmd_069_a_run_of_the_pool_gives_the_hub_its_public_origin_and_its_web_client(
         Some("https://hub.anima.ing")
     );
     assert_eq!(value(&pool.env, "ANIMA_WEB_ROOT"), Some("/opt/anima/web"));
+}
+
+#[test]
+fn hmd_071_a_hosted_hub_with_the_daemon_program_has_a_daemon_of_its_own() {
+    let hosted = Pool {
+        cloud_key_file: Some(PathBuf::from("/etc/anima/cloud.key")),
+        ..Pool::default()
+    };
+    let (carried, folders) = (carried(), folders());
+    assert_eq!(
+        OwnDaemon::of(&carried, &folders, &Pool::default(), true),
+        None
+    );
+    assert_eq!(OwnDaemon::of(&carried, &folders, &hosted, false), None);
+    let own = OwnDaemon::of(&carried, &folders, &hosted, true).unwrap();
+
+    let waiting = own.hub_environment(false);
+    assert_eq!(
+        value(&waiting, "ANIMA_OWN_DAEMON_SOCKET"),
+        Some("/srv/s/own-daemon.sock")
+    );
+    assert_eq!(
+        value(&waiting, "ANIMA_OWN_DAEMON_CODE_FILE"),
+        Some("/srv/s/own-daemon.code")
+    );
+    let enrolled = own.hub_environment(true);
+    assert_eq!(value(&enrolled, "ANIMA_OWN_DAEMON_CODE_FILE"), None);
+
+    let enrolment = own.enrolment();
+    assert_eq!(
+        enrolment.args,
+        ["enrol", "-", "--hub", "unix:/srv/s/own-daemon.sock"]
+    );
+    let collection = own.collection();
+    assert_eq!(collection.args, ["run", "--hosted-hub", "/srv/hub root"]);
+    for spec in [enrolment, collection] {
+        assert_eq!(spec.program, carried.program(DAEMON));
+        assert_eq!(
+            spec.env,
+            [("ANIMA_DAEMON_HOME", "/srv/hub root/daemon".into())]
+        );
+    }
 }

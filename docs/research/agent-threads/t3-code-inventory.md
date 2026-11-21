@@ -409,6 +409,11 @@ name in `classifyClaudeNativeTool` (`ClaudeAdapterV2.ts` ~lines 3687–3713, ver
   `apps/server/src/checkpointing/CheckpointDiffQuery.ts`, `Diffs.ts`.
 - **Tag:** must.
 
+### 2.9a Comments on a line of a diff (added 2026-11-20, after a research report named the file)
+- **Sees/does.** The person selects lines of a diff and writes a comment; the comment goes to the agent with the file, the range of lines and the text of the diff.
+- **Underneath.** `apps/web/src/reviewCommentContext.ts` (`ReviewCommentContextSchema`: `filePath`, `rangeLabel`, `text`, `diff`, an optional `selection` and `pullRequest`). The file was opened and its schema read; how the comment is shown was not read.
+- **Tag:** should.
+
 ### 2.10 Errors
 - **Sees/does.** Error rows with a class and message. Banners for provider status. A **Retry** or
   **Resume** button.

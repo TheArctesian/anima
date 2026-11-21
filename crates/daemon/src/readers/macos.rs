@@ -1,12 +1,16 @@
-//! The macOS collection: `sysctl`, `vm_stat`, `df -P -k`, `netstat -ib -n` and `top -l 2`
-//! (MET-002). The commands are the forms in `daemon_core::readings` (MET-016).
+//! The macOS collection: `sysctl`, `vm_stat`, `df -P -k`, `netstat -ib -n`, `top -l 2` and
+//! `pmset -g batt` (MET-002, MET-032). The commands are the forms in `daemon_core::readings` (MET-016).
 //!
 //! Not built on macOS yet (R-092 D-8); it runs only fixed commands, so it compiles anywhere.
 
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use daemon_core::readings::{Memory, Reading, df, macos};
+use daemon_core::readings::{
+    Memory, Reading, apfs,
+    batteries::{self, PMSET_ARGS},
+    df, macos,
+};
 
 use super::command::FixedCommand;
 
@@ -33,19 +37,22 @@ const SYSCTL: FixedCommand = fixed(
 const VM_STAT: FixedCommand = fixed("/usr/bin/vm_stat", &[], 1);
 const DF: FixedCommand = fixed("/bin/df", &["-P", "-k"], 2);
 const NETSTAT: FixedCommand = fixed("/usr/sbin/netstat", &["-ib", "-n"], 2);
+const PMSET: FixedCommand = fixed("/usr/bin/pmset", &PMSET_ARGS, 1);
 /// Two samples a second apart: the first is the average since boot (see `macos::cpu`).
 const TOP: FixedCommand = fixed("/usr/bin/top", &["-l", "2", "-n", "0", "-s", "1"], 5);
 
 pub async fn reading(now: DateTime<Utc>) -> Reading {
-    let (sysctl, vm_stat, df_out, netstat, top) = tokio::join!(
+    let (sysctl, vm_stat, df_out, netstat, top, pmset) = tokio::join!(
         output(&SYSCTL),
         output(&VM_STAT),
         output(&DF),
         output(&NETSTAT),
         output(&TOP),
+        output(&PMSET),
     );
     let sysctl = sysctl.map_or_default(|bytes| macos::sysctl(&bytes));
     let used = vm_stat.and_then(|bytes| macos::memory_used_bytes(&bytes, sysctl.page_size));
+    let (disks, drives) = apfs::containers(df_out.map_or_default(|bytes| df::disks(&bytes, 1024)));
     Reading {
         cpu: top.and_then(|bytes| macos::cpu(&bytes)),
         memory: sysctl
@@ -57,11 +64,13 @@ pub async fn reading(now: DateTime<Utc>) -> Reading {
             }),
         load: sysctl.load,
         uptime_seconds: sysctl.uptime_seconds(now),
-        disks: df_out.map_or_default(|bytes| df::disks(&bytes, 1024)),
+        disks,
         interfaces: netstat.map_or_default(|bytes| macos::interfaces(&bytes)),
-        // No `lsblk` on macOS: its mounts stand alone (MET-031).
-        drives: None,
+        // No `lsblk` on macOS: each APFS container is a drive, other mounts stand alone (MET-031).
+        drives,
         drive_counters: Vec::new(),
+        hub_storage: None,
+        batteries: pmset.and_then(|bytes| batteries::pmset(&bytes)),
     }
 }
 

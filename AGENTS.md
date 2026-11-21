@@ -271,7 +271,8 @@ bun run gates:fast                 # while you work: only what your changed path
 
 `bun run gates:fast` compares your tree with `origin/dev` (`FAST_BASE` names a different ref). Documents
 only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
-touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
+touched, the six Go gates when `link/` changed, the quick deploy tests that read the Rust workspace when a crate
+changed (`deploy-maps`: the release maps and the toolchain pins), then the five quality gates. A path that no rule knows
 runs the full list. It does not test the packages that depend on yours and it runs no doctest: the run
 on GitHub does. Its first line says what it chose and why. On a busy machine (a load above the number of
 processor cores; `FAST_BUSY_LOAD` sets a different limit) it leaves out the tests of whole packages and
@@ -279,11 +280,29 @@ runs only the tests that your change names, and says so in its first and its las
 gate, the run on GitHub is (R-268). It leaves nothing out for a change that only a Mac tests.
 `bun run gates:fast -- --whole` runs each test of the tier.
 
+`bun run gates:changed` runs only the checks of the paths that your branch changed against `origin/dev`
+(`FAST_BASE` names a different ref). Use it when the operator or a ruling says to leave the full gates to
+GitHub, or when many sessions share one computer. It runs the documents gate first, always. Then, for each
+crate and bun package that holds a changed file: format, lint, the check of types and its tests (and the
+build of the client when the client changed). The crates and packages that use a changed one get their lint
+and the check of types, not their tests. The quality gates run last. It never runs the full list: a change of
+a file that each package reads (`Cargo.lock`, `package.json`, `contracts/`) gets the lints of each package and
+the tests of only the packages whose own files changed, and a path that no rule knows gets only the quality
+gates. Its first lines say what it chose and what it left to GitHub. Its run is not the gate: push the branch,
+and the run of the workflow `gates` on GitHub is.
+
 The workflow `.github/workflows/gates.yml` runs the full list on Linux machines of GitHub for each pushed
 branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no
 secret. A push of a branch is tested as merged with the `dev` of that moment; if the two do not merge,
 the run fails: merge `origin/dev` into your branch and solve the conflict there. If `dev` moves after
 your run, nothing runs again for your branch: the train tests it with the `dev` that it lands on.
+The push of a branch runs only the jobs that its changes against `dev` need (`bun quality/bin/gates.ts --jobs`,
+`quality/src/gates/jobs.ts`): only the quality gates for a branch of documents, no Rust job when no changed
+path is read by a Rust build or test, no Go job without `link/`. A run for a train or for a call runs each job.
+A push to `dev` (`bun quality/bin/gates.ts --dev-push`) runs only the quality gates when a run on `dev` or on a
+train already passed for its tree, or when it changed only documents on such a tree; each other push to `dev`
+runs each job, so `dev` never holds a tree that no run proved. The jobs read the compiled Rust dependencies from the caches that the workflow `rust-cache` writes
+under `main`, the one branch whose caches each branch can read; they write no cache.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),

@@ -7,6 +7,7 @@ pub mod attachments;
 pub mod auth;
 pub mod builders;
 pub mod capabilities;
+pub mod catalogue;
 pub mod checks;
 pub mod cli;
 pub mod code;

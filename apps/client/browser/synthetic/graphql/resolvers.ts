@@ -1,4 +1,5 @@
 import { extensionRows } from './extensions';
+import { projectConnection } from './projects';
 import { GraphQLError } from 'graphql';
 import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
 import type { Row } from '../fixtures';
@@ -77,7 +78,8 @@ export function rootValue(state: HubState): Record<string, unknown> {
   return {
     me: () => operatorView(state),
     sites: () => state.fixtures.sites,
-    extensions: () => extensionRows(),
+    extensions: () => extensionRows(state.fixtures.extensionsOn),
+    projects: projectConnection,
     tags: () => [...new Set(state.fixtures.devices.flatMap((device) => (device.tags ?? []) as string[]))],
     device: ({ id }: { id: string }) => deviceOf(state, id),
     devices: (page: Page) => connection(allDevices(state), page),

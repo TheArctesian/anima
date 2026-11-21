@@ -12,13 +12,14 @@
 
 mod claude;
 mod codex;
+pub mod drive;
 #[cfg(test)]
 mod tests;
 mod tool;
 
 pub use tool::ToolKind;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 
@@ -68,11 +69,43 @@ pub struct Thread {
     pub model: Option<String>,
     pub started: Option<DateTime<Utc>>,
     pub last: Option<DateTime<Utc>>,
+    /// How the file ends: what the last lines say of the turn.
+    pub tail: Tail,
     /// The prompts the person typed.
     pub prompts: u64,
     pub entries: Vec<Entry>,
     /// Entries past [`MAX_ENTRIES`], not kept.
     pub dropped: u64,
+}
+
+/// How a session file ends (THR-055). It is what the file says, not a state of the program: a
+/// file cannot tell whether an open tool call runs or waits for an approval.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Tail {
+    /// No prompt, reply or tool call was read.
+    #[default]
+    Nothing,
+    /// The agent ended its turn: the next step is a prompt of the person.
+    TurnEnded,
+    /// The person or the program stopped the turn.
+    Stopped,
+    /// A tool call has no result yet: it runs, or it waits for an approval.
+    OpenTool,
+    /// The turn is open: a prompt, a reply or a result is the last line.
+    Open,
+}
+
+impl Tail {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Nothing => "nothing",
+            Self::TurnEnded => "turn_ended",
+            Self::Stopped => "stopped",
+            Self::OpenTool => "open_tool",
+            Self::Open => "open",
+        }
+    }
 }
 
 /// One step of a thread.
@@ -126,6 +159,8 @@ pub struct ThreadReader {
     named: Option<String>,
     /// The bytes of text the entries hold.
     kept: usize,
+    /// The tool calls that have no result yet, by the ID of the call.
+    open: HashSet<String>,
 }
 
 impl ThreadReader {
@@ -137,6 +172,7 @@ impl ThreadReader {
             calls: HashMap::new(),
             named: None,
             kept: 0,
+            open: HashSet::new(),
         }
     }
 
@@ -195,6 +231,8 @@ impl ThreadReader {
             return;
         }
         self.thread.prompts += 1;
+        self.open.clear();
+        self.thread.tail = Tail::Open;
         if self.thread.title.is_none() {
             let title = first_line(text, TITLE_LENGTH);
             self.thread.title = (!title.is_empty()).then_some(title);
@@ -213,6 +251,9 @@ impl ThreadReader {
             return;
         }
         let text = held(text, MAX_TEXT);
+        if self.open.is_empty() {
+            self.thread.tail = Tail::Open;
+        }
         self.push(
             at,
             if reasoning {
@@ -225,6 +266,8 @@ impl ThreadReader {
 
     fn call(&mut self, at: Option<DateTime<Utc>>, call: ToolCall) {
         let id = call.call.clone();
+        self.open.insert(id.clone());
+        self.thread.tail = Tail::OpenTool;
         if self.push(at, EntryKind::Tool(call)) && !id.is_empty() {
             self.calls.insert(id, self.thread.entries.len() - 1);
         }
@@ -232,6 +275,9 @@ impl ThreadReader {
 
     /// Attaches a result to the call `call`; a result with no known call is not kept.
     fn result(&mut self, call: &str, output: &str, failed: bool) {
+        if self.open.remove(call) && self.open.is_empty() {
+            self.thread.tail = Tail::Open;
+        }
         let Some(&index) = self.calls.get(call) else {
             return;
         };
@@ -243,6 +289,17 @@ impl ThreadReader {
             tool.output = Some(held(output, MAX_OUTPUT));
             tool.failed = failed;
         }
+    }
+
+    /// The end of a turn; `stopped` when the person or the program stopped it.
+    fn end(&mut self, at: Option<DateTime<Utc>>, stopped: bool) {
+        self.open.clear();
+        self.thread.tail = if stopped {
+            Tail::Stopped
+        } else {
+            Tail::TurnEnded
+        };
+        self.push(at, EntryKind::TurnEnd { stopped });
     }
 
     fn push(&mut self, at: Option<DateTime<Utc>>, kind: EntryKind) -> bool {

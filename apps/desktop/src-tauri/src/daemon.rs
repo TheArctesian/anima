@@ -11,11 +11,16 @@
 //! builder (`src/builder/carried/`) and `trial-bundle.sh` build `anima-daemon` from the same
 //! commit and name it in `bundle.externalBin`. A debug build carries none and says so, and the
 //! client shows the install command instead.
+//!
+//! The removal (HMD-056) runs the daemon's own `uninstall`, then deletes the copy
+//! ([`removal`]); the client calls it at the sign-out of a hosted hub and revokes the daemon at
+//! the hub itself.
 
 mod error;
 mod installing;
 #[cfg_attr(windows, path = "daemon/placement/windows.rs")]
 pub(crate) mod placement;
+mod removal;
 mod request;
 mod run;
 #[cfg(unix)]
@@ -46,6 +51,8 @@ use trust::User;
 
 /// The hub answers an enrolment within its own 10 s timeout; a macOS Keychain write adds a little.
 const ENROL_DEADLINE: Duration = Duration::from_secs(60);
+/// `uninstall` runs at most two steps of 30 s each and deletes a Keychain item; the rest is margin.
+const UNINSTALL_DEADLINE: Duration = Duration::from_secs(120);
 /// `install` runs up to five steps of 30 s each (two take the unit of the old program out,
 /// R-126), one retried after a pause; the rest is margin.
 const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
@@ -111,10 +118,7 @@ fn install_here(
 /// This computer, read from the process: `HOME` must be an absolute path. An account file that
 /// cannot be read means no private group, so a folder its group may write is refused.
 fn here(source: PathBuf) -> Result<Here, DaemonError> {
-    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
-        .map(PathBuf::from)
-        .filter(|home| home.is_absolute())
-        .ok_or(DaemonError::NoHome)?;
+    let home = home_folder()?;
     #[cfg(unix)]
     let user = this_user();
     let env = run::daemon_env(&home, |name| std::env::var_os(name));
@@ -125,6 +129,14 @@ fn here(source: PathBuf) -> Result<Here, DaemonError> {
         user,
         env,
     })
+}
+
+/// The home folder of this user: `HOME` (`USERPROFILE` on Windows), an absolute path.
+fn home_folder() -> Result<PathBuf, DaemonError> {
+    std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+        .map(PathBuf::from)
+        .filter(|home| home.is_absolute())
+        .ok_or(DaemonError::NoHome)
 }
 
 /// The user of this process, with their private group. An account file that cannot be read
@@ -191,6 +203,30 @@ async fn install<R: Runtime>(
         .unwrap_or(Err(DaemonError::Failed))
 }
 
+/// Claims the one install or removal and takes the daemon off this computer, off the async runtime.
+async fn remove<R: Runtime>(
+    webview: &Webview<R>,
+    installing: &Installing,
+) -> Result<bool, DaemonError> {
+    from_main(webview.label())?;
+    let claim = installing.claim()?;
+    let work = move || {
+        let home = home_folder()?;
+        let carried = carried().ok();
+        let env = run::daemon_env(&home, |name| std::env::var_os(name));
+        removal::remove_here(&removal::Leave {
+            copy: &placement::destination(&home),
+            carried: carried.as_deref(),
+            env: &env,
+            deadline: UNINSTALL_DEADLINE,
+            stop: &claim.stop,
+        })
+    };
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .unwrap_or(Err(DaemonError::Failed))
+}
+
 /// The origin that the daemon is enrolled at: the `https` origin that the web view names, or,
 /// for a hub that the app reaches through its link at `http://127.0.0.1:<port>`, the socket
 /// that the link of that port made for the daemon (HMD-054). The web view never names a path.
@@ -220,6 +256,23 @@ pub async fn daemon_install<R: Runtime>(
     match &result {
         Ok(()) => log::info!("the daemon was installed on this computer"),
         Err(error) => log::warn!("the daemon was not installed: {}", error.code()),
+    }
+    result
+}
+
+/// Takes the daemon off this computer for this user (HMD-056): its unit, its token and its copy.
+/// It takes no argument: the paths are the ones that the install uses. True when a copy of the
+/// daemon was here.
+#[tauri::command]
+pub async fn daemon_remove<R: Runtime>(
+    webview: Webview<R>,
+    installing: State<'_, Installing>,
+) -> Result<bool, DaemonError> {
+    let result = remove(&webview, &installing).await;
+    match &result {
+        Ok(true) => log::info!("the daemon was removed from this computer"),
+        Ok(false) => log::info!("no copy of the daemon was on this computer to remove"),
+        Err(error) => log::warn!("the daemon was not removed: {}", error.code()),
     }
     result
 }

@@ -14,6 +14,10 @@ not built: no hub and no daemon has them yet.
 Section 9 (operational keys), the `keys` member of Section 4 and of `Accepted`, the fetch route and the refusal
 `NO_KEY` were added by R-147 and R-148 (operator, 2026-11-18; K-E5 Section 2.1). They are optional members, so
 they need no new version of this contract (Section 1).
+The socket of the hub for its own daemon (Section 1, task HM-T35) and the batch of the daemon in the container of a hosted hub (Section 4; HMD-071, HMD-072, HMD-074 of
+[hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) were approved by R-305 (operator, 2026-11-20; CON-001). They use only kinds and members that exist, so they need no new version of this contract.
+The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-303) were approved
+with them by the same ruling. They are optional, so they need no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
@@ -53,6 +57,14 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
     to the port. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
     it does, a push fails and the daemon keeps its samples (Section 7).
   - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
+- In the container of a hosted hub (HMD-046; tasks HM-T35 and HM-T10 of
+  [hosted-mode.md](../docs/proposals/hosted-mode.md)) the hub's own daemon reaches the hub through a Unix socket
+  that the hub makes for it (`ANIMA_OWN_DAEMON_SOCKET`), with the origin `unix:<path>` as in the link mode. The
+  hub makes the socket as it makes the socket of the link: mode 0600, in a folder that only the hub's user can
+  reach, and it takes a connection only from a process of that user. The daemon runs as the hub's user and
+  checks the folder by the same rule. On that socket the hub serves only the routes of this contract, and it
+  takes each request as from its own device (HMD-045) at `127.0.0.1`; no request on it names a different
+  device. `anima-local-hub` starts that daemon only when the program is in the folder of its programs.
 - The daemon sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
   (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), and listens on no port.
 - Every route below sits behind the NET-002 layer like any other route, and is logged by its template only.
@@ -173,10 +185,11 @@ Request:
 - `series`: 1 to 256 entries, no two equal. `kind` is a `series.kind` text (`cpu_percent`, `memory_percent`,
   `memory_bytes`, `disk_percent`, `disk_bytes`, `network_in_bps`, `network_out_bps`, `uptime_seconds`,
   `load_1`, `load_5`, `load_15`, `gpu_percent`, `vram_percent`, `vram_bytes`, `gpu_temperature_c`,
-  `gpu_power_w`, `gpu_memory_bytes`, `disk_read_bps`, `disk_write_bps`, `disk_busy_percent`). `gpu_memory_bytes` is the memory in use by a unified-memory GPU (Apple);
+  `gpu_power_w`, `gpu_memory_bytes`, `disk_read_bps`, `disk_write_bps`, `disk_busy_percent`, `battery_percent`). `gpu_memory_bytes` is the memory in use by a unified-memory GPU (Apple);
   it is never a VRAM value (MET-007, R-092 D-6). `disk_read_bps`, `disk_write_bps` and `disk_busy_percent` are
-  one drive's activity (MET-028; `disk_busy_percent` is a percent kind). `label` is present exactly for the disk kinds (the mount point), the network kinds (the
-  interface name) and the drive kinds (the drive name, as in `drives`): 1 to 128 bytes, no control character. `gpu` (0 to 63) is present exactly for the GPU kinds.
+  one drive's activity (MET-028; `disk_busy_percent` is a percent kind). `battery_percent` is the charge of one
+  battery (MET-032; a percent kind). `label` is present exactly for the disk kinds (the mount point), the network kinds (the
+  interface name), the drive kinds (the drive name, as in `drives`) and `battery_percent` (the battery name, as in `batteries`): 1 to 128 bytes, no control character. `gpu` (0 to 63) is present exactly for the GPU kinds.
   The hub ignores a series whose kind it does not know, and the values in its column, so a newer daemon can
   talk to an older hub.
 - `points`: 1 to 360 entries (one hour), `at` strictly increasing, each `at` a multiple of 10 seconds. A point
@@ -198,6 +211,29 @@ Request:
   `hdd` or `disk`, and the hub reads a kind it does not know as `disk`; `sizeBytes` is at most 2^63 − 1;
   `mounts` holds at most 32 mount points, each 1 to 128 bytes starting with `/`, no control character, and is
   empty for a drive that is not mounted. macOS sends no `drives` (MET-031).
+- `batteries`: optional (MET-032, CAP-004). The batteries of the device that power it: a laptop, a phone or a
+  tablet. A battery of a mouse or of another device that is connected is not one. The daemon sends the whole
+  list in its first batch after start and again whenever a battery comes or goes or its `state` changes, and
+  with each next batch until one is accepted, except after `MALFORMED`: then it waits for the next change.
+  Absent means "unchanged"; `[]` means that the device has no battery now. A device with no battery (a desktop
+  computer, a server, the container of a hosted hub) sends no `batteries` and no `battery_percent`, so a client
+  shows nothing for it. At most 8 batteries with unique names; `name` is 1 to 128 bytes, no control character;
+  `state` is `charging`, `discharging`, `full`, `not_charging` (on mains, not charged) or `unknown`, and the
+  hub reads a state it does not know as `unknown`. Optional: `secondsLeft`, the time to empty while it
+  discharges or to full while it charges (at most 2^31 − 1), and `healthPercent`, the capacity when full
+  against the capacity of its design (0 to 100). The charge itself is the series `battery_percent` with the same
+  name as its label. Example: `"batteries": [ { "name": "BAT0", "state": "discharging", "secondsLeft": 9000,
+  "healthPercent": 91 } ]`. The app of a phone or a tablet that pushes for its device (MOB-044) sends the same
+  member and kind.
+- The daemon in the container of a hosted hub (`anima-daemon run --hosted-hub DIR`; HMD-071, HMD-072,
+  HMD-074) sends only figures of that container. `cpu_percent` is the processor time of the control group of
+  the container against the processors that it may use: the hard limit of `cpu.max`, else the count of
+  processors that it may run on; a share of the time under load (`cpu.weight`) is not a limit. `memory_percent`
+  and `memory_bytes` are the use of the control group (`memory.current` less `inactive_file`) against its own
+  limit (`memory.max`); with no limit it sends neither. The disk is one `disk_bytes` series whose `label` is
+  `DIR`: the bytes of the files of the data of the hub, which the daemon measures, with no `disk_percent`: the
+  total and the free space of that file system are those of the pool. It sends no `load_1`, `load_5`,
+  `load_15`, `uptime_seconds`, network kind, drive kind or GPU kind, `gpus` as `[]`, and no `drives`.
 - `inventory`: optional; the tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be
   assigned). The daemon probes its tools at start and every 15 minutes and sends the whole inventory in its
   first batch after start, again whenever a probe result changes, and again when 24 hours have passed since it

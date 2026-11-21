@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
+  import { hasWaysIn } from '$lib/devices/actions/actions';
   import type { DeviceDetail } from '$lib/devices/api';
   import type { ConnectionTestResult } from '$lib/devices/form/connection-test';
   import type { DeviceFormValues } from '$lib/devices/form/values';
@@ -58,11 +59,16 @@
 </script>
 
 <SettingsSection {...SECTIONS.connections}>
-  <div class="connections" bind:this={root}>
-    <SshConnection {draft} {device} {saved} {calls} {onTest} bind:open={ssh} />
-    <VncConnection {draft} {device} {saved} {calls} {onTest} bind:open={vnc} />
-    <RdpConnection {draft} {device} {saved} {calls} {onTest} bind:open={rdp} />
-  </div>
+  {#if hasWaysIn(device)}
+    <div class="connections" bind:this={root}>
+      <SshConnection {draft} {device} {saved} {calls} {onTest} bind:open={ssh} />
+      <VncConnection {draft} {device} {saved} {calls} {onTest} bind:open={vnc} />
+      <RdpConnection {draft} {device} {saved} {calls} {onTest} bind:open={rdp} />
+    </div>
+  {:else}
+    <!-- HMD-045: the hub's own device is its container; the hub refuses SSH, RDP and VNC for it. -->
+    <p class="none">No session reaches the container of the hub: its device takes no SSH, RDP or VNC.</p>
+  {/if}
 </SettingsSection>
 
 <style>
@@ -71,5 +77,10 @@
   .connections {
     margin-block-end: calc(var(--border-thin) * -1);
     border-block-start: var(--border-thin) solid var(--border-subtle);
+  }
+
+  .none {
+    margin: 0;
+    color: var(--text-secondary);
   }
 </style>

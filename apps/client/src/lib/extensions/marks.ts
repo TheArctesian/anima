@@ -19,6 +19,18 @@ const MARKS: Readonly<Record<string, IconName>> = {
   model_gateway: 'carbon:connect',
 };
 
+/**
+ * The extensions that have a picture of their own page in their tile (OD-EXT-NEW-pictures, choice A, made overnight). The
+ * gallery tool makes each picture from the sample data of the synthetic hub, so no picture holds the data of an operator.
+ */
+const PICTURED: ReadonlySet<string> = new Set(['projects', 'integrations']);
+
+/** The two pictures of the page of the built extension `key`, for the dark and the light appearance, or `null`. */
+export function pictureOf(key: string, built: boolean): { dark: string; light: string } | null {
+  if (!built || !PICTURED.has(key)) return null;
+  return { dark: `/extensions/${key}-dark.webp`, light: `/extensions/${key}-light.webp` };
+}
+
 /** The mark of the extension `key`; one that this client does not know has the mark of the page. */
 export function markOf(key: string): IconName {
   return MARKS[key] ?? 'carbon:grid';

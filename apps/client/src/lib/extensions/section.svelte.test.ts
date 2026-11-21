@@ -116,7 +116,16 @@ it('EXT-012: a needed extension has a disabled switch that names the extension t
 it('EXT-001, R-223: an extension that is not built has no live switch, and says "Coming soon" and what it will do', async () => {
   await open();
   expect(switchOf('map')).toBeNull();
-  expect(document.querySelector('#extension-map-hint')?.textContent).toBe('Coming soon. It will show where you were, the places that you use, and where your sites and belongings are.');
+  const row = document.querySelector('#extension-map-hint')?.closest('li');
+  expect(row?.querySelector('.tag')?.textContent).toBe('Coming soon');
+  expect(document.querySelector('#extension-map-hint')?.textContent).toBe('It will show where you were, the places that you use, and where your sites and belongings are.');
+});
+
+it('EXT-001: the count line says how many extensions are on and how many are not built, and follows a switch', async () => {
+  await open();
+  expect(document.querySelector('p.count')?.textContent).toBe('1 on, 1 coming');
+  await flip('projects');
+  expect(document.querySelector('p.count')?.textContent).toBe('2 on, 1 coming');
 });
 
 it('EXT-012: a refused change puts the switch back and shows the hub words', async () => {

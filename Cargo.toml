@@ -1,6 +1,30 @@
 [workspace]
 resolver = "3"
-members = ["crates/anima-windows", "crates/hub", "crates/guac-protocol", "crates/anima-gateway", "crates/rdp-test-device", "crates/agent-threads", "crates/daemon-core", "crates/daemon", "crates/theme", "crates/providers/*", "crates/updater-signature", "crates/release-record", "crates/redaction", "crates/compose-rules", "crates/anima-applications", "crates/anima-cli", "crates/anima-database", "crates/anima-local-hub", "apps/desktop/src-tauri", "apps/desktop/keyboard", "apps/desktop/account-session", "apps/desktop/runner"]
+members = [
+    "crates/anima-windows",
+    "crates/hub",
+    "crates/guac-protocol",
+    "crates/anima-gateway",
+    "crates/rdp-test-device",
+    "crates/agent-threads",
+    "crates/daemon-core",
+    "crates/daemon",
+    "crates/theme",
+    "crates/providers/*",
+    "crates/updater-signature",
+    "crates/release-record",
+    "crates/redaction",
+    "crates/compose-rules",
+    "crates/catalogue",
+    "crates/anima-applications",
+    "crates/anima-cli",
+    "crates/anima-database",
+    "crates/anima-local-hub",
+    "apps/desktop/src-tauri",
+    "apps/desktop/keyboard",
+    "apps/desktop/account-session",
+    "apps/desktop/runner",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -137,6 +161,15 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.sha2]
+opt-level = 3
+
+# The tests of the GitHub App make a 2048-bit RSA key (crates/hub/tests/it/sources.rs); nextest
+# runs each test in its own process, so 222 tests each search for primes. Unoptimised that took
+# up to 21 s a test and 985 s of the 3516 s of a full run (run of 2026-11-21).
+[profile.dev.package.rsa]
+opt-level = 3
+
+[profile.dev.package.num-bigint-dig]
 opt-level = 3
 
 # R-112: host units (build scripts, proc macros) get one debuginfo for every command, so gates 4 and 5 reuse gate 3's build.

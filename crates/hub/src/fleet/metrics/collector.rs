@@ -13,7 +13,7 @@ mod detection;
 mod failures;
 mod fan_out;
 mod gpus;
-mod os_release;
+pub(super) mod os_release;
 mod outputs;
 mod plan;
 mod round;
