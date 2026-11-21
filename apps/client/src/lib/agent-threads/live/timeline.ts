@@ -51,8 +51,19 @@ export function toolKind(name: string): ToolKind {
   return 'other';
 }
 
+/** The most characters of one text of the program that the page keeps: a reply, a prompt, a tool input, a request. */
+export const TEXT_CHARS = 200_000;
+
+function held(text: string): string {
+  return text.length > TEXT_CHARS ? `${text.slice(0, TEXT_CHARS)}…` : text;
+}
+
 function capped(text: string): string {
   return text.length > OUTPUT_CHARS ? `${text.slice(0, OUTPUT_CHARS)}…` : text;
+}
+
+function heldAsk(ask: Ask): Ask {
+  return { ...ask, subject: capped(ask.subject), diff: ask.diff === null ? null : held(ask.diff) };
 }
 
 /** A new thread from its first row. */
@@ -79,10 +90,10 @@ function said(thread: LiveThread, event: Said, at: Date): LiveThread {
     case 'text_delta':
       return { ...thread, streaming: capped(thread.streaming + event.text) };
     case 'message':
-      return { ...withEntry(thread, { kind: 'reply', at, text: event.text }), streaming: '' };
+      return { ...withEntry(thread, { kind: 'reply', at, text: held(event.text) }), streaming: '' };
     case 'tool_call': {
       const firstLine = event.input.split('\n', 1)[0] ?? '';
-      const tool: ToolCall = { name: event.name, kind: toolKind(event.name), summary: firstLine, input: event.input, patch: null, output: null, failed: false };
+      const tool: ToolCall = { name: event.name, kind: toolKind(event.name), summary: capped(firstLine), input: capped(event.input), patch: null, output: null, failed: false };
       return withEntry(thread, { kind: 'tool', at, tool, call: event.id });
     }
     case 'tool_output_delta':
@@ -92,7 +103,7 @@ function said(thread: LiveThread, event: Said, at: Date): LiveThread {
     case 'turn_ended':
       return { ...withEntry(thread, { kind: 'turn_end', at, stopped: event.outcome === 'interrupted' }), streaming: '' };
     case 'notice':
-      return withEntry(thread, { kind: 'notice', at, text: event.text });
+      return withEntry(thread, { kind: 'notice', at, text: capped(event.text) });
   }
 }
 
@@ -109,11 +120,11 @@ export function applied(thread: LiveThread, update: Update, at: Date): LiveThrea
     case 'said':
       return said(next, change.event, at);
     case 'asked':
-      return { ...next, asks: [...next.asks.filter((each) => each.request !== change.request), { request: change.request, ask: change.ask }] };
+      return { ...next, asks: [...next.asks.filter((each) => each.request !== change.request), { request: change.request, ask: heldAsk(change.ask) }] };
     case 'closed':
       return { ...next, asks: next.asks.filter((each) => each.request !== change.request) };
     case 'prompt':
-      return withEntry(next, { kind: 'prompt', at, text: change.text, images: 0 });
+      return withEntry(next, { kind: 'prompt', at, text: held(change.text), images: 0 });
     case 'state':
       return { ...next, row: change.row, asks: next.asks.filter((each) => change.row.open.includes(each.request)) };
   }

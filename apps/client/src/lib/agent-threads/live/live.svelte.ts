@@ -8,6 +8,10 @@ import { applied, begun, type LiveThread } from './timeline';
  * sent, so that an old request does not notify a second time (THR-059).
  */
 export const REPLAY_MS = 2_000;
+/** While the replay goes on, each update keeps the page quiet this long again. */
+export const REPLAY_GAP_MS = 500;
+/** The most stopped threads that the page keeps; the oldest go first. */
+export const STOPPED_KEPT = 50;
 
 /** What a call came to: its outcome, or the refusal in words for the person. */
 export type CallResult = { readonly ok: true; readonly outcome: Outcome } | { readonly ok: false; readonly words: string };
@@ -74,8 +78,12 @@ export class LiveThreads {
     const after = applied(base, update, at);
     if (after === before) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
-    this.threads = new Map(this.threads).set(update.thread, after);
-    if (at.getTime() < this.quietUntil) return;
+    this.threads = pruned(new Map(this.threads).set(update.thread, after));
+    if (at.getTime() < this.quietUntil) {
+      // A replay comes as a burst: the page stays quiet until the burst ends.
+      this.quietUntil = Math.max(this.quietUntil, at.getTime() + REPLAY_GAP_MS);
+      return;
+    }
     const notice = noticeFor(before, after, update, this.looking());
     if (notice !== null) {
       this.shell.notify(notice.title, notice.words).catch((reason: unknown) => {
@@ -97,12 +105,15 @@ export class LiveThreads {
     return { ok: false, words: REFUSAL_WORDS[outcome.why] };
   }
 
-  /** The person raised the soft limit: the runner raises it, and the start that waited goes again. */
+  /**
+   * The person raised the soft limit: the runner raises it, and the start that waited goes again. When the raise fails,
+   * the start still waits, so that the dialog can say why.
+   */
   async raiseLimit(): Promise<CallResult> {
     const waiting = this.overLimit;
-    this.overLimit = null;
     const raised = await this.call({ call: 'raise_limit' });
     if (!raised.ok || waiting === null) return raised;
+    this.overLimit = null;
     return this.call(waiting);
   }
 
@@ -110,4 +121,11 @@ export class LiveThreads {
   keepLimit(): void {
     this.overLimit = null;
   }
+}
+
+/** `threads` with at most `STOPPED_KEPT` stopped threads: the oldest by their last update go. */
+function pruned(threads: Map<string, LiveThread>): Map<string, LiveThread> {
+  const stopped = [...threads.values()].filter((thread) => thread.row.state === 'stopped').sort((a, b) => a.last.getTime() - b.last.getTime());
+  for (const thread of stopped.slice(0, Math.max(0, stopped.length - STOPPED_KEPT))) threads.delete(thread.row.id);
+  return threads;
 }

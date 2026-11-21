@@ -56,6 +56,9 @@ export function askTitle(program: string, ask: Ask): string {
   }
 }
 
+/** The words when a stop could not prove that each process below the program ended (THR-049). */
+export const NOT_ALL_ENDED = 'The program ended, but a process that it started may still run.';
+
 /** The message to the agent when the person declines. */
 export const DECLINED = 'The person declined this.';
 

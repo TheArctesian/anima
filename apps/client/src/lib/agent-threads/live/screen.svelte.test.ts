@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import { ThreadsStore } from '../store.svelte';
 import ThreadsScreen from '../ThreadsScreen.svelte';
-import { askFrame, madeShell, saidFrame, stateFrame, THREAD } from './frames.fixture';
+import { askFrame, frame, madeShell, rowFrame, saidFrame, stateFrame, THREAD } from './frames.fixture';
 import { LiveThreads } from './live.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
@@ -32,7 +32,7 @@ async function settle(): Promise<void> {
   flushSync();
 }
 
-async function openLive(): Promise<ReturnType<typeof madeShell>> {
+async function openLive(): Promise<{ shell: ReturnType<typeof madeShell>; store: ThreadsStore }> {
   const shell = madeShell();
   const live = new LiveThreads(shell, () => ({ front: true, chosen: null }), () => NOW);
   await live.begin();
@@ -45,7 +45,7 @@ async function openLive(): Promise<ReturnType<typeof madeShell>> {
   flushSync();
   await store.open(THREAD);
   await settle();
-  return shell;
+  return { shell, store };
 }
 
 it('THR-032: the text of a driven thread and of its request is drawn as text, never as markup', async () => {
@@ -58,7 +58,7 @@ it('THR-032: the text of a driven thread and of its request is drawn as text, ne
 });
 
 it('THR-030: an answer to a request goes to the runner of this computer with the ID of the runner', async () => {
-  const shell = await openLive();
+  const { shell } = await openLive();
   const allow = [...document.querySelectorAll('button')].find((button) => button.textContent.includes('Allow once'));
   allow?.click();
   await settle();
@@ -66,7 +66,7 @@ it('THR-030: an answer to a request goes to the runner of this computer with the
 });
 
 it('THR-017: Enter in the composer sends the prompt; Shift+Enter does not', async () => {
-  const shell = await openLive();
+  const { shell } = await openLive();
   const field = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Prompt"]');
   if (field === null) throw new Error('no composer');
   field.value = 'Go on';
@@ -77,4 +77,19 @@ it('THR-017: Enter in the composer sends the prompt; Shift+Enter does not', asyn
   field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   await settle();
   expect(shell.calls.filter((call) => call.call === 'send')).toEqual([{ call: 'send', thread: THREAD, text: 'Go on' }]);
+});
+
+
+it('THR-017: a draft of the composer stays with its thread', async () => {
+  const { shell, store } = await openLive();
+  const other = '0190a000-0000-7000-8000-000000000002';
+  shell.emit(frame(1, { thread: other, change: 'state', state: 'idle', row: rowFrame('idle', { id: other, title: 'Other' }) }));
+  const field = (): HTMLTextAreaElement | null => document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Prompt"]');
+  const typed = field();
+  if (typed === null) throw new Error('no composer');
+  typed.value = 'For the first thread only';
+  typed.dispatchEvent(new Event('input', { bubbles: true }));
+  await store.open(other);
+  await settle();
+  expect(field()?.value).toBe('');
 });

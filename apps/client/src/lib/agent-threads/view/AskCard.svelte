@@ -26,8 +26,11 @@
     busy = true;
     problem = null;
     const result = await onAnswer(open.request, answer);
-    busy = false;
-    if (!result.ok) problem = result.words;
+    // After an answer that went, the card waits for the runner to close the request.
+    if (!result.ok) {
+      busy = false;
+      problem = result.words;
+    }
   }
 
   function pick(key: string, choice: string, many: boolean): void {
@@ -57,6 +60,7 @@
       </div>
     </fieldset>
   {/each}
+  {#if ask.kind !== 'question' && ask.sessionRules.length > 0}<span class="where">"Allow for this thread" allows: <code class="subject">{ask.sessionRules[0]}</code></span>{/if}
   <span class="where">In {folder}, on this computer. The answer goes to the program on this computer only.</span>
   {#if problem !== null}<p class="problem" role="alert">{problem}</p>{/if}
   <div class="acts">

@@ -11,6 +11,7 @@ export function rowFrame(state: string, more: Record<string, unknown> = {}): Rec
 
 export function frame(seq: number, change: Record<string, unknown>): Update {
   const update = updateFrom({ thread: THREAD, seq, ...change });
+  // A change may name its own thread.
   if (update === null) throw new Error('the frame does not read');
   return update;
 }

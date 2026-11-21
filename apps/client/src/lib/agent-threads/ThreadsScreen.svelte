@@ -11,6 +11,7 @@
   import ThreadList from './view/ThreadList.svelte';
   import ThreadView from './view/ThreadView.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
+  import type { CallResult, LiveThreads } from './live/live.svelte';
   import type { Answer } from './live/run';
   import LimitDialog from './view/LimitDialog.svelte';
   import LiveView from './view/LiveView.svelte';
@@ -42,6 +43,16 @@
   });
   /** The threads in the order of the list, for the keys that move by a place. */
   const inOrder = $derived(orderedThreads(shown, moment, store.seen, { earlierOpen, chosen: store.chosen }).flatMap((entry) => (entry.kind === 'device' ? [entry.device.row] : [])));
+
+  /** The start that waited at the soft limit goes again: when it started, its thread opens and the form closes. */
+  async function raise(threads: LiveThreads): Promise<CallResult> {
+    const result = await threads.raiseLimit();
+    if (result.ok && result.outcome.outcome === 'started') {
+      starting = false;
+      void choose(result.outcome.thread);
+    }
+    return result;
+  }
 
   async function choose(id: string): Promise<void> {
     await store.open(id);
@@ -131,6 +142,8 @@
           <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
         {:else if store.liveThread !== null && live !== null}
           {@const id = store.liveThread.row.id}
+          <!-- Keyed by the thread, so that a draft of the composer never goes to a different thread. -->
+          {#key id}
           <LiveView
             thread={store.liveThread}
             {toolsOpen}
@@ -139,6 +152,7 @@
             onInterrupt={() => live.call({ call: 'interrupt', thread: id })}
             onStop={() => live.call({ call: 'stop', thread: id })}
           />
+          {/key}
         {:else if store.thread !== null && store.thread.id === store.chosen}
           <ThreadView thread={store.thread} {toolsOpen} state={threadState(store.thread, moment, store.seen)} />
         {:else if store.chosen !== null}
@@ -159,7 +173,7 @@
       starting = false;
     }}
   />
-  <LimitDialog open={live.overLimit !== null} onRaise={() => live.raiseLimit()} onKeep={() => live.keepLimit()} />
+  <LimitDialog open={live.overLimit !== null} onRaise={() => raise(live)} onKeep={() => live.keepLimit()} />
 {/if}
 
 <style>

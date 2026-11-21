@@ -2,7 +2,7 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { CallResult } from '../live/live.svelte';
   import type { RunRow } from '../live/run';
-  import { composerKey, MODE_WORDS } from '../live/drive';
+  import { composerKey, MODE_WORDS, NOT_ALL_ENDED } from '../live/drive';
 
   interface Props {
     row: RunRow;
@@ -18,27 +18,29 @@
   const running = $derived(row.state !== 'stopped');
   const working = $derived(row.state === 'working' || row.state === 'starting' || row.state === 'needs_you');
 
-  async function run(call: () => Promise<CallResult>, clear: boolean): Promise<void> {
-    if (busy) return;
+  async function run(call: () => Promise<CallResult>): Promise<boolean> {
+    if (busy) return false;
     busy = true;
     problem = null;
     const result = await call();
     busy = false;
     if (!result.ok) problem = result.words;
-    else if (clear) text = '';
+    else if (result.outcome.outcome === 'stopped' && !result.outcome.allEnded) problem = NOT_ALL_ENDED;
+    return result.ok;
   }
 
-  function send(): void {
+  async function send(): Promise<void> {
     if (text.trim() === '') return;
     const prompt = text;
-    void run(() => onSend(prompt), true);
+    // What was typed while the prompt went stays in the field.
+    if ((await run(() => onSend(prompt))) && text === prompt) text = '';
   }
 
   /** Enter sends; Shift+Enter makes a new line (THR-017). */
   function onkeydown(event: KeyboardEvent): void {
     if (composerKey({ key: event.key, shift: event.shiftKey, composing: event.isComposing }) !== 'send') return;
     event.preventDefault();
-    send();
+    void send();
   }
 </script>
 
@@ -49,7 +51,7 @@
   aria-label="Composer"
   onsubmit={(event) => {
     event.preventDefault();
-    send();
+    void send();
   }}
 >
   <textarea bind:value={text} {onkeydown} rows="3" disabled={!running} aria-label="Prompt" placeholder={running ? 'Ask for a change' : 'The program of this thread ended'}></textarea>
@@ -59,8 +61,8 @@
     <span class="fact">{MODE_WORDS[row.mode]}</span>
     <span class="grow"></span>
     {#if running}
-      <FormButton size="sm" tone="ghost" type="button" onclick={() => void run(onStop, false)} aria-disabled={busy}>End the program</FormButton>
-      <FormButton size="sm" type="button" onclick={() => void run(onInterrupt, false)} aria-disabled={busy || !working} disabled={!working}>Stop</FormButton>
+      <FormButton size="sm" tone="ghost" type="button" onclick={() => void run(onStop)} aria-disabled={busy}>End the program</FormButton>
+      <FormButton size="sm" type="button" onclick={() => void run(onInterrupt)} aria-disabled={busy || !working} disabled={!working}>Stop</FormButton>
     {/if}
     <FormButton size="sm" tone="primary" type="submit" aria-disabled={busy || !running || text.trim() === ''} disabled={!running}>Send</FormButton>
   </div>

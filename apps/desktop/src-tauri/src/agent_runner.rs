@@ -142,16 +142,27 @@ async fn watch<R: Runtime>(app: AppHandle<R>, generation: u64) {
                 }
             }
         }
+        // A watch that a newer one replaced says nothing of the link of the newer one.
+        if !newest(&app, generation) {
+            return;
+        }
         let _ = app.emit_to(to.clone(), LINK_EVENT, false);
         tokio::time::sleep(RETRY).await;
     }
 }
 
-/// `text` on one line with no control character, held to `most` characters.
+/// `text` on one line with no control character and no character of markup (a notification
+/// server of Linux may read markup), held to `most` characters.
 fn shown(text: &str, most: usize) -> String {
     let one: String = text
         .chars()
-        .map(|each| if each.is_control() { ' ' } else { each })
+        .map(|each| {
+            if each.is_control() || matches!(each, '<' | '>' | '&') {
+                ' '
+            } else {
+                each
+            }
+        })
         .collect();
     let one = one.split_whitespace().collect::<Vec<_>>().join(" ");
     if one.chars().count() > most {
@@ -190,6 +201,7 @@ mod tests {
     #[test]
     fn a_notification_text_is_one_short_line_with_no_control_character() {
         assert_eq!(shown("Fix\nthe\u{1b}[31m test", 80), "Fix the [31m test");
+        assert_eq!(shown("<b>a</b> & b", 80), "b a /b b");
         assert_eq!(shown(&"a".repeat(130), 120).chars().count(), 121);
     }
 }

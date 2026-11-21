@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { askFrame, madeShell, saidFrame, stateFrame, THREAD } from './frames.fixture';
-import { LiveThreads, REPLAY_MS } from './live.svelte';
+import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from './live.svelte';
+import { TEXT_CHARS } from './timeline';
 import { OVER_LIMIT, type Outcome } from './run';
 
 const AWAY = { front: false, chosen: null };
@@ -88,5 +89,44 @@ describe('the calls of the page to the runner', () => {
   it('TH14: a refusal of the runner comes back in words', async () => {
     const live = new LiveThreads(madeShell(() => ({ outcome: 'refused', why: 'request_gone' })), () => AWAY);
     expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
+  });
+});
+
+describe('the page after a reload', () => {
+  it('THR-059: a replay that lasts longer than the first quiet time notifies nothing', async () => {
+    const shell = madeShell();
+    const time = clock();
+    const live = new LiveThreads(shell, () => AWAY, time.now);
+    await live.begin();
+    shell.link(true);
+    time.pass(REPLAY_MS - 200);
+    shell.emit(stateFrame(1, 'working'));
+    time.pass(300);
+    shell.emit(stateFrame(2, 'idle'));
+    time.pass(300);
+    shell.emit(askFrame(3, 'q-1'));
+    expect(shell.notices).toEqual([]);
+    time.pass(REPLAY_GAP_MS + 1);
+    shell.emit(stateFrame(4, 'working', { open: [] }));
+    shell.emit(askFrame(5, 'q-2'));
+    expect(shell.notices).toEqual([['Fix the test', 'Asks to run a command']]);
+  });
+
+  it('THR-114: when the raise fails, the start still waits so the dialog can say why', async () => {
+    const shell = madeShell((action): Outcome => (action.call === 'raise_limit' ? { outcome: 'refused', why: 'holder' } : { outcome: 'refused', why: 'over_limit' }));
+    const live = new LiveThreads(shell, () => AWAY, clock().now);
+    await live.call({ call: 'start', program: 'codex', folder: '/w', mode: 'full_access', model: null, effort: null, prompt: 'Go' });
+    expect((await live.raiseLimit()).ok).toBe(false);
+    expect(live.overLimit).not.toBeNull();
+  });
+
+  it('TH14: a long text of the program is held to a bound', async () => {
+    const shell = madeShell();
+    const live = new LiveThreads(shell, () => AWAY, clock().now);
+    await live.begin();
+    shell.emit(stateFrame(1, 'working'));
+    shell.emit(saidFrame(2, { kind: 'message', text: 'x'.repeat(TEXT_CHARS + 10), parent: null }));
+    const entry = live.threads.get(THREAD)?.entries[0];
+    expect(entry?.kind === 'reply' ? entry.text.length : 0).toBe(TEXT_CHARS + 1);
   });
 });
