@@ -79,7 +79,6 @@ it('THR-017: Enter in the composer sends the prompt; Shift+Enter does not', asyn
   expect(shell.calls.filter((call) => call.call === 'send')).toEqual([{ call: 'send', thread: THREAD, text: 'Go on' }]);
 });
 
-
 it('THR-017: a draft of the composer stays with its thread', async () => {
   const { shell, store } = await openLive();
   const other = '0190a000-0000-7000-8000-000000000002';
@@ -92,4 +91,13 @@ it('THR-017: a draft of the composer stays with its thread', async () => {
   await store.open(other);
   await settle();
   expect(field()?.value).toBe('');
+});
+
+it('THR-017: the composer of a driven thread is at the foot of the thread, outside its scroll area', async () => {
+  await openLive();
+  const scroll = document.querySelector('[aria-label="Thread content"]');
+  const field = document.querySelector('textarea[aria-label="Prompt"]');
+  expect(scroll?.querySelector('[data-timeline]')).not.toBeNull();
+  expect(field).not.toBeNull();
+  expect(scroll?.contains(field)).toBe(false);
 });

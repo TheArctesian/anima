@@ -187,6 +187,8 @@ function layOut(): { at: (node: Element | null) => number; scrollTo: (node: Elem
 it('THR-014: a thread opens at its newest end; scrolled up, a control takes the reader back to it', async () => {
   const layout = layOut();
   await open();
+  document.querySelector<HTMLButtonElement>('.fold')?.click();
+  flushSync();
   document.querySelector<HTMLButtonElement>('[data-thread="c2"]')?.click();
   await settle();
   const scroller = (): Element | null => document.querySelector('[aria-label="Thread content"]');
