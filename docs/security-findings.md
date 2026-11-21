@@ -142,6 +142,77 @@ that owns the area.
 | SF-129 | The version of a program and "hooks installed" leave the device but are not in the list of fields | The agent layer of Anima (proposal, no code) | Open |
 | SF-130 | The gate covers the kept sessions and High findings only | The agent layer of Anima (proposal, no code) | Open |
 | SF-131 | A unit of a user ends at logout unless linger is set | The agent layer of Anima (proposal, no code) | Open |
+| SF-147 | "Only a person answers an approval" has no mechanism: an agent of the same user reaches the socket, the command and the login token (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device. If my other desicons are contridicarty to this I want them changed."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-148 | Settings of the project or the user of the agent program (allow rules, hooks, MCP servers, the policy of Codex) can answer before the approval tool is asked (not verified) (High) | Agent threads (proposal, no code) | Open |
+| SF-149 | "Relay without a copy" is a promise of the hub: a hub controller can pull each thread of each device that is online (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR4: "Yes, plain on the hub"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-150 | W7 proves the device to the hub, not the hub to the machine; a prompt of the hub is a command that the hub names, with no isolation (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR12 and OD-THR20: "No, with the guards only"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-151 | The daemon token and the login token of the command line are in reach of an agent of the same user; in stage 3 one poisoned file reaches each machine (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-152 | THR-034 names a key of a client that no plan owns, and does not say what is signed (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR5: "Through the hub"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-153 | THR-029 bans only MCP tools; an API key and the `anima` command can read entries (High) | Agent threads (proposal, no code) | Open |
+| SF-154 | The main web view is a new reader with open `https:` egress, and later would send prompts and answer approvals; P9 was too kind (High) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-155 | The switch, the folder list and the mode can be written by the user of the agent; TH33 misread USE-004; nothing stops the hub from sending Full access (Medium) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-156 | The recommendation of OD-THR8 conflicts with MCP-006 and AGL-003; change tools are `allow` by default (Medium) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR8: "Yes, within limits"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-157 | The built MCP tool gave the full title, the path of the folder and the branch, with no exclusion (Medium) | Agent threads (proposal; the read side is built on a branch) | Accepted by the operator (2026-11-20, relayed; R-296, OD-THR13: "Yes, cleaned and capped"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-158 | Nobody is named as the holder of the setting of option A of the event log (Medium) | Agent threads (proposal, no code) | Open |
+| SF-159 | The long poll of THR-026 is not written against K10 and K8 (Medium) | Agent threads (proposal, no code) | Open |
+| SF-160 | The idle stop and the life of a thread have no limits, no containment of child processes, no rule for a restart of the daemon (Medium) | Agent threads (proposal, no code) | Open |
+| SF-161 | The `git` of the runner runs hooks and configuration that the agent can write; checkpoints take untracked secrets; worktree names come from the prompt (Medium) | Agent threads (proposal, no code) | Open |
+| SF-162 | The label of the source of a prompt and the audit rest on the hub; no log at the machine (Medium) | Agent threads (proposal, no code) | Open |
+| SF-163 | The event log is a second copy with no retention, deletion or limit; redaction is best effort (Medium) | Agent threads (proposal, no code) | Open |
+| SF-164 | Wider conflicts with BOT-020, BOT-032, BOT-033 and AXT-045: a subscription login driven through a hosted hub (Medium) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR3: "No we can use account methods everyone else is doing it"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-165 | Gaps of THR-040: no deny list, the source of `PATH`, `SSH_AUTH_SOCK`, a prompt in the process list (Medium) | Agent threads (proposal, no code) | Open |
+| SF-166 | A forged session file shows as a thread, and a resume would load its history; the ID of a Codex row came from the content (Medium) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-167 | No rule to fail closed for an unknown event, kind of request or version of the program (Medium) | Agent threads (proposal, no code) | Open |
+| SF-168 | Limits missing in the code: the summary title, the patch, the whole thread, the line of a glance (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-169 | The file reader followed a link at the root folders and checked no owner and no hard link (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-170 | The reader can show what did not happen: the output wrapper of Codex, the rule for typed text, no end of a turn for Claude Code (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-171 | TH4 was marked built, but the page was not on the branch at the time of the read (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-172 | Rows of Section 8 that were wrong or too kind (P2, P3, P10, P13), and rows that were missing (Low) | Agent threads (proposal, no code) | Open |
+| SF-173 | Open decisions and conflicts that were missing (Low) | Agent threads (proposal, no code) | Open |
+| SF-174 | Members about the account and its limits in the streams of the programs conflict with AIS-022 (not verified) (Low) | Agent threads (proposal, no code) | Open |
+| SF-180 | A start of a child on a different machine has no signer: no person is at a client, and the rule that a child has no more than its parent is kept only by the hub (High) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR20 and OD-THR35: "Trust the hub, keep the guards"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-181 | A machine of the pool has no person at the machine, so each guard at the machine (the switch, the folder list, the trust question) is set by the pool and the hub (High) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR20 and OD-THR35: "Trust the hub, keep the guards"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-182 | "A device of the account" gives a machine of the pool a path to the devices of the owner, a daemon token that claims work, and a place in "any machine" (High) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-294, OD-THR36: "Yes, like any device"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-183 | "Inside the allowance" cannot be checked at the start: the hours are not known, parallel requests race, no cap on machines or size, no end (High) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-184 | The offer of a larger plan can be caused by text that steers an agent and answered by a program; the card rests on figures of the hub (High) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-185 | The hard stops for what cannot be undone were named in THR-065 and enforced nowhere; THR-081 itself deletes a disk with no question (High) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-186 | Who may ask the pool for a machine was a note in P18, not a requirement; a call from the hub to the pool is against CVM-015 (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR20 and OD-THR35: "Trust the hub, keep the guards"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-187 | Reports and messages are text that steers, and they go up to the machine that is trusted most; no limit on messages or turns (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-188 | The tools of a tree give content of a thread, against THR-029; briefs and reports go through the hosted hub (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-189 | The binding of the tools to a tree binds the tools only; a child with full access can use the command, the socket or the login token (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-190 | The placement is not written against the routing rules of jobs.md; THR-049 and THR-071 disagree; OD-THR25 changes BOT-032 without saying so (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-191 | Each option of OD-THR28 was against a rule or against THR-079; an API key is a bill beyond the plan (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-192 | The removal rested on the word of the hub; more stays than the disk; the kind of isolation of a machine of the pool was not said (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-193 | Where the settings "ask first" and the limits are kept was not said; the hub or a steered agent could loosen them (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-194 | The turned OD-THR7 had no condition for a prompt from the hub; the environment of a child on a different machine was not defined (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR7: "Your login's environment"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-195 | The one stop of the turned OD-THR21 (trust a folder one time) does not fit a worktree, a fresh clone or a machine with no person (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR21: "Yes, with a notice"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-196 | Stage 8 disagreed with cloud-machines.md and HMD-073, and Section 11 did not list it (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-197 | The turned text of OD-THR8 was in the wrong table; some rows of Section 8 were stale (Low) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-198 | A side chat with a different program or model sends the whole conversation to a second vendor (Low) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-199 | A stop by one process group leaves commands alive (High; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-200 | With THR-048 withdrawn, "text is drawn as text" is the only wall between a remote author and a command with full access through the main web view, and it was not named as a guard (High; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-201 | The text did not say what leaves the computer in stage 1b, mixed two switches, and did not say if a title goes with the switch off (High; stage 1b, 2) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-202 | The account methods of Codex had no closed list, the sign-in was not held to the machine, and nothing said if the hub gets the account, the plan and the limits (High; stage 1b, 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-203 | Sentences that bind still said the opposite of an answer (THR-065, THR-021, THR-051, THR-031, THR-033, THR-040, THR-046) (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-204 | Rows of Section 8 still claimed a guard that is withdrawn (Medium; stage 1b to 8) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-205 | THR-049 said that no program runs after a restart, against the holder; the ID of a request after a restart of the daemon was not defined (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-206 | "The holder takes commands only from the daemon" cannot hold against a program of the same user (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-207 | The end of the holder, its update, the versions of its protocol and agents with no holder were not written (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-208 | "No byte is lost" had no limit of size, and the kept output is one more copy (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-209 | THR-040 named variables only: descriptors, the environment of the holder, the working folder and a secret by its value were missing (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-210 | The credential of the MCP server of a thread was not defined (Medium; stage 1b, 7) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-211 | The soft limits did not say who counts or what a tool gets at the limit; the start tool came before the limits (Medium; stage 1b, 7) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-212 | "Allow for the session" had no rule; "a missing answer is a decline" was against THR-087 (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-213 | The log at the machine "that the hub cannot change" claimed too much (Medium; stage 1b, 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-214 | The socket was not said to be a file; the client did not check its owner; the runner was not forbidden in a system unit (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-215 | Full access, the default, was not measured in TH10 (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-216 | The values of the arguments had no rule (Medium; stage 1b, 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-217 | TH33 was one line (Medium; stage 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-218 | One machine with the switch on can, through an agent, turn the switch on at each machine that it reaches (Medium; stage 3, 7) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-219 | No rule for how long the hub keeps the content of threads, for its delete, its copies and the log of the database (Medium; stage 2) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-220 | The redaction covers tool outputs only, and its clause of known secrets is empty now (Medium; stage 2) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-221 | Task rows that were stale; `approve` had no task in stage 1b (Low; stage 1b to 6) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-222 | Section 11 missed MCP-004, AIS-018, BOT-066, BOT-032, LOG-007 (Low; stage 1a to 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
 | SF-070 | Sections 6.4.1 and 6.4.2: "the administrator" has two meanings. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-071 | Section 6.4.1: the write check names "a real file", and the socket is one. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-072 | Sections 6.4.2 and 6.4.7: who writes the adoption record on an engine of a user. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
@@ -177,6 +248,11 @@ that owns the area.
 | SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-177 | On macOS the access lists of the folders of the copy and of the socket are not read. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-176 | On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low | The daemon on a computer of a person (task HM-T23) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -247,6 +323,14 @@ Options to close it (not built):
   passes nothing.
 
 State: Open.
+
+## The security read of the agent threads proposal (2026-11-20)
+
+R-286 asks for the behaviour of T3 Code as a native part of Anima; the proposal is [agent-threads.md](proposals/agent-threads.md). A separate reviewer agent read version 1 on 2026-11-20. It got the proposal, the documents that it stands on, the code of the read side (the branch `threads/read-side`) and eight positions of an attacker, and no opinion of the session that wrote the proposal. Its report, with the scenario and the proposed change of each finding, is the record [agent-threads-review-2026-11-20.md](research/agent-threads/agent-threads-review-2026-11-20.md). The findings F1 to F28 of that record are the entries SF-147 to SF-174, in the same order: 8 High, 13 Medium, 7 Low. Section 9 of the proposal says what was done for each. No code of the drive side exists; the entries about the read side (F8, F11, F20, F22 to F25) have corrections that are built on the branch and that no person and no second reviewer checked. The choices that only the operator can make are OD-THR18 to OD-THR22 and OD-THR2 to OD-THR8 of the proposal.
+
+A second separate reviewer read the parts that version 2 of the proposal added (the principle of reach, the tree of threads and the tools of an agent, a thread on a chosen machine, machines of the pool inside the allowance of a plan, and the four recommendations that were turned), with the frame of the operator: "maximum agent reach is a good thing". It looked for the ways by which a different party uses the reach of the agent, and for a cost or a loss that cannot be undone. Its report is the record [agent-threads-review-2-2026-11-20.md](research/agent-threads/agent-threads-review-2-2026-11-20.md). Its findings G1 to G19 are the entries SF-180 to SF-198, in the same order: 6 High, 11 Medium, 2 Low. Section 9.1 of the proposal says what was done for each. The choices for the operator are OD-THR20 and OD-THR35 to OD-THR37, and OD-THR25 to OD-THR28.
+
+On 2026-11-20 the operator answered 36 open decisions of the proposal (relayed). Seventeen entries above have the state "Accepted by the operator", with his words; Section 8.2 of the proposal lists each accepted risk and the guard that is left. A third separate reviewer then read version 3 with those answers as given facts, to check that the text says what he accepted and nothing wider, and that each guard that is left can be built and tested. Its report is the record [agent-threads-review-3-2026-11-20.md](research/agent-threads/agent-threads-review-3-2026-11-20.md). Its findings H1 to H24 are the entries SF-199 to SF-222: 4 High, 18 Medium, 2 Low. Section 9.2 of the proposal says what was done for each, and Section 6.2.1 is the list for the review of the code of stage 1b.
 
 ## The security review of the work route (task W1, 2026-11-18)
 
@@ -2703,6 +2787,114 @@ What it is: `private_folder` made the roots and their missing parents in one rec
 The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
 
 State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+## The security review of the daemon on a computer of a person (task HM-T23, 2026-11-20)
+
+Task HM-T23 of [hosted-mode.md](proposals/hosted-mode.md) asks the security questions of its Section 7.1 before the installation with no question (HMD-053) is used on a computer where jobs of other people can run later. The review read the code on `dev` of 2026-11-20: the token store and the key store of `crates/daemon`, the enrolment, the units (`crates/daemon/src/units`, `crates/daemon/units`), the transport to the hub (`crates/daemon/src/hub.rs`, `hub/link_socket.rs`), the install of the desktop shell (`apps/desktop/src-tauri/src/daemon.rs`, `daemon/`), and the socket of the link (`link/cmd/anima-link/device.go`, `link/statedir`). It ran no program, and it did not read a token file or a key file. An agent did it; no second reviewer read it. The entries are about code that exists. "Severity" is the word of the reviewer.
+
+### The model: what a program of the same user can do
+
+The daemon on a computer of a person runs as that person (a `LaunchAgent`, or a systemd unit of the user). The design does not separate the daemon from the other programs of its user, and it cannot: a program of the same user can change the unit file (`~/Library/LaunchAgents`, `~/.config/systemd/user`), the copy in `~/.local/bin`, the folder of the daemon and the socket in it, and it can stop and start the daemon and the link. The entries below do not repeat this. The design accepts it, and it depends on one rule for the future: a job of another person must not run as the user of the daemon (task W2, SF-004). Until W2 is built, a computer with the daemon of its user is not a computer for the jobs of other people.
+
+What a program of the same user can do now, with no entry, because the model accepts it:
+
+- On Linux, read the token (`~/.config/anima-daemon/token`) and the key cache (`keys`) with no question: they are files of mode 0600 of that user (`crates/daemon/src/token_store/file.rs:29-32`, `config/private_file.rs:95-108`).
+- On both systems, get each cached operational key with `anima-daemon key read <name>` (`crates/daemon/src/keys.rs:34-55`, `main.rs:52-71`). This is the design of K-E5 Section 2.1 (R-147): the reader is for the programs of the user, and the Keychain trusts the daemon program, not the program that starts it.
+- On both systems, enrol the daemon again at a hub of its choice (`anima-daemon enrol`): the enrolment deletes the Keychain item and writes a new one (`token_store/keychain.rs:39-50`), and the running daemon then sends the metrics of the computer to that hub. That program can read the same metrics itself.
+- Replace the copy of the daemon or the unit file, so that its own program starts at each login.
+- On Linux, read the memory of the daemon with `ptrace` where the system permits it (the user unit does not prevent it: `crates/daemon/units/anima-daemon.user.unit`).
+
+What the token gives to a person who has it, at the hub (`crates/hub/src/fleet/metrics/ingest/routes.rs`): pushes of metrics in the name of the device, the operational keys of the device (`daemon/v1/keys/fetch`), and a renewal. A renewal gives a new token for 365 days, and its first use ends the token of the real daemon (`ingest/credential.rs:31-34`, `ingest/renewal.rs:9-13`). Thus a stolen token can stay usable after the theft is found, and it shuts out the real daemon, until the operator switches the device away from the daemon or deletes it (`ingest/credential.rs:46-57`). When the work route is built, the token also claims jobs and gets project secrets (SF-004, SF-006).
+
+### What is safe
+
+- Another local user cannot read the token. On macOS it is one generic password in the login Keychain of the user (`token_store/keychain.rs:11-12`). On Linux it is the file `token`, mode 0600, in a folder of mode 0700 that the daemon refuses when it is a link, is not owned by its user, gives group or others any access, or is below a folder that others can write with no sticky bit (`config/home.rs:97-121`, `config/private_file.rs:19-64`). The file is written to a new temporary file of mode 0600 and renamed, so the token is never in a file that others can read (`private_file.rs:95-108`). A POSIX access list on Linux shows in the group bits of the mode, so it is refused too.
+- Another local user cannot listen at the socket of the link: the daemon refuses a socket whose folder is not private to its user, or a thing at the path that is not a socket of its user (`hub/link_socket.rs:28-50`), and the link makes the socket only in such a folder (`link/statedir/statedir.go:242-266`). Exception: SF-177.
+- Another local user cannot replace the copy in `~/.local/bin`: the shell checks each folder from the root to `~/.local/bin` (owner the user or root, no write for others, write for the group only in the private group of the user, no POSIX access list) and copies with `O_CREAT|O_EXCL` and a rename (`apps/desktop/src-tauri/src/daemon/placement.rs:57-116`, `daemon/trust.rs:100-114`). The `install` of the daemon checks the program and its folders again before it writes the unit (`crates/daemon/src/units/install.rs:119-124`, `units/trust.rs:108-130`). Exception: SF-177.
+- The token is in no log, no argument and no environment. The daemon prints only fixed text (`crates/daemon/src/report.rs`); `DaemonToken` has no `Debug` (`crates/daemon-core/src/wire/secrets.rs`). The shell starts the daemon with fixed arguments (`enrol --hub <origin> -`, `install`), the enrolment code on standard input only, output thrown away, and an environment of `HOME`, `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` only (`daemon/run.rs:69-95`, `run.rs:140-175`). The origin in the arguments is not a secret.
+- The hub of the token cannot be changed in a file on macOS: the origin is kept in the Keychain record with the token, and `run` refuses a configuration whose hub is a different one (`token_store.rs:29-35`, `runtime.rs:98-105`).
+- On an `https` origin a changed environment cannot send the token to a different server: the client uses the fixed web PKI roots of `rustls`, no proxy and no redirect (`Cargo.toml` workspace `reqwest` with `rustls-tls`; `hub.rs:71-77`).
+- On macOS the carried daemon has a Developer ID signature of the Team ID of the release, the hardened runtime and no entitlement (`apps/desktop/src-tauri/src/builder/carried/mach_o.rs:86-140`). Thus `DYLD_INSERT_LIBRARIES` in the unit does not put code into the daemon, and a program of the same user cannot attach to it as a debugger without the rights of an administrator.
+- A backup on macOS: the login Keychain is encrypted with the password of the user, and the keyring crate (feature `apple-native`) writes to the login Keychain, which does not go to iCloud.
+
+### SF-179: A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium
+
+Requirements: SF-004, R-172 (task W0), HMD-054, MET-013; task HM-T23.
+
+What it is: on a hosted hub the daemon reaches the hub through the socket of the link, `link.sock` in the folder of the daemon (`apps/desktop/src-tauri/src/link/kept.rs:233-256`, `crates/daemon/src/config/home.rs:84-89`). It sends plain HTTP to that socket, with the token as a bearer (`crates/daemon/src/hub.rs:38`, `hub.rs:88-113`, `hub.rs:202-203`), and the enrolment code in the body of `daemon/v1/enrol`. The daemon checks the folder and the owner of the socket when it makes its client (`hub/link_socket.rs:28-50`), and then connects again for each request. It does not check what program listens. A program of the same user can remove `link.sock` and listen at the same path at each time; the link keeps its old socket open but gets no new connection. It can also stop the unit of the link, or wait for it to stop. The link removes a socket of the same user at its start (`link/statedir/statedir.go:253-265`), but the program can do the same again.
+
+Where: `crates/daemon/src/hub.rs`, `crates/daemon/src/hub/link_socket.rs`, `link/cmd/anima-link/device.go:70-79`.
+
+Effect, and who can cause it: a program of the user of the daemon, for example a job, a build script or a package that runs as that user. Effect: the token, within the next push of 10 seconds, with no question to the person; with it the operational keys of the device and a renewal that shuts out the real daemon (see "The model"). At an enrolment, the code, which the program can spend first, so that its own token is the token of the device. On Linux the program can read the token file in any case, so this adds little there. On macOS it is the difference: the Keychain item gives the token only to the daemon program, and `security find-generic-password` from a different program shows a question to the person; the socket gives the token with no question. SF-004 says that a program of the same user "can open the socket"; this entry is the other direction, a program that listens there.
+
+Mitigation now: none in the code. The model of this section: a job of another person must not run as the user of the daemon (W2).
+
+The fix (not built): the daemon must not send a reusable secret to a socket that a program of its user can take. Possible forms: TLS from the daemon to the hub through the socket, with the name or the key of the hub checked, so that the link carries bytes that it cannot read; or a token bound to a key that the daemon keeps in the Keychain (on Linux in the file store), with a signature on each request, so that a listener gets nothing that it can use again. A short-term limit on macOS: the daemon reads the audit token of the peer of the socket (`LOCAL_PEERTOKEN`) and accepts only a peer program with the Developer ID signature of the release. The requirement goes in K8 Section 1 and in HMD-054.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-178: On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low
+
+Requirements: R-172 (task W0), MET-013; task HM-T23.
+
+What it is: a record with an old link origin (`http://127.0.0.1:<port>`, made before task W0) reaches the hub through the socket in the folder of the daemon (`crates/daemon/src/config/origin.rs:121-128`, `runtime.rs:105`). That folder comes from `ANIMA_DAEMON_HOME` when it is set (`config/home.rs:51-53`). On macOS the token does not come from that folder: it comes from the Keychain, whose item trusts the daemon program (`token_store/keychain.rs:11-12`). `run` compares the hub of the token with the hub of the configuration in the named folder (`runtime.rs:98-104`); a program can write that configuration with the same old origin. Thus a program of the same user can start `~/.local/bin/anima-daemon run` with `ANIMA_DAEMON_HOME` set to a private folder of its own, with a `daemon.json` that names the old origin and a socket `link.sock` at which it listens, and the daemon reads the token from the Keychain with no question and sends it there.
+
+Where: `crates/daemon/src/config/home.rs`, `crates/daemon/src/runtime.rs`, `crates/daemon/src/config/origin.rs`.
+
+Effect, and who can cause it: a program of the user, on a Mac whose daemon was enrolled with an old link origin and not enrolled again. Effect: the token with no question to the person, as in SF-179. A record with an `https` origin or a `unix:` path is not affected: the path is in the Keychain record.
+
+Mitigation now: a new enrolment cannot use an old link origin (`config/origin.rs:54-57`, `LinkPort`); only old records are affected.
+
+The fix (not built): on macOS, take the socket of an old link origin from a fixed place that does not depend on the environment, or write the record again with its `unix:` path at the first run, or refuse an old link origin with an error that asks for a new enrolment. In general: when the token is in the Keychain, no value of the environment decides where it goes.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-175: The copy of the daemon in `~/.local/bin` is not checked after the installation. Low
+
+Requirements: MET-019, HMD-053, HMD-055; task HM-T23; Section 7.1 of [hosted-mode.md](proposals/hosted-mode.md).
+
+What it is: the shell copies the daemon to `~/.local/bin/anima-daemon` and runs that path only during `daemon_install` (`apps/desktop/src-tauri/src/daemon.rs:77-109`; `placement::place` has no other caller for the daemon). The unit starts that path at each login (`crates/daemon/units/ing.anima.daemon.plist`, `anima-daemon.user.unit`). After the installation no part of the application compares the file with the program that the application carries, or checks its signature. A program of the same user can put a different file there, or an older signed version of the daemon. Between the rename and the start of `enrol` (`daemon.rs:85-98`), the same program can replace the file, and the enrolment code then goes to its file.
+
+Where: `apps/desktop/src-tauri/src/daemon.rs`, `apps/desktop/src-tauri/src/daemon/placement.rs`.
+
+Effect, and who can cause it: a program of the user. The model accepts that such a program can start its own program at each login. What this adds: its program runs with the name, the label and the place that the person and the application trust, and the application shows the device as one that the daemon serves. On macOS a file with a different signature does not get the Keychain item with no question; macOS asks the person, with the name `anima-daemon`, and a person who knows the daemon can say yes. An older signed version gets the item with no question if the Keychain trusts the signature, not the exact file (the code sets no access list, so macOS uses its default for the item: `token_store/keychain.rs:39-55`).
+
+Mitigation now: none after the installation. The checks of the folders keep other users out (see "What is safe").
+
+The fix (not built): at each start, the application compares the copy with the program that it carries (bytes or hash; on macOS also `codesign --verify` against the Developer ID requirement of the release), puts the carried program back when they differ, and writes a line to its log. On macOS, a different place: a `LaunchAgent` registered with `SMAppService` that starts the program inside the signed application, which macOS protects from changes by other programs (App Management) and shows in Login Items. The update and the removal of HMD-055 and HMD-056 need the same comparison.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-177: On macOS the access lists of the folders of the copy and of the socket are not read. Low
+
+Requirements: MET-019, R-172 (task W0); task HM-T23.
+
+What it is: the checks of the folders read the mode bits, the owner and, on Linux, the POSIX access list. On macOS an access list (`chmod +a`) does not show in the mode, and the code does not read it: `has_acl` returns false on macOS (`apps/desktop/src-tauri/src/daemon/placement.rs:132-140`); the rule of the daemon says the same (`crates/daemon/src/units/trust.rs:6-8`); and `folder_private`, which guards the folder of the daemon and of `link.sock`, reads the mode only (`crates/daemon/src/config/private_file.rs:49-64`).
+
+Where: the three files above.
+
+Effect, and who can cause it: a different local user, when an entry of an access list gives that user the right to add or delete files in `~/.local`, `~/.local/bin`, or `~/Library/Application Support/anima-daemon`. The person or an administrator must make such an entry; macOS does not make one by default. Effect: that user can replace the copy of the daemon, or listen at `link.sock` and get the token (SF-179, by a different user).
+
+Mitigation now: none in the code. The comments of the code say it.
+
+The fix (not built): on macOS, read the access list of each folder (`acl_get_link_np`) and refuse each folder with an entry that allows `add_file`, `add_subdirectory`, `delete_child` or `write` to anyone but the user, in the three checks.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-176: On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low
+
+Requirements: MET-013, K8 Section 2, K-E5 Section 2.1; task HM-T23.
+
+What it is: on Linux the token is the file `~/.config/anima-daemon/token` and the operational keys are the file `keys` beside it, as plain JSON (`crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store.rs:1-3`). This is what K8 Section 2 says. The model accepts that a program of the user can read them. A backup tool of the home folder (for example Déjà Dup, which backs up the home folder by default) copies them as plain text to its target. The backup keeps the token for up to 365 days and the values of the keys with no limit; the deletion of the cache after 7 days (`keys.rs:1-9`) does not reach a backup. The workspace already builds the keyring crate with `sync-secret-service` for the desktop shell (`Cargo.toml:74`).
+
+Where: `crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store/file.rs`.
+
+Effect, and who can cause it: a person who can read a backup of the home folder, also on a different computer or a disk. Effect: the token (with the renewal of "The model") and the operational keys of the device.
+
+Mitigation now: the operator can end the token at the hub (switch the device away from the daemon, or delete it). The macOS store has no such copy: the Keychain is encrypted with the password of the user.
+
+The fix (not built): on a Linux computer with a session of a person, keep the token and the key cache in the Secret Service (encrypted with the login password), as the shell keeps its keys, and keep the file store for a server with no session and for the system unit. Where the file store stays, write the token and the cache in a folder that backup tools leave out (for example below `$XDG_STATE_HOME` with a `CACHEDIR.TAG`, or a documented exclusion), and say in K8 Section 2 that a backup of the folder holds the token.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
 
 ## Closed
 

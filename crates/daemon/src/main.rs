@@ -70,6 +70,7 @@ async fn daemon() -> ExitCode {
         },
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
+        Command::Uninstall => uninstall(&home),
         Command::KeyRead { name } => key_read(&name, &home),
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
@@ -153,6 +154,44 @@ fn install(target: Target, home: &Home) -> ExitCode {
         }
         Err(error) => failure(&error),
     }
+}
+
+/// `anima-daemon uninstall` (HMD-056): the user unit out first, then the token and the key cache.
+#[cfg(unix)]
+fn uninstall(home: &Home) -> ExitCode {
+    use anima_daemon::units::removal::{self, Leaving, UninstallError};
+    let uid = match private_file::running_user() {
+        Ok(uid) => uid,
+        Err(error) => return failure(&error),
+    };
+    let user = Leaving {
+        platform: Platform::current(),
+        uid,
+    };
+    let env = |name: &str| std::env::var(name).ok();
+    let forget = || -> Result<(), UninstallError> {
+        TokenStore::open(home).forget()?;
+        KeyStore::open(home).forget()?;
+        Ok(())
+    };
+    match removal::uninstall(user, env, |step| run_step(step, STEP_DEADLINE), forget) {
+        Ok(done) if done.was_installed => {
+            eprintln!("Removed {} and the daemon's token.", done.file.display());
+            ExitCode::SUCCESS
+        }
+        Ok(_) => {
+            eprintln!("No unit of the daemon was installed; its token is gone.");
+            ExitCode::SUCCESS
+        }
+        Err(error) => failure(&error),
+    }
+}
+
+/// The task of the daemon on Windows is not taken out by this command yet.
+#[cfg(windows)]
+fn uninstall(_home: &Home) -> ExitCode {
+    eprintln!("`anima-daemon uninstall` is not built for Windows yet");
+    ExitCode::FAILURE
 }
 
 /// The enrolment code from standard input; with echo off when it is a terminal. The code also

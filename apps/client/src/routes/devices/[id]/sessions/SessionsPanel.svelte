@@ -1,5 +1,7 @@
 <script lang="ts">
   import { press } from '$lib/motion/roles/press';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { listRow } from '$lib/motion/roles/transitions';
   import type { Pages } from '../pages.svelte';
   import { sessionRows, type DeviceSession } from './sessions';
 
@@ -10,6 +12,8 @@
 
   const { pages, now }: Props = $props();
   const rows = $derived(sessionRows(pages.items ?? [], now()));
+  /** A session that ends comes in at the top: the rows below slide down to their places (5.7.3, Reorder). */
+  const track = reorderMotion(() => rows.map((row) => row.id).join('\n'));
 </script>
 
 <table class="sessions">
@@ -18,8 +22,9 @@
     <tr><th scope="col">Start</th><th scope="col">End</th><th scope="col">Duration</th><th scope="col">Protocol</th><th scope="col">Operator</th><th scope="col">End reason</th></tr>
   </thead>
   <tbody>
-    {#each rows as row (row.id)}
-      <tr><td>{row.start}</td><td>{row.end}</td><td class="duration">{row.duration}</td><td>{row.protocol}</td><td>{row.operator}</td><td>{row.reason}</td></tr>
+    {#each rows as row, index (row.id)}
+      <!-- A new row fades in where it stands; under reduced motion it comes at once (5.7.3, Reorder). -->
+      <tr transition:listRow={{ index }} {@attach track(row.id)}><td>{row.start}</td><td>{row.end}</td><td class="duration">{row.duration}</td><td>{row.protocol}</td><td>{row.operator}</td><td>{row.reason}</td></tr>
     {:else}
       <tr><td colspan="6" class="none">No sessions yet</td></tr>
     {/each}

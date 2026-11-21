@@ -1,24 +1,21 @@
 <script lang="ts">
+  import { leaveDaemonOnThisComputer } from '$lib/desktop/daemon/leave';
+  import { ACCOUNT_PAGE, hubIsHosted } from '$lib/hosted/mark';
   import { forgetRecentCopy } from '$lib/hub/hub';
   import { tick } from 'svelte';
   import { useHub } from '$lib/hub/context';
-  import { clearAccessToken } from '$lib/desktop/token';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { capabilities } from '$lib/platform/platform';
-  import { isMobile } from '$lib/platform/mobile';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { accessApi } from './api';
   import { signInNeeded } from './guard';
-  import { goToSignIn, goToWelcome, loadClientAt } from './navigation';
-  import { SIGN_IN_PATH } from './routes';
-  import { signOut } from './sign-out';
-  import { signOutMobile } from './mobile/sign-out';
+  import { leaveHub } from './leave/leave';
+  import { goToSignIn } from './navigation';
 
   const hub = useHub();
   const api = accessApi(hub);
-  const desktop = capabilities().keyStore;
-  const mobile = desktop && isMobile(navigator);
+  // A hosted hub has no password that a person knows: the way in is the Anima.ing account (HMD-038, HMD-061).
+  const hosted = hubIsHosted(hub.address.origin);
   let username = $state<string | null>(null);
   let problem = $state<string | null>(null);
   let busy = $state(false);
@@ -35,25 +32,14 @@
     busy = true;
     let kept: string | null;
     try {
-      kept = mobile
-        ? await signOutMobile(api, hub.address)
-        : await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy: forgetRecentCopy });
+      kept = await leaveHub(hub, api, forgetRecentCopy, () => leaveDaemonOnThisComputer(hub));
     } catch (reason) {
       busy = false;
       throw reason;
     }
-    if (kept === null && !desktop) {
-      // A new page, so no socket keeps the old cookie (E-4); the button stays off while it loads, as Sign in does.
-      loadClientAt(SIGN_IN_PATH);
-      return;
-    }
+    // The client is on its way to the sign-in: the button stays off while it goes, as Sign in does.
+    if (kept === null) return;
     busy = false;
-    // The desktop socket reads the key store anew, so the router may move within the page.
-    if (kept === null) {
-      if (mobile) goToWelcome();
-      else goToSignIn();
-      return;
-    }
     problem = kept;
     // The disabled button lost focus; give it back once it is enabled again, so the keyboard user stays here.
     await tick();
@@ -64,7 +50,14 @@
 <SettingRow>
   {#snippet label()}
     <!-- Always rendered, with its line reserved, so nothing moves when the name arrives (MOT-007); a long name is cut. -->
-    <p class="who" class:pending={username === null}>Signed in as <strong>{username ?? ''}</strong></p>
+    <p class="who" class:pending={username === null}>
+      Signed in as <strong>{username ?? ''}</strong>{#if hosted}&#32;with your Anima.ing account{/if}
+    </p>
+    {#if hosted}
+      <!-- The hub knows no email of the account (the gateway's ticket names none, HMD-061): the account page has it. -->
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the page of the account on cloud.anima.ing, not a route of this app -->
+      <a class="account" href={ACCOUNT_PAGE} target="_blank" rel="noopener noreferrer">Manage account and sign-in methods</a>
+    {/if}
   {/snippet}
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
   <button type="button" tabindex="0" disabled={busy} onclick={leave} bind:this={button} {@attach press()}>
@@ -87,6 +80,18 @@
     line-height: var(--leading-tight);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .account {
+    display: inline-block;
+    margin-block-start: var(--space-1);
+    color: var(--accent);
+    font-size: var(--text-sm);
+  }
+
+  .account:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: var(--border-focus);
   }
 
   .who.pending {

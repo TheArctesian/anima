@@ -78,6 +78,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         stay_awake::stay_awake_lid_remove,
         daemon::daemon_bundled,
         daemon::daemon_install,
+        daemon::daemon_remove,
         command_line::command_line_read,
         command_line::command_line_install,
         command_line::command_line_remove,

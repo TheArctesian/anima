@@ -34,7 +34,7 @@ describe("the fast tier (gates:fast)", () => {
 
   test("a change in one crate runs format, lint and the tests of that crate, then the quality gates", () => {
     const paths = ["crates/daemon/src/hub.rs", "docs/need-human-testing.md"];
-    expect(names(paths)).toEqual(["fmt", "clippy", "rust-test", ...QUALITY]);
+    expect(names(paths)).toEqual(["fmt", "clippy", "rust-test", "deploy-maps", ...QUALITY]);
     expect(argvOf(paths, "clippy")).toBe("cargo clippy -p anima-daemon --all-targets -- -D warnings");
     expect(argvOf(paths, "rust-test")).toBe(
       "bun quality/bin/with-postgres.ts cargo nextest run -p anima-daemon --no-tests=pass",
@@ -43,7 +43,7 @@ describe("the fast tier (gates:fast)", () => {
 
   test("the desktop shell is a crate, not the bun package around it, and brings its pinning test", () => {
     const paths = ["apps/desktop/src-tauri/src/link.rs"];
-    expect(names(paths)).toEqual(["fmt", "clippy", "rust-test", "pinning", ...QUALITY]);
+    expect(names(paths)).toEqual(["fmt", "clippy", "rust-test", "pinning", "deploy-maps", ...QUALITY]);
     expect(argvOf(paths, "clippy")).toContain("-p anima-app");
   });
 
@@ -63,12 +63,18 @@ describe("the fast tier (gates:fast)", () => {
 
   test("a file that each Rust package depends on runs the whole Rust group, doctests included", () => {
     for (const path of ["Cargo.lock", "Cargo.toml", "rust-toolchain.toml", ".config/nextest.toml"]) {
-      expect(names([path])).toEqual([...ofGroups(FULL, ["rust"]).map((gate) => gate.name), ...QUALITY]);
+      expect(names([path])).toEqual([...ofGroups(FULL, ["rust"]).map((gate) => gate.name), "deploy-maps", ...QUALITY]);
     }
   });
 
   test("a contract runs each Rust and each bun package", () => {
     expect(names(["contracts/schema.graphql"])).toEqual(ofGroups(FULL, ["rust", "bun", "quality"]).map((gate) => gate.name));
+  });
+
+  test("a change of a crate runs the quick deploy tests that read the workspace, unless each deploy test runs", () => {
+    expect(argvOf(["crates/daemon/Cargo.toml"], "deploy-maps")).toContain("deploy/test/release-applications.test.ts");
+    expect(names(["crates/daemon/src/hub.rs", "deploy/src/x.ts"]).filter((name) => name === "deploy-maps")).toEqual([]);
+    expect(names(["contracts/schema.graphql"])).not.toContain("deploy-maps");
   });
 
   test("a workflow file runs the tests of the deploy package, which read it", () => {
@@ -91,6 +97,7 @@ describe("the fast tier: what it does not guess", () => {
       "fmt", "clippy", "rust-test",
       ...ofGroups(FULL, ["go"]).map((gate) => gate.name),
       "install", "lint", "check", "test", "build",
+      "deploy-maps",
       ...QUALITY,
     ]);
     expect(argvOf(paths, "clippy")).toContain("-p anima-hub -p anima-daemon");
@@ -120,12 +127,12 @@ describe("R-268 the fast tier of a busy machine", () => {
   });
 
   test("a change that names each Rust package keeps format and lint and leaves the tests out", () => {
-    expect(busyNames(["Cargo.lock"])).toEqual(["fmt", "clippy", ...QUALITY]);
+    expect(busyNames(["Cargo.lock"])).toEqual(["fmt", "clippy", "deploy-maps", ...QUALITY]);
   });
 
   test("a change in one crate still runs the tests of that crate", () => {
     const paths = ["crates/hub/src/main.rs"];
-    expect(busyNames(paths)).toEqual(["fmt", "clippy", "rust-test", ...QUALITY]);
+    expect(busyNames(paths)).toEqual(["fmt", "clippy", "rust-test", "deploy-maps", ...QUALITY]);
     expect(busy(paths).find((gate) => gate.name === "rust-test")?.argv).toContain("anima-hub");
   });
 

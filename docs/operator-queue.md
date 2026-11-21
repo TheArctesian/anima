@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (17)
+## 1. In the order of the priorities (18)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-050 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
+| 4.24 | Agent threads: the behaviour of T3 Code as a native part of Anima | Operator: OD-THR1 to OD-THR44 and the approval of THR-001 to THR-130 in agent-threads.md; the check HT-079. Agent: task TH4 in agent-threads.md (the comparison of the screen with its mockup) |
 | 4.4 | The engine (E0) | Agent: `recordReveal` of E0-6 T2 (K-E5 Section 3; the store of the sealed records is built), then E0-6 T4, of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E26 (plain `http` for a Dawarich server), HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the steps of HT-065 on his Linux computer `pop-os` for the measurements of task W2 (R-188, R-264), an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
@@ -38,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (204)
+## 2. Open decisions (218)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -148,6 +149,19 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL18 | Which identifier does a row have at the hub? (SF-122) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-THR3 | "No we can use account methods everyone else is doing it" | `codex app-server` is used with its account methods; the ban of BOT-033 is lifted. Anima can then read which account and plan Codex uses and its limits, and can… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR4 | "On the hub", then "Yes, plain on the hub" | The prompts, the code and each secret that an agent prints are kept on the hosted hub in plain form. Whoever controls that server, its database or its copies ca… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR18 | "Accept it across any device. If my other desicons are contridicarty to this I want them changed." | A program of the same user, also an agent that was steered by text it read, can do what the person can do in Anima: answer an approval, choose a folder, start a… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR36 | "Yes, like any device" | A machine that an agent started in the pool can open a connection to each other device of the person. THR-106 is changed | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR13 | "Yes, cleaned and capped" | The first line of a prompt, as the title of a thread, goes to the hub, to notifications and to the result of an MCP tool | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR34 | "Yes, from the start" | The holder process is a part of stage 1b and of the launch | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR38 | Past the allowance (OD-THR27) you said: "By default, I would like a smaller build". What is the smaller build? | A: it keeps "refused unless they enable" exact, and the agent still gets a machine | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR39 | The steps of the limits after 5, 10 and 15 (THR-114)? | A | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR40 | With the account methods of Codex (OD-THR3): may Anima hold or pass the tokens of a ChatGPT login (`chatgptAuthTokens`), or only start the sign-in on the machin… | A | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR41 | Your answer to OD-THR18 ended at "The". Is something missing? And does "accept it" also cover a purchase of a larger plan (THR-108), and a tool by which a paren… | Until you say more: a purchase keeps its sign-in check, and no tool for an agent to answer approvals is built, though a program of the same user can use the com… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR42 | With the switch "This device gives its threads to the hub" off: does anything of a thread still go to the hub (a title for a notification on your phone, a count… | A in stage 1b, where nothing leaves at all; B from stage 2, so that the phone can show a number | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR43 | With the account methods of Codex: where may the name of the account, the plan and the limits go? | A now; B is a change of AIS-022 for the hub | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR44 | How long does the hub keep the content of threads (OD-THR4)? | B, as a setting | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL o… | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
@@ -192,6 +206,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | The forms of the shell stay. The refresh of a real token is step 4 of HT-022. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D20 | Which address does the web client of a hosted hub give for the download of the application, and are the words of its two new texts right? | A link to the download page of the account site, when the operator names its address; the words as built until he changes them. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | OD-ROU7 | After how long is queued work refused? (one choice: 1 hour; 24 hours; never, until cancelled) | Open. Recommendation: 24 hours, then refused with the reasons and one notification. Strength: no work starts days late; a nightly window still fits. Weakness: a… | [proposals/jobs.md](proposals/jobs.md) |
 | OD-ROU8 | Where are queued items seen and cancelled? (one choice: the list of what runs (PRO-052) with the state Queued, plus `anima work list --queued` and an MCP read;… | Open. Recommendation: the list of what runs, the command and MCP, with Cancel for the operator and the caller that queued it. Strength: CMD-030 order; one list.… | [proposals/jobs.md](proposals/jobs.md) |
 | OD-ROU9 | Does the audit entry of a routed command line keep the command text? (yes/no) | Open. Recommendation: no; the entry keeps the caller, the machine, the times and the exit state (LOG-007). Strength: no secret in the log. Weakness: the log can… | [proposals/jobs.md](proposals/jobs.md) |
@@ -247,7 +262,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (30)
+## 3. Documents that wait for an approval (31)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -258,6 +273,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/agent-layer.md](proposals/agent-layer.md) | Proposal | Direction decided |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
+| [proposals/agent-threads.md](proposals/agent-threads.md) | Proposal | Direction decided |
 | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) | Proposal, with a task table | Direction decided |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
@@ -282,12 +298,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (94)
+## 4. Checks that only the operator can do (97)
 
 | Check | What |
 | --- | --- |
 | HT-069 | Anima OS preview hardware and enrollment |
 | HT-066 | a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) |
+| HT-080 | the web client of a hosted hub behind the gateway (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) |
 | HT-001 | `anima snapshot` against GitHub |
 | HT-002 | the tool inventory from a daemon to the command line |
 | HT-003 | the tool inventory in an MCP client |
@@ -310,6 +327,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-028 | the hosted hub is a device of its own device list (HM-T9) |
 | HT-029 | the computer is Up while it is connected to the link (HM-T11) |
 | HT-031 | a hosted hub reaches SSH of a computer on its link (HM-T12) |
+| HT-077 | the switches of the open ports in Settings (HMD-049; task HM-T13) |
 | HT-070 | a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14) |
 | HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | HT-033 | an SSH session on a phone, with the key row |
@@ -319,6 +337,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-061 | sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) |
 | HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
+| HT-083 | the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21) |
 | HT-068 | a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |

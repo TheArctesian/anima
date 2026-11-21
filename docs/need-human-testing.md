@@ -61,6 +61,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-077 | The switches of the open ports in Settings turn SSH and screen sharing on and off for the hub (HMD-049; task HM-T13) | This Mac joined to a hub, and an application of a build that holds the branch `hosted/hm-t13-port-switches` | Open |
 | HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
@@ -88,18 +89,21 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
+| HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
+| HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
+| HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 
 ### What a check on the hosted hub needs
 
@@ -171,6 +175,47 @@ for the time when both exist.
    a key. Expected: the session still works.
 5. In a second browser profile, open `https://hub.anima.ing/graphql` with no session. Expected: no
    data of a hub.
+
+### HT-080: the web client of a hosted hub behind the gateway (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27)
+
+Built: on the branch `hosted/hm-t27-web-client-door`. The web client asks one time for each page load
+whether the gateway of the hosted hubs is in front of its hub (a path that only the gateway
+answers). Behind the gateway: a refusal of the gateway is read as its code; a browser that must
+sign in goes to the entry of the gateway and never to the page with the hub password; "Sign out"
+ends the session of the hub and then the session of the gateway; the empty list of devices says
+how a computer comes to the hub.
+
+The tests cover, with a stand-in for the gateway that answers as the gateway of the pool does: the
+codes of the gateway, the question whether a gateway is in front, the sign-out, the rule against a
+loop of entries, the sign-in page, and the row Sign out. Not covered: a real gateway, a real
+browser, the content security policy of a real hub, and the cookies.
+
+It needs: a hub of the pool whose image carries this build of the web client. The image that the
+pool has on 2026-11-20 carries an earlier build, so these steps are for a new image.
+
+1. In a browser with no session, open `https://hub.anima.ing` and sign in with the account.
+   Expected: the list of devices of the hub. No page asks for a hub address or a hub password.
+2. With a hub that has no computer: look at the list. Expected: "No devices yet", and one sentence
+   that says to install the application on a computer and to sign in there.
+3. Open Settings and press "Sign out". Expected: the page "Signed out" with one button "Sign in".
+   The address bar still shows `hub.anima.ing`.
+4. In the tools of the browser, look at the cookies of `hub.anima.ing`. Expected: no cookie
+   `__Host-anima` and no cookie whose name starts with `__Host-anima-door`.
+5. Press "Sign in". Expected: the sign-in of the account, or, when the account site is still
+   signed in, the hub again with no question. Write which of the two you saw.
+6. Signed in, leave a page that does not update for 31 minutes, then press a link of the bar.
+   Expected: "Signing in" for a moment, then the hub again, with no password page. The page that
+   opens is the list of devices, not the page that you pressed.
+7. Signed in, delete only the cookie whose name starts with `__Host-anima-door` in the tools of the
+   browser, then press a link of the bar. Expected: the sign-in of the account or the hub again; no
+   page with the words "Can't read the hub's answer".
+8. Signed in, open Settings. Expected: the Account section says "Signed in as owner with your
+   Anima.ing account" and has the link "Manage account and sign-in methods". Press it. Expected: the
+   page of the account at `cloud.anima.ing/account` opens in a new tab, and the hub stays in its tab.
+9. Make the window narrow (390 px wide, or the phone view of the tools of the browser), open
+   Settings and press "Sign out" in the Account rows. Expected: as in steps 3 and 4.
+
+Result: Open.
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -912,6 +957,26 @@ state directory that the application gives it: read the two from the output of
 
 Result: Open.
 
+### HT-077: the switches of the open ports in Settings (HMD-049; task HM-T13)
+
+Built: on the branch `hosted/hm-t13-port-switches`. Settings shows one switch for SSH (port 22) and
+one for screen sharing (port 5900) under "Link to the hub", with the setting of the system that each
+needs. A switch runs `anima-link ports` of the link program of the application on the device folder.
+
+The tests cover, with a stand-in link program: the list read and changed, a port that the link may
+not open, an answer that is not a list, the rows of each system, a change that is refused. Not
+covered: the real link program, a real hub that reaches the port, and the window of the application.
+
+1. On this Mac, joined to a hub, open Settings. Expected: under "Link to the hub", the rows "SSH
+   (port 22)" and "Screen sharing (port 5900)", both off, each with one line that names the setting
+   in System Settings.
+2. Turn "Screen sharing" on. Expected: the switch stays on; no window or question of the system
+   opens.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "$HOME/Library/Application Support/ing.anima.desktop/link/device"`
+   Expected: `{"open":[5900]}`.
+4. Quit and open the application, then open Settings. Expected: "Screen sharing" is still on.
+5. Turn it off. Run the command of step 3 again. Expected: `{"open":[]}`.
+6. Open Settings on a computer that has not joined a hub. Expected: no switch of a port.
 ### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
 
 Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
@@ -1256,6 +1321,58 @@ double quotes in a command, because the path has a space.
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
+
+### HT-083: the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21)
+
+Built: on the branch `hosted/hm-t21-daemon-removal`. The daemon has the command
+`anima-daemon uninstall` (`crates/daemon/src/units/removal.rs`): it stops the user unit or the
+`LaunchAgent`, deletes its file, then deletes the token (the Keychain item `ing.anima.daemon` on a
+Mac, the file `token` on Linux) and the key cache. The shell has `daemon_remove`
+(`apps/desktop/src-tauri/src/daemon/removal.rs`): it runs `uninstall` with
+`~/.local/bin/anima-daemon`, then deletes that copy. The client
+(`apps/client/src/lib/desktop/daemon/leave.ts`) runs it at Sign out and at Change hub of a hosted
+hub, before the logout, and revokes the daemon at the hub.
+
+The tests cover, with stand-ins in temporary folders: the order of the commands for a
+`LaunchAgent` and for a systemd user unit, a second removal, a unit that is not loaded, a stop that
+cannot run, the token forgotten only after the unit is out, the copy that runs `uninstall` and is
+then deleted, a daemon that refuses (the copy stays), the client that removes first and revokes
+second, an unreachable hub and its sentence, and a second sign-out with no sentence. Not covered:
+the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the hub of the pool, and the
+Linux code paths, which were read but not run on a Mac (the file token store and the systemd steps).
+
+It needs: an application of this build, the sign-in to the hosted hub, and HT-061 step 1 passed (the
+daemon reports).
+
+On this Mac:
+
+1. Before the sign-out, run `ls ~/Library/LaunchAgents/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `security find-generic-password -s ing.anima.daemon -a daemon-token`.
+   Expected: `ing.anima.daemon.plist` is listed, the copy is there, and `security` prints the item
+   (it does not print the token with no `-w`).
+2. In the application open Settings, press Sign out. Expected: the sign-in page shows, with no
+   question of the Keychain and no message.
+3. Run the three commands of step 1 again. Expected: no `ing.anima.daemon.plist` (the
+   `ing.anima.link.plist` of the link may stay), "No such file or directory" for the copy, and
+   "The specified item could not be found in the keychain." from `security`. `pgrep -x anima-daemon`
+   prints nothing.
+4. Sign in again (from a browser at the address of the hub, or from the application), open the
+   device of this Mac, Settings, the panel "Daemon". Expected: "Daemon revoked." Open Logs. Expected:
+   a line "Revoked the daemon token of <the name of this Mac>." at the time of step 2.
+5. The installation at this sign-in: wait 3 minutes. Known gap (HM-T21 row): the device keeps the
+   source Daemon, so the application does not install the daemon again; write down what you see.
+   To install it again for the next steps, change the metrics source of this Mac to None in its
+   Settings, then quit and open the application; HT-061 step 1 then applies.
+6. With the daemon installed again, turn the network off (Wi-Fi off), press Sign out. Expected: the
+   Settings page stays and says "The daemon is removed from this computer, but the hub could not be
+   reached and still lists it. Revoke the daemon on the page of this computer in Devices when the
+   hub answers." The commands of step 1 show the same as in step 3. Turn the network on, sign in,
+   open the panel "Daemon". Expected: the daemon is not shown as revoked (no "Daemon revoked."); its
+   readings are stale. Press "Revoke daemon" there.
+7. On the Linux computer, steps 1 to 3 with `ls ~/.config/systemd/user/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `ls ~/.config/anima-daemon/`. Expected after the sign-out:
+   no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
+   `systemctl --user status anima-daemon` says that the unit could not be found.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
@@ -2621,6 +2738,45 @@ extensions of a real hub, at other widths or on a phone.
 
 Result: Open.
 
+### HT-079: the page Threads with the real sessions of this computer (R-286)
+
+Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
+Threads of the desktop application, the commands `anima agents threads` and `anima agents thread`, and the MCP tool
+`anima_agents_threads`. The tests use made session files and a made shell. The command was run one time on a Mac with
+real session files (2026-11-20). No person saw the page in a desktop window, and nothing was run on Linux. The page was
+not compared with its mockup.
+
+1. On the Mac, with sessions of Claude Code and Codex in the home folder, open the desktop application and select
+   "Threads" in the navigation bar.
+   Expected: a list of the sessions, the last changed first, in the groups "Changed now", "Today" and "Earlier". Each row
+   has a title, the program, the folder and the time. A session that you use now has a dot in the accent colour.
+2. Select a thread of Claude Code, then one of Codex.
+   Expected: the prompts that you typed, the replies, "Reasoning" folded, and the tool calls of a turn in one block. An
+   edit shows the removed and the added lines when it is opened. No text of a different session shows.
+3. Press the Down key, Cmd+2, Cmd+Shift+], the key E and the key /.
+   Expected: the next thread opens; the second thread opens; the next thread opens; the tool calls open and close; the
+   focus goes to the search, where typing narrows the list and Escape leaves.
+4. Look at the foot of a thread and at the whole page.
+   Expected: a note says that the thread is read from the session file and that the page sends no message. No control
+   starts, stops or answers an agent.
+5. In a terminal run `anima agents threads --limit 5` and `anima agents thread <an ID of the list>`.
+   Expected: the same threads as the page; the thread as text with "> You" before each prompt.
+6. Open the application in the dark and the light appearance beside the mockup `docs/mockup/agent-threads/index.html`,
+   frames 1 and 2.
+   Expected: the same parts in the same order. Write each difference in the row of the mockup.
+7. On the Linux computer `pop-os`, do steps 1, 2 and 5.
+   Expected: the same.
+8. (Branch `threads/needs-you`.) In a terminal, give Claude Code a short task and wait until it ends. Do not open its thread.
+   Expected: in at most 30 seconds the thread is in the group "Needs you" at the top, with a bell and the words "Your
+   turn", and the item Threads of the bar shows the count 1. Give a long task: while the agent works, the thread is in
+   the group "Working" at the bottom. Open the thread that waits: it goes to "Earlier" with "Done", and the count goes.
+9. (Branch `threads/needs-you`.) Start a task in which Claude Code asks for an approval, and do not answer for more than one minute.
+   Expected: the thread is in "Needs you", first, with the words "May wait for you". Hold the pointer on the list while a
+   different thread changes its state: no row moves under the pointer; the rows slide when the pointer leaves the list.
+   No system notification comes: that part is not built (task TH6).
+
+Result: Open.
+
 
 ### HT-074: the native Windows desktop client (WIN1)
 
@@ -2800,5 +2956,95 @@ headless WebKit with sample devices. No person saw it in a desktop window, at th
    the bar under the value is at its new length at once.
 7. Do steps 1 to 4 with "Reduce motion" on.
    Expected: no row slides; rows and views fade only.
+
+Result: Open.
+
+### HT-076: the motion of the other lists (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/lists-motion` with the roles of `ui/motion` (`listRow`, `reorderMotion`, `crossFade`):
+the Checks tab (`apps/client/src/routes/devices/[id]/checks/ChecksPanel.svelte`), the Containers tab
+(`apps/client/src/lib/containers/ContainerTable.svelte`), the Sessions tab
+(`apps/client/src/routes/devices/[id]/sessions/SessionsPanel.svelte`) and Projects
+(`apps/client/src/lib/projects/ProjectsScreen.svelte`). The logs panel and the lists of Settings (channels, API keys,
+VPN keys and sites) already used these roles. Tests prove which row plays a fade; no person saw it.
+
+1. On the Checks tab of a device, add a check, then delete it.
+   Expected: the new row fades in where it lands; the deleted row fades out where it stands, then the rows under it
+   slide up to close the gap.
+2. On the Containers tab of a device with Docker, stop a container on the device, then select "Refresh".
+   Expected: its state word cross-fades in place ("Running" to "Exited"); nothing else moves.
+3. On Projects, select "Leave out" on a tile.
+   Expected: the tile fades out where it stands, then the tiles after it slide to their places.
+4. Open a session to a device and end it, with the Sessions tab of that device open.
+   Expected: the new row fades in at the top and the rows under it slide down.
+5. Do steps 1, 3 and 4 with Settings, Appearance, "Reduce motion" on.
+   Expected: nothing slides; rows fade only.
+
+Result: Open.
+
+### HT-081: one Storage row for each disk of a Mac (MET-027, MET-031)
+
+Built on the branch `metrics/mac-storage`: `crates/daemon-core/src/readings/apfs.rs` makes one drive of each APFS
+container from `df -P -k` (the data volume, or else the first mount of the operator, stands for it), the daemon and
+the SSH collector of the hub use it on macOS, and the wrappers of iOS apps and the device file system of Xcode are no
+mounts. The Storage section shows the bytes used and the share beside a mount, not the size again. The tests prove it
+with the `df` output of a Mac with one internal drive, an external drive and a network share. No person saw the
+section for a real Mac.
+
+1. On a Mac with one internal drive, the daemon running and no external drive, open the device in Anima, tab
+   Overview, section Storage.
+   Expected: the line above the table says "1 drive" and the size of the internal drive (about 1.8 TiB for a 2 TB
+   drive). One row, named `disk3` or a near name, kind "Disk", with the mount `/System/Volumes/Data`, its bytes used
+   and its share. No row for `/`, `/nix`, `/Volumes/Recovery` or a path under `/private/var/folders`.
+2. Connect an external drive with an APFS or HFS+ volume, wait one minute and reload the page.
+   Expected: a second row for the external drive with its own size and its mount under `/Volumes`.
+3. Open a Linux device that has drives in Anima.
+   Expected: its Storage rows are as before; beside each mount the bytes used and the share.
+### HT-082: the link program on Windows (HM-T15, HMD-050)
+
+Built on the branch `hosted/hm-t15-windows-link`: `link/build.sh` builds `bin/anima-link-windows-amd64.exe` and
+`bin/anima-link-windows-arm64.exe`; the Windows application carries the amd64 program from
+`deploy/bin/windows-bundle.ps1`. The programs were only built on a Mac. No Windows computer ran them.
+
+1. On a Windows computer on amd64, install the Windows application of this build, sign in with the Anima.ing
+   account, and let the first run join the hosted hub.
+   Expected: the first run ends on the hub; Settings shows the link of this computer as connected.
+2. On the same computer, open a command window and run `anima-link device` from the folder of the application.
+   Expected: it prints the name of this computer on the link and its state; no error about a missing file.
+3. If a Windows computer on arm64 is available, copy `anima-link-windows-arm64.exe` to it and run
+   `anima-link-windows-arm64.exe device`.
+   Expected: the same output as step 2 (before a join it says that this computer is not joined).
+
+### HT-078: groups of cards on the Projects screen (PRO-059 to PRO-063)
+
+Built on the branch `ui/project-groups`: `apps/client/src/lib/projects/groups/` (the groups kept in the storage of
+the application, the select bar, the group head, the name dialog) and `ProjectsScreen.svelte` and
+`ProjectTile.svelte`. The tests prove with a scripted hub: New group with two selected cards and no call to the hub,
+Select all, a name that a different group has, Add to group, Remove from group, Rename, Delete group (no project
+changes), and that the groups, the view by group and a closed head are kept on the computer. No person saw the screen
+with real projects, in a desktop window or on a phone.
+
+1. Open "Projects" with about 50 imported projects. Select "Select".
+   Expected: each card gets a check mark at its start, and a bar shows "0 selected", "Select all", "New group",
+   "Remove from group" and "Done".
+2. Select three cards, then "New group". Type a name of your own and select "Make group".
+   Expected: the dialog closes, the check marks clear, and each of the three cards shows the group name under its
+   state.
+3. Select "Group" in "Show by".
+   Expected: a head for each group in name order with its count, then "Ungrouped" with the rest. Each group head has
+   "Rename" and "Delete".
+4. Select the head of a group.
+   Expected: its cards close; a second select opens them again. Quit the application and open "Projects" again: the
+   groups are there, the view is still by group and the head is still closed.
+5. Select "Select", then "Select all", then choose a group in "Add to group".
+   Expected: each card moves to that group; "Ungrouped" goes.
+6. Select "Rename" on a group and give it the name of a different group.
+   Expected: the dialog stays open and says "A group already has this name."
+7. Select "Delete" on a group, then "Delete group".
+   Expected: the head goes and its cards are under "Ungrouped". No project is left out or gone.
+8. Open the same hub in the browser, or on a different computer.
+   Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
+9. Do steps 1 to 4 in the light appearance and on a phone.
+   Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
 
 Result: Open.

@@ -88,6 +88,23 @@ fn met_013_a_new_token_replaces_the_file_by_rename_and_leaves_no_temporary_file(
 }
 
 #[test]
+fn hmd_056_forget_deletes_the_token_file_and_a_second_forget_is_no_error() {
+    let dir = tempfile::tempdir().expect("a folder");
+    let home = Home::at(dir.path().join("daemon"));
+    let store = TokenStore::open(&home);
+    store.forget().expect("no folder yet is no error");
+    assert!(
+        !dir.path().join("daemon").exists(),
+        "forget makes no folder"
+    );
+    store.save(&credential(1, 365)).expect("stored");
+    store.forget().expect("forgotten");
+    assert!(!home.token_path().exists());
+    assert!(store.load().expect("reads").is_none());
+    store.forget().expect("a second forget");
+}
+
+#[test]
 fn met_013_a_token_file_others_can_read_is_refused() {
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("daemon"));

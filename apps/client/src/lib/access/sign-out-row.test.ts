@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import { failure, fakeHub, ok } from './access.fixture';
 import SignOutRow from './SignOutRow.svelte';
-import { COOKIE_KEPT } from './sign-out';
+import { COOKIE_KEPT, GATEWAY_KEPT } from './sign-out';
 
 // The Sign out row on both platforms (E-4): the desktop app clears its key store and moves within the page; a browser
 // asks the hub to clear the cookie and then loads the sign-in page anew.
@@ -17,6 +17,10 @@ const mocks = vi.hoisted(() => ({
   goToWelcome: vi.fn(),
   loadClientAt: vi.fn(),
   desktop: true,
+  gateway: 'none' as 'none' | 'left' | 'kept',
+  hosted: false,
+  daemon: null as string | null,
+  leaveDaemon: vi.fn(),
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
@@ -26,6 +30,12 @@ vi.mock('$lib/platform/platform', async () => {
   const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
+vi.mock('$lib/hosted/gateway/here', () => ({ signOutOfGateway: () => Promise.resolve(mocks.gateway) }));
+vi.mock('$lib/hosted/mark', async (actual) => ({
+  ...(await actual<typeof import('$lib/hosted/mark')>()),
+  hubIsHosted: () => mocks.hosted,
+}));
+vi.mock('$lib/desktop/daemon/leave', () => ({ leaveDaemonOnThisComputer: mocks.leaveDaemon }));
 vi.mock('./navigation', () => ({ goToSignIn: mocks.goToSignIn, goToWelcome: mocks.goToWelcome, loadClientAt: mocks.loadClientAt }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -56,6 +66,10 @@ beforeEach(() => {
   mocks.goToWelcome.mockReset();
   mocks.loadClientAt.mockReset();
   mocks.desktop = true;
+  mocks.gateway = 'none';
+  mocks.hosted = false;
+  mocks.daemon = null;
+  mocks.leaveDaemon.mockReset().mockImplementation(() => Promise.resolve(mocks.daemon));
 });
 
 afterEach(async () => {
@@ -127,4 +141,64 @@ it('NAV-005: after an unconfirmed sign-out the keyboard focus is back on Sign ou
   mocks.desktop = false;
   const target = await signOutWith(failure('unreachable'));
   expect(document.activeElement).toBe(target.querySelector('button'));
+});
+
+it('HMD-062: behind the gateway, Sign out ends the session of the hub and of the gateway and loads no new page', async () => {
+  mocks.desktop = false;
+  mocks.gateway = 'left';
+  await signOutWith(ok({ logout: true }));
+  expect(sent.map((request) => request.operation)).toEqual(['Me', 'Logout']);
+  // A new page would go to the gateway, which starts a sign-in at once.
+  expect(mocks.loadClientAt).not.toHaveBeenCalled();
+  expect(mocks.goToSignIn).toHaveBeenCalledOnce();
+});
+
+it('HMD-062: a gateway that does not confirm the sign-out is told, and the person can retry', async () => {
+  mocks.desktop = false;
+  mocks.gateway = 'kept';
+  const target = await signOutWith(ok({ logout: true }));
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe(GATEWAY_KEPT);
+  expect(mocks.goToSignIn).not.toHaveBeenCalled();
+  expect(target.querySelector('button')?.disabled).toBe(false);
+});
+
+it('HMD-061: on a hosted hub the row says the way in is the Anima.ing account and links to its page', async () => {
+  mocks.hosted = true;
+  const fake = fakeHub({ Me: ok({ me: { username: 'owner' } }) });
+  mocks.hub = fake.hub;
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(SignOutRow, { target });
+  await settled();
+  expect(target.querySelector('.who')?.textContent).toMatch(/Signed in as\s*owner\s*with your Anima\.ing account/);
+  const link = target.querySelector('a');
+  expect(link?.textContent).toBe('Manage account and sign-in methods');
+  expect(link?.getAttribute('href')).toBe('https://cloud.anima.ing/account');
+  expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+});
+
+it('SET-002: a hub of one\'s own shows only the user name, with no account link', async () => {
+  const fake = fakeHub({ Me: ok({ me: { username: 'ann' } }) });
+  mocks.hub = fake.hub;
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(SignOutRow, { target });
+  await settled();
+  expect(target.querySelector('.who')?.textContent?.trim()).toBe('Signed in as ann');
+  expect(target.querySelector('a')).toBeNull();
+});
+
+it('HMD-056: on desktop the daemon leaves before the logout, and a hub that still lists it keeps the page with that sentence', async () => {
+  mocks.daemon = 'The hub still lists the daemon.';
+  const target = await signOutWith(failure('unreachable'));
+  expect(mocks.leaveDaemon).toHaveBeenCalledBefore(mocks.clearAccessToken);
+  expect(mocks.clearAccessToken).toHaveBeenCalledOnce();
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('The hub still lists the daemon.');
+  expect(mocks.goToSignIn).not.toHaveBeenCalled();
+});
+
+it('HMD-056: in a browser no daemon is removed', async () => {
+  mocks.desktop = false;
+  await signOutWith(ok({ logout: true }));
+  expect(mocks.leaveDaemon).not.toHaveBeenCalled();
 });
