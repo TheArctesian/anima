@@ -36,7 +36,7 @@ The request names no account, no hub and no month: each way in answers only for 
 
 | Member | Meaning | How the page uses it |
 | --- | --- | --- |
-| `version` | The version of this form, `1`, first member of the body of the pool, so that the door and the site give the same bytes. | Ignored. |
+| `version` | The version of this form, `1`, a member of the body of the pool, so that the door and the site give the same body. The pool writes the members in alphabetical order; the client reads each by its name. | Ignored. |
 | `period` | The month of the figures, `YYYY-MM`: the calendar month in UTC. | Read; not shown. |
 | `until` | The end of the counted time, in Unix seconds, at most now. | The time of the figures. |
 | `currency` | The currency of `amount` and `total`, three letters (ISO 4217, any case); `usd` today. | Made upper case. |
@@ -47,7 +47,7 @@ The request names no account, no hub and no month: each way in answers only for 
 | `hubs[].plan` | The plan of the hub. `free` is not charged. | The name of the plan, with a capital first letter. With `free`, "Nothing is charged on this plan" in the place of an amount. |
 | `hubs[].disk_limit_bytes` | The disk limit of the plan. | "Disk used of the plan". |
 | `hubs[].disk_used_bytes` | The bytes that the quota counts as used: all that the hub refers to, the system of the image of the hub included. `null` until the server gives the pool these figures, and when the pool cannot read them. | With `null`, the page shows the limit and no percentage. This figure is not the "data of your hub" that the hub measures (HMD-072); the page shows the two apart. It is larger than the data of the hub by about the size of the system of the image, so the two figures differ even for a hub with almost no data of its own. |
-| `owes` | Added by the site only: `true` when the last payment of the account failed. No sum. The door leaves it out: the pool does not know it. | With `true`, the page points to the account page. A missing `owes` is `false`, so a browser shows no pointer. Whether the door adds it (from the claim of the hand-over that it holds) is an open decision. |
+| `owes` | Added by the site only (never by the door or the pool): `true` when the last payment of the account failed. No sum. The door leaves it out: the pool does not know it. | With `true`, the page points to the account page. A missing `owes` is `false`, so a browser shows no pointer. Whether the door adds it (from the claim of the hand-over that it holds) is an open decision. |
 
 A member that the client does not use (`account`, `lines[].size`, `lines[].hours`, `lines[].amount`, `hubs[].state`, `hubs[].size` and any new member) is ignored. A body without a member that the page uses, or with such a member of another kind, is shown as "Not available just now".
 

@@ -51,6 +51,15 @@ pub(super) fn kind_refused() -> FieldError {
     )
 }
 
+/// [`kind_refused`] for a new device of the kind `hub`; `Ok` for any other kind.
+pub(super) fn refuse_new(kind: &str) -> Result<(), FieldError> {
+    if is_hub_kind(kind) {
+        Err(kind_refused())
+    } else {
+        Ok(())
+    }
+}
+
 /// The fields of `change` that a device of kind `current` refuses (HMD-045): no device takes
 /// or leaves the kind `hub`, and the hub's device has no SSH, RDP or VNC.
 pub(super) fn refused_change(current: &str, change: &DeviceChange) -> Vec<FieldError> {
