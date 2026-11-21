@@ -33,6 +33,12 @@ rpassword.workspace = true
 # raw `libc` calls are out. Already in Cargo.lock through tempfile.
 serde.workspace = true
 serde_json.workspace = true
+# Model work (task L1-6): the SHA-256 of a runtime archive, and the unpack of its `.tar.gz`.
+sha2.workspace = true
+flate2 = "1"
+tar = { version = "0.4", default-features = false }
+# The `.zip` releases of llama.cpp (R-NEW-archivezip); deflate only, through flate2.
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 tempfile.workspace = true
 thiserror.workspace = true
 # `process` runs the fixed read-only commands, `signal` ends the daemon on SIGTERM, `fs` reads /proc.
@@ -60,7 +66,7 @@ hyper-util.workspace = true
 http-body-util.workspace = true
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.1", features = ["fs", "process"] }
+rustix = { version = "1.1", features = ["fs", "process", "thread"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 uds_windows = "1.2"

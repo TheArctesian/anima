@@ -41,7 +41,7 @@ pub use update::{
     TryResult, UpdateInstruction, UpdateRequest, UpdateTry,
 };
 pub use work::{
-    Claim, Cleanup, Free, Held, Lease, Limits, LogPart, MAX_LOG_PART_BYTES, Reported,
+    Claim, Cleanup, Free, Held, Lease, Limits, LogPart, MAX_LOG_PART_BYTES, MODEL_TYPES, Reported,
     SecretRequest, StopOrder, StopReason, Switch, WorkArchitecture, WorkJob, WorkKind, WorkOs,
     WorkReport, WorkRepository, WorkResult, WorkState, WorkType,
 };

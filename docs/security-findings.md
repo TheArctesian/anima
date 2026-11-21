@@ -2671,6 +2671,526 @@ The correction: Section 10: each change relative to an open folder handle with `
 
 State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
 
+## The security review of the model work at the machine (task L1-6, 2026-11-20)
+
+A separate reviewer read the first commit of task L1-6 (`95c1a1e8f`, branch `compute/l1-6`) against the contract [model-work.md](../contracts/compute/model-work.md), version 0.3, on 2026-11-20, by a static reading. "Severity" is the word of the reviewer. Entries q to t are the four departures of the build from the contract.
+
+### SF-NEW-l1worka: When the main process of a server ends, its children stay alive and are not checked. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: The daemon dropped the record of a server whose main process ended and signalled no other process. A child could keep a listener on 0.0.0.0 with no check, and a restart made a second tree.
+
+The correction: When the main process ends, the daemon ends the whole tree (the cgroup, or each process of the walk whose identity holds) before it starts the server again. Test: `the_children_of_a_server_end_when_its_main_process_ends`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workb: The tree of a server was its process group, which a child leaves with one call. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`, `server.rs`.
+
+What it is: A child that called `setsid` or `setpgid` was not in the loopback check and outlived `server_stop` and the stop of the daemon.
+
+The correction: The operator ruled (R-NEW-containment; his first answer "I like strong containment but check how unsloth handle it", his final words "Strong + Unsloth's four (Recommended)"). On Linux one cgroup v2 for each server, joined before the program runs through the launcher `__model-launch`, with the parent-death signal as a backstop; `containment_failed` when the cgroup cannot be made, with no fallback. On macOS the walk of the parent processes, with the descendants recorded at each poll (best effort without the sandbox). The identity (process id and start time) is checked before each signal, and the records and cgroups are swept at the start of the daemon. The contract says that without the sandbox the loopback check constrains an honest runtime only. Tests: `a_child_that_leaves_the_session_is_still_seen_and_ended`, `a_reused_process_id_is_never_signalled`, `the_sweep_ends_the_processes_of_each_record_whose_identity_holds`, `the_walk_keeps_a_child_that_was_seen_after_its_parent_left`, `the_walk_finds_a_live_child_on_this_mac`. The Linux tests skip, with a message, where no delegated cgroup v2 exists; HT-NEW-l1containment covers `pop-os`.
+
+State: Open. Ruled by the operator (R-NEW-containment); the correction is built on the branch `compute/l1-6` (not pushed). The Linux code was not compiled or run on this Mac (no Linux target is installed, and nothing may be installed): HT-NEW-l1containment. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workc: No supervision loop runs, no server stops with the daemon, and nothing calls the model cycle. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `supervise.rs`.
+
+What it is: The 15-second loopback check, the restarts, the limit of the temporary folder and the stop of the servers at the stop of the daemon do not run, because the running daemon does not start the model loop. `kill_on_drop` ended the main process only.
+
+The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The second read (2026-11-20, commit `df8aca4fc`) confirmed that nothing outside `src/model/` builds a `Node`. The wiring task must: call `Node::sweep` when the daemon starts, before any claim; call `Servers::cycle` every 15 seconds; call `stop_all` when the daemon stops; refresh the unit: when the unit file on disk differs from the unit that this version renders, write it again and run `install` again (the decision of the orchestrating session, not a ruling of the operator; the wiring may take this code from task U6 of the update plan if U6 has it by then, or build the small check itself, and it does not ship without it; until then, HT-NEW-l1containment step 9 is the manual step); and start servers from a worker of the async runtime, never from `spawn_blocking` (SF-NEW-l1workx). No server can start before that wiring: the branch is not runnable as a server host until then. The plan row of L1-6 records this. Test: `the_whole_group_ends_when_the_node_drops`.
+
+State: Open. The drop is fixed on the branch `compute/l1-6`; the wiring waits for USE-004. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workd: The install blocks the async runtime and has no total time limit. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `fetch.rs`.
+
+What it is: The unpack of up to 8 GiB ran on a thread of the async runtime, and a release host could send one byte each 59 seconds with no end.
+
+The correction: The unpack runs on a blocking thread (`spawn_blocking`). The download has a total time of 5 minutes and one second for each MiB of `sizeBytes`, at most 1 hour (`source_failed`). Test: the unit of `fetch_deadline` through the install tests.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1worke: The download and the unpack were not checked against the free disk and the reserve. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `unpack.rs`.
+
+What it is: An archive and its unpack could use 16 GiB with no check of the free disk.
+
+The correction: Before the download the daemon checks that the state and runtime folders have `sizeBytes` free above the reserve (default 10 GiB); the unpack checks the reserve before each entry (`limit_disk`). Tests: `the_disk_reserve_stops_the_unpack_and_the_download`, `an_install_with_no_room_for_the_archive_downloads_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workf: The API key was not wiped and the daemon kept no copy of it. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `server.rs`.
+
+What it is: The key was in a plain string of the environment list.
+
+The correction: The key is a `Zeroizing<String>`, held by the record of the running server; the values of the environment of a launch are wiped when the launch drops. A process of the same user can still read the environment of the runtime; the contract accepts that channel.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workg: A local process can take the port first. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/server.rs`.
+
+What it is: The free port is found by a bind and a drop, so another process can take it. The readiness needs a listener of the tree, so a squatter is not taken for the server; the effect is a restart loop.
+
+The correction: None in this build: the HTTP probe, which would send the key, does not exist yet (R-NEW-archivezip).
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workh: Details of the unpack: folder modes, case collisions of a part. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The mode of a new folder passed through the umask, and two names that differ only in case in a parent folder were not refused.
+
+The correction: Each new folder gets `fchmod` 0755. Each part of each path is compared in lower case. Unicode forms (NFC and NFD) are not compared; `O_EXCL` still stops an overwrite. Tests: `a_whole_archive_is_installed_with_plain_modes`, `an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing`, `a_hostile_zip_is_refused_and_leaves_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1worki: The folders of model work followed a link in a parent. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `DirBuilder::recursive` followed a link at a parent below the three folders.
+
+The correction: Below each of the three folders, each part is made and opened relative to an open handle with `O_NOFOLLOW`, with mode 0700, and owned by this user (`private_below`). Test: `a_link_in_a_parent_folder_is_not_followed`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workj: The reading of `lsof` on macOS. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/loopback.rs`, `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` had no time limit; an exit status 1 with output killed the server; a UDP socket with no port counted as exposed.
+
+The correction: A limit of 5 seconds that fails closed; status 1 reads its output; an unbound UDP socket (`*:*`) is not counted; a name that does not read (a zone) counts as exposed. Test: `the_edges_of_the_lsof_output_read`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workk: Linux reads the tables of the network of the first process only. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: A socket of a child in another network namespace is not matched; it is not reachable from the network of the host.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workl: TLS, redirects and proxies of the download. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`.
+
+What it is: HTTPS only, no proxy, the roots of the program, at most 5 redirects to listed names only, the hash checked before the archive is opened. The first address is the operator's.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workm: The hub side and the wire. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/hub/src/work/jobs.rs`, `crates/daemon-core/src/model_work/order.rs`.
+
+What it is: The hub makes no model item; the daemon checks the exact members of each item. `actor` binds an honest hub only.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workn: A runtime can rewrite `model-work.json` and `model-sources.json` when the sandbox is off. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/machine_files.rs`.
+
+What it is: The files are in the daemon folder, which a runtime with the rights of the user can write. Within the risk that the operator accepted (R-NEW-sandboxrisk).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1worko: The restart limits. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/supervision.rs`.
+
+What it is: The waits and counts follow the contract. An end during the start wait is not counted (minor).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workp: Parts of the contract that matter for security are not built. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/command.rs`.
+
+What it is: No `--no-webui` and no `--slot-save-path`; no check that the version has the flags of the logs; no memory limit; the limit of the temporary folder runs only in the cycle, which is not wired.
+
+The correction: None in this build; HT-NEW-l1daemonwork asks which flags the release takes.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workq: The download runs in the daemon, not in a child fetch process. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`, `install.rs`.
+
+What it is: The parsers of TLS, HTTP, gzip, tar and zip run in the process that holds the daemon token.
+
+The correction: The operator ruled (R-NEW-fetchprocess: "Separate process before L1-7 (Recommended)"). The download in the daemon is permitted for task L1-6 only (contract Section 4); task L1-6b builds the child fetch process, and task L1-7 does not start without it.
+
+State: Open. Waits for task L1-6b. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workr: macOS reads the socket table with `lsof`, not `proc_pidinfo`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` is slower and depends on its output form.
+
+The correction: Accepted by the operator (R-NEW-archivezip: "Accept, but add zip (Recommended)"): a limit of 5 seconds that fails closed, and the contract text of Section 9.
+
+State: Accepted (R-NEW-archivezip). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1works: Ready means a listener on loopback, with no HTTP probe. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: A listener can exist before the server answers, so `ready` can come early. No key is sent to a squatter.
+
+The correction: Accepted by the operator (R-NEW-archivezip); the contract text of Section 9; the HTTP probe comes with task L1-9 or `model_measure`.
+
+State: Accepted (R-NEW-archivezip). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workt: Only `.tar.gz` archives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The upstream releases of llama.cpp are mostly `.zip`.
+
+The correction: The operator added `.zip` (R-NEW-archivezip), with the same rules and limits: no link, no device, no encrypted entry, no absolute path or `..`, the case of each part, the declared size and the bytes read within the limit, the entry count, and the unpack into a temporary folder and one rename. Tests: `a_whole_zip_is_installed_with_plain_modes`, `a_hostile_zip_is_refused_and_leaves_nothing`, `a_zip_bomb_and_too_many_entries_stop_at_the_limits`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed), with tests. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1worku: On Linux the network tables of the first cgroup member only were read. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: The loopback check read `/proc/<pid>/net/*` of the first process of `cgroup.procs`. A member that moved into a network namespace of its own (unprivileged user namespaces) and sorted first hid the host listener of a different member.
+
+The correction: The daemon reads the tables of each distinct network namespace (`/proc/<pid>/ns/net`) of the members and merges them. A member that still runs but whose `fd` or `ns` files do not read (it made itself not dumpable) fails the read, so the check fails closed. Linux code, not compiled on the Mac of the build; HT-NEW-l1containment.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workv: An unreadable cgroup or an empty tree passed the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `sockets.rs`.
+
+What it is: `members` read `cgroup.procs` with a default of nothing, and an empty table gave the verdict loopback.
+
+The correction: `members` gives an I/O error, `poll` refuses an empty tree while the main process runs, and the socket table of an empty tree is an error. Each of these ends the server with `listener`. Test: `an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table` (the Linux read is not compiled on the Mac).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workw: One large entry could write past the disk reserve. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-NEW-l1worke.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The free disk was asked before each entry only, so one entry of up to 8 GiB could pass the reserve.
+
+The correction: The copy of an entry asks the disk again after each 64 MiB. Test: `the_disk_is_asked_again_while_one_large_entry_is_written`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workx: Races in the launcher of a server. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: If the daemon ended between the fork and the parent-death signal, the runtime ran on with no backstop. The signal also fires when the thread that started the launcher ends, so a start from `spawn_blocking` would kill each server about 10 seconds later.
+
+The correction: The daemon gives its process id to the launcher, which exits with code 125 when its parent is no longer the daemon after the signal is set. The documentation of `spawn` and `launch` says that a start must come from a thread that lives as long as the daemon. No test: Linux only, and a thread rule (HT-NEW-l1containment).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1worky: A cgroup that did not empty blocked the next start, with no log, and no process limit; blocking calls on async threads. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: The end of a cgroup gave up after 1 second with no log, and the next start of the same server then failed. No `pids.max` was set. The waits of the cgroup and the `ps` and `lsof` reads of macOS ran on the threads of the async runtime.
+
+The correction: A cgroup that does not empty is logged and left; each start has a cgroup of its own name. `pids.max` is 512 when the controller is delegated (a placeholder value in the contract, Section 9). The end and the signals of `kill` and `stop`, and the read of `cgroup.procs`, run on a blocking thread; `lsof` was already a child process with a timeout. The drop of a running server still ends its tree on its own thread, because a drop cannot wait. No test on the Mac for the cgroup part (HT-NEW-l1containment).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workz: The sweep trusted the cgroup path in a record that the runtime can write. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`.
+
+What it is: A forged `tree.json` could make the daemon write `cgroup.kill` in any path and remove any empty folder. The runtime is already that user, so it grants nothing new while the sandbox is off.
+
+The correction: The daemon ends only a cgroup named `anima-model-` directly below its own cgroup. The identities in the record are still trusted (accepted risk while the sandbox is off; with the sandbox, keep the records out of reach of the runtime). Linux code, not compiled on the Mac (HT-NEW-l1containment).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workt1: With a delegated cgroup, a runtime can leave the cgroup of its server. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment, R-NEW-delegate; OD-C22.
+
+Where: `crates/daemon/src/model/server.rs`, `tree/linux.rs`.
+
+What it is: With `Delegate=yes`, the user of the daemon may write to each `cgroup.procs` of the delegated tree. A runtime can write its own process id into the `cgroup.procs` of the cgroup of the daemon and leave the cgroup of its server. When the main process leaves and a child stays, the tree still reads as not empty, and the main process is no longer read or ended by the cgroup.
+
+The correction: The operator ruled R-NEW-cgroupns: "Hide the daemon's cgroup (Recommended)". The launcher makes a new cgroup namespace (with a user namespace of its own, which a user that is not root needs) after it joins the cgroup of the server and before `exec`. The kernel then refuses a move of a process of the runtime to a cgroup outside the cgroup of its server, a child included. When the namespaces cannot be made, the start fails with `containment_failed`, with no fallback. The launcher now runs before the async runtime starts, because a new user namespace needs a process with one thread. Each poll also checks that the main process, while it runs, is a member of the `cgroup.procs` of its server; when it is not, the server ends with `listener`. Linux only, not compiled on the Mac; HT-NEW-l1containment steps 9a and 9b.
+
+State: Open. Fixed by the ruling R-NEW-cgroupns on the branch `compute/l1-6` (not pushed); waits for HT-NEW-l1containment. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
+
+### SF-NEW-l1worku1: A cgroup below the cgroup of a server hid its processes from the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment, R-NEW-cgroupns.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The runtime may make a cgroup below the cgroup of its server (its user owns that folder) and move a process into it, inside the root of its namespace. `members` read only the `cgroup.procs` of the server, so the loopback check and the check of the main process missed that process.
+
+The correction: `members` reads the `cgroup.procs` of the cgroup of the server and of each cgroup below it, and a folder that does not read fails closed. `make` sets `cgroup.max.descendants` to 0, so no cgroup can be made below it; with `nsdelegate` the runtime cannot write that file of the root of its namespace. The end removes the cgroups below first. Linux only, not compiled on the Mac; HT-NEW-l1containment step 9c.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-NEW-l1worku2: The cgroup namespace stops a move out only with `nsdelegate`. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-cgroupns.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `tree/mounts.rs`.
+
+What it is: The kernel refuses a move to a cgroup outside the root of a cgroup namespace only when cgroup v2 is mounted with `nsdelegate`. systemd mounts it so; a system without systemd, or a mount of its own, may not, and the start then succeeded with the escape of SF-NEW-l1workt1 open.
+
+The correction: `make` reads `/proc/self/mountinfo` and refuses a start with `containment_failed` and the detail `no_nsdelegate` when the cgroup v2 mount at `/sys/fs/cgroup` has no `nsdelegate`. Test: `the_cgroup_mount_must_delegate_to_namespaces`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-NEW-l1worku3: Each failure of the launcher, and an exit 125 of a runtime, read as one `containment_failed`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-cgroupns.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `supervise.rs`, `cycle.rs`; `crates/daemon-core/src/model_work/cause.rs`.
+
+What it is: The launcher exited 125 at each step, and the daemon took each exit 125 as a failure of containment. A refusal of the user namespace (AppArmor on Ubuntu 24.04 and later, or a sysctl) could not be told from a missing delegation or a missing program, and a runtime that exits 125 was reported as a failure of containment.
+
+The correction: `containment_failed` carries a detail (`no_delegation`, `no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`), which the report gives in the member `detail` of the result. Each launcher step has its own exit code (120 to 124), and the launcher writes it to a failure file in the folder of the server before it exits; an exit code counts as the launcher's only when that file holds it. Tests: `each_failed_step_of_containment_has_its_own_detail_and_launcher_code`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-NEW-l1workv1: The failure file of the launcher and the record of a tree were read through links, with no size limit. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `server.rs`.
+
+What it is: The daemon read `launch-failure` with `read_to_string` and `tree.json` after a `symlink_metadata` check. A runtime could replace either with a link to a FIFO (the supervision loop waits for ever) or to `/dev/zero` (no end to the read). No new power while the runtime is the user of the daemon, but an escape route once the sandbox exists.
+
+The correction: `read_capped` opens the folder and the file with `O_NOFOLLOW`, the file also with `O_NONBLOCK` and `O_CLOEXEC`, requires a regular file (`fstat`), and reads at most 4 KiB for the failure file and 64 KiB for the record. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `a_record_that_is_a_link_is_not_swept`.
+
+State: Open. Built on the branch `compute/l1-6`. Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-NEW-l1workv2: The interface files of a sibling server cgroup are writable by the runtime. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The daemon makes each server cgroup, so its files belong to the user of the daemon. The cgroup namespace stops moves, but a runtime can write `cgroup.kill` or `pids.max` of a different server cgroup through the full `/sys/fs/cgroup` mount. That ends or limits another server, which a `kill` by the same user already can.
+
+The correction: None now (no new power). The sandbox design must hide `/sys/fs/cgroup` with a mount namespace.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: A CRC that does not match, or a cut stream, came through `io::copy` as `limit_disk`.
+
+The correction: The copy tells a read error (`archive_rejected`) from a write error (`limit_disk`). Test: `an_entry_whose_bytes_break_their_check_is_a_rejected_archive`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workroots: The three root folders were made with a recursive create. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-NEW-l1workj.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `private_folder` made the roots and their missing parents in one recursive call and checked the last folder only.
+
+The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+## The security review of the daemon on a computer of a person (task HM-T23, 2026-11-20)
+
+Task HM-T23 of [hosted-mode.md](proposals/hosted-mode.md) asks the security questions of its Section 7.1 before the installation with no question (HMD-053) is used on a computer where jobs of other people can run later. The review read the code on `dev` of 2026-11-20: the token store and the key store of `crates/daemon`, the enrolment, the units (`crates/daemon/src/units`, `crates/daemon/units`), the transport to the hub (`crates/daemon/src/hub.rs`, `hub/link_socket.rs`), the install of the desktop shell (`apps/desktop/src-tauri/src/daemon.rs`, `daemon/`), and the socket of the link (`link/cmd/anima-link/device.go`, `link/statedir`). It ran no program, and it did not read a token file or a key file. An agent did it; no second reviewer read it. The entries are about code that exists. "Severity" is the word of the reviewer.
+
+### The model: what a program of the same user can do
+
+The daemon on a computer of a person runs as that person (a `LaunchAgent`, or a systemd unit of the user). The design does not separate the daemon from the other programs of its user, and it cannot: a program of the same user can change the unit file (`~/Library/LaunchAgents`, `~/.config/systemd/user`), the copy in `~/.local/bin`, the folder of the daemon and the socket in it, and it can stop and start the daemon and the link. The entries below do not repeat this. The design accepts it, and it depends on one rule for the future: a job of another person must not run as the user of the daemon (task W2, SF-004). Until W2 is built, a computer with the daemon of its user is not a computer for the jobs of other people.
+
+What a program of the same user can do now, with no entry, because the model accepts it:
+
+- On Linux, read the token (`~/.config/anima-daemon/token`) and the key cache (`keys`) with no question: they are files of mode 0600 of that user (`crates/daemon/src/token_store/file.rs:29-32`, `config/private_file.rs:95-108`).
+- On both systems, get each cached operational key with `anima-daemon key read <name>` (`crates/daemon/src/keys.rs:34-55`, `main.rs:52-71`). This is the design of K-E5 Section 2.1 (R-147): the reader is for the programs of the user, and the Keychain trusts the daemon program, not the program that starts it.
+- On both systems, enrol the daemon again at a hub of its choice (`anima-daemon enrol`): the enrolment deletes the Keychain item and writes a new one (`token_store/keychain.rs:39-50`), and the running daemon then sends the metrics of the computer to that hub. That program can read the same metrics itself.
+- Replace the copy of the daemon or the unit file, so that its own program starts at each login.
+- On Linux, read the memory of the daemon with `ptrace` where the system permits it (the user unit does not prevent it: `crates/daemon/units/anima-daemon.user.unit`).
+
+What the token gives to a person who has it, at the hub (`crates/hub/src/fleet/metrics/ingest/routes.rs`): pushes of metrics in the name of the device, the operational keys of the device (`daemon/v1/keys/fetch`), and a renewal. A renewal gives a new token for 365 days, and its first use ends the token of the real daemon (`ingest/credential.rs:31-34`, `ingest/renewal.rs:9-13`). Thus a stolen token can stay usable after the theft is found, and it shuts out the real daemon, until the operator switches the device away from the daemon or deletes it (`ingest/credential.rs:46-57`). When the work route is built, the token also claims jobs and gets project secrets (SF-004, SF-006).
+
+### What is safe
+
+- Another local user cannot read the token. On macOS it is one generic password in the login Keychain of the user (`token_store/keychain.rs:11-12`). On Linux it is the file `token`, mode 0600, in a folder of mode 0700 that the daemon refuses when it is a link, is not owned by its user, gives group or others any access, or is below a folder that others can write with no sticky bit (`config/home.rs:97-121`, `config/private_file.rs:19-64`). The file is written to a new temporary file of mode 0600 and renamed, so the token is never in a file that others can read (`private_file.rs:95-108`). A POSIX access list on Linux shows in the group bits of the mode, so it is refused too.
+- Another local user cannot listen at the socket of the link: the daemon refuses a socket whose folder is not private to its user, or a thing at the path that is not a socket of its user (`hub/link_socket.rs:28-50`), and the link makes the socket only in such a folder (`link/statedir/statedir.go:242-266`). Exception: SF-177.
+- Another local user cannot replace the copy in `~/.local/bin`: the shell checks each folder from the root to `~/.local/bin` (owner the user or root, no write for others, write for the group only in the private group of the user, no POSIX access list) and copies with `O_CREAT|O_EXCL` and a rename (`apps/desktop/src-tauri/src/daemon/placement.rs:57-116`, `daemon/trust.rs:100-114`). The `install` of the daemon checks the program and its folders again before it writes the unit (`crates/daemon/src/units/install.rs:119-124`, `units/trust.rs:108-130`). Exception: SF-177.
+- The token is in no log, no argument and no environment. The daemon prints only fixed text (`crates/daemon/src/report.rs`); `DaemonToken` has no `Debug` (`crates/daemon-core/src/wire/secrets.rs`). The shell starts the daemon with fixed arguments (`enrol --hub <origin> -`, `install`), the enrolment code on standard input only, output thrown away, and an environment of `HOME`, `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` only (`daemon/run.rs:69-95`, `run.rs:140-175`). The origin in the arguments is not a secret.
+- The hub of the token cannot be changed in a file on macOS: the origin is kept in the Keychain record with the token, and `run` refuses a configuration whose hub is a different one (`token_store.rs:29-35`, `runtime.rs:98-105`).
+- On an `https` origin a changed environment cannot send the token to a different server: the client uses the fixed web PKI roots of `rustls`, no proxy and no redirect (`Cargo.toml` workspace `reqwest` with `rustls-tls`; `hub.rs:71-77`).
+- On macOS the carried daemon has a Developer ID signature of the Team ID of the release, the hardened runtime and no entitlement (`apps/desktop/src-tauri/src/builder/carried/mach_o.rs:86-140`). Thus `DYLD_INSERT_LIBRARIES` in the unit does not put code into the daemon, and a program of the same user cannot attach to it as a debugger without the rights of an administrator.
+- A backup on macOS: the login Keychain is encrypted with the password of the user, and the keyring crate (feature `apple-native`) writes to the login Keychain, which does not go to iCloud.
+
+### SF-179: A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium
+
+Requirements: SF-004, R-172 (task W0), HMD-054, MET-013; task HM-T23.
+
+What it is: on a hosted hub the daemon reaches the hub through the socket of the link, `link.sock` in the folder of the daemon (`apps/desktop/src-tauri/src/link/kept.rs:233-256`, `crates/daemon/src/config/home.rs:84-89`). It sends plain HTTP to that socket, with the token as a bearer (`crates/daemon/src/hub.rs:38`, `hub.rs:88-113`, `hub.rs:202-203`), and the enrolment code in the body of `daemon/v1/enrol`. The daemon checks the folder and the owner of the socket when it makes its client (`hub/link_socket.rs:28-50`), and then connects again for each request. It does not check what program listens. A program of the same user can remove `link.sock` and listen at the same path at each time; the link keeps its old socket open but gets no new connection. It can also stop the unit of the link, or wait for it to stop. The link removes a socket of the same user at its start (`link/statedir/statedir.go:253-265`), but the program can do the same again.
+
+Where: `crates/daemon/src/hub.rs`, `crates/daemon/src/hub/link_socket.rs`, `link/cmd/anima-link/device.go:70-79`.
+
+Effect, and who can cause it: a program of the user of the daemon, for example a job, a build script or a package that runs as that user. Effect: the token, within the next push of 10 seconds, with no question to the person; with it the operational keys of the device and a renewal that shuts out the real daemon (see "The model"). At an enrolment, the code, which the program can spend first, so that its own token is the token of the device. On Linux the program can read the token file in any case, so this adds little there. On macOS it is the difference: the Keychain item gives the token only to the daemon program, and `security find-generic-password` from a different program shows a question to the person; the socket gives the token with no question. SF-004 says that a program of the same user "can open the socket"; this entry is the other direction, a program that listens there.
+
+Mitigation now: none in the code. The model of this section: a job of another person must not run as the user of the daemon (W2).
+
+The fix (not built): the daemon must not send a reusable secret to a socket that a program of its user can take. Possible forms: TLS from the daemon to the hub through the socket, with the name or the key of the hub checked, so that the link carries bytes that it cannot read; or a token bound to a key that the daemon keeps in the Keychain (on Linux in the file store), with a signature on each request, so that a listener gets nothing that it can use again. A short-term limit on macOS: the daemon reads the audit token of the peer of the socket (`LOCAL_PEERTOKEN`) and accepts only a peer program with the Developer ID signature of the release. The requirement goes in K8 Section 1 and in HMD-054.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-178: On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low
+
+Requirements: R-172 (task W0), MET-013; task HM-T23.
+
+What it is: a record with an old link origin (`http://127.0.0.1:<port>`, made before task W0) reaches the hub through the socket in the folder of the daemon (`crates/daemon/src/config/origin.rs:121-128`, `runtime.rs:105`). That folder comes from `ANIMA_DAEMON_HOME` when it is set (`config/home.rs:51-53`). On macOS the token does not come from that folder: it comes from the Keychain, whose item trusts the daemon program (`token_store/keychain.rs:11-12`). `run` compares the hub of the token with the hub of the configuration in the named folder (`runtime.rs:98-104`); a program can write that configuration with the same old origin. Thus a program of the same user can start `~/.local/bin/anima-daemon run` with `ANIMA_DAEMON_HOME` set to a private folder of its own, with a `daemon.json` that names the old origin and a socket `link.sock` at which it listens, and the daemon reads the token from the Keychain with no question and sends it there.
+
+Where: `crates/daemon/src/config/home.rs`, `crates/daemon/src/runtime.rs`, `crates/daemon/src/config/origin.rs`.
+
+Effect, and who can cause it: a program of the user, on a Mac whose daemon was enrolled with an old link origin and not enrolled again. Effect: the token with no question to the person, as in SF-179. A record with an `https` origin or a `unix:` path is not affected: the path is in the Keychain record.
+
+Mitigation now: a new enrolment cannot use an old link origin (`config/origin.rs:54-57`, `LinkPort`); only old records are affected.
+
+The fix (not built): on macOS, take the socket of an old link origin from a fixed place that does not depend on the environment, or write the record again with its `unix:` path at the first run, or refuse an old link origin with an error that asks for a new enrolment. In general: when the token is in the Keychain, no value of the environment decides where it goes.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-175: The copy of the daemon in `~/.local/bin` is not checked after the installation. Low
+
+Requirements: MET-019, HMD-053, HMD-055; task HM-T23; Section 7.1 of [hosted-mode.md](proposals/hosted-mode.md).
+
+What it is: the shell copies the daemon to `~/.local/bin/anima-daemon` and runs that path only during `daemon_install` (`apps/desktop/src-tauri/src/daemon.rs:77-109`; `placement::place` has no other caller for the daemon). The unit starts that path at each login (`crates/daemon/units/ing.anima.daemon.plist`, `anima-daemon.user.unit`). After the installation no part of the application compares the file with the program that the application carries, or checks its signature. A program of the same user can put a different file there, or an older signed version of the daemon. Between the rename and the start of `enrol` (`daemon.rs:85-98`), the same program can replace the file, and the enrolment code then goes to its file.
+
+Where: `apps/desktop/src-tauri/src/daemon.rs`, `apps/desktop/src-tauri/src/daemon/placement.rs`.
+
+Effect, and who can cause it: a program of the user. The model accepts that such a program can start its own program at each login. What this adds: its program runs with the name, the label and the place that the person and the application trust, and the application shows the device as one that the daemon serves. On macOS a file with a different signature does not get the Keychain item with no question; macOS asks the person, with the name `anima-daemon`, and a person who knows the daemon can say yes. An older signed version gets the item with no question if the Keychain trusts the signature, not the exact file (the code sets no access list, so macOS uses its default for the item: `token_store/keychain.rs:39-55`).
+
+Mitigation now: none after the installation. The checks of the folders keep other users out (see "What is safe").
+
+The fix (not built): at each start, the application compares the copy with the program that it carries (bytes or hash; on macOS also `codesign --verify` against the Developer ID requirement of the release), puts the carried program back when they differ, and writes a line to its log. On macOS, a different place: a `LaunchAgent` registered with `SMAppService` that starts the program inside the signed application, which macOS protects from changes by other programs (App Management) and shows in Login Items. The update and the removal of HMD-055 and HMD-056 need the same comparison.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-177: On macOS the access lists of the folders of the copy and of the socket are not read. Low
+
+Requirements: MET-019, R-172 (task W0); task HM-T23.
+
+What it is: the checks of the folders read the mode bits, the owner and, on Linux, the POSIX access list. On macOS an access list (`chmod +a`) does not show in the mode, and the code does not read it: `has_acl` returns false on macOS (`apps/desktop/src-tauri/src/daemon/placement.rs:132-140`); the rule of the daemon says the same (`crates/daemon/src/units/trust.rs:6-8`); and `folder_private`, which guards the folder of the daemon and of `link.sock`, reads the mode only (`crates/daemon/src/config/private_file.rs:49-64`).
+
+Where: the three files above.
+
+Effect, and who can cause it: a different local user, when an entry of an access list gives that user the right to add or delete files in `~/.local`, `~/.local/bin`, or `~/Library/Application Support/anima-daemon`. The person or an administrator must make such an entry; macOS does not make one by default. Effect: that user can replace the copy of the daemon, or listen at `link.sock` and get the token (SF-179, by a different user).
+
+Mitigation now: none in the code. The comments of the code say it.
+
+The fix (not built): on macOS, read the access list of each folder (`acl_get_link_np`) and refuse each folder with an entry that allows `add_file`, `add_subdirectory`, `delete_child` or `write` to anyone but the user, in the three checks.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-176: On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low
+
+Requirements: MET-013, K8 Section 2, K-E5 Section 2.1; task HM-T23.
+
+What it is: on Linux the token is the file `~/.config/anima-daemon/token` and the operational keys are the file `keys` beside it, as plain JSON (`crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store.rs:1-3`). This is what K8 Section 2 says. The model accepts that a program of the user can read them. A backup tool of the home folder (for example Déjà Dup, which backs up the home folder by default) copies them as plain text to its target. The backup keeps the token for up to 365 days and the values of the keys with no limit; the deletion of the cache after 7 days (`keys.rs:1-9`) does not reach a backup. The workspace already builds the keyring crate with `sync-secret-service` for the desktop shell (`Cargo.toml:74`).
+
+Where: `crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store/file.rs`.
+
+Effect, and who can cause it: a person who can read a backup of the home folder, also on a different computer or a disk. Effect: the token (with the renewal of "The model") and the operational keys of the device.
+
+Mitigation now: the operator can end the token at the hub (switch the device away from the daemon, or delete it). The macOS store has no such copy: the Keychain is encrypted with the password of the user.
+
+The fix (not built): on a Linux computer with a session of a person, keep the token and the key cache in the Secret Service (encrypted with the login password), as the shell keeps its keys, and keep the file store for a server with no session and for the system unit. Where the file store stays, write the token and the cache in a folder that backup tools leave out (for example below `$XDG_STATE_HOME` with a `CACHEDIR.TAG`, or a documented exclusion), and say in K8 Section 2 that a backup of the folder holds the token.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
 ## Closed
 
 | Entry | Subject | Area | State |

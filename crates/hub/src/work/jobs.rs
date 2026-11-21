@@ -122,7 +122,8 @@ fn secrets_permitted(job: &NewJob) -> bool {
     let permitted: &[&str] = match job.work_type {
         WorkType::Runner => &["jit_config"],
         WorkType::Build => &["repository_token", "project_secret"],
-        WorkType::Unknown => &[],
+        // The hub makes no model item yet (model work contract; tasks L1-6 to L1-8).
+        _ => &[],
     };
     job.secrets
         .iter()
@@ -135,6 +136,9 @@ fn validate(job: &NewJob) -> Result<(), Error> {
         return Err(Error::Invalid(
             "the type and the kind are of the fixed lists",
         ));
+    }
+    if job.work_type.is_model() || job.kind == WorkKind::Model {
+        return Err(Error::Invalid("the hub does not make model items yet"));
     }
     if !job.parameters.is_object() {
         return Err(Error::Invalid("the parameters are an object"));

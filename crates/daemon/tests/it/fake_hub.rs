@@ -44,10 +44,7 @@ impl Reply {
 
 /// A request the hub received.
 #[derive(Clone)]
-#[cfg_attr(
-    not(target_os = "linux"),
-    expect(dead_code, reason = "read only by the Linux-only tests")
-)]
+#[cfg_attr(not(unix), expect(dead_code, reason = "read only by the unix tests"))]
 pub struct Seen {
     pub route: &'static str,
     pub bearer: Option<String>,
@@ -60,6 +57,8 @@ struct Script {
     push: VecDeque<Reply>,
     renew: VecDeque<Reply>,
     enrol: VecDeque<Reply>,
+    claim: VecDeque<Reply>,
+    report: VecDeque<Reply>,
     seen: Vec<Seen>,
 }
 
@@ -75,6 +74,8 @@ fn routes(script: Shared) -> Router {
         .route("/daemon/v1/push", post(|s, h, b| answer("push", s, h, b)))
         .route("/daemon/v1/renew", post(|s, h, b| answer("renew", s, h, b)))
         .route("/daemon/v1/enrol", post(|s, h, b| answer("enrol", s, h, b)))
+        .route("/work/v1/claim", post(|s, h, b| answer("claim", s, h, b)))
+        .route("/work/v1/report", post(|s, h, b| answer("report", s, h, b)))
         .with_state(script)
 }
 
@@ -125,6 +126,12 @@ impl FakeHub {
         self.script.lock().expect("lock").enrol.push_back(reply);
     }
 
+    /// Queues the answers to the next claims of work; once empty, a claim gets 204.
+    #[cfg_attr(not(unix), expect(dead_code, reason = "model work is unix only"))]
+    pub fn queue_claim(&self, reply: Reply) {
+        self.script.lock().expect("lock").claim.push_back(reply);
+    }
+
     /// The requests of one route, in order.
     pub fn seen(&self, route: &str) -> Vec<Seen> {
         let script = self.script.lock().expect("lock");
@@ -158,11 +165,18 @@ async fn answer(
     let queue = match route {
         "push" => &mut script.push,
         "renew" => &mut script.renew,
+        "claim" => &mut script.claim,
+        "report" => &mut script.report,
         _ => &mut script.enrol,
     };
     let reply = queue.pop_front().unwrap_or_else(|| {
-        if route == "push" {
+        if route == "push" || route == "claim" {
             Reply::no_content()
+        } else if route == "report" {
+            Reply::json(
+                200,
+                r#"{"lease":{"until":"2026-11-20T10:01:30Z"},"stop":null}"#,
+            )
         } else {
             Reply::refuse(RefusalCode::Unavailable)
         }

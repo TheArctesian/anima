@@ -257,6 +257,7 @@ dependencies = [
  "bytes",
  "chrono",
  "daemon-core",
+ "flate2",
  "getrandom 0.4.3",
  "http-body-util",
  "hyper",
@@ -269,7 +270,9 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "sysinfo",
+ "tar",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -278,6 +281,7 @@ dependencies = [
  "uds_windows",
  "uuid",
  "zeroize",
+ "zip",
 ]
 
 [[package]]
@@ -1925,6 +1929,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "static_assertions",
+ "thiserror 2.0.21",
  "uuid",
  "zeroize",
 ]
@@ -10780,6 +10785,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eaeb7f16d2605b49aef586996ded29e65642fab7259a3077e537351df6d80426"
 dependencies = [
  "crc32fast",
+ "flate2",
  "getrandom 0.4.3",
  "indexmap 2.14.2",
  "libc",

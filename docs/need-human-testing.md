@@ -39,6 +39,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-NEW-l1hardware | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
+| HT-NEW-l1daemonwork | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
+| HT-NEW-l1containment | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-NEW-delegate) | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -272,6 +274,114 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-NEW-l1containment: the cgroup of each model server on `pop-os`
+
+Built: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`, `tree/walk.rs`, and the launcher mode `__model-launch`
+of `crates/daemon/src/main.rs` (task L1-6; R-NEW-containment; SF-NEW-l1workb). The Linux code was not compiled or
+run on the Mac of the build: no Linux target is installed there. The tests that start a server skip on a Linux
+computer with no delegated cgroup v2, with the message "skipped: no delegated cgroup v2 here".
+
+1. On `pop-os`, run `cargo nextest run -p anima-daemon model_work` in a worktree of this branch, from a shell in a
+   systemd user scope with delegation: `systemd-run --user --scope -p Delegate=yes bash`. Expected: each test passes;
+   none prints "skipped".
+2. Run the same command from a plain shell with no delegation. Expected: the tests that start a server print
+   "skipped", and each other test passes.
+3. With a test daemon in a user unit with `Delegate=yes`, give a `server_start` item. Expected: a folder
+   `anima-model-<server>` below the cgroup of the unit; `cat cgroup.procs` there names `llama-server`. Give
+   `server_stop`. Expected: the folder is gone and no process is left.
+4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed`, and no
+   process is started.
+5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
+   Expected: the `llama-server` of the first run and its cgroup are gone.
+6. Install the user unit of this build (`anima-daemon install` from the test folder). Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes` (R-NEW-delegate).
+7. With a server running, start in its cgroup a process that enters a network namespace of its own
+   (`unshare -rn sleep 600`) and a second one that listens on `0.0.0.0` (`nc -l 0.0.0.0 41999`). Expected: at the
+   next cycle the server is `failed` with `listener`, and the cgroup is gone.
+8. With a server running, write a different path into the `cgroup` member of its `tree.json`, end the daemon
+   with `kill -9`, and start it again with the sweep. Expected: that path is not changed; the cgroup
+   `anima-model-…` of the server is gone. `cat pids.max` in a new cgroup of a server shows `512` when the
+   `pids` controller is delegated.
+9a. With a server running, write the process id of its `llama-server` into the `cgroup.procs` of the cgroup
+   of the daemon (`echo <pid> > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs`). Expected: at the next cycle
+   the server is `failed` with `listener`, and its processes and its cgroup are gone (SF-NEW-l1workt1).
+9b. With a server running, read `/proc/<pid of llama-server>/cgroup`. Expected: `0::/` (the runtime sees its
+   own cgroup as the root). Then, as the user of the daemon, run `nsenter -t <pid> -U -C --preserve-credentials sh
+   -c 'echo $$ > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs'`. Expected: the write fails (`No such file`
+   or `Permission denied`). If `sysctl kernel.apparmor_restrict_unprivileged_userns` gives `1`, or
+   `kernel.unprivileged_userns_clone` gives `0`, each start fails with `containment_failed`: write that in the
+   result (R-NEW-cgroupns).
+9c. With a server running, as the user of the daemon, run `mkdir` in the cgroup of the server from inside its
+   namespaces (`nsenter -t <pid> -U -C --preserve-credentials mkdir /sys/fs/cgroup/x`). Expected: it fails, because
+   `cgroup.max.descendants` is 0. Then make such a cgroup from outside (as the daemon user), move a child of the
+   runtime that listens on `0.0.0.0` into it, and run a cycle. Expected: `failed` with `listener`.
+9d. Read the `detail` of each `containment_failed` report: on a system with
+   `kernel.apparmor_restrict_unprivileged_userns=1` and no profile it is `userns_denied`; with no `Delegate=yes` it
+   is `no_delegation`. Until task L1-6c (the AppArmor profile) is built, `userns_denied` is the expected result on
+   a system of the Ubuntu family with the restriction on; it is not a failure of this check. Write the values of `sysctl kernel.apparmor_restrict_unprivileged_userns`,
+   `kernel.unprivileged_userns_clone` and `user.max_user_namespaces`, and `aa-status --enabled`, on `pop-os`.
+9e. End the test daemon with
+   `kill -9` while a server runs. Expected: the `llama-server` ends at once (the parent-death signal survived the
+   namespaces).
+9f. GPU inside the namespaces, on an NVIDIA machine and on an AMD (ROCm) machine: start a server whose settings put
+   the model on the GPU. Expected: `/dev/nvidia*` (NVIDIA), or `/dev/dri/renderD*` and `/dev/kfd` (ROCm), open in
+   the runtime (`ls -l /proc/<pid>/fd`), and the log of the runtime shows the layers on the GPU. If the NVIDIA
+   device nodes are missing before the first use, note it: `nvidia-modprobe` cannot run setuid inside the user
+   namespace.
+9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
+   and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
+   when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon
+   or run `install` again, and the daemon cannot write its own unit (`ProtectHome=read-only`). So a computer that
+   enrolled before this build keeps a unit with no `Delegate=yes`, and each model start fails with
+   `containment_failed`. Until a fix: run `anima-daemon install` once by hand. Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes`. The proposed smallest fix: when the
+   desktop application starts and the daemon is enrolled, it places its own daemon and runs `install` again
+   when the unit file differs from the unit that this version renders (task U6 of the update plan owns the
+   update of the daemon).
+
+Result: Open.
+
+### HT-NEW-l1daemonwork: the model work of the daemon on the Mac and on `pop-os`
+
+Built: `crates/daemon-core/src/model_work/` (the checks of the ten model work types, the causes, the
+flag policy, the files of a copy, the settings at the machine and the actor check, the release
+sources, the command line and the environment, the waits of a restart, the loopback verdict, the
+folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
+`runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
+the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
+contract is `contracts/compute/model-work.md` version 0.3, which waits for R-NEW-modelwork and the
+security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
+started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
+Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
+
+Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a new test folder.
+
+1. On each computer, write `model-sources.json` in the test folder with one entry for the
+   `llama-server` release of that computer (the `.tar.gz` of the upstream release, its SHA-256 and
+   size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
+   Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
+   the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
+   The upstream `.zip` or `.tar.gz` both work (R-NEW-archivezip); write which one was used.
+2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
+   with `checksum`, and no new folder.
+3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or
+   `ss -ltnp` (`pop-os`) shows `llama-server` on `127.0.0.1` and a port from 41000 to 41999 only.
+   `ps eww <pid>` shows only the environment of Section 2.1 of the contract. The output ring
+   `<home>/model-state/servers/<server>/output.log` has mode 0600 and at most 1 MiB. Write in the
+   result whether this release of `llama-server` takes `--verbosity 0`, `--no-slots` and the router
+   mode with no model; if it does not start, write its first error line from the ring.
+4. End the `llama-server` process with `kill -9`. Expected: within 15 seconds of the next cycle the
+   daemon starts it again after the waits 1, 2, 4, 8 seconds; after 5 ends in one hour it stays
+   `failed` in `model_report`.
+5. Give a `server_stop` item. Expected: `succeeded`; no `llama-server` process is left.
+6. Write `{"sandbox": true}` in `<home>/model-work.json` and give a `server_start` item. Expected:
+   `failed` with `isolation_failed` (the isolation is not built).
+7. Write `{"agentTypes": ["model_report"]}` and give a `server_start` item with `actor` `Agent`.
+   Expected: `refused` with `actor_not_permitted`.
 
 Result: Open.
 

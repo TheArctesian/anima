@@ -218,6 +218,11 @@ standard input as JSON from the daemon, and give back fixed codes and numbers. T
 to the hub makes no other connection. This follows K10 point W1-P1. MET-020 must get this exception in its text
 (open point MW-P1).
 
+**For task L1-6 only (R-NEW-fetchprocess).** The build of task L1-6 downloads a runtime archive in the daemon
+process, with a client of its own that holds no token, no hub origin and no proxy, and verifies the SHA-256 before it
+opens the archive. This is permitted for `runtime_install` of task L1-6 only. The child fetch process of this section
+is built before task L1-7 (task L1-6b of the compute plan), and task L1-7 does not start without it.
+
 ## 5. What the daemon checks, and the causes of a refusal
 
 The daemon checks each model item before `preparing`, with a pure function in `daemon-core` (CAG-007). It uses
@@ -246,7 +251,13 @@ Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-25
 larger than `sizeBytes`), `source_failed` (the source refused or did not answer after the retries), `listener`
 (Section 9), `isolation_failed` (the daemon cannot make the isolation of Section 9), `limit_memory` (Section 9),
 `load_crash` (the server ended while it loaded a copy), `hash_mismatch` (Section 7), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
-no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file).
+no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file), `archive_rejected` (a
+`runtime_install` whose archive breaks a rule of the unpack of Section 6, or has no server program at the path of its
+release source entry; R-NEW-archiverejected), `containment_failed` (Linux: the tree of the server cannot be contained,
+Section 9; R-NEW-containment). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
+`no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`. The launcher
+gives each of its steps its own exit code (120 to 124) and writes that code to a failure file in the folder of the
+server before it exits; the daemon takes an exit code as the launcher's only when that file holds it.
 
 ## 6. The install of a runtime (CAG-008)
 
@@ -255,6 +266,10 @@ no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime f
   writes it at the machine. The hub cannot write it. A daemon release has a default file of entries that the
   release signs (K8 Section 8); a value of the operator replaces a default entry.
 - Each entry also has `sizeBytes`, the largest size of the archive. The fetch process reads no more.
+- The archive is a `.tar.gz` (or `.tgz`) or a `.zip`, by the end of the path of its address; another form is
+  `runtime_not_configured` (R-NEW-archivezip). Each rule of the unpack below applies to both forms in the same way;
+  a `.zip` entry that is a symbolic link, or that is encrypted, is refused, and the declared size of an entry
+  counts in the limit before a byte is read. A break of a rule fails the item with `archive_rejected`.
 - The daemon downloads the archive with the fetch process and verifies the SHA-256 before it opens the archive.
   It unpacks it into a new temporary folder, then renames that folder to `runtimes/<runtime>/<version>-<backend>/`
   of its runtime folder (Section 10). It accepts only regular files and folders: it refuses an entry that is a
@@ -411,6 +426,50 @@ of the batches between.
   start fails (`isolation_failed`); there is no start with less isolation. With the setting off, the environment
   and the flags of Section 2.1 still apply, and the loopback check below is the only control of the network.
 
+- **The tree of a server, and what the loopback check binds (R-NEW-containment).** Without the sandbox, the
+  loopback check below constrains an honest runtime only: a runtime that is not honest can make outgoing
+  connections and can hide a listener for the time between two checks.
+  - On Linux the tree of a server is one cgroup v2 below the cgroup of the daemon, which its unit delegates. The
+    server joins that cgroup before its program runs: the daemon starts the daemon program in the fixed mode
+    `__model-launch`, which writes its own process id to `cgroup.procs`, sets the parent-death signal (`SIGKILL`) as a
+    backstop, checks that the daemon is still its parent, makes a new cgroup namespace (in a user namespace of
+    its own that maps the user and the group of the daemon to themselves; R-NEW-cgroupns), and then runs the
+    runtime with `exec`. The root of the cgroups of the runtime is then the cgroup of its server: it cannot see
+    the cgroup of the daemon or move a process out of its cgroup. When the namespaces cannot be made, the start
+    fails (`containment_failed`), with no fallback. On a system that restricts user namespaces with AppArmor
+    (`kernel.apparmor_restrict_unprivileged_userns=1`, the default of Ubuntu 24.04 and later and its family), each
+    start fails with the detail `userns_denied` until the AppArmor profile of task L1-6c is installed
+    (R-NEW-appuserns); that is the expected result, not a fault. At each poll the main process, while it runs, must be in the
+    cgroup of its server; when it is not, the server ends with `listener`. The loopback check
+    reads the sockets of each process of `cgroup.procs` of the cgroup of the server and of each cgroup below it, in
+    the network tables of each network namespace that a
+    process is in, merged. A `cgroup.procs` that does not read, a process of the tree whose files do not read, or
+    an empty tree while the server runs, counts as a listener that is not on loopback (it fails closed). A stop and
+    an end use `cgroup.kill` and a signal to each process, then remove the cgroup; a cgroup that does not empty is
+    logged and left, and each start has a cgroup of its own name. When the `pids` controller is delegated, the
+    daemon sets `pids.max` of the cgroup to 512 (a placeholder value, to measure). The daemon sets
+    `cgroup.max.descendants` of the cgroup to 0, so the runtime can make no cgroup below it. The cgroup v2 mount must
+    have `nsdelegate` (`/proc/self/mountinfo`), because without it the cgroup namespace does not stop a move out of
+    its root; when it does not, the start fails (`containment_failed`, `no_nsdelegate`). When the cgroup cannot be made
+    (no cgroup v2, or no delegation to the user of the daemon), the start fails (`containment_failed`). There is no
+    start with less containment.
+  - On macOS the tree is the walk of the parent processes from the server (`/bin/ps`), and the daemon records each
+    process of the tree at each poll, so a child that a double fork gives to `launchd` stays in the tree once it was
+    seen. This is best effort unless the server runs under the sandbox.
+  - Before each signal the daemon checks the identity of the process: its id and its start time. It never signals
+    a process id that the system gave to a different program.
+  - The daemon writes the identities and the cgroup of each server to a record in the folder of that server in the
+    state folder at each poll. When the daemon starts, it ends the processes and the cgroups that each record names
+    and removes the records (the sweep), because it starts no server by itself (MW-P5). The sweep ends only a
+    cgroup named `anima-model-` directly below the cgroup of the daemon, because the runtime can write the record
+    when the sandbox is off.
+- **How the socket table is read (R-NEW-archivezip).** On macOS the daemon runs `/usr/sbin/lsof` by its absolute
+  path, with an empty environment, for the processes of the tree, with a limit of 5 seconds. A read that does not
+  end in time or does not read counts as a listener that is not on loopback (it fails closed). `proc_pidinfo` would
+  need code that the workspace forbids (`unsafe`).
+- **Ready (R-NEW-archivezip).** A server is `ready` when the socket table shows a TCP listener of its tree on
+  loopback on its port. The daemon sends no request to the server for this. The HTTP probe, with the owner check
+  of the listener right before it, comes with task L1-9 or `model_measure` (task L1-8).
 - **The port.** The daemon starts the runtime with port 0 where the runtime permits it and reads the port from
   the socket table; else it selects a free port of its range. Before it sends the API key in a probe, it checks
   that the listener of that port belongs to the process tree of the server; if not, the cause is `listener`.
