@@ -24,11 +24,22 @@ export type GateEvent =
   | { kind: "start"; position: number; total: number; gate: Gate }
   | { kind: "pass"; position: number; total: number; gate: Gate; seconds: number }
   | { kind: "fail"; position: number; total: number; gate: Gate; code: number; message?: string }
-  | { kind: "done"; passed: number; total: number; stoppedAt?: Gate };
+  | { kind: "done"; passed: number; total: number; stoppedAt?: Gate; failed?: Gate[] };
 
 export interface GateOutcome {
   exitCode: number;
   stoppedAt?: Gate;
+  /** With `keepGoing`: each gate that failed, in order. */
+  failed?: Gate[];
+}
+
+/**
+ * How to run the list. `keepGoing` (`--keep-going`, for a proof run only) runs each gate after a
+ * failure and lists the failures at the end; the gates stop at the first failure without it.
+ */
+export interface GateRun {
+  now?: () => number;
+  keepGoing?: boolean;
 }
 
 /** Runs one gate to completion and returns its exit code. Throws when it cannot start. */
@@ -94,36 +105,61 @@ export function ofGroups(gates: Gate[], groups: readonly Group[]): Gate[] {
   return gates.filter((gate) => groups.includes(gate.group));
 }
 
-/** Run gates in order and stop at the first failure. A runner that throws is a failure, never a skip (CQ-024). */
-export function runGates(
-  gates: Gate[],
-  run: RunProcess,
-  report: ReportGateEvent,
-  now: () => number = Date.now,
-): GateOutcome {
+/** Runs one gate: its exit code, 1 with the message when the runner throws (CQ-024: a failure, never a skip). */
+function runOne(gate: Gate, run: RunProcess): { code: number; message?: string } {
+  try {
+    return { code: run(gate) };
+  } catch (error) {
+    return { code: 1, message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Run gates in order and stop at the first failure. With `keepGoing`, run each gate and fail at the
+ * end with the exit code of the first failure, naming each gate that failed.
+ */
+export function runGates(gates: Gate[], run: RunProcess, report: ReportGateEvent, { now = Date.now, keepGoing = false }: GateRun = {}): GateOutcome {
   const total = gates.length;
+  const failed: Gate[] = [];
+  let exitCode = 0;
   for (const [index, gate] of gates.entries()) {
     const position = index + 1;
     report({ kind: "start", position, total, gate });
     const began = now();
-    let code: number;
-    try {
-      code = run(gate);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      report({ kind: "fail", position, total, gate, code: 1, message });
-      report({ kind: "done", passed: index, total, stoppedAt: gate });
-      return { exitCode: 1, stoppedAt: gate };
+    const { code, message } = runOne(gate, run);
+    if (code === 0) {
+      report({ kind: "pass", position, total, gate, seconds: (now() - began) / 1000 });
+      continue;
     }
-    if (code !== 0) {
-      report({ kind: "fail", position, total, gate, code });
+    report(message === undefined ? { kind: "fail", position, total, gate, code } : { kind: "fail", position, total, gate, code, message });
+    if (!keepGoing) {
       report({ kind: "done", passed: index, total, stoppedAt: gate });
       return { exitCode: code, stoppedAt: gate };
     }
-    report({ kind: "pass", position, total, gate, seconds: (now() - began) / 1000 });
+    failed.push(gate);
+    if (exitCode === 0) exitCode = code;
   }
-  report({ kind: "done", passed: total, total });
-  return { exitCode: 0 };
+  if (failed.length === 0) {
+    report({ kind: "done", passed: total, total });
+    return { exitCode: 0 };
+  }
+  report({ kind: "done", passed: total - failed.length, total, failed });
+  return { exitCode, failed };
+}
+
+/**
+ * The list for `--keep-going`: each cargo command also goes on after a failure inside it, so one run
+ * shows each lint of each crate (`--keep-going`) and each failing test (`--no-fail-fast`).
+ */
+export function keptGoing(gates: Gate[]): Gate[] {
+  return gates.map((gate) => {
+    if (gate.name === "clippy") {
+      const at = gate.argv.indexOf("--");
+      return { ...gate, argv: [...gate.argv.slice(0, at), "--keep-going", ...gate.argv.slice(at)] };
+    }
+    if (gate.name === "rust-test" || gate.name === "doctest" || gate.name === "pinning") return { ...gate, argv: [...gate.argv, "--no-fail-fast"] };
+    return gate;
+  });
 }
 
 /**
@@ -146,8 +182,8 @@ export function formatGateEvent(event: GateEvent): string {
     case "fail":
       return `[${event.position}/${event.total}] ${event.gate.name}: FAIL (exit ${event.code})${event.message ? ` ${event.message}` : ""}`;
     case "done":
-      return event.stoppedAt
-        ? `gates: stopped at ${event.stoppedAt.name}`
-        : `gates: ${event.passed}/${event.total} pass`;
+      if (event.stoppedAt) return `gates: stopped at ${event.stoppedAt.name}`;
+      if (event.failed) return `gates: ${event.passed}/${event.total} pass; failed: ${event.failed.map((gate) => gate.name).join(", ")}`;
+      return `gates: ${event.passed}/${event.total} pass`;
   }
 }
