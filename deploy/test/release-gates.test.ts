@@ -67,7 +67,7 @@ describe("the gates jobs of the release", () => {
   test("only `gates` runs whatever came before it; each job after it names the result of each job that it waits for", () => {
     const after = (name: string): boolean => needs(name).some((one) => one === "gates" || after(one));
     const waiting = Object.keys(jobs).filter(after);
-    expect(waiting.sort()).toEqual(["cli-publish", "crate", "ios-record", "ios-upload", "publish", "sign", "tap", "trial"]);
+    expect(waiting.sort()).toEqual(["cli-publish", "crate", "daemon-publish", "ios-record", "ios-upload", "publish", "sign", "tap", "trial"]);
     for (const name of waiting) expect(() => ownCondition(job(name).if, needs(name))).not.toThrow();
     for (const [name, found] of Object.entries(jobs)) {
       if (name !== "gates") expect(found.if ?? "").not.toContain("always()");
