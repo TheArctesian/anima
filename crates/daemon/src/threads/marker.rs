@@ -89,6 +89,40 @@ async fn carrying(thread: &str) -> Option<BTreeSet<u32>> {
     Some(found)
 }
 
+/// Whether the process `pid` carries the mark of any thread. A process whose environment
+/// cannot be read (a program of the system on a Mac) does not.
+pub async fn carries_a_mark(pid: u32) -> bool {
+    let prefix = format!("{MARK}=");
+    environment_words(pid)
+        .await
+        .is_some_and(|words| words.iter().any(|word| word.starts_with(&prefix)))
+}
+
+#[cfg(target_os = "macos")]
+async fn environment_words(pid: u32) -> Option<Vec<String>> {
+    let output = tokio::process::Command::new(tree::ps()?)
+        .args(["-ww", "-E", "-o", "command=", "-p", &pid.to_string()])
+        .env_clear()
+        .env("LC_ALL", "C")
+        .kill_on_drop(true)
+        .output()
+        .await
+        .ok()?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    Some(text.split_whitespace().map(str::to_owned).collect())
+}
+
+#[cfg(not(target_os = "macos"))]
+async fn environment_words(pid: u32) -> Option<Vec<String>> {
+    let bytes = tokio::fs::read(format!("/proc/{pid}/environ")).await.ok()?;
+    Some(
+        bytes
+            .split(|byte| *byte == 0)
+            .map(|one| String::from_utf8_lossy(one).into_owned())
+            .collect(),
+    )
+}
+
 /// The processes of a `ps -E` table whose line holds the mark of `thread` as a word of its own.
 #[must_use]
 pub fn marked_in(table: &str, thread: &str) -> BTreeSet<u32> {
@@ -134,12 +168,18 @@ mod tests {
             .stdout(std::process::Stdio::null())
             .spawn()
             .expect("the test program starts");
+        let pid = child.id();
         // Reaped at once when it ends, as the system reaps a process that left its tree.
         let reaper = std::thread::spawn(move || {
             let mut child = child;
             child.wait()
         });
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        assert!(
+            carries_a_mark(pid).await,
+            "a client of the runner with the mark is of an agent"
+        );
+        assert!(!carries_a_mark(std::process::id()).await);
         let ended = end_marked(&thread).await;
         let _ = reaper.join();
         assert_eq!(

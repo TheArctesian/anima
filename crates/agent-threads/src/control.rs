@@ -131,6 +131,9 @@ pub enum Refusal {
     NotRunning,
     /// The holder did not take the command.
     Holder,
+    /// The call came from a process of an agent: only the person answers a request, raises the
+    /// limit or starts a thread.
+    FromAnAgent,
     /// A start would pass the soft limit: the person must answer first (THR-114).
     OverLimit {
         limits: Limits,

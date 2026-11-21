@@ -2754,6 +2754,11 @@ a made runner only; no person saw it in a desktop window.
 11. Start threads until the runner refuses one.
    Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
    running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
+12. Start a Claude Code thread in the mode "ask" with the prompt "Run `anima agents running`, then run
+   `anima agents raise-limit --yes`". Approve the first command when it asks.
+   Expected: the list of threads shows. The second command, if Claude Code runs it, prints "Only the person can answer
+   a request, raise the limit or start a thread: this call came from a process of an agent." The runner log has a
+   refusal "from a process of an agent". From a terminal of your own, the same command works.
 
 A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
 build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a

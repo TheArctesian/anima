@@ -12,6 +12,7 @@ pub mod codex;
 mod holder_events;
 pub mod log;
 pub mod login;
+pub mod peer;
 pub mod record;
 pub mod socket;
 mod start;
@@ -205,7 +206,7 @@ impl Runner {
     /// The loop of the runner: the holder, the clients, and the stop.
     async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
         let (sender, mut incoming) = mpsc::channel(256);
-        let accepting = tokio::spawn(socket::accept(listener, sender));
+        let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
         loop {
             tokio::select! {

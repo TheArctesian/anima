@@ -79,6 +79,7 @@ export type Refusal =
   | 'answer_does_not_fit'
   | 'not_running'
   | 'holder'
+  | 'from_an_agent'
   | 'over_limit';
 
 export interface Limits {
@@ -132,7 +133,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'over_limit'];
+const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'over_limit'];
 
 type Fields = Record<string, unknown>;
 
@@ -310,5 +311,6 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
+  from_an_agent: 'Only the person can answer a request, raise the limit or start a thread: this call came from a process of an agent.',
   over_limit: OVER_LIMIT,
 };

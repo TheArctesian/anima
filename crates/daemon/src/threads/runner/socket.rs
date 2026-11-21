@@ -81,6 +81,8 @@ impl Caller {
 pub struct Incoming {
     pub call: Call,
     pub client: Client,
+    /// The client is a process of an agent of the holder (see [`super::peer`]).
+    pub agent: bool,
 }
 
 /// Binds the socket of the runner in `dir`, in place of one an older runner left.
@@ -97,11 +99,15 @@ pub fn bind(dir: &Path) -> io::Result<UnixListener> {
 }
 
 /// Accepts clients and gives their calls to the runner, until the runner is gone.
-pub async fn accept(listener: UnixListener, calls: mpsc::Sender<Incoming>) {
+pub async fn accept(
+    listener: UnixListener,
+    calls: mpsc::Sender<Incoming>,
+    dir: std::path::PathBuf,
+) {
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
-                tokio::spawn(serve(stream, calls.clone()));
+                tokio::spawn(serve(stream, calls.clone(), dir.clone()));
             }
             Err(error) => {
                 tracing::warn!(%error, "the runner could not accept a client");
@@ -115,13 +121,14 @@ pub async fn accept(listener: UnixListener, calls: mpsc::Sender<Incoming>) {
 }
 
 /// One client: each line is a call; a line that is too long or does not read ends the client.
-async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>) {
-    let same_user = stream
-        .peer_cred()
-        .is_ok_and(|peer| peer.uid() == rustix::process::getuid().as_raw());
-    if !same_user {
+async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>, dir: std::path::PathBuf) {
+    let Ok(peer) = stream.peer_cred() else {
+        return;
+    };
+    if peer.uid() != rustix::process::getuid().as_raw() {
         return;
     }
+    let agent = super::peer::of_an_agent(peer.pid(), &dir).await;
     let (reading, mut writing) = stream.into_split();
     let (frames, mut queue) = mpsc::channel::<String>(CLIENT_QUEUE);
     let queued_bytes = Arc::new(AtomicUsize::new(0));
@@ -162,6 +169,7 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>) {
         let incoming = Incoming {
             call,
             client: client.clone(),
+            agent,
         };
         if calls.send(incoming).await.is_err() {
             break;
