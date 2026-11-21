@@ -306,7 +306,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (98)
+## 4. Checks that only the operator can do (99)
 
 | Check | What |
 | --- | --- |
@@ -371,6 +371,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-051 | the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252) |
 | HT-064 | Read the native capability report in Anima.ing Settings |
 | HT-065 | the measurements of the isolation design on Linux (task W2, R-188, R-264) |
+| HT-107 | the single sessions on the page Agent usage (AIS-025, AIS-026) |
 | HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |

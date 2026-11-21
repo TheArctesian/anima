@@ -2060,12 +2060,12 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
 
-### HT-NEW-agentsessions: the single sessions on the page Agent usage (AIS-025, AIS-026)
+### HT-107: the single sessions on the page Agent usage (AIS-025, AIS-026)
 
 Built on the branch `ui/agent-sessions`: the query `agentSessions` of the hub (`crates/hub/src/fleet/agent_usage/`),
 `anima agents sessions`, the MCP tool `anima_agents_sessions`, and the part "Sessions" of the page Agent usage
 (`apps/client/src/lib/agent-usage/view/SessionList.svelte`). Approved overnight by the orchestrator, human check
-pending (R-NEW-agentsessions). The tests prove with a real PostgreSQL and a scripted daemon: the order by last use, the
+pending (R-314). The tests prove with a real PostgreSQL and a scripted daemon: the order by last use, the
 sums over the days asked for, the estimate, the limit and the count left out, and "recent" at 30 minutes. Pictures of
 the mockup and of the built page are in the folder `ui-overnight-2026-11-21/agent-sessions/` of the workspace. No person
 saw the part with the sessions of a real computer. It needs HT-026 first: a daemon that sends counts.
