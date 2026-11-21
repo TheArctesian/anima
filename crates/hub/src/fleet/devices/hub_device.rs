@@ -5,13 +5,13 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, Utc};
 use ipnet::{IpNet, Ipv6Net};
-use sqlx::{Connection as _, PgConnection};
+use sqlx::{Connection as _, PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use super::{
     Error, FieldError,
     graphql::trail,
-    model::{Device, NewDeviceInput, NewSiteInput, OperatingSystem},
+    model::{Device, DeviceChange, NewDeviceInput, NewSiteInput, OperatingSystem},
     remote::RemoteForm,
     rules::{validate_new_device, validate_new_site},
     store,
@@ -32,6 +32,92 @@ const NAMES: usize = 10;
 const LINK_SITE: &str = "Link";
 const LINK_SUBNET: Ipv6Net =
     Ipv6Net::new_assert(Ipv6Addr::new(0xfd41, 0x4e49, 0x4d41, 0, 0, 0, 0, 0), 48);
+
+/// The refusal of each way into the container of the hub (HMD-045).
+const NO_WAY_IN: &str = "No session reaches the container of the hub: its device takes no SSH, \
+                         RDP or VNC.";
+
+/// Whether `kind` is the kind of the hub's own device, in any letter case.
+pub(super) fn is_hub_kind(kind: &str) -> bool {
+    kind.trim().eq_ignore_ascii_case(KIND)
+}
+
+/// The refusal of the kind `hub` for a device that the operator adds or changes: only the hub
+/// adds its own device, and that device keeps its kind.
+pub(super) fn kind_refused() -> FieldError {
+    FieldError::new(
+        "kind",
+        "The kind hub is only for the hub's own device, and that device keeps it.",
+    )
+}
+
+/// The fields of `change` that a device of kind `current` refuses (HMD-045): no device takes
+/// or leaves the kind `hub`, and the hub's device has no SSH, RDP or VNC.
+pub(super) fn refused_change(current: &str, change: &DeviceChange) -> Vec<FieldError> {
+    let hub = is_hub_kind(current);
+    let kind = change
+        .kind
+        .as_deref()
+        .filter(|kind| is_hub_kind(kind) != hub);
+    let ways = [
+        ("ssh", change.ssh.as_ref().is_some_and(|ssh| ssh.enabled)),
+        (
+            "rdp",
+            change.remote.rdp.as_ref().is_some_and(|rdp| rdp.enabled),
+        ),
+        (
+            "vnc",
+            change.remote.vnc.as_ref().is_some_and(|vnc| vnc.enabled),
+        ),
+    ];
+    let ways = ways
+        .into_iter()
+        .filter(|&(_, enabled)| hub && enabled)
+        .map(|(field, _)| FieldError::new(field, NO_WAY_IN));
+    kind.map(|_| kind_refused())
+        .into_iter()
+        .chain(ways)
+        .collect()
+}
+
+/// Refuses `change` of the device `id` when [`refused_change`] does; reads the device only when
+/// the change sets its kind or a way in.
+///
+/// # Errors
+/// `Validation` with the refused fields; the errors of [`store::fetch`].
+pub(super) async fn check_change<'e>(
+    db: impl PgExecutor<'e>,
+    id: DeviceId,
+    change: &DeviceChange,
+) -> Result<(), Error> {
+    let remote = &change.remote;
+    if change.kind.is_none() && change.ssh.is_none() && remote.rdp.is_none() && remote.vnc.is_none()
+    {
+        return Ok(());
+    }
+    let device = store::fetch(db, id).await?;
+    let refused = refused_change(&device.kind, change);
+    if refused.is_empty() {
+        Ok(())
+    } else {
+        Err(Error::Validation(refused))
+    }
+}
+
+/// Refuses a secret of SSH, RDP or VNC for the hub's own device (HMD-045). The field is the
+/// device argument of the mutation.
+///
+/// # Errors
+/// `Validation` when `device` is the hub's.
+pub(super) fn check_secret(device: &Device) -> Result<(), Error> {
+    if is_hub_kind(&device.kind) {
+        Err(Error::Validation(vec![FieldError::new(
+            "deviceId", NO_WAY_IN,
+        )]))
+    } else {
+        Ok(())
+    }
+}
 
 /// The names the hub's device can take, the first choice first: `Hub`, `Hub (hosted)`,
 /// `Hub (hosted 2)` and so on.
