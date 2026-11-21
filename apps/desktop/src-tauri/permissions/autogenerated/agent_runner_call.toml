@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-agent-runner-call"
+description = "Enables the agent_runner_call command without any pre-configured scope."
+commands.allow = ["agent_runner_call"]
+
+[[permission]]
+identifier = "deny-agent-runner-call"
+description = "Denies the agent_runner_call command without any pre-configured scope."
+commands.deny = ["agent_runner_call"]
