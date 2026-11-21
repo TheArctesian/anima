@@ -48,7 +48,7 @@ After the list of the tool names, the text is now: "the model runtimes are not t
 R-NEW-runtimelist". After the approval it becomes:
 
 > The installed model runtimes are not tools. They are in the optional member `runtimes`, which
-> [model-work.md](compute/model-work.md) Section 8 defines (R-NEW-runtimelist).
+> model-work.md (a link to `compute/model-work.md`) Section 8 defines (R-NEW-runtimelist).
 
 ## The points the operator decides with this approval
 
