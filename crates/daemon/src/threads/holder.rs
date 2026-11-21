@@ -188,7 +188,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         state.closing = true;
         state.connection = None;
     }
-    super::commands::end_all(&shared).await;
+    super::stop::end_all(&shared).await;
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
 }

@@ -2679,9 +2679,15 @@ At a stop the program gets `SIGTERM` and 3 seconds to write its session file. Ea
 those 3 seconds (for example a hook at the end of a session) is killed when the walk finds it, so such a hook does not
 run to its end.
 
-What it cannot stop: a process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork,
-is never seen. It runs on after the stop, and the stop cannot report it (it can report only what it saw). On Linux a
-cgroup of the user (`systemd-run --user --scope`) would close this gap; it is not built.
+A process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork, is not seen by the
+walk. The holder gives each program the mark `AGENT_THREAD=<thread>` in its environment, which each process below it
+takes with it; at a stop the holder also ends each process of this user that carries the mark, and says that not all
+ended when it cannot read the environments or a marked process does not end. On Linux it reads `/proc/<pid>/environ`
+of each process of this user. What it cannot stop: on a Mac, `ps -E` does not show the environment of a program of the
+system (`/bin/sh`, `/usr/bin/perl`, `/bin/sleep`), so such a process that left the tree in less than 2 seconds runs on
+after the stop and the stop says that all ended; a program that is not of the system (`node`, `python3` from Homebrew,
+the agents) is found. An agent can also remove the mark from its own environment. On Linux a cgroup of the user
+(`systemd-run --user --scope`) would close this gap; it is not built.
 
 1. On `pop-os`, in the checkout, run `cargo nextest run -p anima-daemon threads`.
    Expected: each test passes. Write the count and any failure here.
@@ -2696,8 +2702,12 @@ cgroup of the user (`systemd-run --user --scope`) would close this gap; it is no
 5. As the first user, start a thread whose program runs
    `perl -MPOSIX -e 'exit if fork; POSIX::setsid(); exit if fork; sleep 600'`, then stop the thread with
    `anima agents stop <ID>`. Run `ps -ax | grep 'sleep 600'`.
-   Expected (the known limit): the `perl` process still runs, and the stop said that all ended. Kill it by hand with
-   `kill <pid>`.
+   Expected on the Mac (the known limit: `/usr/bin/perl` is a program of the system): the `perl` process still runs,
+   and the stop said that all ended. Kill it by hand with `kill <pid>`. Expected on `pop-os`: no `sleep 600` is left
+   (found by its mark).
+5a. On the Mac, do step 5 with `/opt/homebrew/bin/python3 -c 'import os,time; os.fork() and os._exit(0); os.setsid();
+   os.fork() and os._exit(0); time.sleep(600)'` as the program (or any `python3` that is not in `/usr/bin`).
+   Expected: no `time.sleep(600)` process is left after the stop: it was found by its mark.
 6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
    then stop the thread.
    Expected: no `sleep 600` is left: the holder saw the child before it left the tree.

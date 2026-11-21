@@ -18,7 +18,8 @@ async fn thr_040_a_program_gets_only_the_given_environment_and_three_descriptors
             .iter()
             .map(|(_, text)| text.as_str())
             .collect::<Vec<_>>(),
-        ["ONLY=this"]
+        ["AGENT_THREAD=env", "ONLY=this"],
+        "the given environment and the mark of the thread (THR-049)"
     );
 
     let probe = r#"opendir D, "/dev/fd"; print join(" ", sort grep { /^\d+$/ } readdir D), "\n""#;

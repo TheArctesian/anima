@@ -113,7 +113,7 @@ fn spare_with_children(table: &Table, spare: &Known) -> BTreeSet<u32> {
 }
 
 /// The program `ps` at a fixed path: the holder has no `PATH`.
-fn ps() -> Option<&'static str> {
+pub(super) fn ps() -> Option<&'static str> {
     ["/bin/ps", "/usr/bin/ps"]
         .into_iter()
         .find(|path| Path::new(path).exists())
@@ -149,7 +149,7 @@ pub async fn started(pid: u32) -> Option<String> {
     (output.status.success() && !text.is_empty()).then_some(text)
 }
 
-fn signal(pid: u32, signal: Signal) {
+pub(super) fn signal(pid: u32, signal: Signal) {
     if let Some(pid) = i32::try_from(pid).ok().and_then(Pid::from_raw) {
         // A process that already ended is what a stop wants: the error is not a fault.
         let _ = kill_process(pid, signal);
