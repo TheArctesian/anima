@@ -20,6 +20,9 @@ pub mod walk;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use std::os::fd::OwnedFd;
+
+use rustix::fs::{Mode, OFlags};
 use rustix::process::{Pid, Signal};
 use serde::{Deserialize, Serialize};
 
@@ -41,17 +44,27 @@ pub const RECORD_BYTES: usize = 64 << 10;
 /// The most bytes of the failure file of the launcher that the daemon reads.
 pub const LAUNCH_FAILURE_BYTES: usize = 4 << 10;
 
-/// Reads the file `path` that a runtime may have replaced: no link is followed (the folder or
-/// the file), a FIFO or a device is refused without a wait (`O_NONBLOCK`, then a regular file
-/// only), and a file over `cap` bytes is refused. `None` for each refusal or error.
+/// Opens the folder `path` with no link followed at its last part.
+fn open_folder(path: &Path) -> Option<OwnedFd> {
+    let flags = OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::RDONLY | OFlags::DIRECTORY;
+    rustix::fs::open(path, flags, Mode::empty()).ok()
+}
+
+/// Reads the file `path` that a runtime may have replaced. `O_NOFOLLOW` checks the last part
+/// of the folder and the file only; the parent folders are trusted because the daemon made
+/// them with [`super::folders::private_below`]. A FIFO or a device is refused without a wait
+/// (`O_NONBLOCK`, then a regular file only; a device is opened before `fstat` refuses it), and
+/// a file over `cap` bytes is refused. `None` for each refusal or error.
 #[must_use]
 pub fn read_capped(path: &Path, cap: usize) -> Option<Vec<u8>> {
-    use rustix::fs::{FileType, Mode, OFlags};
+    read_capped_at(&open_folder(path.parent()?)?, path.file_name()?, cap)
+}
+
+fn read_capped_at(dir: &OwnedFd, name: &std::ffi::OsStr, cap: usize) -> Option<Vec<u8>> {
+    use rustix::fs::FileType;
     use std::io::Read as _;
-    let (folder, name) = (path.parent()?, path.file_name()?);
-    let flags = OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::RDONLY;
-    let dir = rustix::fs::open(folder, flags | OFlags::DIRECTORY, Mode::empty()).ok()?;
-    let fd = rustix::fs::openat(&dir, name, flags | OFlags::NONBLOCK, Mode::empty()).ok()?;
+    let flags = OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::RDONLY | OFlags::NONBLOCK;
+    let fd = rustix::fs::openat(dir, name, flags, Mode::empty()).ok()?;
     let stat = rustix::fs::fstat(&fd).ok()?;
     let size = usize::try_from(stat.st_size).ok()?;
     if FileType::from_raw_mode(stat.st_mode) != FileType::RegularFile || size > cap {
@@ -63,6 +76,32 @@ pub fn read_capped(path: &Path, cap: usize) -> Option<Vec<u8>> {
         .read_to_end(&mut bytes)
         .ok()?;
     (bytes.len() <= cap).then_some(bytes)
+}
+
+/// Writes `bytes` as `name` in `dir`: first to a new temporary name (`O_EXCL`, no link, no
+/// wait on a FIFO), then a rename over `name`, so a link or a FIFO at `name` is replaced, never
+/// followed, and no other file is truncated through a hard link.
+fn write_replacing(dir: &OwnedFd, name: &std::ffi::OsStr, bytes: &[u8]) -> io::Result<()> {
+    use std::io::Write as _;
+    let mut temporary = std::ffi::OsString::from(".");
+    temporary.push(name);
+    temporary.push(format!(".{}", std::process::id()));
+    let flags = OFlags::CREATE
+        | OFlags::EXCL
+        | OFlags::NOFOLLOW
+        | OFlags::NONBLOCK
+        | OFlags::WRONLY
+        | OFlags::CLOEXEC;
+    let _ = rustix::fs::unlinkat(dir, temporary.as_os_str(), rustix::fs::AtFlags::empty());
+    let fd = rustix::fs::openat(
+        dir,
+        temporary.as_os_str(),
+        flags,
+        Mode::from_raw_mode(0o600),
+    )?;
+    std::fs::File::from(fd).write_all(bytes)?;
+    rustix::fs::renameat(dir, temporary.as_os_str(), dir, name)?;
+    Ok(())
 }
 
 /// The start time of process `pid` now, or `None` when no such process exists.
@@ -108,25 +147,17 @@ impl Record {
     /// Writes the record to `path` (mode 0600, no link followed). A failure is not fatal: the
     /// record only helps the sweep after a crash.
     pub fn save(&self, path: &Path) {
-        use std::io::Write as _;
-        use std::os::unix::fs::OpenOptionsExt as _;
-        let Ok(text) = serde_json::to_vec(self) else {
+        let (Some(folder), Some(name)) = (path.parent(), path.file_name()) else {
             return;
         };
-        let file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
-            .open(path);
-        if let Ok(mut file) = file {
-            let _ = file.write_all(&text);
-        }
+        let (Ok(text), Some(dir)) = (serde_json::to_vec(self), open_folder(folder)) else {
+            return;
+        };
+        let _ = write_replacing(&dir, name, &text);
     }
 
-    fn load(path: &Path) -> Option<Self> {
-        serde_json::from_slice(&read_capped(path, RECORD_BYTES)?).ok()
+    fn load_at(dir: &OwnedFd) -> Option<Self> {
+        serde_json::from_slice(&read_capped_at(dir, RECORD.as_ref(), RECORD_BYTES)?).ok()
     }
 
     /// Ends each process of the record whose identity still holds, and its cgroup. It waits and
@@ -162,12 +193,16 @@ pub fn sweep(servers: &Path) -> io::Result<usize> {
     };
     let mut swept = 0;
     for entry in entries.filter_map(Result::ok) {
-        let record = entry.path().join(RECORD);
-        if let Some(found) = Record::load(&record) {
+        // One handle of the folder of the server, with no link followed, for the read and the
+        // removal, so a folder that is a link is neither read nor emptied.
+        let Some(dir) = open_folder(&entry.path()) else {
+            continue;
+        };
+        if let Some(found) = Record::load_at(&dir) {
             found.end_all();
             swept += 1;
         }
-        let _ = std::fs::remove_file(&record);
+        let _ = rustix::fs::unlinkat(&dir, RECORD, rustix::fs::AtFlags::empty());
     }
     #[cfg(target_os = "linux")]
     linux::sweep_cgroups();

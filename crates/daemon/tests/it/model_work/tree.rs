@@ -199,6 +199,14 @@ async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_th
         launcher.launch_failure(status),
         Some(Containment::UsernsDenied)
     );
+    let cap = anima_daemon::model::tree::LAUNCH_FAILURE_BYTES;
+    for (width, found) in [(cap, Some(Containment::UsernsDenied)), (cap + 1, None)] {
+        let script = format!("sleep 0.5; printf '%-{width}s' 123 > ../launch-failure; exit 123");
+        let mut padded =
+            anima_daemon::model::server::spawn(&exiting(root.path(), &script)).expect("started");
+        let status = padded.child.wait().await.expect("ended");
+        assert_eq!(padded.launch_failure(status), found, "{width} bytes");
+    }
 }
 
 #[test]
@@ -240,7 +248,25 @@ fn a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small() {
         .status()
         .expect("mkfifo");
     assert!(made.success());
-    assert_eq!(read_capped(&fifo, 16), None, "a FIFO, with no wait");
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || sender.send(read_capped(&fifo, 16)));
+    assert_eq!(
+        receiver.recv_timeout(Duration::from_secs(5)),
+        Ok(None),
+        "a FIFO, with no wait"
+    );
+    std::fs::write(root.path().join("exact"), vec![b'1'; 16]).expect("written");
+    assert_eq!(
+        read_capped(&root.path().join("exact"), 16).map(|bytes| bytes.len()),
+        Some(16),
+        "exactly the cap"
+    );
+    std::os::unix::fs::symlink(root.path(), root.path().join("folder")).expect("a link");
+    assert_eq!(
+        read_capped(&root.path().join("folder/plain"), 16),
+        None,
+        "the folder is a link"
+    );
 }
 
 #[test]
@@ -252,4 +278,60 @@ fn a_record_that_is_a_link_is_not_swept() {
     Record::default().save(&elsewhere);
     std::os::unix::fs::symlink(&elsewhere, server.join(RECORD)).expect("a link");
     assert_eq!(sweep(root.path()).expect("swept"), 0);
+    assert!(elsewhere.exists(), "the file the link names survives");
+}
+
+#[test]
+fn a_server_folder_that_is_a_link_is_neither_read_nor_emptied() {
+    let root = tempfile::tempdir().expect("a folder");
+    let servers = root.path().join("servers");
+    let other = root.path().join("other");
+    std::fs::create_dir_all(&servers).expect("a folder");
+    std::fs::create_dir_all(&other).expect("a folder");
+    Record::default().save(&other.join(RECORD));
+    std::os::unix::fs::symlink(&other, servers.join("one")).expect("a link");
+    assert_eq!(sweep(&servers).expect("swept"), 0);
+    assert!(other.join(RECORD).exists());
+}
+
+#[test]
+fn a_record_is_written_in_place_of_a_link_or_a_fifo_and_never_through_one() {
+    let root = tempfile::tempdir().expect("a folder");
+    let target = root.path().join("target");
+    std::fs::write(&target, b"keep").expect("written");
+    let record = root.path().join(RECORD);
+    std::fs::hard_link(&target, &record).expect("a hard link");
+    Record::default().save(&record);
+    assert_eq!(std::fs::read(&target).expect("read"), b"keep");
+    std::fs::remove_file(&record).expect("removed");
+    let made = Command::new("/usr/bin/mkfifo")
+        .arg(&record)
+        .status()
+        .expect("mkfifo");
+    assert!(made.success());
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let path = record.clone();
+    std::thread::spawn(move || {
+        Record::default().save(&path);
+        sender.send(())
+    });
+    assert_eq!(receiver.recv_timeout(Duration::from_secs(5)), Ok(()));
+    assert!(std::fs::symlink_metadata(&record).expect("there").is_file());
+}
+
+#[test]
+fn records_and_failure_files_over_their_real_caps_are_refused() {
+    use anima_daemon::model::tree::RECORD_BYTES;
+    let root = tempfile::tempdir().expect("a folder");
+    let padded = |size: usize| {
+        let mut text = b"{\"known\":[],\"cgroup\":null}".to_vec();
+        text.resize(size, b' ');
+        text
+    };
+    for (size, swept) in [(RECORD_BYTES, 1), (RECORD_BYTES + 1, 0)] {
+        let servers = root.path().join(format!("servers-{size}"));
+        std::fs::create_dir_all(servers.join("one")).expect("a folder");
+        std::fs::write(servers.join("one").join(RECORD), padded(size)).expect("written");
+        assert_eq!(sweep(&servers).expect("swept"), swept, "{size}");
+    }
 }
