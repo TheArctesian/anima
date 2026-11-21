@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { resolve } from '$app/paths';
+  import FormButton from '$lib/forms/FormButton.svelte';
   import { KEY_WORDS } from './keys';
   import { folderName, parts, programName, type Thread } from './thread';
   import ToolBlock from './ToolBlock.svelte';
@@ -17,6 +19,34 @@
   const clock = (at: Date | null): string => (at === null ? '' : at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }));
   /** Agent usage with the folder of the thread chosen, when the folder has a name (THR-027). */
   const usage = $derived(`${resolve('/agents/usage')}${thread.folder === null ? '' : `?repository=${encodeURIComponent(folderName(thread.folder))}`}`);
+
+  /** How near the end, in px, still counts as reading the newest part. */
+  const FOLLOW_SLACK_PX = 24;
+  let scroller: HTMLElement | undefined = $state();
+  /** The view keeps the newest part in sight until the reader scrolls up; scrolling back to the end follows again. */
+  let following = $state(true);
+
+  function scrolled(): void {
+    if (scroller) following = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= FOLLOW_SLACK_PX;
+  }
+
+  /** A jump, not a glide, so it is the same with reduced motion. */
+  async function toEnd(): Promise<void> {
+    await tick();
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+  }
+
+  // A thread opens at its newest end, like a coding agent (THR-014).
+  $effect(() => {
+    void thread.id;
+    following = true;
+  });
+
+  $effect(() => {
+    void timeline.length;
+    void thread.entries;
+    if (following) void toEnd();
+  });
 </script>
 
 <!-- One thread as a timeline (THR-014): prompts at the trailing side, replies, reasoning folded, the tool calls of a
@@ -38,29 +68,40 @@
       {#if thread.started !== null}<span>Started {thread.started.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>{/if}
     </p>
   </header>
-  <div class="timeline" data-timeline>
-    {#each timeline as part, index (index)}
-      {#if part.kind === 'tools'}
-        <ToolBlock tools={part.tools} open={toolsOpen} />
-      {:else if part.entry.kind === 'prompt'}
-        <div class="you" data-prompt>
-          <p>{part.entry.text}</p>
-          {#if part.entry.images > 0}<span class="at">{part.entry.images === 1 ? '1 image' : `${String(part.entry.images)} images`}</span>{/if}
-          <span class="at">{clock(part.entry.at)}</span>
-        </div>
-      {:else if part.entry.kind === 'reply'}
-        <p class="reply">{part.entry.text}</p>
-      {:else if part.entry.kind === 'reasoning'}
-        <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
-      {:else if part.entry.kind === 'turn_end'}
-        <p class="turn">{part.entry.stopped ? 'Stopped' : 'Turn ended'}{part.entry.at === null ? '' : ` · ${clock(part.entry.at)}`}</p>
-      {:else}
-        <p class="turn">The program made the earlier part of the thread shorter</p>
-      {/if}
-    {:else}
-      <p class="turn">This session has no prompt and no reply that can be shown.</p>
-    {/each}
-    {#if thread.dropped > 0}<p class="turn">{thread.dropped} more entries are not shown.</p>{/if}
+  <div class="pane">
+    <!-- The thread scrolls on its own; it is reachable by keyboard so it can be read (WCAG 2.1.1). -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="scroll" tabindex="0" aria-label="Thread content" bind:this={scroller} onscroll={scrolled}>
+      <div class="timeline" data-timeline>
+        {#each timeline as part, index (index)}
+          {#if part.kind === 'tools'}
+            <ToolBlock tools={part.tools} open={toolsOpen} />
+          {:else if part.entry.kind === 'prompt'}
+            <div class="you" data-prompt>
+              <p>{part.entry.text}</p>
+              {#if part.entry.images > 0}<span class="at">{part.entry.images === 1 ? '1 image' : `${String(part.entry.images)} images`}</span>{/if}
+              <span class="at">{clock(part.entry.at)}</span>
+            </div>
+          {:else if part.entry.kind === 'reply'}
+            <p class="reply">{part.entry.text}</p>
+          {:else if part.entry.kind === 'reasoning'}
+            <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
+          {:else if part.entry.kind === 'turn_end'}
+            <p class="turn">{part.entry.stopped ? 'Stopped' : 'Turn ended'}{part.entry.at === null ? '' : ` · ${clock(part.entry.at)}`}</p>
+          {:else}
+            <p class="turn">The program made the earlier part of the thread shorter</p>
+          {/if}
+        {:else}
+          <p class="turn">This session has no prompt and no reply that can be shown.</p>
+        {/each}
+        {#if thread.dropped > 0}<p class="turn">{thread.dropped} more entries are not shown.</p>{/if}
+      </div>
+    </div>
+    {#if !following}
+      <div class="newest">
+        <FormButton size="sm" onclick={() => { following = true; void toEnd(); }}>Newest</FormButton>
+      </div>
+    {/if}
   </div>
   <p class="composer">
     This thread is read from the session file of {programName(thread.program)} on this computer. To continue it, use {programName(thread.program)}.
@@ -74,9 +115,43 @@
 <style>
   article {
     display: flex;
+    flex: 1;
     flex-direction: column;
     min-inline-size: 0;
     min-block-size: 0;
+  }
+
+  .pane {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-block-size: 0;
+  }
+
+  .scroll {
+    flex: 1;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .scroll:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: calc(var(--border-focus) * -1);
+  }
+
+  .newest {
+    position: absolute;
+    inset-block-end: var(--space-3);
+    inset-inline: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .newest > :global(*) {
+    pointer-events: auto;
   }
 
   header {
@@ -139,13 +214,10 @@
 
   .timeline {
     display: flex;
-    flex: 1;
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: calc(var(--content-form) * 1.25);
-    min-block-size: 0;
     padding: var(--space-6);
-    overflow-y: auto;
   }
 
   .timeline p {

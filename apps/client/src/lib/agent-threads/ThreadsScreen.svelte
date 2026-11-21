@@ -3,6 +3,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import { fillRoom } from '$lib/scroll/room';
   import LoadingState from '$lib/states/LoadingState.svelte';
   import { keyAction, moved } from './keys';
   import type { ThreadsStore } from './store.svelte';
@@ -17,6 +18,8 @@
   }
 
   const { store, now = () => new Date() }: Props = $props();
+  /** The px under the page in a wide window, where the list and the thread scroll on their own. */
+  const ROOM_GAP = 24;
   let program = $state<Program | null>(null);
   let search = $state('');
   let toolsOpen = $state(false);
@@ -76,7 +79,7 @@
 
 <!-- The page Threads (THR-011 to THR-017): the list beside one thread. It reads the session files of this computer
      through the desktop shell; it sends nothing to the hub and starts no program. -->
-<section class="threads" bind:this={screen}>
+<section class="threads" bind:this={screen} {@attach fillRoom(ROOM_GAP)}>
   <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Read only." />
   {#if store.rows === null && store.listProblem !== null}
     <ErrorState message={store.listProblem} onRetry={() => void store.loadList()} />
@@ -132,10 +135,34 @@
   }
 
   .thread {
+    display: flex;
+    flex-direction: column;
     min-inline-size: 0;
     border: var(--border-thin) solid var(--border-subtle);
     border-radius: var(--radius-lg);
     background: var(--surface-base);
+  }
+
+  /* In a wide window the page fills the window and does not scroll: the list and the thread each scroll on their
+     own, and the header of the thread, the search and the filter stay in view. */
+  @media (width > 60rem) {
+    .threads {
+      block-size: var(--room, auto);
+    }
+
+    .columns {
+      flex: 1;
+      align-items: stretch;
+      min-block-size: 0;
+    }
+
+    .columns > :global(*) {
+      min-block-size: 0;
+    }
+
+    .thread {
+      overflow: hidden;
+    }
   }
 
   /* In a narrow window the list stands over the thread. */

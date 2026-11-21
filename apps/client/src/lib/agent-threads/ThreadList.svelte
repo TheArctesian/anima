@@ -55,30 +55,33 @@
       onProgram(value === 'all' ? null : value);
     }}
   />
-  {#each groups(rows, now) as group (group.name)}
-    <section aria-label={group.name}>
-      <div class="head"><QuietLabel>{group.name}</QuietLabel><span class="count">{group.rows.length}</span></div>
-      <ul>
-        {#each group.rows as row (row.id)}
-          <li>
-            <button type="button" class="row" aria-current={row.id === chosen ? 'true' : undefined} data-thread={row.id} onclick={() => { onChoose(row.id); }}>
-              <span class="title">
-                <span class="dot" class:live={changedNow(row, now)} title={changedNow(row, now) ? 'Changed in the last 2 minutes' : undefined}></span>
-                <span class="words">{row.title ?? 'Untitled thread'}</span>
-              </span>
-              <span class="facts">
-                <span>{programName(row.program)}</span>
-                <span class="folder">{folderName(row.folder)}</span>
-                <span class="ago">{ago(row.last, now)}</span>
-              </span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </section>
-  {:else}
-    <p class="none">{search === '' && program === null ? 'No session of Claude Code or Codex is on this computer.' : 'No thread has these words.'}</p>
-  {/each}
+  <!-- The groups scroll on their own in a wide window, so the search and the filter stay in view. -->
+  <div class="groups">
+    {#each groups(rows, now) as group (group.name)}
+      <section aria-label={group.name}>
+        <div class="head"><QuietLabel>{group.name}</QuietLabel><span class="count">{group.rows.length}</span></div>
+        <ul>
+          {#each group.rows as row (row.id)}
+            <li>
+              <button type="button" class="row" aria-current={row.id === chosen ? 'true' : undefined} data-thread={row.id} onclick={() => { onChoose(row.id); }}>
+                <span class="title">
+                  <span class="dot" class:live={changedNow(row, now)} title={changedNow(row, now) ? 'Changed in the last 2 minutes' : undefined}></span>
+                  <span class="words">{row.title ?? 'Untitled thread'}</span>
+                </span>
+                <span class="facts">
+                  <span>{programName(row.program)}</span>
+                  <span class="folder">{folderName(row.folder)}</span>
+                  <span class="ago">{ago(row.last, now)}</span>
+                </span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {:else}
+      <p class="none">{search === '' && program === null ? 'No session of Claude Code or Codex is on this computer.' : 'No thread has these words.'}</p>
+    {/each}
+  </div>
 </div>
 
 <style>
@@ -87,6 +90,19 @@
     flex-direction: column;
     gap: var(--space-3);
     min-inline-size: 0;
+    min-block-size: 0;
+  }
+
+  .groups {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-block-size: 0;
+    /* Room for the focus ring of a row, which the scroll area would cut. */
+    padding: var(--border-focus);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .search {

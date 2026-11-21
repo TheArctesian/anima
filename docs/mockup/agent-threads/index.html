@@ -349,7 +349,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 
 /* ---------- Threads: a list of threads beside one thread (THR-012 to THR-016) ---------- */
 .v2 .threads { display: grid; grid-template-columns: 296px minmax(0, 1fr); flex: 1; min-height: 0; border-top: var(--border-thin) solid var(--border-subtle); }
-.v2 .tlist { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-2); background: var(--surface-base); border-right: var(--border-thin) solid var(--border-subtle); min-height: 0; overflow: hidden; }
+.v2 .tlist { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-2); background: var(--surface-base); border-right: var(--border-thin) solid var(--border-subtle); min-height: 0; overflow-y: auto; }
 .v2 .tlist .group { display: flex; flex-direction: column; gap: 2px; }
 .v2 .tlist .label { padding: 0 var(--space-2); display: flex; justify-content: space-between; }
 .v2 .trow { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border-radius: var(--radius-md); color: var(--text); }
@@ -366,7 +366,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .thead .row1 { display: flex; align-items: center; gap: var(--space-3); }
 .v2 .thead h2 { font-size: var(--t-xl); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v2 .thead .facts { display: flex; gap: var(--space-3); font-size: var(--t-sm); color: var(--text-secondary); flex-wrap: wrap; }
-.v2 .timeline { flex: 1; min-height: 0; overflow: hidden; padding: var(--space-6) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); max-width: 880px; width: 100%; }
+.v2 .timeline { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-6) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); max-width: 880px; width: 100%; }
 .v2 .you { align-self: flex-end; max-width: 78%; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); background: var(--surface-raised); }
 .v2 .you .at { display: block; margin-top: var(--space-1); font-size: var(--t-xs); color: var(--text-tertiary); text-align: right; }
 .v2 .reply { line-height: 1.6; }
@@ -457,7 +457,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </main>
 </div>
-<figcaption>Frame 1. Stage 1, dark, 1280 px. The list holds the sessions of Claude Code and Codex of this computer, read from their files, the last changed first, in three groups: changed in the last 2 minutes, today, earlier. A dot in the accent colour marks a file that changed in the last 2 minutes; it is not a state of the agent (THR-013). The thread shows the prompts, the replies, the reasoning folded, the tool calls in one block with one line each, the patch of an edit, and the end of each turn. The composer is a dashed note: stage 1 reads and starts nothing (THR-015). The button "Usage of this thread" opens Agent usage with the folder of the thread chosen.</figcaption>
+<figcaption>Frame 1. Stage 1, dark, 1280 px. The list holds the sessions of Claude Code and Codex of this computer, read from their files, the last changed first, in three groups: changed in the last 2 minutes, today, earlier. A dot in the accent colour marks a file that changed in the last 2 minutes; it is not a state of the agent (THR-013). The thread shows the prompts, the replies, the reasoning folded, the tool calls in one block with one line each, the patch of an edit, and the end of each turn. The composer is a dashed note: stage 1 reads and starts nothing (THR-015). The button "Usage of this thread" opens Agent usage with the folder of the thread chosen. In a wide window the page does not scroll: the list and the thread each scroll on their own, and the search, the filter and the header of the thread stay in view. A thread opens at its newest end and stays there while new entries come; when the reader scrolls up, a button "Newest" takes them back.</figcaption>
 </figure>
 <figure>
 <div class="v2" data-theme="light" style="width: 1280px; height: 1000px;">
