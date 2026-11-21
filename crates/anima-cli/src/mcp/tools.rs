@@ -8,7 +8,7 @@ pub mod events;
 pub mod extensions;
 pub mod link;
 pub mod maintenance;
-pub mod models;
+pub use devices::models;
 pub mod notifications;
 pub mod projects;
 pub mod releases;

@@ -10,6 +10,7 @@ mod compose_file;
 mod compute_policy;
 mod containers;
 mod metrics;
+pub mod models;
 mod read;
 
 use rmcp::model::JsonObject;
