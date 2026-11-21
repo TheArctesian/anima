@@ -272,7 +272,8 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
    runtime that listens on `0.0.0.0` into it, and run a cycle. Expected: `failed` with `listener`.
 9d. Read the `detail` of each `containment_failed` report: on a system with
    `kernel.apparmor_restrict_unprivileged_userns=1` and no profile it is `userns_denied`; with no `Delegate=yes` it
-   is `no_delegation`. Write the values of `sysctl kernel.apparmor_restrict_unprivileged_userns`,
+   is `no_delegation`. Until task L1-6c (the AppArmor profile) is built, `userns_denied` is the expected result on
+   a system of the Ubuntu family with the restriction on; it is not a failure of this check. Write the values of `sysctl kernel.apparmor_restrict_unprivileged_userns`,
    `kernel.unprivileged_userns_clone` and `user.max_user_namespaces`, and `aa-status --enabled`, on `pop-os`.
 9e. End the test daemon with
    `kill -9` while a server runs. Expected: the `llama-server` ends at once (the parent-death signal survived the

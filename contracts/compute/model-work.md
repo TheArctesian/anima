@@ -399,7 +399,10 @@ of the batches between.
     its own that maps the user and the group of the daemon to themselves; R-NEW-cgroupns), and then runs the
     runtime with `exec`. The root of the cgroups of the runtime is then the cgroup of its server: it cannot see
     the cgroup of the daemon or move a process out of its cgroup. When the namespaces cannot be made, the start
-    fails (`containment_failed`), with no fallback. At each poll the main process, while it runs, must be in the
+    fails (`containment_failed`), with no fallback. On a system that restricts user namespaces with AppArmor
+    (`kernel.apparmor_restrict_unprivileged_userns=1`, the default of Ubuntu 24.04 and later and its family), each
+    start fails with the detail `userns_denied` until the AppArmor profile of task L1-6c is installed
+    (R-NEW-appuserns); that is the expected result, not a fault. At each poll the main process, while it runs, must be in the
     cgroup of its server; when it is not, the server ends with `listener`. The loopback check
     reads the sockets of each process of `cgroup.procs` of the cgroup of the server and of each cgroup below it, in
     the network tables of each network namespace that a
