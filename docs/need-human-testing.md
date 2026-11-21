@@ -2580,8 +2580,10 @@ Result: Open.
 
 ### HT-NEW-threadsholder: the holder on Linux, against a second user, and with a process that leaves the tree (THR-049, THR-113, THR-128)
 
-Built on the local branch `threads/runner` (tasks TH11 and TH17 of [agent-threads.md](proposals/agent-threads.md)). The
-tests ran on a Mac only, as one user.
+Built on the branch `threads/runner` (tasks TH11 and TH17 of [agent-threads.md](proposals/agent-threads.md)). The tests
+run on a Mac as one user, and in the gates on GitHub on Linux (Ubuntu, procps `ps`). The first Linux run found one defect:
+a child that a shell does not reap (the shell waits in `read`) stays a zombie, and the holder counted it as alive; a
+zombie now counts as ended (`/proc/<pid>/stat`). On a Mac a zombie is still counted as alive.
 
 What the holder does to end the processes of a program: it walks the process table (`ps -axo pid=,ppid=,lstart=`) from
 the program down, in each process group, stops each process it finds, then kills it. While the program runs it looks at
