@@ -9,7 +9,8 @@ use super::*;
 fn launch(program: Program, mode: Mode) -> Launch {
     Launch {
         program,
-        path: PathBuf::from("/opt/homebrew/bin/claude"),
+        // Absolute on each system: a path that starts with `/` is relative on Windows.
+        path: std::env::temp_dir().join("claude"),
         mode,
         model: Some(Model::new("sonnet").expect("a model")),
         effort: Some(Effort::Low),

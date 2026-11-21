@@ -191,7 +191,8 @@ describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
   });
 });
 
-describe("while a train is on the way, nothing else wakes it: the script stays, then starts the workflow again", () => {
+// merge-to-dev.sh runs on a Linux runner of GitHub, under /bin/sh, which Windows does not have.
+describe.skipIf(process.platform === "win32")("while a train is on the way, nothing else wakes it: the script stays, then starts the workflow again", () => {
   /** Runs the script with stand-ins for bun, gh, git and sleep; `trains` says, for each step, if a train exists after it. */
   function steps(trains: boolean[], seconds: number, rule = '{"mergeWithoutCheck": true, "fullGates": "github"}'): string[] {
     const dir = mkdtempSync(join(tmpdir(), "merge-to-dev-"));
