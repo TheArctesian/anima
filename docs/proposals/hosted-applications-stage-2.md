@@ -1049,7 +1049,199 @@ A security review by a separate reviewer reads this section before it becomes a 
 
 ## 12. The routing of the domains of applications on the hub (R-NEW-hubrouting, task H21)
 
-The text follows.
+This section is a design with options. It adds no approved requirement and no code exists for
+it. It builds on Section 11 (the port of an application through the link, task H35) and on the
+path of task HM-T12 of [hosted-mode.md](hosted-mode.md). The front door at `hub.anima.ing` is a
+part of the cloud service; its plan is in a private repository, and this section does not change
+it. Section 12.9 lists the questions for that plan. A security review by a separate reviewer reads
+this section before any code (R-NEW-hubrouting).
+
+### 12.1 What the ruling decides, and what it changes
+
+- The reverse proxy for the domains of applications runs on the hub, and only there. The hub is
+  the front door of the public traffic of the applications of its machines.
+- A hosted hub has the proxy behind the front door of the cloud service. A hub that a person
+  hosts has it on its own ports 80 and 443.
+- It replaces "a reverse proxy on a machine of the operator" of R-213 and HOST-037. Anima installs
+  no proxy on a different machine. The trial of two proxy programs stays, on one hub.
+- Does the condition of task H21, "stage 2 in use", still hold? Not for the design and its review:
+  they start now. It holds for the trial and the build in a changed form: the proxy needs an
+  application to send traffic to (task H6, or an adopted project of task H16) and the path to the
+  port of an application (task H35). Thus no code of this section is built before those.
+
+### 12.2 The path of one request on a hosted hub
+
+1. A person's browser asks DNS for the name of an application, for example `photos.example.com`.
+   The owner of that domain has set the name to point at the front door (a `CNAME` to a name
+   that the cloud service gives, or the address of the door).
+2. The browser opens a TLS connection to the door, port 443, with the name in its SNI field.
+3. The door finds the hub that owns that name in its table of names (Section 12.4), and sends
+   the connection to that hub with no change: the door does not open the TLS (option R1 of
+   Section 12.10). If no hub owns the name, the door closes the connection.
+4. The proxy of the hub opens the TLS with the certificate of the name, reads the request, and
+   finds the application of that name: one device, one application, one recorded port.
+5. The proxy connects to that port through the one connect function of the hub (task HM-T12). On
+   a computer of the link the link dials `127.0.0.1:<port>` only for a port that the record of
+   the applications program names at that moment (Section 11.2). The answer goes back the same
+   way.
+
+On a hub that a person hosts, steps 2 and 3 are gone: the name points at the hub, and the proxy
+of the hub listens on ports 80 and 443 itself. Step 5 is the same, or the hub reaches the port on
+the network of the machine when the machine has "Open to the network" on (R-229).
+
+### 12.3 The rules of the proxy
+
+- **Only the ports of applications.** The proxy can connect only to a port that a record of an
+  application names. It cannot name a device and a port by itself, so it can never reach port 22,
+  5900 or 3389, or a port of a different program. The function that it calls takes the identifier
+  of an application, not a port.
+- **A process of its own.** The proxy holds the private keys of each name and reads each request
+  from the internet. It runs as a program apart from the hub process, with a user of its own, and
+  the hub gives it only the table of names and the certificates. A fault in the proxy must not give
+  the database or the sessions of the hub.
+- **Its own origin for each application (AC-D45).** An application is served only under its own
+  name. It is never served under the name of a hub or a path of it (`hub.anima.ing/app/...`), and
+  never under a name below a domain that holds a cookie of a hub. AC-D45, a finding of the review of
+  the door, says that one origin serves all hubs; the same risk is larger here, because the page of
+  an application is code of a different publisher. A name that Anima gives (for an application with
+  no domain of the person) is below a domain of its own, separate from `anima.ing`, that is on the
+  Public Suffix List (OD-HOST-30, option A).
+- **No header of the hub.** The proxy removes from each request the headers that a hub or the
+  door uses to name a person (for example a header that the door adds for the hub), and adds the
+  usual `X-Forwarded-For` and `X-Forwarded-Proto`. It sends no cookie of a hub.
+- **The hub sees no content.** The proxy writes no body of a request or an answer to a log
+  (LOG-007). It counts bytes and requests for each name (Section 12.7).
+- **API keys and agents.** No API key and no MCP tool reaches the page of an application through
+  the hub (Section 11.2, point 4). The public route of this section is for the public: the
+  application does its own sign-in.
+
+### 12.4 Who owns a name
+
+All hosted hubs share the address of the door. Thus "the name points at the address of the door"
+does not prove which hub owns it: each hub could claim each name that points at the door, also a
+name of a different person. The proof:
+
+1. The person adds the name to an application in his hub. The hub gives a token.
+2. The person writes a `TXT` record `_anima.<name>` with that token, and points the name at the
+   door.
+3. The hub asks the cloud service to add the name. The cloud service reads the `TXT` record
+   itself, with its own resolver, and checks that the token is that of this hub. Only then does
+   it add the name to the table of the door. A name that a different hub already owns is refused,
+   until the `TXT` record names the new hub.
+4. The cloud service reads the record again at intervals. When the token is gone or names a
+   different hub, it removes the name from the table, and the hub shows that the name is not
+   proven.
+
+A hub that a person hosts makes the same check of HOST-038 against its own address, with no
+token: it is the only hub at that address.
+
+### 12.5 Certificates
+
+- **Who asks.** The proxy of the hub asks for the certificate of each name with ACME, from Let's
+  Encrypt at first. Because the door does not open the TLS (option R1), the challenge
+  `TLS-ALPN-01` reaches the hub with no help of the door. `HTTP-01` needs the door to send plain
+  HTTP on port 80 for that name to the hub too; the design asks for that as well, because the
+  same route sends a browser from `http://` to `https://`. `DNS-01` is not used: the hub would need
+  a credential of the DNS of the person.
+- **When.** Only after the proof of Section 12.4, and only after the name points at the door
+  (HOST-038).
+- **CAA.** Before the first request the hub reads the `CAA` records of the name and of each
+  domain above it. If a record exists that does not permit the authority, the hub does not ask and
+  says which record stops it.
+- **Limits of the authority.** Let's Encrypt limits the certificates for each registered domain
+  each week, the new orders for each account, and the new accounts for each address. All hosted
+  hubs share the outbound address of the pool, so the limit for each address is shared. The design:
+  one ACME account for each hub, made at the first name; a new order only for a name that has
+  none, or a certificate with less than 30 days; failures wait longer each time. The exact numbers
+  of the limits are not in this text: they change, and the build reads the current page of the
+  authority.
+- **Where they are kept.** A hosted hub runs in a container that the pool can replace (R-130,
+  R-139). The certificates and the ACME account are kept in the data of the hub that the pool
+  backs up, not in the container. The private keys are sealed as the other secrets of the hub.
+- **The warning before the end.** The check of a certificate exists (CHK-007, NOT-006); each
+  name gets one.
+
+### 12.6 When a free hub sleeps
+
+A free hub sleeps when no device of the account is connected (HM-R6, R-164). A machine that runs
+an application and is connected keeps the hub awake. Thus a free hub sleeps only when each
+machine of the account is offline, and then each application is down anyway. Two cases stay:
+
+- The machine is online and the hub sleeps for a different reason (a fault, an update of the
+  pool). The door holds the connection while the cloud service wakes the hub, for a time limit,
+  and then closes it.
+- Each machine is offline. The door answers no request for those names. It does not wake the
+  hub for a request from the internet: then any person on the internet could keep a free hub
+  awake.
+
+OD-HOST-39 asks whether public names are a function of the paid plans only.
+
+### 12.7 Traffic and abuse
+
+Each byte of the public traffic of each hosted customer goes through the pool: in at the door,
+through the hub, through the link, and out the same way. The design:
+
+- **Limits for each plan.** The door counts bytes and connections for each hub and each name. Each
+  plan has a limit of bytes for each month, of connections at one time and of new connections each
+  second for each name. The numbers are a decision of the operator with the prices (OD-HOST-40);
+  this text gives none.
+- **Over a limit.** The door slows the name, then answers with a page that says that the limit of
+  the plan is reached. It never cuts the sessions of the hub or its devices.
+- **Abuse.** A page for phishing or malware on a name of the door damages the address of the pool
+  for each customer. The design: the terms of use forbid it; an address for reports of abuse; a
+  switch of the operator that removes one name from the door at once, with a record; the name that
+  Anima gives (Section 12.3) is below a domain apart from `anima.ing`, so a block of that domain does
+  not stop the hubs. HM-R8 (no access of the staff to hubs) stays: the switch acts on the table of
+  the door, not in the hub.
+- **Attacks on the door.** A flood of connections to one name must not stop the door for each
+  hub. The limit of new connections for each name and for each address of a client is at the door.
+
+### 12.8 What a hub that a person hosts needs
+
+- A public address, and ports 80 and 443 of that address that reach the hub. The proxy refuses
+  clearly when a different program uses port 80 or 443 (R-213).
+- The names of the applications point at that address.
+- A path from the hub to the port of the application: the link (Section 11), or the network of
+  the machine when the machine has "Open to the network" on (R-229). A port on `127.0.0.1` of a
+  machine that has neither is not reachable.
+- A hub with no public address (behind a router with no forward of the ports) is not in the first
+  version. The screen says so.
+
+### 12.9 Questions for the plan of the cloud service
+
+These questions belong to the private plan of the cloud service. This session wrote them in a
+note for the orchestrating session; it did not change that plan.
+
+1. Can the door route TLS by the name in SNI to one hub, with no TLS of its own (option R1), and
+   plain HTTP on port 80 by the `Host` header?
+2. Which network route from the door to each hub does R-239 give, and does it carry raw TCP, or
+   only HTTP?
+3. Can the door keep a table of names to hubs, with the `TXT` proof of Section 12.4 made by the
+   cloud service itself?
+4. Can the door hold a connection while the hub wakes, and for how long?
+5. Can the door count bytes and connections for each hub and each name, and slow or stop one name?
+6. Which outbound address do the hubs of the pool share, and is the limit of Let's Encrypt for
+   each address a problem at the expected number of hubs?
+7. Which domain apart from `anima.ing` holds the names that Anima gives, and who enters it on the
+   Public Suffix List?
+8. Does AC-D45 have a correction for the door that also covers the names of applications?
+
+### 12.10 Options for the operator
+
+- **OD-HOST-30** (exists) decides whether the hub serves the page of an application at all in the
+  first version, and under which name. This section adds the public route; the two answers of
+  OD-HOST-30 apply to it too.
+- **R1 or R2: where TLS ends on a hosted hub.** R1: at the proxy of the hub; the door sees only the
+  name in SNI. R2: at the door; the door holds each certificate and sees each request in plain
+  text. Recommendation: R1. With R2 a fault of the door shows the traffic of each customer, and the
+  door becomes the place of each certificate. Against R1: the door cannot answer a page of its own
+  for a name over its limit inside TLS; it can only close the connection. This is a question for
+  the review and the cloud plan, not yet for the operator.
+- **OD-HOST-39: public names on a free hub?** A: yes, with the limits of the free plan. B: only on a
+  paid plan. Recommendation: B. All public traffic goes through the pool, and an always-on route is
+  the paid step (HM-R6).
+- **OD-HOST-40: the numbers of the limits of each plan** (bytes each month, connections). A
+  decision with the prices. No recommendation in this text.
 
 ## 13. The recipe format of the catalogue (R-NEW-catalogueways, task H36)
 
