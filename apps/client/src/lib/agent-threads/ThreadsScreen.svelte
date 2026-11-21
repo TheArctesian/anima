@@ -5,7 +5,7 @@
   import ErrorState from '$lib/states/ErrorState.svelte';
   import { fillRoom } from '$lib/scroll/room';
   import LoadingState from '$lib/states/LoadingState.svelte';
-  import { keyAction, moved } from './keys';
+  import { keyAction, moved, type KeyAction } from './keys';
   import type { ThreadsStore } from './store.svelte';
   import { changedNow, narrowed, type Program } from './thread';
   import ThreadList from './ThreadList.svelte';
@@ -18,8 +18,6 @@
   }
 
   const { store, now = () => new Date() }: Props = $props();
-  /** The px under the page in a wide window, where the list and the thread scroll on their own. */
-  const ROOM_GAP = 24;
   let program = $state<Program | null>(null);
   let search = $state('');
   let toolsOpen = $state(false);
@@ -41,9 +39,17 @@
     return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
   }
 
+  /** The action of a key on the page. In the scroll area of the thread the arrow keys scroll it, not change the thread. */
+  function pageAction(event: KeyboardEvent): KeyAction | null {
+    const mod = event.metaKey || event.ctrlKey;
+    const action = keyAction({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
+    const inPane = event.target instanceof Element && event.target.closest('[data-own-keys]') !== null;
+    return action?.kind === 'move' && !mod && inPane ? null : action;
+  }
+
   /** The keys of the page (THR-016). The rule is `keyAction`; this does what it names. */
   function onkeydown(event: KeyboardEvent): void {
-    const action = keyAction({ key: event.key, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
+    const action = pageAction(event);
     if (action === null) return;
     const at = shown.findIndex((row) => row.id === store.chosen);
     switch (action.kind) {
@@ -79,7 +85,7 @@
 
 <!-- The page Threads (THR-011 to THR-017): the list beside one thread. It reads the session files of this computer
      through the desktop shell; it sends nothing to the hub and starts no program. -->
-<section class="threads" bind:this={screen} {@attach fillRoom(ROOM_GAP)}>
+<section class="threads" bind:this={screen} {@attach fillRoom()}>
   <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Read only." />
   {#if store.rows === null && store.listProblem !== null}
     <ErrorState message={store.listProblem} onRetry={() => void store.loadList()} />

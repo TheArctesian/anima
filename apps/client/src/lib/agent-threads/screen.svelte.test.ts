@@ -183,3 +183,14 @@ it('THR-014: a thread opens at its newest end; scrolled up, a control takes the 
   expect(layout.at(scroller()), 'another thread opens at its end too').toBe(800);
   for (const name of ['scrollHeight', 'clientHeight', 'scrollTop']) Reflect.deleteProperty(HTMLElement.prototype, name);
 });
+
+it('THR-016: in the scroll area of the thread the Down key scrolls it and does not open the next thread', async () => {
+  await open();
+  document.querySelector<HTMLButtonElement>('[data-thread="a1"]')?.click();
+  await settle();
+  const pane = document.querySelector<HTMLElement>('[aria-label="Thread content"]');
+  pane?.focus();
+  pane?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  await settle();
+  expect(asked).toEqual(['a1']);
+});

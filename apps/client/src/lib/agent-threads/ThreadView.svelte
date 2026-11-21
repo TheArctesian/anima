@@ -42,6 +42,20 @@
     following = true;
   });
 
+  // A pane or a content that changes its size (a window, a tool call or reasoning opened) keeps a reader at the end.
+  $effect(() => {
+    const node = scroller;
+    if (node === undefined || typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(() => {
+      if (following) node.scrollTop = node.scrollHeight;
+    });
+    observer.observe(node);
+    if (node.firstElementChild !== null) observer.observe(node.firstElementChild);
+    return () => {
+      observer.disconnect();
+    };
+  });
+
   $effect(() => {
     void timeline.length;
     void thread.entries;
@@ -71,7 +85,7 @@
   <div class="pane">
     <!-- The thread scrolls on its own; it is reachable by keyboard so it can be read (WCAG 2.1.1). -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <div class="scroll" tabindex="0" aria-label="Thread content" bind:this={scroller} onscroll={scrolled}>
+    <div class="scroll" role="region" tabindex="0" aria-label="Thread content" data-own-keys bind:this={scroller} onscroll={scrolled}>
       <div class="timeline" data-timeline>
         {#each timeline as part, index (index)}
           {#if part.kind === 'tools'}
@@ -99,7 +113,7 @@
     </div>
     {#if !following}
       <div class="newest">
-        <FormButton size="sm" onclick={() => { following = true; void toEnd(); }}>Newest</FormButton>
+        <FormButton size="sm" onclick={() => { following = true; void toEnd().then(() => scroller?.focus({ preventScroll: true })); }}>Newest</FormButton>
       </div>
     {/if}
   </div>
