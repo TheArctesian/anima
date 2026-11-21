@@ -159,8 +159,17 @@ impl Running {
                 .ok_or_else(|| io::Error::other("ps did not read"))?;
             super::tree::walk::descendants(&table, &roots)
         };
-        if members.is_empty() && matches!(self.child.try_wait(), Ok(None)) {
+        let running = matches!(self.child.try_wait(), Ok(None));
+        if running && members.is_empty() {
             return Err(io::Error::other("the main process runs outside its tree"));
+        }
+        // With a delegated cgroup a runtime can move itself into a different cgroup of the
+        // daemon; a main process that runs but is not in its own cgroup has left it (T1).
+        #[cfg(target_os = "linux")]
+        if running && !members.contains(&self.leader) {
+            return Err(io::Error::other(
+                "the main process left the cgroup of its server",
+            ));
         }
         self.known.clone_from(&members);
         self.record().save(&self.record);

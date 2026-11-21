@@ -2608,6 +2608,18 @@ The correction: The daemon ends only a cgroup named `anima-model-` directly belo
 
 State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
+### SF-NEW-l1workt1: With a delegated cgroup, a runtime can leave the cgroup of its server. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment, R-NEW-delegate; OD-C22.
+
+Where: `crates/daemon/src/model/server.rs`, `tree/linux.rs`.
+
+What it is: With `Delegate=yes`, the user of the daemon may write to each `cgroup.procs` of the delegated tree. A runtime can write its own process id into the `cgroup.procs` of the cgroup of the daemon and leave the cgroup of its server. When the main process leaves and a child stays, the tree still reads as not empty, and the main process is no longer read or ended by the cgroup.
+
+The correction: Each poll checks that the main process, while it runs, is a member of the `cgroup.procs` of its server; when it is not, the server is exposed and ends with `listener`. A child that leaves while the main process stays is not caught by this check. Linux only, not compiled on the Mac; HT-NEW-l1containment step 9a. The rest waits for the operator: a cgroup namespace in the launcher (so the runtime cannot see or write a cgroup above its own), or the risk accepted under OD-C22.
+
+State: Open. Check built; namespace or accept waits for the operator. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
+
 ### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.

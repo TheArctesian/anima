@@ -257,6 +257,9 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
    with `kill -9`, and start it again with the sweep. Expected: that path is not changed; the cgroup
    `anima-model-…` of the server is gone. `cat pids.max` in a new cgroup of a server shows `512` when the
    `pids` controller is delegated.
+9a. With a server running, write the process id of its `llama-server` into the `cgroup.procs` of the cgroup
+   of the daemon (`echo <pid> > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs`). Expected: at the next cycle
+   the server is `failed` with `listener`, and its processes and its cgroup are gone (SF-NEW-l1workt1).
 9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
    and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
    when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon
