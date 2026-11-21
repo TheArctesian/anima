@@ -153,3 +153,8 @@ fn the_walk_finds_a_live_child_on_this_mac() {
     }
     let _ = shell.wait();
 }
+
+#[tokio::test]
+async fn an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table() {
+    assert!(anima_daemon::model::sockets::table(&[]).await.is_err());
+}

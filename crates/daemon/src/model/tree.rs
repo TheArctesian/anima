@@ -100,10 +100,17 @@ impl Record {
         serde_json::from_slice(&std::fs::read(path).ok()?).ok()
     }
 
-    /// Ends each process of the record whose identity still holds, and its cgroup.
+    /// Ends each process of the record whose identity still holds, and its cgroup. It waits and
+    /// runs `ps` (macOS), so async code calls it on a blocking thread.
     pub fn end_all(&self) {
+        // A record can be written by the runtime when the sandbox is off; only a cgroup of a
+        // server of this daemon is ended (S5).
         #[cfg(target_os = "linux")]
-        if let Some(cgroup) = &self.cgroup {
+        if let Some(cgroup) = self
+            .cgroup
+            .as_deref()
+            .filter(|path| linux::is_server_cgroup(path))
+        {
             linux::end_cgroup(cgroup);
         }
         for identity in &self.known {

@@ -11,13 +11,34 @@ use rustix::fs::{Mode, OFlags};
 
 use daemon_core::model_work::folders::Folders;
 
-/// Makes `path` (and its missing parents) with mode 0700, then checks it.
+/// Makes `path` and its missing parents, one part at a time, with mode 0700, and checks each
+/// part that it made, and `path`: a plain folder (not a link) of this user. A parent that was
+/// already there (the home folder, a folder of the system) is used as it is.
 ///
 /// # Errors
-/// An I/O error, or `PermissionDenied` when the folder is a link, not a folder, or owned by a
+/// An I/O error, or `PermissionDenied` when a folder is a link, not a folder, or owned by a
 /// different user.
 pub fn private_folder(path: &Path) -> io::Result<()> {
-    DirBuilder::new().recursive(true).mode(0o700).create(path)?;
+    let missing: Vec<&Path> = path
+        .ancestors()
+        .take_while(|part| {
+            !part.as_os_str().is_empty()
+                && matches!(std::fs::symlink_metadata(part), Err(error) if error.kind() == io::ErrorKind::NotFound)
+        })
+        .collect();
+    for part in missing.into_iter().rev() {
+        match DirBuilder::new().mode(0o700).create(part) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+        own_plain_folder(part)?;
+    }
+    own_plain_folder(path)
+}
+
+/// Refuses `path` unless it is a plain folder (not a link) that this user owns.
+fn own_plain_folder(path: &Path) -> io::Result<()> {
     let meta = std::fs::symlink_metadata(path)?;
     let own = meta.uid() == rustix::process::geteuid().as_raw();
     if meta.file_type().is_symlink() || !meta.is_dir() || !own {

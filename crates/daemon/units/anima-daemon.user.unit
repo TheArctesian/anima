@@ -18,6 +18,9 @@ ProtectHome=read-only
 ReadWritePaths=%E/anima-daemon
 LimitCORE=0
 SocketBindDeny=any
+# The cgroup of this unit is delegated to the daemon, which makes one cgroup for each model server
+# below it (R-NEW-delegate, R-NEW-containment). systemd delegates only the cgroup of this unit.
+Delegate=yes
 
 [Install]
 WantedBy=default.target

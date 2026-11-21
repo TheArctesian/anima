@@ -109,3 +109,24 @@ fn a_link_in_a_parent_folder_is_not_followed() {
     assert!(private_below(&state, std::path::Path::new("servers/a/tmp")).is_err());
     assert!(!elsewhere.path().join("a").exists());
 }
+
+#[test]
+fn the_missing_parents_of_a_folder_of_model_work_are_made_private() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let root = tempfile::tempdir().expect("a folder");
+    let deep = root.path().join("a/b/c");
+    anima_daemon::model::folders::private_folder(&deep).expect("made");
+    for part in ["a", "a/b", "a/b/c"] {
+        let mode = std::fs::metadata(root.path().join(part))
+            .expect("a folder")
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o700, "{part}");
+    }
+    std::os::unix::fs::symlink(&deep, root.path().join("link")).expect("a link");
+    assert_eq!(
+        anima_daemon::model::folders::private_folder(&root.path().join("link"))
+            .map_err(|error| error.kind()),
+        Err(std::io::ErrorKind::PermissionDenied)
+    );
+}

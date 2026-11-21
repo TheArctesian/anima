@@ -2328,7 +2328,7 @@ Where: `crates/daemon/src/model/cycle.rs`, `supervise.rs`.
 
 What it is: The 15-second loopback check, the restarts, the limit of the temporary folder and the stop of the servers at the stop of the daemon do not run, because the running daemon does not start the model loop. `kill_on_drop` ended the main process only.
 
-The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The wiring (a 15-second ticker, `Node::sweep` at the start, `stop_all` at the stop) comes with the switch. Test: `the_whole_group_ends_when_the_node_drops`.
+The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The second read (2026-11-20, commit `df8aca4fc`) confirmed that nothing outside `src/model/` builds a `Node`. The wiring task must: call `Node::sweep` when the daemon starts, before any claim; call `Servers::cycle` every 15 seconds; call `stop_all` when the daemon stops; and start servers from a worker of the async runtime, never from `spawn_blocking` (SF-NEW-l1workx). No server can start before that wiring: the branch is not runnable as a server host until then. The plan row of L1-6 records this. Test: `the_whole_group_ends_when_the_node_drops`.
 
 State: Open. The drop is fixed on the branch `compute/l1-6`; the wiring waits for USE-004. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
 
@@ -2535,6 +2535,102 @@ What it is: The upstream releases of llama.cpp are mostly `.zip`.
 The correction: The operator added `.zip` (R-NEW-archivezip), with the same rules and limits: no link, no device, no encrypted entry, no absolute path or `..`, the case of each part, the declared size and the bytes read within the limit, the entry count, and the unpack into a temporary folder and one rename. Tests: `a_whole_zip_is_installed_with_plain_modes`, `a_hostile_zip_is_refused_and_leaves_nothing`, `a_zip_bomb_and_too_many_entries_stop_at_the_limits`.
 
 State: Open. Built on the branch `compute/l1-6` (not pushed), with tests. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1worku: On Linux the network tables of the first cgroup member only were read. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: The loopback check read `/proc/<pid>/net/*` of the first process of `cgroup.procs`. A member that moved into a network namespace of its own (unprivileged user namespaces) and sorted first hid the host listener of a different member.
+
+The correction: The daemon reads the tables of each distinct network namespace (`/proc/<pid>/ns/net`) of the members and merges them. A member that still runs but whose `fd` or `ns` files do not read (it made itself not dumpable) fails the read, so the check fails closed. Linux code, not compiled on the Mac of the build; HT-NEW-l1containment.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workv: An unreadable cgroup or an empty tree passed the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `sockets.rs`.
+
+What it is: `members` read `cgroup.procs` with a default of nothing, and an empty table gave the verdict loopback.
+
+The correction: `members` gives an I/O error, `poll` refuses an empty tree while the main process runs, and the socket table of an empty tree is an error. Each of these ends the server with `listener`. Test: `an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table` (the Linux read is not compiled on the Mac).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workw: One large entry could write past the disk reserve. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-NEW-l1worke.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The free disk was asked before each entry only, so one entry of up to 8 GiB could pass the reserve.
+
+The correction: The copy of an entry asks the disk again after each 64 MiB. Test: `the_disk_is_asked_again_while_one_large_entry_is_written`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workx: Races in the launcher of a server. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: If the daemon ended between the fork and the parent-death signal, the runtime ran on with no backstop. The signal also fires when the thread that started the launcher ends, so a start from `spawn_blocking` would kill each server about 10 seconds later.
+
+The correction: The daemon gives its process id to the launcher, which exits with code 125 when its parent is no longer the daemon after the signal is set. The documentation of `spawn` and `launch` says that a start must come from a thread that lives as long as the daemon. No test: Linux only, and a thread rule (HT-NEW-l1containment).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1worky: A cgroup that did not empty blocked the next start, with no log, and no process limit; blocking calls on async threads. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: The end of a cgroup gave up after 1 second with no log, and the next start of the same server then failed. No `pids.max` was set. The waits of the cgroup and the `ps` and `lsof` reads of macOS ran on the threads of the async runtime.
+
+The correction: A cgroup that does not empty is logged and left; each start has a cgroup of its own name. `pids.max` is 512 when the controller is delegated (a placeholder value in the contract, Section 9). The end and the signals of `kill` and `stop`, and the read of `cgroup.procs`, run on a blocking thread; `lsof` was already a child process with a timeout. The drop of a running server still ends its tree on its own thread, because a drop cannot wait. No test on the Mac for the cgroup part (HT-NEW-l1containment).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workz: The sweep trusted the cgroup path in a record that the runtime can write. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`.
+
+What it is: A forged `tree.json` could make the daemon write `cgroup.kill` in any path and remove any empty folder. The runtime is already that user, so it grants nothing new while the sandbox is off.
+
+The correction: The daemon ends only a cgroup named `anima-model-` directly below its own cgroup. The identities in the record are still trusted (accepted risk while the sandbox is off; with the sandbox, keep the records out of reach of the runtime). Linux code, not compiled on the Mac (HT-NEW-l1containment).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: A CRC that does not match, or a cut stream, came through `io::copy` as `limit_disk`.
+
+The correction: The copy tells a read error (`archive_rejected`) from a write error (`limit_disk`). Test: `an_entry_whose_bytes_break_their_check_is_a_rejected_archive`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-NEW-l1workroots: The three root folders were made with a recursive create. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-NEW-l1workj.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `private_folder` made the roots and their missing parents in one recursive call and checked the last folder only.
+
+The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 
 ## Closed
 

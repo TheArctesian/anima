@@ -166,16 +166,43 @@ impl<F: Fn() -> bool> Writer<F> {
         let mode = Mode::from_raw_mode(if mode & 0o111 != 0 { 0o755 } else { 0o644 });
         let fd = rustix::fs::openat(dir, name, flags, mode).map_err(|_| BAD_ARCHIVE)?;
         rustix::fs::fchmod(&fd, mode).map_err(|_| Cause::LimitDisk)?;
-        let mut file = File::from(fd);
-        let copied =
-            io::copy(&mut bytes.take(self.left + 1), &mut file).map_err(|_| Cause::LimitDisk)?;
-        if copied > self.left {
-            return Err(Cause::LimitDisk);
+        self.copy(bytes, &mut File::from(fd))
+    }
+
+    /// Copies one entry: a read error is a bad archive (a CRC that does not match, a cut
+    /// stream), a write error or a disk below the reserve is `limit_disk`. The disk is asked
+    /// again after each [`DISK_CHECK_BYTES`], so one large entry cannot pass the reserve.
+    fn copy(&mut self, bytes: &mut dyn Read, file: &mut File) -> Result<(), Cause> {
+        use io::Write as _;
+        let mut buffer = vec![0_u8; 1 << 16];
+        let mut since_check = 0_u64;
+        loop {
+            let read = match bytes.read(&mut buffer) {
+                Ok(0) => return Ok(()),
+                Ok(read) => read,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(_) => return Err(BAD_ARCHIVE),
+            };
+            let read_bytes = read as u64;
+            if read_bytes > self.left {
+                return Err(Cause::LimitDisk);
+            }
+            file.write_all(&buffer[..read])
+                .map_err(|_| Cause::LimitDisk)?;
+            self.left -= read_bytes;
+            since_check += read_bytes;
+            if since_check >= DISK_CHECK_BYTES {
+                since_check = 0;
+                if !(self.disk_holds)() {
+                    return Err(Cause::LimitDisk);
+                }
+            }
         }
-        self.left -= copied;
-        Ok(())
     }
 }
+
+/// The bytes of one entry between two checks of the free disk during the write.
+const DISK_CHECK_BYTES: u64 = 64 << 20;
 
 /// Unpacks `archive` of `format` into `into`, a new empty folder, within the limits of
 /// Section 6. `disk_holds` says whether the free disk is still above the reserve; it is asked

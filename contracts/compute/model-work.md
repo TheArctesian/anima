@@ -392,10 +392,15 @@ of the batches between.
   - On Linux the tree of a server is one cgroup v2 below the cgroup of the daemon, which its unit delegates. The
     server joins that cgroup before its program runs: the daemon starts the daemon program in the fixed mode
     `__model-launch`, which writes its own process id to `cgroup.procs`, sets the parent-death signal (`SIGKILL`) as a
-    backstop, and then runs the runtime with `exec`. The loopback check reads the sockets of each process of
-    `cgroup.procs`; a stop and an end use `cgroup.kill` and a signal to each process, then remove the cgroup. When
-    the cgroup cannot be made (no cgroup v2, or no delegation to the user of the daemon), the start fails
-    (`containment_failed`). There is no start with less containment.
+    backstop, checks that the daemon is still its parent, and then runs the runtime with `exec`. The loopback check
+    reads the sockets of each process of `cgroup.procs`, in the network tables of each network namespace that a
+    process is in, merged. A `cgroup.procs` that does not read, a process of the tree whose files do not read, or
+    an empty tree while the server runs, counts as a listener that is not on loopback (it fails closed). A stop and
+    an end use `cgroup.kill` and a signal to each process, then remove the cgroup; a cgroup that does not empty is
+    logged and left, and each start has a cgroup of its own name. When the `pids` controller is delegated, the
+    daemon sets `pids.max` of the cgroup to 512 (a placeholder value, to measure). When the cgroup cannot be made
+    (no cgroup v2, or no delegation to the user of the daemon), the start fails (`containment_failed`). There is no
+    start with less containment.
   - On macOS the tree is the walk of the parent processes from the server (`/bin/ps`), and the daemon records each
     process of the tree at each poll, so a child that a double fork gives to `launchd` stays in the tree once it was
     seen. This is best effort unless the server runs under the sandbox.
@@ -403,7 +408,9 @@ of the batches between.
     a process id that the system gave to a different program.
   - The daemon writes the identities and the cgroup of each server to a record in the folder of that server in the
     state folder at each poll. When the daemon starts, it ends the processes and the cgroups that each record names
-    and removes the records (the sweep), because it starts no server by itself (MW-P5).
+    and removes the records (the sweep), because it starts no server by itself (MW-P5). The sweep ends only a
+    cgroup named `anima-model-` directly below the cgroup of the daemon, because the runtime can write the record
+    when the sandbox is off.
 - **How the socket table is read (R-NEW-archivezip).** On macOS the daemon runs `/usr/sbin/lsof` by its absolute
   path, with an empty environment, for the processes of the tree, with a limit of 5 seconds. A read that does not
   end in time or does not read counts as a listener that is not on loopback (it fails closed). `proc_pidinfo` would

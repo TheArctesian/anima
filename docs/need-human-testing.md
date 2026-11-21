@@ -40,7 +40,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-NEW-l1hardware | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-NEW-l1daemonwork | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
-| HT-NEW-l1containment | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by a systemd user unit with `Delegate=yes` | Open |
+| HT-NEW-l1containment | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-NEW-delegate) | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -248,8 +248,25 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
    process is started.
 5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
    Expected: the `llama-server` of the first run and its cgroup are gone.
-6. Write in the result whether the units of the daemon must get `Delegate=yes` (the units of this build do not
-   have it).
+6. Install the user unit of this build (`anima-daemon install` from the test folder). Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes` (R-NEW-delegate).
+7. With a server running, start in its cgroup a process that enters a network namespace of its own
+   (`unshare -rn sleep 600`) and a second one that listens on `0.0.0.0` (`nc -l 0.0.0.0 41999`). Expected: at the
+   next cycle the server is `failed` with `listener`, and the cgroup is gone.
+8. With a server running, write a different path into the `cgroup` member of its `tree.json`, end the daemon
+   with `kill -9`, and start it again with the sweep. Expected: that path is not changed; the cgroup
+   `anima-model-…` of the server is gone. `cat pids.max` in a new cgroup of a server shows `512` when the
+   `pids` controller is delegated.
+9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
+   and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
+   when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon
+   or run `install` again, and the daemon cannot write its own unit (`ProtectHome=read-only`). So a computer that
+   enrolled before this build keeps a unit with no `Delegate=yes`, and each model start fails with
+   `containment_failed`. Until a fix: run `anima-daemon install` once by hand. Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes`. The proposed smallest fix: when the
+   desktop application starts and the daemon is enrolled, it places its own daemon and runs `install` again
+   when the unit file differs from the unit that this version renders (task U6 of the update plan owns the
+   update of the daemon).
 
 Result: Open.
 

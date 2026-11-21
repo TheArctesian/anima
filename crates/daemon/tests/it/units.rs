@@ -85,6 +85,11 @@ fn met_019_the_user_unit_keeps_the_basic_limits_and_the_network_families() {
 }
 
 #[test]
+fn the_user_unit_delegates_its_own_cgroup_for_the_model_servers() {
+    assert_eq!(value(&unit(SYSTEMD_USER), "Delegate"), Some("yes"));
+}
+
+#[test]
 fn met_019_the_launch_agent_parses_and_runs_the_binary_with_run() {
     let list = plist::Value::from_reader_xml(LAUNCH_AGENT.as_bytes()).expect("a property list");
     let dict = list.as_dictionary().expect("a dictionary");

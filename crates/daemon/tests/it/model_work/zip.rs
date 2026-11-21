@@ -157,3 +157,49 @@ fn a_zip_bomb_and_too_many_entries_stop_at_the_limits() {
         Err(Cause::LimitDisk)
     );
 }
+
+#[test]
+fn an_entry_whose_bytes_break_their_check_is_a_rejected_archive() {
+    let mut file = stored(&[Part::File("README", 0o644, b"the bytes of the entry")]);
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut bytes).expect("read");
+    let at = bytes
+        .windows(5)
+        .position(|window| window == b"bytes")
+        .expect("the data");
+    bytes[at] = b'B';
+    let mut broken = tempfile::tempfile().expect("a file");
+    broken.write_all(&bytes).expect("written");
+    broken.rewind().expect("rewind");
+    let into = tempfile::tempdir().expect("a folder");
+    assert_eq!(
+        unpack_within(
+            broken,
+            (ArchiveFormat::Zip, Limits::SECTION_6),
+            into.path(),
+            || true
+        ),
+        Err(Cause::ArchiveRejected)
+    );
+}
+
+#[test]
+fn the_disk_is_asked_again_while_one_large_entry_is_written() {
+    let large = vec![0_u8; 65 << 20];
+    let file = zip_of(
+        &[Part::File("large", 0o644, &large)],
+        zip::CompressionMethod::Deflated,
+    );
+    let asked = std::cell::Cell::new(0);
+    let into = tempfile::tempdir().expect("a folder");
+    let result = unpack_within(
+        file,
+        (ArchiveFormat::Zip, Limits::SECTION_6),
+        into.path(),
+        || {
+            asked.set(asked.get() + 1);
+            asked.get() == 1
+        },
+    );
+    assert_eq!((result, asked.get()), (Err(Cause::LimitDisk), 2));
+}

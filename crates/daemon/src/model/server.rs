@@ -73,6 +73,47 @@ impl Drop for Running {
     }
 }
 
+/// The parts of a running server that end its tree, apart from the handle of its child, so
+/// the end runs on a blocking thread (it reads `ps` on macOS and waits for the cgroup).
+#[derive(Clone)]
+struct Tree {
+    leader: Identity,
+    known: Vec<Identity>,
+    cgroup: Option<PathBuf>,
+    record: PathBuf,
+}
+
+impl Tree {
+    /// Sends `signal` to each known process whose identity holds.
+    fn signal_all(&self, signal: Signal) {
+        for identity in self.known.iter().chain([&self.leader]) {
+            let _gone_or_sent = tree::signal(identity, signal);
+        }
+    }
+
+    /// Ends the whole tree now: the cgroup, and each known process whose identity holds. On
+    /// macOS the walk is read once more first, so a child made after the last poll is ended
+    /// too.
+    fn end(mut self) {
+        #[cfg(not(target_os = "linux"))]
+        if let Some(table) = super::tree::walk::table() {
+            let roots: Vec<Identity> = self.known.iter().chain([&self.leader]).cloned().collect();
+            for found in super::tree::walk::descendants(&table, &roots) {
+                if !self.known.contains(&found) {
+                    self.known.push(found);
+                }
+            }
+        }
+        let record = Record {
+            known: self.known.clone(),
+            cgroup: self.cgroup.clone(),
+        };
+        record.end_all();
+        self.signal_all(Signal::KILL);
+        let _ = std::fs::remove_file(&self.record);
+    }
+}
+
 impl Running {
     /// The record of the tree now.
     fn record(&self) -> Record {
@@ -82,10 +123,20 @@ impl Running {
         }
     }
 
+    fn tree(&self) -> Tree {
+        Tree {
+            leader: self.leader.clone(),
+            known: self.known.clone(),
+            cgroup: self.cgroup.clone(),
+            record: self.record.clone(),
+        }
+    }
+
     /// Reads the processes of the tree, keeps them, and writes the record.
     ///
     /// # Errors
-    /// An error of the read of the tree (the cgroup on Linux, the walk on macOS).
+    /// An error of the read of the tree (the cgroup on Linux, the walk on macOS), or an empty
+    /// tree while the main process still runs (it left the tree): both fail closed.
     pub async fn poll(&mut self) -> io::Result<Vec<Identity>> {
         #[cfg(target_os = "linux")]
         let members = {
@@ -93,7 +144,9 @@ impl Running {
                 .cgroup
                 .clone()
                 .ok_or_else(|| io::Error::other("no cgroup"))?;
-            super::tree::linux::members(&cgroup)
+            tokio::task::spawn_blocking(move || super::tree::linux::members(&cgroup))
+                .await
+                .map_err(io::Error::other)??
         };
         #[cfg(not(target_os = "linux"))]
         let members = {
@@ -106,34 +159,23 @@ impl Running {
                 .ok_or_else(|| io::Error::other("ps did not read"))?;
             super::tree::walk::descendants(&table, &roots)
         };
+        if members.is_empty() && matches!(self.child.try_wait(), Ok(None)) {
+            return Err(io::Error::other("the main process runs outside its tree"));
+        }
         self.known.clone_from(&members);
         self.record().save(&self.record);
         Ok(members)
     }
 
-    /// Sends `signal` to each known process whose identity holds.
-    fn signal_all(&self, signal: Signal) {
-        for identity in self.known.iter().chain([&self.leader]) {
-            let _gone_or_sent = tree::signal(identity, signal);
-        }
+    /// Ends the whole tree on this thread: only for a drop, which cannot wait.
+    fn end_now(&mut self) {
+        self.tree().end();
     }
 
-    /// Ends the whole tree now: the cgroup, and each known process whose identity holds. On
-    /// macOS the walk is read once more first, so a child made after the last poll is ended
-    /// too.
-    fn end_now(&mut self) {
-        #[cfg(not(target_os = "linux"))]
-        if let Some(table) = super::tree::walk::table() {
-            let roots: Vec<Identity> = self.known.iter().chain([&self.leader]).cloned().collect();
-            for found in super::tree::walk::descendants(&table, &roots) {
-                if !self.known.contains(&found) {
-                    self.known.push(found);
-                }
-            }
-        }
-        self.record().end_all();
-        self.signal_all(Signal::KILL);
-        let _ = std::fs::remove_file(&self.record);
+    /// Ends the whole tree on a blocking thread.
+    async fn end_off_thread(&self) {
+        let tree = self.tree();
+        let _ = tokio::task::spawn_blocking(move || tree.end()).await;
     }
 }
 
@@ -173,6 +215,7 @@ fn command(launch: &Launch, cgroup: Option<&Path>) -> Command {
             command
                 .arg(super::tree::linux::LAUNCH_MODE)
                 .arg(cgroup.join("cgroup.procs"))
+                .arg(std::process::id().to_string())
                 .arg(&launch.program);
             command
         }
@@ -215,6 +258,10 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
 
 /// Starts the process of `launch` in its tree.
 ///
+/// Call it from a thread that lives as long as the daemon (a worker of the async runtime),
+/// never from `spawn_blocking`: on Linux the parent-death signal of the launcher fires when
+/// the thread that started it ends ([`super::tree::linux::launch`]).
+///
 /// # Errors
 /// `containment_failed` when the cgroup cannot be made (Linux); `start_failed` for an error of
 /// the folders, the ring or the start.
@@ -252,7 +299,7 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
 /// Ends the whole tree at once, also when its main process has already ended.
 pub async fn kill(running: &mut Running) {
     let _ = running.poll().await;
-    running.end_now();
+    running.end_off_thread().await;
     let _ = running.child.wait().await;
     running.ended = true;
 }
@@ -261,7 +308,8 @@ pub async fn kill(running: &mut Running) {
 /// left of the tree.
 pub async fn stop(running: &mut Running) {
     let _ = running.poll().await;
-    running.signal_all(Signal::TERM);
+    let tree = running.tree();
+    let _ = tokio::task::spawn_blocking(move || tree.signal_all(Signal::TERM)).await;
     let _ = tokio::time::timeout(Duration::from_secs(10), running.child.wait()).await;
     kill(running).await;
 }
