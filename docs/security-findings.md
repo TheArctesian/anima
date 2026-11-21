@@ -205,6 +205,11 @@ that owns the area.
 | SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-177 | On macOS the access lists of the folders of the copy and of the socket are not read. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-176 | On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low | The daemon on a computer of a person (task HM-T23) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2139,6 +2144,115 @@ What it is: `mcp/untrusted.rs` gave the cap of 4,000 characters with kept lines 
 The correction: only the top-level field `composeFile` of `anima_compose_from_run` keeps its lines (`cleaned_result`). The tool gives the file only when the cleaning does not change it; else `composeFile` is null, `withheld` says why, and `fileLength` gives the length of the whole file. The description of the tool says that an agent must not install a file from the result without a person reading it. Tests: `mcp_008_only_the_file_of_the_compose_tool_keeps_its_lines` and `mcp_008_a_file_that_the_cleaning_would_change_is_withheld`.
 
 State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+## The security review of the daemon on a computer of a person (task HM-T23, 2026-11-20)
+
+Task HM-T23 of [hosted-mode.md](proposals/hosted-mode.md) asks the security questions of its Section 7.1 before the installation with no question (HMD-053) is used on a computer where jobs of other people can run later. The review read the code on `dev` of 2026-11-20: the token store and the key store of `crates/daemon`, the enrolment, the units (`crates/daemon/src/units`, `crates/daemon/units`), the transport to the hub (`crates/daemon/src/hub.rs`, `hub/link_socket.rs`), the install of the desktop shell (`apps/desktop/src-tauri/src/daemon.rs`, `daemon/`), and the socket of the link (`link/cmd/anima-link/device.go`, `link/statedir`). It ran no program, and it did not read a token file or a key file. An agent did it; no second reviewer read it. The entries are about code that exists. "Severity" is the word of the reviewer.
+
+### The model: what a program of the same user can do
+
+The daemon on a computer of a person runs as that person (a `LaunchAgent`, or a systemd unit of the user). The design does not separate the daemon from the other programs of its user, and it cannot: a program of the same user can change the unit file (`~/Library/LaunchAgents`, `~/.config/systemd/user`), the copy in `~/.local/bin`, the folder of the daemon and the socket in it, and it can stop and start the daemon and the link. The entries below do not repeat this. The design accepts it, and it depends on one rule for the future: a job of another person must not run as the user of the daemon (task W2, SF-004). Until W2 is built, a computer with the daemon of its user is not a computer for the jobs of other people.
+
+What a program of the same user can do now, with no entry, because the model accepts it:
+
+- On Linux, read the token (`~/.config/anima-daemon/token`) and the key cache (`keys`) with no question: they are files of mode 0600 of that user (`crates/daemon/src/token_store/file.rs:29-32`, `config/private_file.rs:95-108`).
+- On both systems, get each cached operational key with `anima-daemon key read <name>` (`crates/daemon/src/keys.rs:34-55`, `main.rs:52-71`). This is the design of K-E5 Section 2.1 (R-147): the reader is for the programs of the user, and the Keychain trusts the daemon program, not the program that starts it.
+- On both systems, enrol the daemon again at a hub of its choice (`anima-daemon enrol`): the enrolment deletes the Keychain item and writes a new one (`token_store/keychain.rs:39-50`), and the running daemon then sends the metrics of the computer to that hub. That program can read the same metrics itself.
+- Replace the copy of the daemon or the unit file, so that its own program starts at each login.
+- On Linux, read the memory of the daemon with `ptrace` where the system permits it (the user unit does not prevent it: `crates/daemon/units/anima-daemon.user.unit`).
+
+What the token gives to a person who has it, at the hub (`crates/hub/src/fleet/metrics/ingest/routes.rs`): pushes of metrics in the name of the device, the operational keys of the device (`daemon/v1/keys/fetch`), and a renewal. A renewal gives a new token for 365 days, and its first use ends the token of the real daemon (`ingest/credential.rs:31-34`, `ingest/renewal.rs:9-13`). Thus a stolen token can stay usable after the theft is found, and it shuts out the real daemon, until the operator switches the device away from the daemon or deletes it (`ingest/credential.rs:46-57`). When the work route is built, the token also claims jobs and gets project secrets (SF-004, SF-006).
+
+### What is safe
+
+- Another local user cannot read the token. On macOS it is one generic password in the login Keychain of the user (`token_store/keychain.rs:11-12`). On Linux it is the file `token`, mode 0600, in a folder of mode 0700 that the daemon refuses when it is a link, is not owned by its user, gives group or others any access, or is below a folder that others can write with no sticky bit (`config/home.rs:97-121`, `config/private_file.rs:19-64`). The file is written to a new temporary file of mode 0600 and renamed, so the token is never in a file that others can read (`private_file.rs:95-108`). A POSIX access list on Linux shows in the group bits of the mode, so it is refused too.
+- Another local user cannot listen at the socket of the link: the daemon refuses a socket whose folder is not private to its user, or a thing at the path that is not a socket of its user (`hub/link_socket.rs:28-50`), and the link makes the socket only in such a folder (`link/statedir/statedir.go:242-266`). Exception: SF-177.
+- Another local user cannot replace the copy in `~/.local/bin`: the shell checks each folder from the root to `~/.local/bin` (owner the user or root, no write for others, write for the group only in the private group of the user, no POSIX access list) and copies with `O_CREAT|O_EXCL` and a rename (`apps/desktop/src-tauri/src/daemon/placement.rs:57-116`, `daemon/trust.rs:100-114`). The `install` of the daemon checks the program and its folders again before it writes the unit (`crates/daemon/src/units/install.rs:119-124`, `units/trust.rs:108-130`). Exception: SF-177.
+- The token is in no log, no argument and no environment. The daemon prints only fixed text (`crates/daemon/src/report.rs`); `DaemonToken` has no `Debug` (`crates/daemon-core/src/wire/secrets.rs`). The shell starts the daemon with fixed arguments (`enrol --hub <origin> -`, `install`), the enrolment code on standard input only, output thrown away, and an environment of `HOME`, `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` only (`daemon/run.rs:69-95`, `run.rs:140-175`). The origin in the arguments is not a secret.
+- The hub of the token cannot be changed in a file on macOS: the origin is kept in the Keychain record with the token, and `run` refuses a configuration whose hub is a different one (`token_store.rs:29-35`, `runtime.rs:98-105`).
+- On an `https` origin a changed environment cannot send the token to a different server: the client uses the fixed web PKI roots of `rustls`, no proxy and no redirect (`Cargo.toml` workspace `reqwest` with `rustls-tls`; `hub.rs:71-77`).
+- On macOS the carried daemon has a Developer ID signature of the Team ID of the release, the hardened runtime and no entitlement (`apps/desktop/src-tauri/src/builder/carried/mach_o.rs:86-140`). Thus `DYLD_INSERT_LIBRARIES` in the unit does not put code into the daemon, and a program of the same user cannot attach to it as a debugger without the rights of an administrator.
+- A backup on macOS: the login Keychain is encrypted with the password of the user, and the keyring crate (feature `apple-native`) writes to the login Keychain, which does not go to iCloud.
+
+### SF-179: A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium
+
+Requirements: SF-004, R-172 (task W0), HMD-054, MET-013; task HM-T23.
+
+What it is: on a hosted hub the daemon reaches the hub through the socket of the link, `link.sock` in the folder of the daemon (`apps/desktop/src-tauri/src/link/kept.rs:233-256`, `crates/daemon/src/config/home.rs:84-89`). It sends plain HTTP to that socket, with the token as a bearer (`crates/daemon/src/hub.rs:38`, `hub.rs:88-113`, `hub.rs:202-203`), and the enrolment code in the body of `daemon/v1/enrol`. The daemon checks the folder and the owner of the socket when it makes its client (`hub/link_socket.rs:28-50`), and then connects again for each request. It does not check what program listens. A program of the same user can remove `link.sock` and listen at the same path at each time; the link keeps its old socket open but gets no new connection. It can also stop the unit of the link, or wait for it to stop. The link removes a socket of the same user at its start (`link/statedir/statedir.go:253-265`), but the program can do the same again.
+
+Where: `crates/daemon/src/hub.rs`, `crates/daemon/src/hub/link_socket.rs`, `link/cmd/anima-link/device.go:70-79`.
+
+Effect, and who can cause it: a program of the user of the daemon, for example a job, a build script or a package that runs as that user. Effect: the token, within the next push of 10 seconds, with no question to the person; with it the operational keys of the device and a renewal that shuts out the real daemon (see "The model"). At an enrolment, the code, which the program can spend first, so that its own token is the token of the device. On Linux the program can read the token file in any case, so this adds little there. On macOS it is the difference: the Keychain item gives the token only to the daemon program, and `security find-generic-password` from a different program shows a question to the person; the socket gives the token with no question. SF-004 says that a program of the same user "can open the socket"; this entry is the other direction, a program that listens there.
+
+Mitigation now: none in the code. The model of this section: a job of another person must not run as the user of the daemon (W2).
+
+The fix (not built): the daemon must not send a reusable secret to a socket that a program of its user can take. Possible forms: TLS from the daemon to the hub through the socket, with the name or the key of the hub checked, so that the link carries bytes that it cannot read; or a token bound to a key that the daemon keeps in the Keychain (on Linux in the file store), with a signature on each request, so that a listener gets nothing that it can use again. A short-term limit on macOS: the daemon reads the audit token of the peer of the socket (`LOCAL_PEERTOKEN`) and accepts only a peer program with the Developer ID signature of the release. The requirement goes in K8 Section 1 and in HMD-054.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-178: On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low
+
+Requirements: R-172 (task W0), MET-013; task HM-T23.
+
+What it is: a record with an old link origin (`http://127.0.0.1:<port>`, made before task W0) reaches the hub through the socket in the folder of the daemon (`crates/daemon/src/config/origin.rs:121-128`, `runtime.rs:105`). That folder comes from `ANIMA_DAEMON_HOME` when it is set (`config/home.rs:51-53`). On macOS the token does not come from that folder: it comes from the Keychain, whose item trusts the daemon program (`token_store/keychain.rs:11-12`). `run` compares the hub of the token with the hub of the configuration in the named folder (`runtime.rs:98-104`); a program can write that configuration with the same old origin. Thus a program of the same user can start `~/.local/bin/anima-daemon run` with `ANIMA_DAEMON_HOME` set to a private folder of its own, with a `daemon.json` that names the old origin and a socket `link.sock` at which it listens, and the daemon reads the token from the Keychain with no question and sends it there.
+
+Where: `crates/daemon/src/config/home.rs`, `crates/daemon/src/runtime.rs`, `crates/daemon/src/config/origin.rs`.
+
+Effect, and who can cause it: a program of the user, on a Mac whose daemon was enrolled with an old link origin and not enrolled again. Effect: the token with no question to the person, as in SF-179. A record with an `https` origin or a `unix:` path is not affected: the path is in the Keychain record.
+
+Mitigation now: a new enrolment cannot use an old link origin (`config/origin.rs:54-57`, `LinkPort`); only old records are affected.
+
+The fix (not built): on macOS, take the socket of an old link origin from a fixed place that does not depend on the environment, or write the record again with its `unix:` path at the first run, or refuse an old link origin with an error that asks for a new enrolment. In general: when the token is in the Keychain, no value of the environment decides where it goes.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-175: The copy of the daemon in `~/.local/bin` is not checked after the installation. Low
+
+Requirements: MET-019, HMD-053, HMD-055; task HM-T23; Section 7.1 of [hosted-mode.md](proposals/hosted-mode.md).
+
+What it is: the shell copies the daemon to `~/.local/bin/anima-daemon` and runs that path only during `daemon_install` (`apps/desktop/src-tauri/src/daemon.rs:77-109`; `placement::place` has no other caller for the daemon). The unit starts that path at each login (`crates/daemon/units/ing.anima.daemon.plist`, `anima-daemon.user.unit`). After the installation no part of the application compares the file with the program that the application carries, or checks its signature. A program of the same user can put a different file there, or an older signed version of the daemon. Between the rename and the start of `enrol` (`daemon.rs:85-98`), the same program can replace the file, and the enrolment code then goes to its file.
+
+Where: `apps/desktop/src-tauri/src/daemon.rs`, `apps/desktop/src-tauri/src/daemon/placement.rs`.
+
+Effect, and who can cause it: a program of the user. The model accepts that such a program can start its own program at each login. What this adds: its program runs with the name, the label and the place that the person and the application trust, and the application shows the device as one that the daemon serves. On macOS a file with a different signature does not get the Keychain item with no question; macOS asks the person, with the name `anima-daemon`, and a person who knows the daemon can say yes. An older signed version gets the item with no question if the Keychain trusts the signature, not the exact file (the code sets no access list, so macOS uses its default for the item: `token_store/keychain.rs:39-55`).
+
+Mitigation now: none after the installation. The checks of the folders keep other users out (see "What is safe").
+
+The fix (not built): at each start, the application compares the copy with the program that it carries (bytes or hash; on macOS also `codesign --verify` against the Developer ID requirement of the release), puts the carried program back when they differ, and writes a line to its log. On macOS, a different place: a `LaunchAgent` registered with `SMAppService` that starts the program inside the signed application, which macOS protects from changes by other programs (App Management) and shows in Login Items. The update and the removal of HMD-055 and HMD-056 need the same comparison.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-177: On macOS the access lists of the folders of the copy and of the socket are not read. Low
+
+Requirements: MET-019, R-172 (task W0); task HM-T23.
+
+What it is: the checks of the folders read the mode bits, the owner and, on Linux, the POSIX access list. On macOS an access list (`chmod +a`) does not show in the mode, and the code does not read it: `has_acl` returns false on macOS (`apps/desktop/src-tauri/src/daemon/placement.rs:132-140`); the rule of the daemon says the same (`crates/daemon/src/units/trust.rs:6-8`); and `folder_private`, which guards the folder of the daemon and of `link.sock`, reads the mode only (`crates/daemon/src/config/private_file.rs:49-64`).
+
+Where: the three files above.
+
+Effect, and who can cause it: a different local user, when an entry of an access list gives that user the right to add or delete files in `~/.local`, `~/.local/bin`, or `~/Library/Application Support/anima-daemon`. The person or an administrator must make such an entry; macOS does not make one by default. Effect: that user can replace the copy of the daemon, or listen at `link.sock` and get the token (SF-179, by a different user).
+
+Mitigation now: none in the code. The comments of the code say it.
+
+The fix (not built): on macOS, read the access list of each folder (`acl_get_link_np`) and refuse each folder with an entry that allows `add_file`, `add_subdirectory`, `delete_child` or `write` to anyone but the user, in the three checks.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-176: On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low
+
+Requirements: MET-013, K8 Section 2, K-E5 Section 2.1; task HM-T23.
+
+What it is: on Linux the token is the file `~/.config/anima-daemon/token` and the operational keys are the file `keys` beside it, as plain JSON (`crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store.rs:1-3`). This is what K8 Section 2 says. The model accepts that a program of the user can read them. A backup tool of the home folder (for example Déjà Dup, which backs up the home folder by default) copies them as plain text to its target. The backup keeps the token for up to 365 days and the values of the keys with no limit; the deletion of the cache after 7 days (`keys.rs:1-9`) does not reach a backup. The workspace already builds the keyring crate with `sync-secret-service` for the desktop shell (`Cargo.toml:74`).
+
+Where: `crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store/file.rs`.
+
+Effect, and who can cause it: a person who can read a backup of the home folder, also on a different computer or a disk. Effect: the token (with the renewal of "The model") and the operational keys of the device.
+
+Mitigation now: the operator can end the token at the hub (switch the device away from the daemon, or delete it). The macOS store has no such copy: the Keychain is encrypted with the password of the user.
+
+The fix (not built): on a Linux computer with a session of a person, keep the token and the key cache in the Secret Service (encrypted with the login password), as the shell keeps its keys, and keep the file store for a server with no session and for the system unit. Where the file store stays, write the token and the cache in a folder that backup tools leave out (for example below `$XDG_STATE_HOME` with a `CACHEDIR.TAG`, or a documented exclusion), and say in K8 Section 2 that a backup of the folder holds the token.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
 
 ## Closed
 
