@@ -6,7 +6,7 @@ interface Step { name?: string; uses?: string; run?: string; if?: string; with?:
 interface Workflow {
   on: Record<string, unknown>;
   permissions: Record<string, string>;
-  jobs: Record<string, { permissions: Record<string, string>; environment?: string; steps: Step[] }>;
+  jobs: Record<string, { permissions: Record<string, string>; environment?: string; needs?: string[]; steps: Step[] }>;
 }
 const root = join(import.meta.dir, "..", "..");
 const raw = readFileSync(join(root, ".github/workflows/windows-trial.yml"), "utf8");
@@ -27,18 +27,34 @@ test("Windows dev trials are secret-free, read-only and never publish", () => {
 });
 
 test("a downloadable trial must pass native gates and installation checks with updates disabled", () => {
-  const steps = workflow.jobs["windows"]?.steps ?? [];
-  const build = steps.findIndex((step) => step.run?.includes("windows-bundle.ps1"));
-  const gates = steps.findIndex((step) => step.run?.includes("bun run gates"));
-  const install = steps.findIndex((step) => step.run?.includes("deploy/windows/install.ps1"));
-  const artifact = steps.findIndex((step) => step.with?.["name"] === "windows-trial");
+  const bundle = workflow.jobs["windows"]?.steps ?? [];
+  const build = bundle.findIndex((step) => step.run?.includes("windows-bundle.ps1"));
+  const install = bundle.findIndex((step) => step.run?.includes("deploy/windows/install.ps1"));
+  const installed = bundle.findIndex((step) => step.with?.["name"] === "windows-installed");
   expect(build).toBeGreaterThanOrEqual(0);
-  expect(gates).toBeGreaterThanOrEqual(build);
-  expect(install).toBeGreaterThan(gates);
-  expect(artifact).toBeGreaterThan(install);
-  expect(steps[build]?.run).not.toContain("-Release");
-  expect(steps[artifact]?.if).toBeUndefined();
-  expect(steps[artifact]?.with?.["if-no-files-found"]).toBe("error");
+  expect(install).toBeGreaterThan(build);
+  expect(installed).toBeGreaterThan(install);
+  expect(bundle[build]?.run).not.toContain("-Release");
+  expect(workflow.jobs["windows-gates"]?.steps.some((step) => step.run?.includes("bun run gates"))).toBe(true);
+  // The trial appears only when the installer was installed and checked and the gates passed.
+  const trial = workflow.jobs["windows-trial"];
+  expect(trial?.needs?.sort()).toEqual(["windows", "windows-gates"]);
+  for (const name of ["windows-trial", "windows-trial-cli"]) {
+    const artifact = trial?.steps.find((step) => step.with?.["name"] === name);
+    expect(artifact?.if).toBeUndefined();
+    expect(artifact?.with?.["if-no-files-found"]).toBe("error");
+  }
+  for (const job of Object.values(workflow.jobs)) {
+    expect(job.steps.some((step) => step.with?.["name"] === "windows-trial" && step.uses?.startsWith("actions/upload-artifact@"))).toBe(job === trial);
+  }
+});
+
+test("the Windows gates use the pinned cargo-nextest of the Linux gates and check its digest", () => {
+  const install = workflow.jobs["windows-gates"]?.steps.find((step) => step.run?.includes("cargo-nextest"))?.run ?? "";
+  const linux = /cargo-nextest@([\d.]+)/.exec(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8"))?.[1];
+  expect(install).toContain(`/cargo-nextest-${linux}/cargo-nextest-${linux}-x86_64-pc-windows-msvc.zip`);
+  expect(install).toMatch(/Get-FileHash .* -ne '[0-9a-f]{64}'/s);
+  expect(install).not.toContain("cargo install");
 });
 
 interface Gates { jobs: Record<string, { env?: Record<string, string>; if?: string; with?: Record<string, string>; steps?: Step[] }> }

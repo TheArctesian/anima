@@ -26,6 +26,9 @@ env:
   BASE_REF: ${{ inputs.base_ref || 'origin/phase-2' }}
 
 jobs:
+  # Three jobs (operator decision overnight 2026-11-21, (a), (c) and (d)): the installer and its
+  # installation check, and the Windows gates, run side by side on two runners; a Linux job
+  # publishes the trial only when both passed, so a downloadable trial still passed the gates.
   windows:
     runs-on: windows-2025
     timeout-minutes: 180
@@ -34,10 +37,11 @@ jobs:
     outputs:
       updater_sha256: ${{ steps.digest.outputs.updater_sha256 }}
       cli_sha256: ${{ steps.digest.outputs.cli_sha256 }}
-    env:
+    env: &windows-env
       VERSION: "0.0.1"
       RUSTC_WRAPPER: ""
-      CARGO_BUILD_JOBS: "2"
+      # Four parallel compilers on the four cores of the runner; three if a run fails for memory.
+      CARGO_BUILD_JOBS: "4"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
       GOENV: "off"
@@ -47,28 +51,33 @@ jobs:
       GOPROXY: https://proxy.golang.org
       GOSUMDB: sum.golang.org
     steps:
-      - name: Keep source line endings consistent with the Unix gates
+      - &autocrlf
+        name: Keep source line endings consistent with the Unix gates
         shell: pwsh
         run: git config --global core.autocrlf false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.ref }}
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - &bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
           no-cache: true
-      - name: Merge the dev of this run into the checkout
+      - &merge
+        name: Merge the dev of this run into the checkout
         shell: bash
         env:
           DEV_SHA: ${{ inputs.dev_sha }}
         run: sh .github/workflows/gates-merge.sh
-      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+      - &go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: link/go.mod
           cache: false
-      - name: Build the native installer and run the Windows gates
+      - name: Build the native installer
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -78,16 +87,8 @@ jobs:
           Import-Module "$installation/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
           Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
           & ./deploy/bin/windows-bundle.ps1 -Version $env:VERSION
-          $env:ANIMA_POSTGRES_TREE = "$pwd/apps/desktop/src-tauri/database"
-          $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
-          & bun deploy/bin/windows-command.ts cargo install cargo-nextest --locked
-          if ($LASTEXITCODE -ne 0) { throw 'cargo-nextest installation failed' }
-          & bun run gates 2>&1 | Tee-Object -FilePath windows-gates.log
-          if ($LASTEXITCODE -ne 0) { throw 'Windows gates failed' }
-          & bun deploy/bin/windows-command.ts cargo test -p anima-app --lib start_menu_environment_builds_with_the_discovered_windows_compiler -- --ignored
-          if ($LASTEXITCODE -ne 0) { throw 'Start-menu compiler discovery failed' }
       - id: digest
-        name: Give the checked installer its stable name and digest
+        name: Give the installer its stable name and digest
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -108,6 +109,75 @@ jobs:
       - name: Install and check the packaged programs
         shell: pwsh
         run: ./deploy/windows/install.ps1 -Installer "out/Anima_$($env:VERSION)_x64-setup.exe" -Version $env:VERSION
+      # Not the trial: the job windows-trial publishes it when the gates passed too.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-installed
+          path: |
+            out/
+            out-cli/
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-gates:
+    runs-on: windows-2025
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    env: *windows-env
+    steps:
+      - *autocrlf
+      - *checkout
+      - *bun
+      - *merge
+      - *go
+      - name: Install cargo-nextest 0.9.151, the version of the Linux gates, with its checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = "$env:RUNNER_TEMP/cargo-nextest.zip"
+          Invoke-WebRequest 'https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.151/cargo-nextest-0.9.151-x86_64-pc-windows-msvc.zip' -OutFile $zip
+          $digest = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($digest -ne 'ba35ee0ce14ace65cd8c7aaa9613adb7d2644b0fe3866e85131eb4c269786efb') { throw "cargo-nextest has the digest $digest" }
+          Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP/nextest"
+          "$env:RUNNER_TEMP/nextest" >> $env:GITHUB_PATH
+      - name: Run the Windows gates
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'MSVC build tools are missing' }
+          Import-Module "$installation/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          # The PostgreSQL tree of the installer, built from the same verified archives.
+          $env:ANIMA_POSTGRES_TREE = "$pwd/apps/desktop/src-tauri/database"
+          & bun apps/desktop/src-tauri/database-tree/windows.ts "$pwd/target/windows-database-work" $env:ANIMA_POSTGRES_TREE
+          if ($LASTEXITCODE -ne 0) { throw 'The PostgreSQL tree failed' }
+          $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
+          & bun run gates 2>&1 | Tee-Object -FilePath windows-gates.log
+          if ($LASTEXITCODE -ne 0) { throw 'Windows gates failed' }
+          & bun deploy/bin/windows-command.ts cargo test -p anima-app --lib start_menu_environment_builds_with_the_discovered_windows_compiler -- --ignored
+          if ($LASTEXITCODE -ne 0) { throw 'Start-menu compiler discovery failed' }
+      - name: Keep the gate log even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-gates
+          path: windows-gates.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  windows-trial:
+    needs: [windows, windows-gates]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-installed
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-trial
@@ -119,12 +189,4 @@ jobs:
           name: windows-trial-cli
           path: out-cli/
           if-no-files-found: error
-          retention-days: 14
-      - name: Keep the gate log even on failure
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: windows-gates
-          path: windows-gates.log
-          if-no-files-found: ignore
           retention-days: 14
