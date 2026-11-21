@@ -190,7 +190,7 @@ async fn met_020_a_token_bound_to_another_hub_is_never_adopted_and_never_sent() 
 }
 
 #[tokio::test]
-async fn k8_7_after_a_failure_the_wait_is_10_seconds_doubling_to_60_then_the_rhythm_returns() {
+async fn k8_7_after_a_failure_the_wait_is_2_seconds_doubling_to_60_then_the_rhythm_returns() {
     let hub = FakeHub::start().await;
     let mut rig = rig(&hub, 1, year());
     let unavailable = || Reply::refuse(RefusalCode::Unavailable);
@@ -200,13 +200,15 @@ async fn k8_7_after_a_failure_the_wait_is_10_seconds_doubling_to_60_then_the_rhy
         unavailable(),
         unavailable(),
         unavailable(),
+        unavailable(),
+        unavailable(),
     ]);
     feed(&mut rig, 1, 2);
     let mut waits = Vec::new();
-    for round in 0..5 {
+    for round in 0..7 {
         waits.push(seconds(rig.pusher.push_due(at(30 + round * 10)).await));
     }
-    assert_eq!(waits, [10, 20, 40, 60, 60]);
+    assert_eq!(waits, [2, 4, 8, 16, 32, 60, 60]);
     assert_eq!(
         seconds(rig.pusher.push_due(at(200)).await),
         10,
@@ -219,13 +221,13 @@ async fn k8_7_after_a_failure_the_wait_is_10_seconds_doubling_to_60_then_the_rhy
 async fn k8_7_the_wait_after_a_failure_is_spread_by_the_random_source() {
     let hub = FakeHub::start().await;
     let mut rig = crate::kit::spread_rig(&hub, 1, year(), || 0.0);
-    hub.queue_push((0..5).map(|_| Reply::refuse(RefusalCode::Unavailable)));
+    hub.queue_push((0..7).map(|_| Reply::refuse(RefusalCode::Unavailable)));
     feed(&mut rig, 1, 2);
     let mut waits = Vec::new();
-    for round in 0..5 {
-        waits.push(seconds(rig.pusher.push_due(at(30 + round * 10)).await));
+    for round in 0..7 {
+        waits.push(rig.pusher.push_due(at(30 + round * 10)).await.as_millis());
     }
-    assert_eq!(waits, [8, 16, 32, 48, 48]);
+    assert_eq!(waits, [1_600, 3_200, 6_400, 12_800, 25_600, 48_000, 48_000]);
 }
 
 #[tokio::test]
@@ -252,8 +254,8 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
     for point in points(1, 2) {
         pusher.accept(Event::Point(point));
     }
-    assert_eq!(seconds(pusher.push_due(at(30)).await), 10);
-    assert_eq!(seconds(pusher.push_due(at(40)).await), 20);
+    assert_eq!(seconds(pusher.push_due(at(30)).await), 2);
+    assert_eq!(seconds(pusher.push_due(at(40)).await), 4);
 
     let hub = FakeHub::serve(socket.listen(128).expect("the hub listens"));
     assert_eq!(seconds(pusher.push_due(at(60)).await), 10);

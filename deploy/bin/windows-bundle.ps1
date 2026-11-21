@@ -85,8 +85,11 @@ try {
     $configuration = @{ version = $Version; bundle = $bundle } | ConvertTo-Json -Depth 5 -Compress
     $configurationPath = "$root/target/windows-bundle.json"
     [IO.File]::WriteAllText($configurationPath, $configuration)
+    # tauri.windows-carried.json names the seven programs and the tree. It is not
+    # tauri.windows.conf.json, which each Windows cargo build reads: the gates build no program.
     Invoke-Checked bun @('run', '--cwd', 'apps/desktop', 'tauri', 'build',
-        '--target', 'x86_64-pc-windows-msvc', '--config', 'src-tauri/tauri.windows.conf.json', '--config', $configurationPath)
+        '--target', 'x86_64-pc-windows-msvc', '--config', 'src-tauri/tauri.windows.conf.json',
+        '--config', 'src-tauri/tauri.windows-carried.json', '--config', $configurationPath)
 } finally {
     Set-Location $before
     foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }

@@ -28,7 +28,22 @@ describe("the jobs that a pushed branch needs (gates.ts --jobs)", () => {
   });
 
   test("the lines for the output of a step", () => {
-    expect(jobLines({ rust: false, go: true, documentsOnly: false })).toEqual(["rust=false", "go=true", "documents_only=false"]);
+    expect(jobLines({ rust: false, go: true, documentsOnly: false })).toEqual(["rust=false", "go=true", "documents_only=false", "rust_crates="]);
+    expect(jobLines({ rust: true, go: false, documentsOnly: false, rustCrates: ["anima-app", "hub"] })).toContain("rust_crates=anima-app,hub");
+  });
+
+  test("when each Rust change is a test of a crate, the Rust jobs take only those crates", () => {
+    const owner = (path: string) => ({ "crates/hub/src/a/tests.rs": "hub", "crates/hub/tests/it/x.rs": "hub", "crates/cli/src/tests/b.rs": "cli" })[path];
+    expect(jobsFor(["crates/hub/src/a/tests.rs", "crates/cli/src/tests/b.rs", "crates/hub/tests/it/x.rs", "docs/x.md"], owner)).toEqual({ rust: true, go: false, documentsOnly: false, rustCrates: ["cli", "hub"] });
+    expect(jobsFor(["crates/hub/src/a/tests.rs", "apps/client/src/x.ts", "link/tunnel/t.go"], owner)).toEqual({ rust: true, go: true, documentsOnly: false, rustCrates: ["hub"] });
+  });
+
+  test("one Rust change that is not a test, or a change of the runners, gives the Rust jobs each crate", () => {
+    const owner = (path: string) => (path.endsWith("tests.rs") ? "hub" : undefined);
+    expect(jobsFor(["crates/hub/src/a/tests.rs", "crates/hub/src/a.rs"], owner).rustCrates).toBeUndefined();
+    expect(jobsFor(["crates/hub/src/a/tests.rs", "Cargo.lock"], owner).rustCrates).toBeUndefined();
+    expect(jobsFor(["crates/hub/src/a/tests.rs", ".github/workflows/gates.yml"], owner)).toEqual(EACH_JOB);
+    expect(jobsFor(["apps/client/src/x.ts"], owner).rustCrates).toBeUndefined();
   });
 });
 

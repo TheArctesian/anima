@@ -20,7 +20,7 @@ mod times;
 mod update;
 mod work;
 
-pub use agent_usage::{BatchAgentUsage, BatchModel, BatchSessionDay};
+pub use agent_usage::{BatchAccount, BatchAgentUsage, BatchLimit, BatchModel, BatchSessionDay};
 pub use batch::{
     Announcements, Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, DriveKind, GpuVendor,
 };

@@ -2,6 +2,8 @@
 
 use graphql_client::GraphQLQuery;
 
+use crate::hub::scalars::DateTime;
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
