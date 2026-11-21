@@ -2562,6 +2562,14 @@ not compared with its mockup.
    Expected: the same parts in the same order. Write each difference in the row of the mockup.
 7. On the Linux computer `pop-os`, do steps 1, 2 and 5.
    Expected: the same.
+8. (Branch `threads/needs-you`.) In a terminal, give Claude Code a short task and wait until it ends. Do not open its thread.
+   Expected: in at most 30 seconds the thread is in the group "Needs you" at the top, with a bell and the words "Your
+   turn", and the item Threads of the bar shows the count 1. Give a long task: while the agent works, the thread is in
+   the group "Working" at the bottom. Open the thread that waits: it goes to "Earlier" with "Done", and the count goes.
+9. (Branch `threads/needs-you`.) Start a task in which Claude Code asks for an approval, and do not answer for more than one minute.
+   Expected: the thread is in "Needs you", first, with the words "May wait for you". Hold the pointer on the list while a
+   different thread changes its state: no row moves under the pointer; the rows slide when the pointer leaves the list.
+   No system notification comes: that part is not built (task TH6).
 
 Result: Open.
 

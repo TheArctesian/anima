@@ -48,6 +48,7 @@ const CLAUDE: [&str; 7] = [
 fn thr_003_a_claude_code_file_reads_as_a_thread_in_order() {
     let thread = read(Source::ClaudeCode, &CLAUDE);
     assert_eq!(kinds(&thread), ["prompt", "reasoning", "tool", "reply"]);
+    assert_eq!(thread.tail, Tail::Open);
     assert_eq!(thread.title.as_deref(), Some("Fix the login test"));
     assert_eq!(thread.folder.as_deref(), Some("/w/anima"));
     assert_eq!(thread.branch.as_deref(), Some("dev"));
@@ -187,4 +188,57 @@ fn thr_004_a_title_of_the_program_is_one_line_of_80_characters_at_most() {
         thread.title.map(|title| title.chars().count()),
         Some(TITLE_LENGTH)
     );
+}
+
+fn tail_of(source: Source, lines: &[&str]) -> Tail {
+    read(source, lines).tail
+}
+
+#[test]
+fn thr_055_a_claude_code_file_ends_with_a_turn_that_ended_an_open_tool_call_or_a_stop() {
+    let prompt = r#"{"type":"user","message":{"content":"Fix it"}}"#;
+    let call = r#"{"type":"assistant","message":{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}"#;
+    let result = r#"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}"#;
+    let done = r#"{"type":"assistant","message":{"stop_reason":"end_turn","content":[{"type":"text","text":"Done."}]}}"#;
+    let stop = r#"{"type":"user","message":{"content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}"#;
+    assert_eq!(tail_of(Source::ClaudeCode, &[]), Tail::Nothing);
+    assert_eq!(tail_of(Source::ClaudeCode, &[prompt]), Tail::Open);
+    assert_eq!(tail_of(Source::ClaudeCode, &[prompt, call]), Tail::OpenTool);
+    assert_eq!(
+        tail_of(Source::ClaudeCode, &[prompt, call, result]),
+        Tail::Open
+    );
+    assert_eq!(
+        tail_of(Source::ClaudeCode, &[prompt, call, result, done]),
+        Tail::TurnEnded
+    );
+    assert_eq!(
+        tail_of(Source::ClaudeCode, &[prompt, call, stop]),
+        Tail::Stopped
+    );
+    assert_eq!(
+        tail_of(Source::ClaudeCode, &[prompt, call, result, done, prompt]),
+        Tail::Open
+    );
+    let ended = read(Source::ClaudeCode, &[prompt, done, stop]);
+    assert_eq!(kinds(&ended), ["prompt", "reply", "end", "end"]);
+    assert_eq!(ended.prompts, 1, "the note of an interrupt is not a prompt");
+}
+
+#[test]
+fn thr_055_a_codex_file_ends_with_a_turn_that_ended_an_open_tool_call_or_a_stop() {
+    assert_eq!(tail_of(Source::Codex, &CODEX), Tail::Stopped);
+    assert_eq!(tail_of(Source::Codex, &CODEX[..5]), Tail::OpenTool);
+    assert_eq!(tail_of(Source::Codex, &CODEX[..6]), Tail::Open);
+    let done = r#"{"type":"event_msg","payload":{"type":"task_complete"}}"#;
+    assert_eq!(tail_of(Source::Codex, &[CODEX[3], done]), Tail::TurnEnded);
+}
+
+#[test]
+fn thr_055_two_open_tool_calls_stay_open_until_both_have_a_result() {
+    let calls = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"a","name":"Read","input":{}},{"type":"tool_use","id":"b","name":"Read","input":{}}]}}"#;
+    let one = r#"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"a","content":"x"}]}}"#;
+    let two = r#"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b","content":"y"}]}}"#;
+    assert_eq!(tail_of(Source::ClaudeCode, &[calls, one]), Tail::OpenTool);
+    assert_eq!(tail_of(Source::ClaudeCode, &[calls, one, two]), Tail::Open);
 }
