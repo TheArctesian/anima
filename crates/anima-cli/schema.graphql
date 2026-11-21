@@ -880,9 +880,9 @@ type DeviceCapabilities {
 "The device policy of one device and whether it takes model work now."
 type DevicePolicy {
   device: Device!
-  "The largest part of the usable memory that models may use, 1 to 100 percent. Default 75."
+  "The largest part of the usable memory that the daemon reports (Hardware.usableMemoryBytes, else the dedicated or the system memory) that models may use, 1 to 100 percent. Default 100: the fit estimate keeps its own overhead, so the share adds no second margin."
   memorySharePercent: Int!
-  "The largest part of the disk that model files may use, 1 to 100 percent. Default 50."
+  "The largest part of the free disk that model files may use, 1 to 100 percent. Default 75. The disk reserve of the daemon always wins: the usable disk is the smaller of this share of the free disk and the free disk less the reserve (contracts/compute/model-work.md Section 7)."
   diskSharePercent: Int!
   "The hours in which the device takes no new model work; null for none."
   quietHours: QuietHours

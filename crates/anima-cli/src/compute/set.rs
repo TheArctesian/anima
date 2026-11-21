@@ -15,7 +15,7 @@ pub struct SetArgs {
     /// The largest part of the usable memory that models may use, 1 to 100 percent.
     #[arg(long)]
     memory_share: Option<i64>,
-    /// The largest part of the disk that model files may use, 1 to 100 percent.
+    /// The largest part of the free disk that model files may use, 1 to 100 percent.
     #[arg(long)]
     disk_share: Option<i64>,
     /// Quiet hours as HH:MM-HH:MM, for example 22:00-07:00; needs --time-zone.

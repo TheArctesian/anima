@@ -3,7 +3,7 @@
 -- waits for a ruling, R-NEW-devicepolicy.
 --
 -- One row per device whose operator set a policy; a device with no row has the default policy
--- of the hub (75 percent memory, 50 percent disk, no quiet hours, mains power only, the
+-- of the hub (100 percent of the usable memory, 75 percent of the free disk, no quiet hours, mains power only, the
 -- operator may be active). The switch "takes work" is not here: it is `jobs.machines` (USE-004,
 -- OD-C8, R-165). The quiet hours are all three columns or none; they go past midnight when the
 -- end is not after the start. No row holds a secret. Deleting a device deletes its row

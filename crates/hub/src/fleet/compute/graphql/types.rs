@@ -32,7 +32,7 @@ impl DevicePolicyView {
         self.status.policy.memory_share.into()
     }
 
-    /// The largest part of the disk that model files may use, in percent.
+    /// The largest part of the free disk that model files may use, in percent.
     async fn disk_share_percent(&self) -> i32 {
         self.status.policy.disk_share.into()
     }

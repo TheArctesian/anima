@@ -78,8 +78,8 @@ async fn cmp_002_a_machine_whose_switch_is_off_gets_no_model_work(pool: PgPool) 
     assert_eq!(switched_on["takesModelWork"], true, "{switched_on}");
     assert_eq!(
         switched_on,
-        json!({ "device": { "id": DOCKER_HOST }, "memorySharePercent": 75,
-                "diskSharePercent": 50, "quietHours": null, "mainsOnly": true,
+        json!({ "device": { "id": DOCKER_HOST }, "memorySharePercent": 100,
+                "diskSharePercent": 75, "quietHours": null, "mainsOnly": true,
                 "idleOnly": false, "isDefault": true, "takesModelWork": true, "stopReason": null })
     );
 }
