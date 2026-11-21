@@ -36,9 +36,6 @@ enum Shape {
     After(&'static str),
     /// The last word of the line: `nix (Determinate Nix 3.6.2) 2.29.0`.
     LastWord(&'static str),
-    /// As `After`, for the first of these texts a line starts with: `ollama version is 0.5.7`,
-    /// or `Warning: client version is 0.5.7` when no Ollama server runs.
-    AfterAny(&'static [&'static str]),
 }
 
 const fn probe(tool: ToolName, args: &'static [&'static str], shape: Shape) -> Probe {
@@ -57,7 +54,7 @@ const fn probe(tool: ToolName, args: &'static [&'static str], shape: Shape) -> P
 const VERSION: &[&str] = &["--version"];
 
 /// Every probe, in [`ToolName`] order (CAP-023).
-pub const PROBES: [Probe; 17] = [
+pub const PROBES: [Probe; 13] = [
     probe(ToolName::Git, VERSION, Shape::After("git version ")),
     probe(ToolName::Rustc, VERSION, Shape::After("rustc ")),
     probe(ToolName::Cargo, VERSION, Shape::After("cargo ")),
@@ -84,23 +81,6 @@ pub const PROBES: [Probe; 17] = [
         own_home: true,
         ..probe(ToolName::Codex, VERSION, Shape::After("codex-cli "))
     },
-    // The model runtimes (CAP-003). Each prints its version and starts no model; `ollama` asks a
-    // running Ollama server on the loopback address for its version and prints its own if none.
-    probe(ToolName::LlamaServer, VERSION, Shape::After("version: ")),
-    Probe {
-        program: Program {
-            name: "mlx_lm.server",
-            args: VERSION,
-        },
-        only_on: Some(Os::Macos),
-        ..probe(ToolName::MlxLm, VERSION, Shape::After(""))
-    },
-    probe(ToolName::Vllm, VERSION, Shape::After("")),
-    probe(
-        ToolName::Ollama,
-        VERSION,
-        Shape::AfterAny(&["ollama version is ", "Warning: client version is "]),
-    ),
 ];
 
 /// The installed Rust targets, one to a line (CAP-023).
@@ -136,17 +116,13 @@ impl Probe {
     /// The version in what the probe printed; `None` for output of another shape.
     #[must_use]
     pub fn version(&self, output: &[u8]) -> Option<String> {
-        let prefixes: &[&str] = match &self.shape {
-            Shape::After(prefix) | Shape::LastWord(prefix) => std::slice::from_ref(prefix),
-            Shape::AfterAny(prefixes) => prefixes,
+        let prefix = match self.shape {
+            Shape::After(prefix) | Shape::LastWord(prefix) => prefix,
         };
-        let (line, prefix) = version::text_lines(output).find_map(|line| {
-            let prefix = prefixes.iter().find(|prefix| line.starts_with(**prefix))?;
-            Some((line, *prefix))
-        })?;
+        let line = version::text_lines(output).find(|line| line.starts_with(prefix))?;
         let rest = &line[prefix.len()..];
         let word = match self.shape {
-            Shape::After(_) | Shape::AfterAny(_) => rest.split_whitespace().next(),
+            Shape::After(_) => rest.split_whitespace().next(),
             Shape::LastWord(_) => rest.split_whitespace().next_back(),
         }?;
         version::leading_version(word)

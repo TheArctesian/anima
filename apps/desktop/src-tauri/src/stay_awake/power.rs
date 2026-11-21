@@ -1,7 +1,7 @@
 //! Where this computer's power comes from now (AWK-006): on macOS from `pmset -g batt`, on
 //! Linux from `/sys/class/power_supply`. Neither needs more rights. A state that cannot be
 //! read is `Mains`, so a read failure never turns the control off. The parse is the daemon's
-//! (`daemon_core::hardware::power`), so the two read the power source alike (CAP-004).
+//! (the crate `power`), so the two read the power source alike (CAP-004).
 
 use std::{ffi::OsStr, fs, path::Path, time::Duration};
 
@@ -21,7 +21,7 @@ const PMSET_LIMIT: Limit = Limit {
 
 const PMSET_OUTPUT: Stdout = Stdout::Capture { max_bytes: 4096 };
 
-pub use daemon_core::hardware::power::{Supply, from_pmset, from_supplies};
+pub use ::power::{Supply, from_pmset, from_supplies};
 
 fn supply_at(entry: &Path) -> Supply {
     let field = |name: &str| {

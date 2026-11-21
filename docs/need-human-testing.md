@@ -229,8 +229,7 @@ Result: Open.
 
 ### HT-NEW-l1hardware: the hardware values agree with what each system shows
 
-Built: `crates/daemon-core/src/hardware/`, `crates/daemon/src/readers/hardware/`, the model
-runtimes in the tool inventory, the hub migration `0720_metrics_hardware.sql`, the field
+Built: `crates/daemon-core/src/hardware/`, `crates/daemon/src/readers/hardware/`, the hub migration `0720_metrics_hardware.sql`, the field
 `hardware` of `capabilities`, `anima capability list` and `anima_capability_list` (task L1-1 of
 the compute plan; CAP-001 to CAP-005, CAP-032; R-165). The tests use scripted output in place of
 the real commands and files, and a scripted hub. This check gives the values that OD-C1 needs.
@@ -257,12 +256,7 @@ confirmation of the operator (VPS-005). A local hub is sufficient for this check
    `systemMemoryBytes` is the total of `free -b`; `dedicatedMemoryBytes` is the sum of the
    memory totals of `nvidia-smi`; `cuda` is usable when `nvidia-smi` runs; `vulkan` is usable
    when an ICD file is listed; `rocm` is `NO_DEVICE` when the PC has no AMD GPU.
-5. On each computer, run `llama-server --version`, `mlx_lm.server --version` (Mac),
-   `vllm --version` and `ollama --version` for the runtimes it has. Expected: each runtime it
-   has is in the tools with the same version. Write in the result each runtime that shows
-   `NO_VERSION`: `llama-server` may print its version on standard error, which the probe does not
-   read, and `mlx_lm.server` may have no `--version`.
-6. On the Mac, leave the keyboard and the pointer for 6 minutes, wait for the next probe
+5. On the Mac, leave the keyboard and the pointer for 6 minutes, wait for the next probe
    (15 minutes) and run the command again. Expected: `operatorActive` is false.
 
 Result: Open.

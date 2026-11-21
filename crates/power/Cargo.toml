@@ -1,0 +1,10 @@
+[package]
+name = "power"
+description = "Where the power of a computer comes from: the parse of pmset on macOS and of the Linux power supplies, for the daemon and the desktop's stay-awake control (CAP-004, AWK-006)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

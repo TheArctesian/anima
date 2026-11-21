@@ -2,7 +2,7 @@
 //! the parse of the readers' output, and of the check of the batch member.
 
 use super::parse::{ioreg_active, pci_vendor, pmset_thermal, sysctl_number, usable_memory};
-use super::power::{Power, Supply, from_pmset, from_supplies};
+use super::power::{Power, from_pmset};
 use super::*;
 use crate::inventory::Os;
 use crate::readings::GpuVendor;
@@ -141,24 +141,11 @@ fn cap_004_the_operator_is_active_within_five_minutes_of_input() {
 }
 
 #[test]
-fn cap_004_the_power_source_of_a_mac_and_of_a_linux_laptop() {
-    let mains = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=1)\t93%; charging; 0:45 remaining present: true\n";
+fn cap_004_a_battery_is_the_power_source_battery() {
     let battery =
         "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=1)\t37%; discharging\n";
-    assert_eq!(from_pmset(mains), Power::Mains);
-    assert_eq!(from_pmset(battery), Power::Battery { percent: 37 });
     assert_eq!(PowerSource::from(from_pmset(battery)), PowerSource::Battery);
-    let supply = |scope: &str| Supply {
-        kind: "Battery".into(),
-        scope: scope.into(),
-        status: "Discharging".into(),
-        capacity: Some(41),
-    };
-    assert_eq!(
-        from_supplies(&[supply("System")]),
-        Power::Battery { percent: 41 }
-    );
-    assert_eq!(from_supplies(&[supply("Device")]), Power::Mains, "a mouse");
+    assert_eq!(PowerSource::from(Power::Mains), PowerSource::Mains);
 }
 
 #[test]

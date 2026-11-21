@@ -21,8 +21,7 @@ use crate::mcp::outcome::ToolError;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CapabilityInput {
     /// Only devices where this tool is usable: git, rustc, cargo, cargo-nextest, sccache, bun,
-    /// node, xcodebuild, docker, podman, nix, claude, codex, or a model runtime: llama-server,
-    /// `mlx_lm`, vllm or ollama.
+    /// node, xcodebuild, docker, podman, nix, claude or codex.
     tool: Option<String>,
     /// Only devices with this Rust build target, for example aarch64-apple-darwin.
     build_target: Option<String>,
@@ -36,8 +35,7 @@ pub fn definition() -> Definition {
         "What each device can run, from the tool inventory its Anima agent reports: the \
          architecture, the operating system and its version, each developer tool found \
          (git, rustc, cargo, bun, node, docker, claude, codex and others) with its version and \
-         whether it is usable (when not, a reason code and a repair hint), the model runtimes \
-         (llama-server, mlx_lm, vllm, ollama) in the same list, the installed Rust build \
+         whether it is usable (when not, a reason code and a repair hint), the installed Rust build \
          targets, and the hardware values: memory, usable GPU memory of Apple silicon, free \
          disk, CPU features, each backend (metal, cuda, rocm, vulkan, cpu) with a verdict, \
          power source, thermal state and operator activity. tool keeps the devices \

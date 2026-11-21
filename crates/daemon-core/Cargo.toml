@@ -15,6 +15,7 @@ test-support = []
 [dependencies]
 base64 = { workspace = true }
 chrono = { workspace = true }
+power = { path = "../power" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }

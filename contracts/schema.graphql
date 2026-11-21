@@ -950,7 +950,7 @@ enum ThermalState {
 
 "One tool the daemon found (CAP-024, CAP-025)."
 type Tool {
-  "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude, codex, or a model runtime (CAP-003, R-165): llama-server, mlx_lm, vllm or ollama."
+  "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude or codex."
   name: String!
   "1 to 64 bytes of [0-9A-Za-z.+_-]; null when the tool is not usable."
   version: String
