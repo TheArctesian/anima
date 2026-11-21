@@ -6,6 +6,15 @@ use compose_rules::Node;
 
 /// The programs that run a text as a command.
 const SHELLS: [&str; 7] = ["sh", "bash", "ash", "dash", "zsh", "busybox", "env"];
+/// The interpreters that run code given in a word, each with the letters of its short options
+/// and its long options that take that code (SF-NEW-revlsform).
+const INLINE: [(&str, &str, &[&str]); 5] = [
+    ("perl", "eE", &[]),
+    ("node", "ep", &["--eval", "--print"]),
+    ("python", "c", &[]),
+    ("ruby", "e", &[]),
+    ("php", "r", &[]),
+];
 /// The variables of the init of `LinuxServer` that get or install code at the start.
 const MODS: [&str; 3] = ["DOCKER_MODS", "INSTALL_PACKAGES", "INSTALL_PIP_PACKAGES"];
 
@@ -63,14 +72,52 @@ fn is_shell(word: &str) -> bool {
     SHELLS.contains(&program) || word == "-c"
 }
 
-/// True when the command or the test of the health check runs a shell.
+/// The short and long options that take inline code for the program of `word`, if it is an
+/// interpreter: `python3.12` is `python`.
+fn inline_options(word: &str) -> Option<(&'static str, &'static [&'static str])> {
+    let program = word.rsplit('/').next().unwrap_or(word);
+    let bare =
+        program.trim_end_matches(|character: char| character.is_ascii_digit() || character == '.');
+    INLINE
+        .iter()
+        .find(|(name, _, _)| *name == bare)
+        .map(|(_, short, long)| (*short, *long))
+}
+
+/// True when `option` is one of the inline-code options: a short cluster such as `-le` that
+/// holds one of the letters `short`, or one of `long`, also with `=value`.
+fn is_inline_option(option: &str, short: &str, long: &[&str]) -> bool {
+    match option.strip_prefix("--") {
+        Some(_) => long
+            .iter()
+            .any(|name| option == *name || option.starts_with(&format!("{name}="))),
+        None => option
+            .strip_prefix('-')
+            .is_some_and(|letters| letters.chars().any(|letter| short.contains(letter))),
+    }
+}
+
+/// True when an interpreter in `words` is followed by an option that takes code in a word, as
+/// `perl -e` or `node --eval`: it runs any text, as a shell does.
+fn runs_inline_code(words: &[&str]) -> bool {
+    words.iter().enumerate().any(|(at, word)| {
+        inline_options(word).is_some_and(|(short, long)| {
+            words[at + 1..]
+                .iter()
+                .any(|option| is_inline_option(option, short, long))
+        })
+    })
+}
+
+/// True when the command or the test of the health check runs a shell, or an interpreter with
+/// code in a word.
 pub(crate) fn runs_shell(service: &Node) -> bool {
     let (test, shell) = health(service);
-    shell
-        || split(service.get("command"))
-            .into_iter()
-            .chain(test)
-            .any(is_shell)
+    let found: Vec<&str> = split(service.get("command"))
+        .into_iter()
+        .chain(test)
+        .collect();
+    shell || found.iter().copied().any(is_shell) || runs_inline_code(&found)
 }
 
 /// True when a word names a variable that gets or installs code at the start.

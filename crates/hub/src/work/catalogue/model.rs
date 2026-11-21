@@ -5,7 +5,7 @@
 )]
 
 use async_graphql::Enum;
-use catalogue::entry::{Entry, Kind, MachineTest, Mark, Protocol};
+use catalogue::entry::{Class, Entry, Kind, MachineTest, Mark, Protocol};
 
 /// One entry that passed the static test, with what the hub shows of its files.
 #[derive(Clone, Debug)]
@@ -27,6 +27,14 @@ impl Listed {
             MachineTest::Passed { date } => Some(date),
             MachineTest::NotTested | MachineTest::Failed { .. } => None,
         }
+    }
+
+    /// The digest of each image, `sha256:` and 64 hexadecimal digits, in the order of the entry.
+    #[must_use]
+    pub fn image_digests(&self) -> Vec<&str> {
+        (self.entry.anima.images.iter())
+            .filter_map(|pinned| pinned.image.split_once('@').map(|(_, digest)| digest))
+            .collect()
     }
 
     /// The ports on the network that the `network-port` marks name: the machine needs "Open to
@@ -84,4 +92,55 @@ impl From<&Mark> for MarkKind {
             Mark::Device => Self::Device,
         }
     }
+}
+
+/// What a person may do with an entry (K1 `CatalogueEntryClass`, OD-HOST-54).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "CatalogueEntryClass")]
+pub enum EntryClass {
+    Application,
+    /// Who reaches it is root in a container: it needs a credential that the machine makes,
+    /// only a person installs it and it gets no public route.
+    Shell,
+}
+
+impl From<Class> for EntryClass {
+    fn from(class: Class) -> Self {
+        match class {
+            Class::Application => Self::Application,
+            Class::Shell => Self::Shell,
+        }
+    }
+}
+
+/// The tier of an entry in the catalogue (K1 `CatalogueTier`, OD-HOST-50). The third tier is
+/// installed at the machine and is not an entry of the catalogue.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+#[graphql(name = "CatalogueTier")]
+pub enum Tier {
+    /// Tier 1: written and checked by the Anima project.
+    Tested,
+    /// Tier 2: generated from the data of a publisher and not tested by Anima.
+    Generated,
+}
+
+impl Listed {
+    /// The tier: generated when the entry names a publisher, tested otherwise.
+    #[must_use]
+    pub const fn tier_of_origin(&self) -> Tier {
+        if self.entry.anima.origin.is_some() {
+            Tier::Generated
+        } else {
+            Tier::Tested
+        }
+    }
+}
+
+/// The names of `protocols` as K1 writes them: `tcp`, `udp`.
+#[must_use]
+pub fn protocol_names(protocols: &[Protocol]) -> Vec<String> {
+    protocols
+        .iter()
+        .map(|protocol| format!("{protocol:?}").to_lowercase())
+        .collect()
 }

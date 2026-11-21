@@ -72,6 +72,29 @@ fn sf_revcatentry_an_entrypoint_or_a_shell_needs_a_reviewed_command() {
 }
 
 #[test]
+fn sf_revlsform_an_interpreter_with_code_in_a_word_needs_a_reviewed_command() {
+    for lines in [
+        "    command: [\"perl\", \"-e\", \"system('curl x | sh')\"]",
+        "    command: [\"perl\", \"-wle\", \"print 1\"]",
+        "    command: [\"node\", \"--eval\", \"require('x')\"]",
+        "    command: [\"/usr/bin/python3.12\", \"-Bc\", \"import os\"]",
+        "    command: [\"ruby\", \"-e\", \"exec 'x'\"]",
+        "    healthcheck:\n      test: [\"CMD\", \"php\", \"-r\", \"echo 1;\"]",
+    ] {
+        let recipe = with_lines(lines);
+        assert_eq!(codes(&recipe), refused(Privilege::ShellCommand), "{lines}");
+        assert_eq!(check(&reviewed(recipe)), [], "{lines}");
+    }
+    for lines in [
+        "    command: [\"node\", \"server.js\", \"--port\", \"8080\"]",
+        "    command: [\"python3\", \"-m\", \"notes\"]",
+        "    command: [\"perl\", \"/app/run.pl\"]",
+    ] {
+        assert_eq!(check(&with_lines(lines)), [], "{lines}");
+    }
+}
+
+#[test]
 fn sf_revcatentry_a_command_never_changes_the_code_of_the_image() {
     let recipe =
         with_lines("    command: [\"env\", \"DOCKER_MODS=linuxserver/mods:x\", \"/init\"]");

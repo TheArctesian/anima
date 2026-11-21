@@ -13,12 +13,14 @@ use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum CatalogueCommand {
-    /// List the entries of the catalogue: kind, version, marks, the day of the last test on a
-    /// machine and the day of the last pin of the images.
+    /// List the entries of the catalogue: kind, tier (tested or generated), class (application
+    /// or shell), version, marks, the day of the last test on a machine and the day of the last
+    /// pin of the images.
     #[command(visible_alias = "ls")]
     List(list::ListArgs),
-    /// Show one entry: its fields, the reason why the hub does not install it, the names of
-    /// its environment variables and its Compose file.
+    /// Show one entry: its fields, its tier, class, streams and optional parts, the reason why
+    /// the hub does not install it, the names of its environment variables and its Compose
+    /// file.
     Show(show::ShowArgs),
     /// Ask the hub to install one entry on a device. The hub refuses today and says why; the
     /// exit status is 1.

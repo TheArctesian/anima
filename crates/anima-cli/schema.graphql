@@ -1292,11 +1292,57 @@ enum CatalogueMarkKind {
   DEVICE
 }
 
-"Why the hub does not install an entry of the catalogue (task H38). NOT_LISTED: the catalogue lists no entry with this identifier. ENGINE_SOCKET: the entry needs the socket of the container engine (R-247). INSTALL_NOT_BUILT: the install needs task H6 of the hosted applications plan, which is not built."
+"Why the hub does not install an entry of the catalogue (task H38). NOT_LISTED: the catalogue lists no entry with this identifier. ENGINE_SOCKET: the entry needs the socket of the container engine (R-247). SHELL_NEEDS_PERSON: the entry is a shell, which only a person signed in to the client installs, never an API key or an agent (OD-HOST-54). GENERATED_NEEDS_DIGEST: the entry is generated from the data of a publisher, and the request does not name the digest of its image (OD-HOST-50). INSTALL_NOT_BUILT: the install needs task H6 of the hosted applications plan, which is not built."
 enum CatalogueInstallRefusal {
   NOT_LISTED
   ENGINE_SOCKET
+  SHELL_NEEDS_PERSON
+  GENERATED_NEEDS_DIGEST
   INSTALL_NOT_BUILT
+}
+
+"What a person may do with an entry of the catalogue (OD-HOST-54). SHELL: who reaches it is root in a container (a desktop in a browser, a code editor): it needs a credential that the machine makes at the install, only a person installs it, and it gets no public route."
+enum CatalogueEntryClass {
+  APPLICATION
+  SHELL
+}
+
+"The tier of an entry of the catalogue (OD-HOST-50). TESTED: tier 1, written and checked by the Anima project. GENERATED: tier 2, generated from the data of a publisher and not tested by Anima. Tier 3 is installed at the machine and is not an entry."
+enum CatalogueTier {
+  TESTED
+  GENERATED
+}
+
+"The publisher of a generated entry (task H39)."
+type CatalogueOrigin {
+  "The name of the publisher, for a person, for example LinuxServer.io."
+  publisher: String!
+  "The day (YYYY-MM-DD) of the data of the publisher that the entry was made from."
+  read: String!
+}
+
+"A published port of an entry other than the port of its test: a stream that a route of task H40 can carry."
+type CatalogueStream {
+  "The port in the container."
+  port: Int!
+  "tcp, udp or both."
+  protocols: [String!]!
+}
+
+"The kind of an optional part of an entry. DEVICE: a device of the machine below /dev/."
+enum CatalogueOptionalPartKind {
+  DEVICE
+}
+
+"A part of the application that is off, because it needs a setting of the machine that no rule of a Compose file permits yet (task H39)."
+type CatalogueOptionalPart {
+  kind: CatalogueOptionalPartKind!
+  "The path of the device, for example /dev/dri."
+  path: String!
+  "Whether the install turns the part on. Never today."
+  on: Boolean!
+  "The part needs a setting of the machine."
+  needsMachineSetting: Boolean!
 }
 
 "A port on the network that an entry needs (a NETWORK_PORT mark)."
@@ -1334,11 +1380,23 @@ type CatalogueEntry {
   marks: [CatalogueMarkKind!]!
   "The ports on the network of the NETWORK_PORT marks."
   networkPorts: [CatalogueNetworkPort!]!
+  "What a person may do with the entry (OD-HOST-54)."
+  class: CatalogueEntryClass!
+  "Tested by Anima (tier 1) or generated from the data of a publisher (tier 2, OD-HOST-50)."
+  tier: CatalogueTier!
+  "The publisher of a generated entry; null for a tested entry."
+  origin: CatalogueOrigin
+  "The published ports other than the port of the test."
+  streams: [CatalogueStream!]!
+  "The parts of the application that are off."
+  optionalParts: [CatalogueOptionalPart!]!
+  "The digest of each image (sha256: and 64 hexadecimal digits). An install of a generated entry names it."
+  digests: [String!]!
   "The day (YYYY-MM-DD) of the last test on a machine, which passed. Null: not tested on a machine. An entry whose last test failed is not listed."
   lastMachineTest: String
   "The day (YYYY-MM-DD) of the last pin of the digests of the images (R-233)."
   pinned: String!
-  "What the hub answers to an install of this entry now."
+  "What the hub answers to an install of this entry by this request, with no digest named."
   install: CatalogueInstall!
   "The text of the Compose file. It holds no secret: each secret is a variable that the install makes."
   composeFile: String!
@@ -3954,8 +4012,8 @@ type Mutation {
   ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
 
   # The catalogue (HOST-047, R-234; task H38)
-  "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
-  installCatalogueEntry(entryId: String!, deviceId: ID!): CatalogueInstall!
+  "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). Before that reason: a shell needs a person signed in to the client (SHELL_NEEDS_PERSON, OD-HOST-54), and a generated entry needs digest, the digest of its image (GENERATED_NEEDS_DIGEST, OD-HOST-50). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
+  installCatalogueEntry(entryId: String!, deviceId: ID!, digest: String): CatalogueInstall!
 }
 
 type Subscription {

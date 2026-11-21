@@ -14,6 +14,23 @@ query CatalogueShow($id: String!) {
       port
       protocols
     }
+    class
+    tier
+    origin {
+      publisher
+      read
+    }
+    streams {
+      port
+      protocols
+    }
+    optionalParts {
+      kind
+      path
+      on
+      needsMachineSetting
+    }
+    digests
     lastMachineTest
     pinned
     install {

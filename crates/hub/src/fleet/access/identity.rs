@@ -19,7 +19,7 @@ use super::{
     store,
     tokens::{self, Scope, TokenKind, Transport},
 };
-use crate::ids::TokenId;
+use crate::{fleet::events::ActorKind, ids::TokenId};
 
 /// What a stored token grants: its row, its kind and scope, and until when; for an API key,
 /// also its name and what it is made for (LOG-015).
@@ -151,6 +151,14 @@ impl Identity {
     #[must_use]
     pub fn api_key(&self) -> Option<TokenId> {
         (self.grant.kind == TokenKind::ApiKey).then(|| TokenId::from(self.grant.token))
+    }
+
+    /// True for a person signed in to a client: a login or a browser token whose request did
+    /// not declare an AI agent. An API key is never one (OD-HOST-54).
+    #[must_use]
+    pub fn is_person_at_client(&self) -> bool {
+        matches!(self.grant.kind, TokenKind::Login | TokenKind::Browser)
+            && self.operator.actor.kind() == ActorKind::User
     }
 
     /// The token of a builder identity, which names its builder record (BLD-024); `None` for

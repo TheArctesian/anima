@@ -100,7 +100,7 @@ fn h39_the_form_writes_streams_an_optional_device_volumes_and_a_shell() {
         (Class::Shell, vec!["PASSWORD".to_owned()])
     );
     let heimdall = made("heimdall").compose.unwrap_or_default();
-    assert!(heimdall.contains("published: 8080") && heimdall.contains("published: 8443"));
+    assert!(heimdall.contains("published: 8080") && heimdall.contains("published: 8444"));
     let duplicati = entry(&made("duplicati")).anima.generated;
     assert_eq!(duplicati, ["SETTINGS_ENCRYPTION_KEY"]);
 }
@@ -292,4 +292,17 @@ fn h39_the_static_test_checks_streams_optional_parts_and_the_class_shell() {
         "\"generated\": []",
     );
     assert!(super::codes(&open).contains(&Code::ShellNotContained));
+}
+
+#[test]
+fn sf_revlsform_an_image_name_out_of_the_rules_is_refused() {
+    for name in ["radarr\nx: y", "Radarr", "radarr_2", "radarr:latest", ""] {
+        let mut odd = image("radarr");
+        odd.name = name.to_owned();
+        assert_eq!(
+            recipe(&odd, &pin("radarr")).map(|_| ()),
+            Err(Unfit::NameNotPermitted),
+            "{name:?}"
+        );
+    }
 }

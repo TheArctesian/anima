@@ -3,7 +3,7 @@
 use compose_rules::forms::{is_name, is_target};
 
 use super::{Config, Image, Unfit};
-use crate::{entry::Protocol, example::is_secret_name};
+use crate::{ANIMA_PORTS, entry::Protocol, example::is_secret_name};
 
 /// The images that are a shell (Section 15.7 of the proposal), each with the variables of the
 /// credential that the install makes. The class comes from this fixed list, never from the data
@@ -219,7 +219,32 @@ fn volumes(config: &Config) -> Result<Vec<(String, String)>, Unfit> {
     Ok(found)
 }
 
-/// Each port that is not optional; a port of the machine below 1024 moves up by 8000.
+/// The port of the machine for the port `external` of the publisher: below 1024 it moves up by
+/// 8000, and a port of Anima (SF-NEW-revlsform) moves to the next port.
+fn on_machine(external: u16) -> u16 {
+    let moved = if external < LOWEST_PORT {
+        external + PORT_STEP
+    } else {
+        external
+    };
+    if ANIMA_PORTS.contains(&moved) {
+        moved + 1
+    } else {
+        moved
+    }
+}
+
+/// True when the name of the image has only lower-case letters, digits and '-': the name
+/// reaches the `image:` line and a comment of the Compose file (SF-NEW-revlsform).
+fn is_image_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+}
+
+/// Each port that is not optional; a port of the machine below 1024 moves up by 8000, and a
+/// port of Anima moves to the next port.
 fn ports(config: &Config) -> Result<Vec<Published>, Unfit> {
     let mut found: Vec<Published> = Vec::new();
     for port in config.ports.iter().filter(|port| !port.optional) {
@@ -232,11 +257,7 @@ fn ports(config: &Config) -> Result<Vec<Published>, Unfit> {
         let number = |text: &str| text.parse::<u16>().ok().filter(|port| *port > 0);
         let target = number(target).ok_or(Unfit::PortNotPermitted)?;
         let external = number(&port.external).ok_or(Unfit::PortNotPermitted)?;
-        let on_machine = if external < LOWEST_PORT {
-            external + PORT_STEP
-        } else {
-            external
-        };
+        let on_machine = on_machine(external);
         let next = Published {
             target,
             on_machine,
@@ -263,7 +284,7 @@ pub(super) fn plan(image: &Image) -> Result<Plan, Unfit> {
         return Err(reason);
     }
     let service = named(&image.name);
-    if !is_name(&service) {
+    if !is_image_name(&image.name) || !is_name(&service) {
         return Err(Unfit::NameNotPermitted);
     }
     let shell = SHELL.iter().find(|(name, _)| *name == image.name);

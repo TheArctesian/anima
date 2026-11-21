@@ -5,7 +5,7 @@
 use compose_rules::{Node, Settings, forms::whole};
 
 use crate::{
-    Code,
+    ANIMA_PORTS, Code,
     entry::{Anima, HealthTest, Kind, Mark, Protocol, Reach},
     example, privileges,
 };
@@ -66,6 +66,19 @@ fn open_ports(document: &Node) -> Vec<(u64, Protocol)> {
     open.sort_unstable();
     open.dedup();
     open
+}
+
+/// True when a service publishes a port of Anima on the machine, on any address.
+fn publishes_anima_port(document: &Node) -> bool {
+    services(document)
+        .iter()
+        .flat_map(|(_, service)| ports(service))
+        .filter_map(|port| port.get("published").and_then(Node::text).and_then(whole))
+        .any(|published| {
+            ANIMA_PORTS
+                .iter()
+                .any(|anima| u64::from(*anima) == published)
+        })
 }
 
 /// The ports that the `network-port` marks name.
@@ -281,6 +294,9 @@ pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code
     }
     if !streams_published(anima, &document) {
         codes.push(Code::StreamNotPublished);
+    }
+    if publishes_anima_port(&document) {
+        codes.push(Code::AnimaPortPublished);
     }
     if anima.kind == Kind::Database && publishes(&document) {
         codes.push(Code::DatabasePortPublished);

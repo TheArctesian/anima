@@ -27,6 +27,10 @@ pub use shipped::shipped;
 
 use entry::{Entry, MachineTest};
 
+/// The ports of Anima on a machine: the guacd gateway and the hub (SF-NEW-revlsform). No recipe
+/// publishes one of them on the machine.
+pub const ANIMA_PORTS: [u16; 2] = [4822, 8443];
+
 /// The three texts of one recipe folder. A file that is not in the folder is `None`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Recipe {
@@ -97,6 +101,8 @@ pub enum Code {
     /// An entry of the class `shell` has no credential that the install makes, or a port on
     /// the network (OD-HOST-54).
     ShellNotContained,
+    /// A published port of the machine is a port of Anima (SF-NEW-revlsform).
+    AnimaPortPublished,
 }
 
 impl Code {
@@ -130,6 +136,7 @@ impl Code {
             Self::StreamNotPublished => "stream_not_published",
             Self::OptionalNotPermitted => "optional_not_permitted",
             Self::ShellNotContained => "shell_not_contained",
+            Self::AnimaPortPublished => "anima_port_published",
         }
     }
 
