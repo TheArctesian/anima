@@ -2108,6 +2108,190 @@ The correction: only the top-level field `composeFile` of `anima_compose_from_ru
 
 State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
 
+## The security read of the model work (task L1-3, 2026-11-20)
+
+A separate reviewer read the draft contract [model-work.md](../contracts/compute/model-work.md), version 0.1, on 2026-11-20. No code exists for it, so each entry is about the text. Version 0.2 of the contract has the corrections of the 14 plain findings and, for the 4 findings that wait for the operator, the safer default. Each entry stays Open until code exists and the operator closes it. "Severity" is the word of the reviewer.
+
+### SF-NEW-modelworka: A model file can hold code: a pickle file, a `.py` file through `auto_map`, a chat template. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.2: a fixed list of files for each format (`file_type`); `auto_map` and `custom_pipelines` refused (`remote_code`); vLLM `--load-format safetensors`; the chat template only from the copy, at most 64 KiB, in the sandboxed renderer of the runtime.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkb: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C22, MW-P9). Until he decides, Section 9 requires an isolation that denies each thing by default, and a start with no isolation fails (`isolation_failed`).
+
+State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkc: A runtime can make outgoing connections and gets the environment of the daemon. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Sections 2.1 and 4: an empty environment with a fixed list of variables (offline, no usage report, no proxy, no `HF_TOKEN`, no `DYLD_*`, no `LD_PRELOAD`, no `PYTHONPATH`); media only as a `data:` URL; no download folder; a row "runtime: no outgoing connection". The isolation of finding b enforces it.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkd: The hub gives the SHA-256, so the check proves nothing against a hub that is taken over. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C23, MW-P7). Until he decides, Section 7 checks the hash that Hugging Face publishes at that commit (`hash_mismatch`) and a lowest age of a commit of 7 days (`revision_too_new`).
+
+State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworke: The default list of the machine has `mlx-community`, an open organisation. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C24, MW-P8). Until he decides, the default list is `unsloth` only.
+
+State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkf: The loopback check ran only at the start, and missed children, later listeners, UDP and mapped IPv4. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: the check after each start, restart and `model_load` and each 15 seconds, over the process tree, TCP and UDP, IPv4 and IPv6; only `::ffff:127.0.0.1` counts as mapped loopback; the time of 15 seconds is stated.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkg: Prompts can reach a log through the output of a runtime and its slots. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.1: the output goes to a ring file of 1 MiB with mode 0600 that is never sent; owned flags `--log-disable`, `--no-slots`, no slot save path, `--disable-log-requests`.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkh: The memory and the disk of a runtime were not limited. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: a server above its share and 10 % is ended (`limit_memory`); `memory.max` or `RLIMIT_AS` on Linux; a temporary folder of 2 GiB, counted as `tempBytes`; the disk reserve checked for each write.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworki: A partial download that nobody continues stays on the disk. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 7: `partial/` counts in the share and in `cacheBytes`; deleted after 7 days or at `copy_delete`; at most 4 partial copies.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkj: The unpack of a runtime archive accepted hard links, devices, setuid bits and very large archives. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 6: regular files and folders only; modes 0755 and 0644, no setuid, setgid or sticky bit; 8 GiB and 50,000 entries at most; no two names equal in lower case; unpack to a temporary folder, then rename; `sizeBytes` for each release source.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkk: A server that fails late is started again with no end. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: each end that no item asked for counts; 5 in one hour or 20 in 24 hours make it `failed`; an end in a load makes the copy `failed` (`load_crash`).
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkl: A different process can take the port and receive the API key of a probe. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: port 0 where the runtime permits it; before each probe the listener must belong to the process tree of the server (`listener`).
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkm: The index of a GPU and the value of `gpuLayers` were not checked against the machine. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.1: a GPU that is not in the inventory is refused (`gpu_unknown`); the only string of `gpuLayers` is `all`.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkn: The list of advisories gave no lowest version of a runtime. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 6: a lowest version of each runtime in the daemon program (`runtime_too_old`), changed only by a signed release.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworko: An API key of an AI agent can start each model work. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C25, MW-P6). Until he decides, an API key can ask only for `model_report`, `server_stop`, `model_unload` and `model_drain`.
+
+State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkp: The rules of TLS, of redirects and of the hosts of the fetch process were not given. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 4: the roots of the system or of the program only; no proxy; no downgrade; no redirect to an IP address or a host outside the list; at most 5 redirects; at most `sizeBytes`; the fixed list of hosts of Hugging Face.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkq: The Hugging Face token can have more rights than a read of gated repositories. Note
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 7: the hub asks for a fine-grained token with read access to gated repositories only.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-modelworkr: The daemon can follow a link when it makes or deletes a file of model work. Note
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 10: each change relative to an open folder handle with `O_NOFOLLOW`; `copy_delete` follows no link.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
 ## Closed
 
 | Entry | Subject | Area | State |

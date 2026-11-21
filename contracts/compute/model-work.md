@@ -1,7 +1,10 @@
-# K-C1 — Model work: the work types of the model service, the copies and the runtime report
+# Model work: the work types of the model service, the copies and the runtime report
 
-Status: **Draft, waits for a ruling (R-NEW-modelwork) and the security review (SEC-C-012).** Version 0.1,
-2026-11-20, task L1-3 of [compute-plan.md](../../docs/plans/compute-plan.md) Section 12.4. No code may be built
+Status: **Draft, waits for a ruling (R-NEW-modelwork) and the security review (SEC-C-012).** Version 0.2,
+2026-11-20 (version 0.1, 2026-11-20, was the text of the first security read; version 0.2 has the corrections of
+its 14 plain findings, and the safe default of its 4 findings that wait for the operator, marked "until the
+operator decides"; [security-findings.md](../../docs/security-findings.md), the section of the model work).
+This contract has no K number: no ruling gave one. Task L1-3 of [compute-plan.md](../../docs/plans/compute-plan.md) Section 12.4. No code may be built
 from this text before the ruling (CON-001, AGT-004). Change it only through a programme ruling.
 
 Requirements: CAG-002 to CAG-006, CAG-008, CAG-009, PULL-004 to PULL-011, RTC-002 to RTC-006, SEC-C-001,
@@ -89,9 +92,9 @@ the runtime from its own code, these members, and the paths that it makes itself
 | Member | Type and limit | Runtimes |
 | --- | --- | --- |
 | `contextTokens` | integer, 512 to 1,048,576 | all |
-| `gpuLayers` | integer, 0 to 999, or `all` | `llama_server` |
+| `gpuLayers` | integer, 0 to 999, or the string `all` and no other string | `llama_server` |
 | `memoryShare` | number, 0.05 to the memory share of the device policy (RTC-003) | `vllm` |
-| `gpu` | integer, an index that the daemon reports (one vLLM process for each GPU, RTC-003) | `vllm` |
+| `gpu` | integer, an index of a GPU in the inventory that the daemon reports (one vLLM process for each GPU, RTC-003); another index is refused (`gpu_unknown`) | `vllm` |
 | `batchTokens` | integer, 16 to 65,536 | all |
 | `kvCacheType` | `f16`, `q8_0` or `q4_0` | `llama_server` |
 
@@ -111,7 +114,41 @@ The values that the daemon sets:
   in `daemon-core`.
 - Remote code: off. For vLLM the daemon passes no `--trust-remote-code` and sets the refusal of remote code in
   each form that the runtime has. A copy whose format needs remote code cannot be loaded (`remote_code`)
-  (SEC-C-008).
+  (SEC-C-008). For vLLM the daemon also sets `--load-format safetensors` and `--tokenizer` to the folder of the
+  copy, and sets no `--download-dir` and no `--allowed-local-media-path`. A media input is accepted only as a
+  `data:` URL; the daemon sets the runtime so that it fetches no address (Section 4).
+- Logs (SEC-C-010): llama-server with `--log-disable` and the lowest verbosity, `--no-slots`, and no slot save
+  path; vLLM with `--disable-log-requests`. The standard output and the standard error of each runtime go to a
+  file of mode 0600 in the state folder, a ring of at most 1 MiB, that the daemon never sends to the hub and
+  never copies into a log line. A runtime that has no such flag in its version is refused
+  (`runtime_not_configured`).
+- Environment (SEC-C-001, SEC-C-007): the daemon starts each runtime with an empty environment and only these
+  variables: `HOME` and `TMPDIR` set to the temporary folder of the process (Section 10), `PATH` set to the `bin`
+  folder of the runtime only, `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, `VLLM_NO_USAGE_STATS=1`,
+  `DO_NOT_TRACK=1`, and the variable that holds the API key. No proxy variable, no `HF_TOKEN`, no `DYLD_*`, no
+  `LD_PRELOAD`, no `PYTHONPATH` reaches a runtime.
+
+### 2.2 The files that a copy may have (SEC-C-008, SEC-C-009)
+
+A model file can hold code: a pickle file runs code when it is read, a `.py` file of a repository runs through
+`auto_map`, and a chat template is a program of Jinja. Thus each format has a fixed list of file names in the
+daemon, and the daemon refuses each other file of `files` (`file_type`) before it downloads a byte.
+
+| Format | Permitted files |
+| --- | --- |
+| `gguf` | `*.gguf` |
+| `safetensors`, `mlx` | `*.safetensors`, `*.safetensors.index.json`, `config.json`, `generation_config.json`, `tokenizer.json`, `tokenizer_config.json`, `special_tokens_map.json`, `*.model` (a SentencePiece file), `chat_template.jinja`, `preprocessor_config.json` |
+
+- Each `.bin`, `.pt`, `.pth`, `.pkl`, `.py`, `.npz`, `.ckpt` and `.h5` file is refused (`file_type`), also when
+  its name is in a sub-folder.
+- Before a load, the daemon reads `config.json` and `tokenizer_config.json` of the copy with a JSON parser. It
+  refuses the copy (`remote_code`) when one of them has the member `auto_map` or `custom_pipelines`, or names a
+  class that is not in the list of the runtime.
+- A chat template comes only from `tokenizer_config.json`, `chat_template.jinja` or the GGUF metadata of the
+  copy, and is at most 64 KiB. The daemon gives no template of the hub and no template file from outside the
+  copy. The runtime renders it in its own sandboxed Jinja form; a runtime version that renders a template with
+  no such sandbox is not in the list of release sources. The runtime and its parsers still read files that the
+  hub chose, so the isolation of Section 9 is the limit for a fault of a parser.
 
 ## 3. How the daemon asks and reports (CAG-002, CAG-003)
 
@@ -124,6 +161,11 @@ The values that the daemon sets:
   switch and the policy again before each item (K10 Section 3: `switch_off`, `policy`). `server_stop`,
   `model_unload`, `model_drain`, `copy_delete` and `model_report` are never refused for `policy` or `switch_off`:
   they only reduce the work of the machine.
+- **Who may ask (until the operator decides MW-P6).** An item that an API key or an AI agent asks for can only
+  be `model_report`, `server_stop`, `model_unload` or `model_drain`. `runtime_install`, `model_pull`,
+  `copy_delete`, `server_start`, `model_load` and `model_measure` need a person: the hub makes them only for an
+  act of the operator signed in (actor kind `User`, LOG-012), and refuses them for an API key. This is the
+  safer default; the operator decides it with open point MW-P6.
 - The `Claim` gets `model` in `kinds` and the ten types in `types` when the daemon has the model function. The
   model function is on when the switch is on; there is no second switch (OD-C8).
 - Model items do not use the job slot of K10 (`free.slots` counts jobs). The hub counts its own leases: one
@@ -155,7 +197,18 @@ The values that the daemon sets:
 | The hub | The daemon | K8 and K10 only. |
 | Hugging Face | The fetch process (below) | HTTPS only, to `huggingface.co` and the file hosts that the daemon holds in a fixed list. It follows a redirect only to a host of that list. |
 | Release source of a runtime | The fetch process | HTTPS only, to the address of the daemon configuration (Section 6). Redirects only to a host of the fixed list for that runtime. |
-| A model server | The probe process (below) | `http://127.0.0.1:<port>` of a server that the daemon started, for `model_measure` and the check of a start only. |
+| A model server | The probe process (below) | `http://127.0.0.1:<port>` of a server that the daemon started, for `model_measure` and the check of a start only. Before each request it confirms that the listener of that port belongs to the process tree of that server (Section 9). |
+| Each other address | A runtime | None. A runtime makes no outgoing connection: its environment (Section 2.1) turns off each fetch of Hugging Face and each report of use, it gets no media address, and the isolation of Section 9 refuses the network outside loopback where the system can do it. |
+
+Rules of the fetch process (both sources):
+
+- TLS with the root certificates of the system or of the daemon program only. No root certificate comes from
+  the hub, from the configuration of a runtime source, or from an environment variable.
+- No proxy. No `http`. No redirect to `http`, to an address written as an IP address, or to a host outside the
+  list. At most 5 redirects.
+- The hosts of Hugging Face are a fixed list in the daemon program: `huggingface.co`, `cdn-lfs.hf.co`,
+  `cdn-lfs-us-1.hf.co`, `cas-bridge.xethub.hf.co`. A change of that set comes with a release of the daemon.
+- It reads at most `sizeBytes` of a file, and at most the `sizeBytes` of a release source entry (Section 6).
 
 The fetch process and the probe process are child processes of the daemon, made from the same program file with a
 fixed mode. They get no daemon token, no hub origin and no proxy variable. They take their instruction on their
@@ -181,10 +234,15 @@ the causes of K10 Section 5, and these:
 | `remote_code` | The copy needs remote code to load (SEC-C-008) |
 | `disk_share` | The copy does not fit in the disk share of the device policy after the removal that the hub permitted (PULL-008) |
 | `memory_share` | The load does not fit in the memory share of the device policy |
+| `file_type` | `files` names a file that the format does not permit (Section 2.2) |
+| `gpu_unknown` | `gpu` is not a GPU of the inventory of the machine |
+| `runtime_too_old` | The version is lower than the lowest version of that runtime that the daemon program holds |
+| `revision_too_new` | The commit of the source is newer than the lowest age that the machine holds (Section 7) |
 
 Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-256 is different), `size` (a file is
 larger than `sizeBytes`), `source_failed` (the source refused or did not answer after the retries), `listener`
-(Section 9), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
+(Section 9), `isolation_failed` (the daemon cannot make the isolation of Section 9), `limit_memory` (Section 9),
+`load_crash` (the server ended while it loaded a copy), `hash_mismatch` (Section 7), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
 no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file).
 
 ## 6. The install of a runtime (CAG-008)
@@ -193,10 +251,18 @@ no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime f
   architecture and backend, with the HTTPS address of the archive and its SHA-256. The operator of the machine
   writes it at the machine. The hub cannot write it. A daemon release has a default file of entries that the
   release signs (K8 Section 8); a value of the operator replaces a default entry.
-- The daemon downloads the archive with the fetch process, verifies the SHA-256 before it opens the archive, and
-  unpacks it into a new folder `runtimes/<runtime>/<version>-<backend>/` of its runtime folder (Section 10). It
-  refuses an archive entry that is a link, an absolute path, or a path with `..`. It then makes the folder
-  read-only for the group and for others.
+- Each entry also has `sizeBytes`, the largest size of the archive. The fetch process reads no more.
+- The daemon downloads the archive with the fetch process and verifies the SHA-256 before it opens the archive.
+  It unpacks it into a new temporary folder, then renames that folder to `runtimes/<runtime>/<version>-<backend>/`
+  of its runtime folder (Section 10). It accepts only regular files and folders: it refuses an entry that is a
+  symbolic link, a hard link, a device, a FIFO, an absolute path or a path with `..`, and two entries whose names
+  are equal when they are in lower case. It sets the mode of each folder and of each program file to 0755 and of
+  each other file to 0644; it clears each setuid, setgid and sticky bit. It stops at 8 GiB of unpacked bytes or at
+  50,000 entries (`limit_disk`).
+- The daemon program holds the lowest version of each runtime that it accepts, and a list of versions with a
+  published advisory (SEC-C-005). It refuses a lower version (`runtime_too_old`) and a listed version
+  (`runtime_advisory`). Only a signed release of the daemon (K8 Section 8) changes the two lists; the
+  configuration of the machine and the hub cannot lower them.
 - No shell runs at any step. The daemon starts a runtime by the absolute path of the program file in that folder,
   never by a name that the system looks up in `PATH`. It runs no install script of the archive, and no package
   manager (`pip`, `brew`, `apt`).
@@ -211,9 +277,17 @@ no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime f
   `https://huggingface.co/<organisation>/<repository>/resolve/<revision>/<file>`, made by the fetch process from
   the parameters; each part is encoded as a path segment.
 - **The approved organisations.** The hub holds the approved list (LIBM-003). The machine holds its own list too,
-  and refuses a pull from an organisation that is not in it (`source_not_permitted`). The default list of the
-  machine is `unsloth` and `mlx-community`; the owner of the machine adds a publisher at the machine. The hub
-  cannot write it. See open point MW-P2.
+  and refuses a pull from an organisation that is not in it (`source_not_permitted`). Until the operator decides
+  open point MW-P8, the default list of the machine is `unsloth` only; the owner of the machine adds an
+  organisation, for example `mlx-community` or a publisher, at the machine. The hub cannot write it. See open
+  point MW-P2.
+- **A second source of each hash (until the operator decides MW-P7).** The SHA-256 of an item comes from the hub,
+  so it proves nothing against a hub that is taken over. Thus the fetch process also reads, from Hugging Face,
+  the SHA-256 that the repository publishes for each LFS file at that `revision` (the file list of the commit),
+  and refuses a file whose two values differ (`hash_mismatch`). A file that is not an LFS file is checked only
+  against the hub value and must be at most 16 MiB. The machine also holds a lowest age of a commit, default 7
+  days: it refuses a `revision` whose commit date at Hugging Face is newer (`revision_too_new`). The owner of the
+  machine can change the age at the machine.
 - **The checks.** The daemon writes each file to `<cache>/partial/<copy>/` and computes the SHA-256 as the bytes
   arrive. It moves the file to `<cache>/copies/<copy>/` only when the size and the SHA-256 are those of the item
   (PULL-005). A file that is larger than `sizeBytes` stops at once (`size`). A different SHA-256 deletes the
@@ -222,6 +296,9 @@ no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime f
   `Range` request. A part is 16 MiB. The SHA-256 state is kept with each complete part, so the daemon does not
   read the file again. When the source answers 200 in place of 206, the daemon starts that file again from 0.
   The partial folder survives a restart of the daemon; the next `model_pull` of the same copy continues it.
+  The bytes of `partial/` count in the disk share and in `cacheBytes`. The daemon deletes a partial copy that no
+  pull touched for 7 days, and at `copy_delete` of that copy. It holds at most 4 partial copies; a fifth pull
+  is refused (`disk_share`).
 - **The disk share (PULL-008).** Before the start, the daemon checks that the copy fits in the disk share of the
   device policy with what the cache holds. If it does not fit, it refuses (`disk_share`) and the hub asks the
   operator which copy to remove. The daemon never removes a copy by itself: only `copy_delete` removes one.
@@ -233,7 +310,8 @@ no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime f
   `["hf_token"]`, a new purpose of K10 Section 8 for `model_pull` only, with the life of the item. The hub reads
   the token from the key vault of E0-6 (K-E5) when the holder asks for it, and not before. The daemon asks for it
   in `preparing`, gives it to the fetch process on its standard input, and to no other process. It writes it to
-  no file, no log, no command line and no environment variable. The fetch process sends it only in the
+  no file, no log, no command line and no environment variable. The operator must give a fine-grained token of
+  Hugging Face with read access to gated repositories only; the hub says so where he enters it. The fetch process sends it only in the
   `Authorization` header of a request to `huggingface.co`, and drops it at a redirect to a different host. The
   Rust types that hold it implement neither `Debug`, `Display` nor `Clone`, and wipe on drop. The hub writes
   each release to the audit log without the value (K10 Section 8). No command, MCP tool or query gives it
@@ -264,7 +342,7 @@ of the batches between.
   "servers": [
     { "server": "<uuid>", "runtime": "llama_server", "state": "ready", "restarts": 0,
       "loaded": ["<copy uuid>"], "inProgress": 1, "queued": 0, "tokensPerSecond": 41.5,
-      "memoryBytes": 6442450944 }
+      "memoryBytes": 6442450944, "tempBytes": 0 }
   ],
   "copies": [ { "copy": "<uuid>", "state": "validated", "bytes": 5027783488 } ],
   "cacheBytes": 5027783488
@@ -279,18 +357,39 @@ of the batches between.
 - A hub that does not know the member ignores it (K8 Section 1).
 - `model_report` gives the same object as its `result.model`, for the hub to read the whole state at once.
 
-## 9. Start, the loopback check and the supervision (SEC-C-001, CAG-005)
+## 9. Start, the isolation, the loopback check and the supervision (SEC-C-001, CAG-005)
 
-- **The loopback check after each start.** When a server is ready, and again after each restart, the daemon reads
-  the listening sockets of the process from the system (on Linux `/proc/<pid>/net/tcp` and `tcp6` with the
-  socket inodes of the process; on macOS `proc_pidinfo` with `PROC_PIDFDSOCKETINFO`). It does not connect to
-  find them. Each listening socket of the process and of its children must be bound to `127.0.0.1` or `::1`. If
-  one is not, the daemon ends the process at once, reports `failed` with the cause `listener`, and does not start
-  that server again until a new `server_start`.
+- **The isolation (until the operator decides MW-P9).** A runtime reads files that the hub chose, and its parsers
+  have faults (SEC-C-009). Thus the daemon starts each runtime in an isolation that denies each thing by default:
+  on macOS a `sandbox-exec` profile of the daemon program; on Linux Landlock and seccomp, or `bubblewrap` where
+  it is installed. The runtime can read its runtime folder and its copies, write only its temporary folder,
+  and listen and connect only on loopback. It cannot read the daemon folder (the token and the configuration),
+  the home folder of the user or the other folders of the daemon. When the daemon cannot make the isolation, the
+  start fails (`isolation_failed`); there is no start with less isolation.
+
+- **The port.** The daemon starts the runtime with port 0 where the runtime permits it and reads the port from
+  the socket table; else it selects a free port of its range. Before it sends the API key in a probe, it checks
+  that the listener of that port belongs to the process tree of the server; if not, the cause is `listener`.
+- **The loopback check.** When a server is ready, after each restart, after each `model_load`, and in each cycle
+  of 15 seconds, the daemon reads the sockets of the process tree of the server from the system (on Linux
+  `/proc/<pid>/net/tcp`, `tcp6`, `udp` and `udp6` with the socket inodes of each process of the tree; on macOS
+  `proc_listchildpids` and `proc_pidinfo` with `PROC_PIDFDSOCKETINFO`). It does not connect to find them. Each
+  listening TCP socket and each bound UDP socket must be on `127.0.0.1`, `::1` or `::ffff:127.0.0.1`; no other
+  address that maps IPv4 counts as loopback. If one is not, the daemon ends the process tree at once, reports
+  `failed` with the cause `listener`, and does not start that server again until a new `server_start`. Between
+  two checks a listener can live for at most 15 seconds; the isolation, not the check, closes that time.
+- **Memory and disk.** The daemon ends a server whose memory is above its share of the device policy and 10 %
+  (`limit_memory`). On Linux it also sets `memory.max` of a cgroup of the server, or `RLIMIT_AS` where no cgroup
+  is available. The temporary folder of a server has a limit of 2 GiB; its bytes count in the report
+  (`tempBytes`), and a server above the limit is ended (`limit_disk`). The disk reserve of Section 7 is checked
+  for each write of model work, also in the runtime and temporary folders.
 - **The supervision (CAG-005).** When a server process ends and no item asked for it, the daemon starts it again
   with the same settings after a wait of 1, 2, 4, 8, 16, 32, 64, 128, 256 seconds, then each 300 seconds. The
-  wait goes back to 1 second after the server was `ready` for 10 minutes. After 10 starts that fail in one hour,
-  the server stays `failed` until a new `server_start`. Each restart and each `failed` is an event of the
+  daemon counts each end that no item asked for, also of a server that was `ready` for a long time. After 5 in one
+  hour or 20 in 24 hours, the server stays `failed` until a new `server_start`; only a new `server_start` that
+  then stays `ready` for 10 minutes sets the counts to 0. When a server ends during a `model_load` or in the 60
+  seconds after it, the copy of that load is `failed` with the cause `load_crash`, and the daemon does not load
+  it again by itself. Each restart and each `failed` is an event of the
   runtime report (`restarts`) and an entry in the log of the machine. The function of the waits is pure, in
   `daemon-core`, with a test clock (CAG-007).
 - On a stop of the daemon, the daemon stops each server. At its start it starts no server by itself; the hub
@@ -315,7 +414,10 @@ setting, no file of a user, no package, no service unit.
 - On Linux the user folders are below `XDG_DATA_HOME`, not `XDG_CONFIG_HOME`, because a model cache is large and
   is not configuration. A macOS folder below `~/Library/Caches` is not used, because the system can delete it.
 - A runtime process writes only to a temporary folder below the state folder, which the daemon empties at each
-  start of that process.
+  start of that process (limit: Section 9).
+- The daemon makes, moves and deletes each file and folder of model work relative to an open handle of its
+  folder (`openat`, `renameat`, `unlinkat`), with `O_NOFOLLOW`. `copy_delete` and each clean-up follow no
+  symbolic link.
 - MET-002 gets one more exception, which R-165 decided (OD-C9): "the daemon does the model work of the fixed list
   of CAG-003, and with it changes only its own folders (CAG-009)". The text of MET-002 changes with
   R-NEW-modelwork.
@@ -349,17 +451,21 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
 | Point | Question | Proposal |
 | --- | --- | --- |
 | MW-P1 | MET-020 permits the daemon only the hub. A pull, an install and a measure need Hugging Face, a release host and loopback | A child fetch process and a child probe process, with no token and fixed hosts (Section 4); MET-020 gets that exception in its text with R-NEW-modelwork |
+| MW-P7 | The SHA-256 comes from the hub (finding of the model work, F4) | Until the operator decides: the second source of each hash and a lowest age of a commit of 7 days (Section 7). Decision row OD-C23 of the compute plan |
+| MW-P8 | Is `mlx-community`, an open organisation, in the default list of the machine? (F5) | Until the operator decides: `unsloth` only (Section 7). Decision row OD-C24 |
+| MW-P9 | A runtime runs with the rights of the user of the daemon (F2) | Until the operator decides: an isolation that denies each thing by default is required (Section 9). Decision row OD-C22 |
 | MW-P2 | Does the machine hold its own list of approved organisations, or does it trust the list of the hub? | The machine holds its own list (Section 7), as the list of repositories of R-185 |
 | MW-P3 | Is the runtime report a member of the push batch or a report of the work route? | The push batch (Section 8) |
 | MW-P4 | How is an archive of `mlx_lm` or `vllm` with its Python environment made and signed? | Anima builds it with the release (task L1-6 decides the recipe); until then only `llama_server` from its upstream releases |
 | MW-P5 | Does the daemon start its servers again by itself after its own restart? | No: the hub sends `server_start` again, so that the machine runs nothing that the hub does not know |
-| MW-P6 | Can an AI agent through an API key make a model item? | Yes, with the MCP state of its tool (as R-153 for `agent_install`); the hub records the actor kind (K10 Section 10) |
+| MW-P6 | Can an AI agent through an API key make a model item? (F15) | Until the operator decides: only `model_report`, `server_stop`, `model_unload` and `model_drain` (Section 3). Decision row OD-C25 |
 
 ## 13. What a person who controls the hub can do with this contract
 
 On a machine that takes work, a person who controls the hub can: install a runtime from a release source that the
-machine holds; download files of an approved organisation of the machine, at a revision of their choice, and fill
-the disk share; load such a file in a runtime, whose parser can have faults (SEC-C-009); use memory and power
+machine holds; download files of the permitted types from an approved organisation of the machine, at a commit
+that is older than the lowest age, and fill the disk share; load such a file in a runtime, whose parser can have
+faults (SEC-C-009), inside the isolation of Section 9; use memory and power
 within the device policy; stop each model server. The person cannot name a command, a flag that the daemon owns,
 an address, a path or a host outside the lists of the machine. The security review (SEC-C-012) reads this
 section.
