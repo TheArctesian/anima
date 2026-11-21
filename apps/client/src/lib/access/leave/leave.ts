@@ -12,13 +12,15 @@ import { GATEWAY_KEPT, signOut } from '../sign-out';
 /**
  * Signs this client out of its hub and goes to where the next sign-in starts. The app of a phone or a tablet also ends
  * its Anima.ing account session and goes to Welcome (MOB-006). A browser behind the gateway of the hosted hubs is also
- * signed out of the gateway (HMD-059), so that the next visit asks for the account again. Returns the message to show
- * when something may stay signed in; `null` when the client moved on.
+ * signed out of the gateway (HMD-059), so that the next visit asks for the account again. The app on a computer first
+ * runs `leaveDaemon`, which takes the daemon off this computer and revokes it while the token still works (HMD-056).
+ * Returns the message to show when something may stay signed in or listed; `null` when the client moved on.
  */
 export async function leaveHub(
   hub: Pick<Hub, 'address' | 'close'>,
   api: Pick<AccessApi, 'logout'>,
   forgetCopy?: () => Promise<void>,
+  leaveDaemon?: () => Promise<string | null>,
 ): Promise<string | null> {
   const desktop = capabilities().keyStore;
   if (desktop && isMobile(navigator)) {
@@ -26,8 +28,11 @@ export async function leaveHub(
     if (kept === null) goToWelcome();
     return kept;
   }
+  const daemon = desktop ? await (leaveDaemon?.() ?? Promise.resolve(null)) : null;
   const kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken, forgetCopy });
-  if (kept !== null) return kept;
+  // What stays is said, as for a token that stayed: the page then stays too, so that the sentence is read.
+  const stays = [kept, daemon].filter((line) => line !== null);
+  if (stays.length > 0) return stays.join(' ');
   if (desktop) {
     // The desktop socket reads the key store anew, so the router may move within the page.
     goToSignIn();

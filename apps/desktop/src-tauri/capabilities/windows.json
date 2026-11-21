@@ -38,6 +38,7 @@
     "allow-mcp-agents-change",
     "allow-daemon-bundled",
     "allow-daemon-install",
+    "allow-daemon-remove",
     "allow-stay-awake-read",
     "allow-stay-awake-choose",
     "allow-stay-awake-floor",
