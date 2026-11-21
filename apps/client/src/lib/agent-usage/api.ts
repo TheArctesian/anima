@@ -65,7 +65,34 @@ const AGENT_USAGE = graphql(`
         day
       }
     }
+    shares: agentUsage(filter: $filter, by: [DEVICE, SOURCE]) {
+      rows {
+        ...AgentUsageSums
+        device {
+          id
+          name
+        }
+        source
+      }
+    }
     everyone: agentUsage(filter: $everyone, by: []) {
+      accounts {
+        key
+        shortKey
+        source
+        plan
+        reportedAt
+        devices {
+          id
+          name
+        }
+        limits {
+          window
+          usedPercent
+          resetsAt
+          reached
+        }
+      }
       devices {
         state
         device {
@@ -76,6 +103,30 @@ const AGENT_USAGE = graphql(`
             state
           }
         }
+      }
+    }
+    sessions: agentSessions(filter: $filter, first: 50) {
+      sessionsLeftOut
+      sessions {
+        id
+        device {
+          id
+          name
+        }
+        source
+        model
+        repository
+        startedAt
+        lastUseAt
+        recent
+        prompts
+        toolCalls
+        inputTokens
+        outputTokens
+        cacheReadTokens
+        cacheWriteTokens
+        estimatedCostUsd
+        unpricedTokens
       }
     }
   }
@@ -126,6 +177,44 @@ export type DeviceRow = UsageSums & { readonly device: NamedDevice };
 /** `repository` is null for the use that has none. */
 export type RepositoryRow = UsageSums & { readonly repository: string | null };
 
+/** One session with its sums over the days of the page (AIS-025). `recent`: used in the last 30 minutes (AIS-026). */
+export type SessionRow = Omit<UsageSums, 'sessions'> & {
+  readonly id: string;
+  readonly device: NamedDevice;
+  readonly source: AgentSource;
+  readonly model: string | null;
+  readonly repository: string | null;
+  readonly startedAt: string;
+  readonly lastUseAt: string;
+  readonly recent: boolean;
+};
+
+/** The use of one program on one device: each device's share of an account. */
+export type DeviceSourceRow = UsageSums & { readonly device: NamedDevice; readonly source: AgentSource };
+
+/** One limit window of an account, as the program said it. */
+export interface AccountLimit {
+  readonly window: string;
+  /** 0 to 100; null when the program says only whether it is reached. */
+  readonly usedPercent: number | null;
+  readonly resetsAt: string | null;
+  readonly reached: boolean;
+}
+
+/**
+ * An account of a program, known to the hub only by its key, with the devices that use it (AIS-022 as R-313 changed it).
+ * The limit is the account's, shared by its devices; the name of the account never leaves a device.
+ */
+export interface AgentAccount {
+  readonly key: string;
+  readonly shortKey: string;
+  readonly source: AgentSource;
+  readonly plan: string | null;
+  readonly reportedAt: string;
+  readonly devices: readonly NamedDevice[];
+  readonly limits: readonly AccountLimit[];
+}
+
 /** The use of the AI agent programs for the choices of the page, as the hub sums it. */
 export interface AgentUsageView {
   readonly firstDay: string;
@@ -149,6 +238,14 @@ export interface AgentUsageView {
   readonly repositoriesLeftOut: number;
   /** Every device that reports, whatever the choices. */
   readonly everyDevice: readonly UsageDevice[];
+  /** The single sessions that the choices admit, the newest use first: at most 50. */
+  readonly sessions: readonly SessionRow[];
+  /** How many sessions are not in `sessions`. */
+  readonly sessionsLeftOut: number;
+  /** Each account of a program that a daemon reported, whatever the choices. */
+  readonly accounts: readonly AgentAccount[];
+  /** The use of each program on each device, for the share of each device of an account. */
+  readonly shares: readonly DeviceSourceRow[];
 }
 
 // The two types below serve only `report/columns.ts` and `UsageNotes.svelte`, which the page no longer uses and which
@@ -185,9 +282,10 @@ export function agentUsageApi(hub: Pick<Hub, 'request'>) {
       const everyone: AgentUsageFilter = day === undefined ? {} : { firstDay: day, lastDay: day };
       const result = await hub.request(AGENT_USAGE, { filter, everything: everyRepository(filter), everyone });
       if (!result.ok) return result;
-      const { days, models, devices, repositories, newest, everyone: all } = result.value;
+      const { days, models, devices, repositories, newest, everyone: all, sessions, shares } = result.value;
       const withDay = days.rows.flatMap((row) => (row.day == null ? [] : [{ ...row, day: row.day }]));
       const withDevice = devices.rows.flatMap((row) => (row.device == null ? [] : [{ ...row, device: row.device }]));
+      const shared = shares.rows.flatMap((row) => (row.device == null || row.source == null ? [] : [{ ...row, device: row.device, source: row.source }]));
       const lastUse = newest.rows.flatMap((row) => (row.day == null ? [] : [{ repository: row.repository ?? null, day: row.day }]));
       return {
         ok: true,
@@ -205,6 +303,14 @@ export function agentUsageApi(hub: Pick<Hub, 'request'>) {
           newest: lastUse,
           repositoriesLeftOut: repositories.rowsLeftOut,
           everyDevice: all.devices,
+          sessions: sessions.sessions.map((row) => ({ ...row, model: row.model ?? null, repository: row.repository ?? null })),
+          sessionsLeftOut: sessions.sessionsLeftOut,
+          accounts: all.accounts.map((account) => ({
+            ...account,
+            plan: account.plan ?? null,
+            limits: account.limits.map((limit) => ({ ...limit, usedPercent: limit.usedPercent ?? null, resetsAt: limit.resetsAt ?? null })),
+          })),
+          shares: shared,
         },
       };
     },

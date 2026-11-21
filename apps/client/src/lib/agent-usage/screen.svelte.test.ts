@@ -18,7 +18,7 @@ let app: ReturnType<typeof mount> | undefined;
 let hub: FakeUsageHub;
 let changes: UsageQuery[];
 const NOW = new Date('2026-11-17T10:00:00Z');
-const NO_USE = { ...ANSWER, days: [], models: [], devices: [], repositories: [], newest: [], total: sums(), everything: sums() };
+const NO_USE = { ...ANSWER, days: [], models: [], devices: [], repositories: [], newest: [], total: sums(), everything: sums(), sessions: [] };
 
 beforeEach(() => {
   installAnimations();
@@ -256,4 +256,46 @@ it('the device choice keeps every device when the use is filtered to one', async
   control('Device')?.click();
   flushSync();
   expect([...document.querySelectorAll('label.option')].map((option) => option.textContent.trim())).toEqual(['All devices', 'gpu-box', 'mac-mini', 'nas']);
+});
+
+it('AIS-025, AIS-026: the sessions come newest use first, a recent one with its dot, and the page never says one runs now', async () => {
+  await open();
+  const rows = lines('Sessions, the newest use first');
+  expect(rows).toHaveLength(2);
+  expect(rows[0]?.querySelector('th')?.textContent).toContain('acme/anima');
+  expect(cells(rows[0]).slice(0, 2)).toEqual(['Claude Codemac-mini', expect.stringContaining('12 minutes ago') as string]);
+  expect(rows[0]?.querySelector('.recent')?.textContent).toBe('Recent');
+  expect(rows[1]?.querySelector('.recent')).toBeNull();
+  expect(cells(rows[1]).at(-1)).toBe('No price');
+  expect(text()).not.toMatch(/running|runs now/i);
+});
+
+it('AIS-025: sessions the hub did not send are counted under the list', async () => {
+  hub.answer = { ...ANSWER, sessionsLeftOut: 3 };
+  await open();
+  expect(text()).toContain('3 older sessions are not shown. Choose fewer days or a repository.');
+});
+
+it('AIS-022 (R-313): an account groups its devices under one bar for each limit, with the share of each device', async () => {
+  await open();
+  const cards = [...document.querySelectorAll('li.card')];
+  expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual(['Codex account 3f9a12c4', 'Claude Code account a71c0e5b']);
+  const codex = cards[0]?.textContent ?? '';
+  expect(codex).toContain('Pro');
+  expect(codex).toContain('reported 20 minutes ago');
+  expect(codex).toMatch(/5 hours\s*35 % used · starts again/);
+  expect(codex).toMatch(/7 days\s*82 % used · starts again/);
+  const meters = [...(cards[0]?.querySelectorAll('[role=meter]') ?? [])].map((meter) => [meter.getAttribute('aria-label'), meter.getAttribute('aria-valuenow')]);
+  expect(meters).toEqual([['5 hours used', '35'], ['7 days used', '82']]);
+  const shares = [...(cards[0]?.querySelectorAll('.device') ?? [])].map((device) => device.textContent.replace(/\s+/g, ' ').trim());
+  expect(shares).toEqual(['mac-mini 65 %', 'gpu-box 35 %']);
+  expect(cards[1]?.textContent).toContain('The program reports no limit yet.');
+  expect(text()).not.toContain(ANSWER.accounts[0]?.key);
+});
+
+it('with no account reported the page has no part By account', async () => {
+  hub = fakeUsageHub({ ...ANSWER, accounts: [] });
+  await open();
+  expect(text()).not.toContain('By account');
+  expect(text()).toContain('By device');
 });

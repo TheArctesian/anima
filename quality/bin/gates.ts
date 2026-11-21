@@ -10,6 +10,7 @@ import { changedPaths, cratesHolding, readLayout } from "../src/gates/layout.ts"
 import { crateGates, testOwner } from "../src/gates/test-only.ts";
 import { choose, describeChoice, fastGates, isBusy, macOnly } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
+import { LEFT_OUT, windowsLintArgv } from "../src/gates/windows-lint.ts";
 
 const USAGE = "usage: bun quality/bin/gates.ts [--fast [--whole] | --changed] [--group rust,go,bun,quality] [--gate name,name] [--keep-going]";
 /** The last line of a fast run that left tests out. */
@@ -48,6 +49,15 @@ if (process.argv[2] === "--alone") {
   const crates = readLayout(REPO_ROOT).crates.map((crate) => crate.name);
   const run = (argv: string[]) => Bun.spawnSync(argv, { cwd: REPO_ROOT, stdout: "inherit", stderr: "inherit" }).exitCode ?? 1;
   process.exit(checkAlone(crates, run, (line) => { console.log(line); }));
+}
+
+// `--windows-lint`: Clippy of the workspace for Windows, on Linux (the job windows-lint on GitHub).
+if (process.argv[2] === "--windows-lint") {
+  const argv = windowsLintArgv();
+  console.log(`windows-lint: ${argv.join(" ")}`);
+  for (const { crate, reason } of LEFT_OUT) console.log(`windows-lint: left out ${crate}: ${reason}`);
+  const env = { ...process.env, RUSTC_WRAPPER: "" };
+  process.exit(Bun.spawnSync(argv, { cwd: REPO_ROOT, env, stdout: "inherit", stderr: "inherit" }).exitCode ?? 1);
 }
 
 // `--jobs`: the jobs of the workflow `gates` that the changes against `FAST_BASE` need, as lines for
