@@ -266,6 +266,17 @@ macro's dependency gets the normal debuginfo only when the same crate is a norma
 so gates 4 and 5 (fewer targets) would rebuild sqlx, async-graphql, tauri and the workspace crates (about 70 s cold).
 Gate 3 fails with the install command when `cargo-nextest` is not on `PATH`.
 
+### The thread tests on Linux, from a Mac: `bun run gates:linux-threads`
+
+The runner and the holder of the threads find processes in `/proc` on Linux and with `ps` on a Mac, so a
+fault can pass on a Mac and fail on GitHub. Before you push a change that starts, stops or finds processes,
+run `bun run gates:linux-threads`. It runs the tests of `anima-daemon` and `agent-threads` in Docker
+(`rust:<version of rust-toolchain.toml>-bookworm`, as a user who is not root) and gets the Linux build of
+cargo-nextest one time. The source is mounted read only. The tests `units::` write into the source, so this run
+leaves them out; GitHub runs them. The Docker volumes `anima-linux-target` and `anima-linux-cargo` keep the build
+between runs. Arguments after `--` go to nextest, for example `bun run gates:linux-threads -- threads::`. It is
+not a gate: the run on GitHub is.
+
 ### Throwaway PostgreSQL (R-009, R-019)
 
 Gate 3 runs through `bin/with-postgres.ts`, and so do the deploy tests in gate 9. It starts a throwaway PostgreSQL 17 on a Unix socket in a temporary folder, sets `DATABASE_URL`, runs the tests and deletes the folder. Set `DATABASE_URL` yourself only for a server that no other worktree uses at the same time (R-019). If PostgreSQL 17 is not installed, the gate fails; database tests never skip.
