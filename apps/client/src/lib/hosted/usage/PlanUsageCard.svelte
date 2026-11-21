@@ -53,12 +53,12 @@
       <div><dt>Asleep</dt><dd>{hoursText(usage.asleepSeconds)}</dd></div>
       <div>
         <dt>This month</dt>
-        <dd>{usage.amount === null || !usage.plan.charged ? NOT_CHARGED : amountText(usage.amount)}</dd>
+        <dd>{!usage.plan.charged ? NOT_CHARGED : usage.amount === null ? NOT_AVAILABLE : amountText(usage.amount)}</dd>
       </div>
     {/if}
   </dl>
   {#if answer?.state === 'figures'}
-    {#if answer.usage.amount !== null && answer.usage.plan.charged}<p class="note">{ESTIMATE_NOTE}</p>{/if}
+    {#if answer.usage.amount !== null}<p class="note">{ESTIMATE_NOTE}</p>{/if}
     {#if answer.usage.owes}
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the account page, not a route of this app -->
       <p class="note">{OWES} <a href={ACCOUNT_PAGE} target="_blank" rel="noreferrer">Open your account</a></p>

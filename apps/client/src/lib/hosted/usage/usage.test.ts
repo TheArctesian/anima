@@ -1,21 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { POOL_ANSWER } from './usage.fixture';
+import { POOL_ANSWER, withHub } from './usage.fixture';
 import { amountText, figuresTime, hoursText, hubDataBytes, parseUsage, planDiskText } from './usage';
 
 
 describe('the figures of the account (HMD-073, contracts/account-usage.md)', () => {
   it('takes the answer of the pool in the form of the contract', () => {
     const usage = parseUsage(POOL_ANSWER);
-    expect(usage?.at.toISOString()).toBe('2026-11-20T18:00:00.000Z');
+    expect(usage?.at.toISOString()).toBe('2026-11-20T08:00:00.000Z');
+    expect([usage?.month, usage?.plan, usage?.awakeSeconds, usage?.asleepSeconds]).toEqual(['2026-11', { name: 'Hobby', charged: true }, 45_000, 1_800]);
     expect(usage?.amount).toEqual({ minor: 412, currency: 'USD' });
-    expect(parseUsage({ ...POOL_ANSWER, amount: null, plan: { name: 'Free', charged: false } })?.amount).toBeNull();
-    expect(parseUsage({ ...POOL_ANSWER, disk: { limitBytes: 1, usedBytes: null } })?.disk.usedBytes).toBeNull();
+    expect(usage?.disk).toEqual({ limitBytes: 10_000_000_000, usedBytes: 2_500_000_000 });
+    expect(parseUsage(withHub({ plan: 'free' }))?.plan).toEqual({ name: 'Free', charged: false });
+    expect(parseUsage(withHub({ plan: 'free' }))?.amount).toBeNull();
+    expect(parseUsage({ ...POOL_ANSWER, prices_set: false })?.amount).toBeNull();
+    expect(parseUsage(withHub({ disk_used_bytes: null }))?.disk.usedBytes).toBeNull();
+  });
+
+  it('takes the hub of the page: the one it names, else the only one of the account', () => {
+    const two = { ...POOL_ANSWER, hubs: [POOL_ANSWER.hubs[0], { ...POOL_ANSWER.hubs[0], id: 'h2', plan: 'free' }] };
+    expect(parseUsage(two, 'h2')?.plan.name).toBe('Free');
+    expect(parseUsage(two)).toBeUndefined();
+    expect(parseUsage(POOL_ANSWER, 'hub')?.plan.name).toBe('Hobby');
   });
 
   it('refuses an answer with a member missing or of the wrong kind', () => {
-    for (const wrong of [null, {}, { ...POOL_ANSWER, at: 'yesterday' }, { ...POOL_ANSWER, month: '11/2026' }, { ...POOL_ANSWER, awakeSeconds: -1 },
-      { ...POOL_ANSWER, amount: { minor: 1.5, currency: 'USD' } }, { ...POOL_ANSWER, amount: { minor: 1, currency: 'usd' } },
-      { ...POOL_ANSWER, owes: 'no' }, { ...POOL_ANSWER, disk: { usedBytes: 1 } }, { ...POOL_ANSWER, plan: { name: '', charged: true } }]) {
+    for (const wrong of [null, {}, { ...POOL_ANSWER, until: 'now' }, { ...POOL_ANSWER, period: '11/2026' }, { ...POOL_ANSWER, total: 1.5 },
+      { ...POOL_ANSWER, currency: 'dollars' }, { ...POOL_ANSWER, lines: [{ kind: 'running', seconds: -1 }] }, { ...POOL_ANSWER, hubs: [] },
+      { ...POOL_ANSWER, prices_set: 'yes' }, withHub({ disk_limit_bytes: undefined }), withHub({ plan: '' })]) {
       expect(parseUsage(wrong)).toBeUndefined();
     }
   });

@@ -3,16 +3,16 @@ import { readGateway } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { parseUsage, type UsageAnswer } from './usage';
 
-/** The path of the gateway that answers the figures of the account of its session, on the origin of the hub. */
-export const GATEWAY_PATH = '/account/v1/usage';
+/** The path of the door that answers the figures of the account of its session, on the origin of the hub. */
+export const GATEWAY_PATH = '/_door/usage';
 /** How long the page waits for the figures before it says that they are not available. */
 export const WAIT_MS = 10_000;
 
 const SIGNED_OUT: UsageAnswer = { state: 'signed-out' };
 const UNAVAILABLE: UsageAnswer = { state: 'unavailable' };
 
-function figures(value: unknown): UsageAnswer {
-  const usage = parseUsage(value);
+function figures(value: unknown, hubId?: string): UsageAnswer {
+  const usage = parseUsage(value, hubId);
   return usage === undefined ? UNAVAILABLE : { state: 'figures', usage };
 }
 
@@ -20,14 +20,19 @@ function figures(value: unknown): UsageAnswer {
 async function fromShell(): Promise<UsageAnswer> {
   const answered = await cloudHubUsage();
   if (answered.ok) return figures(answered.value);
-  return answered.problem === 'signed-out' || answered.problem === 'unconfigured' ? SIGNED_OUT : UNAVAILABLE;
+  return answered.problem === 'signed-out' ? SIGNED_OUT : UNAVAILABLE;
+}
+
+/** The id of the hub in the address of this page (`https://<hub id>.hub.anima.ing`, AC-D45); the first label of its host. */
+function hubIdOfPage(): string | undefined {
+  return typeof location === 'undefined' ? undefined : location.hostname.split('.')[0];
 }
 
 /** In a browser at the address of the hub: the path of the gateway, for the account of its session. */
 async function fromGateway(fetcher: typeof fetch | undefined): Promise<UsageAnswer> {
   const answered = await readGateway(GATEWAY_PATH, WAIT_MS, fetcher);
   if (answered?.status === 401) return SIGNED_OUT;
-  return answered !== null && answered.status === 200 ? figures(answered.body) : UNAVAILABLE;
+  return answered !== null && answered.status === 200 ? figures(answered.body, hubIdOfPage()) : UNAVAILABLE;
 }
 
 /**

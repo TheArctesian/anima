@@ -37,7 +37,9 @@ describe('reading the figures of the account (HMD-073 in form B)', () => {
     expect(fetcher).not.toHaveBeenCalled();
     shell.invoke.mockRejectedValueOnce({ code: 'unauthenticated' });
     expect(await readAccountUsage(true, fetcher)).toEqual({ state: 'signed-out' });
-    shell.invoke.mockRejectedValueOnce({ code: 'offline' });
-    expect(await readAccountUsage(true, fetcher)).toEqual({ state: 'unavailable' });
+    for (const code of ['offline', 'not-ready', 'unconfigured']) {
+      shell.invoke.mockRejectedValueOnce({ code });
+      expect(await readAccountUsage(true, fetcher)).toEqual({ state: 'unavailable' });
+    }
   });
 });
