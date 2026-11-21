@@ -178,6 +178,39 @@ jobs:
       - name: Check each crate alone
         run: bun quality/bin/gates.ts --alone
 
+  # Clippy of the workspace for Windows, on Linux (quality/src/gates/windows-lint.ts): the code behind
+  # cfg(windows) that the other Linux jobs never compile. The job windows still builds it with MSVC
+  # and runs its tests, but only for dev, a train or a call.
+  windows-lint:
+    needs: base
+    if: needs.base.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
+      - name: Install the Windows GNU target and its C compiler
+        run: |
+          set -eu
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends mingw-w64
+          rustup target add x86_64-pc-windows-gnu
+      - name: Run Clippy for Windows
+        run: bun quality/bin/gates.ts --windows-lint
+
   rust-test:
     needs: base
     if: needs.base.outputs.rust == 'true'
@@ -286,7 +319,7 @@ jobs:
   # One name for a rule of the repository: it passes when each job above passed.
   passed:
     if: always()
-    needs: [base, rust-lint, rust-test, go, bun, windows]
+    needs: [base, rust-lint, windows-lint, rust-test, go, bun, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -301,4 +334,4 @@ jobs:
           echo "results: $RESULTS"
           # windows runs only for dev and trains. A Rust or Go job may be skipped only when the job
           # base said that the changes do not need it (`--jobs`); any other skip fails.
-          echo "$RESULTS" | jq -e --arg rust "${RUST_NEEDED:-}" --arg go "${GO_NEEDED:-}" 'to_entries | all(.value.result == "success" or (.value.result == "skipped" and (.key == "windows" or ($rust == "false" and (.key == "rust-lint" or .key == "rust-test")) or ($go == "false" and .key == "go"))))' > /dev/null
+          echo "$RESULTS" | jq -e --arg rust "${RUST_NEEDED:-}" --arg go "${GO_NEEDED:-}" 'to_entries | all(.value.result == "success" or (.value.result == "skipped" and (.key == "windows" or ($rust == "false" and (.key == "rust-lint" or .key == "windows-lint" or .key == "rust-test")) or ($go == "false" and .key == "go"))))' > /dev/null
