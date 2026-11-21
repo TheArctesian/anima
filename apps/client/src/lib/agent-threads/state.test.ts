@@ -40,6 +40,17 @@ describe('the state of a thread from its session file', () => {
     expect(needsYouCount(rows, NOW, NONE)).toBe(3);
   });
 
+  it('THR-056: a request of a driven program is first in Needs you, also when it is old; a program that reports work is in Working', () => {
+    // A session file never gives these two tails; only the runner does (`live/rows.ts`).
+    const asks: ThreadRow = { ...row('asks', 'nothing', 2 * 24 * 3600), tail: 'asks' };
+    const runs: ThreadRow = { ...row('runs', 'nothing', 3600), tail: 'running' };
+    const rows = [row('turn', 'turn_ended', 10), row('tool', 'open_tool', 90), asks, runs];
+    expect(threadState(asks, NOW, new Map([['asks', NOW]]))).toBe('asks');
+    expect(threadState(runs, NOW, NONE)).toBe('working');
+    expect(orderedThreads(rows, NOW, NONE).map((entry) => entry.key)).toEqual(['group:needs', 'asks', 'tool', 'turn', 'group:working', 'runs']);
+    expect(needsYouCount(rows, NOW, NONE)).toBe(3);
+  });
+
   it('THR-056: the folded group Earlier keeps its title and its count, and none of its threads', () => {
     const rows = [row('work', 'open', 10), row('old', 'turn_ended', 3 * 24 * 3600), row('turn', 'turn_ended', 60)];
     const entries = orderedThreads(rows, NOW, NONE, { earlierOpen: false, chosen: null }).map((entry) => (entry.kind === 'group' ? `${entry.title} ${String(entry.count)}` : entry.key));
