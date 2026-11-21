@@ -2,7 +2,9 @@
 # Builds the release programs of anima-link into link/bin, one for each
 # platform, with the build tags that Tailcat's own releases use (they leave
 # out the parts of the Tailscale library that the link does not need).
-# A program larger than the limit fails the build.
+# A program larger than the limit fails the build. The Windows programs (HMD-050)
+# are built here too; the Windows application carries its own amd64 build from
+# deploy/bin/windows-bundle.ps1, which uses the same tags.
 #
 #   link/build.sh
 set -eu
@@ -16,9 +18,11 @@ tags_file="$(go list -m -f '{{.Dir}}' github.com/tailscale/tailcat)/build-tags.t
 tags=$(tr '\n' ',' <"$tags_file" | sed 's/,$//')
 case ",$tags," in *,ts_omit_portmapper,*) ;; *) echo "link/build.sh: the build tags do not leave out the port mapper" >&2; exit 1 ;; esac
 mkdir -p bin
-for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do
   os=${target%/*} arch=${target#*/}
-  out="bin/anima-link-$os-$arch"
+  suffix=""
+  [ "$os" = windows ] && suffix=".exe"
+  out="bin/anima-link-$os-$arch$suffix"
   GOOS=$os GOARCH=$arch go build -trimpath -ldflags="-s -w" -tags "$tags" -o "$out" ./cmd/anima-link
   size=$(wc -c <"$out" | tr -d ' ')
   echo "$out: $size bytes"

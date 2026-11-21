@@ -42,7 +42,8 @@ function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    if (command === undefined) return [];
+    // `--alone` checks each crate by itself and runs no gate of the list.
+    if (command === undefined || command.trim().startsWith("--alone")) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
     return full
@@ -113,6 +114,17 @@ describe("the gates workflow (gates.yml)", () => {
     for (const step of steps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) {
       expect(step.with?.["save-if"]).toBe("${{ inputs.ref == '' }}");
     }
+  });
+});
+
+
+describe("the gates workflow: each crate alone", () => {
+  test("the job rust-lint checks each crate alone, as the release builds `anima` and the application", () => {
+    const lint = workflow.jobs["rust-lint"]?.steps.map((step) => step.run ?? "") ?? [];
+    const merged = lint.findIndex((run) => run.includes("gates-merge.sh"));
+    const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
+    expect(merged).toBeGreaterThan(-1);
+    expect(alone).toBeGreaterThan(merged);
   });
 });
 

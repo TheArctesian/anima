@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { kindName, resultWords, type ToolCall } from './thread';
+  import { kindName, resultWords, type ToolCall } from '../thread';
 
   interface Props {
     /** The tool calls that follow each other in a turn. */

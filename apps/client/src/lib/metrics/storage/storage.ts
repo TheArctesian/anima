@@ -7,7 +7,7 @@ export interface MountView {
   readonly path: string;
   /** 0 to 100; `null` without a recent sample, which draws no bar. */
   readonly percent: number | null;
-  /** "7.3 TiB · 41 %": the size and the share used, as far as they are known. */
+  /** "3.0 TiB used · 41 %": the bytes used and the share used, as far as they are known; the size is the row's own column. */
   readonly text: string;
   /** What a screen reader hears for the bar: used, of what, and the share. */
   readonly spoken: string;
@@ -50,7 +50,7 @@ export function summaryText(drives: readonly StorageDrive[]): string {
 function mountView(mount: StorageDrive['mounts'][number]): MountView {
   const { percent, sizeBytes, usedBytes } = mount;
   const shown = percent === null ? null : Math.min(100, Math.max(0, percent));
-  const text = [sizeBytes === null ? null : formatBytes(sizeBytes), shown === null ? null : formatPercent(shown)].filter((part) => part !== null).join(' · ');
+  const text = [usedBytes === null ? null : `${formatBytes(usedBytes)} used`, shown === null ? null : formatPercent(shown)].filter((part) => part !== null).join(' · ');
   const used = usedBytes === null ? null : `${formatBytes(usedBytes)} used${sizeBytes === null ? '' : ` of ${formatBytes(sizeBytes)}`}`;
   const spoken = [mount.path, used, shown === null ? 'no reading' : formatPercent(shown)].filter((part) => part !== null).join(', ');
   return { path: mount.path, percent: shown, text: text === '' ? '—' : text, spoken, degraded: shown !== null && shown > DEGRADED_ABOVE };

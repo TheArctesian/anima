@@ -159,6 +159,15 @@ impl TokenStore {
         self.write(credential, true)
     }
 
+    /// Deletes the stored credential, as when the daemon leaves this computer (HMD-056). A
+    /// store that holds none is not an error, so a second call ends the same as the first.
+    ///
+    /// # Errors
+    /// [`TokenStoreError`] when it cannot be deleted.
+    pub fn forget(&self) -> Result<(), TokenStoreError> {
+        self.backend.delete()
+    }
+
     fn write(&self, credential: &Credential, fresh: bool) -> Result<(), TokenStoreError> {
         let token =
             DaemonToken::parse(credential.token.expose()).ok_or(TokenStoreError::Corrupt)?;
