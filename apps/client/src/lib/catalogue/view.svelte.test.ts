@@ -66,7 +66,7 @@ it('H39: the choice of the tier and the search keep only the entries that match;
   const search = document.querySelector<HTMLInputElement>('input[type="search"]');
   if (search === null) throw new Error('no search field');
   search.value = 'nothing like it';
-  search.dispatchEvent(new Event('input'));
+  search.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
   expect(document.body.textContent).toContain('No entry matches the search');
   button('Clear the search')?.click();
