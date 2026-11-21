@@ -105,24 +105,22 @@ impl Runner {
                 told = told && socket::tell(&client, &Reply::Update(Box::new((*update).clone())));
             }
         }
+        // This watch alone gets the row and the waiting requests of each thread after the kept
+        // updates, so that a request whose update is older than its share still has a card. The
+        // other watches already have them (THR-030).
+        for thread in self.threads.values_mut() {
+            for change in thread.now_changes() {
+                let update = thread.number(change);
+                told = told && socket::tell(&client, &Reply::Update(Box::new(update)));
+            }
+        }
         if told {
-            // The oldest watch gives way, so that the watches of this user stay few (THR-045).
+            // The oldest watch gives way and is closed, so that the watches of this user stay
+            // few and the client of that watch knows it (THR-045).
             if self.watchers.len() >= WATCHERS {
-                self.watchers.remove(0);
+                self.watchers.remove(0).close();
             }
             self.watchers.push(client);
-            // Each watch gets the row and the waiting requests of each thread after the kept
-            // updates, so that a request whose update is older than its share still has a card.
-            let ids: Vec<Uuid> = self.threads.keys().copied().collect();
-            for id in ids {
-                let changes = self
-                    .threads
-                    .get(&id)
-                    .map_or_else(Vec::new, Thread::now_changes);
-                for change in changes {
-                    self.publish(id, change);
-                }
-            }
         }
     }
 
@@ -185,6 +183,8 @@ impl Runner {
             if let Some(thread) = self.threads.get_mut(&id) {
                 thread.answer_failed(request);
             }
+            // The record must not say that the answer went: a restart would close the request.
+            self.save();
             return Err(Refusal::Holder);
         };
         let pending = Pending {

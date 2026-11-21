@@ -19,6 +19,14 @@ use tokio::sync::mpsc;
 pub struct Client {
     frames: mpsc::Sender<String>,
     waiting: Arc<AtomicUsize>,
+    let_go: Arc<tokio::sync::Notify>,
+}
+
+impl Client {
+    /// Closes the connection of this client, so that it knows it gets no more updates.
+    pub fn close(&self) {
+        self.let_go.notify_one();
+    }
 }
 
 /// The most frames that wait for one client.
@@ -117,9 +125,11 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>) {
     let (reading, mut writing) = stream.into_split();
     let (frames, mut queue) = mpsc::channel::<String>(CLIENT_QUEUE);
     let queued_bytes = Arc::new(AtomicUsize::new(0));
+    let let_go = Arc::new(tokio::sync::Notify::new());
     let client = Client {
         frames,
         waiting: Arc::clone(&queued_bytes),
+        let_go: Arc::clone(&let_go),
     };
     let writer = tokio::spawn(async move {
         while let Some(text) = queue.recv().await {
@@ -137,7 +147,11 @@ async fn serve(stream: UnixStream, calls: mpsc::Sender<Incoming>) {
     loop {
         line.clear();
         reader.set_limit(limit);
-        match reader.read_until(b'\n', &mut line).await {
+        let read = tokio::select! {
+            read = reader.read_until(b'\n', &mut line) => read,
+            () = let_go.notified() => break,
+        };
+        match read {
             Ok(0) | Err(_) => break,
             Ok(_) if !line.ends_with(b"\n") => break,
             Ok(_) => {}

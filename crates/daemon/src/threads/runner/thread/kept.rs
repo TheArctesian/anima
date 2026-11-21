@@ -51,6 +51,17 @@ impl Thread {
         self.seq = self.seq.max(at_least);
     }
 
+    /// Gives `change` the next number of the thread for one client only: it is not kept, so the
+    /// other watches never see the number, and a client takes a gap in the numbers.
+    pub fn number(&mut self, change: Change) -> Update {
+        self.seq += 1;
+        Update {
+            thread: self.row.id,
+            seq: self.seq,
+            change,
+        }
+    }
+
     /// Gives `change` the next number of the thread and keeps it.
     pub fn note(&mut self, change: Change) -> Update {
         self.seq += 1;

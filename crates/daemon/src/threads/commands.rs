@@ -19,26 +19,19 @@ pub async fn run(shared: &Arc<Mutex<Shared>>, command: Command) -> Outcome {
     let known = if repeatable {
         None
     } else {
-        shared
-            .lock()
-            .ok()
-            .and_then(|state| state.done.get(&command.id).cloned())
+        locked(shared).done.get(&command.id).cloned()
     };
     let outcome = if let Some(outcome) = known {
         outcome
     } else {
         let outcome = act(shared, command.action).await;
-        if let Ok(mut state) = shared.lock() {
-            state.remember(command.id, outcome.clone());
-        }
+        locked(shared).remember(command.id, outcome.clone());
         outcome
     };
-    if let Ok(state) = shared.lock() {
-        state.send(&Event::Done {
-            id: command.id,
-            outcome: outcome.clone(),
-        });
-    }
+    locked(shared).send(&Event::Done {
+        id: command.id,
+        outcome: outcome.clone(),
+    });
     outcome
 }
 
@@ -262,7 +255,9 @@ async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -
         } else {
             slot.spared.clone()
         },
-        seen: if with_root {
+        // A stop sweeps what was seen; so does each command on a program that ended and left
+        // a process that a sweep could not end.
+        seen: if with_root || slot.left_behind {
             slot.seen.clone()
         } else {
             tree::Known::new()
@@ -273,12 +268,25 @@ async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -
         None => refused(Refusal::UnknownThread),
         Some(Ending {
             gone: true,
-            left_behind,
+            left_behind: false,
             ..
         }) => Outcome::Stopped {
             ended: 0,
-            all_ended: !left_behind,
+            all_ended: true,
         },
+        Some(Ending {
+            gone: true, seen, ..
+        }) => {
+            // The program ended and its sweep did not prove that all ended: sweep again.
+            let swept = tree::sweep(&seen).await;
+            if let Some(slot) = locked(shared).threads.get_mut(thread) {
+                program::settle_sweep(slot, swept.all);
+            }
+            Outcome::Stopped {
+                ended: swept.count,
+                all_ended: swept.all,
+            }
+        }
         Some(ending) => {
             let ended = tree::end(ending.root, with_root, &ending.spare, GRACE).await;
             // A process that was below the program and left its tree (its parent ended) is

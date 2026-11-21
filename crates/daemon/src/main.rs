@@ -199,9 +199,15 @@ async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
         Ok(program) => program,
         Err(error) => return failure(&error),
     };
-    // A name or a value that is not UTF-8 is left out: it cannot be a value of Anima.
+    // A name that is not UTF-8 is left out. A value is read as the login shell's output is
+    // (lossy), so that a secret value that is not UTF-8 is still found and stripped (THR-040).
     let daemon: Vec<(String, String)> = std::env::vars_os()
-        .filter_map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
+        .filter_map(|(name, value)| {
+            Some((
+                name.into_string().ok()?,
+                value.to_string_lossy().into_owned(),
+            ))
+        })
         .collect();
     let env = login::environment(&daemon).await;
     match runner::run(&daemon_dir, &program, env, stop()).await {
