@@ -93,5 +93,5 @@ fn the_edges_of_the_lsof_output_read() {
     assert_eq!(read.len(), 3, "{read:?}");
     assert!(read[..2].iter().all(|socket| !is_loopback(socket.address)));
     assert_eq!(read[2].address, ip("127.0.0.1"));
-    assert!(read_lsof("").is_empty());
+    assert_eq!(read_lsof(""), []);
 }

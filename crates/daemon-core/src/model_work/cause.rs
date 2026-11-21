@@ -43,6 +43,9 @@ pub enum Cause {
     ProgramMismatch,
     /// An archive of a runtime breaks a rule of the unpack (R-NEW-archiverejected).
     ArchiveRejected,
+    /// Linux: the cgroup of a server cannot be made (no cgroup v2, or no delegation to the
+    /// user of the daemon); there is no start with less containment (R-NEW-containment).
+    ContainmentFailed,
 }
 
 impl Cause {
@@ -84,6 +87,7 @@ impl Cause {
             Self::LimitDisk => "limit_disk",
             Self::ProgramMismatch => "program_mismatch",
             Self::ArchiveRejected => "archive_rejected",
+            Self::ContainmentFailed => "containment_failed",
         }
     }
 
@@ -106,6 +110,7 @@ impl Cause {
                 | Self::LimitDisk
                 | Self::ProgramMismatch
                 | Self::ArchiveRejected
+                | Self::ContainmentFailed
         )
     }
 }

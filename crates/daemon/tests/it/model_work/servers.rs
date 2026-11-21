@@ -8,7 +8,7 @@ use daemon_core::model_work::settings::ServerSettings;
 use daemon_core::wire::WorkType;
 use uuid::Uuid;
 
-use super::kit::{FAKE_RUNTIME, PROGRAM, archive, node_on, release, target};
+use super::kit::{FAKE_RUNTIME, PROGRAM, archive, contained, node_on, release, target};
 use anima_daemon::model::cycle::Node;
 use anima_daemon::model::install::place_archive;
 
@@ -52,6 +52,9 @@ fn set_mode(node: &Node, mode: &str) {
 
 #[tokio::test]
 async fn a_server_listens_on_loopback_with_the_fixed_environment() {
+    if !contained() {
+        return;
+    }
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "loopback", 42050);
     assert_eq!(node.run(&start()).await, Ok(None));
@@ -80,6 +83,9 @@ async fn a_server_listens_on_loopback_with_the_fixed_environment() {
 
 #[tokio::test]
 async fn a_listener_on_each_address_is_refused() {
+    if !contained() {
+        return;
+    }
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "any", 42100);
     assert_eq!(node.run(&start()).await, Err(Cause::Listener));
@@ -99,6 +105,9 @@ async fn the_sandbox_setting_with_no_isolation_refuses_the_start() {
 
 #[tokio::test]
 async fn a_runtime_that_stops_is_started_again_then_failed_after_the_limit() {
+    if !contained() {
+        return;
+    }
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "loopback", 42200);
     node.run(&start()).await.expect("started");
@@ -108,7 +117,8 @@ async fn a_runtime_that_stops_is_started_again_then_failed_after_the_limit() {
         .as_ref()
         .expect("running")
         .0
-        .group;
+        .leader
+        .pid;
     let pid = rustix::process::Pid::from_raw(group).expect("a pid");
     rustix::process::kill_process_group(pid, rustix::process::Signal::KILL).expect("killed");
     let temporary = node.folders.server(SERVER).join("tmp");
@@ -156,20 +166,26 @@ async fn gone(pid: rustix::process::Pid) -> bool {
 
 #[tokio::test]
 async fn the_children_of_a_server_end_when_its_main_process_ends() {
+    if !contained() {
+        return;
+    }
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "loopback", 42250);
     node.run(&start()).await.expect("started");
     let child = child_of(&node);
+    let temporary = node.folders.server(SERVER).join("tmp");
+    // One poll of the cycle records the child; on macOS the walk keeps what a poll saw.
+    node.servers.cycle(900, |_| temporary.clone()).await;
     let leader = node.servers.map[&SERVER]
         .running
         .as_ref()
         .expect("running")
         .0
-        .group;
+        .leader
+        .pid;
     let leader = rustix::process::Pid::from_raw(leader).expect("a pid");
     rustix::process::kill_process(leader, rustix::process::Signal::KILL).expect("killed");
     tokio::time::sleep(Duration::from_millis(200)).await;
-    let temporary = node.folders.server(SERVER).join("tmp");
     node.servers.cycle(1_000, |_| temporary.clone()).await;
     assert!(
         gone(child).await,
@@ -179,10 +195,50 @@ async fn the_children_of_a_server_end_when_its_main_process_ends() {
 
 #[tokio::test]
 async fn the_whole_group_ends_when_the_node_drops() {
+    if !contained() {
+        return;
+    }
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "loopback", 42300);
     node.run(&start()).await.expect("started");
     let child = child_of(&node);
     drop(node);
     assert!(gone(child).await, "the child outlived the node");
+}
+
+#[tokio::test]
+async fn a_child_that_leaves_the_session_is_still_seen_and_ended() {
+    if !contained() {
+        return;
+    }
+    let root = tempfile::tempdir().expect("a folder");
+    let mut node = installed_node(root.path(), "escape", 42350);
+    // The start check, or the first cycle after it, sees the listener of the child on 0.0.0.0.
+    if let Err(cause) = node.run(&start()).await {
+        assert_eq!(cause, Cause::Listener);
+    } else {
+        {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            let temporary = node.folders.server(SERVER).join("tmp");
+            node.servers.cycle(1_000, |_| temporary.clone()).await;
+            assert_eq!(
+                node.servers.map[&SERVER].state,
+                ServerState::Failed(Cause::Listener)
+            );
+        }
+    }
+    assert!(
+        gone(child_of(&node)).await,
+        "the child that left the session still runs"
+    );
+    node.servers.stop_all().await;
+    set_mode(&node, "loopback");
+    node.run(&start()).await.expect("started");
+    let child = child_of(&node);
+    let stop = order(WorkType::ServerStop, Parameters::Stop { server: SERVER });
+    assert_eq!(node.run(&stop).await, Ok(None));
+    assert!(
+        gone(child).await,
+        "server_stop left the child that left the session"
+    );
 }

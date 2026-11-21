@@ -1,7 +1,7 @@
 //! One server process (Sections 2.1 and 9): started by the absolute path of its program, with
-//! an empty environment and the fixed list, the owned flags, its own process group, and its
-//! output in the ring. Stopped by a request to end, at most 10 seconds, then the end of the
-//! whole group.
+//! an empty environment and the fixed list, the owned flags, in its tree ([`super::tree`]),
+//! and its output in the ring. Stopped by a request to end, at most 10 seconds, then the end
+//! of the whole tree.
 
 use std::io;
 use std::net::TcpListener;
@@ -10,11 +10,13 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use rustix::process::{Pid, Signal};
+use daemon_core::model_work::cause::Cause;
+use rustix::process::Signal;
 use tokio::process::{Child, Command};
 use zeroize::{Zeroize as _, Zeroizing};
 
 use super::ring::Ring;
+use super::tree::{self, Identity, Record};
 
 /// The range of ports of the daemon configuration (default 41000 to 41999).
 pub const PORTS: RangeInclusive<u16> = 41_000..=41_999;
@@ -30,6 +32,12 @@ pub struct Launch {
     pub temporary: PathBuf,
     pub ring: PathBuf,
     pub key: Zeroizing<String>,
+    /// The folder of the server in the state folder; it holds the record of the tree.
+    pub place: PathBuf,
+    /// The server, which names its cgroup on Linux.
+    pub server: uuid::Uuid,
+    /// The daemon program, which is the launcher on Linux (R-NEW-containment).
+    pub launcher: PathBuf,
 }
 
 impl Drop for Launch {
@@ -40,23 +48,92 @@ impl Drop for Launch {
     }
 }
 
-/// A running process. When it drops, its whole process group is ended, so no part of the tree
-/// outlives the record of the daemon (a stop of the daemon, a drop of the node).
+/// A running server and its tree. When it drops, each process of the tree whose identity
+/// holds is ended, and the cgroup with it, so no part of the tree outlives the record of the
+/// daemon (a stop of the daemon, a drop of the node).
 pub struct Running {
     pub child: Child,
-    /// The process group of the tree: the process id of the server.
-    pub group: i32,
+    /// The main process of the server.
+    pub leader: Identity,
+    /// The processes of the tree at the last poll; the leader is one of them.
+    pub known: Vec<Identity>,
+    pub cgroup: Option<PathBuf>,
+    record: PathBuf,
     /// The API key of this start, in memory only (Section 2.1).
     pub key: Zeroizing<String>,
-    /// The group was ended and waited for; it is not signalled again.
+    /// The tree was ended and waited for; it is not signalled again.
     ended: bool,
 }
 
 impl Drop for Running {
     fn drop(&mut self) {
         if !self.ended {
-            signal_group(self.group, Signal::KILL);
+            self.end_now();
         }
+    }
+}
+
+impl Running {
+    /// The record of the tree now.
+    fn record(&self) -> Record {
+        Record {
+            known: self.known.clone(),
+            cgroup: self.cgroup.clone(),
+        }
+    }
+
+    /// Reads the processes of the tree, keeps them, and writes the record.
+    ///
+    /// # Errors
+    /// An error of the read of the tree (the cgroup on Linux, the walk on macOS).
+    pub async fn poll(&mut self) -> io::Result<Vec<Identity>> {
+        #[cfg(target_os = "linux")]
+        let members = {
+            let cgroup = self
+                .cgroup
+                .clone()
+                .ok_or_else(|| io::Error::other("no cgroup"))?;
+            super::tree::linux::members(&cgroup)
+        };
+        #[cfg(not(target_os = "linux"))]
+        let members = {
+            let roots: Vec<Identity> = self.known.iter().chain([&self.leader]).cloned().collect();
+            let read = tokio::task::spawn_blocking(super::tree::walk::table);
+            let table = tokio::time::timeout(Duration::from_secs(5), read)
+                .await
+                .map_err(|_| io::Error::other("ps did not end in 5 seconds"))?
+                .map_err(io::Error::other)?
+                .ok_or_else(|| io::Error::other("ps did not read"))?;
+            super::tree::walk::descendants(&table, &roots)
+        };
+        self.known.clone_from(&members);
+        self.record().save(&self.record);
+        Ok(members)
+    }
+
+    /// Sends `signal` to each known process whose identity holds.
+    fn signal_all(&self, signal: Signal) {
+        for identity in self.known.iter().chain([&self.leader]) {
+            let _gone_or_sent = tree::signal(identity, signal);
+        }
+    }
+
+    /// Ends the whole tree now: the cgroup, and each known process whose identity holds. On
+    /// macOS the walk is read once more first, so a child made after the last poll is ended
+    /// too.
+    fn end_now(&mut self) {
+        #[cfg(not(target_os = "linux"))]
+        if let Some(table) = super::tree::walk::table() {
+            let roots: Vec<Identity> = self.known.iter().chain([&self.leader]).cloned().collect();
+            for found in super::tree::walk::descendants(&table, &roots) {
+                if !self.known.contains(&found) {
+                    self.known.push(found);
+                }
+            }
+        }
+        self.record().end_all();
+        self.signal_all(Signal::KILL);
+        let _ = std::fs::remove_file(&self.record);
     }
 }
 
@@ -88,14 +165,20 @@ pub fn fresh_temporary(state: &Path, path: &Path) -> io::Result<()> {
     super::folders::private_below(state, relative).map(drop)
 }
 
-/// Starts the process of `launch`.
-///
-/// # Errors
-/// An I/O error of the folder, the ring or the start.
-pub fn spawn(launch: &Launch) -> io::Result<Running> {
-    fresh_temporary(&launch.state, &launch.temporary)?;
-    let ring = Ring::create(&launch.ring)?;
-    let mut child = Command::new(&launch.program)
+fn command(launch: &Launch, cgroup: Option<&Path>) -> Command {
+    let mut command = match cgroup {
+        #[cfg(target_os = "linux")]
+        Some(cgroup) => {
+            let mut command = Command::new(&launch.launcher);
+            command
+                .arg(super::tree::linux::LAUNCH_MODE)
+                .arg(cgroup.join("cgroup.procs"))
+                .arg(&launch.program);
+            command
+        }
+        _ => Command::new(&launch.program),
+    };
+    command
         .args(&launch.arguments)
         .env_clear()
         .envs(launch.environment.iter().map(|(name, value)| (name, value)))
@@ -104,43 +187,81 @@ pub fn spawn(launch: &Launch) -> io::Result<Running> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0)
-        .kill_on_drop(true)
-        .spawn()?;
-    let group = child
+        .kill_on_drop(true);
+    command
+}
+
+/// The cgroup of the server on Linux; none on macOS.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "Linux can fail; one signature for both"
+    )
+)]
+fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
+    #[cfg(target_os = "linux")]
+    {
+        super::tree::linux::make(&launch.server.to_string())
+            .map(Some)
+            .map_err(|_| Cause::ContainmentFailed)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = launch;
+        Ok(None)
+    }
+}
+
+/// Starts the process of `launch` in its tree.
+///
+/// # Errors
+/// `containment_failed` when the cgroup cannot be made (Linux); `start_failed` for an error of
+/// the folders, the ring or the start.
+pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
+    fresh_temporary(&launch.state, &launch.temporary).map_err(|_| Cause::StartFailed)?;
+    let ring = Ring::create(&launch.ring).map_err(|_| Cause::StartFailed)?;
+    let cgroup = contain(launch)?;
+    let mut child = command(launch, cgroup.as_deref())
+        .spawn()
+        .map_err(|_| Cause::StartFailed)?;
+    let leader = child
         .id()
         .and_then(|id| i32::try_from(id).ok())
-        .ok_or_else(|| io::Error::other("the server has no process id"))?;
+        .and_then(tree::identity)
+        .ok_or(Cause::StartFailed)?;
     if let Some(output) = child.stdout.take() {
         ring.follow(output);
     }
     if let Some(output) = child.stderr.take() {
         ring.follow(output);
     }
-    Ok(Running {
+    let running = Running {
         child,
-        group,
+        known: vec![leader.clone()],
+        leader,
+        cgroup,
+        record: launch.place.join(tree::RECORD),
         key: launch.key.clone(),
         ended: false,
-    })
-}
-
-fn signal_group(group: i32, signal: Signal) {
-    if let Some(pid) = Pid::from_raw(group) {
-        let _ = rustix::process::kill_process_group(pid, signal);
-    }
+    };
+    running.record().save(&running.record);
+    Ok(running)
 }
 
 /// Ends the whole tree at once, also when its main process has already ended.
 pub async fn kill(running: &mut Running) {
-    signal_group(running.group, Signal::KILL);
+    let _ = running.poll().await;
+    running.end_now();
     let _ = running.child.wait().await;
     running.ended = true;
 }
 
 /// Asks the tree to end, waits at most 10 seconds for the main process, then ends what is
-/// left of the group.
+/// left of the tree.
 pub async fn stop(running: &mut Running) {
-    signal_group(running.group, Signal::TERM);
+    let _ = running.poll().await;
+    running.signal_all(Signal::TERM);
     let _ = tokio::time::timeout(Duration::from_secs(10), running.child.wait()).await;
     kill(running).await;
 }

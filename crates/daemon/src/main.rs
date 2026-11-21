@@ -22,6 +22,17 @@ use zeroize::Zeroizing;
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // The launcher of a model runtime (R-NEW-containment): it joins the cgroup of the server
+    // and becomes the runtime; it never returns.
+    #[cfg(target_os = "linux")]
+    {
+        let arguments: Vec<String> = std::env::args().skip(1).collect();
+        if arguments.first().map(String::as_str)
+            == Some(anima_daemon::model::tree::linux::LAUNCH_MODE)
+        {
+            anima_daemon::model::tree::linux::launch(&arguments[1..]);
+        }
+    }
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
     tracing_subscriber::fmt()

@@ -40,6 +40,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-NEW-l1hardware | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-NEW-l1daemonwork | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
+| HT-NEW-l1containment | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by a systemd user unit with `Delegate=yes` | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -228,6 +229,30 @@ Needs HT-002.
 
 Result: Open.
 
+### HT-NEW-l1containment: the cgroup of each model server on `pop-os`
+
+Built: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`, `tree/walk.rs`, and the launcher mode `__model-launch`
+of `crates/daemon/src/main.rs` (task L1-6; R-NEW-containment; SF-NEW-l1workb). The Linux code was not compiled or
+run on the Mac of the build: no Linux target is installed there. The tests that start a server skip on a Linux
+computer with no delegated cgroup v2, with the message "skipped: no delegated cgroup v2 here".
+
+1. On `pop-os`, run `cargo nextest run -p anima-daemon model_work` in a worktree of this branch, from a shell in a
+   systemd user scope with delegation: `systemd-run --user --scope -p Delegate=yes bash`. Expected: each test passes;
+   none prints "skipped".
+2. Run the same command from a plain shell with no delegation. Expected: the tests that start a server print
+   "skipped", and each other test passes.
+3. With a test daemon in a user unit with `Delegate=yes`, give a `server_start` item. Expected: a folder
+   `anima-model-<server>` below the cgroup of the unit; `cat cgroup.procs` there names `llama-server`. Give
+   `server_stop`. Expected: the folder is gone and no process is left.
+4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed`, and no
+   process is started.
+5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
+   Expected: the `llama-server` of the first run and its cgroup are gone.
+6. Write in the result whether the units of the daemon must get `Delegate=yes` (the units of this build do not
+   have it).
+
+Result: Open.
+
 ### HT-NEW-l1daemonwork: the model work of the daemon on the Mac and on `pop-os`
 
 Built: `crates/daemon-core/src/model_work/` (the checks of the ten model work types, the causes, the
@@ -249,8 +274,7 @@ Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a ne
    size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
    Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
    the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
-   If the upstream release of that computer is a `.zip`, write the result: the unpack takes only a
-   `.tar.gz`.
+   The upstream `.zip` or `.tar.gz` both work (R-NEW-archivezip); write which one was used.
 2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
    with `checksum`, and no new folder.
 3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or

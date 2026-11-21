@@ -2292,6 +2292,250 @@ The correction: Section 10: each change relative to an open folder handle with `
 
 State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
 
+## The security review of the model work at the machine (task L1-6, 2026-11-20)
+
+A separate reviewer read the first commit of task L1-6 (`95c1a1e8f`, branch `compute/l1-6`) against the contract [model-work.md](../contracts/compute/model-work.md), version 0.3, on 2026-11-20, by a static reading. "Severity" is the word of the reviewer. Entries q to t are the four departures of the build from the contract.
+
+### SF-NEW-l1worka: When the main process of a server ends, its children stay alive and are not checked. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: The daemon dropped the record of a server whose main process ended and signalled no other process. A child could keep a listener on 0.0.0.0 with no check, and a restart made a second tree.
+
+The correction: When the main process ends, the daemon ends the whole tree (the cgroup, or each process of the walk whose identity holds) before it starts the server again. Test: `the_children_of_a_server_end_when_its_main_process_ends`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workb: The tree of a server was its process group, which a child leaves with one call. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`, `server.rs`.
+
+What it is: A child that called `setsid` or `setpgid` was not in the loopback check and outlived `server_stop` and the stop of the daemon.
+
+The correction: The operator ruled (R-NEW-containment; his first answer "I like strong containment but check how unsloth handle it", his final words "Strong + Unsloth's four (Recommended)"). On Linux one cgroup v2 for each server, joined before the program runs through the launcher `__model-launch`, with the parent-death signal as a backstop; `containment_failed` when the cgroup cannot be made, with no fallback. On macOS the walk of the parent processes, with the descendants recorded at each poll (best effort without the sandbox). The identity (process id and start time) is checked before each signal, and the records and cgroups are swept at the start of the daemon. The contract says that without the sandbox the loopback check constrains an honest runtime only. Tests: `a_child_that_leaves_the_session_is_still_seen_and_ended`, `a_reused_process_id_is_never_signalled`, `the_sweep_ends_the_processes_of_each_record_whose_identity_holds`, `the_walk_keeps_a_child_that_was_seen_after_its_parent_left`, `the_walk_finds_a_live_child_on_this_mac`. The Linux tests skip, with a message, where no delegated cgroup v2 exists; HT-NEW-l1containment covers `pop-os`.
+
+State: Open. Ruled by the operator (R-NEW-containment); the correction is built on the branch `compute/l1-6` (not pushed). The Linux code was not compiled or run on this Mac (no Linux target is installed, and nothing may be installed): HT-NEW-l1containment. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workc: No supervision loop runs, no server stops with the daemon, and nothing calls the model cycle. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `supervise.rs`.
+
+What it is: The 15-second loopback check, the restarts, the limit of the temporary folder and the stop of the servers at the stop of the daemon do not run, because the running daemon does not start the model loop. `kill_on_drop` ended the main process only.
+
+The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The wiring (a 15-second ticker, `Node::sweep` at the start, `stop_all` at the stop) comes with the switch. Test: `the_whole_group_ends_when_the_node_drops`.
+
+State: Open. The drop is fixed on the branch `compute/l1-6`; the wiring waits for USE-004. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workd: The install blocks the async runtime and has no total time limit. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `fetch.rs`.
+
+What it is: The unpack of up to 8 GiB ran on a thread of the async runtime, and a release host could send one byte each 59 seconds with no end.
+
+The correction: The unpack runs on a blocking thread (`spawn_blocking`). The download has a total time of 5 minutes and one second for each MiB of `sizeBytes`, at most 1 hour (`source_failed`). Test: the unit of `fetch_deadline` through the install tests.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1worke: The download and the unpack were not checked against the free disk and the reserve. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `unpack.rs`.
+
+What it is: An archive and its unpack could use 16 GiB with no check of the free disk.
+
+The correction: Before the download the daemon checks that the state and runtime folders have `sizeBytes` free above the reserve (default 10 GiB); the unpack checks the reserve before each entry (`limit_disk`). Tests: `the_disk_reserve_stops_the_unpack_and_the_download`, `an_install_with_no_room_for_the_archive_downloads_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workf: The API key was not wiped and the daemon kept no copy of it. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `server.rs`.
+
+What it is: The key was in a plain string of the environment list.
+
+The correction: The key is a `Zeroizing<String>`, held by the record of the running server; the values of the environment of a launch are wiped when the launch drops. A process of the same user can still read the environment of the runtime; the contract accepts that channel.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workg: A local process can take the port first. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/server.rs`.
+
+What it is: The free port is found by a bind and a drop, so another process can take it. The readiness needs a listener of the tree, so a squatter is not taken for the server; the effect is a restart loop.
+
+The correction: None in this build: the HTTP probe, which would send the key, does not exist yet (R-NEW-archivezip).
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workh: Details of the unpack: folder modes, case collisions of a part. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The mode of a new folder passed through the umask, and two names that differ only in case in a parent folder were not refused.
+
+The correction: Each new folder gets `fchmod` 0755. Each part of each path is compared in lower case. Unicode forms (NFC and NFD) are not compared; `O_EXCL` still stops an overwrite. Tests: `a_whole_archive_is_installed_with_plain_modes`, `an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing`, `a_hostile_zip_is_refused_and_leaves_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1worki: The folders of model work followed a link in a parent. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `DirBuilder::recursive` followed a link at a parent below the three folders.
+
+The correction: Below each of the three folders, each part is made and opened relative to an open handle with `O_NOFOLLOW`, with mode 0700, and owned by this user (`private_below`). Test: `a_link_in_a_parent_folder_is_not_followed`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workj: The reading of `lsof` on macOS. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/loopback.rs`, `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` had no time limit; an exit status 1 with output killed the server; a UDP socket with no port counted as exposed.
+
+The correction: A limit of 5 seconds that fails closed; status 1 reads its output; an unbound UDP socket (`*:*`) is not counted; a name that does not read (a zone) counts as exposed. Test: `the_edges_of_the_lsof_output_read`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workk: Linux reads the tables of the network of the first process only. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: A socket of a child in another network namespace is not matched; it is not reachable from the network of the host.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workl: TLS, redirects and proxies of the download. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`.
+
+What it is: HTTPS only, no proxy, the roots of the program, at most 5 redirects to listed names only, the hash checked before the archive is opened. The first address is the operator's.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workm: The hub side and the wire. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/hub/src/work/jobs.rs`, `crates/daemon-core/src/model_work/order.rs`.
+
+What it is: The hub makes no model item; the daemon checks the exact members of each item. `actor` binds an honest hub only.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workn: A runtime can rewrite `model-work.json` and `model-sources.json` when the sandbox is off. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/machine_files.rs`.
+
+What it is: The files are in the daemon folder, which a runtime with the rights of the user can write. Within the risk that the operator accepted (R-NEW-sandboxrisk).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1worko: The restart limits. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/supervision.rs`.
+
+What it is: The waits and counts follow the contract. An end during the start wait is not counted (minor).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workp: Parts of the contract that matter for security are not built. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/command.rs`.
+
+What it is: No `--no-webui` and no `--slot-save-path`; no check that the version has the flags of the logs; no memory limit; the limit of the temporary folder runs only in the cycle, which is not wired.
+
+The correction: None in this build; HT-NEW-l1daemonwork asks which flags the release takes.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-NEW-l1workq: The download runs in the daemon, not in a child fetch process. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`, `install.rs`.
+
+What it is: The parsers of TLS, HTTP, gzip, tar and zip run in the process that holds the daemon token.
+
+The correction: The operator ruled (R-NEW-fetchprocess: "Separate process before L1-7 (Recommended)"). The download in the daemon is permitted for task L1-6 only (contract Section 4); task L1-6b builds the child fetch process, and task L1-7 does not start without it.
+
+State: Open. Waits for task L1-6b. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workr: macOS reads the socket table with `lsof`, not `proc_pidinfo`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` is slower and depends on its output form.
+
+The correction: Accepted by the operator (R-NEW-archivezip: "Accept, but add zip (Recommended)"): a limit of 5 seconds that fails closed, and the contract text of Section 9.
+
+State: Accepted (R-NEW-archivezip). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1works: Ready means a listener on loopback, with no HTTP probe. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: A listener can exist before the server answers, so `ready` can come early. No key is sent to a squatter.
+
+The correction: Accepted by the operator (R-NEW-archivezip); the contract text of Section 9; the HTTP probe comes with task L1-9 or `model_measure`.
+
+State: Accepted (R-NEW-archivezip). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-NEW-l1workt: Only `.tar.gz` archives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The upstream releases of llama.cpp are mostly `.zip`.
+
+The correction: The operator added `.zip` (R-NEW-archivezip), with the same rules and limits: no link, no device, no encrypted entry, no absolute path or `..`, the case of each part, the declared size and the bytes read within the limit, the entry count, and the unpack into a temporary folder and one rename. Tests: `a_whole_zip_is_installed_with_plain_modes`, `a_hostile_zip_is_refused_and_leaves_nothing`, `a_zip_bomb_and_too_many_entries_stop_at_the_limits`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed), with tests. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
 ## Closed
 
 | Entry | Subject | Area | State |

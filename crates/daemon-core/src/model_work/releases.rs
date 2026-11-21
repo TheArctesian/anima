@@ -101,15 +101,16 @@ impl SourceEntry {
     /// The form of the archive, from the end of the path of its address; `None` for another.
     #[must_use]
     pub fn format(&self) -> Option<ArchiveFormat> {
-        let path = self
-            .address
-            .split(['?', '#'])
-            .next()
-            .unwrap_or_default()
-            .to_ascii_lowercase();
-        if path.ends_with(".tar.gz") || path.ends_with(".tgz") {
+        let path = std::path::Path::new(self.address.split(['?', '#']).next().unwrap_or_default());
+        let is = |found: Option<&std::ffi::OsStr>, wanted: &str| {
+            found.is_some_and(|found| found.eq_ignore_ascii_case(wanted))
+        };
+        let inner = path.file_stem().map(std::path::Path::new);
+        if is(path.extension(), "tgz")
+            || (is(path.extension(), "gz") && is(inner.and_then(std::path::Path::extension), "tar"))
+        {
             Some(ArchiveFormat::TarGz)
-        } else if path.ends_with(".zip") {
+        } else if is(path.extension(), "zip") {
             Some(ArchiveFormat::Zip)
         } else {
             None

@@ -59,10 +59,29 @@ pub struct Servers {
     pub map: BTreeMap<Uuid, Server>,
 }
 
-async fn verdict_of(running: &Running, port: u16) -> (Verdict, bool) {
-    match sockets::table(running.group).await {
+/// The verdict over the sockets of each process of the tree, read again now. A tree or a
+/// table that does not read counts as exposed.
+async fn verdict_of(running: &mut Running, port: u16) -> (Verdict, bool) {
+    let table = match running.poll().await {
+        Ok(members) => sockets::table(&members).await,
+        Err(error) => Err(error),
+    };
+    match table {
         Ok(table) => (loopback::verdict(&table), loopback::listens(&table, port)),
         Err(_) => (Verdict::Exposed(unreadable()), false),
+    }
+}
+
+/// Whether the launcher ended because it could not join the cgroup of the server (Linux).
+fn launch_failed(status: std::process::ExitStatus) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        status.code() == Some(super::tree::linux::LAUNCH_FAILED)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = status;
+        false
     }
 }
 
@@ -77,7 +96,7 @@ fn unreadable() -> loopback::Socket {
 impl Server {
     fn launch_now(&mut self, now: u64) -> Result<(), Cause> {
         let (launch, port) = (self.launch)().ok_or(Cause::StartFailed)?;
-        let running = server::spawn(&launch).map_err(|_| Cause::StartFailed)?;
+        let running = server::spawn(&launch)?;
         self.running = Some((running, port));
         self.state = ServerState::Starting;
         self.since = now;
@@ -95,11 +114,15 @@ impl Server {
     /// One look at a running server: ended, exposed, ready, or too slow. `Some` when it ended.
     async fn look(&mut self, now: u64, temporary_bytes: u64) -> Option<()> {
         let (running, port) = self.running.as_mut()?;
-        if let Ok(Some(_)) = running.child.try_wait() {
-            // The main process ended: each other process of its group ends with it, so no
-            // child keeps a listener that the loopback check no longer reads (SF-NEW-l1workb).
+        if let Ok(Some(status)) = running.child.try_wait() {
+            // The main process ended: each other process of its tree ends with it, so no
+            // child keeps a listener that the loopback check no longer reads.
             if let Some((mut running, _)) = self.running.take() {
                 server::kill(&mut running).await;
+            }
+            if launch_failed(status) {
+                self.state = ServerState::Failed(Cause::ContainmentFailed);
+                return None;
             }
             return Some(());
         }

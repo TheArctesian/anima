@@ -4,6 +4,7 @@
 //! [`cycle`] asks the hub for one model item through the work route and reports it;
 //! [`install`] installs a runtime from its release source ([`fetch`], [`unpack`]);
 //! [`supervise`] starts, stops and supervises the servers ([`server`], [`ring`], [`sockets`]);
+//! [`tree`] is the set of processes of a server and the sweep at the start of the daemon;
 //! [`folders`] makes the folders of Section 10; [`machine_files`] reads `model-work.json` and
 //! `model-sources.json`; [`state`] is the object of `model_report`.
 //!
@@ -22,4 +23,5 @@ pub mod server;
 pub mod sockets;
 pub mod state;
 pub mod supervise;
+pub mod tree;
 pub mod unpack;

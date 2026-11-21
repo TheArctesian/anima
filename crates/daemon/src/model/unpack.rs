@@ -43,6 +43,7 @@ const DIR_FLAGS: OFlags = OFlags::DIRECTORY
     .union(OFlags::CLOEXEC);
 
 /// What one entry of an archive is, after the format read it.
+#[derive(Clone, Copy)]
 enum Kind {
     Folder,
     /// A regular file with the mode bits of the archive.
@@ -149,7 +150,7 @@ impl<F: Fn() -> bool> Writer<F> {
         }
         match kind {
             Kind::Folder => drop(open_dir(&dir, last, true).map_err(|_| BAD_ARCHIVE)?),
-            Kind::File(mode) => self.write_file(&dir, last, mode, bytes)?,
+            Kind::File(mode) => self.write_file(&dir, (last, mode), bytes)?,
         }
         Ok(())
     }
@@ -157,8 +158,7 @@ impl<F: Fn() -> bool> Writer<F> {
     fn write_file(
         &mut self,
         dir: &OwnedFd,
-        name: &str,
-        mode: u32,
+        (name, mode): (&str, u32),
         bytes: &mut dyn Read,
     ) -> Result<(), Cause> {
         let flags =

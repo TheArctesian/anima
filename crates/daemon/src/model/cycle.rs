@@ -2,7 +2,7 @@
 //! K10, the pure check of the item, the step, and the report. The daemon asks; the hub never
 //! opens a connection. The caller runs a cycle only while the switch at the machine is on.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use daemon_core::model_work::cause::Cause;
@@ -47,6 +47,8 @@ pub struct Node {
     pub started: Instant,
     /// The free disk that model work leaves ([`install::DEFAULT_RESERVE`] by default).
     pub reserve: u64,
+    /// The daemon program: the launcher of a runtime on Linux (R-NEW-containment).
+    pub launcher: PathBuf,
     /// The range of loopback ports of the daemon configuration ([`server::PORTS`] by default).
     pub ports: std::ops::RangeInclusive<u16>,
 }
@@ -95,6 +97,15 @@ fn architecture_word(architecture: WorkArchitecture) -> &'static str {
 }
 
 impl Node {
+    /// Ends the processes and the cgroups of each server of an earlier run, from their records
+    /// (R-NEW-containment). The daemon calls it once when it starts, before any claim.
+    ///
+    /// # Errors
+    /// An I/O error of the state folder.
+    pub fn sweep(&self) -> std::io::Result<usize> {
+        super::tree::sweep(&self.folders.state.join("servers"))
+    }
+
     /// Seconds of the clock of this node.
     #[must_use]
     pub fn now(&self) -> u64 {
@@ -152,6 +163,7 @@ impl Node {
         let bin = program.parent().unwrap_or(Path::new("/")).to_path_buf();
         let place = self.folders.server(id);
         let state = self.folders.state.clone();
+        let launcher = self.launcher.clone();
         let settings = settings.clone();
         let ports = self.ports.clone();
         let launch = move || {
@@ -167,6 +179,9 @@ impl Node {
                     temporary,
                     ring: place.join("output.log"),
                     key,
+                    place: place.clone(),
+                    server: id,
+                    launcher: launcher.clone(),
                 },
                 port,
             ))

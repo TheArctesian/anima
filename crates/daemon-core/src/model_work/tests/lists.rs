@@ -5,7 +5,7 @@ use crate::model_work::command::{environment, llama_arguments};
 use crate::model_work::folders::{Installation, layout};
 use crate::model_work::machine::{MachineSettings, SettingsError};
 use crate::model_work::names::{Backend, Runtime};
-use crate::model_work::releases::{Release, accepted};
+use crate::model_work::releases::{ArchiveFormat, Release, SourceEntry, accepted};
 use crate::model_work::settings::ServerSettings;
 use crate::wire::WorkType;
 
@@ -98,4 +98,27 @@ fn the_folders_follow_the_table() {
         PathBuf::from("/d/model-state")
     );
     assert_eq!(layout(Installation::LinuxUser, |_| None), None);
+}
+
+#[test]
+fn the_form_of_an_archive_comes_from_the_end_of_its_address() {
+    let form = |address: &str| {
+        SourceEntry {
+            runtime: "llama.cpp".into(),
+            version: "b6000".into(),
+            os: "linux".into(),
+            architecture: "x86_64".into(),
+            backend: "cpu".into(),
+            address: address.into(),
+            sha256: String::new(),
+            size_bytes: 1,
+            program: "llama-server".into(),
+        }
+        .format()
+    };
+    assert_eq!(form("https://h/a/r.tar.gz"), Some(ArchiveFormat::TarGz));
+    assert_eq!(form("https://h/a/r.TGZ?x=1"), Some(ArchiveFormat::TarGz));
+    assert_eq!(form("https://h/a/r.Zip#f"), Some(ArchiveFormat::Zip));
+    assert_eq!(form("https://h/a/r.gz"), None);
+    assert_eq!(form("https://h/a/r.tar"), None);
 }

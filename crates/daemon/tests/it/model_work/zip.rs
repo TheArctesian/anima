@@ -48,7 +48,7 @@ fn stored(parts: &[Part<'_>]) -> std::fs::File {
 
 fn target(root: &std::path::Path) -> anima_daemon::model::install::Target {
     let mut entry = entry();
-    entry.address = "https://github.com/example/none.zip".to_owned();
+    "https://github.com/example/none.zip".clone_into(&mut entry.address);
     anima_daemon::model::install::Target {
         folders: folders(root),
         release: release(),
