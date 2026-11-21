@@ -193,21 +193,58 @@ const fn file_name(program: Program) -> &'static str {
     }
 }
 
+/// The folders where Claude Code and Codex are often installed, below the home folder or not.
+/// They are looked in after the `PATH` of the login, for a login shell that gave no `PATH`.
+const USUAL: [&str; 6] = [
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "~/.local/bin",
+    "~/.claude/local",
+    "~/.bun/bin",
+    "~/.npm-global/bin",
+];
+
 /// The absolute path of `program` on the `PATH` of `env`: the first folder that holds an
-/// executable file of that name.
+/// executable file of that name. Then the [`USUAL`] folders, with `~` as the `HOME` of `env`.
 #[must_use]
 pub fn find(
     program: Program,
     env: &[(String, String)],
     executable: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
-    let path = env.iter().find(|(name, _)| name == "PATH")?;
-    path.1
-        .split(':')
-        .map(Path::new)
+    let home = env
+        .iter()
+        .find(|(name, _)| name == "HOME")
+        .map(|(_, home)| home.as_str());
+    let usual = USUAL
+        .iter()
+        .filter_map(|folder| match folder.strip_prefix("~/") {
+            Some(below) => home.map(|home| Path::new(home).join(below)),
+            None => Some(PathBuf::from(folder)),
+        });
+    env.iter()
+        .find(|(name, _)| name == "PATH")
+        .into_iter()
+        .flat_map(|(_, path)| path.split(':').map(PathBuf::from))
+        .chain(usual)
         .filter(|folder| folder.is_absolute())
         .map(|folder| folder.join(file_name(program)))
         .find(|candidate| executable(candidate))
+}
+
+/// `env` with the folder of `program` first on its `PATH` when the `PATH` does not hold it, so
+/// that a program found in a [`USUAL`] folder also finds the programs next to it.
+#[must_use]
+pub fn with_folder_of(mut env: Vec<(String, String)>, program: &Path) -> Vec<(String, String)> {
+    let Some(folder) = program.parent().and_then(Path::to_str) else {
+        return env;
+    };
+    match env.iter_mut().find(|(name, _)| name == "PATH") {
+        Some((_, path)) if path.split(':').any(|known| known == folder) => {}
+        Some((_, path)) => *path = format!("{folder}:{path}"),
+        None => env.push(("PATH".to_owned(), folder.to_owned())),
+    }
+    env
 }
 
 /// Whether `path` is a file that this user may run.
@@ -221,6 +258,31 @@ pub fn executable(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_program_not_on_the_path_is_found_in_a_usual_folder_and_its_folder_goes_on_the_path() {
+        let env = vec![
+            ("HOME".to_owned(), "/home/a".to_owned()),
+            ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
+        ];
+        let found = find(Program::ClaudeCode, &env, |path| {
+            path == Path::new("/home/a/.local/bin/claude")
+        });
+        assert_eq!(found, Some(PathBuf::from("/home/a/.local/bin/claude")));
+        let on_path = find(Program::Codex, &env, |path| path == Path::new("/bin/codex"));
+        assert_eq!(
+            on_path,
+            Some(PathBuf::from("/bin/codex")),
+            "the PATH comes first"
+        );
+        let env = with_folder_of(env, Path::new("/home/a/.local/bin/claude"));
+        assert!(env.contains(&(
+            "PATH".to_owned(),
+            "/home/a/.local/bin:/usr/bin:/bin".to_owned()
+        )));
+        let again = with_folder_of(env.clone(), Path::new("/usr/bin/claude"));
+        assert_eq!(again, env, "a folder on the PATH is not added twice");
+    }
 
     #[test]
     fn the_environment_is_read_after_the_mark_and_leaves_out_the_names_of_anima() {

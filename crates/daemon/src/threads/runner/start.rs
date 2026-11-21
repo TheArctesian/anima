@@ -59,6 +59,11 @@ impl Runner {
                 limits: self.limits,
             });
         }
+        if login::find(new.program, &self.env, login::executable).is_none() {
+            // The login shell may not have answered when the daemon started (a busy computer):
+            // it is asked again before the start is refused.
+            self.env = login::environment(&self.daemon_env).await;
+        }
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id)?;
         let codex = codex_of(&row, new.effort);
@@ -94,14 +99,14 @@ impl Runner {
             .ok_or(Refusal::ProgramNotFound)?;
         let launch = Launch {
             program: new.program,
-            path,
+            path: path.clone(),
             mode: new.mode,
             model: model.clone(),
             effort: new.effort,
             session: SessionStart::New(id),
         };
         let invocation = launch.invocation().map_err(|_| Refusal::BadValue)?;
-        let mut env = self.env.clone();
+        let mut env = login::with_folder_of(self.env.clone(), &path);
         if new.program == Program::ClaudeCode {
             env.extend(
                 login::CLAUDE_VARIABLES.map(|(name, value)| (name.to_owned(), value.to_owned())),

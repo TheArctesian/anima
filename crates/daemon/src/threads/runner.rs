@@ -90,6 +90,8 @@ pub struct Runner {
     /// The holder speaks the version of this runner; until it says so, nothing starts.
     holder_fits: bool,
     env: Vec<(String, String)>,
+    /// The environment of the daemon, to ask the login shell again when a program is not found.
+    daemon_env: Vec<(String, String)>,
     threads: BTreeMap<Uuid, Thread>,
     limits: Limits,
     watchers: Vec<Client>,
@@ -111,15 +113,17 @@ pub fn serves_a_person(daemon_dir: &Path) -> bool {
 }
 
 /// Runs the runner of the daemon in `daemon_dir` until `stop` completes. `program` is the path
-/// of `anima-daemon`, which the runner starts as the holder when none answers. The programs of
-/// the threads stay in the holder when the runner ends (THR-113).
+/// of `anima-daemon`, which the runner starts as the holder when none answers; `daemon_env` is
+/// the environment of the daemon, from which the runner asks the login shell for the
+/// environment of the agents. The programs of the threads stay in the holder when the runner
+/// ends (THR-113).
 ///
 /// # Errors
 /// [`RunnerError`] when the folder, its lock, the record or the socket cannot be set up.
 pub async fn run(
     daemon_dir: &Path,
     program: &Path,
-    env: Vec<(String, String)>,
+    daemon_env: Vec<(String, String)>,
     stop: impl Future<Output = ()>,
 ) -> Result<(), RunnerError> {
     let dir = link::folder(daemon_dir);
@@ -133,6 +137,7 @@ pub async fn run(
     record::private_folder(&dir)?;
     let _lock = record::lock(&dir)?;
     let saved = record::read(&dir)?;
+    let env = login::environment(&daemon_env).await;
     tokio::pin!(stop);
     let link = tokio::select! {
         link = reach_patiently(program, &dir) => link,
@@ -144,6 +149,7 @@ pub async fn run(
         link,
         holder_fits: false,
         env,
+        daemon_env,
         threads: BTreeMap::new(),
         limits: saved.limits,
         watchers: Vec::new(),
