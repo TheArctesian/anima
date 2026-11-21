@@ -5,6 +5,7 @@
 //! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
 
 mod agent_usage;
+mod link_wait;
 #[cfg(unix)]
 pub mod old_origin;
 
@@ -33,6 +34,7 @@ use crate::sampling::gpu::Discovery;
 use crate::sampling::inventory::InventoryWatch;
 use crate::token_store::{TokenStore, TokenStoreError};
 use agent_usage::{count, counting};
+use link_wait::LinkWatch;
 
 /// The time between samplings (MET-014).
 const SAMPLE_EVERY: Duration = Duration::from_secs(2);
@@ -114,7 +116,7 @@ pub async fn run(
             PushEnd::SamplingStopped => Err(RunError::SamplingStopped),
             PushEnd::TokenRefused => Err(forget_refused(home)),
         },
-        () = link_passed(&link) => Err(RunError::LinkAppeared),
+        () = link_wait::passed(&link) => Err(RunError::LinkAppeared),
         ended = &mut sampling => {
             report::sampling_ended(&ended);
             Err(RunError::SamplingStopped)
@@ -158,22 +160,6 @@ async fn prepare(home: &Home) -> Result<(Pusher, Uuid, LinkWatch), RunError> {
         config.device,
         link,
     ))
-}
-
-#[cfg(unix)]
-type LinkWatch = old_origin::Watch;
-#[cfg(windows)]
-type LinkWatch = ();
-
-/// Ends when the old enrolment of this daemon can move to the socket of the link.
-#[cfg(unix)]
-async fn link_passed(link: &LinkWatch) {
-    link.passed().await;
-}
-
-#[cfg(windows)]
-async fn link_passed(_: &LinkWatch) {
-    std::future::pending::<()>().await;
 }
 
 /// Deletes the token that the hub refused; the key cache went with the refusal (R-147).
