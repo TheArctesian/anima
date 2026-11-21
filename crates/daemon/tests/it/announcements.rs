@@ -5,4 +5,5 @@
 mod agent_usage;
 mod drives;
 mod gpus;
+mod hardware;
 mod inventory;

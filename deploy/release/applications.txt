@@ -81,7 +81,6 @@ ios out crates/anima-gateway/
 ios out crates/anima-local-hub/
 ios out crates/compose-rules/
 ios out crates/daemon/
-ios out crates/daemon-core/
 ios out crates/guac-protocol/
 ios out crates/hub/
 ios out crates/providers/

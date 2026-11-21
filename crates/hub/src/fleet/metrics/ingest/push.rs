@@ -102,6 +102,7 @@ async fn push(
         gpus: gpus.as_deref(),
         drives: drives.as_deref(),
         inventory: accepted.inventory.as_ref(),
+        hardware: accepted.hardware.as_ref(),
         daemon_version: daemon_version.as_deref(),
         agent_usage: accepted.agent_usage.as_ref(),
     };

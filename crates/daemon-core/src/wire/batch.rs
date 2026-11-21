@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{BatchAgentUsage, BatchInventory, BatchKeys, BatchUpdate, KeyVersion};
+use crate::hardware::Hardware;
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
 
@@ -29,6 +30,10 @@ pub struct Batch {
     /// means unchanged (CAP-027, CAP-029). A daemon older than the inventory never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inventory: Option<BatchInventory>,
+    /// The device's hardware values, sent with the inventory; absent means unchanged (CAP-032,
+    /// R-165). A daemon older than them never sends it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hardware: Option<Hardware>,
     /// The version of the `anima-daemon` that sent the batch (R-122, ROL-051). A daemon older
     /// than R-122 sends none, and a hub older than R-122 ignores it (K8 Section 1).
     #[serde(
@@ -63,6 +68,7 @@ pub struct Announcements {
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
     pub inventory: Option<BatchInventory>,
+    pub hardware: Option<Hardware>,
     pub agent_usage: Option<BatchAgentUsage>,
 }
 
@@ -190,6 +196,7 @@ impl Batch {
             gpus: announced.gpus,
             drives: announced.drives,
             inventory: announced.inventory,
+            hardware: announced.hardware,
             daemon_version: None,
             agent_usage: announced.agent_usage,
             keys: None,

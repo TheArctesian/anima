@@ -42,14 +42,8 @@ impl Wanted {
     }
 }
 
-/// Where the computer's power comes from now.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Power {
-    /// Mains power, or a computer with no battery, or a power state that could not be read.
-    Mains,
-    /// The battery, at this percentage.
-    Battery { percent: u8 },
-}
+/// Where the computer's power comes from now: one reader with the daemon (CAP-004).
+pub use daemon_core::hardware::power::Power;
 
 /// Why the computer is held at a lower level than the operator chose.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

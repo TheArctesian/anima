@@ -20,10 +20,14 @@ pub enum ToolName {
     Nix,
     Claude,
     Codex,
+    LlamaServer,
+    MlxLm,
+    Vllm,
+    Ollama,
 }
 
 impl ToolName {
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 17] = [
         Self::Git,
         Self::Rustc,
         Self::Cargo,
@@ -37,9 +41,14 @@ impl ToolName {
         Self::Nix,
         Self::Claude,
         Self::Codex,
+        Self::LlamaServer,
+        Self::MlxLm,
+        Self::Vllm,
+        Self::Ollama,
     ];
 
-    /// The name a batch and the API spell, which is also the program's name.
+    /// The name a batch and the API spell, which is also the program's name, except `mlx_lm`
+    /// (the program `mlx_lm.server`).
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -56,6 +65,10 @@ impl ToolName {
             Self::Nix => "nix",
             Self::Claude => "claude",
             Self::Codex => "codex",
+            Self::LlamaServer => "llama-server",
+            Self::MlxLm => "mlx_lm",
+            Self::Vllm => "vllm",
+            Self::Ollama => "ollama",
         }
     }
 
