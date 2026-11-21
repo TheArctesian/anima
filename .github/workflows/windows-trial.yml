@@ -127,6 +127,17 @@ jobs:
     env: *windows-env
     steps:
       - *autocrlf
+      # Only this job, which builds nothing that a person downloads: the job `windows` builds the
+      # installer and the trial with the scanning of the runner as it is. On a proof run (44890968739)
+      # the tests ran 39 minutes against 8 on Linux, most of it in the hub's tests, each of which
+      # copies a PostgreSQL database of small files; Defender scans each file that the runner writes.
+      - name: Leave the work folders of this throwaway runner out of Defender's scanning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $folders = @($env:GITHUB_WORKSPACE, $env:RUNNER_TEMP, $env:TEMP, "$env:USERPROFILE/.cargo", "$env:USERPROFILE/.rustup", "$env:LOCALAPPDATA/go-build", "$env:USERPROFILE/.bun")
+          Add-MpPreference -ExclusionPath $folders
+          (Get-MpPreference).ExclusionPath
       - *checkout
       - *bun
       - *merge
