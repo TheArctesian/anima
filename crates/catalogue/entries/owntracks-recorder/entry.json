@@ -1,0 +1,39 @@
+{
+  "id": "owntracks-recorder",
+  "name": "OwnTracks Recorder",
+  "description": "Keeps the location reports of the OwnTracks phone application and shows them on a map. HTTP mode only: the MQTT port is off.",
+  "version": "1.0.7",
+  "author": "OwnTracks",
+  "tags": ["location", "maps"],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/owntracks/recorder",
+  "icon_url": null,
+  "anima": {
+    "images": [
+      {
+        "service": "recorder",
+        "image": "owntracks/recorder@sha256:8d48df647eb280bb94668658b7fc7ad3b47b9a7307e252aaf63d4c3681c6deaf",
+        "tag": "1.0.7",
+        "resolved": "2026-11-20"
+      }
+    ],
+    "marks": [],
+    "volumes": [
+      { "volume": "store", "copy": "files" },
+      { "volume": "config", "copy": "files" }
+    ],
+    "generated": [],
+    "test": {
+      "service": "recorder",
+      "port": 8083,
+      "reach": "http",
+      "path": "/api/0/version",
+      "statuses": [200],
+      "body": "version",
+      "limit_seconds": 120
+    },
+    "pinned": "2026-11-20",
+    "last_test": { "result": "not-tested" }
+  }
+}

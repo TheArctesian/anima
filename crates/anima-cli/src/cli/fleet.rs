@@ -3,8 +3,8 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    agents, capabilities, checks, containers, daemons, devices, link, maintenance, sessions, sites,
-    tags, web_interfaces,
+    agents, capabilities, catalogue, checks, containers, daemons, devices, link, maintenance,
+    sessions, sites, tags, web_interfaces,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -50,6 +50,11 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: containers::ContainerCommand,
     },
+    /// The catalogue of applications that ships with Anima (list, show, install).
+    Catalogue {
+        #[command(subcommand)]
+        command: catalogue::CatalogueCommand,
+    },
     /// Checks (list, get, create, update, delete, pause, resume, heartbeats, defaults, notifications).
     Check {
         #[command(subcommand)]
@@ -94,6 +99,7 @@ impl FleetCommand {
             Self::Capability { command } => command.run(invocation).await,
             Self::Agents { command } => command.run(invocation).await,
             Self::Containers { command } => command.run(invocation).await,
+            Self::Catalogue { command } => command.run(invocation).await,
             Self::Check { command } => command.run(invocation).await,
             Self::Maintenance { command } => command.run(invocation).await,
             Self::Link { command } => command.run(invocation).await,
