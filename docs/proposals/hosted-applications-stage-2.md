@@ -1053,7 +1053,219 @@ The text follows.
 
 ## 13. The recipe format of the catalogue (R-NEW-catalogueways, task H36)
 
-The text follows.
+This section is the format of task H36. The crate `crates/catalogue` reads it and runs the static
+test. The recipes are data files in `crates/catalogue/entries/`, one folder for each recipe.
+Section 13 of the design specification has no folder for data of this kind. The recipes stay in the
+crate that reads them, so that one change holds a recipe and its test, and so that the release maps
+(`deploy/release/applications.txt`) can leave the crate out of each application until task H7 uses
+it.
+
+### 13.1 One recipe folder
+
+A recipe is one folder. The name of the folder is the identifier of the entry. The folder has three
+files and no other file.
+
+| File | Content |
+| --- | --- |
+| `entry.json` | The entry: the fields of Arcane and the fields of Anima |
+| `compose.yaml` | The Compose file. It follows Section 4.5 with no exception |
+| `environment.example` | The example environment file. It holds no secret value |
+
+The example file does not start with `.env`. Thus no tool and no agent takes it for a file of
+secrets, and no rule of `.gitignore` hides it.
+
+### 13.2 The fields of the entry
+
+The top level of `entry.json` has the fields of the template registry of Arcane (HOST-025). A list
+that is made for Arcane has the same names, so a reader of Arcane reads each entry. The fields of
+Anima are below the one key `anima`. A reader of Arcane does not read that key. A key that is not
+in the tables makes the entry unreadable.
+
+| Field (Arcane) | Rule |
+| --- | --- |
+| `id` | A name of Section 4.5. It is the name of the folder |
+| `name`, `description`, `version`, `author` | Not empty. `version` is the version of the application |
+| `tags` | A list with at least one tag. No tag is empty |
+| `compose_url` | `compose.yaml` in the folder. The list that ships writes the full address |
+| `env_url` | `environment.example` in the folder |
+| `documentation_url` | An address that starts with `https://` |
+| `icon_url` | An address that starts with `https://`, or `null` |
+
+| Field (`anima`) | Rule |
+| --- | --- |
+| `images` | For each service of the Compose file: `service`, `image`, `tag` and `resolved`. `image` is `repository@sha256:` and 64 hexadecimal digits, with no tag (R-233). `tag` is the tag that was read from the registry to get the digest. `resolved` is the day of that read |
+| `marks` | What the recipe needs beyond the default rules (Section 13.3). Empty for most recipes |
+| `volumes` | Each top-level volume of the Compose file, with the kind of copy that it needs (Section 13.4) |
+| `generated` | The variables that the install makes, for example a password. The example file has no value for them |
+| `test` | The test of a machine (Section 13.5). Task H37 runs it |
+| `pinned` | The day of the last pin of the digests |
+| `last_test` | The last test on a machine: `not-tested`, or `passed` or `failed` with the day |
+
+Each day is written `YYYY-MM-DD`.
+
+### 13.3 The marks
+
+A mark says that a recipe needs more than the default rules of Section 4.5. The static test runs the
+rules of task H28 with the settings that exactly the marks permit. A mark that the file does not need
+is an error. A need that has no mark is an error.
+
+| Mark | What it needs | State |
+| --- | --- | --- |
+| `network-port` | A port on each address of the machine. The mark has the port and its protocols (`tcp`, `udp`). The machine needs "Open to the network" (R-229) | Permitted. The ports on an address other than `127.0.0.1` must be exactly the ports of the marks |
+| `engine-socket` | The socket of the engine (R-247) | Refused until the exception of Section 10 exists. Nothing installs such an entry |
+| `host-network` | The network of the machine itself, for example for the discovery of devices | Refused. No rule permits it |
+| `device` | A device of the machine, for example a USB stick or a graphics processor | Refused. No rule permits it |
+
+The rules of Section 4.5 permit a published port from 1024 only. "Open to the network" does not
+change that. Thus a DNS server on port 53 (Pi-hole, AdGuard Home) is refused today, also with its
+mark. The recipe of Pi-hole is in the folder with its mark. Its test gives the refusal
+`port_not_permitted`, and it is not listed. A question for the operator: does a `network-port` mark
+permit a port below 1024, and with which setting of the machine?
+
+### 13.4 The data of a recipe
+
+Each top-level volume has one kind of copy. Task H25 (HOST-042) uses it.
+
+| Kind | Meaning |
+| --- | --- |
+| `files` | Plain files. A copy of the files is good at any time |
+| `sqlite` | An SQLite database. A copy needs the backup function of SQLite or a stopped service |
+| `postgresql` | A PostgreSQL server. A copy needs `pg_dump` or a copy of the stopped server |
+| `cache` | Data that the application makes again. No copy is needed |
+
+### 13.5 The test of a machine
+
+The test is data only. Task H37 runs it on a throwaway machine after the install.
+
+| Field | Rule |
+| --- | --- |
+| `service` | A service of the Compose file |
+| `port` | The port in the container. A `ports` entry of the service publishes it |
+| `reach` | `http` or `tcp` |
+| `path` | For `http`: a path that starts with `/`. For `tcp`: none |
+| `statuses` | For `http`: each HTTP status that counts as healthy, from 100 to 599. For `tcp`: none |
+| `body` | For `http`: a text that the body of a healthy answer contains, or none. For `tcp`: none |
+| `limit_seconds` | The most seconds from the start of the install to a healthy answer, from 1 to 900 |
+
+### 13.6 The example environment file
+
+The example file has lines `NAME=value` and comments. It holds no secret value.
+
+- The line of a variable in `generated` has no value. The line directly above it is
+  `# generated at install`. The install makes the value. Anima never writes it to the catalogue.
+- A line with no value directly below that comment names a variable of `generated`.
+- A variable whose name has the part `PASSWORD`, `PASS`, `SECRET`, `TOKEN` or `KEY` has no value.
+
+The static test fills the variables of the Compose file from this file, with the rules of
+Section 4.5. Thus each variable of the file has a line, or a default with `:-`.
+
+### 13.7 The static test and its codes
+
+The static test reads each recipe folder. It installs nothing, starts no container and reaches no
+machine. Each failure is a fixed code with the identifier of the recipe. No code holds text of a
+file. One recipe can have more than one code.
+
+| Code | Meaning |
+| --- | --- |
+| `entry_not_readable` | The entry file is not there, is not JSON, or has a key or a form that is not permitted |
+| `id_not_permitted` | The identifier is not a name, or is not the name of the folder |
+| `field_empty` | A text field or the list of tags is empty |
+| `address_not_permitted` | An address is not `https://`, or a file address is not the fixed name in the folder |
+| `file_not_found` | The Compose file or the example file is not in the folder |
+| `date_not_permitted` | A day is not `YYYY-MM-DD` |
+| `image_not_pinned` | An image is not named by a digest |
+| `image_not_listed` | A service has an image that the entry does not give for it |
+| `image_not_used` | The entry gives an image that no service has |
+| `compose_refused` | The rules of task H28 refuse the file. The second part is the code of the rule, or `not_at_machine` |
+| `mark_not_needed` | The file passes the default rules, so the mark is not needed |
+| `mark_not_matched` | The ports on the network are not the ports of the `network-port` marks |
+| `mark_not_permitted` | A mark that no rule permits yet. The second part is the mark |
+| `test_not_complete` | The test of a machine is not complete (Section 13.5) |
+| `volume_not_described` | A top-level volume has no kind of copy, or a described volume is not in the file |
+| `secret_in_example` | The example file has a value for a secret |
+| `generated_not_marked` | A generated variable is not marked, or a marked line is not in `generated` |
+| `machine_test_failed` | The last test on a machine failed. The entry leaves the list |
+
+A test of the crate reads the folder `entries/` and requires each recipe to pass, with one known
+refusal: Pi-hole (Section 13.3). Thus `bun run gates` runs the static test of each recipe.
+
+### 13.8 How a large list stays tested
+
+The static test proves the form only. A list of many entries stays correct only with tests on a
+machine.
+
+1. Task H37 installs each entry on a throwaway machine, waits for health, runs the test of the
+   entry, removes the entry, and records the day and the result in `last_test`.
+2. A schedule reads the registry for the tag of each image, pins the new digest, and runs the test
+   of a machine again. The pin and the test go in one change. `pinned` and `resolved` show the day.
+3. The catalogue shows the day of the last test of each entry. An entry that is not tested on a
+   machine says so.
+4. An entry whose last test failed leaves the list (`machine_test_failed`). It comes back when a
+   test passes.
+5. An entry with a code of the static test is not listed.
+
+No entry of task H36 has been tested on a machine. Each says `not-tested`.
+
+### 13.9 The first entries (task H36)
+
+The digests were read on 2026-11-20 from the public registry of Docker Hub with the HTTP API of the
+registry: a request for the manifest, with no pull and no login. Each digest is the digest of the
+index of all platforms of the tag.
+
+| Entry | Images (tag) | Marks | Data | Static test |
+| --- | --- | --- | --- | --- |
+| OwnTracks Recorder | `owntracks/recorder` (1.0.7) | None | `files` | Passes |
+| Dawarich | `freikin/dawarich` (1.23.0), `postgis/postgis` (17-3.7-alpine), `redis` (7.4.12-alpine) | None | `files`, `postgresql`, `cache` | Passes |
+| Pi-hole | `pihole/pihole` (2026.11.0) | `network-port` 53, `udp` and `tcp` | `sqlite` | Refused: `port_not_permitted` |
+| Uptime Kuma | `louislam/uptime-kuma` (2.5.12) | None | `sqlite` | Passes |
+| Vaultwarden | `vaultwarden/server` (1.37.5) | None | `sqlite` | Passes |
+| Gitea | `gitea/gitea` (28.4.0) | None | `sqlite` | Passes |
+
+Dawarich passes the default rules. Its Compose file is not the file of the project: it has no
+`container_name`, no `stdin_open`, no `tty`, no `shm_size`, no options of the log driver and no
+`deploy` key, because Section 4.5 refuses each of them. PostgreSQL thus has the default shared
+memory of the engine (64 MiB). The test on a machine must show that this is enough.
+
+### 13.10 A proposed list of the first thirty entries
+
+The order follows what people self-host most. "Open to the network" is the `network-port` mark.
+An entry with a refused mark is not listed until a rule permits its mark.
+
+| # | Entry | Marks | Database |
+| --- | --- | --- | --- |
+| 1 | OwnTracks Recorder | None | None |
+| 2 | Dawarich | None | PostgreSQL with PostGIS; Redis |
+| 3 | Pi-hole | `network-port` 53 `udp` and `tcp` (below 1024: refused today) | SQLite |
+| 4 | AdGuard Home | `network-port` 53 `udp` and `tcp` (below 1024: refused today) | None |
+| 5 | Uptime Kuma | None | SQLite |
+| 6 | Vaultwarden | None | SQLite |
+| 7 | Gitea | None | SQLite |
+| 8 | Forgejo | None | SQLite |
+| 9 | Nextcloud | None | PostgreSQL; Redis |
+| 10 | Immich | None (`device` only for hardware decoding) | PostgreSQL with its vector extension; Redis |
+| 11 | Jellyfin | None (`device` only for hardware decoding) | SQLite |
+| 12 | Home Assistant | `host-network` for the discovery of devices; `device` for a radio stick | SQLite |
+| 13 | Paperless-ngx | None | PostgreSQL; Redis |
+| 14 | Audiobookshelf | None | SQLite |
+| 15 | Navidrome | None | SQLite |
+| 16 | Syncthing | `network-port` 22000 `tcp` and `udp`, 21027 `udp` | None |
+| 17 | Arcane | `engine-socket` (R-247) | SQLite |
+| 18 | Portainer | `engine-socket` (R-247) | Files |
+| 19 | Dozzle | `engine-socket` (R-247) | None |
+| 20 | Homepage | None (`engine-socket` only for the state of containers; left out) | None |
+| 21 | FreshRSS | None | SQLite |
+| 22 | Miniflux | None | PostgreSQL |
+| 23 | Mealie | None | SQLite |
+| 24 | Actual Budget | None | Files |
+| 25 | Stirling-PDF | None | None |
+| 26 | Linkding | None | SQLite |
+| 27 | Grafana | None | SQLite |
+| 28 | n8n | None | SQLite |
+| 29 | Mosquitto | `network-port` 1883 `tcp` (for the phones of OwnTracks) | None |
+| 30 | Open WebUI with Ollama | None (`device` only for a graphics processor) | SQLite |
+
+Not proposed: Watchtower, because it updates images by itself (ETH-004, HOST-044); a VPN server
+such as WireGuard, because it needs a capability of the kernel that no mark names.
 
 ## 14. The PostgreSQL entry (R-216, R-NEW-databaselevels, task H24)
 

@@ -1,0 +1,7 @@
+# Vaultwarden. No secret: the admin page stays off while it has no admin token.
+# The address that people use to open Vaultwarden. Browsers permit the web vault only on https or on localhost.
+DOMAIN=http://localhost:8222
+# Set to true for the first account, then back to false.
+SIGNUPS_ALLOWED=false
+# The port of the machine for the web interface.
+VAULTWARDEN_PORT=8222

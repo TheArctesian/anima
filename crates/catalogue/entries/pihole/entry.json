@@ -1,0 +1,61 @@
+{
+  "id": "pihole",
+  "name": "Pi-hole",
+  "description": "A DNS server for the network that blocks advertisements and trackers for each device that uses it.",
+  "version": "2026.11.0",
+  "author": "Pi-hole",
+  "tags": [
+    "dns",
+    "network"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://docs.pi-hole.net/docker/",
+  "icon_url": null,
+  "anima": {
+    "images": [
+      {
+        "service": "pihole",
+        "image": "pihole/pihole@sha256:66c798d79a95c2691f280329c3611dba1746117c61c9f331907ca35a06a52778",
+        "tag": "2026.11.0",
+        "resolved": "2026-11-20"
+      }
+    ],
+    "marks": [
+      {
+        "mark": "network-port",
+        "port": 53,
+        "protocols": [
+          "udp",
+          "tcp"
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "volume": "etc-pihole",
+        "copy": "sqlite"
+      }
+    ],
+    "generated": [
+      "WEB_PASSWORD"
+    ],
+    "test": {
+      "service": "pihole",
+      "port": 80,
+      "reach": "http",
+      "path": "/admin/",
+      "statuses": [
+        200,
+        301,
+        302
+      ],
+      "body": null,
+      "limit_seconds": 180
+    },
+    "pinned": "2026-11-20",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

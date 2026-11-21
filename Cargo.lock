@@ -1283,6 +1283,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "catalogue"
+version = "0.1.0"
+dependencies = [
+ "compose-rules",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "cbc"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

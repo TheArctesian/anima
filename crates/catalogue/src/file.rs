@@ -1,0 +1,202 @@
+//! The Compose file of a recipe against its entry: the rules of task H28 with the settings
+//! that exactly the marks permit, the images by digest, the volumes and the test of a machine.
+
+use compose_rules::{Node, Settings, forms::whole};
+
+use crate::{
+    Code,
+    entry::{Anima, HealthTest, Mark, Protocol, Reach},
+};
+
+/// The longest time limit of a test of a machine, in seconds.
+const LONGEST_TEST: u32 = 900;
+/// The address of the machine itself.
+const LOCAL: &str = "127.0.0.1";
+
+/// `repository@sha256:<64 hex digits>`, with no tag.
+fn is_pinned(image: &str) -> bool {
+    let Some((repository, digest)) = image.split_once('@') else {
+        return false;
+    };
+    let hex = digest.strip_prefix("sha256:").unwrap_or_default();
+    let tagless = !repository
+        .rsplit('/')
+        .next()
+        .unwrap_or_default()
+        .contains(':');
+    compose_rules::forms::is_image(image)
+        && tagless
+        && hex.len() == 64
+        && hex
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn services(document: &Node) -> &[(String, Node)] {
+    document
+        .get("services")
+        .and_then(Node::entries)
+        .unwrap_or(&[])
+}
+
+fn ports(service: &Node) -> &[Node] {
+    match service.get("ports") {
+        Some(Node::List(ports)) => ports,
+        _ => &[],
+    }
+}
+
+/// The published ports of the file on an address other than the machine itself.
+fn open_ports(document: &Node) -> Vec<(u64, Protocol)> {
+    let mut open: Vec<(u64, Protocol)> = services(document)
+        .iter()
+        .flat_map(|(_, service)| ports(service))
+        .filter(|port| port.get("host_ip").and_then(Node::text) != Some(LOCAL))
+        .filter_map(|port| {
+            let published = port.get("published").and_then(Node::text).and_then(whole)?;
+            let protocol = match port.get("protocol").and_then(Node::text) {
+                Some("udp") => Protocol::Udp,
+                _ => Protocol::Tcp,
+            };
+            Some((published, protocol))
+        })
+        .collect();
+    open.sort_unstable();
+    open.dedup();
+    open
+}
+
+/// The ports that the `network-port` marks name.
+fn marked_ports(marks: &[Mark]) -> Vec<(u64, Protocol)> {
+    let mut marked: Vec<(u64, Protocol)> = marks
+        .iter()
+        .flat_map(|mark| match mark {
+            Mark::NetworkPort { port, protocols } => protocols
+                .iter()
+                .map(|protocol| (u64::from(*port), *protocol))
+                .collect(),
+            _ => Vec::new(),
+        })
+        .collect();
+    marked.sort_unstable();
+    marked.dedup();
+    marked
+}
+
+fn images(anima: &Anima, document: &Node) -> Vec<Code> {
+    let used: Vec<(&str, Option<&str>)> = services(document)
+        .iter()
+        .map(|(name, service)| (name.as_str(), service.get("image").and_then(Node::text)))
+        .collect();
+    let mut codes = Vec::new();
+    let pinned = used
+        .iter()
+        .map(|(_, image)| image.unwrap_or_default())
+        .chain(anima.images.iter().map(|listed| listed.image.as_str()))
+        .all(is_pinned);
+    if !pinned {
+        codes.push(Code::ImageNotPinned);
+    }
+    let listed = used.iter().all(|(service, image)| {
+        anima
+            .images
+            .iter()
+            .any(|listed| listed.service == *service && Some(listed.image.as_str()) == *image)
+    });
+    if !listed {
+        codes.push(Code::ImageNotListed);
+    }
+    let each_used = anima.images.iter().all(|listed| {
+        used.iter().any(|(service, image)| {
+            listed.service == *service && Some(listed.image.as_str()) == *image
+        })
+    });
+    if !each_used {
+        codes.push(Code::ImageNotUsed);
+    }
+    codes
+}
+
+fn volumes_described(anima: &Anima, document: &Node) -> bool {
+    let mut declared: Vec<&str> = document
+        .get("volumes")
+        .and_then(Node::entries)
+        .unwrap_or(&[])
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect();
+    let mut described: Vec<&str> = anima
+        .volumes
+        .iter()
+        .map(|kept| kept.volume.as_str())
+        .collect();
+    declared.sort_unstable();
+    described.sort_unstable();
+    declared == described
+}
+
+/// The test reaches a port that its service publishes, and says what a healthy answer is.
+fn test_complete(test: &HealthTest, document: &Node) -> bool {
+    let port = test.port.to_string();
+    let published = services(document)
+        .iter()
+        .find(|(name, _)| *name == test.service)
+        .is_some_and(|(_, service)| {
+            ports(service)
+                .iter()
+                .any(|entry| entry.get("target").and_then(Node::text) == Some(port.as_str()))
+        });
+    let answer = match test.reach {
+        Reach::Http => {
+            test.path
+                .as_deref()
+                .is_some_and(|path| path.starts_with('/'))
+                && !test.statuses.is_empty()
+                && test
+                    .statuses
+                    .iter()
+                    .all(|status| (100..=599).contains(status))
+                && test.body.as_deref().is_none_or(|body| !body.is_empty())
+        }
+        Reach::Tcp => test.path.is_none() && test.statuses.is_empty() && test.body.is_none(),
+    };
+    published && answer && (1..=LONGEST_TEST).contains(&test.limit_seconds)
+}
+
+/// The codes of the Compose file `compose`, filled from the example `environment`.
+pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code> {
+    let mut codes: Vec<Code> = anima
+        .marks
+        .iter()
+        .filter(|mark| !matches!(mark, Mark::NetworkPort { .. }))
+        .map(|mark| Code::MarkNotPermitted(mark.clone()))
+        .collect();
+    let marked = marked_ports(&anima.marks);
+    let settings = Settings {
+        open_to_network: !marked.is_empty(),
+        label_prefixes: Vec::new(),
+    };
+    let document = match compose_rules::check(compose, environment, &settings) {
+        Ok(checked) => checked.document,
+        Err(refusal) => {
+            codes.push(Code::ComposeRefused(refusal));
+            return codes;
+        }
+    };
+    if settings.open_to_network {
+        if compose_rules::check(compose, environment, &Settings::default()).is_ok() {
+            codes.push(Code::MarkNotNeeded);
+        }
+        if open_ports(&document) != marked {
+            codes.push(Code::MarkNotMatched);
+        }
+    }
+    codes.extend(images(anima, &document));
+    if !volumes_described(anima, &document) {
+        codes.push(Code::VolumeNotDescribed);
+    }
+    if !test_complete(&anima.test, &document) {
+        codes.push(Code::TestNotComplete);
+    }
+    codes
+}

@@ -1,0 +1,3 @@
+# OwnTracks Recorder. No secret: the Recorder has no login of its own.
+# The port of the machine for the web interface and the HTTP reports.
+RECORDER_PORT=8083

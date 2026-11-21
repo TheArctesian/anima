@@ -1,0 +1,113 @@
+services:
+  app:
+    image: freikin/dawarich@sha256:c9c6a9c04fa2ad11c438fc0b0ea3b7d95fc7e6d8c7a3cfa98bf1fc5aef2dbfd4
+    entrypoint: web-entrypoint.sh
+    command: ["bin/rails", "server", "-p", "3000", "-b", "::"]
+    environment:
+      RAILS_ENV: production
+      REDIS_URL: redis://redis:6379
+      DATABASE_HOST: db
+      DATABASE_USERNAME: dawarich
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: dawarich
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      APPLICATION_HOSTS: ${APPLICATION_HOSTS:-localhost}
+      APPLICATION_PROTOCOL: http
+      TIME_ZONE: ${TIME_ZONE:-UTC}
+      SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
+      PROMETHEUS_EXPORTER_ENABLED: "false"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q ok"]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+    ports:
+      - target: 3000
+        published: ${DAWARICH_PORT:-3000}
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: public
+        target: /var/app/public
+      - type: volume
+        source: watched
+        target: /var/app/tmp/imports/watched
+      - type: volume
+        source: storage
+        target: /var/app/storage
+  sidekiq:
+    image: freikin/dawarich@sha256:c9c6a9c04fa2ad11c438fc0b0ea3b7d95fc7e6d8c7a3cfa98bf1fc5aef2dbfd4
+    entrypoint: sidekiq-entrypoint.sh
+    command: ["sidekiq"]
+    environment:
+      RAILS_ENV: production
+      REDIS_URL: redis://redis:6379
+      DATABASE_HOST: db
+      DATABASE_USERNAME: dawarich
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: dawarich
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      APPLICATION_HOSTS: ${APPLICATION_HOSTS:-localhost}
+      APPLICATION_PROTOCOL: http
+      TIME_ZONE: ${TIME_ZONE:-UTC}
+      SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
+      PROMETHEUS_EXPORTER_ENABLED: "false"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - type: volume
+        source: public
+        target: /var/app/public
+      - type: volume
+        source: watched
+        target: /var/app/tmp/imports/watched
+      - type: volume
+        source: storage
+        target: /var/app/storage
+  db:
+    image: postgis/postgis@sha256:edb61bdfede3dd78074fb1a9e43523510d7fe461817c95f44301be8dfebd04b9
+    environment:
+      POSTGRES_USER: dawarich
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: dawarich
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dawarich -d dawarich"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - type: volume
+        source: db
+        target: /var/lib/postgresql/data
+  redis:
+    image: redis@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    command: ["redis-server"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+    volumes:
+      - type: volume
+        source: redis
+        target: /data
+volumes:
+  public:
+  watched:
+  storage:
+  db:
+  redis:
