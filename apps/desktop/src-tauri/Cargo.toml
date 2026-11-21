@@ -63,6 +63,8 @@ uuid.workspace = true
 # The dependencies of the desktop application. A phone has the window, the access token, the link and the account sign-in only, so it
 # builds none of them (MOB-002, MOB-003).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+# The stay-awake control reads the power source with the daemon's parse (AWK-006, CAP-004).
+power = { path = "../../../crates/power" }
 # The Settings panel for `anima mcp` reads and saves permissions through the command line's own library (MCP-018).
 anima-cli = { path = "../../../crates/anima-cli" }
 # The frames of the local socket of the thread runner (TH14, THR-128).

@@ -48,6 +48,7 @@ cli out crates/compose-rules/
 cli out crates/daemon/
 cli out crates/daemon-core/
 cli out crates/guac-protocol/
+cli out crates/power/
 cli out crates/hub/
 cli out crates/providers/
 cli out crates/rdp-test-device/

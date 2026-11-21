@@ -897,6 +897,80 @@ type DeviceCapabilities {
   buildTargets: [String!]!
   "When the hub stored this inventory."
   foundAt: DateTime!
+  "The hardware values its daemon last sent; null until it sends them (CAP-001 to CAP-005, CAP-032). R-165 permits this field of the optional K8 member `hardware`."
+  hardware: Hardware
+}
+
+# Hardware values (CAP-001 to CAP-005, CAP-032; R-165, the optional K8 member `hardware` of task L1-1).
+"The hardware values a daemon last sent. A byte count is a Float, as a drive size is; null is a value the daemon could not read, never zero."
+type Hardware {
+  "All system memory."
+  systemMemoryBytes: Float!
+  "The memory the CPU and the GPU share: Apple silicon only."
+  unifiedMemoryBytes: Float
+  "The sum of the video memory of the NVIDIA and AMD GPUs."
+  dedicatedMemoryBytes: Float
+  "Apple silicon: the GPU working-set limit of macOS (CAP-005)."
+  usableMemoryBytes: Float
+  "Where usableMemoryBytes came from."
+  usableMemorySource: UsableMemorySource
+  "The free space of the file system of the daemon's home folder, in whole GiB."
+  freeDiskBytes: Float
+  "Fixed CPU feature names, for example avx2 or neon, in byte order."
+  cpuFeatures: [String!]!
+  "One verdict per backend: metal, cuda, rocm, vulkan, cpu (CAP-002)."
+  backends: [Backend!]!
+  powerSource: PowerSource
+  thermalState: ThermalState
+  "Whether a person used the keyboard or the pointer in the last 5 minutes; macOS only."
+  operatorActive: Boolean
+  "When the hub stored these values."
+  foundAt: DateTime!
+}
+
+"One model backend and its verdict (CAP-002)."
+type Backend {
+  "metal, cuda, rocm, vulkan or cpu."
+  name: String!
+  usable: Boolean!
+  "Why the backend is not usable; null when it is."
+  reason: BackendNotUsable
+}
+
+"Why a backend is not usable: a fixed code, never text from the device (CAP-002)."
+enum BackendNotUsable {
+  "No GPU of the backend's vendor is present."
+  NO_DEVICE
+  "The GPU is present, but its driver is not."
+  NO_DRIVER
+  "The driver is present, but the daemon's user may not open the device."
+  NO_PERMISSION
+  "The backend does not exist on this operating system or processor."
+  NOT_SUPPORTED
+  "A reason this hub does not know (a newer daemon's)."
+  FAILED
+}
+
+"Where the usable memory of Apple silicon came from (CAP-005)."
+enum UsableMemorySource {
+  "The operator set the sysctl iogpu.wired_limit_mb; its value is the limit."
+  WIRED_LIMIT
+  "iogpu.wired_limit_mb is 0: the default share of macOS, three quarters of a memory above 36 GiB, else two thirds."
+  DEFAULT_SHARE
+}
+
+"Where the power comes from (CAP-004)."
+enum PowerSource {
+  MAINS
+  BATTERY
+}
+
+"The thermal state (CAP-004)."
+enum ThermalState {
+  "No thermal limit is in force."
+  NOMINAL
+  "The system limits the CPU speed for heat."
+  THROTTLED
 }
 
 "One tool the daemon found (CAP-024, CAP-025)."

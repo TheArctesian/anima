@@ -153,8 +153,8 @@ pub async fn batteries(
     store::batteries(db, devices).await
 }
 
-/// The tool inventory of each device whose daemon sent one and that `filter` admits, in no set
-/// order (CAP-030).
+/// The tool inventory of each device whose daemon sent one and that `filter` admits, with its
+/// hardware values when the daemon sent them, in no set order (CAP-030, CAP-032).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored architecture or system this
@@ -165,6 +165,10 @@ pub async fn capabilities(
 ) -> Result<Vec<Capabilities>, Error> {
     let mut found = store::inventories(db).await?;
     found.retain(|stored| filter.admits(&stored.inventory));
+    let mut hardware = store::hardware(db).await?;
+    for stored in &mut found {
+        stored.hardware = hardware.remove(&stored.device);
+    }
     Ok(found)
 }
 

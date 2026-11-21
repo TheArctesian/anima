@@ -267,3 +267,56 @@ async fn win2_native_windows_inventory_is_stored_and_listed(pool: PgPool) {
     assert_eq!(rows[0]["os"], "windows");
     assert_eq!(rows[0]["buildTargets"], json!(["x86_64-pc-windows-msvc"]));
 }
+
+const HARDWARE: &str = "{ capabilities { device { name } hardware {
+    systemMemoryBytes unifiedMemoryBytes dedicatedMemoryBytes usableMemoryBytes
+    usableMemorySource freeDiskBytes cpuFeatures backends { name usable reason }
+    powerSource thermalState operatorActive } } }";
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cap_032_pushed_hardware_values_replace_the_stored_ones_and_are_listed(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
+    let key = read_key(&daemons, now).await;
+    let at = |step: i64| now - TimeDelta::seconds(40 - 10 * step);
+    let mut pushed = inventory_batch(PVE_01, at(0), Some(linux(json!([]), json!([]))));
+    pushed["hardware"] = json!({
+        "systemMemoryBytes": 68_719_476_736_u64, "dedicatedMemoryBytes": 25_769_803_776_u64,
+        "freeDiskBytes": 549_755_813_888_u64, "cpuFeatures": ["fma", "avx2"],
+        "backends": [{ "name": "cuda" }, { "name": "rocm", "state": "no_device" },
+                     { "name": "opencl" }, { "name": "vulkan", "state": "later" }],
+        "powerSource": "mains", "thermalState": "hot" });
+    assert_eq!(
+        daemons.push(&token, &pushed).await.0,
+        StatusCode::NO_CONTENT
+    );
+    let answer = daemons.graphql(Some(&key), HARDWARE, json!({})).await;
+    assert_eq!(
+        answer["data"]["capabilities"][0]["hardware"],
+        json!({
+            "systemMemoryBytes": 68_719_476_736.0_f64, "unifiedMemoryBytes": null,
+            "dedicatedMemoryBytes": 25_769_803_776.0_f64, "usableMemoryBytes": null,
+            "usableMemorySource": null, "freeDiskBytes": 549_755_813_888.0_f64,
+            "cpuFeatures": ["avx2", "fma"],
+            "backends": [ { "name": "cuda", "usable": true, "reason": null },
+                          { "name": "rocm", "usable": false, "reason": "NO_DEVICE" },
+                          { "name": "vulkan", "usable": false, "reason": "FAILED" } ],
+            "powerSource": "MAINS", "thermalState": null, "operatorActive": null }),
+        "an unknown backend is dropped, an unknown reason is FAILED, an unknown state is null"
+    );
+    let mut older = inventory_batch(PVE_01, at(1), None);
+    older["hardware"] = Value::Null;
+    assert_eq!(daemons.push(&token, &older).await.0, StatusCode::NO_CONTENT);
+    let kept = daemons.graphql(Some(&key), HARDWARE, json!({})).await;
+    assert_eq!(kept, answer, "an absent member leaves the values");
+    let mut broken = inventory_batch(PVE_01, at(2), None);
+    broken["hardware"] = json!({ "systemMemoryBytes": 1, "cpuFeatures": ["AVX"], "backends": [] });
+    assert_eq!(
+        daemons.push(&token, &broken).await.0,
+        StatusCode::BAD_REQUEST
+    );
+}

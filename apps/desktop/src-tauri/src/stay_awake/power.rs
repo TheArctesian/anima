@@ -1,6 +1,7 @@
 //! Where this computer's power comes from now (AWK-006): on macOS from `pmset -g batt`, on
 //! Linux from `/sys/class/power_supply`. Neither needs more rights. A state that cannot be
-//! read is `Mains`, so a read failure never turns the control off.
+//! read is `Mains`, so a read failure never turns the control off. The parse is the daemon's
+//! (the crate `power`), so the two read the power source alike (CAP-004).
 
 use std::{ffi::OsStr, fs, path::Path, time::Duration};
 
@@ -20,54 +21,7 @@ const PMSET_LIMIT: Limit = Limit {
 
 const PMSET_OUTPUT: Stdout = Stdout::Capture { max_bytes: 4096 };
 
-/// The power source `pmset -g batt` reports. Its first line names the source in quotes
-/// (`'Battery Power'`, `'AC Power'`); a battery line holds the charge as `NN%`.
-#[must_use]
-pub fn from_pmset(report: &str) -> Power {
-    let on_battery = report
-        .lines()
-        .next()
-        .is_some_and(|line| line.contains("'Battery Power'"));
-    match (on_battery, percent_in(report)) {
-        (true, Some(percent)) => Power::Battery { percent },
-        _ => Power::Mains,
-    }
-}
-
-/// The number before the first `%`.
-fn percent_in(report: &str) -> Option<u8> {
-    let before = &report[..report.find('%')?];
-    let digits = before
-        .rfind(|character: char| !character.is_ascii_digit())
-        .map_or(before, |last| &before[last + 1..]);
-    digits.parse().ok().filter(|percent| *percent <= 100)
-}
-
-/// One entry of `/sys/class/power_supply`, as its files read.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Supply {
-    /// `type`: `Battery`, `Mains`, `USB`, …
-    pub kind: String,
-    /// `scope`: `Device` for the battery of a mouse or a keyboard.
-    pub scope: String,
-    /// `status`: `Discharging`, `Charging`, `Full`, …
-    pub status: String,
-    /// `capacity`, in percent.
-    pub capacity: Option<u8>,
-}
-
-/// The power source the Linux power supplies report: the battery when a system battery
-/// discharges. Several batteries give the lowest charge.
-#[must_use]
-pub fn from_supplies(supplies: &[Supply]) -> Power {
-    supplies
-        .iter()
-        .filter(|supply| supply.kind == "Battery" && supply.scope != "Device")
-        .filter(|supply| supply.status == "Discharging")
-        .filter_map(|supply| supply.capacity)
-        .min()
-        .map_or(Power::Mains, |percent| Power::Battery { percent })
-}
+pub use ::power::{Supply, from_pmset, from_supplies};
 
 fn supply_at(entry: &Path) -> Supply {
     let field = |name: &str| {

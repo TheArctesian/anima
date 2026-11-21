@@ -9,6 +9,7 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::{
     agent_usage::AgentUsage,
+    hardware::Hardware,
     inventory::Inventory,
     readings::Drive,
     wire::{RefusalCode, TokenHash},
@@ -57,6 +58,8 @@ pub(super) struct Push<'a> {
     pub(super) batteries: Option<&'a [Battery]>,
     /// `None`: the tool inventory is unchanged; `Some`: it replaces the stored one (CAP-029).
     pub(super) inventory: Option<&'a Inventory>,
+    /// `None`: the hardware values are unchanged; `Some`: they replace the stored ones (CAP-032).
+    pub(super) hardware: Option<&'a Hardware>,
     /// The version of the daemon that sent the batch; `None` from a daemon older than R-122.
     pub(super) daemon_version: Option<&'a str>,
     /// `None`: nothing new; `Some`: its state and session days are stored (R-135, AIS-020).
@@ -113,7 +116,7 @@ pub(super) async fn write(
 }
 
 /// Writes the lists the batch announced, each in place of the stored one: the GPU set, the
-/// drives, the batteries, the tool inventory and the agent usage (K8 Section 4). An absent list is unchanged.
+/// drives, the batteries, the tool inventory, the hardware values and the agent usage (K8 Section 4). An absent list is unchanged.
 async fn write_announcements(
     tx: &mut PgConnection,
     push: &Push<'_>,
@@ -137,6 +140,9 @@ async fn write_announcements(
     }
     if let Some(inventory) = push.inventory {
         metrics_store::write_inventory(&mut *tx, push.device, inventory, now).await?;
+    }
+    if let Some(hardware) = push.hardware {
+        metrics_store::write_hardware(&mut *tx, push.device, hardware, now).await?;
     }
     if let Some(usage) = push.agent_usage {
         agent_usage::record(&mut *tx, push.device, usage).await?;

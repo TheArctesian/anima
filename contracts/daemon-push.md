@@ -250,7 +250,7 @@ Request:
   version the daemon reads); `failed` stands for a reason the reader does not know. A tool the daemon did not
   find is not listed. The names the hub knows are `git`,
   `rustc`, `cargo`, `cargo-nextest`, `sccache`, `bun`, `node`, `xcodebuild`, `docker`, `podman`, `nix`, `claude`
-  and `codex`; the hub drops a tool of any other name, and reads a `state` it does not know as `failed`, so a
+  and `codex` (the model runtimes are not tools: they have their own list, R-NEW-runtimelist); the hub drops a tool of any other name, and reads a `state` it does not know as `failed`, so a
   newer daemon can talk to an older hub, and an older daemon's `failed` is still taken. `buildTargets` holds at
   most 128 unique Rust targets
   (`rustup target list --installed`), each 1 to 64 bytes of `[0-9a-z_.-]`. No text in it is free text from the
@@ -263,6 +263,35 @@ Request:
   probe runs in a process group of its own that is killed when it ends. `claude` and `codex` write into their
   home folder even to print a version, so they run with `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` set to
   an empty temporary folder that is removed afterwards; no other probe has a home folder (CAP-025).
+- `hardware`: optional; the hardware values (CAP-001 to CAP-005, CAP-032; R-165 permits this member, task L1-1 of
+  the compute plan, CON-001). The daemon reads them with the inventory, at start and every 15 minutes, and sends
+  them on the rules of `inventory`: in its first batch after start, again when a value changes or 24 hours have
+  passed, with each next batch until one is accepted, except after `MALFORMED`. Absent means "unchanged", so a
+  daemon older than it keeps working. Windows sends none yet. Members (a byte count is an integer of at most
+  2^63 − 1; an absent value is one the daemon could not read, never zero):
+  `systemMemoryBytes` (macOS `sysctl -n hw.memsize`; Linux `MemTotal` of `/proc/meminfo`); `unifiedMemoryBytes`
+  (Apple silicon only: the system memory); `dedicatedMemoryBytes` (Linux: the sum of the video memory totals of
+  `nvidia-smi` and the `amdgpu` sysfs files); `usableMemory` (Apple silicon only, CAP-005: `{ "bytes", "source" }`;
+  `source` `wired_limit` is `sysctl -n iogpu.wired_limit_mb` × 2^20 when the operator set it above 0, at most the
+  memory; `default_share` when it is 0, the default: three quarters of a memory larger than 36 GiB, two thirds of a
+  smaller one, the share macOS gives the GPU and the value Metal reports as `recommendedMaxWorkingSetSize` on these
+  machines; the daemon does not call Metal); `freeDiskBytes` (`statvfs` of the daemon's home folder, rounded down
+  to whole GiB); `cpuFeatures` (at most 32 unique names of 1 to 64 bytes of `[0-9a-z_.-]` from a fixed list the
+  daemon detects: `sse4.2`, `avx`, `avx2`, `fma`, `f16c`, `avx512f`, `avx512bw`, `avx512vnni` on `x86_64`; `neon`,
+  `dotprod`, `fp16`, `i8mm`, `bf16`, `sve`, `sve2` on `aarch64`); `backends` (at most 16 with unique names, each
+  `{ "name", "state"? }`: `name` is `metal`, `cuda`, `rocm`, `vulkan` or `cpu`; no `state` means usable; `state` is a
+  fixed code (CAP-002): `no_device` (no GPU of the backend's vendor: the PCI vendors of `/sys/class/drm/cardN`),
+  `no_driver` (CUDA: no `/proc/driver/nvidia/version`; ROCm: no `/dev/kfd`; Vulkan: no `*.json` in
+  `/usr/share/vulkan/icd.d` or `/etc/vulkan/icd.d`), `no_permission` (ROCm: `/dev/kfd` is present and the daemon's
+  user may not read and write it), `not_supported` (the backend does not exist on this system: CUDA, ROCm and
+  Vulkan on macOS, Metal on Linux), and `failed` for a reason the reader does not know); `powerSource` (`mains` or
+  `battery`, CAP-004: macOS `pmset -g batt`, Linux `/sys/class/power_supply` with the rules of the desktop's
+  stay-awake control, AWK-006); `thermalState` (macOS only: `nominal` or `throttled` from `pmset -g therm`, throttled
+  when `CPU_Speed_Limit` is below 100); `operatorActive` (macOS only: `HIDIdleTime` of
+  `ioreg -c IOHIDSystem -d 4 -r -k HIDIdleTime` below 5 minutes). Each command has fixed arguments and a 2-second
+  limit. The hub drops a backend of a name it does not know and reads a `state` it does not know as `failed`, and a
+  `usableMemory.source`, `powerSource` or `thermalState` it does not know as absent, so a newer daemon can talk to
+  an older hub. A batch whose `hardware` breaks one of these rules is `MALFORMED`.
 - `daemonVersion`: optional (R-122). The version of the `anima-daemon` that sent the batch, in each batch. It
   is 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, and starts with a digit; any other text is
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
@@ -367,6 +396,8 @@ The hub:
 - with `inventory` present, replaces the device's tool inventory with it in the same transaction, the tools
   and the build targets included; an empty `tools` or `buildTargets` means the device has none now, and an
   absent `inventory` leaves it as it is (CAP-029). Deleting the device deletes its inventory;
+- with `hardware` present, replaces the device's hardware values with it in the same transaction; an absent
+  `hardware` leaves them as they are (CAP-032, R-165). Deleting the device deletes them;
 - with `agentUsage` present, in the same transaction (R-135; AIS-020, AIS-023): keeps its `state` as the
   device's usage state when it knows the state; and for each session day of a known source, upserts the
   session keyed by device, `source` and `id` (one session, never a copy: a later collector of the same

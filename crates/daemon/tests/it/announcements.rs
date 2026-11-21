@@ -6,4 +6,5 @@ mod agent_usage;
 mod batteries;
 mod drives;
 mod gpus;
+mod hardware;
 mod inventory;

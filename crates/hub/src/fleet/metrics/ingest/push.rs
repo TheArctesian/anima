@@ -106,6 +106,7 @@ async fn push(
         drives: drives.as_deref(),
         batteries: batteries.as_deref(),
         inventory: accepted.inventory.as_ref(),
+        hardware: accepted.hardware.as_ref(),
         daemon_version: daemon_version.as_deref(),
         agent_usage: accepted.agent_usage.as_ref(),
     };

@@ -1,5 +1,5 @@
-//! `anima_capability_list`: what each device can run, from its agent's tool inventory (CAP-030,
-//! CAP-031). The tool names, versions and targets come from the devices; the server cleans and
+//! `anima_capability_list`: what each device can run, from its daemon's tool inventory and
+//! hardware values (CAP-030 to CAP-032). The tool names, versions and targets come from the devices; the server cleans and
 //! caps each string before the agent sees it (MCP-008). A tool that is not usable carries its
 //! reason code and a fixed repair hint (CAP-024).
 
@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::capabilities::documents::capability_list::CapabilityListCapabilities;
-use crate::capabilities::hint::hint;
+use crate::capabilities::hint::{backend_hint, hint};
 use crate::capabilities::list::fetch;
 use crate::hub::Hub;
 use crate::mcp::arguments::{json, object, parse};
@@ -35,8 +35,10 @@ pub fn definition() -> Definition {
         "What each device can run, from the tool inventory its Anima agent reports: the \
          architecture, the operating system and its version, each developer tool found \
          (git, rustc, cargo, bun, node, docker, claude, codex and others) with its version and \
-         whether it is usable (when not, a reason code and a repair hint), and the installed \
-         Rust build targets. tool keeps the devices \
+         whether it is usable (when not, a reason code and a repair hint), the installed Rust build \
+         targets, and the hardware values: memory, usable GPU memory of Apple silicon, free \
+         disk, CPU features, each backend (metal, cuda, rocm, vulkan, cpu) with a verdict, \
+         power source, thermal state and operator activity. tool keeps the devices \
          where that tool is usable; buildTarget those with that target. A device without an \
          agent is not listed. Next: anima_device_get.",
     )
@@ -46,7 +48,12 @@ pub fn definition() -> Definition {
             "array",
             "One entry per device: device (id, name), architecture, os, osVersion, tools \
              (name, version, usable, reason: TIMED_OUT, EXITED, NO_VERSION or FAILED when not \
-             usable, hint: what to do then), buildTargets, foundAt.",
+             usable, hint: what to do then), buildTargets, foundAt, hardware (null until the \
+             daemon sends it: systemMemoryBytes, unifiedMemoryBytes, dedicatedMemoryBytes, \
+             usableMemoryBytes, usableMemorySource WIRED_LIMIT or DEFAULT_SHARE, freeDiskBytes, \
+             cpuFeatures, backends (name, usable, reason: NO_DEVICE, NO_DRIVER, NO_PERMISSION, \
+             NOT_SUPPORTED or FAILED, hint), powerSource MAINS or BATTERY, thermalState NOMINAL \
+             or THROTTLED, operatorActive, foundAt).",
         ),
         ("count", "integer", "How many devices are listed."),
     ])
@@ -62,7 +69,7 @@ pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     ])))
 }
 
-/// The K1 entry of `row`, each tool that is not usable with its repair hint.
+/// The K1 entry of `row`, each tool and backend that is not usable with its repair hint.
 fn with_hints(row: &CapabilityListCapabilities) -> Value {
     let mut shown = json(row);
     let tools = row.tools.iter().map(|tool| {
@@ -73,5 +80,15 @@ fn with_hints(row: &CapabilityListCapabilities) -> Value {
         tool_shown
     });
     shown["tools"] = Value::Array(tools.collect());
+    if let Some(hardware) = &row.hardware {
+        let backends = hardware.backends.iter().map(|backend| {
+            let mut backend_shown = json(backend);
+            if let Some(reason) = &backend.reason {
+                backend_shown["hint"] = json!(backend_hint(&backend.name, reason));
+            }
+            backend_shown
+        });
+        shown["hardware"]["backends"] = Value::Array(backends.collect());
+    }
     shown
 }

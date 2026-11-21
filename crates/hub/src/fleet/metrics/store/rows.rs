@@ -2,6 +2,10 @@
 
 use chrono::{DateTime, Utc};
 use daemon_core::{
+    hardware::{
+        Backend, BackendName, BackendReason, Hardware, PowerSource, ThermalState, UsableMemory,
+        UsableSource,
+    },
     inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict},
     readings::{self, Drive, DriveKind},
 };
@@ -214,6 +218,65 @@ impl TryFrom<InventoryRow> for Capabilities {
             device: row.device_id,
             inventory,
             found_at: row.found_at,
+            hardware: None,
         })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+pub(super) struct HardwareRow {
+    device_id: DeviceId,
+    system_memory_bytes: i64,
+    unified_memory_bytes: Option<i64>,
+    dedicated_memory_bytes: Option<i64>,
+    usable_memory_bytes: Option<i64>,
+    usable_memory_source: Option<String>,
+    free_disk_bytes: Option<i64>,
+    cpu_features: Vec<String>,
+    backend_names: Vec<String>,
+    backend_reasons: Vec<Option<String>>,
+    power_source: Option<String>,
+    thermal_state: Option<String>,
+    operator_active: Option<bool>,
+    found_at: DateTime<Utc>,
+}
+
+impl HardwareRow {
+    /// The device, its values and when they were stored. A backend of a name this version does
+    /// not know is left out; a source, state or reason it does not know reads as unknown.
+    pub(super) fn into_entry(self) -> Result<(DeviceId, (Hardware, DateTime<Utc>)), Error> {
+        let bytes = |value: i64| u64::try_from(value).map_err(|_| Error::Unreadable);
+        let optional = |value: Option<i64>| value.map(bytes).transpose();
+        let usable_memory = match (self.usable_memory_bytes, self.usable_memory_source) {
+            (Some(value), Some(source)) => Some(UsableMemory {
+                bytes: bytes(value)?,
+                source: UsableSource::parse(&source),
+            }),
+            _ => None,
+        };
+        let backends = self
+            .backend_names
+            .iter()
+            .zip(self.backend_reasons)
+            .filter_map(|(name, reason)| {
+                Some(Backend {
+                    name: BackendName::parse(name)?,
+                    state: reason.as_deref().map(BackendReason::parse),
+                })
+            })
+            .collect();
+        let hardware = Hardware {
+            system_memory_bytes: bytes(self.system_memory_bytes)?,
+            unified_memory_bytes: optional(self.unified_memory_bytes)?,
+            dedicated_memory_bytes: optional(self.dedicated_memory_bytes)?,
+            usable_memory,
+            free_disk_bytes: optional(self.free_disk_bytes)?,
+            cpu_features: self.cpu_features,
+            backends,
+            power_source: self.power_source.as_deref().map(PowerSource::parse),
+            thermal_state: self.thermal_state.as_deref().map(ThermalState::parse),
+            operator_active: self.operator_active,
+        };
+        Ok((self.device_id, (hardware, self.found_at)))
     }
 }

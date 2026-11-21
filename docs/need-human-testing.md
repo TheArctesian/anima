@@ -38,6 +38,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
+| HT-NEW-l1hardware | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -271,6 +272,40 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-NEW-l1hardware: the hardware values agree with what each system shows
+
+Built: `crates/daemon-core/src/hardware/`, `crates/daemon/src/readers/hardware/`, the hub migration `0721_metrics_hardware.sql` (numbered 0720 before the merge with `dev`, where 0720 holds the batteries), the field
+`hardware` of `capabilities`, `anima capability list` and `anima_capability_list` (task L1-1 of
+the compute plan; CAP-001 to CAP-005, CAP-032; R-165). The tests use scripted output in place of
+the real commands and files, and a scripted hub. This check gives the values that OD-C1 needs.
+
+The hub and the daemons must be of this build. A change to the hub on the VPS needs the
+confirmation of the operator (VPS-005). A local hub is sufficient for this check
+([setup/local-hub.md](procedures/setup/local-hub.md)).
+
+1. Start the `anima-daemon` of this build on the Mac of the operator and on the Linux PC
+   `pop-os`. Wait 1 minute. Run `anima capability list --json`.
+2. On the Mac, run `sysctl hw.memsize iogpu.wired_limit_mb`, `pmset -g batt`, `pmset -g therm`,
+   `df -k ~` and `system_profiler SPDisplaysDataType`. Expected: `systemMemoryBytes` and
+   `unifiedMemoryBytes` are `hw.memsize`; `usableMemoryBytes` is `iogpu.wired_limit_mb` × 1048576
+   with `WIRED_LIMIT` when that value is not 0, else three quarters of `hw.memsize` (above 36 GiB)
+   or two thirds with `DEFAULT_SHARE`; `freeDiskBytes` is the available space of `df` rounded
+   down to whole GiB; `metal` and `cpu` are usable and the other backends are `NOT_SUPPORTED`;
+   `powerSource` agrees with the first line of `pmset -g batt`.
+3. If a tool that runs Metal is at hand (for example `llama-server` or an MLX script that prints
+   `mx.metal.device_info()`), compare its `recommendedMaxWorkingSetSize` with
+   `usableMemoryBytes`. Write the two values in the result: they decide whether the default share
+   is correct for this Mac.
+4. On `pop-os`, run `free -b`, `nvidia-smi --query-gpu=name,memory.total --format=csv`,
+   `ls /dev/kfd /usr/share/vulkan/icd.d /etc/vulkan/icd.d` and `df -B1 ~`. Expected:
+   `systemMemoryBytes` is the total of `free -b`; `dedicatedMemoryBytes` is the sum of the
+   memory totals of `nvidia-smi`; `cuda` is usable when `nvidia-smi` runs; `vulkan` is usable
+   when an ICD file is listed; `rocm` is `NO_DEVICE` when the PC has no AMD GPU.
+5. On the Mac, leave the keyboard and the pointer for 6 minutes, wait for the next probe
+   (15 minutes) and run the command again. Expected: `operatorActive` is false.
 
 Result: Open.
 
@@ -3239,5 +3274,21 @@ the heights in a real window, the scroll of the list, or the keyboard and the sc
 9. Make the window narrower than 960 px, then open a session tab and close it again.
    Expected: in the narrow window the list stands over the thread and the page scrolls as before. In the wide window
    again, the page fills the window with no scroll bar of its own.
+### HT-NEW-d4flake: D-4 of the deploy tests gives 504 for 502 on a busy machine
+
+For: the owner of the deploy tests (`deploy/test/localapi-server.test.ts`). R-NEW-d4flake permits a
+documents-only push with this one failure until it is corrected.
+
+What fails: "D-4 an endless upstream body gives 502 promptly" (and "an upstream body over the cap
+gives 502") receives 504 where it expects 502. It fails in the full deploy suite on a clean
+`origin/dev` at a high load: 741 pass and 1 fail at load 63; 1 failure in 3 full runs. Alone and
+under load it failed 9 of 10 and 5 of 10 runs. On a quieter machine it passed alone, 3 of 3 and
+15 of 15 runs. The gates on GitHub do not show it.
+
+Steps:
+
+1. On a Mac with a load above 60 (for example, during a full `bun run gates` of a different
+   worktree), run `bun run --cwd deploy test` on `origin/dev`. Expected now: D-4 can fail with 504.
+2. After a correction, run step 1 again five times. Expected: D-4 passes each time.
 
 Result: Open.

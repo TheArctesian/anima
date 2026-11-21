@@ -16,5 +16,23 @@ query CapabilityList($tool: String, $buildTarget: String) {
     }
     buildTargets
     foundAt
+    hardware {
+      systemMemoryBytes
+      unifiedMemoryBytes
+      dedicatedMemoryBytes
+      usableMemoryBytes
+      usableMemorySource
+      freeDiskBytes
+      cpuFeatures
+      backends {
+        name
+        usable
+        reason
+      }
+      powerSource
+      thermalState
+      operatorActive
+      foundAt
+    }
   }
 }
