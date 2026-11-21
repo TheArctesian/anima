@@ -58,6 +58,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-NEW-portswitches | The switches of the open ports in Settings turn SSH and screen sharing on and off for the hub (HMD-049; task HM-T13) | This Mac joined to a hub, and an application of a build that holds the branch `hosted/hm-t13-port-switches` | Open |
 | HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
@@ -798,6 +799,26 @@ state directory that the application gives it: read the two from the output of
 
 Result: Open.
 
+### HT-NEW-portswitches: the switches of the open ports in Settings (HMD-049; task HM-T13)
+
+Built: on the branch `hosted/hm-t13-port-switches`. Settings shows one switch for SSH (port 22) and
+one for screen sharing (port 5900) under "Link to the hub", with the setting of the system that each
+needs. A switch runs `anima-link ports` of the link program of the application on the device folder.
+
+The tests cover, with a stand-in link program: the list read and changed, a port that the link may
+not open, an answer that is not a list, the rows of each system, a change that is refused. Not
+covered: the real link program, a real hub that reaches the port, and the window of the application.
+
+1. On this Mac, joined to a hub, open Settings. Expected: under "Link to the hub", the rows "SSH
+   (port 22)" and "Screen sharing (port 5900)", both off, each with one line that names the setting
+   in System Settings.
+2. Turn "Screen sharing" on. Expected: the switch stays on; no window or question of the system
+   opens.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "$HOME/Library/Application Support/ing.anima.desktop/link/device"`
+   Expected: `{"open":[5900]}`.
+4. Quit and open the application, then open Settings. Expected: "Screen sharing" is still on.
+5. Turn it off. Run the command of step 3 again. Expected: `{"open":[]}`.
+6. Open Settings on a computer that has not joined a hub. Expected: no switch of a port.
 ### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
 
 Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
