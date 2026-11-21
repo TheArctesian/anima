@@ -269,7 +269,7 @@ mod tests {
     #[tokio::test]
     async fn k8_4_sampling_starts_by_announcing_the_gpus() {
         let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);
-        let sampling = tokio::spawn(sample(Platform::Linux, sender));
+        let sampling = tokio::spawn(sample(Source::Machine(Platform::Linux), sender));
         let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
         sampling.abort();
         assert!(matches!(first, Ok(Some(Event::Gpus(_)))));
