@@ -3,6 +3,7 @@
   import type { IconName } from '$lib/icons/icons';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { barRow, type Bar, type BarReadings } from '$lib/metrics/bars/bars';
+  import type { BatteryBar } from '$lib/metrics/battery/battery';
   import { motionPreference } from '$lib/motion/preference';
   import { crossFade } from '$lib/motion/roles/transitions';
 
@@ -11,19 +12,28 @@
     source: MetricsSource | null | undefined;
     /** The list's form: the value over its bar in a fixed slot, the words in the column head (row H of the site language plan). */
     compact?: boolean;
+    /** The battery of a laptop, a phone or a tablet; `null` for a device with none (MET-032). */
+    battery?: BatteryBar | null;
   }
 
-  const { readings, source, compact = false }: Props = $props();
+  const { readings, source, compact = false, battery = null }: Props = $props();
   const preference = motionPreference();
-  const row = $derived(barRow(readings, source));
+  const row = $derived(barRow(readings, source, battery));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
   const ICONS: Record<Bar['key'], IconName> = {
     cpu: 'carbon:chip',
     memory: 'carbon:sim-card',
     disk: 'carbon:vmdk-disk',
     vram: 'carbon:spyre-accelerator',
+    battery: 'carbon:battery-half',
   };
-  const WORDS: Record<Bar['key'], string> = { cpu: 'CPU', memory: 'Memory', disk: 'Disk', vram: 'VRAM' };
+  const WORDS: Record<Bar['key'], string> = { cpu: 'CPU', memory: 'Memory', disk: 'Disk', vram: 'VRAM', battery: 'Battery' };
+
+  /** The battery's shape says charging or low, so neither rests on colour alone (MET-032). */
+  function iconOf(bar: Bar): IconName {
+    if (battery === null || bar.key !== 'battery') return ICONS[bar.key];
+    return battery.charging ? 'carbon:battery-charging' : battery.low ? 'carbon:battery-low' : ICONS.battery;
+  }
 </script>
 
 <!-- CPU, memory, disk and, for a device with a GPU, its memory: each an icon and a word over its value and a thin
@@ -41,13 +51,15 @@
         aria-valuemin={bar.percent === null ? undefined : 0}
         aria-valuemax={bar.percent === null ? undefined : 100}
         aria-valuenow={bar.percent}
-        aria-valuetext={bar.percent === null ? undefined : bar.degraded ? `${bar.text}, degraded` : bar.text}
+        aria-valuetext={bar.percent === null ? undefined : (bar.spoken ?? (bar.degraded ? `${bar.text}, degraded` : bar.text))}
         title={bar.tooltip}
       >
-        <span class="word"><Icon name={ICONS[bar.key]} size="sm" />{WORDS[bar.key]}</span>
+        <span class="word"><Icon name={iconOf(bar)} size="sm" /><span class="name">{WORDS[bar.key]}</span></span>
         <!-- A new value cross-fades over the old one in one cell; it never counts (MET-008, MOT-008). -->
         <span class="slot">
-          {#key bar.text}<span class="value" transition:crossFade>{bar.text}</span>{/key}
+          {#key bar.text}<span class="value" transition:crossFade
+              >{#if bar.key === 'battery'}<span class="mark"><Icon name={iconOf(bar)} size="sm" /></span>{/if}{bar.text}</span
+            >{/key}
         </span>
         <span class="track" aria-hidden="true"><span class="fill" style:--fill={(bar.percent ?? 0) / 100}></span></span>
       </span>
@@ -66,6 +78,11 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--space-16)), 1fr));
     gap: var(--space-2);
     inline-size: 100%;
+  }
+
+  /* A tile keeps its meters on one line: with a battery and a GPU's memory each meter may be narrower. */
+  .meters:has(.battery) {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--space-12)), 1fr));
   }
 
   .meter {
@@ -90,6 +107,18 @@
   .word :global(.icon) {
     flex: none;
     color: var(--text-quiet);
+  }
+
+  /* A narrow tile with five meters ends a long word with an ellipsis. */
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The battery's shape is its only mark of charging in a tile and a row, so it has the colour of text, not the quiet one. */
+  .battery .word :global(.icon),
+  .mark :global(.icon) {
+    color: var(--text-secondary);
   }
 
   .slot {
@@ -131,6 +160,27 @@
   .compact .word,
   .compact .vram {
     display: none;
+  }
+
+  /* The battery is a fourth slot; the list's head has a word for it only when a device in the list has one. */
+  .compact:has(.battery) {
+    grid-template-columns: repeat(4, var(--usage-slot));
+  }
+
+  /* The list has no word over each value: the battery's own shape stands before its value there. */
+  .mark {
+    display: none;
+  }
+
+  .compact .battery .value {
+    white-space: nowrap;
+  }
+
+  .compact .mark {
+    display: inline-flex;
+    margin-inline-end: var(--space-1);
+    max-block-size: 1lh;
+    vertical-align: middle;
   }
 
   .degraded {

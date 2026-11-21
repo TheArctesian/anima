@@ -25,7 +25,7 @@
   interface Props {
     device: OverviewDevice & SideDevice & { readonly status: DeviceStatus; readonly metricsSource: MetricsSource };
     checks: readonly { readonly status: DeviceStatus }[];
-    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'battery' | 'error' | 'liveError'>;
     range: MetricRange;
     /** The device's node on the VPN, when it has one (VPN-005). */
     vpn?: VpnNode | null;

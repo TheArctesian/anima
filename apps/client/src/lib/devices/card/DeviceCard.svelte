@@ -6,6 +6,8 @@
   import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import Meters from '../list/Meters.svelte';
+  import { batteryBar } from '$lib/metrics/battery/battery';
+  import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
   import Why from '../list/Why.svelte';
   import { press } from '$lib/motion/roles/press';
   import { sharedItem } from '$lib/motion/shared/shared';
@@ -30,9 +32,12 @@
     screenSharing?: CardScreenSharing;
     /** The Wake button's call (RA-031); the button is hidden while no route gives this. */
     wake?: WakeApi;
+    /** The latest charge of each battery of each device (MET-032). */
+    charges?: Pick<LiveCharges, 'of'>;
   }
 
-  const { device, beats, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
+  const { device, beats, onConnect, onOpenWeb, wake, screenSharing, charges }: Props = $props();
+  const battery = $derived(batteryBar(device.batteries, charges?.of(device.id)));
   const line = $derived(hostLine(device));
 </script>
 
@@ -64,7 +69,7 @@
   <p class="host"><span title={line.host}>{line.host}</span>{#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}</p>
   <div class="middle">
     {#if device.status !== 'UP'}<Why {device} {beats} wrap />{/if}
-    {#if device.status === 'UP' || device.readings != null}<Meters readings={device.readings ?? null} source={device.metricsSource} />{/if}
+    {#if device.status === 'UP' || device.readings != null}<Meters readings={device.readings ?? null} source={device.metricsSource} {battery} />{/if}
   </div>
   <p class="uptime">
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
