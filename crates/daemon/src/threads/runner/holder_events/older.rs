@@ -2,7 +2,28 @@
 //! words for the person, and its end when no program of a thread runs.
 
 use super::super::Runner;
-use crate::threads::wire::Action;
+use crate::threads::wire::{Action, Command};
+
+/// What the runner knows of the holder from its hello and from the Quit it sent (THR-113, TH98).
+#[derive(Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "four facts of the holder that change at different times"
+)]
+pub(in crate::threads::runner) struct Standing {
+    /// The holder speaks the version of this runner; until it says so, nothing starts.
+    pub fits: bool,
+    /// The holder is of an older build or protocol than this runner.
+    pub older: bool,
+    /// The holder speaks a different protocol but is of the file of this runner: the runner is
+    /// the older one.
+    pub newer: bool,
+    /// A Quit went to the holder and it did not refuse it: nothing starts until the next holder
+    /// says hello, so that no program starts in a holder that ends.
+    pub quitting: bool,
+    /// When the runner last asked the older holder to end.
+    pub quit: Option<std::time::Instant>,
+}
 
 impl Runner {
     /// Asks an older holder to end when no program of a thread runs, so that the daemon starts
@@ -11,23 +32,40 @@ impl Runner {
     /// nothing can make a loop of quick ends and starts.
     pub(in crate::threads::runner) async fn replace_older_holder(&mut self) {
         let asked = self
-            .holder_quit
+            .holder
+            .quit
             .is_some_and(|at| at.elapsed() < std::time::Duration::from_secs(60));
-        if self.holder_older && !asked && self.running() == 0 {
-            self.holder_quit = Some(std::time::Instant::now());
+        if self.holder.older && !asked && self.running() == 0 {
+            self.holder.quit = Some(std::time::Instant::now());
+            self.holder.quitting = true;
             self.command(Action::Quit).await;
+        }
+    }
+
+    /// The holder refused a command; when it was the Quit, a program runs, the holder stays and
+    /// starts go on.
+    pub(in crate::threads::runner) fn quit_not_taken(&mut self, sent: Option<&Command>) {
+        if sent.is_some_and(|command| matches!(command.action, Action::Quit)) {
+            self.holder.quitting = false;
         }
     }
 
     /// The words of a holder that is not of the build of this runner, while it runs (TH98).
     pub(in crate::threads::runner) fn holder_words(&self) -> Option<String> {
-        if self.holder_newer {
+        if self.holder.quitting {
+            return Some(QUITTING.to_owned());
+        }
+        if self.holder.newer {
             return Some(NEWER.to_owned());
         }
-        self.holder_older
-            .then(|| older_holder(self.holder_fits, self.running()))
+        self.holder
+            .older
+            .then(|| older_holder(self.holder.fits, self.running()))
     }
 }
+
+/// The words while an older holder ends and the holder of this build starts.
+const QUITTING: &str = "The holder of the threads is being replaced by the one of this build. Start the thread again in a few seconds.";
 
 /// The words when the daemon is older than the holder: an update replaced the file, and the
 /// daemon that runs is still the one before it.

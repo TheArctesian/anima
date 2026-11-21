@@ -145,6 +145,18 @@ pub async fn table() -> Option<Table> {
     (!table.rows.is_empty()).then_some(table)
 }
 
+/// The time of an `lstart` of `ps` in the C locale ("Sat Nov 21 10:00:00 2026"), to the second.
+#[must_use]
+pub fn start_time(lstart: &str) -> Option<chrono::NaiveDateTime> {
+    // The weekday is left out: the date alone says the day.
+    let words = lstart
+        .split_whitespace()
+        .skip(1)
+        .collect::<Vec<_>>()
+        .join(" ");
+    chrono::NaiveDateTime::parse_from_str(&words, "%b %d %H:%M:%S %Y").ok()
+}
+
 /// The start time of a process as `ps` says it, so that an old record never ends a process
 /// that took an old ID (H9).
 pub async fn started(pid: u32) -> Option<String> {
