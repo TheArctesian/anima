@@ -68,17 +68,24 @@ fn open_ports(document: &Node) -> Vec<(u64, Protocol)> {
     open
 }
 
-/// True when a service publishes a port of Anima on the machine, on any address.
-fn publishes_anima_port(document: &Node) -> bool {
-    services(document)
+/// The ports of the machine that the services publish, on any address, each once.
+pub(crate) fn published(document: &Node) -> Vec<u16> {
+    let mut published: Vec<u16> = services(document)
         .iter()
         .flat_map(|(_, service)| ports(service))
         .filter_map(|port| port.get("published").and_then(Node::text).and_then(whole))
-        .any(|published| {
-            ANIMA_PORTS
-                .iter()
-                .any(|anima| u64::from(*anima) == published)
-        })
+        .filter_map(|port| u16::try_from(port).ok())
+        .collect();
+    published.sort_unstable();
+    published.dedup();
+    published
+}
+
+/// True when a service publishes a port of Anima on the machine, on any address.
+fn publishes_anima_port(document: &Node) -> bool {
+    published(document)
+        .iter()
+        .any(|port| ANIMA_PORTS.contains(port))
 }
 
 /// The ports that the `network-port` marks name.

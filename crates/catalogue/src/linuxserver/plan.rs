@@ -220,18 +220,17 @@ fn volumes(config: &Config) -> Result<Vec<(String, String)>, Unfit> {
 }
 
 /// The port of the machine for the port `external` of the publisher: below 1024 it moves up by
-/// 8000, and a port of Anima (SF-NEW-revlsform) moves to the next port.
-fn on_machine(external: u16) -> u16 {
-    let moved = if external < LOWEST_PORT {
+/// 8000, and a port of Anima (SF-NEW-revlsform) or a port in `taken` moves to the next free port.
+fn on_machine(external: u16, taken: &[u16]) -> Option<u16> {
+    let mut moved = if external < LOWEST_PORT {
         external + PORT_STEP
     } else {
         external
     };
-    if ANIMA_PORTS.contains(&moved) {
-        moved + 1
-    } else {
-        moved
+    while ANIMA_PORTS.contains(&moved) || taken.contains(&moved) {
+        moved = moved.checked_add(1)?;
     }
+    Some(moved)
 }
 
 /// True when the name of the image has only lower-case letters, digits and '-': the name
@@ -244,8 +243,8 @@ fn is_image_name(name: &str) -> bool {
 }
 
 /// Each port that is not optional; a port of the machine below 1024 moves up by 8000, and a
-/// port of Anima moves to the next port.
-fn ports(config: &Config) -> Result<Vec<Published>, Unfit> {
+/// port of Anima or of `taken` moves to the next free port.
+fn ports(config: &Config, taken: &[u16]) -> Result<Vec<Published>, Unfit> {
     let mut found: Vec<Published> = Vec::new();
     for port in config.ports.iter().filter(|port| !port.optional) {
         let (target, protocol) = match port.internal.split_once('/') {
@@ -257,7 +256,7 @@ fn ports(config: &Config) -> Result<Vec<Published>, Unfit> {
         let number = |text: &str| text.parse::<u16>().ok().filter(|port| *port > 0);
         let target = number(target).ok_or(Unfit::PortNotPermitted)?;
         let external = number(&port.external).ok_or(Unfit::PortNotPermitted)?;
-        let on_machine = on_machine(external);
+        let on_machine = on_machine(external, taken).ok_or(Unfit::PortNotPermitted)?;
         let next = Published {
             target,
             on_machine,
@@ -275,7 +274,7 @@ fn ports(config: &Config) -> Result<Vec<Published>, Unfit> {
 }
 
 /// The recipe of `image` as decisions, or the reason that it cannot fit.
-pub(super) fn plan(image: &Image) -> Result<Plan, Unfit> {
+pub(super) fn plan(image: &Image, taken: &[u16]) -> Result<Plan, Unfit> {
     let config = &image.config;
     if config.env_vars.is_empty() && config.volumes.is_empty() && config.ports.is_empty() {
         return Err(Unfit::NoConfig);
@@ -292,7 +291,7 @@ pub(super) fn plan(image: &Image) -> Result<Plan, Unfit> {
     if shell.is_some() && credential.is_empty() {
         return Err(Unfit::ShellWithoutCredential);
     }
-    let ports = ports(config)?;
+    let ports = ports(config, taken)?;
     if !ports.iter().any(|port| port.protocol == Protocol::Tcp) {
         return Err(Unfit::NoPort);
     }

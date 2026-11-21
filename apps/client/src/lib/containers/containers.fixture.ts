@@ -87,14 +87,19 @@ export const UPDATES: readonly ImageUpdate[] = [
 const GENERATED = {
   tier: 'GENERATED',
   origin: { publisher: 'LinuxServer.io', read: '2026-11-17' },
+  reviewedBy: 'security reviewer agent',
+  reviewedOn: '2026-11-21',
   install: { refusal: 'GENERATED_NEEDS_DIGEST', reason: 'Anima did not test this entry: it is generated from the data of its publisher. To install it, a person confirms the digest of its image.', needsOpenToNetwork: false },
 } as const;
 
-/** Tasks H38 and H39: two tested entries and two generated ones (a shell, and one with a stream and an optional device). */
+/**
+ * Tasks H38 and H39: two tested entries and two generated ones (a shell that no one read, and one with a stream and an
+ * optional device).
+ */
 export const ENTRIES: readonly CatalogueEntry[] = [
   entry('owntracks-recorder', 'OwnTracks Recorder', { lastMachineTest: '2026-11-20', tags: ['location'] }),
   entry('postgresql', 'PostgreSQL', { kind: 'DATABASE', tags: ['database'] }),
-  entry('code-server', 'code-server', { ...GENERATED, class: 'SHELL', tags: ['linuxserver', 'programming'] }),
+  entry('code-server', 'code-server', { ...GENERATED, class: 'SHELL', reviewedBy: null, reviewedOn: null, tags: ['linuxserver', 'programming'] }),
   entry('jellyfin', 'jellyfin', {
     ...GENERATED,
     tags: ['linuxserver', 'media servers'],
@@ -118,6 +123,8 @@ function entry(id: string, name: string, changes: Partial<CatalogueEntry>): Cata
     class: 'APPLICATION',
     tier: 'TESTED',
     origin: null,
+    reviewedBy: null,
+    reviewedOn: null,
     streams: [],
     optionalParts: [],
     lastMachineTest: null,

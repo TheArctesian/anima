@@ -88,6 +88,18 @@ export function tierFact(entry: Pick<CatalogueEntry, 'origin' | 'lastMachineTest
   return `Written and read by the Anima project. ${machineTest(entry)}.`;
 }
 
+/** True for a generated entry that no person or agent read: the list and the description say so. */
+export function unreviewed(entry: Pick<CatalogueEntry, 'origin' | 'reviewedBy'>): boolean {
+  return entry.origin !== null && entry.reviewedBy === null;
+}
+
+/** Who read a generated entry and when, as a fact; null for an entry that the Anima project wrote. */
+export function reviewFact(entry: Pick<CatalogueEntry, 'origin' | 'reviewedBy' | 'reviewedOn'>): string | null {
+  if (entry.origin === null) return null;
+  if (entry.reviewedBy === null) return 'Not reviewed';
+  return `Reviewed by ${entry.reviewedBy} on ${entry.reviewedOn ?? 'an unknown day'}`;
+}
+
 /** The protocols of a stream in words: `['tcp', 'udp']` as "TCP and UDP". */
 export function protocolWords(protocols: readonly string[]): string {
   return protocols.map((protocol) => protocol.toUpperCase()).join(' and ');

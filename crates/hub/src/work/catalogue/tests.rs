@@ -2,15 +2,15 @@
 
 use catalogue::{
     Recipe,
-    entry::{Mark, Protocol},
+    entry::{MachineTest, Mark, Protocol},
 };
 
 use super::{Ask, EntryKind, Refusal, entries, entry, install, listing::listed, model::Tier};
 
-/// A person signed in to the client, who names the digest of `listed` when it has one image.
+/// A person in the Anima app in a browser, who names the digest of `listed` when it has one image.
 fn person_with_digest(listed: &super::Listed) -> Ask<'_> {
     Ask {
-        by_person: true,
+        in_browser: true,
         digest: listed.image_digests().first().copied(),
     }
 }
@@ -138,10 +138,10 @@ fn r_229_an_entry_with_a_port_on_the_network_needs_open_to_the_network() {
 }
 
 #[test]
-fn od_host_54_a_shell_is_installed_only_by_a_person_signed_in() {
+fn od_host_54_a_shell_is_installed_only_by_a_person_in_the_app_in_a_browser() {
     let shell = entry("code-server").expect("listed");
     let by_key = Ask {
-        by_person: false,
+        in_browser: false,
         digest: shell.image_digests().first().copied(),
     };
     assert_eq!(
@@ -154,7 +154,7 @@ fn od_host_54_a_shell_is_installed_only_by_a_person_signed_in() {
     );
     let application = entry("vaultwarden").expect("listed");
     let by_key = Ask {
-        by_person: false,
+        in_browser: false,
         digest: None,
     };
     assert_eq!(
@@ -179,7 +179,7 @@ fn od_host_50_a_generated_entry_needs_the_digest_of_its_image() {
         Some(entry("sonarr").expect("listed").image_digests()[0]),
     ] {
         let ask = Ask {
-            by_person: true,
+            in_browser: true,
             digest: named,
         };
         assert_eq!(
@@ -188,12 +188,43 @@ fn od_host_50_a_generated_entry_needs_the_digest_of_its_image() {
             "{named:?}"
         );
     }
-    let ask = Ask {
-        by_person: false,
-        digest: Some(digest),
+}
+
+#[test]
+fn sf_revlsform_a_generated_entry_from_outside_the_browser_needs_a_test_with_its_image() {
+    let mut generated = entry("radarr").expect("listed").clone();
+    let digest = generated.image_digests()[0].to_owned();
+    let by_key = Ask {
+        in_browser: false,
+        digest: Some(&digest),
     };
     assert_eq!(
-        install(Some(generated), ask).refusal,
+        install(Some(&generated), by_key).refusal,
+        Some(Refusal::GeneratedNotTested)
+    );
+    generated.entry.anima.last_test = MachineTest::Passed {
+        date: "2026-11-21".to_owned(),
+        digests: vec![format!("sha256:{}", "ab".repeat(32))],
+    };
+    assert_eq!(
+        install(Some(&generated), by_key).refusal,
+        Some(Refusal::GeneratedNotTested),
+        "a pass with an other image does not count"
+    );
+    generated.entry.anima.last_test = MachineTest::Passed {
+        date: "2026-11-21".to_owned(),
+        digests: vec![digest.clone()],
+    };
+    assert_eq!(
+        install(Some(&generated), by_key).refusal,
         Some(Refusal::InstallNotBuilt)
+    );
+    let no_digest = Ask {
+        in_browser: false,
+        digest: None,
+    };
+    assert_eq!(
+        install(Some(&generated), no_digest).refusal,
+        Some(Refusal::GeneratedNeedsDigest)
     );
 }

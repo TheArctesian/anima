@@ -2,7 +2,7 @@
 //! the top level (HOST-025), so that a list made for Arcane reads the same entry, and the fields
 //! of Anima below the key `anima` (HOST-047). A key that is not here makes the file unreadable.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// One entry file.
 #[derive(Clone, Debug, Deserialize)]
@@ -48,6 +48,9 @@ pub struct Anima {
     /// Where the entry comes from: written by a person when absent, or generated from the data
     /// of a publisher (tier 2, OD-HOST-50).
     pub origin: Option<Origin>,
+    /// Who read a generated entry, and the day (SF-NEW-revlsreview). The generator keeps it
+    /// when it changes only the digest or the version.
+    pub reviewed: Option<Reviewed>,
     /// The published ports other than the port of the test, with their protocols: the streams
     /// that a route of task H40 can carry.
     #[serde(default)]
@@ -236,6 +239,15 @@ pub struct Origin {
     pub read: String,
 }
 
+/// Who read a generated entry, a person or an agent named for its job, and the day,
+/// `YYYY-MM-DD`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Reviewed {
+    pub by: String,
+    pub on: String,
+}
+
 /// A published port that is a stream: the port in the container and its protocols.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -317,8 +329,17 @@ pub struct HealthTest {
 #[serde(tag = "result", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum MachineTest {
     NotTested,
-    Passed { date: String },
-    Failed { date: String },
+    /// The test passed on `date` with the images of `digests`, each `sha256:` and 64
+    /// hexadecimal digits. A pass for other digests does not count for the images of the entry
+    /// (SF-NEW-revlsform).
+    Passed {
+        date: String,
+        #[serde(default)]
+        digests: Vec<String>,
+    },
+    Failed {
+        date: String,
+    },
 }
 
 /// The name of a mark as the entry file writes it.

@@ -3,6 +3,8 @@
 
 use serde::Serialize;
 
+use crate::entry::Reviewed;
+
 #[derive(Serialize)]
 pub(super) struct Written<'a> {
     pub id: &'a str,
@@ -22,6 +24,8 @@ pub(super) struct Written<'a> {
 pub(super) struct Anima<'a> {
     pub class: &'static str,
     pub origin: Origin<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reviewed: Option<&'a Reviewed>,
     pub images: [Pinned<'a>; 1],
     pub marks: [(); 0],
     pub exceptions: [Exception<'a>; 1],

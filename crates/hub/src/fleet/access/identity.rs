@@ -153,12 +153,13 @@ impl Identity {
         (self.grant.kind == TokenKind::ApiKey).then(|| TokenId::from(self.grant.token))
     }
 
-    /// True for a person signed in to a client: a login or a browser token whose request did
-    /// not declare an AI agent. An API key is never one (OD-HOST-54).
+    /// True for a person signed in to the Anima app in a browser: a browser token whose request
+    /// did not declare an AI agent (OD-HOST-54, SF-NEW-revlsform). A login token is never one:
+    /// the `anima` command holds it, and an agent can use it and leave out the header that
+    /// declares an agent. An API key is never one.
     #[must_use]
-    pub fn is_person_at_client(&self) -> bool {
-        matches!(self.grant.kind, TokenKind::Login | TokenKind::Browser)
-            && self.operator.actor.kind() == ActorKind::User
+    pub fn is_person_in_browser(&self) -> bool {
+        self.grant.kind == TokenKind::Browser && self.operator.actor.kind() == ActorKind::User
     }
 
     /// The token of a builder identity, which names its builder record (BLD-024); `None` for

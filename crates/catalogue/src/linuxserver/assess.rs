@@ -1,6 +1,6 @@
 //! The place of one image in the report of the fleet (Section 15.10 of the proposal).
 
-use super::{Image, Pin, Unfit, plan::HARDWARE_DECODING, recipe};
+use super::{Existing, Image, Pin, Unfit, plan::HARDWARE_DECODING, recipe};
 
 /// How an image fits the rules of a file from the hub.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -42,7 +42,7 @@ fn port_moved(image: &Image) -> bool {
 /// The place of `image` in the report, with `pin` for its recipe.
 #[must_use]
 pub fn assess(image: &Image, pin: &Pin) -> Assessment {
-    match recipe(image, pin) {
+    match recipe(image, pin, Existing::default()) {
         Err(reason) => Assessment::Unfit(reason),
         Ok(_) if part_off(image) => Assessment::FitsWithPartOff,
         Ok(_) if port_moved(image) => Assessment::FitsWithPortMoved,

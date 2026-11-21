@@ -44,7 +44,8 @@ fn described() -> Value {
         "kind": "DATABASE", "version": "18.7", "author": "PGDG", "tags": ["database"],
         "iconUrl": null, "documentationUrl": "https://www.postgresql.org/docs/18/",
         "marks": [], "networkPorts": [], "lastMachineTest": null, "pinned": "2026-11-20",
-        "class": "APPLICATION", "tier": "TESTED", "origin": null, "streams": [],
+        "class": "APPLICATION", "tier": "TESTED", "origin": null, "reviewedBy": null,
+        "reviewedOn": null, "streams": [],
         "optionalParts": [], "digests": [DIGEST],
         "install": refused(), "environmentVariables": ["POSTGRES_PASSWORD"],
         "composeFile": COMPOSE
@@ -60,6 +61,7 @@ fn generated() -> Value {
         "networkPorts": [], "lastMachineTest": null, "pinned": "2026-11-21",
         "class": "APPLICATION", "tier": "GENERATED",
         "origin": { "publisher": "LinuxServer.io", "read": "2026-11-17" },
+        "reviewedBy": "security reviewer agent", "reviewedOn": "2026-11-21",
         "streams": [{ "port": 7359, "protocols": ["udp"] }],
         "optionalParts": [{ "kind": "DEVICE", "path": "/dev/dri", "on": false,
           "needsMachineSetting": true }],
@@ -109,6 +111,7 @@ async fn h39_catalogue_show_gives_the_tier_the_streams_and_the_optional_parts() 
         "generated from LinuxServer.io (data of 2026-11-17)",
         "7359 (udp)",
         "device /dev/dri (off, needs a machine setting)",
+        "by security reviewer agent on 2026-11-21",
         DIGEST,
     ] {
         assert!(run.stdout.contains(shown), "{shown}: {}", run.stdout);

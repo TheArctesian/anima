@@ -11,11 +11,11 @@ mod update;
 mod write;
 
 pub use assess::{Assessment, assess};
-pub use update::{Change, update};
+pub use update::{Change, reviewed, update};
 
 use serde::Deserialize;
 
-use crate::{Finding, Recipe, check};
+use crate::{Code, Finding, Recipe, check, entry::Reviewed};
 
 /// The fleet list cannot be read.
 #[derive(Debug, thiserror::Error)]
@@ -161,6 +161,15 @@ pub struct Pin {
     pub read: String,
 }
 
+/// What the catalogue holds already for the recipe that the form makes.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Existing<'a> {
+    /// The read of the recipe that exists (SF-NEW-revlsreview), which the form keeps.
+    pub reviewed: Option<&'a Reviewed>,
+    /// The ports of the machine that the other recipes of the catalogue publish.
+    pub taken: &'a [u16],
+}
+
 /// Why an image cannot be a recipe from the hub. Such an image is tier 3: it is installed at
 /// the machine and adopted (R-228).
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -244,12 +253,21 @@ impl Unfit {
 /// drops each capability but the five of the init (`init-capabilities`); a port of the machine
 /// below 1024 moves up by 8000; each port is on `127.0.0.1` with its protocol.
 ///
+/// A port of the machine that a different recipe of the catalogue publishes moves to the next
+/// free port, so that two entries can run on one machine. The entry keeps `reviewed`, the read
+/// of the recipe that exists. A recipe that no one read yet
+/// is made all the same, and the static test of the catalogue refuses it until a person or an
+/// agent reads it and writes `reviewed` (SF-NEW-revlsreview).
+///
 /// # Errors
 /// The [`Unfit`] reason of the first need that the rules refuse.
-pub fn recipe(image: &Image, pin: &Pin) -> Result<Recipe, Unfit> {
-    let plan = plan::plan(image)?;
-    let made = write::recipe(image, &plan, pin);
-    let findings = check(&made);
+pub fn recipe(image: &Image, pin: &Pin, existing: Existing<'_>) -> Result<Recipe, Unfit> {
+    let plan = plan::plan(image, existing.taken)?;
+    let made = write::recipe(image, &plan, pin, existing.reviewed);
+    let findings: Vec<Finding> = check(&made)
+        .into_iter()
+        .filter(|finding| finding.code != Code::NotReviewed)
+        .collect();
     if findings.is_empty() {
         Ok(made)
     } else {

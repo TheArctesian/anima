@@ -3,7 +3,7 @@
   import Switch from '$lib/forms/switch/Switch.svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import type { CatalogueEntry } from './api';
-  import { SHELL_REASON, TIER_LABELS, enumWords, markWords, partState, protocolWords, tierFact } from './entry';
+  import { SHELL_REASON, TIER_LABELS, enumWords, markWords, partState, protocolWords, reviewFact, tierFact, unreviewed } from './entry';
 
   /**
    * Tasks H38 and H39: the description of one entry. The install button is present and refused with the hub's fixed
@@ -18,6 +18,7 @@
     <h3>{entry.name}</h3>
     <span class="mark">{TIER_LABELS[entry.tier]}</span>
     {#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}
+    {#if unreviewed(entry)}<span class="mark">Not reviewed</span>{/if}
     <FormButton size="sm" tone="primary" aria-disabled={entry.install.refusal !== null} aria-describedby="install-reason">Install on this device</FormButton>
     <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the description" onclick={onclose} />
   </header>
@@ -28,6 +29,7 @@
   <p class="description">{entry.description}</p>
   <dl class="facts">
     <dt>Tier</dt><dd>{tierFact(entry)}</dd>
+    {#if reviewFact(entry) !== null}<dt>Reviewed</dt><dd>{reviewFact(entry)}</dd>{/if}
     {#if entry.class === 'SHELL'}<dt>Class</dt><dd>Shell. {SHELL_REASON}</dd>{/if}
     {#if entry.kind !== 'APPLICATION'}<dt>Kind</dt><dd>{enumWords(entry.kind)}</dd>{/if}
     <dt>Version</dt><dd class="mono">{entry.version}</dd>

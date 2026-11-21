@@ -5,10 +5,12 @@
 
 mod commands;
 mod database;
+mod generator;
 mod linuxserver;
 mod ports;
 mod privileges;
 mod refused;
+mod reviewed;
 mod shipped;
 
 use crate::{Code, Recipe, check};

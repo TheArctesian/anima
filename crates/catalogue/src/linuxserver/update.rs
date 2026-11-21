@@ -3,7 +3,7 @@
 
 use serde_json::Value;
 
-use crate::Recipe;
+use crate::{Recipe, entry::Entry, entry::Reviewed};
 
 /// Why the generator writes nothing to a recipe that exists.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -48,6 +48,17 @@ fn images(entry: &Value) -> Vec<&str> {
                 .filter_map(|image| image.get("image").and_then(Value::as_str))
                 .collect()
         })
+}
+
+/// The read of a recipe that exists, which the generator writes again unchanged
+/// (SF-NEW-revlsreview).
+#[must_use]
+pub fn reviewed(existing: &Recipe) -> Option<Reviewed> {
+    existing
+        .entry
+        .as_deref()
+        .and_then(|text| serde_json::from_str::<Entry>(text).ok())
+        .and_then(|entry| entry.anima.reviewed)
 }
 
 /// Whether the generator may write `made` over `existing`.

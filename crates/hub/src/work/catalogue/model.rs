@@ -24,9 +24,28 @@ impl Listed {
     #[must_use]
     pub fn machine_test_day(&self) -> Option<&str> {
         match &self.entry.anima.last_test {
-            MachineTest::Passed { date } => Some(date),
+            MachineTest::Passed { date, .. } => Some(date),
             MachineTest::NotTested | MachineTest::Failed { .. } => None,
         }
+    }
+
+    /// True when the last test on a machine passed with the images that the entry gives now,
+    /// and no other (SF-NEW-revlsform).
+    #[must_use]
+    pub fn tested_with_its_images(&self) -> bool {
+        let MachineTest::Passed { digests, .. } = &self.entry.anima.last_test else {
+            return false;
+        };
+        let own = self.image_digests();
+        !own.is_empty()
+            && own.len() == digests.len()
+            && own.iter().zip(digests).all(|(a, b)| *a == b)
+    }
+
+    /// Who read a generated entry, and the day (SF-NEW-revlsreview); `None` when no one did.
+    #[must_use]
+    pub fn read_by(&self) -> Option<(&str, &str)> {
+        (self.entry.anima.reviewed.as_ref()).map(|read| (read.by.as_str(), read.on.as_str()))
     }
 
     /// The digest of each image, `sha256:` and 64 hexadecimal digits, in the order of the entry.

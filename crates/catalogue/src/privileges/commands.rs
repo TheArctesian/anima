@@ -8,13 +8,21 @@ use compose_rules::Node;
 const SHELLS: [&str; 7] = ["sh", "bash", "ash", "dash", "zsh", "busybox", "env"];
 /// The interpreters that run code given in a word, each with the letters of its short options
 /// and its long options that take that code (SF-NEW-revlsform).
-const INLINE: [(&str, &str, &[&str]); 5] = [
+const INLINE: [(&str, &str, &[&str]); 9] = [
     ("perl", "eE", &[]),
     ("node", "ep", &["--eval", "--print"]),
+    ("nodejs", "ep", &["--eval", "--print"]),
+    ("bun", "ep", &["--eval", "--print"]),
     ("python", "c", &[]),
+    ("pypy", "c", &[]),
     ("ruby", "e", &[]),
     ("php", "r", &[]),
+    ("lua", "e", &[]),
 ];
+/// The interpreters whose subcommand `eval` runs code given in a word.
+const EVAL: [&str; 1] = ["deno"];
+/// The versions of awk: a program that calls `system` runs a command.
+const AWK: [&str; 4] = ["awk", "gawk", "mawk", "nawk"];
 /// The variables of the init of `LinuxServer` that get or install code at the start.
 const MODS: [&str; 3] = ["DOCKER_MODS", "INSTALL_PACKAGES", "INSTALL_PIP_PACKAGES"];
 
@@ -75,9 +83,8 @@ fn is_shell(word: &str) -> bool {
 /// The short and long options that take inline code for the program of `word`, if it is an
 /// interpreter: `python3.12` is `python`.
 fn inline_options(word: &str) -> Option<(&'static str, &'static [&'static str])> {
-    let program = word.rsplit('/').next().unwrap_or(word);
-    let bare =
-        program.trim_end_matches(|character: char| character.is_ascii_digit() || character == '.');
+    let bare = program(word)
+        .trim_end_matches(|character: char| character.is_ascii_digit() || character == '.');
     INLINE
         .iter()
         .find(|(name, _, _)| *name == bare)
@@ -97,15 +104,25 @@ fn is_inline_option(option: &str, short: &str, long: &[&str]) -> bool {
     }
 }
 
+/// The name of the program of `word`, with no folder: `/usr/bin/gawk` is `gawk`.
+fn program(word: &str) -> &str {
+    word.rsplit('/').next().unwrap_or(word)
+}
+
 /// True when an interpreter in `words` is followed by an option that takes code in a word, as
-/// `perl -e` or `node --eval`: it runs any text, as a shell does.
+/// `perl -e`, `node --eval` or `deno eval`, or awk by a program that calls `system`: it runs any
+/// text, as a shell does.
 fn runs_inline_code(words: &[&str]) -> bool {
     words.iter().enumerate().any(|(at, word)| {
-        inline_options(word).is_some_and(|(short, long)| {
-            words[at + 1..]
+        let after = &words[at + 1..];
+        let inline = inline_options(word).is_some_and(|(short, long)| {
+            after
                 .iter()
                 .any(|option| is_inline_option(option, short, long))
-        })
+        });
+        let eval = EVAL.contains(&program(word)) && after.first() == Some(&"eval");
+        let awk = AWK.contains(&program(word)) && after.iter().any(|text| text.contains("system"));
+        inline || eval || awk
     })
 }
 

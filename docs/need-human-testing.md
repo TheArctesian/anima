@@ -3276,8 +3276,8 @@ Result: Open.
 
 ### HT-NEW-catalogueview: the choice Catalogue shows the tier, the class shell, the streams and the optional parts (task H39)
 
-Built on the branch `hosted/catalogue-linuxserver`: the hub fields `class`, `tier`, `origin`, `streams`,
-`optionalParts` and `digests` of `CatalogueEntry` (`crates/hub/src/work/catalogue/`), and the client views
+Built on the branch `hosted/catalogue-linuxserver`: the hub fields `class`, `tier`, `origin`, `reviewedBy`,
+`reviewedOn`, `streams`, `optionalParts` and `digests` of `CatalogueEntry` (`crates/hub/src/work/catalogue/`), and the client views
 `apps/client/src/lib/catalogue/CatalogueList.svelte` and `CatalogueEntryPane.svelte`, to Frames 3 to 6 of
 [device-containers-v2](mockup/device-containers-v2/index.html). The layout was approved overnight by the orchestrator
 after a separate design review (R-NEW-hostovernight); a person has not looked at it. The client tests read the
@@ -3296,14 +3296,16 @@ pictures yet: take them in these steps.
    Expected: only the list scrolls; the head of each group stays at the top while its rows pass.
 3. Select jellyfin.
    Expected: on the right, the description: the install button is disabled and the line under it says that Anima did
-   not test the entry and that a person confirms the digest of its image; Tier "From LinuxServer.io, data of
-   2026-11-17. Anima did not test it."; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
+   not test the entry on a machine with this image and to install it from the Anima app in a web browser (the desktop
+   client signs in with a login token, which is not that app, SF-NEW-revlsgate); Tier "From LinuxServer.io, data of
+   2026-11-17. Anima did not test it."; Reviewed "Reviewed by security reviewer agent, overnight session of the
+   orchestrator on 2026-11-21"; no mark "Not reviewed"; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
    default" and the mark "Needs machine setting". Take a picture.
 4. Select qbittorrent, then press the down and up arrow keys.
    Expected: Streams "6881 TCP and UDP"; each arrow key selects the next or the previous row and moves the focus to it.
 5. Select code-server.
-   Expected: the marks Generated and Shell in the head, the reason that only a person signed in to the client can install
-   it, and the fact "Class: Shell. Needs a password that the machine makes. It has no public route."
+   Expected: the marks Generated and Shell in the head, the reason that says to install it from the Anima app in a web
+   browser, and the fact "Class: Shell. Needs a password that the machine makes. It has no public route."
 6. Choose "Tested by Anima", then type `zzz` in the search field.
    Expected: six entries, then "No entry matches the search" with the button "Clear the search", which shows the list
    again.
@@ -3330,7 +3332,8 @@ that is not on the network of Anima or your local network (OD-HOST-53). Do each 
 2. Copy `crates/catalogue/entries/qbittorrent/` in the same way and start it. Run `ss -lntu | grep 6881` on the
    machine and `docker compose logs qbittorrent | grep -i password`.
    Expected: port 6881 listens on `127.0.0.1` for TCP and for UDP; the web page answers on
-   `http://127.0.0.1:8080/` and the log gives the temporary password of the first sign-in.
+   `http://127.0.0.1:8082/` (the port of the machine is 8082, because freshrss and heimdall take 8080 and 8081: no two
+   entries publish the same port, SF-NEW-revlsresidual) and the log gives the temporary password of the first sign-in.
 3. Copy `crates/catalogue/entries/code-server/`. In `.env`, write a password of your own after `PASSWORD=` (the
    install would make it). Start it and open `http://127.0.0.1:8444/` through an SSH tunnel (the port of the machine is 8444, because 8443 is the port of the hub of Anima, SF-NEW-revlsform).
    Expected: the page asks for the password, and the password opens it. Write down what the page does with an empty

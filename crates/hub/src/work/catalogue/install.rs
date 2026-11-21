@@ -1,6 +1,7 @@
 //! The install of an entry: present, and refused with a fixed reason until task H6 exists
-//! (R-299). Before that reason, an entry of the class shell needs a person signed in
-//! (OD-HOST-54) and a generated entry needs the digest of its image in the request
+//! (R-299). Before that reason, an entry of the class shell needs a person signed in to the
+//! Anima app in a browser (OD-HOST-54), and a generated entry needs the digest of its image in
+//! the request and, from anything but that app, a passed test on a machine with that image
 //! (OD-HOST-50, SF-NEW-revlsform). No machine is reached.
 #![expect(
     clippy::unused_async_trait_impl,
@@ -20,12 +21,15 @@ pub enum Refusal {
     NotListed,
     /// The entry needs the socket of the engine; no such entry is installed (R-247).
     EngineSocket,
-    /// The entry is a shell: only a person signed in to the client installs it, never an API
-    /// key or an agent (OD-HOST-54).
+    /// The entry is a shell: only a person signed in to the Anima app in a browser installs it,
+    /// never the `anima` command, an API key or an agent (OD-HOST-54, SF-NEW-revlsform).
     ShellNeedsPerson,
     /// The entry is generated from the data of a publisher and not tested by Anima: the
     /// request must name the digest of its image (OD-HOST-50).
     GeneratedNeedsDigest,
+    /// The entry is generated and no test on a machine passed with its image: only a person
+    /// in the Anima app in a browser installs it (SF-NEW-revlsform).
+    GeneratedNotTested,
     /// The install needs task H6 of the hosted applications plan, which is not built.
     InstallNotBuilt,
 }
@@ -41,12 +45,17 @@ impl Refusal {
                  such entry (R-247)."
             }
             Self::ShellNeedsPerson => {
-                "A person who reaches this entry is root in its container. Only a person who \
-                 is signed in to the client can install it, not an API key or an agent."
+                "A person who reaches this entry is root in its container. Install it from \
+                 the Anima app in a web browser. The anima command, an API key and an agent \
+                 cannot install it."
             }
             Self::GeneratedNeedsDigest => {
                 "Anima did not test this entry: it is generated from the data of its \
                  publisher. To install it, a person confirms the digest of its image."
+            }
+            Self::GeneratedNotTested => {
+                "Anima did not test this entry on a machine with this image. Install it from \
+                 the Anima app in a web browser, or wait for a test that passes."
             }
             Self::InstallNotBuilt => {
                 "The install needs task H6 of the hosted applications plan, which is not \
@@ -69,9 +78,10 @@ pub struct Install {
 /// Who asks for an install, and what the request confirms.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Ask<'a> {
-    /// A person signed in to the client (a login or a browser token, not declared an agent);
-    /// false for an API key and an agent.
-    pub by_person: bool,
+    /// A person signed in to the Anima app in a browser: a browser token, not declared an
+    /// agent. False for a login token (the `anima` command and the desktop app), an API key
+    /// and an agent, because the header that names an agent is the claim of the client.
+    pub in_browser: bool,
     /// The digest that the request names, `sha256:` and 64 hexadecimal digits.
     pub digest: Option<&'a str>,
 }
@@ -87,8 +97,10 @@ fn refusal(listed: &Listed, ask: Ask<'_>) -> Refusal {
     let anima = &listed.entry.anima;
     if anima.marks.contains(&Mark::EngineSocket) {
         Refusal::EngineSocket
-    } else if anima.class == Class::Shell && !ask.by_person {
+    } else if anima.class == Class::Shell && !ask.in_browser {
         Refusal::ShellNeedsPerson
+    } else if anima.origin.is_some() && !ask.in_browser && !listed.tested_with_its_images() {
+        Refusal::GeneratedNotTested
     } else if anima.origin.is_some() && !digest_named(listed, ask.digest) {
         Refusal::GeneratedNeedsDigest
     } else {

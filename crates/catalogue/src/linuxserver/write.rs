@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     Recipe,
-    entry::Protocol,
+    entry::{Protocol, Reviewed},
     example::GENERATED,
     fields::{COMPOSE, ENVIRONMENT},
 };
@@ -168,7 +168,12 @@ fn streams(plan: &Plan) -> Vec<Stream> {
 }
 
 /// The fields of Anima of a generated entry.
-fn anima<'a>(plan: &'a Plan, pin: &'a Pin, reference: String) -> Anima<'a> {
+fn anima<'a>(
+    plan: &'a Plan,
+    pin: &'a Pin,
+    reference: String,
+    reviewed: Option<&'a Reviewed>,
+) -> Anima<'a> {
     let service = plan.service.as_str();
     Anima {
         class: if plan.shell { "shell" } else { "application" },
@@ -176,6 +181,7 @@ fn anima<'a>(plan: &'a Plan, pin: &'a Pin, reference: String) -> Anima<'a> {
             from: "linuxserver",
             read: &pin.read,
         },
+        reviewed,
         images: [Pinned {
             service,
             image: reference,
@@ -230,7 +236,12 @@ fn anima<'a>(plan: &'a Plan, pin: &'a Pin, reference: String) -> Anima<'a> {
     }
 }
 
-fn entry(image: &Image, plan: &Plan, pin: &Pin, reference: String) -> String {
+/// The address of the image of `image` by the digest of `pin`.
+fn reference(image: &Image, pin: &Pin) -> String {
+    format!("{REGISTRY}{}@{}", image.name, pin.digest)
+}
+
+fn entry(image: &Image, plan: &Plan, pin: &Pin, reviewed: Option<&Reviewed>) -> String {
     let service = plan.service.as_str();
     let written = Written {
         id: service,
@@ -243,7 +254,7 @@ fn entry(image: &Image, plan: &Plan, pin: &Pin, reference: String) -> String {
         env_url: ENVIRONMENT,
         documentation_url: &image.github_url,
         icon_url: Some(image.project_logo.as_str()).filter(|logo| logo.starts_with("https://")),
-        anima: anima(plan, pin, reference),
+        anima: anima(plan, pin, reference(image, pin), reviewed),
     };
     let mut text =
         serde_json::to_string_pretty(&written).expect("an entry of texts and numbers is JSON");
@@ -252,12 +263,11 @@ fn entry(image: &Image, plan: &Plan, pin: &Pin, reference: String) -> String {
 }
 
 /// The recipe folder of `image` from its plan.
-pub(super) fn recipe(image: &Image, plan: &Plan, pin: &Pin) -> Recipe {
-    let reference = format!("{REGISTRY}{}@{}", image.name, pin.digest);
+pub(super) fn recipe(image: &Image, plan: &Plan, pin: &Pin, reviewed: Option<&Reviewed>) -> Recipe {
     Recipe {
         folder: plan.service.clone(),
-        entry: Some(entry(image, plan, pin, reference.clone())),
-        compose: Some(compose(plan, &reference)),
+        entry: Some(entry(image, plan, pin, reviewed)),
+        compose: Some(compose(plan, &reference(image, pin))),
         environment: Some(environment(plan, &image.name)),
     }
 }

@@ -6,12 +6,12 @@ use std::path::Path;
 
 use crate::{
     Code, Recipe, check,
-    entry::{Class, Entry, Optional, Protocol},
+    entry::{Class, Entry, Optional, Protocol, Reviewed},
     linuxserver::{
-        Assessment, Capability, Change, Custom, Device, Image, Pin, Port, Unfit, Variable, Volume,
-        assess, list, recipe, update,
+        Assessment, Capability, Custom, Device, Existing, Image, Pin, Port, Unfit, Variable,
+        Volume, assess, list, recipe, reviewed,
     },
-    read,
+    published, read,
 };
 
 /// One change of an image of the fleet list.
@@ -26,14 +26,14 @@ fn images() -> Vec<Image> {
         .images
 }
 
-fn image(name: &str) -> Image {
+pub(super) fn image(name: &str) -> Image {
     images()
         .into_iter()
         .find(|image| image.name == name)
         .expect("the image is in the saved fleet list")
 }
 
-fn pin(name: &str) -> Pin {
+pub(super) fn pin(name: &str) -> Pin {
     let pins: serde_json::Value = serde_json::from_str(PINS).expect("the saved pins are JSON");
     let text = |key: &str| {
         pins[name][key]
@@ -49,8 +49,21 @@ fn pin(name: &str) -> Pin {
     }
 }
 
-fn made(name: &str) -> Recipe {
-    recipe(&image(name), &pin(name)).expect("the image fits")
+/// The read of a generated entry (SF-NEW-revlsreview).
+pub(super) fn read_by() -> Reviewed {
+    Reviewed {
+        by: "a person".to_owned(),
+        on: "2026-11-21".to_owned(),
+    }
+}
+
+pub(super) fn made(name: &str) -> Recipe {
+    let read = read_by();
+    let around = Existing {
+        reviewed: Some(&read),
+        taken: &[],
+    };
+    recipe(&image(name), &pin(name), around).expect("the image fits")
 }
 
 fn entry(recipe: &Recipe) -> Entry {
@@ -63,10 +76,21 @@ fn h39_each_generated_entry_is_what_the_form_makes_and_passes_the_static_test() 
     let shipped = read(&root).expect("the entries folder of the crate is readable");
     let names: Vec<String> = images().into_iter().map(|image| image.name).collect();
     assert_eq!(names.len(), 10);
+    // As the generator: the ports of the recipes that a person wrote, then of each made one.
+    let mut taken: Vec<u16> = (shipped.iter())
+        .filter(|recipe| !names.contains(&recipe.folder))
+        .flat_map(published)
+        .collect();
     for name in &names {
-        let made = made(name);
+        let folder = shipped.iter().find(|recipe| &recipe.folder == name);
+        let read = folder.and_then(reviewed);
+        let around = Existing {
+            reviewed: read.as_ref(),
+            taken: &taken,
+        };
+        let made = recipe(&image(name), &pin(name), around).expect("the image fits");
+        taken.extend(published(&made));
         assert_eq!(check(&made), [], "{name}");
-        let folder = shipped.iter().find(|recipe| recipe.folder == made.folder);
         assert_eq!(folder, Some(&made), "{name}");
     }
 }
@@ -109,7 +133,7 @@ fn h39_the_form_writes_streams_an_optional_device_volumes_and_a_shell() {
 fn changed(change: Edit) -> Result<Recipe, Unfit> {
     let mut changed = image("radarr");
     change(&mut changed);
-    recipe(&changed, &pin("radarr"))
+    recipe(&changed, &pin("radarr"), Existing::default())
 }
 
 fn variable(name: &str, value: &str, optional: bool) -> Variable {
@@ -233,7 +257,8 @@ fn h39_an_optional_part_is_left_off_and_a_secret_is_made_at_the_install() {
         .config
         .env_vars
         .push(variable("API_KEY", "abc", false));
-    let made = recipe(&radarr, &pin("radarr")).expect("fits with the part off");
+    let made =
+        recipe(&radarr, &pin("radarr"), Existing::default()).expect("fits with the part off");
     let compose = made.compose.clone().unwrap_or_default();
     assert!(!compose.contains("DOCKER_MODS") && !compose.contains("SYS_ADMIN"));
     assert!(compose.contains("API_KEY: ${API_KEY}"));
@@ -244,33 +269,6 @@ fn h39_an_optional_part_is_left_off_and_a_secret_is_made_at_the_install() {
         Assessment::FitsWithPortMoved
     );
     assert_eq!(assess(&image("sonarr"), &pin("sonarr")), Assessment::Fits);
-}
-
-#[test]
-fn sf_lsgenerator_the_generator_changes_an_entry_only_by_its_digest_or_its_version() {
-    let existing = made("radarr");
-    let mut newer = pin("radarr");
-    newer.tag = "7.0.4.11000-ls330".to_owned();
-    newer.digest = format!("sha256:{}", "ab".repeat(32));
-    newer.resolved = "2026-12-21".to_owned();
-    newer.read = "2026-12-20".to_owned();
-    let repinned = recipe(&image("radarr"), &newer).expect("fits");
-    assert_eq!(update(&existing, &repinned), Ok(()));
-    let mut wider = image("radarr");
-    wider.config.ports.push(Port {
-        external: "9898".to_owned(),
-        internal: "9898".to_owned(),
-        optional: false,
-    });
-    let widened = recipe(&wider, &newer).expect("fits");
-    assert_eq!(update(&existing, &widened), Err(Change::NotOnlyPin));
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("entries");
-    let gitea = read(&root)
-        .expect("readable")
-        .into_iter()
-        .find(|recipe| recipe.folder == "gitea")
-        .expect("shipped");
-    assert_eq!(update(&gitea, &existing), Err(Change::Reviewed));
 }
 
 #[test]
@@ -300,7 +298,7 @@ fn sf_revlsform_an_image_name_out_of_the_rules_is_refused() {
         let mut odd = image("radarr");
         odd.name = name.to_owned();
         assert_eq!(
-            recipe(&odd, &pin("radarr")).map(|_| ()),
+            recipe(&odd, &pin("radarr"), Existing::default()).map(|_| ()),
             Err(Unfit::NameNotPermitted),
             "{name:?}"
         );

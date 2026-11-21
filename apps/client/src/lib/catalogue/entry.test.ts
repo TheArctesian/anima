@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { category, enumWords, grouped, machineTest, markWords, matches, protocolWords, rowLine, tierCounts, tierFact } from './entry';
+import { category, enumWords, grouped, machineTest, markWords, matches, protocolWords, reviewFact, rowLine, tierCounts, tierFact, unreviewed } from './entry';
 
 it('HOST-047: an entry with no test on a machine says so, and a tested one gives the day', () => {
   expect(machineTest({ lastMachineTest: null })).toBe('Not tested on a machine');
@@ -50,4 +50,17 @@ it('H39: a row names its streams and optional parts, and the tier says where a g
   expect(protocolWords(['tcp', 'udp'])).toBe('TCP and UDP');
   expect(tierFact({ origin: { publisher: 'LinuxServer.io', read: '2026-11-17' }, lastMachineTest: null })).toBe('From LinuxServer.io, data of 2026-11-17. Anima did not test it.');
   expect(tierFact({ origin: null, lastMachineTest: null })).toBe('Written and read by the Anima project. Not tested on a machine.');
+});
+
+it('H39: a generated entry says who read it and when, or plainly that no one did', () => {
+  const origin = { publisher: 'LinuxServer.io', read: '2026-11-17' };
+  const read = { origin, reviewedBy: 'a person', reviewedOn: '2026-11-21' };
+  expect(reviewFact(read)).toBe('Reviewed by a person on 2026-11-21');
+  expect(unreviewed(read)).toBe(false);
+  const unread = { origin, reviewedBy: null, reviewedOn: null };
+  expect(reviewFact(unread)).toBe('Not reviewed');
+  expect(unreviewed(unread)).toBe(true);
+  const written = { origin: null, reviewedBy: null, reviewedOn: null };
+  expect(reviewFact(written)).toBeNull();
+  expect(unreviewed(written)).toBe(false);
 });

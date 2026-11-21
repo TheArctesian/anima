@@ -20,7 +20,7 @@ services:
       - SYS_CHROOT
     ports:
       - target: 443
-        published: 8444
+        published: 8446
         host_ip: 127.0.0.1
         protocol: tcp
     volumes:

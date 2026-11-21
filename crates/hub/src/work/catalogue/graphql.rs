@@ -1,7 +1,8 @@
 //! The K1 roots of the catalogue (HOST-047, task H38): `catalogueEntries`, `catalogueEntry`
 //! and `installCatalogueEntry`. Each is open to an API key: a key and an agent may ask for the
-//! install of an entry of the tested catalogue (R-234), but not of a shell (OD-HOST-54). The
-//! install is refused with a fixed reason, reaches no machine and keeps nothing.
+//! install of an entry of the tested catalogue (R-234), but not of a shell (OD-HOST-54) or of a
+//! generated entry with no passed test on a machine. The install is refused with a fixed
+//! reason, reaches no machine and keeps nothing.
 
 use async_graphql::{Context, ID, Object, Result};
 
@@ -14,11 +15,10 @@ use crate::{
     ids::DeviceId,
 };
 
-/// True when the request is a person signed in to the client: a login or a browser token
-/// whose request is not an agent. An API key and an agent are not (OD-HOST-54).
-fn by_person(ctx: &Context<'_>) -> bool {
+/// True when the request is a person signed in to the Anima app in a browser (OD-HOST-54).
+fn in_browser(ctx: &Context<'_>) -> bool {
     ctx.data_opt::<Identity>()
-        .is_some_and(Identity::is_person_at_client)
+        .is_some_and(Identity::is_person_in_browser)
 }
 
 #[derive(Default)]
@@ -48,8 +48,10 @@ impl Query {
 #[Object(name = "CatalogueMutation")]
 impl Mutation {
     /// Asks for the install of an entry on a device. Refused today with a fixed reason: the
-    /// install needs task H6. Before it, a shell needs a person signed in and a generated entry
-    /// needs `digest`, the digest of its image. No machine is reached and nothing is kept.
+    /// install needs task H6. Before it, a shell needs a person in the Anima app in a browser,
+    /// and a generated entry needs `digest`, the digest of its image, and, from anything but
+    /// that app, a passed test on a machine with that image. No machine is reached and nothing
+    /// is kept.
     #[graphql(guard = "Authenticated")]
     #[expect(
         clippy::unused_async,
@@ -71,7 +73,7 @@ impl Mutation {
             .parse::<DeviceId>()
             .map_err(|_| invalid(&[FieldError::new("deviceId", "That device id is not valid.")]))?;
         let ask = Ask {
-            by_person: by_person(ctx),
+            in_browser: in_browser(ctx),
             digest: digest.as_deref(),
         };
         Ok(install(entry(&entry_id), ask))
@@ -169,6 +171,17 @@ impl Listed {
         self.entry.anima.origin.as_ref().map(GeneratedFrom)
     }
 
+    /// Who read the generated entry: a person, or an agent named for its job; null when no one
+    /// did, as for a tested entry (SF-NEW-revlsreview).
+    async fn reviewed_by(&self) -> Option<&str> {
+        self.read_by().map(|(by, _)| by)
+    }
+
+    /// The day (`YYYY-MM-DD`) of that read; null when no one read the entry.
+    async fn reviewed_on(&self) -> Option<&str> {
+        self.read_by().map(|(_, on)| on)
+    }
+
     /// The published ports other than the port of the test.
     async fn streams(&self) -> Vec<Stream> {
         (self.entry.anima.streams.iter())
@@ -205,7 +218,7 @@ impl Listed {
     /// What the hub answers to an install of this entry by this request, with no digest.
     async fn install(&self, ctx: &Context<'_>) -> Install {
         let ask = Ask {
-            by_person: by_person(ctx),
+            in_browser: in_browser(ctx),
             digest: None,
         };
         install(Some(self), ask)

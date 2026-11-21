@@ -56,13 +56,16 @@ it('H39: the catalogue is read when the operator first opens it, in groups by ca
   const shell = row('code-server')?.textContent ?? '';
   expect(shell).toContain('Shell');
   expect(shell).toContain('Needs a password that the machine makes. It has no public route.');
+  expect(shell).toContain('Not reviewed');
+  expect(row('jellyfin')?.textContent).not.toContain('Not reviewed');
+  expect(row('PostgreSQL')?.textContent).not.toContain('reviewed');
 });
 
 it('H39: the choice of the tier and the search keep only the entries that match; no match offers to clear', async () => {
   await openCatalogue();
   [...document.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find((each) => each.textContent.startsWith('Generated'))?.click();
   flushSync();
-  expect(rows().map((each) => each.querySelector('.name')?.textContent)).toEqual(['jellyfin', 'code-serverShell']);
+  expect(rows().map((each) => each.querySelector('.name')?.textContent)).toEqual(['jellyfin', 'code-serverShellNot reviewed']);
   const search = document.querySelector<HTMLInputElement>('input[type="search"]');
   if (search === null) throw new Error('no search field');
   search.value = 'nothing like it';
@@ -80,6 +83,7 @@ it('H39: the description gives the stream with its protocols and the optional pa
   flushSync();
   const about = document.querySelector('section[aria-label="About jellyfin"]');
   expect(about?.textContent).toContain('From LinuxServer.io, data of 2026-11-17. Anima did not test it.');
+  expect(about?.textContent).toContain('Reviewed by security reviewer agent on 2026-11-21');
   expect(about?.textContent).toContain('7359TCP and UDP');
   expect(about?.textContent).toContain('Off by default');
   expect(about?.textContent).toContain('Needs machine setting');

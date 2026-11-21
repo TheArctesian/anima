@@ -22,7 +22,7 @@ services:
       - SYS_CHROOT
     ports:
       - target: 8080
-        published: 8080
+        published: 8082
         host_ip: 127.0.0.1
         protocol: tcp
       - target: 6881

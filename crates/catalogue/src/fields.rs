@@ -65,15 +65,21 @@ pub(crate) fn check(entry: &Entry, folder: &str) -> Vec<Code> {
     }
     let tested = match &entry.anima.last_test {
         MachineTest::NotTested => None,
-        MachineTest::Passed { date } | MachineTest::Failed { date } => Some(date.as_str()),
+        MachineTest::Passed { date, .. } | MachineTest::Failed { date } => Some(date.as_str()),
     };
     let read = entry
         .anima
         .origin
         .as_ref()
         .map(|origin| origin.read.as_str());
+    let reviewed = entry
+        .anima
+        .reviewed
+        .as_ref()
+        .map(|reviewed| reviewed.on.as_str());
     let dates = std::iter::once(entry.anima.pinned.as_str())
         .chain(read)
+        .chain(reviewed)
         .chain(
             entry
                 .anima
@@ -89,9 +95,13 @@ pub(crate) fn check(entry: &Entry, folder: &str) -> Vec<Code> {
     codes
 }
 
-/// The codes of the optional parts and of the class of `anima`.
+/// The codes of the optional parts, of the class and of the read of `anima`.
 fn parts(anima: &Anima) -> Vec<Code> {
     let mut codes = Vec::new();
+    let unread = (anima.reviewed.as_ref()).is_none_or(|reviewed| reviewed.by.trim().is_empty());
+    if anima.origin.is_some() && unread {
+        codes.push(Code::NotReviewed);
+    }
     let devices = anima.optional.iter().all(|part| match part {
         Optional::Device { path } => path.starts_with("/dev/") && is_target(path),
     });

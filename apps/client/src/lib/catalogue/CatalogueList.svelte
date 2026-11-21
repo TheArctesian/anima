@@ -4,7 +4,7 @@
   import Input from '$lib/forms/input/Input.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
-  import { SHELL_REASON, TIER_LABELS, rowLine, type TierChoice } from './entry';
+  import { SHELL_REASON, TIER_LABELS, rowLine, unreviewed, type TierChoice } from './entry';
   import type { CatalogueStore } from './store.svelte';
 
   /**
@@ -51,7 +51,7 @@
               <li>
                 <button type="button" class="entry" aria-pressed={entry.id === store.selected} onkeydown={(event) => void arrow(event)} onclick={() => { store.select(entry.id === store.selected ? null : entry.id); }}>
                   <span class="lines">
-                    <span class="name">{entry.name}{#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}</span>
+                    <span class="name">{entry.name}{#if entry.class === 'SHELL'}<span class="mark">Shell</span>{/if}{#if unreviewed(entry)}<span class="mark">Not reviewed</span>{/if}</span>
                     <span class="line">{rowLine(entry)}</span>
                     {#if entry.class === 'SHELL'}<span class="line quiet">{SHELL_REASON}</span>{/if}
                   </span>

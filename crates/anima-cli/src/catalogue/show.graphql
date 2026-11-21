@@ -20,6 +20,8 @@ query CatalogueShow($id: String!) {
       publisher
       read
     }
+    reviewedBy
+    reviewedOn
     streams {
       port
       protocols

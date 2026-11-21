@@ -60,7 +60,7 @@ fn or_dash(list: &[String]) -> String {
 fn tier(entry: &Entry) -> String {
     match &entry.origin {
         Some(origin) => format!(
-            "{} from {} (data of {}); a person confirms the install with the digest",
+            "{} from {} (data of {}); not tested by Anima",
             words(&entry.tier),
             origin.publisher,
             origin.read
@@ -69,10 +69,20 @@ fn tier(entry: &Entry) -> String {
     }
 }
 
+/// Who read a generated entry and when (SF-NEW-revlsreview); `-` for a tested entry.
+fn reviewed(entry: &Entry) -> String {
+    match (&entry.origin, &entry.reviewed_by, &entry.reviewed_on) {
+        (_, Some(by), Some(on)) => format!("by {by} on {on}"),
+        (Some(_), _, _) => "not reviewed".to_owned(),
+        (None, _, _) => "-".to_owned(),
+    }
+}
+
 /// The class in words, with the reason for a shell (OD-HOST-54).
 fn class(entry: &Entry) -> String {
     if matches!(entry.class, catalogue_show::CatalogueEntryClass::SHELL) {
-        "shell: needs a password made on the machine; no public route; only a person installs it"
+        "shell: needs a password made on the machine; no public route; only a person in the \
+         Anima app in a web browser installs it"
             .to_owned()
     } else {
         words(&entry.class)
@@ -96,6 +106,7 @@ fn table(entry: &Entry) -> Table {
         .collect();
     table.pair("Ports on the network", or_dash(&ports));
     table.pair("Tier", tier(entry));
+    table.pair("Reviewed", reviewed(entry));
     table.pair("Class", class(entry));
     let streams: Vec<String> = (entry.streams.iter())
         .map(|stream| format!("{} ({})", stream.port, stream.protocols.join(", ")))

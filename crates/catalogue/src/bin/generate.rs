@@ -7,12 +7,21 @@
 //! It writes nothing when one recipe that exists would change in more than its digest or its
 //! version, or was written by a person (SF-NEW-lsgenerator), and ends with a failure.
 
-use std::{collections::BTreeMap, env, fmt::Write as _, fs, io, path::Path, process::ExitCode};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    env,
+    fmt::Write as _,
+    fs, io,
+    path::Path,
+    process::ExitCode,
+};
 
 use catalogue::{
     Recipe,
-    linuxserver::{self, Assessment, Pin, Unfit, assess, list, recipe, update},
-    read,
+    linuxserver::{
+        self, Assessment, Existing, Image, Pin, Unfit, assess, list, recipe, reviewed, update,
+    },
+    published, read,
 };
 use serde::Deserialize;
 
@@ -81,6 +90,19 @@ fn report(places: &[(String, Assessment)]) -> String {
     text
 }
 
+/// The ports of the machine of each recipe that this run does not make: the run adds the ports
+/// of each recipe that it makes, so that no two recipes publish the same port.
+fn taken_before(existing: &[Recipe], images: &[Image], pins: &BTreeMap<String, Read>) -> Vec<u16> {
+    let made_here: BTreeSet<&str> = (images.iter())
+        .filter(|image| !image.deprecated && pins.contains_key(&image.name))
+        .map(|image| image.name.as_str())
+        .collect();
+    (existing.iter())
+        .filter(|recipe| !made_here.contains(recipe.folder.as_str()))
+        .flat_map(published)
+        .collect()
+}
+
 fn run(arguments: &[String]) -> Result<String, GenerateError> {
     let [_, fleet, pins, root] = arguments else {
         return Err(GenerateError::Usage);
@@ -89,6 +111,7 @@ fn run(arguments: &[String]) -> Result<String, GenerateError> {
     let pins: BTreeMap<String, Read> = serde_json::from_str(&fs::read_to_string(pins)?)?;
     let root = Path::new(root);
     let existing = read(root)?;
+    let mut taken = taken_before(&existing, &fleet.images, &pins);
     let mut writes = Vec::new();
     let mut refused = 0;
     let mut places = Vec::new();
@@ -104,9 +127,19 @@ fn run(arguments: &[String]) -> Result<String, GenerateError> {
         if pinned.is_none() {
             continue;
         }
-        match recipe(image, &pin) {
+        let old = existing.iter().find(|recipe| recipe.folder == image.name);
+        let read = old.and_then(reviewed);
+        let around = Existing {
+            reviewed: read.as_ref(),
+            taken: &taken,
+        };
+        let made = recipe(image, &pin, around);
+        if let Ok(made) = &made {
+            taken.extend(published(made));
+        }
+        match made {
             Err(reason) => eprintln!("{}: not written ({reason})", image.name),
-            Ok(made) => match existing.iter().find(|recipe| recipe.folder == made.folder) {
+            Ok(made) => match old {
                 None => writes.push(made),
                 Some(old) => match update(old, &made) {
                     Ok(()) => writes.push(made),

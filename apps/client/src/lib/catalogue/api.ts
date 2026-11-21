@@ -24,6 +24,8 @@ const CATALOGUE_ENTRIES = graphql(`
         publisher
         read
       }
+      reviewedBy
+      reviewedOn
       streams {
         port
         protocols
