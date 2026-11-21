@@ -96,6 +96,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-NEW-threadsholder | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
 | HT-NEW-threadsdrive | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-NEW-threadsscroll | The page Threads: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -2898,5 +2899,38 @@ with real projects, in a desktop window or on a phone.
    Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
 9. Do steps 1 to 4 in the light appearance and on a phone.
    Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.
+
+### HT-NEW-threadsscroll: the list and the thread scroll on their own (THR-013, THR-014)
+
+Built on the branch `threads/scroll`, in `apps/client/src/lib/agent-threads` (`ThreadsScreen.svelte`, `ThreadList.svelte`,
+`ThreadView.svelte`) and `apps/client/src/lib/scroll/room.ts`. The tests run in jsdom, which does not lay out a page: they
+prove that the thread goes to its end and that the button "Newest" comes and goes, with a made layout. They do not prove
+the heights in a real window, the scroll of the list, or the keyboard and the screen reader.
+
+1. Open the desktop application on a window wider than 960 px. Open Threads. Select a long thread.
+   Expected: the thread shows its newest part at the bottom. The page has no scroll bar of its own.
+2. Scroll the thread up and down.
+   Expected: only the thread moves. The list, its search field and the filter All / Claude Code / Codex stay in view. The
+   header of the thread (title, facts, "Usage of this folder") and the note and keys at its foot stay in view.
+3. Scroll the list.
+   Expected: only the rows move. The search field and the filter stay in view.
+4. In the thread, scroll up some way. Then wait until the program writes to the session file (use the thread in Claude
+   Code or Codex), or select the thread again.
+   Expected: a button "Newest" shows at the bottom of the thread. While the reader is up, a new entry does not move the
+   view. A click on "Newest" goes to the end, at once, with no glide.
+5. Select a different long thread.
+   Expected: it opens at its newest end.
+6. With the keyboard only: press Tab until the focus is on the thread content (a ring shows), then press the arrow keys
+   and Page Up and Page Down. Then Tab on to the rows of the list.
+   Expected: the thread scrolls with the keys; the focus leaves it with Tab; no focus is trapped.
+7. Turn on VoiceOver (Cmd+F5) and move to the thread.
+   Expected: VoiceOver says "Thread content". Turn it off again.
+8. Turn on System Settings, Accessibility, Display, Reduce motion, and do step 4 again.
+   Expected: the same: the jump to the end has no glide.
+9. Make the window narrower than 960 px, then open a session tab and close it again.
+   Expected: in the narrow window the list stands over the thread and the page scrolls as before. In the wide window
+   again, the page fills the window with no scroll bar of its own.
 
 Result: Open.

@@ -4,6 +4,7 @@
   import { STATE_MARKS, type ThreadState } from '../state';
   import { folderName, parts, programName, type Thread } from '../thread';
   import Markdown from './Markdown.svelte';
+  import Follow from './Follow.svelte';
   import ToolBlock from './ToolBlock.svelte';
 
   interface Props {
@@ -40,30 +41,32 @@
       {#if thread.started !== null}<span>Started {thread.started.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>{/if}
     </p>
   </header>
-  <div class="timeline" data-timeline>
-    {#each timeline as part, index (index)}
-      {#if part.kind === 'tools'}
-        <ToolBlock tools={part.tools} open={toolsOpen} />
-      {:else if part.entry.kind === 'prompt'}
-        <div class="you" data-prompt>
-          <Markdown text={part.entry.text} />
-          {#if part.entry.images > 0}<span class="at">{part.entry.images === 1 ? '1 image' : `${String(part.entry.images)} images`}</span>{/if}
-          <span class="at">{clock(part.entry.at)}</span>
-        </div>
-      {:else if part.entry.kind === 'reply'}
-        <div class="reply"><Markdown text={part.entry.text} /></div>
-      {:else if part.entry.kind === 'reasoning'}
-        <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
-      {:else if part.entry.kind === 'turn_end'}
-        <p class="turn">{part.entry.stopped ? 'Stopped' : 'Turn ended'}{part.entry.at === null ? '' : ` · ${clock(part.entry.at)}`}</p>
+  <Follow thread={thread.id} grows={thread.entries}>
+    <div class="timeline" data-timeline>
+      {#each timeline as part, index (index)}
+        {#if part.kind === 'tools'}
+          <ToolBlock tools={part.tools} open={toolsOpen} />
+        {:else if part.entry.kind === 'prompt'}
+          <div class="you" data-prompt>
+            <Markdown text={part.entry.text} />
+            {#if part.entry.images > 0}<span class="at">{part.entry.images === 1 ? '1 image' : `${String(part.entry.images)} images`}</span>{/if}
+            <span class="at">{clock(part.entry.at)}</span>
+          </div>
+        {:else if part.entry.kind === 'reply'}
+          <div class="reply"><Markdown text={part.entry.text} /></div>
+        {:else if part.entry.kind === 'reasoning'}
+          <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
+        {:else if part.entry.kind === 'turn_end'}
+          <p class="turn">{part.entry.stopped ? 'Stopped' : 'Turn ended'}{part.entry.at === null ? '' : ` · ${clock(part.entry.at)}`}</p>
+        {:else}
+          <p class="turn">The program made the earlier part of the thread shorter</p>
+        {/if}
       {:else}
-        <p class="turn">The program made the earlier part of the thread shorter</p>
-      {/if}
-    {:else}
-      <p class="turn">This session has no prompt and no reply that can be shown.</p>
-    {/each}
-    {#if thread.dropped > 0}<p class="turn">{thread.dropped} more entries are not shown.</p>{/if}
-  </div>
+        <p class="turn">This session has no prompt and no reply that can be shown.</p>
+      {/each}
+      {#if thread.dropped > 0}<p class="turn">{thread.dropped} more entries are not shown.</p>{/if}
+    </div>
+  </Follow>
   <p class="composer">
     This thread is read from the session file of {programName(thread.program)} on this computer. To continue it, use {programName(thread.program)}.
     Sending a message comes in a later stage.
@@ -76,6 +79,7 @@
 <style>
   article {
     display: flex;
+    flex: 1;
     flex-direction: column;
     min-inline-size: 0;
     min-block-size: 0;
@@ -147,13 +151,10 @@
 
   .timeline {
     display: flex;
-    flex: 1;
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: calc(var(--content-form) * 1.25);
-    min-block-size: 0;
     padding: var(--space-6);
-    overflow-y: auto;
   }
 
   .timeline p {

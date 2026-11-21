@@ -158,3 +158,49 @@ it('THR-011: a thread that is gone shows the fixed words of the shell', async ()
   flushSync();
   expect(document.body.textContent).toContain('This thread is not on this computer any more.');
 });
+
+/** A layout for the scroll area of the thread, which jsdom does not lay out: 1000 px of content in 200 px. */
+function layOut(): { at: (node: Element | null) => number; scrollTo: (node: Element | null, top: number) => void } {
+  const tops = new WeakMap<Element, number>();
+  for (const [name, value] of [['scrollHeight', 1000], ['clientHeight', 200]] as const) {
+    Object.defineProperty(HTMLElement.prototype, name, { configurable: true, get: () => value });
+  }
+  Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
+    configurable: true,
+    get(this: Element) {
+      return tops.get(this) ?? 0;
+    },
+    set(this: Element, top: number) {
+      tops.set(this, Math.min(top, 800));
+    },
+  });
+  return {
+    at: (node) => (node === null ? -1 : (tops.get(node) ?? 0)),
+    scrollTo: (node, top) => {
+      if (node === null) return;
+      tops.set(node, top);
+      node.dispatchEvent(new Event('scroll'));
+    },
+  };
+}
+
+it('THR-014: a thread opens at its newest end; scrolled up, a control takes the reader back to it', async () => {
+  const layout = layOut();
+  await open();
+  document.querySelector<HTMLButtonElement>('[data-thread="c2"]')?.click();
+  await settle();
+  const scroller = (): Element | null => document.querySelector('[aria-label="Thread content"]');
+  expect(layout.at(scroller())).toBe(800);
+  expect(document.body.textContent).not.toContain('Newest');
+  layout.scrollTo(scroller(), 100);
+  flushSync();
+  const newest = [...document.querySelectorAll('button')].find((button) => button.textContent.includes('Newest'));
+  newest?.click();
+  await settle();
+  expect(layout.at(scroller())).toBe(800);
+  layout.scrollTo(scroller(), 0);
+  document.querySelector<HTMLButtonElement>('[data-thread="a1"]')?.click();
+  await settle();
+  expect(layout.at(scroller()), 'another thread opens at its end too').toBe(800);
+  for (const name of ['scrollHeight', 'clientHeight', 'scrollTop']) Reflect.deleteProperty(HTMLElement.prototype, name);
+});

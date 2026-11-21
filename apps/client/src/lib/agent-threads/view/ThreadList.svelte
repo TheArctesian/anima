@@ -71,6 +71,7 @@
       onProgram(value === 'all' ? null : value);
     }}
   />
+  <!-- The rows scroll on their own in a wide window, so the search and the filter stay in view. -->
   <ul {@attach held.hold}>
     {#each items as item (item.key)}
       {#if item.kind === 'group'}
@@ -112,6 +113,7 @@
     flex-direction: column;
     gap: var(--space-3);
     min-inline-size: 0;
+    min-block-size: 0;
   }
 
   .search {
@@ -199,10 +201,15 @@
 
   ul {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: var(--space-1);
+    min-block-size: 0;
     margin: 0;
-    padding: 0;
+    /* Room for the focus ring of a row, which the scroll area would cut. */
+    padding: var(--border-focus);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     list-style: none;
   }
 

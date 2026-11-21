@@ -6,6 +6,7 @@
   import AskCard from './AskCard.svelte';
   import Composer from './Composer.svelte';
   import Markdown from './Markdown.svelte';
+  import Follow from './Follow.svelte';
   import ToolBlock from './ToolBlock.svelte';
 
   interface Props {
@@ -48,38 +49,42 @@
       {#if row.ended !== null}<span>{row.ended}</span>{/if}
     </p>
   </header>
-  <div class="timeline" data-timeline>
-    {#if thread.dropped > 0}<p class="turn">{thread.dropped} earlier entries are not shown.</p>{/if}
-    {#each timeline as part, index (index)}
-      {#if part.kind === 'tools'}
-        <ToolBlock tools={part.tools} open={toolsOpen} />
-      {:else if part.entry.kind === 'prompt'}
-        <div class="you" data-prompt><Markdown text={part.entry.text} /><span class="at">{part.entry.at === null ? '' : clock(part.entry.at)}</span></div>
-      {:else if part.entry.kind === 'reply'}
-        <div class="reply"><Markdown text={part.entry.text} /></div>
-      {:else if part.entry.kind === 'notice'}
-        <p class="notice">{part.entry.text}</p>
-      {:else if part.entry.kind === 'turn_end'}
-        <p class="turn">{part.entry.stopped ? 'Stopped' : 'Turn ended'}{part.entry.at === null ? '' : ` · ${clock(part.entry.at)}`}</p>
-      {:else if part.entry.kind === 'reasoning'}
-        <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
-      {/if}
-    {:else}
-      <p class="turn">The program has said nothing yet.</p>
-    {/each}
-    {#if thread.streaming !== ''}<p class="reply streaming" aria-live="polite">{thread.streaming}</p>{/if}
-    {#each thread.asks as open (open.request)}
-      <AskCard {open} {program} {folder} {onAnswer} />
-    {/each}
-  </div>
+  <Follow thread={row.id} grows={thread}>
+    <div class="timeline" data-timeline>
+      {#if thread.dropped > 0}<p class="turn">{thread.dropped} earlier entries are not shown.</p>{/if}
+      {#each timeline as part, index (index)}
+        {#if part.kind === 'tools'}
+          <ToolBlock tools={part.tools} open={toolsOpen} />
+        {:else if part.entry.kind === 'prompt'}
+          <div class="you" data-prompt><Markdown text={part.entry.text} /><span class="at">{part.entry.at === null ? '' : clock(part.entry.at)}</span></div>
+        {:else if part.entry.kind === 'reply'}
+          <div class="reply"><Markdown text={part.entry.text} /></div>
+        {:else if part.entry.kind === 'notice'}
+          <p class="notice">{part.entry.text}</p>
+        {:else if part.entry.kind === 'turn_end'}
+          <p class="turn">{part.entry.stopped ? 'Stopped' : 'Turn ended'}{part.entry.at === null ? '' : ` · ${clock(part.entry.at)}`}</p>
+        {:else if part.entry.kind === 'reasoning'}
+          <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
+        {/if}
+      {:else}
+        <p class="turn">The program has said nothing yet.</p>
+      {/each}
+      {#if thread.streaming !== ''}<p class="reply streaming" aria-live="polite">{thread.streaming}</p>{/if}
+      {#each thread.asks as open (open.request)}
+        <AskCard {open} {program} {folder} {onAnswer} />
+      {/each}
+    </div>
+  </Follow>
   <Composer {row} {onSend} {onInterrupt} {onStop} />
 </article>
 
 <style>
   article {
     display: flex;
+    flex: 1;
     flex-direction: column;
     min-inline-size: 0;
+    min-block-size: 0;
   }
 
   header {
