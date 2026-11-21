@@ -2541,7 +2541,7 @@ Built on the branch `ui/extensions-tiles`, approved overnight by the orchestrato
 shows a picture of its page (`apps/client/static/extensions/`), one for the dark and one for the light appearance; the
 line over the rows counts the extensions that are on and the ones that are not built; an extension that is not built
 has the tag "Coming soon" where a switch would be. The gallery tool made the pictures from the sample data of the
-synthetic hub (`browser/gallery/pictures.gallery.ts`). The tests prove the count line, the tag and which extension has a
+synthetic hub (`browser/gallery/pictures/extensions.gallery.ts`). The tests prove the count line, the tag and which extension has a
 picture. Pictures of the built page at 800 and 1440 px are in the folder `ui-overnight-2026-11-21/extensions-tiles/` of
 the workspace. No person saw it in a window of the application.
 

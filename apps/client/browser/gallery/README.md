@@ -65,7 +65,7 @@ the same deny-all proxy as the browser tests; nothing reaches a network.
 
 ## The pictures of the Extensions page
 
-Each built extension shows a picture of its own page in its tile (OD-EXT-NEW-pictures). `pictures.gallery.ts` makes them from
+Each built extension shows a picture of its own page in its tile (OD-EXT-NEW-pictures). `pictures/extensions.gallery.ts` makes them from
 the sample data of the synthetic hub, never from the data of an operator. It runs only when asked:
 
 ```sh

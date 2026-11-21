@@ -1,15 +1,15 @@
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test } from '@playwright/test';
-import { HUB_ORIGIN } from '../synthetic/access';
-import { installSyntheticHub } from '../synthetic/synthetic-hub';
-import { openSettings, section } from './steps';
+import { HUB_ORIGIN } from '../../synthetic/access';
+import { installSyntheticHub } from '../../synthetic/synthetic-hub';
+import { openSettings, section } from '../steps';
 
 // The pictures in the tiles of the Extensions page (OD-EXT-NEW-pictures, choice A): the page of each built extension, from
-// the sample data of the synthetic hub, in each appearance. They run only when asked, `GALLERY_PICTURES=1`; README.md says
+// the sample data of the synthetic hub, in each appearance. They run only when asked, `GALLERY_PICTURES=1`; ../README.md says
 // how they become the files `static/extensions/<key>-<appearance>.webp`.
 
-const FOLDER = fileURLToPath(new URL('../../gallery-shots/pictures/', import.meta.url));
+const FOLDER = fileURLToPath(new URL('../../../gallery-shots/pictures/', import.meta.url));
 const WINDOW = { width: 1280, height: 800 };
 
 const PICTURES = [
