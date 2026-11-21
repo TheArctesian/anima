@@ -145,10 +145,28 @@ fn met_002_macos_outputs_give_every_field() {
         read.uptime_seconds,
         Some(f64::from(i32::try_from(since_boot).unwrap()))
     );
+    let data = read
+        .disks
+        .iter()
+        .find(|disk| disk.mount == "/System/Volumes/Data");
     assert_eq!(
-        read.disks[0].total_bytes,
-        500_000_000 * 1024,
+        data.map(|disk| disk.total_bytes),
+        Some(500_000_000 * 1024),
         "blocks of 1024 bytes"
+    );
+    let drives = read.drives.unwrap_or_default();
+    let named: Vec<(&str, &[String])> = drives
+        .iter()
+        .map(|drive| (drive.name.as_str(), drive.mounts.as_slice()))
+        .collect();
+    assert_eq!(
+        named,
+        [("disk3", ["/System/Volumes/Data".to_owned()].as_slice())],
+        "one drive per APFS container (MET-031)"
+    );
+    assert!(
+        !read.disks.iter().any(|disk| disk.mount == "/"),
+        "a second volume of the container is no lone mount"
     );
     assert!(read.interfaces.iter().any(|one| one.name == "en0"));
 }
