@@ -1,0 +1,55 @@
+{
+  "id": "postgresql",
+  "name": "PostgreSQL",
+  "description": "A PostgreSQL server for the applications of the machine. Each application gets a database and a user of its own.",
+  "version": "18.7",
+  "author": "The PostgreSQL Global Development Group",
+  "tags": ["database"],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://www.postgresql.org/docs/18/",
+  "icon_url": null,
+  "anima": {
+    "kind": "database",
+    "server": {
+      "engine": "postgresql",
+      "major": 18,
+      "extensions": [
+        "btree_gin",
+        "btree_gist",
+        "citext",
+        "cube",
+        "earthdistance",
+        "fuzzystrmatch",
+        "hstore",
+        "pg_trgm",
+        "pgcrypto",
+        "unaccent",
+        "uuid-ossp"
+      ]
+    },
+    "images": [
+      {
+        "service": "postgres",
+        "image": "postgres@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+        "tag": "18.7",
+        "resolved": "2026-11-20"
+      }
+    ],
+    "marks": [],
+    "exceptions": ["init-capabilities"],
+    "volumes": [{ "volume": "data", "copy": "postgresql" }],
+    "generated": ["POSTGRES_PASSWORD"],
+    "test": {
+      "service": "postgres",
+      "port": 5432,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 120
+    },
+    "pinned": "2026-11-20",
+    "last_test": { "result": "not-tested" }
+  }
+}

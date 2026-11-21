@@ -159,12 +159,12 @@ Facts of 2026-11-18 that this section depends on:
 - **CAP-002.** For each backend, the daemon must give a verdict: usable, or not usable with a reason and a repair hint. Example: "ROCm: not usable, the user is not in the `render` group".
 - **CAP-003.** The daemon must report the installed runtimes and their versions.
 - **CAP-004.** The daemon must report the power state (mains or battery), the thermal state and whether the operator is active on the device.
-  The battery part of the power state is MET-032 of [design-spec.md](../spec/design-spec.md) (R-NEW-battery): it is built before the rest of CAP-004, in the tasks BT1 to BT7 below, and the rest of CAP-004 uses its readers.
+  The battery part of the power state is MET-032 of [design-spec.md](../spec/design-spec.md) (R-303): it is built before the rest of CAP-004, in the tasks BT1 to BT7 below, and the rest of CAP-004 uses its readers.
 
   | Task | What | State | Commit |
   | --- | --- | --- | --- |
-  | BT1 | K8: the kind `battery_percent` and the member `batteries` (Section 4), with the batch of a hosted hub of HM-T34 of [hosted-mode.md](../proposals/hosted-mode.md), for one approval (CON-001) | Written on the branch `hosted/hm-t34-container-metrics`; approved by R-NEW-k8hosted | R-NEW-k8hosted |
-  | BT2 | The daemon: the Linux reader of `/sys/class/power_supply` with the rules of `experiments/anima-os/telemetry/readings.py`, the macOS reader of its power sources, the series and the member | Built on the branch `metrics/battery`, not merged yet; the reading of a real laptop waits for HT-NEW-battery | — |
+  | BT1 | K8: the kind `battery_percent` and the member `batteries` (Section 4), with the batch of a hosted hub of HM-T34 of [hosted-mode.md](../proposals/hosted-mode.md), for one approval (CON-001) | Written on the branch `hosted/hm-t34-container-metrics`; approved by R-305 | R-305 |
+  | BT2 | The daemon: the Linux reader of `/sys/class/power_supply` with the rules of `experiments/anima-os/telemetry/readings.py`, the macOS reader of its power sources, the series and the member | Built on the branch `metrics/battery`, not merged yet; the reading of a real laptop waits for HT-084 | — |
   | BT3 | The hub: keep the last `batteries` of a device, the series `battery_percent`, and give them in the query of a device | Built on the branch `metrics/battery`, not merged yet | — |
   | BT4 | `anima device show` prints the battery; the MCP tool of the device gives it (CMD-030) | Built on the branch `metrics/battery-cli`, not merged yet | — |
   | BT5 | The client: the battery beside the meters of the Devices list and its grid, the Overview of a device and the device rows of Agent usage; the mockups and their records (PLN-019) | Built on the branch `metrics/battery-display`, not merged yet; check HT-NEW-batterydisplay | — |

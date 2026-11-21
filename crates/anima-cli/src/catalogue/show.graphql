@@ -1,0 +1,27 @@
+query CatalogueShow($id: String!) {
+  catalogueEntry(id: $id) {
+    id
+    name
+    description
+    kind
+    version
+    author
+    tags
+    iconUrl
+    documentationUrl
+    marks
+    networkPorts {
+      port
+      protocols
+    }
+    lastMachineTest
+    pinned
+    install {
+      refusal
+      reason
+      needsOpenToNetwork
+    }
+    environmentVariables
+    composeFile
+  }
+}

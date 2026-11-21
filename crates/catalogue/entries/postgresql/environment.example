@@ -1,0 +1,5 @@
+# PostgreSQL. The install makes each secret; this file holds none.
+# The password of the superuser "postgres" of the server. The applications of the machine
+# never use it: each one gets a database and a user of its own.
+# generated at install
+POSTGRES_PASSWORD=

@@ -1,0 +1,48 @@
+{
+  "id": "vaultwarden",
+  "name": "Vaultwarden",
+  "description": "A password manager server that the Bitwarden applications can use.",
+  "version": "1.37.5",
+  "author": "Vaultwarden",
+  "tags": [
+    "passwords",
+    "security"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/dani-garcia/vaultwarden/wiki",
+  "icon_url": null,
+  "anima": {
+    "images": [
+      {
+        "service": "vaultwarden",
+        "image": "vaultwarden/server@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f",
+        "tag": "1.37.5",
+        "resolved": "2026-11-20"
+      }
+    ],
+    "marks": [],
+    "volumes": [
+      {
+        "volume": "vaultwarden",
+        "copy": "sqlite"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "vaultwarden",
+      "port": 80,
+      "reach": "http",
+      "path": "/alive",
+      "statuses": [
+        200
+      ],
+      "body": null,
+      "limit_seconds": 120
+    },
+    "pinned": "2026-11-20",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}
