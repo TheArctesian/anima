@@ -119,7 +119,9 @@ jobs:
 
   windows:
     needs: base
-    if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/')
+    # dev, a train, or a run that a person started by hand (`gh workflow run gates.yml --ref <branch>`),
+    # the only way to run the Windows gates for a branch before it reaches dev.
+    if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
     uses: ./.github/workflows/windows-trial.yml
