@@ -8,6 +8,19 @@ use std::{
 };
 use tokio::sync::Notify;
 const DEADLINE: Duration = Duration::from_secs(30);
+/// Windows PowerShell starts and compiles the console-mode reader (`Add-Type`) before `anima`
+/// runs; on a busy runner of GitHub that took longer than `DEADLINE`.
+const SHELL_DEADLINE: Duration = Duration::from_secs(120);
+/// The variables of the user profile that Windows PowerShell and its compiler read at their start.
+/// `modes.ps1` removes them again before it starts `anima`, so `anima` gets the clean environment.
+const SHELL_ONLY: [&str; 6] = [
+    "USERPROFILE",
+    "APPDATA",
+    "ProgramData",
+    "ProgramFiles",
+    "PSModulePath",
+    "COMSPEC",
+];
 
 pub struct Terminal {
     child: Box<dyn Child + Send + Sync>,
@@ -18,6 +31,7 @@ pub struct Terminal {
     seen: usize,
     answered_queries: usize,
     finished: Option<tokio::sync::oneshot::Receiver<()>>,
+    deadline: Duration,
 }
 impl Drop for Terminal {
     fn drop(&mut self) {
@@ -26,7 +40,7 @@ impl Drop for Terminal {
 }
 impl Terminal {
     pub fn start(anima: &Anima, args: &[&str]) -> Self {
-        Self::running(anima, env!("CARGO_BIN_EXE_anima"), args)
+        Self::running(anima, env!("CARGO_BIN_EXE_anima"), args, &[])
     }
     pub fn start_showing_modes(anima: &Anima, args: &[&str]) -> Self {
         let path = anima.home.path().join("modes.ps1");
@@ -45,9 +59,10 @@ impl Terminal {
             anima,
             &format!("{root}/System32/WindowsPowerShell/v1.0/powershell.exe"),
             &all,
+            &SHELL_ONLY,
         )
     }
-    fn running(anima: &Anima, program: &str, args: &[&str]) -> Self {
+    fn running(anima: &Anima, program: &str, args: &[&str], shell_only: &[&str]) -> Self {
         let pair = native_pty_system()
             .openpty(PtySize {
                 rows: 60,
@@ -61,6 +76,11 @@ impl Terminal {
         command.env_clear();
         for (name, value) in env.as_std().get_envs() {
             if let Some(value) = value {
+                command.env(name, value);
+            }
+        }
+        for name in shell_only {
+            if let Some(value) = std::env::var_os(name) {
                 command.env(name, value);
             }
         }
@@ -91,6 +111,11 @@ impl Terminal {
             seen: 0,
             answered_queries: 0,
             finished: Some(finished),
+            deadline: if shell_only.is_empty() {
+                DEADLINE
+            } else {
+                SHELL_DEADLINE
+            },
         }
     }
     pub fn screen(&self) -> String {
@@ -109,7 +134,7 @@ impl Terminal {
     }
     pub async fn expect(&mut self, text: &str) {
         let changed = Arc::clone(&self.changed);
-        self.seen = tokio::time::timeout(DEADLINE, async {
+        self.seen = tokio::time::timeout(self.deadline, async {
             loop {
                 let change = changed.notified();
                 tokio::pin!(change);
@@ -138,7 +163,7 @@ impl Terminal {
         writer.flush().unwrap();
     }
     pub async fn finish(mut self) -> (i32, String) {
-        let status = tokio::time::timeout(DEADLINE, async {
+        let status = tokio::time::timeout(self.deadline, async {
             loop {
                 self.answer_cursor_queries(&self.screen());
                 if let Some(status) = self.child.try_wait().unwrap() {
@@ -151,7 +176,7 @@ impl Terminal {
         .unwrap_or_else(|_| panic!("anima did not end: {:?}", self.screen()));
         self.keys.take();
         self.master.take();
-        tokio::time::timeout(DEADLINE, self.finished.take().unwrap())
+        tokio::time::timeout(self.deadline, self.finished.take().unwrap())
             .await
             .unwrap()
             .unwrap();

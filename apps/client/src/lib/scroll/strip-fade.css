@@ -1,0 +1,23 @@
+/* A strip marked by `stripEdges` fades each end that has tabs past it; the arrows of `StripArrows` sit on the fade (NAV-005). */
+[data-strip-fade] {
+  scroll-padding-inline: var(--space-8);
+  scrollbar-width: none;
+}
+
+[data-strip-fade][data-more-after] {
+  mask-image: linear-gradient(to right, var(--text) calc(100% - var(--space-8)), transparent);
+}
+
+[data-strip-fade][data-more-before] {
+  mask-image: linear-gradient(to left, var(--text) calc(100% - var(--space-8)), transparent);
+}
+
+[data-strip-fade][data-more-before][data-more-after] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    var(--text) var(--space-8),
+    var(--text) calc(100% - var(--space-8)),
+    transparent
+  );
+}

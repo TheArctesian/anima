@@ -5,15 +5,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
+use super::account;
 use super::request::{ProgramRequestId, Question, Request, RequestKind};
 use super::{DriveEvent, MAX_LINE, ProgramState, TurnOutcome, text_of};
 use crate::{MAX_OUTPUT, MAX_TEXT, held};
 
-/// Notifications that are known and say nothing the view needs. The account members are here:
-/// they stay out of each event, log and notification until OD-THR43 is answered (THR-051).
-const QUIET: [&str; 10] = [
-    "account/updated",
-    "account/rateLimits/updated",
+/// Notifications that are known and say nothing the view needs.
+const QUIET: [&str; 8] = [
     "thread/tokenUsage/updated",
     "mcpServer/startupStatus/updated",
     "remoteControl/status/changed",
@@ -58,7 +56,7 @@ impl CodexDecoder {
         match (value["method"].as_str(), id) {
             (Some(method), Some(id)) => vec![self.server_request(method, id, &value["params"])],
             (Some(method), None) => self.notification(method, &value["params"]),
-            (None, Some(id)) => vec![reply(id, &value)],
+            (None, Some(id)) => replied(id, &value),
             (None, None) => vec![unknown("a line with no method and no ID", true)],
         }
     }
@@ -97,6 +95,9 @@ impl CodexDecoder {
             "configWarning" => vec![DriveEvent::Notice {
                 text: held(&text_of(&params["summary"]), MAX_TEXT),
             }],
+            // The account, the plan and the limits: kept at the machine (THR-051, THR-132).
+            "account/updated" => facts(account::codex_account_updated(params)),
+            "account/rateLimits/updated" => facts(account::codex_limits(&params["rateLimits"])),
             quiet if QUIET.contains(&quiet) => Vec::new(),
             other => vec![unknown(&format!("notification {other}"), false)],
         }
@@ -272,9 +273,34 @@ fn questions(list: &Value) -> Vec<Question> {
         .collect()
 }
 
+/// The account facts of one report as an event, when it gave any.
+fn facts(found: Option<account::AccountFacts>) -> Vec<DriveEvent> {
+    found
+        .map(|facts| DriveEvent::Account {
+            facts: Box::new(facts),
+        })
+        .into_iter()
+        .collect()
+}
+
+/// The reply, and the account facts of the answer to `account/read` (it has
+/// `requiresOpenaiAuth`) or to `account/rateLimits/read`. The reply itself keeps only IDs.
+fn replied(id: ProgramRequestId, value: &Value) -> Vec<DriveEvent> {
+    let result = &value["result"];
+    let mut events = if result.get("requiresOpenaiAuth").is_some() {
+        facts(account::codex_account(result))
+    } else if result.get("rateLimits").is_some() {
+        facts(account::codex_limits(&result["rateLimits"]))
+    } else {
+        Vec::new()
+    };
+    events.insert(0, reply(id, value));
+    events
+}
+
 /// The answer to a call of the runner. Only the IDs of the thread and of the turn are kept, and
-/// of an error its code and message: the answer to `initialize` names the home folder and the
-/// answer to `account/read` the account, and neither goes into an event (THR-051, OD-THR43).
+/// of an error its code and message: the answer to `initialize` names the home folder, and the
+/// account facts of `account/read` go only into [`DriveEvent::Account`] (THR-051).
 fn reply(id: ProgramRequestId, value: &Value) -> DriveEvent {
     let ok = value.get("error").is_none();
     let result = if ok {

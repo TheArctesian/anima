@@ -142,9 +142,14 @@ impl Codex {
         match call {
             Call::Initialize => {
                 let id = self.call(Call::ThreadStart);
+                let account = self.call(Call::Other);
+                let limits = self.call(Call::Other);
                 Ok(vec![
                     CodexInput::initialized(),
                     CodexInput::thread_start(id, &self.folder, self.mode, self.model.as_ref()),
+                    // The account and its limits stay at the machine (THR-051, THR-132).
+                    CodexInput::account_read(account),
+                    CodexInput::account_limits_read(limits),
                 ])
             }
             Call::ThreadStart => {

@@ -1,4 +1,5 @@
 param([string]$Program, [Parameter(ValueFromRemainingArguments=$true)][string[]]$Words)
+[Console]::WriteLine("modes-shell started")
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
@@ -13,6 +14,10 @@ public static class ConsoleMode {
 }
 '@
 [Console]::WriteLine("modes-before " + [ConsoleMode]::Read())
+# The variables that only the shell needed (SHELL_ONLY in windows.rs): anima gets the clean environment.
+foreach ($name in 'USERPROFILE', 'APPDATA', 'ProgramData', 'ProgramFiles', 'PSModulePath', 'COMSPEC') {
+    Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
+}
 $child = Start-Process -FilePath ([System.IO.Path]::GetFullPath($Program)) -ArgumentList $Words -NoNewWindow -Wait -PassThru
 $code = $child.ExitCode
 $child.Dispose()

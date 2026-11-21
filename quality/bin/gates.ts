@@ -2,14 +2,14 @@ import { existsSync } from "node:fs";
 import { checkAlone } from "../src/gates/alone.ts";
 import { cpus, loadavg } from "node:os";
 import { compileCache } from "../src/gates/cache.ts";
-import { formatGateEvent, gateList, GROUPS, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
+import { formatGateEvent, gateList, GROUPS, keptGoing, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
 import { changedGates } from "../src/gates/changed.ts";
 import { devPushJobs, EACH_JOB, jobLines, jobsFor } from "../src/gates/jobs.ts";
 import { changedPaths, readLayout } from "../src/gates/layout.ts";
 import { choose, describeChoice, fastGates, isBusy, macOnly } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
-const USAGE = "usage: bun quality/bin/gates.ts [--fast [--whole] | --changed] [--group rust,go,bun,quality] [--gate name,name]";
+const USAGE = "usage: bun quality/bin/gates.ts [--fast [--whole] | --changed] [--group rust,go,bun,quality] [--gate name,name] [--keep-going]";
 /** The last line of a fast run that left tests out. */
 let leftOut: string | undefined;
 
@@ -131,7 +131,7 @@ function changedList(full: Gate[]): Gate[] {
   return run.gates;
 }
 
-const unknown = process.argv.slice(2).filter((each, at, all) => each.startsWith("--") ? !["--fast", "--whole", "--changed", "--group", "--gate"].includes(each) : !["--group", "--gate"].includes(all[at - 1] ?? ""));
+const unknown = process.argv.slice(2).filter((each, at, all) => each.startsWith("--") ? !["--fast", "--whole", "--changed", "--group", "--gate", "--keep-going"].includes(each) : !["--group", "--gate"].includes(all[at - 1] ?? ""));
 if (unknown.length > 0) {
   console.error(`gates: unknown argument: ${unknown.join(" ")}\n${USAGE}`);
   process.exit(2);
@@ -155,7 +155,11 @@ if (missingName !== undefined) {
   console.error(`gates: no such gate: ${missingName}\n${USAGE}`);
   process.exit(2);
 }
-const gates = named === undefined ? grouped : grouped.filter((gate) => named.includes(gate.name));
+const chosen = named === undefined ? grouped : grouped.filter((gate) => named.includes(gate.name));
+// `--keep-going`: a proof run (the Windows job started by hand) shows each failure in one run.
+const keepGoing = process.argv.includes("--keep-going");
+if (keepGoing) console.log("gates: --keep-going: each gate runs after a failure; the failures are listed at the end. Not for a merge");
+const gates = keepGoing ? keptGoing(chosen) : chosen;
 
 const outcome = runGates(
   gates,
@@ -168,6 +172,7 @@ const outcome = runGates(
   (event) => {
     console.log(formatGateEvent(event));
   },
+  { keepGoing },
 );
 if (leftOut !== undefined) console.log(leftOut);
 process.exit(outcome.exitCode);

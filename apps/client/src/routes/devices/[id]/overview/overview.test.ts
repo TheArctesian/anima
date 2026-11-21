@@ -215,10 +215,16 @@ it('D-7: an error shows the hub message and Retry in the chart area', () => {
   expect(calls.retry).toHaveBeenCalledOnce();
 });
 
-it('MET-007: data with no series says it is waiting for metrics', () => {
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } });
-  expect(document.body.textContent).toContain('Waiting for metrics');
+it('MET-007: data with no series and no readings says it is waiting for metrics', () => {
+  show({ ...LOADED, readings: null, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } });
+  expect(document.querySelector('.waiting')?.textContent).toBe('Waiting for metrics');
   expect(document.querySelector('h3')).toBeNull();
+});
+
+it('MET-007: a range with no samples while the bars have readings says the range is empty, not waiting', () => {
+  show({ ...LOADED, shownRange: 'DAY', view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } }, 'SSH', 'DAY');
+  expect(document.querySelector('.waiting')?.textContent).toBe('No samples in the last 24 hours');
+  expect(document.body.textContent).not.toContain('Waiting for metrics');
 });
 
 it.each([

@@ -208,8 +208,12 @@
   }
 
   /* The strip sits on the bar's own rule: its underline and gap give way, and the selected tab's line overlaps the rule. */
-  .tabs > :global(*) {
+  /* `header` outweighs the strip's own margin, whichever stylesheet loads last. */
+  header .tabs > :global(*) {
     margin-block-end: calc(var(--border-thin) * -1);
+  }
+
+  .tabs :global([role='tablist']) {
     box-shadow: none;
   }
 
