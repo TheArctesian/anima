@@ -70,6 +70,7 @@
 
   /** Starts again with the copy that answered. */
   function useOffer(copy: string): void {
+    if (busy) return;
     programPath = copy;
     offer = null;
     void start();
@@ -136,7 +137,8 @@
     <details class="advanced" open={programPath !== ''}>
       <summary>Advanced</summary>
       <Field label="Program path" constraint="Empty for the usual copy. Only a copy that the runner finds is taken">
-        <Input bind:value={programPath} mono placeholder="/Applications/…/codex" autocomplete="off" spellcheck={false} />
+        <!-- A path typed by hand replaces the offer: the button would overwrite it. -->
+        <Input bind:value={() => programPath, (next) => { programPath = next; offer = null; }} mono placeholder="/Applications/…/codex" autocomplete="off" spellcheck={false} />
       </Field>
     </details>
     {#if read === folder && notice.length > 0}
@@ -150,7 +152,7 @@
     {/if}
     {#if offer !== null}
       <div class="offer" role="alert">
-        <p>The usual copy of {program === 'codex' ? 'Codex' : 'Claude Code'} does not answer. A different copy answers:</p>
+        <p>{programPath === '' ? 'The usual copy' : 'The chosen copy'} of {program === 'codex' ? 'Codex' : 'Claude Code'} does not answer. A different copy answers:</p>
         <p class="copy">{offer}</p>
         <FormButton type="button" tone="primary" busy={busy} onclick={() => useOffer(offer ?? '')}>Start with this copy</FormButton>
       </div>
