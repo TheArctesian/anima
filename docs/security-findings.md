@@ -213,6 +213,8 @@ that owns the area.
 | SF-NEW-routeacme | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-NEW-routelinkshare | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-NEW-routeabuse | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-revroutecheck | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-NEW-revroutestepup | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-NEW-lsdownload | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lsgenerator | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lstier | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
@@ -2271,6 +2273,112 @@ Effect, and who can cause it: Various. Effect: claims that are not true, and sma
 Mitigation now: Section 12: each sentence about the door is a request to the cloud plan; the proxy is installed only when the operator asks; a wake only when a machine is online and a limited number of times each hour; a record, a message and a review for each removal; a warning for the same site; the place of the key of the seal is a question for the cloud plan.
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+## The code review of the routes (2026-11-21)
+
+A separate reviewer read the code of task H21 on the branch `hosted/apps-h21` on 2026-11-21: `crates/hub/src/work/routes.rs`, `crates/hub/src/work/routes/` and `crates/route-proxy/`. The design is Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). Four findings of severity Medium and four of severity Low; two of the Low ones stay open.
+
+### SF-NEW-revroutetarget: The target of a route came from the person, not from the record of the application. Medium
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting; SF-NEW-routetarget.
+
+What it is: `addApplicationRoute` took the port, the application identifier and the mark "holds the socket of the engine" from its input and trusted them. A link address passed the address check with no port check, so each port of a device was reachable, and the refused ports were only 22, 5900, 3389, 8443 and 4822: the Docker API, the kubelet, databases and Prometheus could be made public.
+
+Where: `crates/hub/src/work/routes.rs` (`add`), `crates/hub/src/work/routes/graphql.rs`, `crates/hub/src/work/routes/target.rs`.
+
+Effect, and who can cause it: A person with a login and a second factor, or a person who took over such a session. Effect: a port that controls the machine is on the internet.
+
+Mitigation now: The input has no `holdsEngineSocket`. The hub keeps no record of an application with its ports before task H6, so a route has the new state `APPLICATION_RECORD` (`application_recorded`, false) and never serves until that record names its device and port and no socket of the engine. `check_port` also refuses 2375, 2376, 10250, 41641, 3478, 5432, 3306, 6379, 27017 and 9090, and `check_address` applies it to a link address too. Tests: `the_ports_of_the_engine_the_link_databases_and_metrics_are_refused`, `a_link_address_passes_only_with_the_port_of_an_application`, and the stored route that waits for the record.
+
+State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revrouteupgrade: The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium
+
+Requirements: HOST-046, task H21; SF-NEW-routeheaders.
+
+What it is: After a request with `Upgrade: websocket` the relay copied both ways at once. A client could then send a second request that the proxy never read, past the rewrite of the headers and the check of `Host`.
+
+Where: `crates/route-proxy/src/relay.rs`, `crates/route-proxy/src/head.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: a request with forged forwarded headers or a cookie of a hub reaches the application.
+
+Mitigation now: The relay sends the status line of the application to the client first. It copies both ways only when the application answers 101 and the request had a `Sec-WebSocket-Key`; each other answer goes back as a plain one and the connection ends. A request with no key is a plain request (`connection: close`). Tests: `an_upgrade_goes_both_ways_only_after_a_101`, `an_upgrade_that_the_application_refuses_is_a_plain_answer`, `an_upgrade_without_its_key_is_a_plain_request`.
+
+State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revroutelimits: No time limit and no cap before the name of a connection was known. Medium
+
+Requirements: HOST-046, task H21; Section 12.7.
+
+What it is: The limits of a name applied only after the TLS handshake. A client could open many connections and send no byte, or one byte at a time, to the PROXY header, the handshake, the head or a relay, on port 443 and on port 80. The stream of the hub to an application had no time limit either.
+
+Where: `crates/route-proxy/src/serve.rs`, `crates/route-proxy/src/relay.rs`, `crates/hub/src/work/routes/door.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: the proxy runs out of connections or memory, and each name stops.
+
+Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY header (`ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS`), 10 s for the head (`ANIMA_ROUTE_PROXY_HEAD_SECONDS`, answer 408), 300 s with no byte on a stream (`ANIMA_ROUTE_PROXY_IDLE_SECONDS`); 1024 connections in all and 32 for each client address before the handshake (`ANIMA_ROUTE_PROXY_OPEN_TOTAL`, `ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT`), and 256 on port 80 (`ANIMA_ROUTE_PROXY_OPEN_PLAIN`). The hub waits 10 s for a request line of the proxy and ends a stream after 300 s with no byte. Tests: `a_listener_caps_its_connections_in_all_and_for_each_client`, `a_stream_with_no_byte_for_its_idle_time_ends`, `each_byte_starts_the_idle_time_again`, and the defaults of the settings.
+
+State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revroutesocket: The socket of the interface of the proxy checked no peer and had no set mode. Medium
+
+Requirements: HOST-046, task H21; SF-NEW-routeproxyexit.
+
+What it is: The hub served the interface to each process that could open the socket, and the mode of the socket was what the umask gave. A different local process could read the table, with the private key of each name, and connect to applications.
+
+Where: `crates/hub/src/work/routes/door.rs`, `crates/hub/src/config/routes.rs`.
+
+Effect, and who can cause it: A local user or process of the hub host. Effect: the keys of the certificates and a path to the applications.
+
+Mitigation now: `door::bind` makes the socket with mode `0660`, and `serve` closes each connection whose peer user ID (`SO_PEERCRED` or `getpeereid`) is not `ANIMA_ROUTES_PROXY_UID`. The hub refuses `ANIMA_ROUTES_SOCKET` without that setting. Test: `the_socket_answers_only_the_user_of_the_proxy`.
+
+State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revrouteheaders: The head accepted two lengths, a length that is not digits, and `_` in a header name. Low
+
+Requirements: HOST-046, task H21; SF-NEW-routeheaders.
+
+What it is: A second `Content-Length` replaced the first; a value such as `+5` passed; `Transfer-Encoding` with `Content-Length` was refused only by the order of the lines. A name such as `X_Forwarded_For` passed the removal of the forwarded headers, and some servers read `_` as `-`.
+
+Where: `crates/route-proxy/src/head.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: request smuggling to an application that reads the length in a different way, or a forged forwarded address.
+
+Mitigation now: The head refuses (400) a second `Content-Length`, a value that is not digits only, `Transfer-Encoding` with `Content-Length`, and a header name with `_`. Tests: `a_body_has_one_length_of_digits_and_never_with_a_transfer_encoding`, `a_header_name_with_an_underscore_is_refused`.
+
+State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revroutecheck: The proof of a name is read again only when a person asks. Low
+
+Requirements: HOST-046, task H21; Section 12.4 point 4; SF-NEW-routetoken.
+
+What it is: `checkApplicationRoute` reads the TXT record once. Nothing reads it again at intervals, so a name whose owner removed the record, or gave the name to a different hub, stays proven on this hub.
+
+Where: `crates/hub/src/work/routes.rs` (`check`); the upkeep of the hub.
+
+Effect, and who can cause it: The owner of a name who moved it. Effect: the hub keeps a name that it no longer owns, until a person checks it.
+
+Mitigation now: None in the code. No route serves yet (the consent of the machine and the record of the application are not given).
+
+The fix to make: a job of the upkeep of the hub runs `check` for each route at an interval, with the rule of several failed reads in a row, and writes the audit entry of a lost name.
+
+State: Open. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revroutestepup: A change of a route asks for no new second factor. Low
+
+Requirements: HOST-046, task H21; HM-D14; SF-NEW-routepublish.
+
+What it is: The mutations of the routes check that the account has a second factor, but not that the person gave it recently. A browser session that a different person took over can make an application public.
+
+Where: `crates/hub/src/work/routes/graphql.rs` (`person_with_second_factor`).
+
+Effect, and who can cause it: A person who took over a browser session of the operator. Effect: an application is made public.
+
+Mitigation now: Only a person with a login or a browser token, on an account with a second factor; no API key and no MCP tool.
+
+The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a code of the second factor given in the last minutes (a step-up), and refuse otherwise.
+
+State: Open. Found by a separate reviewer on 2026-11-21.
 
 ## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
 
