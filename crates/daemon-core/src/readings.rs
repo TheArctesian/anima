@@ -8,7 +8,8 @@
 //!   `cat /proc/loadavg`, `cat /proc/diskstats`, `df -P -B1` (block size 1, see [`df::disks`]),
 //!   and [`drives::LSBLK_ARGS`] (or [`drives::LSBLK_OLD_ARGS`]) for the drives.
 //! - macOS: `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime`, `vm_stat`,
-//!   `df -P -k` (block size 1024), `netstat -ib -n`, `top -l 2 -n 0 -s 1`.
+//!   `df -P -k` (block size 1024; [`apfs::containers`] makes its drives), `netstat -ib -n`,
+//!   `top -l 2 -n 0 -s 1`.
 //! - GPU: `nvidia-smi --query-gpu=... --format=csv,noheader,nounits`, the `amdgpu` sysfs files
 //!   `gpu_busy_percent`, `mem_info_vram_used` and `mem_info_vram_total`, `intel_gpu_top -J`,
 //!   and on macOS `ioreg -r -d 1 -c IOAccelerator` (see [`gpu`]).
@@ -16,6 +17,7 @@
 //! A last line without its newline is dropped: the link cuts output at a limit, and half a
 //! line can hold a wrong number. A line that is not UTF-8 is skipped.
 
+pub mod apfs;
 #[cfg(any(test, feature = "test-support"))]
 pub mod captures;
 pub mod df;

@@ -1,17 +1,14 @@
 <script lang="ts">
-  import { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import ThreadsScreen from '$lib/agent-threads/ThreadsScreen.svelte';
-  import { desktopThreadsShell } from '$lib/desktop/agent-threads/shell';
+  import { keepFresh, threadsStore } from '$lib/agent-threads/watch.svelte';
   import { capabilities } from '$lib/platform/platform';
   import EmptyState from '$lib/states/EmptyState.svelte';
 
   const here = capabilities().agentThreads;
-  const store = new ThreadsStore(desktopThreadsShell);
+  const store = threadsStore();
 
-  /** The list is read when the page opens; only the desktop application can read the files of its computer. */
-  $effect(() => {
-    if (here) void store.loadList();
-  });
+  /** The list is read when the page opens and stays fresh while it is seen; only the desktop application can read the files of its computer. */
+  $effect(() => (here ? keepFresh(store) : undefined));
 </script>
 
 {#if here}
