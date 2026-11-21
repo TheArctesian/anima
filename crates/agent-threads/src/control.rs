@@ -148,31 +148,24 @@ impl Limits {
         running: 10,
     };
 
-    /// The next step: 5, 10, 15; then 8, 15, 25; then 10, 20, 40; then 10 more threads at each
-    /// step (THR-114, OD-THR39).
+    /// The next step: 5, 10, 15 after the first; then each step doubles the one before it, with
+    /// no end: 10, 20, 30, then 20, 40, 60 (THR-114, the answer of the operator "Keep doubling").
     #[must_use]
-    pub fn raised(self) -> Self {
-        match (self.depth, self.children, self.running) {
-            (3, 5, 10) => Self {
+    pub const fn raised(self) -> Self {
+        if self.depth == Self::FIRST.depth
+            && self.children == Self::FIRST.children
+            && self.running == Self::FIRST.running
+        {
+            return Self {
                 depth: 5,
                 children: 10,
                 running: 15,
-            },
-            (5, 10, 15) => Self {
-                depth: 8,
-                children: 15,
-                running: 25,
-            },
-            (8, 15, 25) => Self {
-                depth: 10,
-                children: 20,
-                running: 40,
-            },
-            (depth, children, running) => Self {
-                depth,
-                children,
-                running: running.saturating_add(10),
-            },
+            };
+        }
+        Self {
+            depth: self.depth.saturating_mul(2),
+            children: self.children.saturating_mul(2),
+            running: self.running.saturating_mul(2),
         }
     }
 }
@@ -248,4 +241,34 @@ pub enum Change {
         state: RunState,
         row: ThreadRow,
     },
+}
+
+#[cfg(test)]
+mod limit_tests {
+    use super::Limits;
+
+    #[test]
+    fn thr_114_the_soft_limits_go_to_5_10_15_then_double_with_no_end() {
+        let steps: Vec<(u32, u32, u32)> =
+            std::iter::successors(Some(Limits::FIRST), |limits| Some(limits.raised()))
+                .take(5)
+                .map(|limits| (limits.depth, limits.children, limits.running))
+                .collect();
+        assert_eq!(
+            steps,
+            [
+                (3, 5, 10),
+                (5, 10, 15),
+                (10, 20, 30),
+                (20, 40, 60),
+                (40, 80, 120)
+            ]
+        );
+        let top = Limits {
+            depth: u32::MAX,
+            children: u32::MAX,
+            running: u32::MAX,
+        };
+        assert_eq!(top.raised(), top, "no overflow at the end of the numbers");
+    }
 }

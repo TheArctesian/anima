@@ -180,6 +180,8 @@ impl Runner {
         for saved in saved {
             let codex = calls::codex_of(&saved.row, saved.effort);
             let mut thread = Thread::restore(saved, codex);
+            // The microseconds of the clock are more than the updates of any run before.
+            thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
             let id = thread.row.id;
             let steps = thread.settle_answering();
             self.threads.insert(id, thread);

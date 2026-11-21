@@ -56,3 +56,24 @@ fn th11_a_line_that_changes_nothing_of_the_record_keeps_its_key() {
         "an open request changes the record"
     );
 }
+
+#[test]
+fn thr_030_a_new_watch_gets_the_row_and_each_waiting_request_with_new_numbers() {
+    let mut thread = held_claude();
+    let request = asked(&thread.line(CLAUDE_ASK, &mut counter()))[0];
+    let saved = serde_json::to_string(&thread.saved()).expect("saved");
+    let mut again = Thread::restore(serde_json::from_str(&saved).expect("reads"), None);
+    again.number_from(1_000_000);
+    let changes = again.now_changes();
+    assert!(matches!(changes[0], Change::State { .. }));
+    assert!(
+        changes
+            .iter()
+            .any(|change| matches!(change, Change::Asked { request: id, .. } if *id == request))
+    );
+    let numbered = again.note(changes[0].clone());
+    assert!(
+        numbered.seq > 1_000_000,
+        "a number after the restart is new"
+    );
+}

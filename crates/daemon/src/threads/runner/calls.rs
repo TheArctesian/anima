@@ -111,6 +111,18 @@ impl Runner {
                 self.watchers.remove(0);
             }
             self.watchers.push(client);
+            // Each watch gets the row and the waiting requests of each thread after the kept
+            // updates, so that a request whose update is older than its share still has a card.
+            let ids: Vec<Uuid> = self.threads.keys().copied().collect();
+            for id in ids {
+                let changes = self
+                    .threads
+                    .get(&id)
+                    .map_or_else(Vec::new, Thread::now_changes);
+                for change in changes {
+                    self.publish(id, change);
+                }
+            }
         }
     }
 
