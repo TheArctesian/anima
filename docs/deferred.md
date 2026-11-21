@@ -147,7 +147,7 @@ Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-e
 
 ### Hosted applications: an always-on machine for a database
 
-Added 2026-11-20. From R-NEW-alwayson and [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+Added 2026-11-20. From R-298 and [hosted-applications-plan.md](plans/hosted-applications-plan.md).
 
 - [ ] Anima hosts a database for a person on a machine that runs all the time, a cloud server that Anima starts for that person. It needs the start of cloud servers for customers, which is not built. Not designed; the operator wants it planned in a conversation of its own.
 

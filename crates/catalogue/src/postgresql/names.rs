@@ -31,7 +31,7 @@ fn is_database_name(text: &str) -> bool {
 
 /// The extensions that an entry may name: each is in the images of PostgreSQL or of `PostGIS`,
 /// and none reaches a file, a program or a different server. A pattern would permit an
-/// extension such as `plpython3u`, `adminpack` or `dblink` (SF-NEW-revcatpg).
+/// extension such as `plpython3u`, `adminpack` or `dblink` (SF-223).
 const EXTENSIONS: [&str; 13] = [
     "btree_gin",
     "btree_gist",
@@ -99,7 +99,7 @@ impl Names {
     /// The names of the application `application`: each `-` of the identifier becomes `_`,
     /// and both names are that text. An identifier with `_` or with `--` is refused, so that
     /// two identifiers never get the same names (`my-app` and `my_app`), and no name of an
-    /// application has the `__` of the names of the way back (SF-NEW-revcatpg).
+    /// application has the `__` of the names of the way back (SF-223).
     ///
     /// # Errors
     /// [`NameError::NotPermitted`] when the identifier has `_` or `--`, or the text is not a

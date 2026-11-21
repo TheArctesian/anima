@@ -371,6 +371,9 @@ type Device {
   metrics(range: MetricRange!): [MetricSeries!]!
   # metrics
   gpus: [Gpu!]!
+  # metrics (MET-032)
+  "The batteries that power the device, by name, as its daemon last listed them; empty for a device with none."
+  batteries: [Battery!]!
   # metrics (MET-026, MET-029)
   storage: Storage!
   checks: [Check!]!
@@ -766,6 +769,8 @@ enum MetricKind {
   DISK_WRITE_BPS
   "The share of time one drive had I/O in flight; the label is the drive name (MET-028)."
   DISK_BUSY_PERCENT
+  "The charge of one battery, 0 to 100; the label is the battery name (MET-032)."
+  BATTERY_PERCENT
 }
 
 # MET-003
@@ -780,6 +785,26 @@ enum GpuVendor {
   AMD
   INTEL
   APPLE
+}
+
+# MET-032
+enum BatteryState {
+  CHARGING
+  DISCHARGING
+  FULL
+  "On mains, not charged."
+  NOT_CHARGING
+  UNKNOWN
+}
+
+"A battery that powers a device (MET-032). Its charge is the series BATTERY_PERCENT with its name as the label."
+type Battery {
+  name: String!
+  state: BatteryState!
+  "Seconds to empty while it discharges or to full while it charges."
+  secondsLeft: Int
+  "The capacity when full against the capacity of its design, 0 to 100."
+  healthPercent: Int
 }
 
 type Gpu {
@@ -1362,7 +1387,7 @@ type CatalogueInstall {
   needsOpenToNetwork: Boolean!
 }
 
-"An entry of the catalogue that ships with Anima (HOST-047, R-NEW-catalogueways). The recipes are built into the hub, and the hub lists only those that pass the static test of task H36."
+"An entry of the catalogue that ships with Anima (HOST-047, R-300). The recipes are built into the hub, and the hub lists only those that pass the static test of task H36."
 type CatalogueEntry {
   "The identifier of the entry, a name of letters, digits, '-' and '_'."
   id: String!
@@ -3666,7 +3691,7 @@ type Query {
   "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
   composeFromDockerRun(command: String!): ComposeFromDockerRun!
 
-  # The catalogue (HOST-047, R-NEW-catalogueways, R-NEW-buildnow; task H38)
+  # The catalogue (HOST-047, R-300, R-299; task H38)
   "Each entry of the catalogue that ships with Anima and passes the static test, in the order of the identifiers. The hub reads no machine and no network. Open to a read key."
   catalogueEntries: [CatalogueEntry!]!
   "The listed entry with this identifier; null when none is listed. Open to a read key."

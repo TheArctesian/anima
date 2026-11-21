@@ -195,7 +195,7 @@ fn test_complete(test: &HealthTest, kind: Kind, document: &Node) -> bool {
 
 /// True when the image, a published port, its address, the command, the entrypoint or the
 /// host name is written with a variable: the install fills it after the static test, so that
-/// the test would not see the value that runs (SF-NEW-revcatvars, SF-NEW-revcatentry).
+/// the test would not see the value that runs (SF-226, SF-NEW-revcatentry).
 fn variable_in_fixed_value(unfilled: &Node) -> bool {
     let has_variable = |node: Option<&Node>| match node {
         Some(Node::Text(text)) => text.contains('$'),

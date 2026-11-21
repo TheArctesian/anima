@@ -185,7 +185,7 @@ pub enum Mark {
     Device,
 }
 
-/// An exception to the rights of a service (SF-NEW-revcatroot, SF-NEW-revcatentry), for the
+/// An exception to the rights of a service (SF-224, SF-NEW-revcatentry), for the
 /// services that it names and no other.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(tag = "exception", rename_all = "kebab-case", deny_unknown_fields)]

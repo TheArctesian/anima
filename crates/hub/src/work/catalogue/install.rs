@@ -1,5 +1,5 @@
 //! The install of an entry: present, and refused with a fixed reason until task H6 exists
-//! (R-NEW-buildnow). Before that reason, an entry of the class shell needs a person signed in
+//! (R-299). Before that reason, an entry of the class shell needs a person signed in
 //! (OD-HOST-54) and a generated entry needs the digest of its image in the request
 //! (OD-HOST-50, SF-NEW-revlsform). No machine is reached.
 #![expect(

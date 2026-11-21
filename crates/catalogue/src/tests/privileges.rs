@@ -1,4 +1,4 @@
-//! The rights of the services of a recipe (SF-NEW-revcatroot): each fault gives its own reason.
+//! The rights of the services of a recipe (SF-224): each fault gives its own reason.
 
 use super::{codes, sound, with_compose};
 use crate::{Code, Privilege, Recipe, check};

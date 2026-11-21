@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { asset } from '$app/paths';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import Switch from '$lib/forms/switch/Switch.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import Icon from '$lib/icons/Icon.svelte';
-  import { markOf } from './marks';
-  import { alsoSetsSentence, extensionRows } from './switches';
+  import { markOf, pictureOf } from './marks';
+  import { alsoSetsSentence, countLine, extensionRows } from './switches';
   import { useExtensions } from './store.svelte';
 
   /** The rows as one tight list, or as tiles; the page keeps the choice (EXT-001). */
@@ -44,10 +45,20 @@
 {:else}
   <!-- One extension in each row or tile: its mark, its name, one line, and its switch or why it has none. The list
        and the grid hold the same parts in the same order; only the layout differs (operator, 2026-11-19). -->
+  {#if rows.length > 0}<p class="count">{countLine(rows)}</p>{/if}
   <ul class="rows" class:grid={view === 'grid'} aria-busy={store.status === 'loading'}>
     {#each rows as row (row.key)}
+      {@const picture = view === 'grid' ? pictureOf(row.key, row.kind !== 'unbuilt') : null}
       <li class="extension" class:unbuilt={row.kind === 'unbuilt'}>
-        <span class="mark"><Icon name={markOf(row.key)} size={view === 'grid' ? 'lg' : 'md'} /></span>
+        {#if picture === null}
+          <span class="mark"><Icon name={markOf(row.key)} size={view === 'grid' ? 'lg' : 'md'} /></span>
+        {:else}
+          <!-- A picture of the page of the extension, made from sample data; the one of the appearance in use shows. -->
+          <span class="mark picture">
+            <img class="dark" src={asset(picture.dark)} alt="" loading="lazy" />
+            <img class="light" src={asset(picture.light)} alt="" loading="lazy" />
+          </span>
+        {/if}
         {#if row.kind === 'switch' || row.kind === 'needed'}
           <label class="name" for="extension-{row.key}">{row.label}</label>
         {:else}
@@ -65,6 +76,8 @@
             />
           {:else if row.kind === 'fixed'}
             <span class="state">On</span>
+          {:else}
+            <span class="tag">Coming soon</span>
           {/if}
         </span>
         <p class="refusal" role="alert">{store.refusal?.key === row.key ? store.refusal.message : ''}</p>
@@ -87,6 +100,12 @@
 {/key}
 
 <style>
+  .count {
+    margin: 0 0 var(--space-2);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
   .rows {
     margin: 0;
     padding: 0;
@@ -153,6 +172,18 @@
     font-size: var(--text-sm);
   }
 
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    block-size: var(--space-5);
+    padding-inline: var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--status-maintenance-tint);
+    color: var(--planned);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+
   /* The grid: the same parts as a tile, with the mark large on a plain field and the words in full. */
   .grid {
     display: grid;
@@ -181,5 +212,40 @@
 
   .grid .hint {
     white-space: normal;
+  }
+
+  /* The edge of the picture is drawn over it, so a tile with a picture has the height of a tile with a mark. */
+  .grid .picture {
+    overflow: hidden;
+    padding: 0;
+    outline: var(--border-thin) solid var(--border-subtle);
+    outline-offset: calc(var(--border-thin) * -1);
+  }
+
+  .picture img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+    object-position: top left;
+  }
+
+  /* The picture of the appearance in use: dark unless the theme, or the system for the theme "system", is light. */
+  .picture .light,
+  :global(:root[data-theme='light']) .picture .dark {
+    display: none;
+  }
+
+  :global(:root[data-theme='light']) .picture .light {
+    display: block;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :global(:root[data-theme='system']) .picture .dark {
+      display: none;
+    }
+
+    :global(:root[data-theme='system']) .picture .light {
+      display: block;
+    }
   }
 </style>

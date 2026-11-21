@@ -38,6 +38,14 @@ function signInCodeOf(value: unknown): SignInCode | undefined {
 
 const HUB_STATES: readonly unknown[] = ['ready', 'making', 'waking'] satisfies HubState[];
 
+/**
+ * `GET /v1/hub/usage` of the account site through the shell (HMD-073 in form B): the figures of the account for the
+ * page of the hub, unchecked; `hosted/usage` checks their form.
+ */
+export function cloudHubUsage(): Promise<Answer<unknown>> {
+  return command('cloud_hub_usage', (value) => (value === undefined ? undefined : value));
+}
+
 export async function clearCloudSession(): Promise<void> {
   await invoke('cloud_sign_out');
 }

@@ -288,6 +288,7 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         // devices fields that join metrics (API-005)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::batteries_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::daemon_version_loader(pool.clone()).delay(BATCH_WINDOW))
 }

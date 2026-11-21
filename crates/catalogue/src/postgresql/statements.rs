@@ -21,7 +21,7 @@ pub enum PasswordError {
 /// (OD-HOST-42 A); this crate never makes one. It is only letters and digits of ASCII, so that
 /// it is the same text in a quoted literal of SQL with each setting of the server, in an
 /// environment file that Compose fills (`$`), in a connection address (`#`, `=`) and in a shell
-/// (a backtick) (SF-NEW-revcatpg). No `Debug` or `Display` shows it.
+/// (a backtick) (SF-223). No `Debug` or `Display` shows it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Password(String);
 

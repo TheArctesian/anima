@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-NEW-hubrouting, R-NEW-catalogueways and R-NEW-databaselevels give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry. Version 8 (2026-11-20): Section 13 has the fields and the codes of a database (`kind`, `server`, `database`), and Section 14.6 says what task H24 built and where it differs from the design.
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-302, R-300 and R-301 give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry. Version 8 (2026-11-20): Section 13 has the fields and the codes of a database (`kind`, `server`, `database`), and Section 14.6 says what task H24 built and where it differs from the design.
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -677,7 +677,7 @@ operator can say yes or no to it. None has contract text yet.
 
 - **HOST-037.** Anima can install a reverse proxy on the hub as an application that the operator
   can see, only when the operator asks for it. It refuses clearly when ports 80 or 443 are in use.
-  This replaces the words "supply a reverse proxy" of HOST-009. R-NEW-hubrouting changed "on a
+  This replaces the words "supply a reverse proxy" of HOST-009. R-302 changed "on a
   machine" to "on the hub": Anima installs no reverse proxy on a different machine.
 - **HOST-038.** The operator can give an application a domain name. Anima asks for a certificate
   only after it has checked that the name points at the machine. Anima already warns before a
@@ -702,17 +702,17 @@ operator can say yes or no to it. None has contract text yet.
 - **HOST-045.** Proposed (R-250). On a hosted hub, the link carries the port of an application to
   the hub when the person turns that port on at the machine. The design is made with the owner of
   the open ports of the link (HMD-049 of [hosted-mode.md](hosted-mode.md)).
-- **HOST-046.** Direction decided (R-NEW-hubrouting). The hub is the front door of the public
+- **HOST-046.** Direction decided (R-302). The hub is the front door of the public
   traffic of the applications of its machines. A request for the domain of an application comes to
   the hub, and the hub sends it to the port of the application on its machine. A hosted hub does
   this behind the front door of the cloud service; a hub that a person hosts does it on its own
   ports 80 and 443. Section 12 is the design.
-- **HOST-047.** Direction decided (R-NEW-catalogueways). The catalogue that ships with the product
+- **HOST-047.** Direction decided (R-300). The catalogue that ships with the product
   is a large list of popular self-hosted applications. Each entry has a test that a machine runs,
   each image is named by a digest, a schedule pins new digests and runs the test again, each entry
   shows the date of its last test, and an entry that fails leaves the list. An entry that needs
   more than the default rules has a mark. Section 13 is the format.
-- **HOST-048.** Proposed (R-NEW-databaselevels, OD-HOST-38 of the plan). A database has one of
+- **HOST-048.** Proposed (R-301, OD-HOST-38 of the plan). A database has one of
   three levels: one server with copies to a second machine (the default); a primary and a replica
   that the operator selects, with a switch to the copy only by his action; no sharding.
 - **HOST-049.** Direction decided (R-NEW-linuxserver). The images of LinuxServer.io are the base of
@@ -882,8 +882,8 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-034: the containers of all machines in one list | Not approved | A question for the operator. No answer of 2026-11-19 covers it |
 | HOST-035: the limits of memory and processor as fields | Not approved | A question for the operator |
 | HOST-036: the result of each item on the page of the application | Not approved | A question for the operator |
-| HOST-037: the reverse proxy | Approved for stage 3 (R-213); on the hub only (R-NEW-hubrouting) | The design of Section 12 and its review; the trial of two programs |
-| HOST-038: domain names and certificates | Not approved; the direction is decided (R-NEW-hubrouting asks for the design) | Section 12 and its review, then a question for the operator |
+| HOST-037: the reverse proxy | Approved for stage 3 (R-213); on the hub only (R-302) | The design of Section 12 and its review; the trial of two programs |
+| HOST-038: domain names and certificates | Not approved; the direction is decided (R-302 asks for the design) | Section 12 and its review, then a question for the operator |
 | HOST-039: the Compose file from a repository | Approved for stage 3 (R-214) | Task H6 |
 | HOST-040: a build from a Dockerfile | Not approved (R-214: later) | The work type `build` proven on the releases of Anima |
 | HOST-041: databases as a kind | Approved for stage 3 (R-216) | Task H7 |
@@ -891,8 +891,8 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-043: the credential of a private registry | Not approved | A question for the operator |
 | HOST-044: updates to a digest that Anima tested | Not approved; the direction is decided (R-249: later) | HOST-042; the actor in the contract, after a security review |
 | HOST-045: the link carries the port of an application on a hosted hub | Not approved; the direction is decided (R-250) | The design with the owner of HMD-049 |
-| HOST-046: the hub is the front door of the traffic of applications | Not approved; the direction is decided (R-NEW-hubrouting) | Section 12, its review, and the answers of the cloud service |
-| HOST-047: a large catalogue that stays tested | Not approved; the direction is decided (R-NEW-catalogueways) | Section 13; the test on a machine needs task H6 |
+| HOST-046: the hub is the front door of the traffic of applications | Not approved; the direction is decided (R-302) | Section 12, its review, and the answers of the cloud service |
+| HOST-047: a large catalogue that stays tested | Not approved; the direction is decided (R-300) | Section 13; the test on a machine needs task H6 |
 | HOST-048: the levels of a database | Not approved | OD-HOST-38 of the plan |
 | HOST-049: the images of LinuxServer.io as the base of the catalogue | Not approved; the direction is decided (R-NEW-linuxserver) | Section 15, its security read, OD-HOST-50 to OD-HOST-53 |
 | HOST-050: the hub as the proxy manager, with streams | Not approved; the direction is decided (R-NEW-linuxserver) | Section 16, its security read, OD-HOST-46 to OD-HOST-49 |
@@ -1055,7 +1055,7 @@ each fact of Section 11.1 is a claim of that session.
 
 A security review by a separate reviewer reads this section before it becomes a plan.
 
-## 12. The routing of the domains of applications on the hub (R-NEW-hubrouting, task H21)
+## 12. The routing of the domains of applications on the hub (R-302, task H21)
 
 This section is a design with options. It adds no approved requirement. Section 14.6 says what
 task H24 built of it. It builds on Section 11 (the port of an application through the link, task H35) and on the
@@ -1063,8 +1063,8 @@ path of task HM-T12 of [hosted-mode.md](hosted-mode.md). The front door at `hub.
 part of the cloud service; its plan is in a private repository, and this section does not change
 it. Each sentence about what the door does is a request to that plan, not a fact: Section 12.9 lists
 the questions. The proxy is an application that the operator can see, and the hub installs it only
-when he asks for it (HOST-037, R-NEW-hubrouting (3)). A security review by a separate reviewer reads
-this section before any code (R-NEW-hubrouting).
+when he asks for it (HOST-037, R-302 (3)). A security review by a separate reviewer reads
+this section before any code (R-302).
 
 ### 12.1 What the ruling decides, and what it changes
 
@@ -1312,10 +1312,10 @@ note for the orchestrating session; it did not change that plan.
   Anima gives is offered before its domain is on the Public Suffix List.
 
 The security review of this section by a separate reviewer (2026-11-20) is in
-[security-findings.md](../security-findings.md), SF-NEW-routeabuse to SF-NEW-routetoken. The
+[security-findings.md](../security-findings.md), SF-227 to SF-234. The
 corrections of the text are in this version.
 
-## 13. The recipe format of the catalogue (R-NEW-catalogueways, task H36)
+## 13. The recipe format of the catalogue (R-300, task H36)
 
 This section is the format of task H36. The crate `crates/catalogue` reads it and runs the static
 test. The recipes are data files in `crates/catalogue/entries/`, one folder for each recipe.
@@ -1389,7 +1389,7 @@ is an error. A need that has no mark is an error.
 | `device` | A device of the machine, for example a USB stick or a graphics processor | Refused. No rule permits it |
 
 Each service of a recipe has `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`,
-and no setting makes it root or changes its code at the start (SF-NEW-revcatroot). The static
+and no setting makes it root or changes its code at the start (SF-224). The static
 test reads these values in the file as its author wrote it, before the variables are filled, and
 refuses with `privilege_not_permitted` and one reason:
 
@@ -1421,7 +1421,7 @@ of the default set of the engine by name: `AUDIT_WRITE`, `FSETID`, `KILL`, `MKNO
 
 The image, a published port, its `host_ip`, the `command`, the `entrypoint` and the `hostname`
 are written in the file, never as a variable: the install could change a variable after the
-static test (`variable_not_permitted`, SF-NEW-revcatvars, SF-NEW-revcatentry). A word of a
+static test (`variable_not_permitted`, SF-226, SF-NEW-revcatentry). A word of a
 command or of a health check that gives a value to a name that marks a secret (`--password=x`,
 `--token x`, `API_KEY=x`) is refused as `secret_in_file`; a name that ends with `FILE` names a
 path.
@@ -1466,7 +1466,7 @@ The example file has lines `NAME=value` and comments. It holds no secret value.
 - A line with no value directly below that comment names a variable of `generated`.
 - A variable whose name has the part `PASS` or `KEY`, or has the text `PASSWORD`, `PASSWD`,
   `SECRET`, `TOKEN`, `APIKEY`, `CREDENTIAL` or `PRIVATE_KEY` in capital or small letters, has no
-  value (SF-NEW-revcatsecret).
+  value (SF-225).
 - In the Compose file, a variable of `environment` with such a name has exactly one variable as
   its value, `${NAME}`, with no default (`secret_in_file`).
 
@@ -1547,7 +1547,7 @@ index of all platforms of the tag.
 Each service has `no-new-privileges:true` and drops each capability (Section 13.3). The services
 whose image starts as root and changes to a different user have the exception
 `init-capabilities`: the database and the cache of Dawarich, Pi-hole, Uptime Kuma, Gitea and
-PostgreSQL. Each published port is written in the file, not as a variable (SF-NEW-revcatvars).
+PostgreSQL. Each published port is written in the file, not as a variable (SF-226).
 No test on a machine has shown that each image starts with these rights; task H37 shows it. The
 server of OpenSSH in the image of Gitea possibly needs `SYS_CHROOT`, which no exception keeps.
 
@@ -1597,7 +1597,7 @@ An entry with a refused mark is not listed until a rule permits its mark.
 Not proposed: Watchtower, because it updates images by itself (ETH-004, HOST-044); a VPN server
 such as WireGuard, because it needs a capability of the kernel that no mark names.
 
-## 14. The PostgreSQL entry (R-216, R-NEW-databaselevels, task H24)
+## 14. The PostgreSQL entry (R-216, R-301, task H24)
 
 This section is a design with options. It adds no approved requirement. Section 14.6 says what
 task H24 built of it. HOST-041 is approved (R-216); the levels of HOST-048 are OD-HOST-38 of the plan. The design is
@@ -1693,18 +1693,18 @@ Where the build differs from Sections 14.1 to 14.3:
   an entry may have `-`, which a name of PostgreSQL without quotes may not have: each `-`
   becomes `_`. An identifier with `_` or with `--` is refused, so that two identifiers never
   get the same names (`my-app` and `my_app`) and no name of an application has `__`
-  (SF-NEW-revcatpg). The names `postgres`, `template0`, `template1`, `public` and each name
+  (SF-223). The names `postgres`, `template0`, `template1`, `public` and each name
   that starts with `pg_` are refused.
 - **The extensions.** An extension is one of a fixed list, not a pattern: `vector`, `pg_trgm`,
   `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry
   `postgresql` names (`btree_gin`, `btree_gist`, `cube`, `earthdistance`, `fuzzystrmatch`,
   `pgcrypto`, `unaccent`). No extension of the list reaches a file, a program or a different
-  server (SF-NEW-revcatpg).
+  server (SF-223).
 - **The password in a statement.** The password is an input value; the crate never makes one
   (OD-HOST-42 A). It is 22 to 128 letters and digits of ASCII (at least 128 bits), so that the
   quoted literal of the `CREATE ROLE` statement is the same text with each setting of the
   server, and no `$`, backtick, `#` or `=` changes it in an environment file, a shell or a
-  connection address (SF-NEW-revcatpg). The program must give that statement to `psql` on its standard input, never as
+  connection address (SF-223). The program must give that statement to `psql` on its standard input, never as
   an argument. `Debug` of a statement or of a connection value does not show it.
 - **The test of a machine.** It reaches the port that the server exposes on the network of its
   project, not a published port (Section 13.5).
@@ -1744,12 +1744,12 @@ list of LinuxServer.io on 2026-11-20
 
 ### 15.1 How this widens R-215, and what he accepts
 
-R-215 said: a small list that Anima tests. R-NEW-catalogueways widened it to a large list in which
+R-215 said: a small list that Anima tests. R-300 widened it to a large list in which
 each entry is tested. R-NEW-linuxserver makes the images of one publisher, about 200 of them, the
 base. Thus he accepts, if he selects the tiers of Section 15.4:
 
 - Entries that Anima did not test on a machine are in the catalogue, with a mark that says so.
-- Tier 2 (Section 15.4) changes R-NEW-catalogueways (2) and (3), which keep "each entry is tested
+- Tier 2 (Section 15.4) changes R-300 (2) and (3), which keep "each entry is tested
   by Anima": it needs a new ruling, not only an answer to OD-HOST-50.
 - The images come from one publisher, LinuxServer.io, which Anima does not control. Anima pins
   each image by a digest (R-233). The image is pinned; code that the image downloads when it
@@ -1860,7 +1860,7 @@ The proposed rule, the class `shell`:
   is permitted with the made credential. Recommendation: A first. "Private" is each node of the
   network of Anima, the containers of each machine included (Section 16.7).
 
-- **OD-HOST-50: the three tiers?** A: tiers 1, 2 and 3 as above; this changes R-NEW-catalogueways
+- **OD-HOST-50: the three tiers?** A: tiers 1, 2 and 3 as above; this changes R-300
   (2) and (3) and needs a ruling of its own. B: only tier 1 is shown; the others appear when their
   machine test passes. Recommendation: A. With B the list is nearly empty until a test machine runs
   for weeks.
@@ -1950,7 +1950,7 @@ His words: "I used to use nginx proxy manager and I like it as the hub as the pr
 need to use nginx but I want it to be networked liket hat with support for more then just https".
 Thus: one place in the hub that lists each route ("this name, or this port, goes to this
 application on this machine"), with its certificate, and with more kinds than HTTPS. The program
-that carries the bytes is the proxy of the hub of Section 12 (R-NEW-hubrouting): not nginx, and
+that carries the bytes is the proxy of the hub of Section 12 (R-302): not nginx, and
 not a proxy on each machine.
 
 ### 16.2 What users of such tools expect
@@ -2060,7 +2060,7 @@ The rules of Section 12.3 apply to each route. For a stream also:
 - **OD-HOST-46: where do the bytes go for his local network on a hosted hub?** A: no proxy for the
   local network; the machine's own port with "Open to the network" is the local path, and the
   routes of the hub are for the internet and his devices on the network of Anima. B: a small
-  forwarder on each machine for the local network, which changes R-NEW-hubrouting ("only on the
+  forwarder on each machine for the local network, which changes R-302 ("only on the
   hub"). Recommendation: A. It keeps one proxy, and a hub that he hosts on his local network gives
   him the names there.
 - **OD-HOST-47: streams on a hosted hub before the door has an address for each hub?** A: no;

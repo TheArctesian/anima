@@ -111,7 +111,7 @@
 </div>
 {/if}
 
-<LiveNotice message={listing.liveError?.message ?? null} />
+<LiveNotice message={listing.liveError?.message ?? listing.charges.error?.message ?? listing.memory.error?.message ?? null} />
 
 {#if listing.error !== null && list === null}
   <!-- Nothing to show: the failure takes the place of the list, in the look of every other failed load (UI-030). -->
@@ -163,9 +163,9 @@
       {:else if phoneLayout()}
         <PhoneRows devices={list.devices} beats={listing.beats} {query} {onConnect} />
       {:else if query.view === 'table'}
-        <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
+        <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {:else}
-        <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
+        <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {/if}
       {#if !listing.skeleton && list?.hasNextPage === true}
         <div class="more">

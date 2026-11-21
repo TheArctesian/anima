@@ -1,5 +1,5 @@
-//! The catalogue that ships with Anima, in the hub (HOST-047, R-NEW-catalogueways,
-//! R-NEW-buildnow, task H38): the list of the entries and the description of one.
+//! The catalogue that ships with Anima, in the hub (HOST-047, R-300,
+//! R-299, task H38): the list of the entries and the description of one.
 //!
 //! The recipes are built into the hub binary (`catalogue::shipped`). The hub runs the static
 //! test of each recipe once, at the first read, and lists only the recipes with no finding.

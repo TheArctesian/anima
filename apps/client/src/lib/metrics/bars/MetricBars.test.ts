@@ -5,6 +5,7 @@ import type { MetricsSource } from '$lib/hub/generated/graphql';
 import { endTransitionsAtOnce, GPU, readings } from './bars.fixture';
 import type { BarReadings } from './bars';
 import MetricBars from './MetricBars.svelte';
+import { batteryBar } from '../battery/battery';
 
 const preference = vi.hoisted(() => ({ reduced: false }));
 vi.mock('$lib/motion/preference', () => ({ motionPreference: () => preference }));
@@ -66,4 +67,15 @@ it('MET-030: the disk bar shows its mount and "+N drives" as text', () => {
   expect(disk?.textContent).toContain('Disk / +3 drives');
   expect(disk?.textContent).toContain('81 %');
   expect(disk?.getAttribute('title')).toBe('Disk /, 3 drives more on this device');
+});
+
+it('MET-032: the battery of a laptop with a GPU is a fifth bar on a third line, with charging in words', () => {
+  const battery = batteryBar([{ name: 'BAT0', state: 'CHARGING' }], new Map([['BAT0', 73]]));
+  app = mount(MetricBars, { target: document.body, props: { readings: readings({ vramPercent: 40, vramGpu: GPU }), source: 'DAEMON', battery } });
+  flushSync();
+  const meters = [...document.querySelectorAll('[role="meter"]')];
+  expect(meters.map((meter) => meter.getAttribute('aria-label'))).toEqual(['CPU', 'Memory', 'Disk /', 'VRAM', 'Battery']);
+  expect(meters[4]?.textContent).toContain('charging');
+  expect(meters[4]?.getAttribute('aria-valuetext')).toBe('73 %, charging');
+  expect(document.querySelector('.row')?.classList.contains('three')).toBe(true);
 });

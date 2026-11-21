@@ -15,7 +15,7 @@ pub(crate) const GENERATED: &str = "# generated at install";
 /// The parts of a name, between two `_`, that mark a secret: `DB_PASS`, `API_KEY`.
 const SECRET_PARTS: [&str; 2] = ["PASS", "KEY"];
 /// The texts that mark a secret in each place of a name: `DB_PASSWORD`, `SECRET_KEY_BASE`,
-/// `MYAPIKEY`, `SMTP_PASSWD`, `AWS_CREDENTIALS`, `PRIVATE_KEY` (SF-NEW-revcatsecret).
+/// `MYAPIKEY`, `SMTP_PASSWD`, `AWS_CREDENTIALS`, `PRIVATE_KEY` (SF-225).
 const SECRET_TEXTS: [&str; 7] = [
     "PASSWORD",
     "PASSWD",

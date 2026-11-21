@@ -1,5 +1,6 @@
 import type { DeviceCheck } from '$lib/checks/api';
 import type { CardDevice, DeviceDetail } from '$lib/devices/api';
+import { hasWaysIn } from '$lib/devices/actions/actions';
 import { reasonOf } from '$lib/devices/list/look';
 import { offersScreenSharing } from '$lib/devices/screen-sharing/setup';
 import { osIcon } from '$lib/devices/os/os';
@@ -11,7 +12,8 @@ import type { SettingsSection } from '../tabs/tabs';
 export type HeaderDevice = Pick<
   DeviceDetail,
   'id' | 'name' | 'status' | 'host' | 'ip' | 'os' | 'distribution' | 'accessWarnings' | 'webInterfaces'
-> & {
+> &
+  Partial<Pick<DeviceDetail, 'kind'>> & {
   readonly ssh: Pick<DeviceDetail['ssh'], 'enabled' | 'hostKey'>;
   readonly rdp: Pick<DeviceDetail['rdp'], 'enabled'>;
   readonly vnc: Pick<DeviceDetail['vnc'], 'enabled' | 'username'>;
@@ -49,6 +51,8 @@ export interface HeaderLine {
   readonly vnc: boolean;
   /** "Set up screen sharing" stands in for VNC on a macOS or Linux device with VNC off (R-079). */
   readonly screenSharing: boolean;
+  /** False for the hub's own device: the bar offers no protocol (HMD-046). */
+  readonly waysIn: boolean;
 }
 
 function sshAction(ssh: HeaderDevice['ssh']): SshAction {
@@ -65,7 +69,8 @@ export function headerLine(device: HeaderDevice): HeaderLine {
     ssh: sshAction(device.ssh),
     rdp: device.rdp.enabled ? 'connect' : 'set-up',
     vnc: device.vnc.enabled,
-    screenSharing: offersScreenSharing(device),
+    screenSharing: hasWaysIn(device) && offersScreenSharing(device),
+    waysIn: hasWaysIn(device),
   };
 }
 
@@ -81,9 +86,11 @@ export interface ProtocolAction {
 
 /**
  * The connect split button (D16, DEV-022): the first protocol that connects, in the order SSH, RDP, VNC, is the main
- * action, or SSH's test or set-up when none does. The menu holds the rest, the ones that connect first.
+ * action, or SSH's test or set-up when none does. The menu holds the rest, the ones that connect first. `null` for
+ * the hub's own device, which has no way in to offer (HMD-046).
  */
-export function connectActions(line: HeaderLine, deviceName: string): { readonly main: ProtocolAction; readonly others: readonly ProtocolAction[] } {
+export function connectActions(line: HeaderLine, deviceName: string): { readonly main: ProtocolAction; readonly others: readonly ProtocolAction[] } | null {
+  if (!line.waysIn) return null;
   const action = (protocol: SessionProtocol, mode: ProtocolMode): ProtocolAction => ({ protocol, mode, ...protocolButton(protocol, mode, deviceName) });
   const ssh = action('SSH', line.ssh);
   const actions = [ssh, action('RDP', line.rdp), ...(line.vnc ? [action('VNC', 'connect')] : [])];

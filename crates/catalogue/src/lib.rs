@@ -1,5 +1,5 @@
 //! The recipes of the catalogue that ships with Anima, and the static test of each recipe
-//! (HOST-047, R-NEW-catalogueways, task H36).
+//! (HOST-047, R-300, task H36).
 //!
 //! A recipe is one folder: the entry file (`entry.json`), the Compose file (`compose.yaml`) and
 //! an example environment file with no secret value (`environment.example`). The static test
@@ -86,13 +86,13 @@ pub enum Code {
     /// A database server publishes a port on the machine (Section 14.1 of the proposal).
     DatabasePortPublished,
     /// The image, a published port or its address is a variable, which the install could
-    /// change after the static test (SF-NEW-revcatvars).
+    /// change after the static test (SF-226).
     VariableNotPermitted,
     /// The Compose file gives a variable whose name marks a secret a value that is not one
-    /// variable (SF-NEW-revcatsecret).
+    /// variable (SF-225).
     SecretInFile,
     /// A service keeps rights that it does not need, or changes its code at the start
-    /// (SF-NEW-revcatroot).
+    /// (SF-224).
     PrivilegeNotPermitted(Privilege),
     /// A stream of the entry is not a published port of the file with each of its protocols.
     StreamNotPublished,
