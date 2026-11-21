@@ -2664,6 +2664,16 @@ a made runner only; no person saw it in a desktop window.
    Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
    running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
 
+A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
+build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a
+scratch folder with one file. Steps 1 and 2: each program listed the file and replied; the thread went to "your turn".
+Step 3: in the mode "ask" Claude Code asked for `echo hi > hello.txt`; after `anima agents approve` the file was there.
+Read-only commands such as `ls` and `wc` were not asked: Claude Code allows them itself. Step 4: with Codex the `sleep`
+ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected in the branch (the runner now ends what
+the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
+ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
+to 11 were not tried.
+
 Result: Open.
 
 ### HT-074: the native Windows desktop client (WIN1)
