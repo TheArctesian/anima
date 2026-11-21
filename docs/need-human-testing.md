@@ -2648,6 +2648,30 @@ control group, its user and its folders.
 
 Result: Open.
 
+### HT-NEW-battery: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+
+Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
+`/sys/class/power_supply` and of `pmset -g batt`), `crates/daemon/src/readers/linux.rs`,
+`crates/daemon/src/readers/macos.rs`, `crates/daemon/src/sampling/batteries.rs`, and in the hub the migration
+`0720_metrics_batteries.sql` and `Device.batteries`. The tests prove the rules against texts in the form of the
+kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test read the battery of a real laptop.
+
+1. On a Linux laptop that runs a daemon of this build, enrolled in a hub of this build, run
+   `cat /sys/class/power_supply/BAT*/capacity /sys/class/power_supply/BAT*/status`. Then ask the hub:
+   `query { device(id: "<id>") { batteries { name state secondsLeft healthPercent } } }`.
+   Expected: one battery for each `BAT*` folder, with the same name and the state of the `status` file. A wireless
+   mouse or keyboard is not in the list.
+2. On the same laptop, connect and disconnect the mains. Ask the hub again after 10 seconds each time.
+   Expected: the state changes to `CHARGING` (or `FULL` or `NOT_CHARGING`) and back to `DISCHARGING`.
+3. Open the chart of the device for one hour, or ask for `metrics(range: HOUR) { kind label }`.
+   Expected: a series `BATTERY_PERCENT` with the battery name as its label, with the value of `capacity`.
+4. Do steps 1 to 3 on a MacBook that runs a daemon of this build. Compare with `pmset -g batt`.
+   Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
+5. Do step 1 on a desktop computer or a server with no battery.
+   Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,

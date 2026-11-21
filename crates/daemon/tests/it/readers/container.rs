@@ -62,6 +62,10 @@ async fn hmd_074_a_hosted_hub_reads_its_container_and_nothing_of_the_server() {
     assert!(second.load.is_none() && second.uptime_seconds.is_none());
     assert!(second.disks.is_empty() && second.interfaces.is_empty());
     assert!(second.drives.is_none() && second.drive_counters.is_empty());
+    assert!(
+        second.batteries.is_none(),
+        "a hosted hub has no battery (MET-032)"
+    );
     let kept = second.hub_storage.as_ref().unwrap();
     let expected = (data.to_str().unwrap(), 123);
     assert_eq!((kept.folder.as_str(), kept.bytes), expected);

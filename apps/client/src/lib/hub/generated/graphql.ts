@@ -572,6 +572,8 @@ export type MergeState =
   | 'UNSTABLE';
 
 export type MetricKind =
+  /** The charge of one battery, 0 to 100; the label is the battery name (MET-032). */
+  | 'BATTERY_PERCENT'
   | 'CPU_PERCENT'
   /** The share of time one drive had I/O in flight; the label is the drive name (MET-028). */
   | 'DISK_BUSY_PERCENT'
