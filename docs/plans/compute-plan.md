@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: R-205 (2026-11-18, first-hand) decides OD-C21: tools are in stage 1. R-197 (2026-11-18, first-hand) decides OD-C12 to OD-C20; Section 8.1 follows the four "no" answers (cloud models, a title tool, side by side in stage 1, tools with a grant). R-196 (2026-11-18) gives the direction of a full chat page. Section 8.1 proposes CHAT-008 to CHAT-045 and tasks CH0 to CH20; they are not approved, and no approved requirement changes. R-165 (operator, 2026-11-18, through the orchestrating session: "go with A") approves Level 1 of version 0.3: Sections 1 to 9, 11 and 12, the tasks L1-1 to L1-21 and the optional member of K8 of task L1-1, and decides OD-C6 to OD-C11 as each row recommended. Its condition: no task of Level 1 starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 have a result ([need-human-testing.md](../need-human-testing.md)). Version 0.4 (2026-11-18) writes these answers into version 0.3 and changes nothing else. No task of Level 1 is started. Built before: the tool inventory (CAP-020 to CAP-031): the daemon, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5); its live checks HT-002 to HT-006 are open; its client section is not started (Section 11.1, CUI-010 to CUI-019). Open: OD-C1 (the values of the hardware table that are missing) and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md). OD-C5 is decided (R-131). Level 2 (Section 10, C4 to C6) is parked and not approved. The record of the comparison of version 0.2 with its sources is [plan-reconcile-2026-11-18.md](../research/compute/plan-reconcile-2026-11-18.md).
+evidence: R-205 (2026-11-18, first-hand) decides OD-C21: tools are in stage 1. R-197 (2026-11-18, first-hand) decides OD-C12 to OD-C20; Section 8.1 follows the four "no" answers (cloud models, a title tool, side by side in stage 1, tools with a grant). R-196 (2026-11-18) gives the direction of a full chat page. Section 8.1 proposes CHAT-008 to CHAT-045 and tasks CH0 to CH20; they are not approved, and no approved requirement changes. R-165 (operator, 2026-11-18, through the orchestrating session: "go with A") approves Level 1 of version 0.3: Sections 1 to 9, 11 and 12, the tasks L1-1 to L1-21 and the optional member of K8 of task L1-1, and decides OD-C6 to OD-C11 as each row recommended. Its condition of a start (the macOS application 0.2.2 and the hosted live checks HT-027, HT-028, HT-029 and HT-031) is withdrawn by R-NEW-levelonestart (operator, 2026-11-20): the tasks of Level 1 can start now. Version 0.6 (2026-11-20) writes this into PH-C-002 and Section 12.4. Version 0.4 (2026-11-18) writes these answers into version 0.3 and changes nothing else. Built before: the tool inventory (CAP-020 to CAP-031): the daemon, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5); its live checks HT-002 to HT-006 are open; its client section is not started (Section 11.1, CUI-010 to CUI-019). Open: OD-C1 (the values of the hardware table that are missing) and OD-AI1 of [ai-direction.md](../proposals/ai-direction.md). OD-C5 is decided (R-131). Level 2 (Section 10, C4 to C6) is parked and not approved. The record of the comparison of version 0.2 with its sources is [plan-reconcile-2026-11-18.md](../research/compute/plan-reconcile-2026-11-18.md).
 ---
 
 # Anima Compute Plan
@@ -11,8 +11,8 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Compute plan |
-| Version | 0.5 |
-| Date | 2026-11-18 |
+| Version | 0.6 |
+| Date | 2026-11-20 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | The header of this document holds the state (PLN-020). History: For review (version 0.2, 2026-11-06). Version 0.3 (2026-11-18) changes Sections 1 to 9, 11, 12, 13 and 15 for Level 1: the model request goes directly to the compute node and the hub has no router (R-131); model work is a function of the one daemon (R-084, R-126); the network is the link, not the VPN with Headscale; the scope of [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md) of 2026-11-07 is now text of this plan; Section 12.4 is the task table of Level 1; Section 15 gives each open decision as one question, and adds OD-C9 to OD-C11. Sections 10 and 14 did not change. Version 0.4 (2026-11-18): the operator approved Level 1 of version 0.3 and decided OD-C6 to OD-C11 (R-165); version 0.4 writes the answers into the requirements and into Section 15, adds the condition of the start (PH-C-002), makes OD-C2 agree with R-166 (the collector is a part of `anima-daemon`) and changes nothing else. |
 | Related | [design-spec.md](../spec/design-spec.md), [extensions-plan.md](extensions-plan.md), [ai-direction.md](../proposals/ai-direction.md), [jobs.md](../proposals/jobs.md), [hosted-mode.md](../proposals/hosted-mode.md), [one-click-plan.md](one-click/one-click-plan.md) |
@@ -21,7 +21,7 @@ This document obeys the writing rules in Section 0 of the design specification.
 
 How to read a requirement of this version:
 
-- The requirements of Level 1 (Sections 1 to 9, 11 and 12) are approved (R-165). A session builds from a task of Section 12.4, and only after the condition of PH-C-002 is met.
+- The requirements of Level 1 (Sections 1 to 9, 11 and 12) are approved (R-165). A session builds from a task of Section 12.4. The condition of a start of R-165 is withdrawn (R-NEW-levelonestart).
 - Section 8.1 (CHAT-008 to CHAT-045, tasks CH0 to CH20) is proposed (2026-11-18, the direction of R-196) and is not approved. R-197 decides OD-C12 to OD-C20 and R-205 decides OD-C21; they do not approve the requirements (task CH0).
 - Level 2 (Section 10 and the rows C4 to C6) is parked and is not approved. Section 5.2 (C3) and the row C7 are not part of R-165.
 - The tool inventory (CAP-020 to CAP-031) and Section 11.1 (CUI-010 to CUI-019) have the earlier words of approval of the operator. Their text did not change.
@@ -624,12 +624,12 @@ Rules for the build:
 
 - **PH-C-000.** Compute work must not start before Phase 1 of the spec is accepted. Phase 1 is accepted ([handoff.md](phase-3/handoff.md)). Level 1 uses the hardware readers of the daemon of Phase 3 (CMP-005). Version 0.2: "the daemon gives its own hardware values, so Level 1 does not need the Phase 2 metrics".
 - **PH-C-001.** Level 2 (C4 and later) must not start before C2 is accepted and the operator uses the model service.
-- **PH-C-002.** R-165 approves Level 1, with this condition: no task of Level 1 starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 have a result. No session takes a task of Section 12.4 before that. The functions for AI agents and their use are built before the model service (R-132).
+- **PH-C-002.** R-165 approves Level 1. R-NEW-levelonestart (operator, 2026-11-20) withdraws its condition of a start: the tasks of Section 12.4 can start now, in their order and with the needs of each row. Version 0.5: no task of Level 1 starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 have a result.
 - **PH-C-003.** Each function of Level 1 is built in the order of CMD-030: the hub API, the `anima` command, the MCP tool, then the client. A page is later delivery.
 
 | Phase | Level | Content | Depends on |
 | --- | --- | --- | --- |
-| C1 | 1 | The foundation: the hardware values, the fit estimate, the model work of the daemon, the library, the pull, the validation, the model key, the model address with the OpenAI form, image input, and a request to a different node. No page. | Spec Phase 1 (accepted), the condition of PH-C-002, OD-C1 for the first runtime of each machine; for the request to a different node also the spike L1-12 |
+| C1 | 1 | The foundation: the hardware values, the fit estimate, the model work of the daemon, the library, the pull, the validation, the model key, the model address with the OpenAI form, image input, and a request to a different node. No page. | Spec Phase 1 (accepted), OD-C1 for the first runtime of each machine; for the request to a different node also the spike L1-12 |
 | C2 | 1 | Loading on demand, the idle unload as a setting, pins, reservations, the wait policy and the status of a request, the Ollama API. No page. | C1 |
 | Pages | 1 | The Compute page, the Models page and the Chat page | The function of each page |
 | C3 | 1 | Single-node offload (Section 5.2). KTransformers on a large-memory node, if the operator has one. | C1 |
@@ -666,9 +666,9 @@ Version 0.2 of the rows C1 and C2: C1 named `curl https://ai.anima.ing/v1/models
 
 ### 12.4 Tasks of Level 1
 
-No task is started. R-165 approves the tasks, and no task starts before its condition is met (PH-C-002): No task of Level 1 starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 have a result. R-165 also decided OD-C6 to OD-C11, so a cell "Needs" that names one of them is met; OD-C1 and OD-AI1 are open. A session takes one row (PLN-022). Each row that adds a hub function builds its command and its MCP tool in the same task (CMD-030), unless the row says why not. A function that the gates cannot prove gets its entry in [need-human-testing.md](../need-human-testing.md) in the commit that builds it (PLN-014).
+R-165 approves the tasks, and R-NEW-levelonestart (operator, 2026-11-20) withdraws the condition of their start (PH-C-002). R-165 also decided OD-C6 to OD-C11, so a cell "Needs" that names one of them is met; OD-C1 and OD-AI1 are open. A session takes one row (PLN-022). Each row that adds a hub function builds its command and its MCP tool in the same task (CMD-030), unless the row says why not. A function that the gates cannot prove gets its entry in [need-human-testing.md](../need-human-testing.md) in the commit that builds it (PLN-014).
 
-L1-1, L1-2 and L1-4 need no open decision: when the condition is met they can start at once. L1-1 is the first task. It only reads, it needs no work route and no path between devices, and what it reports is the inspected hardware list that OD-C1 asks for.
+L1-1, L1-2 and L1-4 need no open decision: they can start at once. L1-1 is the first task. It only reads, it needs no work route and no path between devices, and what it reports is the inspected hardware list that OD-C1 asks for.
 
 | Task | Content | Requirements | Needs | Check | State | Commits |
 | --- | --- | --- | --- | --- | --- | --- |
