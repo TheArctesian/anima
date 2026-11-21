@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-daemon-remove"
+description = "Enables the daemon_remove command without any pre-configured scope."
+commands.allow = ["daemon_remove"]
+
+[[permission]]
+identifier = "deny-daemon-remove"
+description = "Denies the daemon_remove command without any pre-configured scope."
+commands.deny = ["daemon_remove"]

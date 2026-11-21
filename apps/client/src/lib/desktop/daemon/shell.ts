@@ -3,7 +3,7 @@ import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { readThisMachine, type ThisMachine } from '../this-machine';
 
-/** Why the shell did not install the daemon: its error codes (MET-019, D-10 d). Any other answer is `failed`. */
+/** Why the shell did not install or remove the daemon: its error codes (MET-019, D-10 d, HMD-056). Any other answer is `failed`. */
 export type DaemonShellProblem =
   | 'caller'
   | 'unavailable'
@@ -16,6 +16,8 @@ export type DaemonShellProblem =
   | 'copy'
   | 'enrol'
   | 'install'
+  | 'uninstall'
+  | 'remove'
   | 'timed-out'
   | 'failed';
 
@@ -32,6 +34,8 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
   copy: 'The daemon could not be copied to its installation folder.',
   enrol: 'The daemon could not enrol. Retry to make a new code.',
   install: 'The daemon enrolled but did not start. Run `anima-daemon install` in a terminal to see why.',
+  uninstall: 'The daemon did not take its unit and its token off this computer.',
+  remove: 'The copy of the daemon in its installation folder could not be deleted.',
   'timed-out': 'The daemon did not finish in time.',
   failed: 'The install did not finish.',
 };
@@ -74,6 +78,23 @@ export async function installDaemon(code: string, origin: string): Promise<Daemo
   try {
     await invoke('daemon_install', { code, origin });
     return { ok: true };
+  } catch (reason) {
+    const problem = problemOf(reason);
+    return { ok: false, problem, message: describeDaemonProblem(problem) };
+  }
+}
+
+/** What the removal did: whether a copy of the daemon was on this computer, or why the shell did not remove it. */
+export type DaemonRemoval = { readonly ok: true; readonly wasHere: boolean } | { readonly ok: false; readonly problem: DaemonShellProblem; readonly message: string };
+
+/**
+ * Has the shell take the daemon off this computer (HMD-056): its unit, its token and its copy. Outside the desktop app
+ * there is nothing to remove.
+ */
+export async function removeDaemon(): Promise<DaemonRemoval> {
+  if (!isTauri()) return { ok: true, wasHere: false };
+  try {
+    return { ok: true, wasHere: (await invoke('daemon_remove')) === true };
   } catch (reason) {
     const problem = problemOf(reason);
     return { ok: false, problem, message: describeDaemonProblem(problem) };
