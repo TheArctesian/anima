@@ -3,7 +3,9 @@
 
 use serde_json::Value;
 
-use super::request::{ProgramRequestId, Question, Request, RequestKind};
+use super::request::{
+    ProgramRequestId, Question, Request, RequestKind, claude_diff, rule_words, visible,
+};
 use super::{DriveEvent, MAX_LINE, ProgramState, TurnOutcome, text_of};
 use crate::{MAX_OUTPUT, MAX_TEXT, held};
 
@@ -204,26 +206,28 @@ fn can_use_tool(id: ProgramRequestId, request: &Value) -> Request {
         .as_str()
         .or_else(|| input["file_path"].as_str())
         .map_or_else(|| input.to_string(), str::to_owned);
-    // Only a rule for this session is offered: a rule for a settings file would stay after the
-    // thread, and "allow for the session" must not write a file of the program (THR-030).
-    let offered: Vec<Value> = request["permission_suggestions"]
+    // Only a rule that adds allow rules is offered, and only for this session: Claude Code
+    // suggests it for a settings file, which would stay after the thread, and a rule that sets
+    // the mode would change what the thread may do with no question (THR-030).
+    let (offered, session_rules): (Vec<Value>, Vec<String>) = request["permission_suggestions"]
         .as_array()
         .map_or(&[][..], Vec::as_slice)
         .iter()
-        .filter(|rule| rule["destination"] == "session")
-        .cloned()
-        .collect();
+        .filter_map(|rule| {
+            let words = held(&rule_words(rule)?, 1024);
+            let mut for_session = rule.clone();
+            for_session["destination"] = "session".into();
+            Some((for_session, words))
+        })
+        .unzip();
     Request {
         id,
         kind,
+        diff: claude_diff(&tool, &input).map(|diff| held(&diff, MAX_TEXT)),
         tool,
-        subject: held(&subject, MAX_TEXT),
-        diff: None,
+        subject: held(&visible(&subject), MAX_TEXT),
         input,
-        session_rules: offered
-            .iter()
-            .map(|rule| held(&rule.to_string(), 1024))
-            .collect(),
+        session_rules,
         offered,
         questions,
     }

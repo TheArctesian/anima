@@ -67,8 +67,9 @@ pub async fn environment(daemon: &[(String, String)]) -> Vec<(String, String)> {
         return found;
     }
     tracing::warn!("the environment of the login has no PATH; the daemon's few names are used");
+    let secrets = secrets_of(daemon);
     base.into_iter()
-        .filter(|(name, _)| !left_out(name))
+        .filter(|(name, value)| !left_out(name) && !secrets.contains(value))
         .collect()
 }
 
@@ -205,12 +206,15 @@ const USUAL: [&str; 6] = [
 ];
 
 /// The absolute path of `program` on the `PATH` of `env`: the first folder that holds an
-/// executable file of that name. Then the [`USUAL`] folders, with `~` as the `HOME` of `env`.
+/// executable file of that name. Then the [`USUAL`] folders, with `~` as the `HOME` of `env`,
+/// each only when `trusted` holds for it (a folder of the person or of the system, that no other
+/// user can write).
 #[must_use]
 pub fn find(
     program: Program,
     env: &[(String, String)],
     executable: impl Fn(&Path) -> bool,
+    trusted: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
     let home = env
         .iter()
@@ -221,7 +225,8 @@ pub fn find(
         .filter_map(|folder| match folder.strip_prefix("~/") {
             Some(below) => home.map(|home| Path::new(home).join(below)),
             None => Some(PathBuf::from(folder)),
-        });
+        })
+        .filter(|folder| trusted(folder));
     env.iter()
         .find(|(name, _)| name == "PATH")
         .into_iter()
@@ -232,16 +237,31 @@ pub fn find(
         .find(|candidate| executable(candidate))
 }
 
-/// `env` with the folder of `program` first on its `PATH` when the `PATH` does not hold it, so
-/// that a program found in a [`USUAL`] folder also finds the programs next to it.
+/// Whether `folder` belongs to this user or to the system and no other user can write it.
+#[must_use]
+pub fn trusted(folder: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt as _;
+    let me = rustix::process::getuid().as_raw();
+    std::fs::metadata(folder).is_ok_and(|meta| {
+        meta.is_dir() && (meta.uid() == me || meta.uid() == 0) && meta.mode() & 0o022 == 0
+    })
+}
+
+/// `env` with the folder of `program` last on its `PATH` when the `PATH` does not hold it, so
+/// that a program found in a [`USUAL`] folder also finds the programs next to it, and the order
+/// of the login stays first.
 #[must_use]
 pub fn with_folder_of(mut env: Vec<(String, String)>, program: &Path) -> Vec<(String, String)> {
-    let Some(folder) = program.parent().and_then(Path::to_str) else {
+    let Some(folder) = program
+        .parent()
+        .and_then(Path::to_str)
+        .filter(|folder| !folder.contains(':'))
+    else {
         return env;
     };
     match env.iter_mut().find(|(name, _)| name == "PATH") {
         Some((_, path)) if path.split(':').any(|known| known == folder) => {}
-        Some((_, path)) => *path = format!("{folder}:{path}"),
+        Some((_, path)) => *path = format!("{path}:{folder}"),
         None => env.push(("PATH".to_owned(), folder.to_owned())),
     }
     env
@@ -265,11 +285,20 @@ mod tests {
             ("HOME".to_owned(), "/home/a".to_owned()),
             ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
         ];
-        let found = find(Program::ClaudeCode, &env, |path| {
-            path == Path::new("/home/a/.local/bin/claude")
-        });
+        let at_home = |path: &Path| path == Path::new("/home/a/.local/bin/claude");
+        let found = find(Program::ClaudeCode, &env, at_home, |_| true);
         assert_eq!(found, Some(PathBuf::from("/home/a/.local/bin/claude")));
-        let on_path = find(Program::Codex, &env, |path| path == Path::new("/bin/codex"));
+        assert_eq!(
+            find(Program::ClaudeCode, &env, at_home, |_| false),
+            None,
+            "a usual folder that another user can write is not used"
+        );
+        let on_path = find(
+            Program::Codex,
+            &env,
+            |path| path == Path::new("/bin/codex"),
+            |_| false,
+        );
         assert_eq!(
             on_path,
             Some(PathBuf::from("/bin/codex")),
@@ -278,7 +307,7 @@ mod tests {
         let env = with_folder_of(env, Path::new("/home/a/.local/bin/claude"));
         assert!(env.contains(&(
             "PATH".to_owned(),
-            "/home/a/.local/bin:/usr/bin:/bin".to_owned()
+            "/usr/bin:/bin:/home/a/.local/bin".to_owned()
         )));
         let again = with_folder_of(env.clone(), Path::new("/usr/bin/claude"));
         assert_eq!(again, env, "a folder on the PATH is not added twice");
@@ -323,10 +352,13 @@ mod tests {
     #[test]
     fn a_program_is_found_in_the_first_absolute_folder_of_the_path() {
         let env = vec![("PATH".to_owned(), "relative:/a:/b".to_owned())];
-        let found = find(Program::Codex, &env, |path| {
-            path.starts_with("/b") || path.starts_with("relative")
-        });
+        let found = find(
+            Program::Codex,
+            &env,
+            |path| path.starts_with("/b") || path.starts_with("relative"),
+            |_| false,
+        );
         assert_eq!(found, Some(PathBuf::from("/b/codex")));
-        assert_eq!(find(Program::ClaudeCode, &env, |_| false), None);
+        assert_eq!(find(Program::ClaudeCode, &env, |_| false, |_| false), None);
     }
 }

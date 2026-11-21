@@ -50,6 +50,14 @@ impl Runner {
                 return;
             }
             Action::Interrupt { thread } => self.interrupt(thread).await,
+            Action::Folder { folder } => {
+                match super::start::chosen_folder(&folder, self.dir.parent().unwrap_or(&self.dir)) {
+                    Ok(real) => Outcome::Folder {
+                        notice: crate::threads::notice::of_folder(&real),
+                    },
+                    Err(why) => Outcome::Refused { why },
+                }
+            }
             Action::RaiseLimit => {
                 self.limits = self.limits.raised();
                 self.save();

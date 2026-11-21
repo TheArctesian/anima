@@ -109,12 +109,24 @@ impl StartArgs {
     /// [`Failure`] for a refusal of the runner, a no at the limit, or a runner that is not there.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut link = RunnerLink::connect().await?;
+        let folder = std::path::absolute(&self.folder).unwrap_or(self.folder);
+        // What the files of the folder make the program do by itself, before the prompt goes
+        // (THR-046, OD-THR21: honoured, with a notice).
+        if let Outcome::Folder { notice } = accepted(
+            link.call(Action::Folder {
+                folder: folder.clone(),
+            })
+            .await?,
+        )? && !notice.is_empty()
+        {
+            invocation.output.message(&notice.join("\n"));
+        }
         let action = Action::Start {
             program: match self.program {
                 ProgramName::ClaudeCode => Program::ClaudeCode,
                 ProgramName::Codex => Program::Codex,
             },
-            folder: std::path::absolute(&self.folder).unwrap_or(self.folder),
+            folder,
             mode: match self.mode {
                 ModeName::FullAccess => Mode::FullAccess,
                 ModeName::AcceptEdits => Mode::AcceptEdits,

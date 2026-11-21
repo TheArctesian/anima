@@ -261,6 +261,26 @@ fn bind(dir: &Path) -> Result<UnixListener, HolderError> {
     Ok(listener)
 }
 
+/// Makes connection `me` the one that the holder serves, unless the holder closes or a newer
+/// connection holds it. A second process of this user that takes the place of the runner is
+/// written to the log, with the numbers only (THR-125).
+fn take_place(shared: &Mutex<Shared>, me: u64, sender: mpsc::UnboundedSender<String>) -> bool {
+    let Ok(mut state) = shared.lock() else {
+        return false;
+    };
+    if state.closing || state.connection.as_ref().is_some_and(|(id, _)| *id > me) {
+        return false;
+    }
+    if let Some((older, _)) = state.connection.replace((me, sender)) {
+        tracing::warn!(
+            older,
+            newer = me,
+            "a newer connection took the place of an older one at the holder"
+        );
+    }
+    true
+}
+
 /// What one connection of the holder needs besides the shared state.
 struct Connection {
     /// The number of the connection, in the order of the accepts.
@@ -285,11 +305,9 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
     {
         let _one = turn.lock().await;
-        let Ok(mut state) = shared.lock() else { return };
-        if state.closing || state.connection.as_ref().is_some_and(|(id, _)| *id > me) {
+        if !take_place(&shared, me, sender) {
             return;
         }
-        state.connection = Some((me, sender));
     }
     let writer = tokio::spawn(async move {
         while let Some(frame) = outgoing.recv().await {
