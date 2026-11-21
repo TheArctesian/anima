@@ -12,7 +12,7 @@ use daemon_core::wire::{
 use sqlx::PgConnection;
 
 pub(super) use logs::{append_log, log_of};
-pub(super) use machines::{add_fault, machine_locked, save_machine, set_off_until};
+pub(super) use machines::{add_fault, machine_locked, machines, save_machine, set_off_until};
 pub(super) use placements::{
     decisions_of, offer_of, others_asking, pin, pins, save_decisions, save_said, set_excluded,
     unpin,

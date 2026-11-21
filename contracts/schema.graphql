@@ -876,6 +876,64 @@ type DeviceCapabilities {
   hardware: Hardware
 }
 
+# The device policy of a compute node (CMP-002, CAP-010 to CAP-012). Waits for a ruling: R-NEW-devicepolicy.
+"The device policy of one device and whether it takes model work now."
+type DevicePolicy {
+  device: Device!
+  "The largest part of the usable memory that models may use, 1 to 100 percent. Default 75."
+  memorySharePercent: Int!
+  "The largest part of the disk that model files may use, 1 to 100 percent. Default 50."
+  diskSharePercent: Int!
+  "The hours in which the device takes no new model work; null for none."
+  quietHours: QuietHours
+  "Model work only on mains power (CAP-011). Default true; a computer with no battery always reads mains."
+  mainsOnly: Boolean!
+  "No new model work while the operator is active at the device (CAP-012). Default false."
+  idleOnly: Boolean!
+  "True when the operator set no policy for the device."
+  isDefault: Boolean!
+  "Whether the device takes model work now (CMP-002)."
+  takesModelWork: Boolean!
+  "Why the device takes no model work now; null when it takes it."
+  stopReason: ModelWorkStop
+}
+
+"From start to end (HH:MM) in timeZone (an IANA name); past midnight when end is not after start."
+type QuietHours {
+  start: String!
+  end: String!
+  timeZone: String!
+}
+
+"Why a device takes no model work now."
+enum ModelWorkStop {
+  "The machine never asked this hub for work."
+  NO_SWITCH
+  "The switch \"takes work\" at the machine is off."
+  SWITCH_OFF
+  "The operator set the machine off in the hub, or the hub holds it off for an hour."
+  OFF_IN_HUB
+  QUIET_HOURS
+  ON_BATTERY
+  OPERATOR_ACTIVE
+}
+
+"The whole new device policy of a device."
+input DevicePolicyInput {
+  memorySharePercent: Int!
+  diskSharePercent: Int!
+  quietHours: QuietHoursInput
+  mainsOnly: Boolean!
+  idleOnly: Boolean!
+}
+
+"start and end as HH:MM; timeZone an IANA name, for example Europe/London."
+input QuietHoursInput {
+  start: String!
+  end: String!
+  timeZone: String!
+}
+
 # Hardware values (CAP-001 to CAP-005, CAP-032; R-165, the optional K8 member `hardware` of task L1-1).
 "The hardware values a daemon last sent. A byte count is a Float, as a drive size is; null is a value the daemon could not read, never zero."
 type Hardware {
@@ -3594,6 +3652,10 @@ type Query {
   "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 
+  # The device policy of a compute node (CMP-002, CAP-010 to CAP-012; compute plan task L1-5). Waits for a ruling: R-NEW-devicepolicy.
+  "The device policy of each device, by device name (byte order), with whether it takes model work now and why not. A device with no policy of its own has the defaults. Open to a read key."
+  devicePolicies: [DevicePolicy!]!
+
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
@@ -3776,6 +3838,10 @@ type Mutation {
 
   "Login or browser token only (D-23, R-100)."
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
+
+  # The device policy of a compute node (CAP-010 to CAP-012). Waits for a ruling: R-NEW-devicepolicy.
+  "Replaces the device policy of a device. It sets no switch: the one switch \"takes work\" stays at the machine (USE-004, OD-C8). VALIDATION names the field out of range; NOT_FOUND for an unknown device."
+  setDevicePolicy(deviceId: ID!, input: DevicePolicyInput!): DevicePolicy!
 
   # Phase 3: builds (WP-36, R-107)
   "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."

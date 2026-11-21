@@ -31,7 +31,12 @@
   ],
   "domains": {
     "events": [],
-    "compute": [],
+    "compute": [
+      "devices",
+      "events",
+      "metrics",
+      "jobs"
+    ],
     "credentials": [
       "events"
     ],
@@ -247,6 +252,9 @@
       "access"
     ],
     "sealed_records": [
+      "access"
+    ],
+    "compute": [
       "access"
     ]
   }

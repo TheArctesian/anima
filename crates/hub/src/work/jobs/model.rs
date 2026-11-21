@@ -148,6 +148,14 @@ pub struct Machine {
     pub excluded: bool,
 }
 
+impl Machine {
+    /// Whether the operator set the machine off in the hub, or the hub holds it off at `now`.
+    #[must_use]
+    pub fn held_off(&self, now: DateTime<Utc>) -> bool {
+        super::placement::is_off(self, now)
+    }
+}
+
 /// A job that a machine refused or lost.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fault {

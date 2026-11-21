@@ -159,6 +159,17 @@ pub async fn capabilities(
     Ok(found)
 }
 
+/// The hardware values of each device whose daemon sent them, with when the hub stored them
+/// (CAP-001 to CAP-005). The device policy reads the power source and the operator activity.
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored row this version does not read.
+pub async fn hardware(
+    db: &PgPool,
+) -> Result<HashMap<DeviceId, (daemon_core::hardware::Hardware, DateTime<Utc>)>, Error> {
+    store::hardware(db).await
+}
+
 /// Of `devices`, those whose daemon's metrics are stale: its token was revoked, it has sent no
 /// batch yet, or it was marked stale after 30 seconds with none (MET-018). Ask only for the
 /// devices whose metrics source is `daemon`; for any other the answer means nothing.

@@ -5,6 +5,7 @@ mod agent_usage;
 mod capabilities;
 mod change;
 mod compose_file;
+mod compute_policy;
 mod containers;
 mod metrics;
 mod read;
@@ -23,6 +24,8 @@ pub enum DeviceTool {
     Get,
     Metrics,
     CapabilityList,
+    ComputePolicyList,
+    ComputePolicySet,
     AgentUsage,
     ContainerList,
     ContainerStorage,
@@ -38,12 +41,13 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 19] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
         Self::Metrics,
         Self::CapabilityList,
+        Self::ComputePolicyList,
         Self::AgentUsage,
         Self::ContainerList,
         Self::ContainerStorage,
@@ -56,6 +60,7 @@ impl DeviceTool {
         Self::Wake,
         Self::Update,
         Self::Delete,
+        Self::ComputePolicySet,
     ];
 
     #[must_use]
@@ -63,6 +68,7 @@ impl DeviceTool {
         match self {
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
+            Self::ComputePolicyList | Self::ComputePolicySet => compute_policy::definition_of(self),
             Self::AgentUsage => agent_usage::definition(),
             Self::ContainerList
             | Self::ContainerStorage
@@ -78,6 +84,10 @@ impl DeviceTool {
     ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "a flat dispatch with one arm for each tool"
+    )]
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::FleetOverview => read::overview(hub).await,
@@ -85,6 +95,9 @@ impl DeviceTool {
             Self::Get => read::get(hub, arguments).await,
             Self::Metrics => metrics::metrics(hub, arguments).await,
             Self::CapabilityList => capabilities::list(hub, arguments).await,
+            Self::ComputePolicyList | Self::ComputePolicySet => {
+                compute_policy::call(self, hub, arguments).await
+            }
             Self::AgentUsage => agent_usage::usage(hub, arguments).await,
             Self::ContainerList
             | Self::ContainerStorage

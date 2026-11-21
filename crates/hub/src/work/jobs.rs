@@ -39,6 +39,17 @@ use crate::{
 /// How often the upkeep ends the leases that ran out and the attempts that are too long.
 pub const LEASE_SWEEP: std::time::Duration = std::time::Duration::from_secs(30);
 
+/// What the hub knows of each machine for work (the switch "takes work", USE-004); a device
+/// that never asked for work has no entry. The device policy of compute reads it (CMP-002).
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored row this version does not read.
+pub async fn machines(
+    db: &PgPool,
+) -> Result<std::collections::HashMap<crate::ids::DeviceId, Machine>, Error> {
+    store::machines(db).await
+}
+
 /// Why an operation on the jobs failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
