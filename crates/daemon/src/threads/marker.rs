@@ -125,6 +125,7 @@ async fn environment_words(pid: u32) -> Option<Vec<String>> {
     Some(
         bytes
             .split(|byte| *byte == 0)
+            .filter(|one| !one.is_empty())
             .map(|one| String::from_utf8_lossy(one).into_owned())
             .collect(),
     )

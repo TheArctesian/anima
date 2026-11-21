@@ -128,7 +128,9 @@ mod tests {
             of_an_agent(i32::try_from(gone).ok(), dir).await,
             "a process that ended before it was read"
         );
-        let me = i32::try_from(std::process::id()).ok();
-        assert!(!of_an_agent(me, dir).await, "this test is not an agent");
+        if std::env::var_os(crate::threads::marker::MARK).is_none() {
+            let me = i32::try_from(std::process::id()).ok();
+            assert!(!of_an_agent(me, dir).await, "this test is not an agent");
+        }
     }
 }
