@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use daemon_core::readings::{Memory, Reading, df, macos};
+use daemon_core::readings::{Memory, Reading, apfs, df, macos};
 
 use super::command::FixedCommand;
 
@@ -46,6 +46,7 @@ pub async fn reading(now: DateTime<Utc>) -> Reading {
     );
     let sysctl = sysctl.map_or_default(|bytes| macos::sysctl(&bytes));
     let used = vm_stat.and_then(|bytes| macos::memory_used_bytes(&bytes, sysctl.page_size));
+    let (disks, drives) = apfs::containers(df_out.map_or_default(|bytes| df::disks(&bytes, 1024)));
     Reading {
         cpu: top.and_then(|bytes| macos::cpu(&bytes)),
         memory: sysctl
@@ -57,10 +58,10 @@ pub async fn reading(now: DateTime<Utc>) -> Reading {
             }),
         load: sysctl.load,
         uptime_seconds: sysctl.uptime_seconds(now),
-        disks: df_out.map_or_default(|bytes| df::disks(&bytes, 1024)),
+        disks,
         interfaces: netstat.map_or_default(|bytes| macos::interfaces(&bytes)),
-        // No `lsblk` on macOS: its mounts stand alone (MET-031).
-        drives: None,
+        // No `lsblk` on macOS: each APFS container is a drive, other mounts stand alone (MET-031).
+        drives,
         drive_counters: Vec::new(),
     }
 }

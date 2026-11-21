@@ -2770,6 +2770,25 @@ VPN keys and sites) already used these roles. Tests prove which row plays a fade
 
 Result: Open.
 
+### HT-081: one Storage row for each disk of a Mac (MET-027, MET-031)
+
+Built on the branch `metrics/mac-storage`: `crates/daemon-core/src/readings/apfs.rs` makes one drive of each APFS
+container from `df -P -k` (the data volume, or else the first mount of the operator, stands for it), the daemon and
+the SSH collector of the hub use it on macOS, and the wrappers of iOS apps and the device file system of Xcode are no
+mounts. The Storage section shows the bytes used and the share beside a mount, not the size again. The tests prove it
+with the `df` output of a Mac with one internal drive, an external drive and a network share. No person saw the
+section for a real Mac.
+
+1. On a Mac with one internal drive, the daemon running and no external drive, open the device in Anima, tab
+   Overview, section Storage.
+   Expected: the line above the table says "1 drive" and the size of the internal drive (about 1.8 TiB for a 2 TB
+   drive). One row, named `disk3` or a near name, kind "Disk", with the mount `/System/Volumes/Data`, its bytes used
+   and its share. No row for `/`, `/nix`, `/Volumes/Recovery` or a path under `/private/var/folders`.
+2. Connect an external drive with an APFS or HFS+ volume, wait one minute and reload the page.
+   Expected: a second row for the external drive with its own size and its mount under `/Volumes`.
+3. Open a Linux device that has drives in Anima.
+   Expected: its Storage rows are as before; beside each mount the bytes used and the share.
+
 ### HT-078: groups of cards on the Projects screen (PRO-059 to PRO-063)
 
 Built on the branch `ui/project-groups`: `apps/client/src/lib/projects/groups/` (the groups kept in the storage of
