@@ -86,7 +86,7 @@ jobs:
           & bun deploy/bin/windows-command.ts cargo install cargo-nextest --locked
           if ($LASTEXITCODE -ne 0) { throw 'cargo-nextest installation failed' }
           $proof = $env:EVENT -eq 'workflow_dispatch'
-          $keepGoing = if ($proof) { @('--keep-going') } else { @() }
+          $keepGoing = @(); if ($proof) { $keepGoing = @('--keep-going') }
           & bun run gates @keepGoing 2>&1 | Tee-Object -FilePath windows-gates.log
           $gates = $LASTEXITCODE
           if ($gates -ne 0 -and -not $proof) { throw 'Windows gates failed' }
