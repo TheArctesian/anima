@@ -39,12 +39,20 @@ function links(platform: Capabilities, buildsOn = true): HTMLAnchorElement[] {
 
 it('BLD-080: the desktop app has a Builds item between Devices and Settings', () => {
   const found = links(DESKTOP_MAC);
-  expect(found.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/builds', '/extensions', '/settings']);
-  expect(found[2]?.querySelector('.words')?.textContent).toBe('Builds');
+  expect(found.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/threads', '/agents/usage', '/builds', '/extensions', '/settings']);
+  expect(found[3]?.querySelector('.words')?.textContent).toBe('Builds');
 });
 
 it('PRO-038: the desktop app shows no Builds item for a hub that cannot publish', () => {
-  expect(links(DESKTOP_MAC, false).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
+  expect(links(DESKTOP_MAC, false).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/threads', '/agents/usage', '/extensions', '/settings']);
+});
+
+it('THR-017: the desktop application has the Threads item, above Agent usage', () => {
+  expect(links(DESKTOP_MAC, false)[1]?.querySelector('.words')?.textContent).toBe('Threads');
+});
+
+it('THR-017: a browser has no Threads item', () => {
+  expect(links(BROWSER).map((link) => link.getAttribute('href'))).not.toContain('/threads');
 });
 
 it('BLD-080: a browser has no Builds item', () => {

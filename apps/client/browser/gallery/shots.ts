@@ -13,10 +13,12 @@ export interface Mode {
   readonly folder: string;
 }
 
-export const WIDTHS = [800, 1280, 1600] as const;
+/** `GALLERY_WIDTHS=800,1440` shoots other widths than the three of the gallery. */
+const asked = (process.env['GALLERY_WIDTHS'] ?? '').split(',').map(Number).filter((width) => Number.isInteger(width) && width >= 320);
+export const WIDTHS: readonly number[] = asked.length > 0 ? asked : [800, 1280, 1600];
 export const HEIGHT = 900;
 const THEMES: readonly ThemeName[] = ['dark', 'light'];
-const DYSLEXIC_WIDTH = 1280;
+const DYSLEXIC_WIDTH = WIDTHS.includes(1280) ? 1280 : (WIDTHS[0] ?? 1280);
 
 function mode(theme: ThemeName, width: number, dyslexic: boolean): Mode {
   return { theme, width, dyslexic, folder: `${theme}-${String(width)}${dyslexic ? '-dyslexic' : ''}` };

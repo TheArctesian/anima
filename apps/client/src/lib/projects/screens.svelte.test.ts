@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { installAnimations } from '$lib/forms/animations.fixture';
+import { installAnimations, played } from '$lib/forms/animations.fixture';
 import { projectsApi, type ProjectsApi } from './api';
 import { forgeApi } from './forge/api';
 import { fakeForgeHub } from './forge/forge.fixture';
@@ -79,8 +79,11 @@ it('PRO-002: Leave out removes the entry at once and Restore brings it back', as
   await openList();
   document.querySelectorAll('li.entry')[0]?.querySelector('button')?.click();
   flushSync();
-  expect(text()).not.toContain('acme/acme-site');
+  // At once, before the hub answers: the tile fades where it stands (5.7.3 Reorder), and is gone when the fade ends.
+  const leaving = [...document.querySelectorAll('li.entry')].find((entry) => entry.textContent.includes('acme/acme-site'));
+  expect(played.some((each) => each.element === leaving)).toBe(true);
   await settled();
+  expect(text()).not.toContain('acme/acme-site');
   expect(hub.sent).toContain('LeaveOutRepository:r1');
   await click('Left out');
   expect(text()).toContain('acme/acme-site');
