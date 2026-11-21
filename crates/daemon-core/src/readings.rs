@@ -18,6 +18,7 @@
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod captures;
+pub mod container;
 pub mod df;
 pub mod drives;
 pub mod gpu;
@@ -29,7 +30,7 @@ mod tests;
 
 pub use drives::{Drive, DriveKind};
 pub use gpu::{GpuReading, GpuVendor, Vram};
-pub use reading::{Cpu, Disk, DriveCounters, Interface, Load, Memory, Reading};
+pub use reading::{Cpu, Disk, DriveCounters, HubStorage, Interface, Load, Memory, Reading};
 
 /// The longest label (mount point, interface or drive name) kept, in bytes.
 const LABEL_LIMIT: usize = 128;

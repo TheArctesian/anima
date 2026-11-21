@@ -4,6 +4,7 @@
 
 pub mod agent_sessions;
 pub mod command;
+pub mod container;
 pub mod gpu;
 mod inventory;
 mod linux;
@@ -38,6 +39,30 @@ impl Platform {
         } else {
             Self::Linux
         }
+    }
+}
+
+/// What the daemon reads: the machine it runs on, or the container of a hosted hub, where a
+/// reading of the machine would show the server (HMD-071, HMD-074).
+#[derive(Debug)]
+pub enum Source {
+    Machine(Platform),
+    HostedHub(container::Container),
+}
+
+impl Source {
+    /// One collection at `now` (the wall clock for macOS, the monotonic one for the container).
+    pub async fn reading(&mut self, now: DateTime<Utc>, instant: std::time::Instant) -> Reading {
+        match self {
+            Self::Machine(platform) => reading(*platform, now).await,
+            Self::HostedHub(container) => container.reading(instant).await,
+        }
+    }
+
+    /// Whether GPUs are looked for: never in a container, where a GPU would be one of the server.
+    #[must_use]
+    pub const fn has_gpus(&self) -> bool {
+        matches!(self, Self::Machine(_))
     }
 }
 

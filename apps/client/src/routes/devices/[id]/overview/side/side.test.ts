@@ -68,3 +68,10 @@ it('R-222, HMD-049: with no metrics a hosted hub names the daemon only, and a di
   expect(metricsOffText(true)).toBe('Metrics are off. They appear when the daemon is installed on this device.');
   expect(metricsOffText(false)).toBe('Metrics are off. Install the daemon or turn on SSH metrics in Settings.');
 });
+
+it('HMD-046: the Connect card of the hub\'s own device has one row with no button in place of SSH, RDP and VNC', () => {
+  const hub = { ...DEVICE, kind: 'hub', ssh: { ...DEVICE.ssh, enabled: false }, vnc: { ...DEVICE.vnc, enabled: false } };
+  const ways = waysIn(hub, true);
+  expect(ways.filter((way) => way.action !== null)).toEqual([]);
+  expect(ways[0]).toMatchObject({ name: 'SSH, RDP and VNC', button: null });
+});
