@@ -1,6 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import type { HubAddress } from './address';
+import { gatewayCode, gatewayError, hubDidNotAnswer } from './gateway/gateway';
 import { isGraphQLResponse, MALFORMED, noAnswer, parseResponse, TOKEN_UNREADABLE, type HubResult } from './error';
 import type { StatusSignal } from './status/status';
 
@@ -81,6 +82,12 @@ export async function sendRequest<TResult, TVariables>(
     return { ok: false, error: noAnswer(transport.address.origin) };
   }
   const body = parseJson(text);
+  // The gateway of the hosted hubs answered in place of the hub (HMD-059): its code decides.
+  const refusal = gatewayCode(body);
+  if (refusal !== null) {
+    transport.signal(hubDidNotAnswer(refusal) ? 'failed' : 'answered');
+    return { ok: false, error: gatewayError(refusal) };
+  }
   if (!isGraphQLResponse(body)) return { ok: false, error: MALFORMED };
   transport.signal('answered');
   const result = parseResponse(body);

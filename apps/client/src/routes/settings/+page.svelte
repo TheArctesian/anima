@@ -9,6 +9,7 @@
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
   import LinkDevicesSection from '$lib/link/LinkDevicesSection.svelte';
+  import OpenPortRows from '$lib/link/ports/OpenPortRows.svelte';
   import { desktopLocalHubShell, LocalHubWatch } from '$lib/local-hub/local-hub.svelte';
   import LocalHubSection from '$lib/local-hub/LocalHubSection.svelte';
   import McpSection from '$lib/mcp/McpSection.svelte';
@@ -80,7 +81,7 @@
   {:else if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
-      {#if localHub}<HubLinkRow />{/if}
+      {#if localHub}<HubLinkRow /><OpenPortRows />{/if}
     </SettingsSection>
   {/if}
 

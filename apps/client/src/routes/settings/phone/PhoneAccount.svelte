@@ -1,11 +1,11 @@
 <script lang="ts">
   import { accessApi } from '$lib/access/api';
   import { signInNeeded } from '$lib/access/guard';
-  import { goToSignIn, goToWelcome } from '$lib/access/navigation';
+  import { leaveHub } from '$lib/access/leave/leave';
+  import { goToSignIn } from '$lib/access/navigation';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { signOutMobile } from '$lib/access/mobile/sign-out';
 
   // The Account rows of the phone layout (mockup 7): the user name, whether two-factor is on, and Sign out.
   const hub = useHub();
@@ -24,10 +24,10 @@
   async function leave(): Promise<void> {
     if (busy) return;
     busy = true;
-    const kept = await signOutMobile(api, hub.address);
+    // In a browser behind the gateway, this also signs out of the gateway (HMD-059).
+    const kept = await leaveHub(hub, api);
     busy = false;
-    if (kept === null) goToWelcome();
-    else problem = kept;
+    if (kept !== null) problem = kept;
   }
 </script>
 

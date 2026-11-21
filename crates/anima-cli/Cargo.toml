@@ -32,6 +32,8 @@ bytes.workspace = true
 # API-key expiry from a number of days (`key create --expires 90d`).
 chrono.workspace = true
 clap.workspace = true
+# `anima agents threads`: the session files of Claude Code and Codex read as threads (THR-001).
+agent-threads = { path = "../agent-threads" }
 clap_complete.workspace = true
 # `anima ssh` and the hidden prompts (CMD-010): raw mode and the window size, restored on
 # every exit (K4 Section 8).

@@ -26,4 +26,12 @@ export const SCREENS: readonly Screen[] = [
     },
   },
   ...ERROR_SCREENS,
+  {
+    name: 'welcome',
+    signedOut: true,
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/welcome`);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    },
+  },
 ];
