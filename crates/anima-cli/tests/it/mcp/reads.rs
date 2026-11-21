@@ -290,6 +290,19 @@ async fn mcp_017_capability_list_filters_and_gives_device_text_cleaned_and_cappe
         None,
         "a usable tool has no hint"
     );
+    let backends = &mac["hardware"]["backends"];
+    assert_eq!(mac["hardware"]["usableMemorySource"], "DEFAULT_SHARE");
+    assert_eq!(backends[0]["usable"], true);
+    assert_eq!(
+        backends[0].get("hint"),
+        None,
+        "a usable backend has no hint"
+    );
+    let not_there = backends[1]["hint"].as_str().unwrap_or_default();
+    assert!(
+        not_there.starts_with("This backend does not exist"),
+        "{not_there}"
+    );
     let version = mac["osVersion"].as_str().unwrap_or_default();
     assert!(
         version.ends_with("…[cut: 4500 more characters]"),

@@ -4,6 +4,7 @@
 mod chart;
 mod drives;
 mod gpus;
+mod hardware;
 mod inventory;
 mod latest;
 mod points;
@@ -14,6 +15,7 @@ mod rows;
 pub(super) use chart::chart;
 pub(super) use drives::{drives, replace_drives, write_drives};
 pub(super) use gpus::{Discovery, gpus, replace_gpus, write_gpus};
+pub(super) use hardware::{hardware, write_hardware};
 pub(super) use inventory::{inventories, write_inventory};
 pub(super) use latest::latest;
 pub(super) use points::{PointValue, add_points, created_series};

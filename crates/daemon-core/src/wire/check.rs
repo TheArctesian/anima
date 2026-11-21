@@ -14,6 +14,7 @@ use super::{
     RefusalCode, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
+use crate::hardware::Hardware;
 use crate::inventory::Inventory;
 use crate::points::{
     Kind, MAX_GPU_INDEX, MAX_LABELS, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling,
@@ -39,6 +40,8 @@ pub struct Accepted {
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
     pub inventory: Option<Inventory>,
+    /// The hardware values, when the batch has them, with the backends this hub knows (CAP-032).
+    pub hardware: Option<Hardware>,
     pub daemon_version: Option<String>,
     /// The agent usage, when the batch has it, with the session days of known sources only
     /// (R-135).
@@ -82,6 +85,10 @@ impl Batch {
             Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
             None => None,
         };
+        let hardware = match self.hardware {
+            Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
+            None => None,
+        };
         let agent_usage = match self.agent_usage {
             Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
             None => None,
@@ -99,6 +106,7 @@ impl Batch {
             gpus: self.gpus,
             drives: self.drives,
             inventory,
+            hardware,
             daemon_version: self.daemon_version,
             agent_usage,
             keys: self.keys.map(|keys| keys.held),

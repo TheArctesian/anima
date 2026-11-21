@@ -12,6 +12,33 @@ fn version_of(tool: ToolName, output: &str) -> Option<String> {
 }
 
 #[test]
+fn cap_003_each_runtime_probe_reads_the_version_its_runtime_prints() {
+    let cases = [
+        (
+            ToolName::LlamaServer,
+            "version: 6040 (8a2afb7)\nbuilt with clang for arm64-apple-darwin\n",
+            "6040",
+        ),
+        (ToolName::MlxLm, "0.28.3\n", "0.28.3"),
+        (ToolName::Vllm, "0.11.0\n", "0.11.0"),
+        (ToolName::Ollama, "ollama version is 0.12.6\n", "0.12.6"),
+        (
+            ToolName::Ollama,
+            "Warning: could not connect to a running Ollama instance\n\
+             Warning: client version is 0.12.6\n",
+            "0.12.6",
+        ),
+    ];
+    for (tool, output, expected) in cases {
+        assert_eq!(
+            version_of(tool, output).as_deref(),
+            Some(expected),
+            "{output}"
+        );
+    }
+}
+
+#[test]
 fn cap_023_each_probe_reads_the_version_its_tool_prints() {
     let cases = [
         (
@@ -142,7 +169,12 @@ fn cap_022_every_probe_only_asks_its_program_for_a_version() {
     tools.dedup();
     assert_eq!(tools, ToolName::ALL, "one probe per tool, in name order");
     for probe in PROBES {
-        assert_eq!(probe.program.name, probe.tool.as_str());
+        let program = if probe.tool == ToolName::MlxLm {
+            "mlx_lm.server"
+        } else {
+            probe.tool.as_str()
+        };
+        assert_eq!(probe.program.name, program);
         let asks = probe.program.args;
         assert!(
             matches!(asks, ["--version" | "-version"] | ["nextest", "--version"]),
@@ -162,14 +194,15 @@ fn cap_025_only_claude_and_codex_get_a_home_folder_of_their_own() {
 }
 
 #[test]
-fn cap_023_xcodebuild_is_probed_on_macos_only() {
+fn cap_023_xcodebuild_and_mlx_lm_are_probed_on_macos_only() {
     let on_linux: Vec<ToolName> = PROBES
         .iter()
         .filter(|probe| probe.runs_on(Os::Linux))
         .map(|probe| probe.tool)
         .collect();
     assert!(!on_linux.contains(&ToolName::Xcodebuild));
-    assert_eq!(on_linux.len(), 12);
+    assert!(!on_linux.contains(&ToolName::MlxLm));
+    assert_eq!(on_linux.len(), 15);
     assert!(PROBES.iter().all(|probe| probe.runs_on(Os::Macos)));
 }
 

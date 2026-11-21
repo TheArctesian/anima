@@ -10,6 +10,7 @@ pub mod usage;
 use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, Utc};
+use daemon_core::hardware::Hardware;
 use daemon_core::points::{BATCH_POINTS, Backlog, Point};
 use daemon_core::wire::{
     Announcements, Batch, BatchDrive, BatchGpu, BatchInventory, PushAccepted, RefusalCode, Renewed,
@@ -38,6 +39,8 @@ pub enum Event {
     Drives(Vec<BatchDrive>),
     /// The tool inventory probed at start or after a change; sent in the next batch (CAP-027).
     Inventory(BatchInventory),
+    /// The hardware values read with the inventory; sent in the next batch (CAP-032).
+    Hardware(Hardware),
     /// The daemon's agent usage state and the session days that changed (AIS-019).
     AgentUsage(UsageReport),
 }
@@ -108,6 +111,7 @@ impl Pusher {
             Event::Gpus(gpus) => self.announced.gpus = Some(gpus),
             Event::Drives(drives) => self.announced.drives = Some(drives),
             Event::Inventory(inventory) => self.announced.inventory = Some(inventory),
+            Event::Hardware(hardware) => self.announced.hardware = Some(hardware),
             Event::AgentUsage(report) => self.usage.take(report),
         }
     }

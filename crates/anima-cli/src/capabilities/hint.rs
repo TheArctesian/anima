@@ -1,7 +1,49 @@
-//! The repair hint for a tool that is not usable: a fixed sentence chosen by the tool and the
-//! reason, never text from the device (CAP-024).
+//! The repair hint for a tool or a backend that is not usable: a fixed sentence chosen by the
+//! tool or backend and the reason, never text from the device (CAP-002, CAP-024).
 
-use super::documents::capability_list::NotUsableReason;
+use super::documents::capability_list::{BackendNotUsable, NotUsableReason};
+
+/// What the operator can do about `backend` being not usable for `reason` (CAP-002).
+#[must_use]
+pub fn backend_hint(backend: &str, reason: &BackendNotUsable) -> &'static str {
+    match (backend, reason) {
+        (_, BackendNotUsable::NO_DEVICE) => {
+            "No GPU of this backend's vendor is in the device; use another backend."
+        }
+        ("cuda", BackendNotUsable::NO_DRIVER) => {
+            "Install the NVIDIA driver on the device (on Pop!_OS: sudo apt install \
+             system76-driver-nvidia), then restart it."
+        }
+        ("rocm", BackendNotUsable::NO_DRIVER) => {
+            "Install the AMD ROCm driver on the device so that /dev/kfd is present."
+        }
+        ("vulkan", BackendNotUsable::NO_DRIVER) => {
+            "Install the Vulkan driver of the GPU on the device (for example the package \
+             mesa-vulkan-drivers, or the NVIDIA driver)."
+        }
+        (_, BackendNotUsable::NO_PERMISSION) => {
+            "Add the daemon's user to the render and video groups on the device, then sign in \
+             again: sudo usermod -aG render,video <user>."
+        }
+        (_, BackendNotUsable::NOT_SUPPORTED) => {
+            "This backend does not exist on the device's system or processor; use another."
+        }
+        (_, BackendNotUsable::NO_DRIVER) => "Install the driver of the GPU on the device.",
+        (_, BackendNotUsable::FAILED | BackendNotUsable::Other(_)) => {
+            "Update the hub and this command line to the daemon's version to see why."
+        }
+    }
+}
+
+/// Whether the hint of `reason` is worth a note: the device has the hardware, and the operator
+/// can repair it.
+#[must_use]
+pub const fn backend_repairable(reason: &BackendNotUsable) -> bool {
+    !matches!(
+        reason,
+        BackendNotUsable::NO_DEVICE | BackendNotUsable::NOT_SUPPORTED
+    )
+}
 
 /// What the operator can do about `tool` being not usable for `reason`.
 #[must_use]
@@ -61,6 +103,10 @@ mod tests {
             hint("cargo", &NotUsableReason::TIMED_OUT),
             hint("bun", &NotUsableReason::TIMED_OUT)
         );
+        assert!(backend_hint("rocm", &BackendNotUsable::NO_PERMISSION).contains("render"));
+        assert!(backend_hint("cuda", &BackendNotUsable::NO_DRIVER).contains("NVIDIA driver"));
+        assert!(!backend_repairable(&BackendNotUsable::NOT_SUPPORTED));
+        assert!(backend_repairable(&BackendNotUsable::NO_DRIVER));
         assert_eq!(
             hint("bun", &NotUsableReason::Other("denied".to_owned())),
             hint("bun", &NotUsableReason::FAILED),

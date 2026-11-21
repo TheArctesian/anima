@@ -1,10 +1,11 @@
 //! Reads this computer (MET-002): the `/proc` files and fixed commands, nothing written, and
-//! the probes of the tool inventory (CAP-028). Parsing is `daemon_core::readings` and
+//! the probes of the tool inventory (CAP-028) and the hardware values (CAP-032). Parsing is `daemon_core::readings` and
 //! `daemon_core::inventory`; this module only fetches the bytes (MET-016).
 
 pub mod agent_sessions;
 pub mod command;
 pub mod gpu;
+mod hardware;
 mod inventory;
 mod linux;
 mod macos;
@@ -13,6 +14,7 @@ mod windows;
 
 use chrono::{DateTime, Utc};
 use daemon_core::readings::Reading;
+pub use hardware::hardware;
 pub use inventory::inventory;
 
 /// What this computer is, which decides the commands.

@@ -38,6 +38,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
+| HT-NEW-l1hardware | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -223,6 +224,46 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-NEW-l1hardware: the hardware values agree with what each system shows
+
+Built: `crates/daemon-core/src/hardware/`, `crates/daemon/src/readers/hardware/`, the model
+runtimes in the tool inventory, the hub migration `0720_metrics_hardware.sql`, the field
+`hardware` of `capabilities`, `anima capability list` and `anima_capability_list` (task L1-1 of
+the compute plan; CAP-001 to CAP-005, CAP-032; R-165). The tests use scripted output in place of
+the real commands and files, and a scripted hub. This check gives the values that OD-C1 needs.
+
+The hub and the daemons must be of this build. A change to the hub on the VPS needs the
+confirmation of the operator (VPS-005). A local hub is sufficient for this check
+([setup/local-hub.md](procedures/setup/local-hub.md)).
+
+1. Start the `anima-daemon` of this build on the Mac of the operator and on the Linux PC
+   `pop-os`. Wait 1 minute. Run `anima capability list --json`.
+2. On the Mac, run `sysctl hw.memsize iogpu.wired_limit_mb`, `pmset -g batt`, `pmset -g therm`,
+   `df -k ~` and `system_profiler SPDisplaysDataType`. Expected: `systemMemoryBytes` and
+   `unifiedMemoryBytes` are `hw.memsize`; `usableMemoryBytes` is `iogpu.wired_limit_mb` × 1048576
+   with `WIRED_LIMIT` when that value is not 0, else three quarters of `hw.memsize` (above 36 GiB)
+   or two thirds with `DEFAULT_SHARE`; `freeDiskBytes` is the available space of `df` rounded
+   down to whole GiB; `metal` and `cpu` are usable and the other backends are `NOT_SUPPORTED`;
+   `powerSource` agrees with the first line of `pmset -g batt`.
+3. If a tool that runs Metal is at hand (for example `llama-server` or an MLX script that prints
+   `mx.metal.device_info()`), compare its `recommendedMaxWorkingSetSize` with
+   `usableMemoryBytes`. Write the two values in the result: they decide whether the default share
+   is correct for this Mac.
+4. On `pop-os`, run `free -b`, `nvidia-smi --query-gpu=name,memory.total --format=csv`,
+   `ls /dev/kfd /usr/share/vulkan/icd.d /etc/vulkan/icd.d` and `df -B1 ~`. Expected:
+   `systemMemoryBytes` is the total of `free -b`; `dedicatedMemoryBytes` is the sum of the
+   memory totals of `nvidia-smi`; `cuda` is usable when `nvidia-smi` runs; `vulkan` is usable
+   when an ICD file is listed; `rocm` is `NO_DEVICE` when the PC has no AMD GPU.
+5. On each computer, run `llama-server --version`, `mlx_lm.server --version` (Mac),
+   `vllm --version` and `ollama --version` for the runtimes it has. Expected: each runtime it
+   has is in the tools with the same version. Write in the result each runtime that shows
+   `NO_VERSION`: `llama-server` may print its version on standard error, which the probe does not
+   read, and `mlx_lm.server` may have no `--version`.
+6. On the Mac, leave the keyboard and the pointer for 6 minutes, wait for the next probe
+   (15 minutes) and run the command again. Expected: `operatorActive` is false.
 
 Result: Open.
 

@@ -563,7 +563,8 @@ pub async fn stale_daemons(db: &Db, devices: &[DeviceId]) -> Result<HashSet<Devi
 // (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
 pub struct Capabilities { pub device: DeviceId, pub inventory: daemon_core::inventory::Inventory, pub found_at: DateTime<Utc> }
 pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option<String> }
-/// The tool inventory each daemon sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
+/// The tool inventory each daemon sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030),
+/// each with the hardware values its daemon sent, when it sent them (CAP-032; R-165, task L1-1).
 /// Each tool is usable with its version or not usable with a fixed `daemon_core::inventory::Reason` (CAP-024).
 /// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
