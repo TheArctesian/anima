@@ -217,6 +217,14 @@ that owns the area.
 | SF-NEW-revcatvars | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatsecret | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatpg | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-NEW-lsdownload | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lsgenerator | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lstier | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lsshell | Entries that are a shell: desktops, code editors, SSH, with no password. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lsprivate | How a private route is limited was not stated. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lsstreams | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lsroot | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-NEW-lstestmachine | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2327,6 +2335,121 @@ Effect, and who can cause it: The author of a recipe or of an application name. 
 Mitigation now: The password is 22 to 128 letters and digits (at least 128 bits). An application identifier with `_` or `--` is refused, so the names are different for different identifiers; the way back uses `__back_` and `__check`, which no application name has. An extension is one of a fixed list (`vector`, `pg_trgm`, `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry `postgresql` names). Tests: `crates/catalogue/src/postgresql/tests.rs`.
 
 State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
+
+A separate reviewer read Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code exists for them. The text is corrected in the same branch.
+
+### SF-NEW-lsdownload: A pinned image still downloads code at its start. High
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: The init of LinuxServer.io reads `DOCKER_MODS` and downloads and runs other images; `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` install packages; some images download the application (Plex with `VERSION=latest`). This code is outside the pin and the test.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A user variable, or data of the publisher that the generator copies, that names an image of an attacker. Effect: code of the attacker runs as root in the container.
+
+Mitigation now: Section 15.1 and 15.9: the text says that only the image is pinned; the generator and the applications program refuse those variables and each `VERSION` but `docker` or a fixed version; the machine test fails on an outbound connection not on its list.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lsgenerator: No person reads the changes of the generator before the merge. High
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: The merge train lands each branch whose gates passed, with no approval of a person, and about 200 changed digests cannot be judged by reading them.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A publisher that is taken over, or a change of the metadata at `api.linuxserver.io`, adds a port, a variable or a volume. Effect: the change lands on `dev` with nobody reading it.
+
+Mitigation now: Section 15.4 and 15.9: the generator fails for each change that is not a digest or a version; such a change needs a named reviewer and the merge rule refuses the branch without one; the digest comes from the registry; a safe reader; a token that pushes only its own branch.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lstier: Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: R-NEW-catalogueways keeps "each entry is tested"; tier 2 ships entries that are not tested. The applications program cannot tell a tier, and a new pin puts an entry back in tier 2. "Tested" says nothing of default credentials.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An agent builds tier 2 as if allowed; an agent installs a tier-1 entry that is a shell. Effect: an entry that is not tested, or a shell, installed with no person.
+
+Mitigation now: Section 15.1, 15.4 and OD-HOST-50: tier 2 needs a ruling of its own; an install by an API key or an agent names the digest, and the hub refuses unless that digest passed; the screen says that tested is not a security review.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lsshell: Entries that are a shell: desktops, code editors, SSH, with no password. High
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: 94 desktop images give the user `abc` `sudo` with no password; `code-server`, `openssh-server` (port 2222), `rdesktop` and pages with no sign-in are the same class. The mark came from data of the publisher.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: Each node of the network of Anima, or of the local network with "Open to the network", reaches a root shell in a container. Effect: a foothold on the machine's networks.
+
+Mitigation now: Section 15.7: the class `shell` from a fixed list of the repository; a credential that the machine makes is required; no public route or stream; a person installs it; OD-HOST-54 asks whether a private route is permitted.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lsprivate: How a private route is limited was not stated. High
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: The text said "private (only his devices)" with no rule of the listener, and the network of Anima also holds each machine and its containers.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A container on a machine of the network reaches a private route. Effect: a route that he thought private is open to each container.
+
+Mitigation now: Section 16.7: a private route listens only on the address of the hub on the network of Anima and the proxy checks the interface; never in the table of the door; private means each node, containers included; the same rights as a public route.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lsstreams: Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: The UDP rule never fired for a false source. A public stream to a database or Redis that expects localhost trust; the application sees the address of the hub. The list of ports that a stream may not use was open. A redirect on a name that Anima gives is an open redirect.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An attacker reflects UDP at a victim, reaches a database, or uses a redirect for phishing.
+
+Mitigation now: Section 16.2 and 16.4: answers bounded by received bytes until a source proves it gets them, a flow limit and idle time, no public syslog; a public stream only for a port marked `stream-public`; a range set by the operator, a fixed list of refused ports, a bind test; a redirect only to `https://` on a proven name.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lsroot: Images start as root with nothing added to contain them; the rule of `shm_size`. Medium
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: `PUID=0` runs the application as root; `no-new-privileges` is optional; the default capabilities stay. `shm_size` gives no right only while `ipc` stays refused.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A recipe or a variable with `PUID=0`. Effect: an application that runs as root.
+
+Mitigation now: Section 15.8 and 15.9: `PUID` or `PGID` 0 is refused; `no-new-privileges:true` and four capabilities dropped, with exceptions by name; `shm_size` in the form of Section 4.5 with `ipc` refused.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-lstestmachine: The machine tests run images that are not trusted. Medium
+
+Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
+
+What it is: The machine tests of task H37 start about 200 images of a different publisher.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An image that a publisher lost control of. Effect: a foothold on the test machine and its networks.
+
+Mitigation now: OD-HOST-53: the test machine is not on the network of Anima or his local network, its outbound traffic is recorded, and it is wiped after each run.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
 
 ## Closed
 
