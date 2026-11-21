@@ -1,2 +1,2 @@
-2026-11-20T23:07:45.832Z
+2026-11-21T00:32:59.496Z
 `bun run quality:documents` failed on the merge commit: docs/mockup/records/device-overview-v2.md: screen-changed-after-mockup apps/client/src/routes/devices has 1 layout file(s) that changed after e7831340; compare [device-overview-v2/index.html](device-overview-v2/index.html) again
