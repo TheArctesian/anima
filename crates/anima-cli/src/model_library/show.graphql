@@ -1,0 +1,37 @@
+# `anima model show`: one model with its variants and files.
+query ModelShow($name: String!) {
+  libraryModel(name: $name) {
+    ...ModelFields
+  }
+}
+
+fragment ModelFields on LibraryModel {
+  name
+  family
+  parameterCount
+  contextLength
+  layerCount
+  hiddenSize
+  attentionHeads
+  keyValueHeads
+  capabilities
+  licence
+  publisher
+  sourceRepositories
+  aliases
+  addedAt
+  variants {
+    address
+    tag
+    format
+    quantisation
+    sourceRepository
+    revision
+    sizeBytes
+    files {
+      path
+      sizeBytes
+      sha256
+    }
+  }
+}

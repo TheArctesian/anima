@@ -163,6 +163,10 @@
     ],
     "rollout": [
       "builds"
+    ],
+    "compute": [
+      "events",
+      "access"
     ]
   },
   "graphql": {
@@ -250,6 +254,9 @@
       "access"
     ],
     "sealed_records": [
+      "access"
+    ],
+    "compute": [
       "access"
     ]
   }

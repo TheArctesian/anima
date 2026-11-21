@@ -14,6 +14,7 @@ pub enum ToolSet {
     Sessions,
     Notifications,
     Web,
+    Models,
     Releases,
     Vpn,
     Retention,
@@ -74,7 +75,7 @@ impl Kind {
 }
 
 impl ToolSet {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Devices,
         Self::Checks,
         Self::Maintenance,
@@ -82,6 +83,7 @@ impl ToolSet {
         Self::Sessions,
         Self::Notifications,
         Self::Web,
+        Self::Models,
         Self::Releases,
         Self::Vpn,
         Self::Retention,
@@ -106,6 +108,7 @@ impl ToolSet {
             Self::Sessions => "sessions",
             Self::Notifications => "notifications",
             Self::Web => "web",
+            Self::Models => "models",
             Self::Releases => "releases",
             Self::Vpn => "vpn",
             Self::Retention => "retention",

@@ -1459,6 +1459,129 @@ type ContainerLog {
   cut: Boolean!
 }
 
+# The model library of the compute domain (compute plan L1-4; LIBM-001 to LIBM-009, SEL-003,
+# SEL-005; ruling R-NEW-modellibrary).
+"What a model can do, as the files of its repository say (LIBM-008). A tag is not evidence that a runtime of Anima runs the model, and it selects no runtime (LIBM-009)."
+enum ModelCapability {
+  CHAT
+  "Calls the tools that a request names."
+  TOOLS
+  CODING
+  REASONING
+  TRANSLATION
+  SUMMARIZATION
+  TEXT_CLASSIFICATION
+  STRUCTURED_EXTRACTION
+  TOKEN_CLASSIFICATION
+  IMAGE_GENERATION
+  IMAGE_EDITING
+  UPSCALING
+  IMAGE_CLASSIFICATION
+  VIDEO_GENERATION
+  VIDEO_EDITING
+  VIDEO_UNDERSTANDING
+  VIDEO_CLASSIFICATION
+  "Music and sound-effects generation."
+  MUSIC_GENERATION
+  AUDIO_GENERATION
+  AUDIO_UNDERSTANDING
+  AUDIO_CLASSIFICATION
+  AUDIO_TO_AUDIO
+  TRANSCRIPTION
+  SPOKEN_TRANSLATION
+  TEXT_TO_SPEECH
+  CONVERSATIONAL_VOICE
+  IMAGE_UNDERSTANDING
+  OCR
+  DOCUMENT_FIELD_EXTRACTION
+  "Table and document question answering."
+  DOCUMENT_QUESTION_ANSWERING
+  VISUAL_DOCUMENT_RETRIEVAL
+  OBJECT_DETECTION
+  "Image segmentation and background masks."
+  IMAGE_SEGMENTATION
+  DEPTH_ESTIMATION
+  "Keypoint and pose detection."
+  POSE_DETECTION
+  EMBEDDINGS
+  RERANKING
+  TABULAR_CLASSIFICATION
+  TABULAR_REGRESSION
+  "Reinforcement-learning policies: a tag of the catalogue only."
+  POLICY
+  "3D object, mesh and scene generation (later)."
+  THREE_DIMENSIONAL_GENERATION
+}
+
+"How the publisher of a base model gets onto the approved model sources (LIBM-003, R-NEW-modellibrary)."
+enum ModelPublisherApproval {
+  "When a person (not an API key, not an agent) adds a model from an approved repository, the organisation of its base model joins the approved sources."
+  BASE_MODEL
+  "Only the operator adds an organisation, by hand."
+  BY_HAND
+}
+
+"The file format of a variant."
+enum ModelFormat {
+  GGUF
+  MLX
+  SAFETENSORS
+}
+
+"A model of the library (LIBM-001). A null fact is one that the model files did not give (LIBM-005)."
+type LibraryModel {
+  "The name part of name:tag (LIBM-006): 1 to 64 of a-z, 0-9, dot, dash and underscore."
+  name: String!
+  family: String
+  parameterCount: Float
+  contextLength: Int
+  layerCount: Int
+  hiddenSize: Int
+  attentionHeads: Int
+  keyValueHeads: Int
+  capabilities: [ModelCapability!]!
+  licence: String
+  "The organisation of the base model, as the card of the approved repository names it (LIBM-003)."
+  publisher: String
+  "Each Hugging Face repository of the variants, organisation/name."
+  sourceRepositories: [String!]!
+  aliases: [String!]!
+  "In tag order."
+  variants: [ModelVariant!]!
+  addedAt: DateTime!
+}
+
+"A variant of a model (LIBM-002)."
+type ModelVariant {
+  "name:tag (LIBM-006)."
+  address: String!
+  tag: String!
+  format: ModelFormat!
+  "As the files name it, such as Q4_K_M or 4bit."
+  quantisation: String!
+  sourceRepository: String!
+  "The commit of the repository that the file list is from: 40 lower-case hexadecimal characters."
+  revision: String!
+  "The sum of the sizes of the files."
+  sizeBytes: Float!
+  "In path order."
+  files: [ModelFile!]!
+}
+
+"A file of a variant. A pull verifies it against sha256 (PULL-005)."
+type ModelFile {
+  path: String!
+  sizeBytes: Float!
+  "64 lower-case hexadecimal characters."
+  sha256: String!
+}
+
+"An alias and the model that it points at now (LIBM-007, SEL-003)."
+type ModelAlias {
+  alias: String!
+  model: String!
+}
+
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
 "The AI agent program a session comes from (AIS-018)."
 enum AgentSource {
@@ -3690,6 +3813,16 @@ type Query {
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+
+  # The model library (compute plan L1-4; R-NEW-modellibrary)
+  "Every model of the library in name order, with its variants and aliases (SEL-005). Open to a read key."
+  libraryModels: [LibraryModel!]!
+  "The model of this name, alias or name:tag; null when there is none. Open to a read key."
+  libraryModel(name: String!): LibraryModel
+  "The Hugging Face organisations from which a variant can come, in name order (LIBM-003). Open to a read key."
+  approvedModelSources: [String!]!
+  "How the publisher of a base model gets onto the approved sources. Open to a read key."
+  modelPublisherApproval: ModelPublisherApproval!
   "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
   containers(deviceId: ID!): [Container!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
@@ -4055,6 +4188,16 @@ type Mutation {
   # The catalogue (HOST-047, R-234; task H38)
   "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
   installCatalogueEntry(entryId: String!, deviceId: ID!): CatalogueInstall!
+
+  # The model library (compute plan L1-4; R-NEW-modellibrary)
+  "Reads a Hugging Face repository (organisation/name) of an approved organisation and stores its model and its variants with the size and SHA-256 value of each file (LIBM-002 to LIBM-005). name: the model name; default from the repository name. A variant of the same tag is replaced. With modelPublisherApproval BASE_MODEL, the organisation of the base model joins the approved sources when a person adds the model; when an API key or an agent adds it, the organisation stays out and the audit entry says so. VALIDATION on repository for an organisation that is not approved (the hub reads nothing then), a private or gated repository, or one with no GGUF, MLX or safetensors files; on name for a bad name or an alias. NOT_FOUND when the repository does not exist; UNAVAILABLE when Hugging Face does not answer."
+  addLibraryModel(repository: String!, name: String): LibraryModel!
+  "Points an alias at a model (name, alias or name:tag), in place of the model that it pointed at (SEL-003). VALIDATION on alias for a bad alias or the name of a model; NOT_FOUND for an unknown model."
+  setModelAlias(alias: String!, model: String!): ModelAlias!
+  "Adds a Hugging Face organisation to the approved sources (LIBM-003) and returns the list. An organisation that is there already, in any case, changes nothing. VALIDATION on organisation for a bad name. FORBIDDEN for an agent. Login or browser token only (D-23, R-NEW-modellibrary)."
+  addApprovedModelSource(organisation: String!): [String!]!
+  "Changes how the publisher of a base model gets onto the approved sources. FORBIDDEN for an agent. Login or browser token only (D-23, R-NEW-modellibrary)."
+  setModelPublisherApproval(mode: ModelPublisherApproval!): ModelPublisherApproval!
 }
 
 type Subscription {

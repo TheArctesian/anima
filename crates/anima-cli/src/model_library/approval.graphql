@@ -1,0 +1,4 @@
+# `anima model source mode`: how a base-model publisher joins the approved list (LIBM-003).
+query ModelApproval {
+  modelPublisherApproval
+}

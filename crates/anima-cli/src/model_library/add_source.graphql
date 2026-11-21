@@ -1,0 +1,4 @@
+# `anima model source add`: adds an approved organisation (LIBM-003).
+mutation ModelSourceAdd($organisation: String!) {
+  addApprovedModelSource(organisation: $organisation)
+}
