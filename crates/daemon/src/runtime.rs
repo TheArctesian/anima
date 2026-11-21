@@ -5,6 +5,8 @@
 //! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
 
 mod agent_usage;
+#[cfg(unix)]
+pub mod old_origin;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,7 +17,16 @@ use tokio::sync::mpsc;
 use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until};
 use uuid::Uuid;
 
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
+
+use crate::config::Config;
 use crate::config::home::{Home, HomeError};
+#[cfg(target_os = "macos")]
+use crate::config::origin::Reach;
+#[cfg(unix)]
+use crate::hub::peer::Expected;
 use crate::hub::{HubClient, HubError, TIMEOUT};
 use crate::keys::{keeper::Keeper, store::KeyStore};
 use crate::push::pacing::RHYTHM;
@@ -54,6 +65,9 @@ pub enum RunError {
     SamplingStopped,
     #[error("the token was issued by another hub than the configuration names")]
     OriginMismatch,
+    #[cfg(unix)]
+    #[error("{0}")]
+    Move(#[from] old_origin::MoveError),
 }
 
 /// Samples and pushes until `stop` completes.
@@ -62,7 +76,7 @@ pub enum RunError {
 /// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, or
 /// when sampling ends before `stop` (the service manager then restarts the daemon).
 pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunError> {
-    let (pusher, device) = prepare(home)?;
+    let (pusher, device) = prepare(home).await?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
     let stopping = Arc::new(AtomicBool::new(false));
@@ -94,20 +108,57 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
     outcome
 }
 
-/// The pusher for the enrolled device, from the configuration and the token store.
-fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
+/// The pusher for the enrolled device, from the configuration and the token store. An old
+/// enrolment moves to the socket of the link first, when it can ([`old_origin`]).
+async fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
     let config = home.read_config()?.ok_or(RunError::NotEnrolled)?;
     let store = TokenStore::open(home);
     let credential = store.load()?.ok_or(RunError::NotEnrolled)?;
+    let socket = old_link_socket(home, &config)?;
+    #[cfg(unix)]
+    let old_origin::Enrolled { config, credential } = moved(
+        old_origin::Enrolled { config, credential },
+        home,
+        &store,
+        &socket,
+    )
+    .await?;
     if credential.hub != config.hub {
         return Err(RunError::OriginMismatch);
     }
-    let hub = HubClient::reaching(config.hub.reach(), &home.link_socket(), TIMEOUT)?;
+    let hub = HubClient::reaching(config.hub.reach(), &socket, TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store)
             .with_keys(Keeper::open(KeyStore::open(home))),
         config.device,
     ))
+}
+
+/// The socket of the link for an old link origin. On macOS it is below the home folder of the
+/// account, not the folder that the environment names, because the token is in the Keychain.
+fn old_link_socket(home: &Home, config: &Config) -> Result<PathBuf, RunError> {
+    #[cfg(target_os = "macos")]
+    if config.hub.reach() == Reach::OwnLinkSocket {
+        return Ok(crate::config::home::account_link_socket().map_err(HomeError::from)?);
+    }
+    let _ = config;
+    Ok(home.link_socket())
+}
+
+/// An old enrolment after its move, when the program at the socket passes the check of the
+/// peer that this daemon expects.
+#[cfg(unix)]
+async fn moved(
+    enrolled: old_origin::Enrolled,
+    home: &Home,
+    store: &TokenStore,
+    socket: &Path,
+) -> Result<old_origin::Enrolled, RunError> {
+    if !enrolled.is_old() {
+        return Ok(enrolled);
+    }
+    let expected = Expected::of_this_daemon().map_err(HubError::from)?;
+    Ok(enrolled.moved(home, store, (socket, &expected)).await?)
 }
 
 /// Every 2 seconds: read, make a sample, and send the point each 10-second window closes.

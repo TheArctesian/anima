@@ -2057,8 +2057,11 @@ daemon reads the user and the process of the peer from the kernel (`crates/daemo
 requirement of the daemon's own team, and its file must be the program that runs; a
 peer that fails gets no byte, and the push fails with "the program at the socket of anima-link is not the Anima
 link, so nothing was sent to it". A daemon with no Developer ID signature (a build for development) and each
-daemon on Linux check the user only. On macOS a daemon that was enrolled with the old link origin
-(`http://127.0.0.1:<port>`) stops with an error that asks for a new enrolment.
+daemon on Linux check the user only. A daemon that was enrolled with the old link origin
+(`http://127.0.0.1:<port>`) moves by itself to `unix:<path>` at its start when the program at the socket passes
+the check; on macOS the path is below the home folder of the account, not one that the environment names. When
+the application updates the copy of the link, it moves the running copy aside (`anima-link.previous`) first,
+so the running link keeps passing the check until its unit starts the new copy.
 
 The tests cover: a listener whose user is not the expected one gets no byte; on macOS, a listener in the test
 process (no Developer ID signature) gets no byte from a daemon that expects a team; the reading of the output
@@ -2082,7 +2085,17 @@ terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an Ap
    about one minute the row of this Mac shows metrics again.
 5. On `pop-os`, open Devices on the hub. Expected: the row `pop-os` shows metrics (the user check passes for
    the real link).
-6. If step 1 fails: run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link
+6. An old enrolment (only on a computer whose daemon was enrolled before task W0; skip it on others). Run
+   `grep -o '"hub":"[^"]*"' ~/Library/Application\ Support/anima-daemon/daemon.json` before you install the
+   build. Expected before: `http://127.0.0.1:` and a port. After the build is installed and the link runs,
+   wait one minute and run it again. Expected: `unix:` and the path of `link.sock`, and the row of this Mac shows
+   metrics. If the link does not run, the line stays as it was and the row shows no metrics; start the
+   application, and within one minute the line changes. What you see: nothing to do; the metrics come back.
+7. An update of the link. Install a build with a different link program over this one and open it. Within
+   one minute, `ls ~/Library/Application\ Support/ing.anima.desktop/link/program/` shows `anima-link` and no
+   `anima-link.previous`, and the row of this Mac shows metrics with no gap longer than about one minute. What you
+   see: the metrics go on; at most one or two pushes fail while the unit starts again.
+8. If step 1 fails: run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link
    2>&1 | grep '^Identifier'` and report the line. The daemon accepts only `anima-link` or `anima-link-` and hex
    digits; a different identifier of the release is a defect of this branch.
 

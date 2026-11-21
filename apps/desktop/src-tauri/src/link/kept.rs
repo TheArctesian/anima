@@ -21,7 +21,7 @@ use std::{
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_log::log;
 
-use super::copy::{current_copy, destination, earlier_copy, place, same, unplace};
+use super::copy::{self as copies, current_copy, destination, earlier_copy, place, same, unplace};
 use super::{LinkError, device::DeviceLink, folder, folders, launch, printed, repair::Repair};
 use crate::carried::run::{Invocation, run};
 #[cfg(unix)]
@@ -159,8 +159,9 @@ impl Kept {
         let copy = destination(application);
         let changed = self.program != copy || !same(carried, &self.program);
         if !changed {
-            if self.daemon_socket.is_some() && !self.has_daemon_socket() {
-                let _ = self.install();
+            let restart = self.daemon_socket.is_some() && !self.has_daemon_socket();
+            if (restart || copies::waits_for_restart(&self.program)) && self.install().is_ok() {
+                copies::forget_previous(&self.program);
             }
             return self;
         }
@@ -182,6 +183,7 @@ impl Kept {
         if self.program != moved.program {
             unplace(&self.program);
         }
+        copies::forget_previous(&moved.program);
         moved
     }
 

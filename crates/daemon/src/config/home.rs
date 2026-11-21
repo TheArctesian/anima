@@ -144,9 +144,61 @@ impl Home {
     }
 }
 
+/// The socket of an old link origin on macOS: `link.sock` in the default folder of the daemon
+/// below the home folder of the account as the user database names it (`/usr/bin/id -P`, run with
+/// no environment), so that no value of the environment (`ANIMA_DAEMON_HOME`, `HOME`) decides
+/// where a token from the Keychain goes (R-NEW-socketpeer).
+///
+/// # Errors
+/// An I/O error when `id` cannot run or names no absolute home folder.
+#[cfg(target_os = "macos")]
+pub fn account_link_socket() -> io::Result<PathBuf> {
+    let shown = std::process::Command::new("/usr/bin/id")
+        .arg("-P")
+        .env_clear()
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()?;
+    let line = String::from_utf8_lossy(&shown.stdout);
+    let home = shown
+        .status
+        .success()
+        .then(|| home_of_account(&line))
+        .flatten()
+        .ok_or_else(|| io::Error::other("the user database names no home folder"))?;
+    Ok(home
+        .join("Library/Application Support")
+        .join(FOLDER)
+        .join(LINK_SOCKET))
+}
+
+/// The home folder in a line of the user database in the form of `id -P` (ten fields, the home
+/// folder ninth), when it is an absolute path.
+#[cfg_attr(
+    not(any(target_os = "macos", all(test, unix))),
+    expect(dead_code, reason = "read only on macOS and by its tests")
+)]
+fn home_of_account(line: &str) -> Option<PathBuf> {
+    let fields: Vec<&str> = line.trim_end_matches('\n').split(':').collect();
+    let home = Path::new(fields.get(8).filter(|_| fields.len() == 10)?);
+    home.is_absolute().then(|| home.to_path_buf())
+}
+
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_home_of_the_account_is_the_ninth_of_ten_fields_and_absolute() {
+        let line = "me:********:501:20::0:0:Me Myself:/Users/me:/bin/zsh\n";
+        assert_eq!(home_of_account(line), Some(PathBuf::from("/Users/me")));
+        assert_eq!(home_of_account("me:*:501:20:Me:/Users/me:/bin/zsh"), None);
+        assert_eq!(
+            home_of_account("me:*:501:20::0:0:Me:relative:/bin/zsh"),
+            None
+        );
+        assert_eq!(home_of_account(""), None);
+    }
 
     fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
         move |name| {

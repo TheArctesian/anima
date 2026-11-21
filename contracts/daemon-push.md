@@ -5,7 +5,7 @@ WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust type
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5). R-172
 (operator, 2026-11-18) changed it from a local port to a Unix socket (task W0).
-The check of the peer of the socket and the refusal of the old link origin on macOS (Section 1) were added by
+The check of the peer of the socket and the move of an old link origin to the socket (Section 1) were added by
 R-NEW-socketpeer (made overnight by the orchestrator, not yet confirmed by the operator).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
 The `agentUsage` member of Section 4 was added by R-135 (operator, 2026-11-17; AIS-018, AIS-019, AIS-022 to
@@ -63,10 +63,15 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
   - A daemon that was enrolled with the old link origin, `http://127.0.0.1:<port>`. Its configuration file
     and its token record keep that text; an update does not change them (ROL-018). The daemon reads the
     text as "the link of this computer": it uses the socket `link.sock` in its own folder and sends nothing
-    to the port. On macOS it refuses the old link origin and stops with an error that asks for a new
-    enrolment (R-NEW-socketpeer): its folder can come from the environment (`ANIMA_DAEMON_HOME`), and no value of
-    the environment may decide where a token from the Keychain goes. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
-    it does, a push fails and the daemon keeps its samples (Section 7).
+    to the port. At its start the daemon moves such an enrolment to the socket (R-NEW-socketpeer): when the program at
+    the socket passes the check of the peer below (it writes nothing to it), the daemon writes `unix:<path>`
+    into its token record first and then into its configuration, and from then on it is a link origin like any
+    other. On macOS the path is `link.sock` in the default folder below the home folder of the account as the
+    user database names it, not the folder that the environment names (`ANIMA_DAEMON_HOME`, `HOME`), because no
+    value of the environment may decide where a token from the Keychain goes; until the move, the macOS daemon
+    sends nothing and stops, and the service manager starts it again. On Linux, until the move, it uses the
+    socket in its own folder as before. The link of that computer must start with `-daemon-socket <path>`.
+    Until it does, a push fails and the daemon keeps its samples (Section 7).
   - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
 - The daemon sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
   (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), and listens on no port.

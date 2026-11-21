@@ -60,7 +60,7 @@ pub enum HubError {
     /// On macOS the token is in the Keychain, and no value of the environment may decide where
     /// it goes: the folder of an old link origin does (the finding `daemonoldlinkhome` of the review HM-T23).
     #[error(
-        "this daemon was enrolled with an old link origin, which macOS no longer uses: enrol it again (sign in again in the Anima application, or run anima-daemon enrol)"
+        "this daemon was enrolled with an old link origin: it moves to the socket of anima-link when the signed link runs there, and sends nothing until then"
     )]
     OldLinkOrigin,
 }
@@ -254,6 +254,22 @@ impl HubClient {
         // Not a success status, so the reader of a success is never called.
         answer(status, bytes.bytes(), call.ok[0], |_| None)
     }
+}
+
+/// Whether the program at the socket of the link at `socket` is a peer that `expected` admits.
+/// Nothing is written to it. False when nothing listens there or the check takes longer than
+/// [`TIMEOUT`].
+///
+/// # Errors
+/// [`HubError::LinkSocket`] when a different user could listen at the path.
+#[cfg(unix)]
+pub async fn link_admits(socket: &Path, expected: &Expected) -> Result<bool, HubError> {
+    link_socket::trusted(socket)?;
+    let checking = unix::checked(socket, expected);
+    Ok(matches!(
+        tokio::time::timeout(TIMEOUT, checking).await,
+        Ok(Ok(_))
+    ))
 }
 
 fn cause(error: &reqwest::Error) -> Cause {

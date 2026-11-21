@@ -8,13 +8,13 @@ use std::os::unix::fs::PermissionsExt as _;
 use anima_daemon::config::private_file::running_user;
 use anima_daemon::hub::answer::{Answer, Cause};
 use anima_daemon::hub::peer::{Expected, Program};
-use anima_daemon::hub::{HubClient, TIMEOUT};
+use anima_daemon::hub::{HubClient, TIMEOUT, link_admits};
 use daemon_core::wire::{Announcements, Batch, DaemonToken};
 use tokio::io::AsyncReadExt as _;
 use tokio::net::UnixListener;
 
 /// A program at the socket, in a folder that only this user can reach.
-fn listener_at_the_socket() -> (tempfile::TempDir, std::path::PathBuf, UnixListener) {
+pub fn listener_at_the_socket() -> (tempfile::TempDir, std::path::PathBuf, UnixListener) {
     let folder = tempfile::tempdir().expect("a folder");
     std::fs::set_permissions(folder.path(), Permissions::from_mode(0o700)).expect("mode");
     let socket = folder.path().join("link.sock");
@@ -89,4 +89,27 @@ async fn k8_1_on_macos_a_daemon_with_the_old_link_origin_makes_no_client() {
         HubClient::reaching(old.reach(), &socket, TIMEOUT),
         Err(HubError::OldLinkOrigin)
     ));
+}
+
+/// R-NEW-socketpeer: the move of an old enrolment asks only this check, which writes nothing.
+#[tokio::test]
+async fn k8_1_the_check_before_a_move_admits_the_peer_of_this_user_and_no_other() {
+    let (_folder, socket, listener) = listener_at_the_socket();
+    let me = running_user().expect("the user");
+    let of_this_user = Expected {
+        user: me,
+        program: Program::OfTheUser,
+    };
+    let someone_else = Expected {
+        user: me + 1,
+        program: Program::OfTheUser,
+    };
+    assert!(link_admits(&socket, &of_this_user).await.expect("a check"));
+    assert!(!link_admits(&socket, &someone_else).await.expect("a check"));
+    drop(listener);
+    std::fs::remove_file(&socket).expect("no socket");
+    assert!(
+        !link_admits(&socket, &of_this_user).await.expect("a check"),
+        "nothing listens"
+    );
 }

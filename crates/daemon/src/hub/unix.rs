@@ -13,7 +13,10 @@ use hyper::{
     header::{AUTHORIZATION, CONTENT_TYPE, HOST},
 };
 use hyper_util::rt::TokioIo;
-use std::{path::PathBuf, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use tokio::net::UnixStream;
 
 pub(super) struct Local {
@@ -42,21 +45,8 @@ impl Local {
         }
     }
 
-    /// A connection to the socket whose peer may get the request; nothing is written to it yet.
     async fn connect(&self) -> Result<UnixStream, Cause> {
-        let stream = UnixStream::connect(&self.socket)
-            .await
-            .map_err(|_| Cause::Network)?;
-        let credentials = stream.peer_cred().map_err(|_| Cause::NotTheLink)?;
-        let peer = Peer {
-            user: credentials.uid(),
-            process: credentials.pid(),
-        };
-        self.expected
-            .admit(peer)
-            .await
-            .map_err(|_| Cause::NotTheLink)?;
-        Ok(stream)
+        checked(&self.socket, &self.expected).await
     }
 
     async fn exchange<T>(
@@ -89,6 +79,20 @@ impl Local {
         driving.abort();
         answer
     }
+}
+
+/// A connection to `socket` whose peer `expected` admits; nothing is written to it yet.
+pub(super) async fn checked(socket: &Path, expected: &Expected) -> Result<UnixStream, Cause> {
+    let stream = UnixStream::connect(socket)
+        .await
+        .map_err(|_| Cause::Network)?;
+    let credentials = stream.peer_cred().map_err(|_| Cause::NotTheLink)?;
+    let peer = Peer {
+        user: credentials.uid(),
+        process: credentials.pid(),
+    };
+    expected.admit(peer).await.map_err(|_| Cause::NotTheLink)?;
+    Ok(stream)
 }
 
 /// The meaning of the answer to one request, with at most [`super::body::LIMIT`] bytes read.
