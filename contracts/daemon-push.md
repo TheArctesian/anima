@@ -250,7 +250,8 @@ Request:
   version the daemon reads); `failed` stands for a reason the reader does not know. A tool the daemon did not
   find is not listed. The names the hub knows are `git`,
   `rustc`, `cargo`, `cargo-nextest`, `sccache`, `bun`, `node`, `xcodebuild`, `docker`, `podman`, `nix`, `claude`
-  and `codex` (the model runtimes are not tools: they have their own list, R-NEW-runtimelist); the hub drops a tool of any other name, and reads a `state` it does not know as `failed`, so a
+  and `codex` (the installed model runtimes are not tools: they are in the optional member `runtimes`, which
+  [model-work.md](compute/model-work.md) Section 8 defines, R-NEW-runtimelist); the hub drops a tool of any other name, and reads a `state` it does not know as `failed`, so a
   newer daemon can talk to an older hub, and an older daemon's `failed` is still taken. `buildTargets` holds at
   most 128 unique Rust targets
   (`rustup target list --installed`), each 1 to 64 bytes of `[0-9a-z_.-]`. No text in it is free text from the
