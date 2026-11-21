@@ -9,6 +9,7 @@
   import type { SettingsSection as Place } from '../../tabs/tabs';
   import type { SettingsCalls } from '../calls';
   import type { SettingsDraft } from '../draft.svelte';
+  import { hasWaysIn } from '../../header/header';
   import { SECTIONS } from '../sections';
   import RdpConnection from './RdpConnection.svelte';
   import SshConnection from './SshConnection.svelte';
@@ -58,11 +59,16 @@
 </script>
 
 <SettingsSection {...SECTIONS.connections}>
-  <div class="connections" bind:this={root}>
-    <SshConnection {draft} {device} {saved} {calls} {onTest} bind:open={ssh} />
-    <VncConnection {draft} {device} {saved} {calls} {onTest} bind:open={vnc} />
-    <RdpConnection {draft} {device} {saved} {calls} {onTest} bind:open={rdp} />
-  </div>
+  {#if hasWaysIn(device)}
+    <div class="connections" bind:this={root}>
+      <SshConnection {draft} {device} {saved} {calls} {onTest} bind:open={ssh} />
+      <VncConnection {draft} {device} {saved} {calls} {onTest} bind:open={vnc} />
+      <RdpConnection {draft} {device} {saved} {calls} {onTest} bind:open={rdp} />
+    </div>
+  {:else}
+    <!-- HMD-045: the hub's own device is its container; the hub refuses SSH, RDP and VNC for it. -->
+    <p class="none">No session reaches the container of the hub: its device takes no SSH, RDP or VNC.</p>
+  {/if}
 </SettingsSection>
 
 <style>
@@ -71,5 +77,10 @@
   .connections {
     margin-block-end: calc(var(--border-thin) * -1);
     border-block-start: var(--border-thin) solid var(--border-subtle);
+  }
+
+  .none {
+    margin: 0;
+    color: var(--text-secondary);
   }
 </style>

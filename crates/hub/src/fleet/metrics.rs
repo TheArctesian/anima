@@ -8,7 +8,8 @@
 //! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
 //! its metrics from the Anima daemon instead ([`daemon_router`], K8); [`spawn_stale_watch`] marks
 //! a daemon that stopped pushing (MET-018). [`storage`] shows a device's storage drive by drive
-//! (MET-026). [`capabilities`] gives the tool inventory each daemon sent (CAP-020 to CAP-031).
+//! (MET-026), and [`batteries`] the batteries its daemon listed (MET-032). [`capabilities`]
+//! gives the tool inventory each daemon sent (CAP-020 to CAP-031).
 
 mod capabilities;
 mod collector;
@@ -40,8 +41,8 @@ pub use daemon_core::{
 pub use feed::Feed;
 pub use ingest::{daemon_router, spawn_stale_watch};
 pub use model::{
-    Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
-    Readings,
+    Battery, BatteryState, Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample,
+    MetricSeries, MetricsAdded, Readings,
 };
 pub use retention::{Retention, Trimmed};
 pub use storage::{DriveKind, Mount, Storage, StorageDrive};
@@ -140,6 +141,18 @@ pub async fn gpus(db: &PgPool, devices: &[DeviceId]) -> Result<HashMap<DeviceId,
     store::gpus(db, devices).await
 }
 
+/// The batteries stored for each of `devices`, by name; a device with none has no entry
+/// (MET-032).
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored state this version does not know.
+pub async fn batteries(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Battery>>, Error> {
+    store::batteries(db, devices).await
+}
+
 /// The tool inventory of each device whose daemon sent one and that `filter` admits, in no set
 /// order (CAP-030).
 ///
@@ -175,6 +188,35 @@ pub async fn daemon_versions(
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, String>, Error> {
     Ok(ingest::daemon_versions(db, devices).await?)
+}
+
+/// The distribution that the text of an `os-release` file names (DEV-016); `None` when it names
+/// none that reads. The hosted hub reads its own with it (HMD-046).
+#[must_use]
+pub fn distribution_of(os_release: &[u8]) -> Option<crate::fleet::devices::Distribution> {
+    collector::os_release::distribution(os_release)
+}
+
+/// Why the code of the hub's own daemon was not made (HMD-071).
+#[derive(Debug, thiserror::Error)]
+#[error("the enrolment code of the hub's own daemon cannot be made")]
+pub struct OwnCodeError(#[source] ingest::Error);
+
+/// A one-use enrolment code for the daemon in the container of a hosted hub, whose device is
+/// `device`, the hub's own (HMD-071, HM-T35). The OS random source makes it; earlier unused codes
+/// of the device stop working.
+///
+/// # Errors
+/// [`OwnCodeError`] when the random source or the database fails, or the device is gone.
+pub async fn own_daemon_code(
+    db: &PgPool,
+    device: DeviceId,
+    now: DateTime<Utc>,
+) -> Result<daemon_core::wire::EnrolmentCode, OwnCodeError> {
+    let bytes = ingest::random::<{ daemon_core::wire::CODE_BYTES }>().map_err(OwnCodeError)?;
+    ingest::own_device_code(db, device, *bytes, now)
+        .await
+        .map_err(OwnCodeError)
 }
 
 /// Creates the sample partitions of today (UTC) and the next 7 days (DB-004).

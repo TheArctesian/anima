@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cloud-hub-usage"
+description = "Enables the cloud_hub_usage command without any pre-configured scope."
+commands.allow = ["cloud_hub_usage"]
+
+[[permission]]
+identifier = "deny-cloud-hub-usage"
+description = "Denies the cloud_hub_usage command without any pre-configured scope."
+commands.deny = ["cloud_hub_usage"]

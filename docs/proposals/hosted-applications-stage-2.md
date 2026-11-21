@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28.
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-302, R-300 and R-301 give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry. Version 8 (2026-11-20): Section 13 has the fields and the codes of a database (`kind`, `server`, `database`), and Section 14.6 says what task H24 built and where it differs from the design.
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -12,7 +12,7 @@ Version: 4. Date: 2026-11-19. Version 4 has Section 4 in its third form, after t
 From: the operator, 2026-11-19, relayed by the orchestrating session and not first-hand in the session that wrote this: the container side should be "fleshed out more via the competitor research", and "the coolify/dockploy and the portainer things are still competitors and things I want to emulate ish".
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md). The plan that this proposal changes when it is approved is [hosted-applications-plan.md](../plans/hosted-applications-plan.md). The contract that it changes is K10, [work-route.md](../../contracts/work-route.md).
-Identifiers: HOST-026 to HOST-043; open decisions OD-HOST-5 to OD-HOST-12; tasks H14 to H27.
+Identifiers: HOST-026 to HOST-048; open decisions OD-HOST-5 to OD-HOST-12; tasks H14 to H27.
 
 ## 1. What this document is for
 
@@ -675,9 +675,10 @@ Not proposed for stage 2, with the reason:
 Stage 3 starts after stage 2 is in use. Each requirement here is a direction, written so that the
 operator can say yes or no to it. None has contract text yet.
 
-- **HOST-037.** Anima can install a reverse proxy on a machine as an application that the operator
-  can see, only when the operator asks for it on that machine. It refuses clearly when ports 80 or
-  443 are in use. This replaces the words "supply a reverse proxy" of HOST-009.
+- **HOST-037.** Anima can install a reverse proxy on the hub as an application that the operator
+  can see, only when the operator asks for it. It refuses clearly when ports 80 or 443 are in use.
+  This replaces the words "supply a reverse proxy" of HOST-009. R-302 changed "on a
+  machine" to "on the hub": Anima installs no reverse proxy on a different machine.
 - **HOST-038.** The operator can give an application a domain name. Anima asks for a certificate
   only after it has checked that the name points at the machine. Anima already warns before a
   certificate ends (CHK-007, NOT-006).
@@ -701,6 +702,19 @@ operator can say yes or no to it. None has contract text yet.
 - **HOST-045.** Proposed (R-250). On a hosted hub, the link carries the port of an application to
   the hub when the person turns that port on at the machine. The design is made with the owner of
   the open ports of the link (HMD-049 of [hosted-mode.md](hosted-mode.md)).
+- **HOST-046.** Direction decided (R-302). The hub is the front door of the public
+  traffic of the applications of its machines. A request for the domain of an application comes to
+  the hub, and the hub sends it to the port of the application on its machine. A hosted hub does
+  this behind the front door of the cloud service; a hub that a person hosts does it on its own
+  ports 80 and 443. Section 12 is the design.
+- **HOST-047.** Direction decided (R-300). The catalogue that ships with the product
+  is a large list of popular self-hosted applications. Each entry has a test that a machine runs,
+  each image is named by a digest, a schedule pins new digests and runs the test again, each entry
+  shows the date of its last test, and an entry that fails leaves the list. An entry that needs
+  more than the default rules has a mark. Section 13 is the format.
+- **HOST-048.** Proposed (R-301, OD-HOST-38 of the plan). A database has one of
+  three levels: one server with copies to a second machine (the default); a primary and a replica
+  that the operator selects, with a switch to the copy only by his action; no sharding.
 
 | Task | Content | Needs |
 | --- | --- | --- |
@@ -862,8 +876,8 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-034: the containers of all machines in one list | Not approved | A question for the operator. No answer of 2026-11-19 covers it |
 | HOST-035: the limits of memory and processor as fields | Not approved | A question for the operator |
 | HOST-036: the result of each item on the page of the application | Not approved | A question for the operator |
-| HOST-037: the reverse proxy | Approved for stage 3 (R-213) | Stage 2 in use; the trial of two programs |
-| HOST-038: domain names and certificates | Not approved | A question for the operator, with task H21 |
+| HOST-037: the reverse proxy | Approved for stage 3 (R-213); on the hub only (R-302) | The design of Section 12 and its review; the trial of two programs |
+| HOST-038: domain names and certificates | Not approved; the direction is decided (R-302 asks for the design) | Section 12 and its review, then a question for the operator |
 | HOST-039: the Compose file from a repository | Approved for stage 3 (R-214) | Task H6 |
 | HOST-040: a build from a Dockerfile | Not approved (R-214: later) | The work type `build` proven on the releases of Anima |
 | HOST-041: databases as a kind | Approved for stage 3 (R-216) | Task H7 |
@@ -871,6 +885,9 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-043: the credential of a private registry | Not approved | A question for the operator |
 | HOST-044: updates to a digest that Anima tested | Not approved; the direction is decided (R-249: later) | HOST-042; the actor in the contract, after a security review |
 | HOST-045: the link carries the port of an application on a hosted hub | Not approved; the direction is decided (R-250) | The design with the owner of HMD-049 |
+| HOST-046: the hub is the front door of the traffic of applications | Not approved; the direction is decided (R-302) | Section 12, its review, and the answers of the cloud service |
+| HOST-047: a large catalogue that stays tested | Not approved; the direction is decided (R-300) | Section 13; the test on a machine needs task H6 |
+| HOST-048: the levels of a database | Not approved | OD-HOST-38 of the plan |
 
 One question remains for the operator from this table: "Do you approve HOST-030 and HOST-032 to
 HOST-036 for stage 2?" It is decision OD-HOST-13 of
@@ -950,8 +967,8 @@ It is a step for the operator, or for a session on a machine that he names for i
 
 ## 11. The port of an application through the link: design options (task H35, R-250)
 
-This section is a design with options. It adds no approved requirement and no code exists for
-it. The facts about the link are from the session that built task HM-T12 of
+This section is a design with options. It adds no approved requirement. Section 14.6 says what
+task H24 built of it. The facts about the link are from the session that built task HM-T12 of
 [hosted-mode.md](hosted-mode.md) (HMD-048, HMD-049; tasks HM-T13 and HM-T14 are not started;
 the unit of the link is HMD-058, task HM-T24). This session did not read that code again:
 each fact of Section 11.1 is a claim of that session.
@@ -1030,3 +1047,663 @@ each fact of Section 11.1 is a claim of that session.
 
 A security review by a separate reviewer reads this section before it becomes a plan.
 
+## 12. The routing of the domains of applications on the hub (R-302, task H21)
+
+This section is a design with options. It adds no approved requirement. Section 14.6 says what
+task H24 built of it. It builds on Section 11 (the port of an application through the link, task H35) and on the
+path of task HM-T12 of [hosted-mode.md](hosted-mode.md). The front door at `hub.anima.ing` is a
+part of the cloud service; its plan is in a private repository, and this section does not change
+it. Each sentence about what the door does is a request to that plan, not a fact: Section 12.9 lists
+the questions. The proxy is an application that the operator can see, and the hub installs it only
+when he asks for it (HOST-037, R-302 (3)). A security review by a separate reviewer reads
+this section before any code (R-302).
+
+### 12.1 What the ruling decides, and what it changes
+
+- The reverse proxy for the domains of applications runs on the hub, and only there. The hub is
+  the front door of the public traffic of the applications of its machines.
+- A hosted hub has the proxy behind the front door of the cloud service. A hub that a person
+  hosts has it on its own ports 80 and 443.
+- It replaces "a reverse proxy on a machine of the operator" of R-213 and HOST-037. Anima installs
+  no proxy on a different machine. The trial of two proxy programs stays, on one hub.
+- Does the condition of task H21, "stage 2 in use", still hold? Not for the design and its review:
+  they start now. It holds for the trial and the build in a changed form: the proxy needs an
+  application to send traffic to (task H6, or an adopted project of task H16) and the path to the
+  port of an application (task H35). Thus no code of this section is built before those.
+
+### 12.2 The path of one request on a hosted hub
+
+1. A person's browser asks DNS for the name of an application, for example `photos.example.com`.
+   The owner of that domain has set the name to point at the front door (a `CNAME` to a name
+   that the cloud service gives, or the address of the door).
+2. The browser opens a TLS connection to the door, port 443, with the name in its SNI field.
+3. The door (requested of the cloud plan) finds the hub that owns that name in its table of
+   names (Section 12.4), and sends the connection to that hub with no change: the door does not
+   open the TLS (option R1 of Section 12.10). If no hub owns the name, the door closes the
+   connection. The door gives the address of the client with the PROXY protocol.
+4. The proxy of the hub opens the TLS with the certificate of the name, reads the request, and
+   finds the application of that name: one device, one application, one recorded port.
+5. The proxy gives the identifier of the application to the hub. The hub finds the device and the
+   port in its own record and connects through its one connect function (task HM-T12). On a
+   computer of the link the link dials `127.0.0.1:<port>` only for a port that the record of the
+   applications program names at that moment (Section 11.2). The answer goes back the same way.
+6. The `Host` header must be the name of the SNI field; if not, the proxy answers 421. On port 80
+   the proxy answers only the ACME challenge and a redirect to `https://`; it sends no content of
+   an application on port 80.
+
+On a hub that a person hosts, steps 2 and 3 are gone: the name points at the hub, and the proxy
+of the hub listens on ports 80 and 443 itself. Step 5 is the same, or the hub reaches the port on
+the network of the machine when the machine has "Open to the network" on (R-229).
+
+### 12.3 The rules of the proxy
+
+- **Only the ports of applications.** The proxy can connect only to a port that a record of an
+  application names. It cannot name a device and a port by itself. The function that it calls
+  takes the identifier of an application, not a port. The port of an application is never 22,
+  5900, 3389, or a port of the link or of the daemon: the hub refuses such a record, and the link
+  refuses such an entry.
+- **A process of its own, with no other exit.** The proxy holds the private keys of each name and
+  reads each request from the internet. It runs as a program apart from the hub process, with a
+  user of its own. That user cannot open the dial socket of the link, the control socket of the
+  link, the listener of the hub, or the database, and has no network route but its one interface
+  to the hub and the outbound ACME and DNS. A test shows that the user of the proxy cannot open
+  those sockets. A fault in the proxy must not give the database, the sessions of the hub or port
+  22 of a machine.
+- **Who may make an application public.** Only a person with a login or a browser session, after a
+  second factor (as HM-D14 asks before a port is turned on); no API key and no MCP tool. The
+  consent of the machine for the port (OD-HOST-29) says "the hub may reach this port", not "the
+  internet may reach it": OD-HOST-43 asks whether a second consent at the machine is needed. An
+  application that holds the socket of the engine (Section 10) is not made public.
+- **The target is fixed.** The device and the port of a route are fixed when the name is made
+  public. On a hub that a person hosts, which reaches the port on the network of the machine, the
+  address is fixed then too, and the hub refuses its own loopback addresses and ports, link-local
+  addresses and the metadata address `169.254.169.254`. A change of the target needs the same
+  rights as making it public.
+- **Its own origin for each application (AC-D45).** An application is served only under its own
+  name. It is never served under the name of a hub or a path of it (`hub.anima.ing/app/...`), and
+  never under a name below a domain that holds a cookie of a hub. AC-D45, a finding of the review of
+  the door, says that one origin serves all hubs; the same risk is larger here, because the page of
+  an application is code of a different publisher. A name that Anima gives (for an application with
+  no domain of the person) is below a domain of its own, separate from `anima.ing`, that is on the
+  Public Suffix List (OD-HOST-30, option A).
+- **No header of the hub, and no header of the client is trusted.** The proxy removes from each
+  request each `Forwarded`, `X-Forwarded-*` and `X-Real-IP` header and each header that a hub or the
+  door uses to name a person, then sets `X-Forwarded-For` and `X-Forwarded-Proto` again from what it
+  knows. It reads the PROXY protocol only on a connection from the door, never on a hub that a
+  person hosts. It sends no cookie of a hub.
+- **The hub keeps no content.** TLS ends in the proxy, so content passes through it; it keeps
+  none. Its log has only the name, the bytes, the status and the time: never the path, the query,
+  a header or a cookie, because they carry tokens of the application (LOG-007). It counts bytes and
+  requests for each name (Section 12.7).
+- **A hub on the same site.** When a hub that a person hosts and an application share a registered
+  domain (`hub.example.com` and `photos.example.com`), the cookie attribute SameSite does not stop a
+  request from the page of the application. The hub warns, and keeps its cookie `__Host-` and an
+  exact check of `Origin`.
+- **API keys and agents.** No API key and no MCP tool reaches the page of an application through
+  the hub (Section 11.2, point 4). The public route of this section is for the public: the
+  application does its own sign-in.
+
+### 12.4 Who owns a name
+
+All hosted hubs share the address of the door. Thus "the name points at the address of the door"
+does not prove which hub owns it: each hub could claim each name that points at the door, also a
+name of a different person. The proof:
+
+1. The person adds the name to an application in his hub. The cloud service makes the token:
+   random, of at least 128 bits, bound to the pair of the hub and the name, and kept by the cloud
+   service. The identifier of a hub is never used again.
+2. The person writes a `TXT` record `_anima.<name>` with that token, and points the name at the
+   door.
+3. The hub asks the cloud service to add the name. The cloud service reads the `TXT` record
+   itself, with its own resolver, and checks that the token is that of this hub. Only then does
+   it add the name to the table of the door. A name that a different hub already owns is refused,
+   until the `TXT` record names the new hub.
+4. The cloud service reads the record again at intervals, with a resolver that checks DNSSEC
+   where a zone has it. When the token is gone or names a different hub in several reads in a row,
+   it removes the name from the table, and the hub shows that the name is not proven. One failed
+   read removes nothing.
+5. A name with a wildcard (`*.example.com`) is refused in the first version.
+6. A name that Anima gives is proven by its allocation, not by a `TXT` record. It is never given
+   again to a different hub, and it leaves the table of the door in the same step that deletes the
+   hub or the account.
+7. The door routes the ACME challenges (`TLS-ALPN-01` on 443, `HTTP-01` on 80) only by its table of
+   names. When a name moves to a different hub, the old hub deletes the certificate and the key.
+
+A hub that a person hosts makes the same check of HOST-038 against its own address, with no
+token: it is the only hub at that address.
+
+### 12.5 Certificates
+
+- **Who asks.** The hub holds the ACME account and its key, not the proxy; the proxy runs the
+  challenge and gets the certificate from the hub. The hub asks for the certificate of each name with ACME, from Let's
+  Encrypt at first. Because the door does not open the TLS (option R1), the challenge
+  `TLS-ALPN-01` reaches the hub with no help of the door. `HTTP-01` needs the door to send plain
+  HTTP on port 80 for that name to the hub too; the design asks for that as well, because the
+  same route sends a browser from `http://` to `https://`. `DNS-01` is not used: the hub would need
+  a credential of the DNS of the person.
+- **When.** Only after the proof of Section 12.4, and only after the name points at the door
+  (HOST-038).
+- **CAA.** Before the first request the hub reads the `CAA` records of the name and of each
+  domain above it. If a record exists that does not permit the authority, the hub does not ask and
+  says which record stops it.
+- **Limits of the authority.** Let's Encrypt limits the certificates for each registered domain
+  each week, the new orders for each account, and the new accounts for each address. All hosted
+  hubs share the outbound address of the pool, so the limit for each address is shared. The design:
+  one ACME account for each hub, made at the first name; a new order only for a name that has
+  none, or a certificate with less than 30 days; failures wait longer each time. The exact numbers
+  of the limits are not in this text: they change, and the build reads the current page of the
+  authority. A wildcard certificate is not used: its key would serve more than one hub.
+  OD-HOST-44 asks for one ACME account for the pool or one for each hub.
+- **Where they are kept.** A hosted hub runs in a container that the pool can replace (R-130,
+  R-139). The certificates and the ACME account are kept in the data of the hub that the pool
+  backs up, not in the container. The private keys are sealed as the other secrets of the hub. That
+  seal protects them only if the key of the seal is not in the same backup; where that key is kept
+  on a hub of the pool is a question for the cloud plan.
+- **The warning before the end.** The check of a certificate exists (CHK-007, NOT-006); each
+  name gets one.
+
+### 12.6 When a free hub sleeps
+
+A free hub sleeps when no device of the account is connected (HM-R6, R-164). A machine that runs
+an application and is connected keeps the hub awake. Thus a free hub sleeps only when each
+machine of the account is offline, and then each application is down anyway. Two cases stay:
+
+- The machine is online and the hub sleeps for a different reason (a fault, an update of the
+  pool). The door holds the connection while the cloud service wakes the hub, for a time limit,
+  and then closes it. It wakes a hub only when the cloud service knows that a machine of the
+  account is online (whether it can know this is a question for the cloud plan), and only a
+  limited number of times each hour.
+- Each machine is offline. The door answers no request for those names. It does not wake the
+  hub for a request from the internet: then any person on the internet could keep a free hub
+  awake.
+
+OD-HOST-39 asks whether public names are a function of the paid plans only.
+
+### 12.7 Traffic and abuse
+
+Each byte of the public traffic of each hosted customer goes through the pool: in at the door,
+through the hub, through the link, and out the same way. The design:
+
+- **Limits for each plan.** The door counts bytes and connections for each hub and each name. Each
+  plan has a limit of bytes for each month, of connections at one time and of new connections each
+  second for each name. The numbers are a decision of the operator with the prices (OD-HOST-40);
+  this text gives none.
+- **Over a limit.** The door slows the name, then closes new connections of that name. With option
+  R1 the door cannot answer a page inside TLS; the proxy of the hub answers the page when the hub
+  is awake.
+- **The link of a machine.** Public traffic and the sessions of the operator (SSH, VNC) share the
+  tunnel of the link to that machine. The hub limits the streams and the bandwidth of public
+  routes for each link and gives the sessions priority. A flood can still slow a session; the
+  design makes it less likely, it does not stop it.
+- **Abuse.** A page for phishing or malware on a name of the door damages the address of the pool
+  for each customer. The design: the terms of use forbid it; an address for reports of abuse; a
+  switch of the operator that removes one name from the door at once, with a record that the
+  customer sees, a message to the customer, and a way to ask for a review; the name that Anima
+  gives (Section 12.3) is below a domain apart from `anima.ing`, so a block of that domain does not
+  stop the hubs, but it stops each name below that domain. The legal duties for content are not
+  known to this text. HM-R8 (no access of the staff to hubs) stays: the switch acts on the table of
+  the door, not in the hub.
+- **Attacks on the door.** A flood of connections to one name must not stop the door for each
+  hub. The limit of new connections for each name and for each address of a client is at the door.
+
+### 12.8 What a hub that a person hosts needs
+
+- A public address, and ports 80 and 443 of that address that reach the hub. The proxy refuses
+  clearly when a different program uses port 80 or 443 (R-213).
+- The names of the applications point at that address.
+- A path from the hub to the port of the application: the link (Section 11), or the network of
+  the machine when the machine has "Open to the network" on (R-229). A port on `127.0.0.1` of a
+  machine that has neither is not reachable.
+- A hub with no public address (behind a router with no forward of the ports) is not in the first
+  version. The screen says so.
+
+### 12.9 Questions for the plan of the cloud service
+
+These questions belong to the private plan of the cloud service. This session wrote them in a
+note for the orchestrating session; it did not change that plan.
+
+1. Can the door route TLS by the name in SNI to one hub, with no TLS of its own (option R1), and
+   plain HTTP on port 80 by the `Host` header?
+2. Which network route from the door to each hub does R-239 give, and does it carry raw TCP, or
+   only HTTP?
+3. Can the door keep a table of names to hubs, with the `TXT` proof of Section 12.4 made by the
+   cloud service itself?
+4. Can the door hold a connection while the hub wakes, and for how long?
+5. Can the door count bytes and connections for each hub and each name, and slow or stop one name?
+6. Which outbound address do the hubs of the pool share, and is the limit of Let's Encrypt for
+   each address a problem at the expected number of hubs?
+7. Which domain apart from `anima.ing` holds the names that Anima gives, and who enters it on the
+   Public Suffix List?
+8. Does AC-D45 have a correction for the door that also covers the names of applications?
+
+### 12.10 Options for the operator
+
+- **OD-HOST-30** (exists) decides whether the hub serves the page of an application at all in the
+  first version, and under which name. This section adds the public route; the two answers of
+  OD-HOST-30 apply to it too.
+- **R1 or R2: where TLS ends on a hosted hub.** R1: at the proxy of the hub; the door sees only the
+  name in SNI. R2: at the door; the door holds each certificate and sees each request in plain
+  text. Recommendation: R1. With R2 a fault of the door shows the traffic of each customer, and the
+  door becomes the place of each certificate. Against R1: the door cannot answer a page of its own
+  for a name over its limit inside TLS; it can only close the connection. This is a question for
+  the review and the cloud plan, not yet for the operator.
+- **OD-HOST-39: public names on a free hub?** A: yes, with the limits of the free plan. B: only on a
+  paid plan. Recommendation: B. All public traffic goes through the pool, and an always-on route is
+  the paid step (HM-R6).
+- **OD-HOST-40: the numbers of the limits of each plan** (bytes each month, connections). A
+  decision with the prices. No recommendation in this text.
+- **OD-HOST-43: a second consent at the machine before an application is public?** A: yes; the
+  administrator turns on "public" for the port at the machine, beside the consent of OD-HOST-29.
+  B: no; the consent of OD-HOST-29 and the second factor at the hub are enough.
+  Recommendation: A. A port that he opened for a look in the hub can be an administration page
+  that must never be on the internet.
+- **OD-HOST-44: one ACME account for the pool, or one for each hub?** A: one for the pool, held
+  by the cloud service. B: one for each hub, held by that hub, with the limit of new accounts for
+  each address accepted. Recommendation: B with a limit of new hubs each hour, because with A the
+  cloud service holds a key that asks for a certificate of each customer's name. No name that
+  Anima gives is offered before its domain is on the Public Suffix List.
+
+The security review of this section by a separate reviewer (2026-11-20) is in
+[security-findings.md](../security-findings.md), SF-227 to SF-234. The
+corrections of the text are in this version.
+
+## 13. The recipe format of the catalogue (R-300, task H36)
+
+This section is the format of task H36. The crate `crates/catalogue` reads it and runs the static
+test. The recipes are data files in `crates/catalogue/entries/`, one folder for each recipe.
+Section 13 of the design specification has no folder for data of this kind. The recipes stay in the
+crate that reads them, so that one change holds a recipe and its test. The hub carries them: the
+build of the crate puts the text of each recipe folder in the binary (task H38), and the hub lists
+only the recipes that pass the static test.
+
+### 13.1 One recipe folder
+
+A recipe is one folder. The name of the folder is the identifier of the entry. The folder has three
+files and no other file.
+
+| File | Content |
+| --- | --- |
+| `entry.json` | The entry: the fields of Arcane and the fields of Anima |
+| `compose.yaml` | The Compose file. It follows Section 4.5 with no exception |
+| `environment.example` | The example environment file. It holds no secret value |
+
+The example file does not start with `.env`. Thus no tool and no agent takes it for a file of
+secrets, and no rule of `.gitignore` hides it.
+
+### 13.2 The fields of the entry
+
+The top level of `entry.json` has the fields of the template registry of Arcane (HOST-025). A list
+that is made for Arcane has the same names, so a reader of Arcane reads each entry. The fields of
+Anima are below the one key `anima`. A reader of Arcane does not read that key. A key that is not
+in the tables makes the entry unreadable.
+
+| Field (Arcane) | Rule |
+| --- | --- |
+| `id` | A name of Section 4.5. It is the name of the folder |
+| `name`, `description`, `version`, `author` | Not empty. `version` is the version of the application |
+| `tags` | A list with at least one tag. No tag is empty |
+| `compose_url` | `compose.yaml` in the folder. The list that ships writes the full address |
+| `env_url` | `environment.example` in the folder |
+| `documentation_url` | An address that starts with `https://` |
+| `icon_url` | An address that starts with `https://`, or `null` |
+
+| Field (`anima`) | Rule |
+| --- | --- |
+| `kind` | `application` (the default) or `database`: a database server for the applications of the machine (Section 14, task H24) |
+| `server` | For an entry of kind `database` only: `engine` (`postgresql`), `major` (the major version of the image) and `extensions` (each extension that the image has and that an application may name) |
+| `database` | For an application that needs a database only: `engine` (`postgresql`), `lowest_major`, `extensions`, and `variables`: the name of the variable for each connection value that the application wants, of `url`, `host`, `port`, `name`, `user` and `password`, at least one. The install writes each of them, so each is also in `generated` (Section 14.2) |
+| `images` | For each service of the Compose file: `service`, `image`, `tag` and `resolved`. `image` is `repository@sha256:` and 64 hexadecimal digits, with no tag (R-233). `tag` is the tag that was read from the registry to get the digest. `resolved` is the day of that read |
+| `marks` | What the recipe needs beyond the default rules (Section 13.3). Empty for most recipes |
+| `exceptions` | The exceptions of a fixed list to the rights that each service drops (Section 13.3). Empty for most recipes |
+| `volumes` | Each top-level volume of the Compose file, with the kind of copy that it needs (Section 13.4) |
+| `generated` | The variables that the install makes, for example a password. The example file has no value for them |
+| `test` | The test of a machine (Section 13.5). Task H37 runs it |
+| `pinned` | The day of the last pin of the digests |
+| `last_test` | The last test on a machine: `not-tested`, or `passed` or `failed` with the day |
+
+Each day is written `YYYY-MM-DD`.
+
+### 13.3 The marks
+
+A mark says that a recipe needs more than the default rules of Section 4.5. The static test runs the
+rules of task H28 with the settings that exactly the marks permit. A mark that the file does not need
+is an error. A need that has no mark is an error.
+
+| Mark | What it needs | State |
+| --- | --- | --- |
+| `network-port` | A port on each address of the machine. The mark has the port and its protocols (`tcp`, `udp`). The machine needs "Open to the network" (R-229) | Permitted. The ports on an address other than `127.0.0.1` must be exactly the ports of the marks |
+| `engine-socket` | The socket of the engine (R-247) | Refused until the exception of Section 10 exists. Nothing installs such an entry |
+| `host-network` | The network of the machine itself, for example for the discovery of devices | Refused. No rule permits it |
+| `device` | A device of the machine, for example a USB stick or a graphics processor | Refused. No rule permits it |
+
+Each service of a recipe has `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`,
+and no setting makes it root or changes its code at the start (SF-224). The static
+test reads these values in the file as its author wrote it, before the variables are filled, and
+refuses with `privilege_not_permitted` and one reason:
+
+| Reason | What the file has |
+| --- | --- |
+| `image_mods` | The variable `DOCKER_MODS`: the image gets and runs more code at the start |
+| `install_packages` | The variable `INSTALL_PACKAGES` |
+| `install_pip_packages` | The variable `INSTALL_PIP_PACKAGES` |
+| `version_not_fixed` | The variable `VERSION` with a value other than `docker`: the image gets a different version at the start, which no digest names |
+| `root_identity` | `PUID` or `PGID` that is not a whole number above 0 |
+| `root_user` | `user` that is `0` or `root`, as the user or as the group, or a variable |
+| `new_privileges` | A service with no `security_opt: [no-new-privileges:true]` |
+| `capabilities_kept` | A service whose `cap_drop` is not `[ALL]` and not the drop of an exception of the entry |
+| `exception_not_needed` | The entry names an exception that no service uses |
+
+The list of exceptions is fixed. It has one exception, `init-capabilities`: an init that starts
+as root, gives the files to a different user and changes to it (the s6 init of the LinuxServer
+images, `gosu`, `su-exec`). Such a service keeps exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`,
+`SETGID` and `SETUID`. Contract K10 has no `cap_add`, so the service drops each other capability
+of the default set of the engine by name: `AUDIT_WRITE`, `FSETID`, `KILL`, `MKNOD`,
+`NET_BIND_SERVICE`, `NET_RAW`, `SETFCAP`, `SETPCAP` and `SYS_CHROOT`.
+
+The image, a published port and its `host_ip` are written in the file, never as a variable: the
+install could change a variable after the static test (`variable_not_permitted`,
+SF-226).
+
+The rules of Section 4.5 permit a published port from 1024 only. "Open to the network" does not
+change that. Thus a DNS server on port 53 (Pi-hole, AdGuard Home) is refused today, also with its
+mark. The recipe of Pi-hole is in the folder with its mark. Its test gives the refusal
+`port_not_permitted`, and it is not listed. A question for the operator: does a `network-port` mark
+permit a port below 1024, and with which setting of the machine?
+
+### 13.4 The data of a recipe
+
+Each top-level volume has one kind of copy. Task H25 (HOST-042) uses it.
+
+| Kind | Meaning |
+| --- | --- |
+| `files` | Plain files. A copy of the files is good at any time |
+| `sqlite` | An SQLite database. A copy needs the backup function of SQLite or a stopped service |
+| `postgresql` | A PostgreSQL server. A copy needs `pg_dump` or a copy of the stopped server |
+| `cache` | Data that the application makes again. No copy is needed |
+
+### 13.5 The test of a machine
+
+The test is data only. Task H37 runs it on a throwaway machine after the install.
+
+| Field | Rule |
+| --- | --- |
+| `service` | A service of the Compose file |
+| `port` | The port in the container. A `ports` entry of the service publishes it. For an entry of kind `database`, an `expose` entry of the service names it: a server publishes no port (Section 14.1), and the test reaches it on the network of the project |
+| `reach` | `http` or `tcp` |
+| `path` | For `http`: a path that starts with `/`. For `tcp`: none |
+| `statuses` | For `http`: each HTTP status that counts as healthy, from 100 to 599. For `tcp`: none |
+| `body` | For `http`: a text that the body of a healthy answer contains, or none. For `tcp`: none |
+| `limit_seconds` | The most seconds from the start of the install to a healthy answer, from 1 to 900 |
+
+### 13.6 The example environment file
+
+The example file has lines `NAME=value` and comments. It holds no secret value.
+
+- The line of a variable in `generated` has no value. The line directly above it is
+  `# generated at install`. The install makes the value. Anima never writes it to the catalogue.
+- A line with no value directly below that comment names a variable of `generated`.
+- A variable whose name has the part `PASS` or `KEY`, or has the text `PASSWORD`, `PASSWD`,
+  `SECRET`, `TOKEN`, `APIKEY`, `CREDENTIAL` or `PRIVATE_KEY` in capital or small letters, has no
+  value (SF-225).
+- In the Compose file, a variable of `environment` with such a name has exactly one variable as
+  its value, `${NAME}`, with no default (`secret_in_file`).
+
+The static test fills the variables of the Compose file from this file, with the rules of
+Section 4.5. Thus each variable of the file has a line, or a default with `:-`.
+
+### 13.7 The static test and its codes
+
+The static test reads each recipe folder. It installs nothing, starts no container and reaches no
+machine. Each failure is a fixed code with the identifier of the recipe. No code holds text of a
+file. One recipe can have more than one code.
+
+| Code | Meaning |
+| --- | --- |
+| `entry_not_readable` | The entry file is not there, is not JSON, or has a key or a form that is not permitted |
+| `id_not_permitted` | The identifier is not a name, or is not the name of the folder |
+| `field_empty` | A text field or the list of tags is empty |
+| `address_not_permitted` | An address is not `https://`, or a file address is not the fixed name in the folder |
+| `file_not_found` | The Compose file or the example file is not in the folder |
+| `date_not_permitted` | A day is not `YYYY-MM-DD` |
+| `image_not_pinned` | An image is not named by a digest |
+| `image_not_listed` | A service has an image that the entry does not give for it |
+| `image_not_used` | The entry gives an image that no service has |
+| `compose_refused` | The rules of task H28 refuse the file. The second part is the code of the rule, or `not_at_machine` |
+| `mark_not_needed` | The file passes the default rules, so the mark is not needed |
+| `mark_not_matched` | The ports on the network are not the ports of the `network-port` marks |
+| `mark_not_permitted` | A mark that no rule permits yet. The second part is the mark |
+| `test_not_complete` | The test of a machine is not complete (Section 13.5) |
+| `volume_not_described` | A top-level volume has no kind of copy, or a described volume is not in the file |
+| `secret_in_example` | The example file has a value for a secret |
+| `generated_not_marked` | A generated variable is not marked, or a marked line is not in `generated` |
+| `machine_test_failed` | The last test on a machine failed. The entry leaves the list |
+| `database_not_described` | The fields about a database are not complete: an entry of kind `database` has no `server` or has a `database`; an application has a `server`; or a need has no variable, a variable twice, a variable that is not in `generated`, a lowest major of 0 or an extension that is not a name |
+| `database_port_published` | An entry of kind `database` publishes a port on the machine (Section 14.1) |
+| `variable_not_permitted` | The image, a published port or its `host_ip` is a variable (Section 13.3) |
+| `secret_in_file` | The Compose file gives a variable whose name marks a secret a value that is not one variable (Section 13.6) |
+| `privilege_not_permitted` | A service keeps rights that it does not need, or changes its code at the start. The second part is the reason (Section 13.3) |
+
+A test of the crate reads the folder `entries/` and requires each recipe to pass, with one known
+refusal: Pi-hole (Section 13.3). Thus `bun run gates` runs the static test of each recipe.
+
+### 13.8 How a large list stays tested
+
+The static test proves the form only. A list of many entries stays correct only with tests on a
+machine.
+
+1. Task H37 installs each entry on a throwaway machine, waits for health, runs the test of the
+   entry, removes the entry, and records the day and the result in `last_test`.
+2. A schedule reads the registry for the tag of each image, pins the new digest, and runs the test
+   of a machine again. The pin and the test go in one change. `pinned` and `resolved` show the day.
+3. The catalogue shows the day of the last test of each entry. An entry that is not tested on a
+   machine says so.
+4. An entry whose last test failed leaves the list (`machine_test_failed`). It comes back when a
+   test passes.
+5. An entry with a code of the static test is not listed.
+
+No entry of task H36 has been tested on a machine. Each says `not-tested`.
+
+### 13.9 The first entries (task H36)
+
+The digests were read on 2026-11-20 from the public registry of Docker Hub with the HTTP API of the
+registry: a request for the manifest, with no pull and no login. Each digest is the digest of the
+index of all platforms of the tag.
+
+| Entry | Images (tag) | Marks | Data | Static test |
+| --- | --- | --- | --- | --- |
+| OwnTracks Recorder | `owntracks/recorder` (1.0.7) | None | `files` | Passes |
+| Dawarich | `freikin/dawarich` (1.23.0), `postgis/postgis` (17-3.7-alpine), `redis` (7.4.12-alpine) | None | `files`, `postgresql`, `cache` | Passes |
+| Pi-hole | `pihole/pihole` (2026.11.0) | `network-port` 53, `udp` and `tcp` | `sqlite` | Refused: `port_not_permitted` |
+| Uptime Kuma | `louislam/uptime-kuma` (2.5.12) | None | `sqlite` | Passes |
+| Vaultwarden | `vaultwarden/server` (1.37.5) | None | `sqlite` | Passes |
+| Gitea | `gitea/gitea` (28.4.0) | None | `sqlite` | Passes |
+| PostgreSQL (kind `database`, task H24) | `postgres` (18.7) | None | `postgresql` | Passes |
+
+Each service has `no-new-privileges:true` and drops each capability (Section 13.3). The services
+whose image starts as root and changes to a different user have the exception
+`init-capabilities`: the database and the cache of Dawarich, Pi-hole, Uptime Kuma, Gitea and
+PostgreSQL. Each published port is written in the file, not as a variable (SF-226).
+No test on a machine has shown that each image starts with these rights; task H37 shows it. The
+server of OpenSSH in the image of Gitea possibly needs `SYS_CHROOT`, which no exception keeps.
+
+Dawarich passes the default rules. Its Compose file is not the file of the project: it has no
+`container_name`, no `stdin_open`, no `tty`, no `shm_size`, no options of the log driver and no
+`deploy` key, because Section 4.5 refuses each of them. PostgreSQL thus has the default shared
+memory of the engine (64 MiB). The test on a machine must show that this is enough.
+
+### 13.10 A proposed list of the first thirty entries
+
+The order follows what people self-host most. "Open to the network" is the `network-port` mark.
+An entry with a refused mark is not listed until a rule permits its mark.
+
+| # | Entry | Marks | Database |
+| --- | --- | --- | --- |
+| 1 | OwnTracks Recorder | None | None |
+| 2 | Dawarich | None | PostgreSQL with PostGIS; Redis |
+| 3 | Pi-hole | `network-port` 53 `udp` and `tcp` (below 1024: refused today) | SQLite |
+| 4 | AdGuard Home | `network-port` 53 `udp` and `tcp` (below 1024: refused today) | None |
+| 5 | Uptime Kuma | None | SQLite |
+| 6 | Vaultwarden | None | SQLite |
+| 7 | Gitea | None | SQLite |
+| 8 | Forgejo | None | SQLite |
+| 9 | Nextcloud | None | PostgreSQL; Redis |
+| 10 | Immich | None (`device` only for hardware decoding) | PostgreSQL with its vector extension; Redis |
+| 11 | Jellyfin | None (`device` only for hardware decoding) | SQLite |
+| 12 | Home Assistant | `host-network` for the discovery of devices; `device` for a radio stick | SQLite |
+| 13 | Paperless-ngx | None | PostgreSQL; Redis |
+| 14 | Audiobookshelf | None | SQLite |
+| 15 | Navidrome | None | SQLite |
+| 16 | Syncthing | `network-port` 22000 `tcp` and `udp`, 21027 `udp` | None |
+| 17 | Arcane | `engine-socket` (R-247) | SQLite |
+| 18 | Portainer | `engine-socket` (R-247) | Files |
+| 19 | Dozzle | `engine-socket` (R-247) | None |
+| 20 | Homepage | None (`engine-socket` only for the state of containers; left out) | None |
+| 21 | FreshRSS | None | SQLite |
+| 22 | Miniflux | None | PostgreSQL |
+| 23 | Mealie | None | SQLite |
+| 24 | Actual Budget | None | Files |
+| 25 | Stirling-PDF | None | None |
+| 26 | Linkding | None | SQLite |
+| 27 | Grafana | None | SQLite |
+| 28 | n8n | None | SQLite |
+| 29 | Mosquitto | `network-port` 1883 `tcp` (for the phones of OwnTracks) | None |
+| 30 | Open WebUI with Ollama | None (`device` only for a graphics processor) | SQLite |
+
+Not proposed: Watchtower, because it updates images by itself (ETH-004, HOST-044); a VPN server
+such as WireGuard, because it needs a capability of the kernel that no mark names.
+
+## 14. The PostgreSQL entry (R-216, R-301, task H24)
+
+This section is a design with options. It adds no approved requirement. Section 14.6 says what
+task H24 built of it. HOST-041 is approved (R-216); the levels of HOST-048 are OD-HOST-38 of the plan. The design is
+the same for each level: level 2 adds a replica to the server of level 1.
+
+### 14.1 What the entry is
+
+- **A server of PostgreSQL on a machine.** It is an entry of the catalogue of kind `database`,
+  installed with the work type `application_apply` as each entry. Its image is the official image
+  `postgres` of one major version, named by a digest (R-233). A variant with an extension (for
+  example PostGIS, which Dawarich needs) is a second entry of the same kind with its own image.
+- **One server for many applications of the machine.** He said "letting one server be the db".
+  Thus the default is one server on a machine, and each application that needs PostgreSQL gets a
+  database and a user of its own on it. OD-HOST-41 asks whether a server of its own for each
+  application is better.
+- **No published port.** The server publishes no port on the machine. An application reaches it
+  on a network of Docker that is only for that pair: `anima-db-<application>`. The server joins
+  the network of each application that has a database on it; two applications never share a
+  network, so one application cannot reach the containers of a different one.
+- **Change of the contract.** Section 6.4.4 of K10 does not permit a file from the hub to join a
+  network of a different project. The applications program must make and join these networks
+  itself, as a fixed step of the install of an application that names a database. That is a change
+  of the contract, for its owner and a security review (CON-001). No code before it.
+
+### 14.2 A database for an application
+
+1. The recipe of the application says that it needs PostgreSQL, the lowest major version, the
+   extensions, and the names of the variables in which it wants the connection values (for example
+   `DATABASE_URL`, or `POSTGRES_HOST` and four more). Section 13 has the field.
+2. At the install the operator selects a server on the same machine, or Anima installs one.
+3. The applications program makes the database and the user with fixed statements in the server
+   (no text of the hub in a statement). The names are made from the identifier of the application
+   and must match `[a-z][a-z0-9_]{0,62}`. The user owns only its database and has no other right.
+4. The password of the user is made on the machine by the applications program, written only into
+   the environment file of the application (R-231 for its keep), and never sent to the hub.
+   OD-HOST-42 asks whether the operator must see it.
+5. The applications program writes the connection values into the variables that the recipe
+   names, and starts the application.
+6. At the removal of the application, the database and the user are deleted only with the setting
+   "The hub may delete volumes" at the machine (R-230), as the volumes of each application.
+
+### 14.3 Copies and the way back (level 1)
+
+HOST-042 (copies with a way back) is not approved; OD-HOST-1 is open. This is the design that its
+approval would build for PostgreSQL:
+
+- **The copy.** `pg_dump` in the custom format for each database, at an interval that the operator
+  sets, run by the applications program in the server container. A copy of the volume of a server
+  that runs is not used: it is not safe (OD-HOST-12).
+- **Where it goes.** First into a folder of the applications program on the machine, then to a
+  second machine that the operator selects. The path to the second machine is the question of
+  OD-HOST-1.
+- **The way back.** `pg_restore` into a new database, then a switch of the application to it, at
+  the request of the operator only (ETH-004). The old database stays until the operator deletes it.
+- **The test of the way back.** At intervals the program restores the last copy into a database
+  for the test, checks that each table of the copy is there, and deletes the test database. A copy
+  that fails this test makes a notification. A copy function is built only with its way back and
+  this test (HOST-042).
+
+### 14.4 A primary and a replica (level 2)
+
+Only when OD-HOST-38 says B. The second server is on a machine that the operator selects, and
+follows the first by the streaming replication of PostgreSQL over the network between the two
+machines. A switch to the replica is an action of the operator only (ETH-004, HOST-006): Anima
+never switches by itself. The replica needs a path between two machines that this plan does not
+have yet; the design of that path comes with the decision.
+
+### 14.5 Versions
+
+- A new digest of the same major version is pinned and tested as each entry (Section 13).
+- A new major version needs a dump and a restore, or `pg_upgrade`. Anima never changes the major
+  version by itself: the operator starts it, and Anima makes a copy first.
+
+### 14.6 What task H24 built, and where it differs from this design
+
+Task H24 built the part that needs no machine (2026-11-20, branch `hosted/apps-h38`):
+
+- **The entry.** `crates/catalogue/entries/postgresql`: kind `database`, the official image
+  `postgres` with the tag 18.7, named by the digest of the index of all platforms of that tag,
+  read on 2026-11-20 from the registry of Docker Hub with a request for the manifest (no pull,
+  no login). The image is the Debian variant, not Alpine, so that the collations of text are
+  those of the C library of most servers. The password of the superuser is generated at the
+  install. The server has `expose` 5432 and no `ports` entry.
+- **The format.** The fields `kind`, `server` and `database` and the codes
+  `database_not_described` and `database_port_published` of Section 13.
+- **The pure functions.** `catalogue::postgresql`: the names of an application, the statements
+  of the setup and of the removal, the connection values, and the argument lists of the copy,
+  the way back and its test, with their tests. Nothing runs them yet.
+
+Where the build differs from Sections 14.1 to 14.3:
+
+- **The names.** Section 14.2 says that the names are made from the identifier. The identifier of
+  an entry may have `-`, which a name of PostgreSQL without quotes may not have: each `-`
+  becomes `_`. An identifier with `_` or with `--` is refused, so that two identifiers never
+  get the same names (`my-app` and `my_app`) and no name of an application has `__`
+  (SF-223). The names `postgres`, `template0`, `template1`, `public` and each name
+  that starts with `pg_` are refused.
+- **The extensions.** An extension is one of a fixed list, not a pattern: `vector`, `pg_trgm`,
+  `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry
+  `postgresql` names (`btree_gin`, `btree_gist`, `cube`, `earthdistance`, `fuzzystrmatch`,
+  `pgcrypto`, `unaccent`). No extension of the list reaches a file, a program or a different
+  server (SF-223).
+- **The password in a statement.** The password is an input value; the crate never makes one
+  (OD-HOST-42 A). It is 22 to 128 letters and digits of ASCII (at least 128 bits), so that the
+  quoted literal of the `CREATE ROLE` statement is the same text with each setting of the
+  server, and no `$`, backtick, `#` or `=` changes it in an environment file, a shell or a
+  connection address (SF-223). The program must give that statement to `psql` on its standard input, never as
+  an argument. `Debug` of a statement or of a connection value does not show it.
+- **The test of a machine.** It reaches the port that the server exposes on the network of its
+  project, not a published port (Section 13.5).
+- **The way back.** The new database is `<database>__back_<number>`, the database of the test is
+  `<database>__check`. No name of an application has `__`, so neither is the name of a different
+  application. A name longer than 63 bytes is refused, not cut.
+- **The test of the way back** compares the tables of `pg_restore --list` with the tables of the
+  restored database. A table whose name has a space is reported as missing: the list does not
+  quote names. That is a false failure, never a false pass.
+
+Not built: the networks `anima-db-<application>` and the change of contract K10 that they need
+(Section 14.1, CON-001), each part on a machine (task H6), and a replica (OD-HOST-38).
+
+### 14.7 Questions for the operator
+
+- **OD-HOST-41: one server for each machine, or one for each application?** A: one server on a
+  machine, a database and a user for each application (his words). B: a server of its own in the
+  project of each application, as most Compose files of applications do now. Recommendation: A.
+  It matches his words, uses less memory, and level 2 makes one replica of one server, not one for
+  each application. Against A: the change of the contract of Section 14.1, and one server that
+  stops stops each application on it.
+- **OD-HOST-42: must the operator see the password of a database?** A: no; it stays on the
+  machine, in the environment file of the application. B: the hub shows the connection text one
+  time, to a person with a login (closed to each API key and MCP tool, as the log of a container).
+  Recommendation: A first. HOST-041 says "shows its connection text one time"; with A that text is
+  shown only at the machine, so the hub never holds it. B is an addition when a tool outside the
+  machine needs the database.

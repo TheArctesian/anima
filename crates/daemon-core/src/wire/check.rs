@@ -9,9 +9,10 @@ use std::collections::BTreeSet;
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
+use super::batteries::batteries_fit;
 use super::{
-    Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor, KeyVersion,
-    RefusalCode, versions_fit,
+    Batch, BatchBattery, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor,
+    KeyVersion, RefusalCode, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
 use crate::inventory::Inventory;
@@ -30,7 +31,7 @@ const AHEAD: TimeDelta = TimeDelta::seconds(60);
 const MAX_VERSION_BYTES: usize = 64;
 
 /// What the hub takes from a batch: the points of the series whose kind it knows, each with
-/// its non-null values only, the GPUs, drives and inventory when the batch has them, and the
+/// its non-null values only, the GPUs, drives, batteries and inventory when the batch has them, and the
 /// version of the daemon when it sent one (K8 Section 4, R-122). The inventory holds only the
 /// tools this hub knows by name.
 #[derive(Clone, Debug, PartialEq)]
@@ -38,6 +39,8 @@ pub struct Accepted {
     pub points: Vec<Point>,
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
+    /// The batteries, when the batch has them (MET-032).
+    pub batteries: Option<Vec<BatchBattery>>,
     pub inventory: Option<Inventory>,
     pub daemon_version: Option<String>,
     /// The agent usage, when the batch has it, with the session days of known sources only
@@ -66,6 +69,7 @@ impl Batch {
         let shaped = points_fit(&self.points, &keys)
             && gpus_fit(self.gpus.as_deref())
             && drives_fit(self.drives.as_deref())
+            && batteries_fit(self.batteries.as_deref())
             && self.daemon_version.as_deref().is_none_or(is_version)
             && self
                 .keys
@@ -98,6 +102,7 @@ impl Batch {
             points,
             gpus: self.gpus,
             drives: self.drives,
+            batteries: self.batteries,
             inventory,
             daemon_version: self.daemon_version,
             agent_usage,

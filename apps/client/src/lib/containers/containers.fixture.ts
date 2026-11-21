@@ -1,4 +1,5 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
+import type { CatalogueEntry } from '$lib/catalogue/api';
 import type { Container, ContainerCalls, ContainerDetail, ContainerLog, ContainerNetwork, ContainerStorage, ImageUpdate } from './api';
 
 // Test support: containers in the hub's shape, and calls that answer with them and record what the screen asked.
@@ -83,12 +84,40 @@ export const UPDATES: readonly ImageUpdate[] = [
   update('c'.repeat(64), 'recorder', { state: 'NOT_KNOWN', reason: 'NO_LOCAL_DIGEST' }),
 ];
 
+/** Task H38: two entries of the catalogue as the hub lists them; the install of each is refused. */
+export const ENTRIES: readonly CatalogueEntry[] = [
+  entry('owntracks-recorder', 'OwnTracks Recorder', { lastMachineTest: '2026-11-20' }),
+  entry('postgresql', 'PostgreSQL', { kind: 'DATABASE' }),
+];
+
+function entry(id: string, name: string, changes: Partial<CatalogueEntry>): CatalogueEntry {
+  return {
+    id,
+    name,
+    description: `${name} for the tests.`,
+    kind: 'APPLICATION',
+    version: '1.0.0',
+    author: 'Example',
+    tags: ['test'],
+    documentationUrl: 'https://example.org/docs',
+    marks: [],
+    networkPorts: [],
+    lastMachineTest: null,
+    pinned: '2026-11-20',
+    install: { refusal: 'INSTALL_NOT_BUILT', reason: 'The install needs task H6 of the hosted applications plan, which is not built. No machine was reached.', needsOpenToNetwork: false },
+    environmentVariables: ['SECRET_KEY', 'PORT'],
+    composeFile: 'services:\n  app:\n    image: example/app@sha256:0\n',
+    ...changes,
+  };
+}
+
 export interface FakeCalls extends ContainerCalls {
   /** Each read of details, in order: the container. */
   readonly detailsAsked: string[];
   storageAsked: number;
   networksAsked: number;
   updatesAsked: number;
+  entriesAsked: number;
   /** Each log read, in order: the container and the number of lines. */
   readonly logsAsked: [string, number][];
   listsAsked: number;
@@ -106,6 +135,7 @@ export function fakeCalls(containers: readonly Container[] = CONTAINERS): FakeCa
     storageAsked: 0,
     networksAsked: 0,
     updatesAsked: 0,
+    entriesAsked: 0,
     listsAsked: 0,
     fail: null,
     containers,
@@ -133,6 +163,10 @@ export function fakeCalls(containers: readonly Container[] = CONTAINERS): FakeCa
     updates: () => {
       calls.updatesAsked += 1;
       return answer(UPDATES);
+    },
+    entries: () => {
+      calls.entriesAsked += 1;
+      return answer(ENTRIES);
     },
   };
   return calls;

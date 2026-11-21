@@ -2,6 +2,7 @@
 //! parameter. [`gpu`] gives the GPU readings their series and their place among the GPUs.
 
 pub mod agent_usage;
+pub mod batteries;
 pub mod drives;
 pub mod gpu;
 pub mod inventory;

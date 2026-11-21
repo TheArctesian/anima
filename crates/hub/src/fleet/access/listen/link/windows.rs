@@ -21,6 +21,18 @@ pub fn link_socket(path: &Path) -> Result<LinkSocket, Error> {
         })
 }
 
+/// Bind the entrance of the hub's own daemon (HMD-071, HM-T35) by the same rules.
+/// # Errors
+/// As [`link_socket`].
+pub fn own_daemon_socket(path: &Path) -> Result<LinkSocket, Error> {
+    Listener::bind(path)
+        .map(LinkSocket)
+        .map_err(|error| Error::OwnDaemonSocket {
+            path: path.to_owned(),
+            kind: error.kind(),
+        })
+}
+
 impl LinkSocket {
     pub(super) async fn accept(&self) -> io::Result<FromLink> {
         self.0.accept().await.map(FromLink)
@@ -30,6 +42,11 @@ impl LinkSocket {
 pub(super) struct FromLink(Stream);
 
 impl FromLink {
+    /// The connection of the hub's own daemon: the ACL lets only the hub's user reach it.
+    pub(super) fn own(self) -> Option<Stream> {
+        Some(self.0)
+    }
+
     pub(super) async fn named(self) -> Option<(Stream, SocketAddr)> {
         let Self(mut stream) = self;
         let mut bytes = [0; header::LENGTH];
