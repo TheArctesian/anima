@@ -147,3 +147,6 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
