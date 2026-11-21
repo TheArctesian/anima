@@ -42,6 +42,9 @@ export function hubIsHosted(origin: string): boolean {
  */
 export const HOSTED_BROWSER_ORIGIN = 'https://hub.anima.ing';
 
+/** The page of the Anima.ing account: its email, its sign-in methods and its browser sessions (HMD-062). */
+export const ACCOUNT_PAGE = 'https://cloud.anima.ing/account';
+
 /** What the application says when the hub of its settings is that address: the hub of before is not there. */
 export const HOSTED_ADDRESS_MOVED =
   'hub.anima.ing is now the address of the hosted Anima.ing hubs in a browser. Sign in with your Anima.ing account, or give the address of your own hub.';

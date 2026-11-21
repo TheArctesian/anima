@@ -483,9 +483,9 @@ CMD-030 order: there is no hub API in stage 1a, and the plan gives the reason th
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
 | TH0 | This proposal, the ruling, the rows, the mockup, the inventory record, the security read | — | The documents gate | In progress (branch `docs/agent-threads`) |
-| TH1 | the crate `agent-threads`: the reader of THR-003 to THR-006 | TH0 merged (PLN-011) | Tests `thr_001` to `thr_006` | Built on `threads/read-side` |
-| TH2 | `anima agents threads` and `anima agents thread` (THR-007, THR-008) | TH1 | Tests `thr_007`, `thr_008`, with a home folder of test files and a link that is refused | Built on `threads/read-side` |
-| TH3 | The MCP tool `anima_agents_threads` (THR-018, THR-029) | TH2 | The catalogue tests (MCP-009, MCP-011) | Built on `threads/read-side` |
+| TH1 | the crate `agent-threads`: the reader of THR-003 to THR-006 | TH0 merged (PLN-011) | Tests `thr_001` to `thr_006` | Built; in `dev` (merged with the branch `threads/read-side`) |
+| TH2 | `anima agents threads` and `anima agents thread` (THR-007, THR-008) | TH1 | Tests `thr_007`, `thr_008`, with a home folder of test files and a link that is refused | Built; in `dev` (merged with the branch `threads/read-side`) |
+| TH3 | The MCP tool `anima_agents_threads` (THR-018, THR-029) | TH2 | The catalogue tests (MCP-009, MCP-011) | Built; in `dev` (merged with the branch `threads/read-side`) |
 | TH4 | The desktop shell commands `agent_threads_list` and `agent_thread_read` (main web view only, WEB-007), and the page Threads (THR-013 to THR-017) | TH2; the mockup approved | Client tests; HT-079 | Built on `threads/read-side`. No person saw it in a window; not compared with the mockup; no separate reviewer read the page |
 | TH5 | The state that a session file tells (THR-055), the order and the marks of the list with the held order (THR-056), the count on the bar (THR-057), the read at an interval (THR-058) | TH4; R-NEW-threadsorder | Tests on made session lines and made rows, not on the files of a computer; HT-079 steps 8 and 9 | Built on `threads/needs-you` |
 | TH8 | Replies and prompts as Markdown with code blocks, built from parsed text and never as markup of the session (THR-019) | TH4 | Client tests: a tag in a reply shows as text; a code block keeps its lines | Built on `threads/needs-you`; no colours for the words of a programming language |
@@ -662,7 +662,7 @@ Tasks of the three functions of other tools (stage 5): TH70, navigation in code 
 
 ### 6.9 The parity table: each function of the inventory with its stage, its task and its state
 
-"Built on a branch" means the branches `threads/read-side` and `threads/needs-you`, which are pushed and not merged. No function is "held": no code of the drive side exists.
+"Built on a branch" means the branches `threads/read-side` and `threads/needs-you`. The first is in `dev` since 2026-11-20 (tasks TH1 to TH4); the second (tasks TH5 and TH8, and the changes of the list) is pushed and not merged. No function is "held": no code of the drive side exists.
 
 | Inventory | Function | Mark | Stage | Task | State |
 | --- | --- | --- | --- | --- | --- |
