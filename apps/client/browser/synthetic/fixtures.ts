@@ -24,6 +24,8 @@ export interface Fixtures {
   readonly deliveries: Row[];
   readonly notificationSettings: Row;
   readonly apiKeys: Row[];
+  /** The extensions that are on besides the fixed one; none unless a screen sets them on (EXT-001). */
+  readonly extensionsOn?: readonly string[];
 }
 
 function readPhase(name: string): Row | undefined {

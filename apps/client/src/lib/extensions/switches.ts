@@ -1,5 +1,5 @@
 import type { Extension } from './api';
-import { comingSoon } from './coming';
+import { willDo } from './coming';
 
 /** What a row of the Extensions section offers: a live switch, or the reason there is none. */
 export type SwitchKind = 'switch' | 'unbuilt' | 'fixed' | 'needed';
@@ -29,7 +29,7 @@ function kindOf(extension: Extension): SwitchKind {
 function hintOf(extension: Extension, kind: SwitchKind, all: readonly Extension[]): string {
   switch (kind) {
     case 'unbuilt':
-      return comingSoon(extension.key);
+      return willDo(extension.key);
     case 'fixed':
       return 'Always on.';
     case 'needed': {
@@ -47,6 +47,13 @@ export function extensionRows(all: readonly Extension[]): ExtensionRow[] {
     const kind = kindOf(extension);
     return { key: extension.key, label: extension.name, hint: hintOf(extension, kind, all), kind, on: extension.on };
   });
+}
+
+/** The count line over the rows: how many extensions are on, and how many are not built yet (EXT-001). */
+export function countLine(rows: readonly ExtensionRow[]): string {
+  const on = rows.filter((row) => row.kind !== 'unbuilt' && row.on).length;
+  const coming = rows.filter((row) => row.kind === 'unbuilt').length;
+  return coming === 0 ? `${String(on)} on` : `${String(on)} on, ${String(coming)} coming`;
 }
 
 /** The sentence shown before a switch also sets needs on (EXT-011), or `null` when it sets only itself. */
