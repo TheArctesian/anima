@@ -179,6 +179,7 @@
     white-space: nowrap;
   }
 
+  [data-state='asks'] .state,
   [data-state='may_wait'] .state,
   [data-state='your_turn'] .state {
     color: var(--status-degraded-text);

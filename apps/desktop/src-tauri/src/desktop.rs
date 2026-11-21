@@ -6,9 +6,9 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::{
-    agent_threads, builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub,
-    mcp_agents, mcp_permissions, process_log, stay_awake, system_browser, system_settings,
-    this_machine, web_view,
+    agent_runner, agent_threads, builder, cloud, command_line, daemon, hub_listener, keystore,
+    link, local_hub, mcp_agents, mcp_permissions, process_log, stay_awake, system_browser,
+    system_settings, this_machine, web_view,
 };
 
 /// Starts the desktop application and returns when it ends.
@@ -18,7 +18,9 @@ pub fn run() {
     // The dialog plugin's JavaScript API is granted to no web view: only Rust shows its dialogs.
     let app = tauri::Builder::default()
         .plugin(process_log::plugin())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        // Rust only: the page asks the shell, which shows the notification of a thread (THR-059).
+        .plugin(tauri_plugin_notification::init());
     // Release desktop builds only: `tauri dev` never checks for or loads an update (UPD-001).
     #[cfg(not(debug_assertions))]
     let app = with_updater(app).plugin(tauri_plugin_process::init());
@@ -68,6 +70,9 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         builder::upload::builder_upload,
         agent_threads::agent_threads_list,
         agent_threads::agent_thread_read,
+        agent_runner::agent_runner_call,
+        agent_runner::agent_runner_watch,
+        agent_runner::agent_thread_notify,
         mcp_agents::mcp_agents_read,
         mcp_agents::mcp_agents_change,
         mcp_permissions::mcp_permissions_read,
@@ -115,6 +120,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
 /// Gives the application the state that its commands share, and what runs once at its start.
 fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     app.manage(web_view::Tabs::default())
+        .manage(agent_runner::Watching::default())
         .manage(cloud::Cloud::default())
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())

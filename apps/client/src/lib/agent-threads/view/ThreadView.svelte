@@ -135,6 +135,7 @@
     background: var(--accent);
   }
 
+  .state[data-state='asks']::before,
   .state[data-state='may_wait']::before,
   .state[data-state='your_turn']::before {
     background: var(--status-degraded);
