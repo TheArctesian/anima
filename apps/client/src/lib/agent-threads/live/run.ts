@@ -93,6 +93,8 @@ export type Outcome =
   | { readonly outcome: 'threads'; readonly threads: readonly RunRow[] }
   | { readonly outcome: 'limits'; readonly limits: Limits }
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
+  /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
+  | { readonly outcome: 'folder'; readonly notice: readonly string[] }
   | { readonly outcome: 'refused'; readonly why: Refusal };
 
 export type Answer =
@@ -117,7 +119,8 @@ export type Action =
   | { readonly call: 'answer'; readonly thread: string; readonly request: string; readonly answer: Answer }
   | { readonly call: 'interrupt'; readonly thread: string }
   | { readonly call: 'stop'; readonly thread: string }
-  | { readonly call: 'raise_limit' };
+  | { readonly call: 'raise_limit' }
+  | { readonly call: 'folder'; readonly folder: string };
 
 /**
  * The sentence of the operator at the soft limit (THR-114), the same words as `anima agents start` and the runner.
@@ -286,6 +289,8 @@ export function outcomeFrom(value: unknown): Outcome | null {
       return limitsFrom(value.limits);
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
+    case 'folder':
+      return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
     case 'refused': {
       const why = isRecord(value.why) ? oneOf<Refusal>(value.why.refusal, REFUSALS) : null;
       return why === null ? null : { outcome: 'refused', why };
