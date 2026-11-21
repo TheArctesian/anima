@@ -7,7 +7,7 @@
   import ScreenSharingButton from '$lib/devices/screen-sharing/ScreenSharingButton.svelte';
   import { offersScreenSharing, type CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
-  import { canWake, connectLabel, connectProtocols, webInterfacesOf } from './actions';
+  import { canWake, connectLabel, connectProtocols, hasWaysIn, webInterfacesOf } from './actions';
   import './actions.css';
   import WebMenu from './WebMenu.svelte';
   import Icon from '$lib/icons/Icon.svelte';
@@ -32,15 +32,17 @@
   const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false, row = false }: Props = $props();
   const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
   const web = $derived(webInterfacesOf(device));
-  const protocols = $derived(connectProtocols(device));
+  // The hub's own device offers no protocol and no set-up of one: no session reaches its container (HMD-046).
+  const waysIn = $derived(hasWaysIn(device));
+  const protocols = $derived(waysIn ? connectProtocols(device) : []);
   // The setup needs the device: a row of the list does not offer it for a device that is down (row H of the site language plan).
-  const offersSetup = $derived(screenSharing !== undefined && offersScreenSharing(device) && !(row && device.status === 'DOWN'));
+  const offersSetup = $derived(waysIn && screenSharing !== undefined && offersScreenSharing(device) && !(row && device.status === 'DOWN'));
   const offersWeb = $derived(onOpenWeb !== undefined && web.length > 0);
   /**
    * A row of the list has one line: with more than two buttons, each way in shows its icon alone and its name in its
    * tooltip, so a device that goes down and gains "Wake" does not make its row taller (MOT-007).
    */
-  const offersWake = $derived(wake !== undefined && canWake(device) && !(row && device.status === 'UP'));
+  const offersWake = $derived(waysIn && wake !== undefined && canWake(device) && !(row && device.status === 'UP'));
   const tight = $derived(row && protocols.length + (offersSetup ? 1 : 0) + (offersWeb ? 1 : 0) + (offersWake ? 1 : 0) > 2);
 </script>
 

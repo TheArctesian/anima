@@ -12,6 +12,7 @@
   import { ContainersStore } from '$lib/containers/store.svelte';
   import { thisComputerShell } from '$lib/desktop/daemon/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
+  import { readKept } from '$lib/hosted/kept/api';
   import { metricsApi } from '$lib/metrics/api';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
@@ -190,6 +191,7 @@
             onConnect={phone ? undefined : connect}
             onOpenWeb={openWeb}
             onSection={settings}
+            readKept={() => readKept(hub)}
           />
         {/if}
       </TabPanel>

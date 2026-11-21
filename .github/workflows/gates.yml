@@ -64,11 +64,14 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      # A push to dev reads the runs of the gates, to find the trees that already passed.
+      actions: read
     outputs:
       dev_sha: ${{ steps.dev.outputs.dev_sha }}
       rust: ${{ steps.jobs.outputs.rust }}
       go: ${{ steps.jobs.outputs.go }}
       documents_only: ${{ steps.jobs.outputs.documents_only }}
+      proved: ${{ steps.jobs.outputs.proved }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -103,16 +106,26 @@ jobs:
           retention-days: 7
       # The push of a branch runs only the jobs that its changes need (quality/src/gates/jobs.ts):
       # no Rust job for a change that no Rust build reads, no Go job without `link/`, only the
-      # quality gates for documents. A run for `dev`, a train or a call runs each job, and the train
-      # runs each job again before `dev` moves.
+      # quality gates for documents. The train runs each job again before `dev` moves.
+      # A push to `dev` (devPushJobs): only the quality gates when a run on `dev` or a train
+      # already passed for its tree, or when it changed only documents on such a tree; each job
+      # for each other tree, so `dev` never holds a tree that no run proved. A train or a call
+      # runs each job.
       - id: jobs
         name: Read the jobs that the changes need
         env:
           DEV_SHA: ${{ steps.dev.outputs.dev_sha }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          CALLED_REF: ${{ inputs.ref }}
+          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -eu
+          set -eu -o pipefail
           if [ -n "$DEV_SHA" ]; then
             FAST_BASE="$DEV_SHA" bun quality/bin/gates.ts --jobs | tee -a "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "dev" ] && [ -z "$CALLED_REF" ]; then
+            bun quality/bin/gates.ts --dev-push "$BEFORE" | tee -a "$GITHUB_OUTPUT"
           else
             printf 'rust=true\ngo=true\ndocuments_only=false\n' | tee -a "$GITHUB_OUTPUT"
           fi
@@ -121,7 +134,7 @@ jobs:
     needs: base
     # dev, a train, or a run that a person started by hand (`gh workflow run gates.yml --ref <branch>`),
     # the only way to run the Windows gates for a branch before it reaches dev.
-    if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch'
+    if: (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/windows-trial.yml

@@ -42,8 +42,8 @@ function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    // `--alone` checks each crate by itself and `--jobs` names the jobs that a branch needs: neither runs a gate of the list.
-    if (command === undefined || /^\s*--(alone|jobs)\b/.test(command)) return [];
+    // `--alone` checks each crate by itself; `--jobs` and `--dev-push` name the jobs of a push: none runs a gate of the list.
+    if (command === undefined || /^\s*--(alone|jobs|dev-push)\b/.test(command)) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
     return full
@@ -66,7 +66,9 @@ describe("the gates workflow (gates.yml)", () => {
     for (const [name, job] of jobs) {
       expect(job.environment, name).toBeUndefined();
       expect(Object.values(job.permissions ?? {}).filter((value) => value !== "read"), name).toEqual([]);
-      expect(Object.keys(job.permissions ?? {}).filter((key) => key !== "contents"), name).toEqual([]);
+      // Only the job base reads the runs of the gates, to find the trees of dev that already passed.
+      const readable = name === "base" ? ["contents", "actions"] : ["contents"];
+      expect(Object.keys(job.permissions ?? {}).filter((key) => !readable.includes(key)), name).toEqual([]);
     }
     for (const step of steps.filter((each) => each.uses?.startsWith("actions/checkout@"))) {
       expect(step.with?.["persist-credentials"]).toBe(false);
@@ -125,6 +127,20 @@ describe("the gates workflow: each crate alone", () => {
     const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
     expect(merged).toBeGreaterThan(-1);
     expect(alone).toBeGreaterThan(merged);
+  });
+});
+
+describe("the gates workflow: a push to dev", () => {
+  const base = workflow.jobs["base"]?.steps.find((step) => step.run?.includes("--dev-push")) ?? {};
+
+  test("only a push to dev itself, not a branch, a train or a call, chooses its jobs by the trees that passed", () => {
+    expect(base.run).toContain('elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "dev" ] && [ -z "$CALLED_REF" ]; then');
+    expect(base.run).toContain('bun quality/bin/gates.ts --dev-push "$BEFORE"');
+    expect(base.run).toContain("pipefail");
+  });
+
+  test("windows does not run when only the quality gates are needed", () => {
+    expect(workflow.jobs["windows"]?.if).toContain("needs.base.outputs.documents_only != 'true'");
   });
 });
 

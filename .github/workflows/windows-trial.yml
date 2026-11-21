@@ -148,6 +148,9 @@ jobs:
           save-if: false
       - name: Run the Windows gates
         shell: pwsh
+        env:
+          # A run started by hand is a proof run: the gates go on after a failure and list each one.
+          EVENT: ${{ github.event_name }}
         run: |
           $ErrorActionPreference = 'Stop'
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
@@ -160,10 +163,22 @@ jobs:
           & bun apps/desktop/src-tauri/database-tree/windows.ts "$pwd/target/windows-database-work" $env:ANIMA_POSTGRES_TREE
           if ($LASTEXITCODE -ne 0) { throw 'The PostgreSQL tree failed' }
           $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
-          & bun run gates 2>&1 | Tee-Object -FilePath windows-gates.log
-          if ($LASTEXITCODE -ne 0) { throw 'Windows gates failed' }
+          # tauri.windows.conf.json names the seven carried programs, and tauri-build checks that each
+          # exists on every Windows build of the shell. The job windows builds and checks the real ones;
+          # the gates need only the names.
+          $binaries = "$pwd/apps/desktop/src-tauri/binaries"
+          New-Item -ItemType Directory -Force $binaries | Out-Null
+          foreach ($program in @('anima-link', 'anima', 'anima-daemon', 'anima-local-hub', 'anima-hub', 'anima-database', 'anima-gateway')) {
+              New-Item -ItemType File -Force "$binaries/$program-x86_64-pc-windows-msvc.exe" | Out-Null
+          }
+          $proof = $env:EVENT -eq 'workflow_dispatch'
+          $keepGoing = if ($proof) { @('--keep-going') } else { @() }
+          & bun run gates @keepGoing 2>&1 | Tee-Object -FilePath windows-gates.log
+          $gates = $LASTEXITCODE
+          if ($gates -ne 0 -and -not $proof) { throw 'Windows gates failed' }
           & bun deploy/bin/windows-command.ts cargo test -p anima-app --lib start_menu_environment_builds_with_the_discovered_windows_compiler -- --ignored
           if ($LASTEXITCODE -ne 0) { throw 'Start-menu compiler discovery failed' }
+          if ($gates -ne 0) { throw 'Windows gates failed' }
       - name: Keep the gate log even on failure
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
