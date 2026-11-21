@@ -12,6 +12,7 @@
 //! - an event or a request of a kind it does not know: it gives [`DriveEvent::Unknown`], which
 //!   stops the turn when it could wait for an answer (THR-046).
 
+mod account;
 mod claude_in;
 mod claude_out;
 mod codex_in;
@@ -22,6 +23,7 @@ mod session_rule;
 #[cfg(test)]
 mod tests;
 
+pub use account::{AccountFacts, Limit, Private};
 pub use claude_in::ClaudeInput;
 pub use claude_out::ClaudeDecoder;
 pub use codex_in::{CodexInput, CodexMethod, CodexTurn};
@@ -109,6 +111,11 @@ pub enum DriveEvent {
     /// The program says that a request is answered or gone.
     RequestClosed {
         id: ProgramRequestId,
+    },
+    /// What the program said of its account: kept at the machine, never in an update of a
+    /// thread, a log or a notification (THR-051, THR-132).
+    Account {
+        facts: Box<AccountFacts>,
     },
     /// The program answered a request of the runner (`initialize`, `interrupt`, a JSON-RPC call).
     Reply {

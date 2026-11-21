@@ -30,6 +30,7 @@ use super::{
 use crate::{
     api_errors::{FieldError, begin, commit, internal, invalid, pool, schema_dependency},
     clock::Clock,
+    config::Config,
     engine::extensions,
     fleet::{
         access::{Authenticated, operator_only},
@@ -143,10 +144,17 @@ impl Query {
             on: &on,
             now: scheduling.clock.now(),
         };
+        let config = schema_dependency::<Arc<Config>>(ctx)?;
+        let browser = super::registration::browser_origin(config)
+            .filter(|_| super::registration::github(registry).is_some());
         let mut all = Vec::new();
         for declaration in registry.declarations() {
             let consumers = registry.consumers(declaration.key);
+            let connect_page_url = browser
+                .filter(|_| declaration.key == super::registration::GITHUB)
+                .map(super::registration::words::page_url);
             all.push(SourceView {
+                connect_page_url,
                 declaration: *declaration,
                 consumers: consumers.iter().map(|k| k.as_str().to_owned()).collect(),
                 accounts: accounts(&scheduling.pool, &seen, Some(declaration.key))

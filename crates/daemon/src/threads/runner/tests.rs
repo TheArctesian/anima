@@ -77,6 +77,7 @@ const CLAUDE_INIT: &str = r#"{"type":"system","subtype":"init","session_id":"s-1
 const CLAUDE_ASK: &str = r#"{"type":"control_request","request_id":"r-1","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"ls"},"permission_suggestions":[],"tool_use_id":"t-1"}}"#;
 const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}}"#;
 
+mod accounts;
 mod restart;
 
 #[test]
