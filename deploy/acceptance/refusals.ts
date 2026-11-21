@@ -71,6 +71,8 @@ export const REFUSED_ROOTS: readonly string[] = [
   "containerDetail",
   "createLocationIngestToken",
   "connectDawarich",
+  "addApprovedModelSource",
+  "setModelPublisherApproval",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */
