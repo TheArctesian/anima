@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { checkAlone } from "../src/gates/alone.ts";
 import { cpus, loadavg } from "node:os";
 import { compileCache } from "../src/gates/cache.ts";
 import { formatGateEvent, gateList, GROUPS, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
@@ -25,6 +26,17 @@ function groupsAsked(): Group[] | undefined {
     process.exit(2);
   }
   return asked as Group[];
+}
+
+// `--alone`: each crate checked by itself (the job rust-lint on GitHub); it runs no gate of the list.
+if (process.argv[2] === "--alone") {
+  if (process.argv.length > 3) {
+    console.error("gates: --alone takes no other argument (usage: bun quality/bin/gates.ts --alone)");
+    process.exit(2);
+  }
+  const crates = readLayout(REPO_ROOT).crates.map((crate) => crate.name);
+  const run = (argv: string[]) => Bun.spawnSync(argv, { cwd: REPO_ROOT, stdout: "inherit", stderr: "inherit" }).exitCode ?? 1;
+  process.exit(checkAlone(crates, run, (line) => { console.log(line); }));
 }
 
 /** The gates of the fast tier (`--fast`): chosen by the paths that differ from `FAST_BASE` (default `origin/dev`). */
