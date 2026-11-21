@@ -71,9 +71,15 @@ fn thr_030_a_new_watch_gets_the_row_and_each_waiting_request_with_new_numbers() 
             .iter()
             .any(|change| matches!(change, Change::Asked { request: id, .. } if *id == request))
     );
-    let numbered = again.note(changes[0].clone());
+    let kept = again.kept_newest(100, 1 << 20).count();
+    let numbered = again.number(changes[0].clone());
     assert!(
         numbered.seq > 1_000_000,
         "a number after the restart is new"
+    );
+    assert_eq!(
+        again.kept_newest(100, 1 << 20).count(),
+        kept,
+        "what one new watch gets is not kept for the others"
     );
 }

@@ -2521,8 +2521,15 @@ tests ran on a Mac only, as one user.
 What the holder does to end the processes of a program: it walks the process table (`ps -axo pid=,ppid=,lstart=`) from
 the program down, in each process group, stops each process it finds, then kills it. While the program runs it looks at
 the processes below it every 2 seconds, and keeps each one with its start time. So a process that was seen below the program and
-then left the tree (its parent ended) is still ended at a stop or at the end of the program, and a process that took a
-reused ID is never ended. It uses no cgroup (Linux) and no job object (Windows); a Mac has neither.
+then left the tree (its parent ended) is still ended at a stop or at the end of the program. A process that took a reused
+ID is not ended when its start time differs. The start time is in whole seconds, so a process that took the ID in the same
+second as the old one ended can be ended by mistake. If a sweep of these processes fails (`ps` fails, or a process does
+not end), the holder keeps them, says that not all ended, and sweeps them again at the next stop. It uses no cgroup
+(Linux) and no job object (Windows); a Mac has neither.
+
+At a stop the program gets `SIGTERM` and 3 seconds to write its session file. Each process that the program starts in
+those 3 seconds (for example a hook at the end of a session) is killed when the walk finds it, so such a hook does not
+run to its end.
 
 What it cannot stop: a process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork,
 is never seen. It runs on after the stop, and the stop cannot report it (it can report only what it saw). On Linux a

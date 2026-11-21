@@ -174,8 +174,10 @@ pub async fn wait(
             .threads
             .get_mut(&thread)
             .map_or_else(tree::Known::new, |slot| {
+                // Until the sweep proves the end, a stop says that a process may be left.
                 slot.reaped = true;
-                std::mem::take(&mut slot.seen)
+                slot.left_behind = true;
+                slot.seen.clone()
             })
     };
     // The group keeps the ID of the program while one of its members lives, so this signal
@@ -188,7 +190,7 @@ pub async fn wait(
     }
     let swept = tree::sweep(&seen).await;
     if let Some(slot) = locked(&shared).threads.get_mut(&thread) {
-        slot.left_behind = !swept.all;
+        settle_sweep(slot, swept.all);
     }
     finish(&shared, &thread, readers).await;
     let exit = status.map_or(
@@ -259,6 +261,15 @@ pub fn input(mut pipe: ChildStdin) -> tokio::sync::mpsc::Sender<String> {
         }
     });
     sender
+}
+
+/// Keeps the seen processes after a sweep that did not prove their end, so that a stop can sweep
+/// them again; forgets them after a sweep that did.
+pub fn settle_sweep(slot: &mut super::holder::Slot, all: bool) {
+    slot.left_behind = !all;
+    if all {
+        slot.seen.clear();
+    }
 }
 
 /// Keeps the processes below the program now, with those seen before that still run, so that
