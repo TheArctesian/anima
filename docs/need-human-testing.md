@@ -2772,6 +2772,25 @@ to 11 were not tried.
 
 Result: Open.
 
+### HT-NEW-holderupdate: the holder of the threads after an update of the daemon
+
+What was built and where: nothing new yet. This check records what an update does to the holder (`anima-daemon holder`),
+for SF-NEW-holderupdate. The tests start each holder fresh; none replaces the daemon under a running holder.
+
+1. With no thread running, run `ps -axo pid,lstart,command | grep 'anima-daemon holder'` and
+   `ls -i ~/.local/bin/anima-daemon`, then `lsof -p <pid of the holder> | grep txt`.
+   Expected: the inode of the program file of the holder is the inode of `~/.local/bin/anima-daemon`.
+2. Update the application (or install a new build) so that the daemon is replaced. Do step 1 again.
+   Expected now (the finding): the holder has the old inode and the old start time. Expected after the fix: the page and
+   `anima agents running` say that the holder is older than the daemon.
+3. Start a thread, let it end, and do step 1 again.
+   Expected after the fix: the holder of the new build runs (new inode). Now: the old holder still runs.
+4. If the update changed `wire::VERSION`: start a thread.
+   Expected now: the runner refuses with "holder". Expected after the fix: the old holder ended when its last thread ended
+   and the new one starts the thread.
+
+Result: Open.
+
 ### HT-099: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
 
 Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of
