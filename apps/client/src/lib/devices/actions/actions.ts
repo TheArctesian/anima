@@ -3,6 +3,19 @@ import { offersSsh } from '$lib/devices/card/card';
 import type { SessionProtocol } from '$lib/sessions/tabs';
 import type { WebInterface } from '$lib/web-interfaces/api';
 
+/** The kind of the hub's own device in a hosted hub (HMD-045). */
+const HUB_KIND = 'hub';
+
+/** Whether the device is the hub's own device: the container of a hosted hub, which its own daemon reads (HMD-046). */
+export function isHubDevice(device: { readonly kind?: string }): boolean {
+  return device.kind === HUB_KIND;
+}
+
+/** Whether anything may offer SSH, RDP or VNC for the device: not for the hub's own device, whose container no session reaches (HMD-045, HMD-046). */
+export function hasWaysIn(device: { readonly kind?: string }): boolean {
+  return !isHubDevice(device);
+}
+
 /** The protocol buttons a card or table row shows, in order (RA-030, D-4): SSH with an accepted host key, RDP and VNC when on. */
 export function connectProtocols(device: Pick<CardDevice, 'ssh' | 'rdp'> & { readonly vnc: Pick<CardDevice['vnc'], 'enabled'> }): SessionProtocol[] {
   return [

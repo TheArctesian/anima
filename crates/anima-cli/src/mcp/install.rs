@@ -15,7 +15,7 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
 use agents::{AGENTS, Agent, State, agent};
-use setup::{Action, Checked, Here, Step, apply, check_command, state, steps};
+use setup::{Action, Checked, Here, SetupError, Step, apply, check_command, state, steps};
 
 /// One agent as the list shows it (MCP-027).
 #[derive(Clone, Debug, Serialize)]
@@ -40,17 +40,22 @@ pub fn listing(here: &Here, anima: &Checked, action: Action) -> Vec<Row> {
 
 fn row(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Row {
     let state = state(agent, here, anima);
-    let steps = if state == State::NotInstalled {
-        Vec::new()
+    let (steps, problem) = if state == State::NotInstalled {
+        (Vec::new(), None)
     } else {
-        steps(agent, here, anima, (action, state)).unwrap_or_default()
+        match steps(agent, here, anima, (action, state)) {
+            Ok(steps) => (steps, None),
+            // The list says why such an agent cannot be changed (MCP-033, MCP-035).
+            Err(error @ SetupError::ProgramReplaceable) => (Vec::new(), Some(error.to_string())),
+            Err(_) => (Vec::new(), None),
+        }
     };
     Row {
         id: agent.id,
         name: agent.name,
         state,
         steps,
-        problem: None,
+        problem,
     }
 }
 
@@ -87,9 +92,10 @@ pub fn change(here: &Here, anima: &Checked, asked: &Asked<'_>) -> Vec<Row> {
             let problem = wanted(before, action, force)
                 .then(|| apply(agent, here, anima, action).err())
                 .flatten();
+            let after = row(agent, here, anima, action);
             Row {
-                problem: problem.map(|error| error.to_string()),
-                ..row(agent, here, anima, action)
+                problem: problem.map(|error| error.to_string()).or(after.problem),
+                ..after
             }
         })
         .collect()

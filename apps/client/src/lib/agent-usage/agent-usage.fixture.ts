@@ -4,9 +4,9 @@ import type { DayRow, DeviceRow, ModelRow, RepositoryRow, SessionRow, UsageDevic
 
 // Test support: an answer in the hub's shape and a hub that gives it, recording what the page asked for.
 
-const MAC = { id: 'd-mac', name: 'mac-mini' };
-const LINUX = { id: 'd-nas', name: 'nas' };
-const BOX = { id: 'd-box', name: 'gpu-box' };
+const MAC = { id: 'd-mac', name: 'mac-mini', batteries: [] };
+const LINUX = { id: 'd-nas', name: 'nas', batteries: [] };
+const BOX = { id: 'd-box', name: 'gpu-box', batteries: [] };
 
 export const DEVICES: readonly UsageDevice[] = [
   { device: BOX, state: 'TURNED_OFF' },
@@ -101,9 +101,11 @@ export const ANSWER: HubUsage = {
   sessionsLeftOut: 0,
 };
 
-export interface FakeUsageHub extends Pick<Hub, 'request'> {
+export interface FakeUsageHub extends Pick<Hub, 'request' | 'subscribe'> {
   /** The variables of each read, in order. */
   readonly asked: Record<string, unknown>[];
+  /** How many subscriptions are open: the page listens for the charge of each battery (MET-032). */
+  listening: number;
   /** What the next read answers instead of the answer. */
   fail: HubError | null;
   answer: HubUsage;
@@ -114,6 +116,7 @@ export interface FakeUsageHub extends Pick<Hub, 'request'> {
 export function fakeUsageHub(answer: HubUsage = ANSWER, everyone: readonly UsageDevice[] = answer.states): FakeUsageHub {
   const hub: FakeUsageHub = {
     asked: [],
+    listening: 0,
     fail: null,
     answer,
     everyone,
@@ -131,6 +134,12 @@ export function fakeUsageHub(answer: HubUsage = ANSWER, everyone: readonly Usage
         sessions: { sessionsLeftOut: now.sessionsLeftOut, sessions: now.sessions },
       };
       return Promise.resolve({ ok: true, value } as unknown as HubResult<TResult>);
+    },
+    subscribe: () => {
+      hub.listening += 1;
+      return () => {
+        hub.listening -= 1;
+      };
     },
   };
   return hub;

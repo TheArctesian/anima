@@ -32,12 +32,12 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-async function open(query: UsageQuery = DEFAULT_QUERY, hostedLine?: string): Promise<UsageStore> {
+async function open(query: UsageQuery = DEFAULT_QUERY, hostedLine?: string, charges?: { of: (id: string) => ReadonlyMap<string, number> | undefined }): Promise<UsageStore> {
   const store = new UsageStore(agentUsageApi(hub).read);
   const reading = store.load(usageRequest(query, NOW));
   app = mount(AgentUsageScreen, {
     target: document.body,
-    props: { store, query, hostedLine, now: () => NOW, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
+    props: { store, query, hostedLine, charges, now: () => NOW, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
   });
   flushSync();
   await reading;
@@ -121,6 +121,18 @@ it('AIS-024: each device that reports has a line; one whose daemon sends no coun
   expect(mac?.querySelector('th')?.textContent).toContain('Reads sessions');
   expect(cells(mac)).toEqual(['17', '169', '19.3k', '$12.40']);
   expect(nas?.querySelector('th')?.textContent).toContain("Runs as a system unit: it cannot see a user's sessions");
+});
+
+it('MET-032: a device row with a battery shows its charge and its low warning; a row with none shows nothing new', async () => {
+  const laptop = { state: 'READING' as const, device: { id: 'd-mac', name: 'mac-mini', batteries: [{ name: 'InternalBattery-0', state: 'DISCHARGING' as const }] } };
+  hub = fakeUsageHub({ ...ANSWER, states: DEVICES.map((each) => (each.device.id === laptop.device.id ? laptop : each)) });
+  await open(DEFAULT_QUERY, undefined, { of: (id) => (id === laptop.device.id ? new Map([['InternalBattery-0', 9]]) : undefined) });
+  const [box, mac] = lines('By device');
+  const battery = mac?.querySelector('[role="meter"]');
+  expect(battery?.textContent).toContain('9 %');
+  expect(battery?.getAttribute('aria-valuetext')).toBe('9 %, very low, on battery');
+  expect(battery?.classList.contains('low')).toBe(true);
+  expect(box?.querySelector('.battery')).toBeNull();
 });
 
 it('the repositories stand newest use first with their last use, and a line limits the page to its repository', async () => {
