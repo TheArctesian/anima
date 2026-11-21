@@ -3482,6 +3482,21 @@ Steps:
 1. On a Mac with a load above 60 (for example, during a full `bun run gates` of a different
    worktree), run `bun run --cwd deploy test` on `origin/dev`. Expected now: D-4 can fail with 504.
 2. After a correction, run step 1 again five times. Expected: D-4 passes each time.
+
+### HT-NEW-log007load: log_007 of the hub takes too long on a busy machine
+
+For: the owner of the redaction of the hub (`crates/hub/src/fleet/events/redaction/tests/values.rs`). The test is not
+changed.
+
+What fails: `log_007_redaction_of_pathological_text_takes_linear_time` took 10.4 seconds at a load of about 60 on the
+Mac of the operator (18 cores), during a gates run of a different worktree. Alone it passes in 1.7 seconds. A test
+that measures time can fail on a busy machine although the redaction is linear.
+
+Steps:
+
+1. On a Mac with a load above 60, run `cargo nextest run -p anima-hub log_007` on `origin/dev`. Write down the time.
+2. Run it again on a quiet machine. Expected: well under its limit.
+3. Write in the result whether it passes on the runners of GitHub (the run of `compute/l1-stack`).
 ### HT-101: the device page in a narrow window, the Warning badge tip and the skeleton under the tabs (NAV-005, RA-020, D-9)
 
 Built on the branch `ui/device-page-pass`: `apps/client/src/lib/tabs/Tabs.svelte` and
