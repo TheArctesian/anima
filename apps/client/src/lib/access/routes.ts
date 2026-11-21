@@ -1,6 +1,9 @@
 /** The sign-in page path. */
 export const SIGN_IN_PATH = '/sign-in';
 
+/** The sign-in of a hosted hub in a browser: the way to the gateway and the account, with no password (HMD-059). */
+export const GATEWAY_SIGN_IN_PATH = '/hub-sign-in';
+
 /** The first-run choices of the desktop app (FRN-001, NAV-009). */
 export const WELCOME_PATH = '/welcome';
 
@@ -38,9 +41,9 @@ export function routePath(pathname: string, base: string): string {
 }
 
 /**
- * Whether the route path (see `routePath`) needs no sign-in: only the sign-in page, the first-run pages and below them
+ * Whether the route path (see `routePath`) needs no sign-in: only the two sign-in pages, the first-run pages and below them
  * (API-003, E-3, FRN-001). Every other route, `/shared` included, needs sign-in (R-111).
  */
 export function isSignedOut(route: string): boolean {
-  return within(route, SIGN_IN_PATH) || within(route, WELCOME_PATH);
+  return within(route, SIGN_IN_PATH) || within(route, WELCOME_PATH) || within(route, GATEWAY_SIGN_IN_PATH);
 }
