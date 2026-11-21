@@ -1668,6 +1668,15 @@ from `main`, started with Gates `reuse`: the summary says "The Linux gates are n
 when it must run. Not proven before that trial: the time of `gates-macos`, and the test filter of
 `deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
 
+Changed on 2026-11-20, on the branch `update/u2-release-record`, and not run on GitHub (task U2): the jobs `daemon`
+and `daemon-publish`, and a second step of the job `sign` that writes and signs the release record of each target
+([releases.md](procedures/releases.md), "The daemon alone"). Expected in the next trial: `daemon` passes (the macOS
+program is universal, the Linux program needs no library of the AppImage), and the artifact `records` of `sign`
+holds `release-record.json` and its `.sig` for `linux-x86_64` and `darwin-universal`. Expected at the first public
+release: the six files are at `https://releases.anima.ing/<target>/<version>/`, and the SHA-256 of each
+`anima-daemon` is the one in its record. A fault to look for: `ldd` reports a library that a Linux machine of the
+operator does not have.
+
 Result: Open.
 
 Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
@@ -3337,5 +3346,18 @@ screen reader, or a real window of the application.
 7. Open a device on a slow connection to the hub (or a hub that is starting).
    Expected: under the tabs, grey cards in the shape of the open tab until the device shows; no empty space.
 8. Do steps 1, 5 and 7 in the light appearance.
+
+Result: Open.
+
+### HT-105: the headscale VPS-001 test is slow under heavy load (VPS-001)
+
+Seen on the branch `quality/d4-deploy-flake`, in `deploy/headscale/tests`. One run of the VPS-001 test took 23.8 s while the
+load average of the Mac was near 70. The test passed, but a time limit can fail it under such load. This entry records the
+flake only. It is not fixed.
+
+1. On a Mac with a normal load, run `bun test deploy/headscale/tests` five times.
+   Expected: each VPS-001 test passes in a few seconds.
+2. Run it again while the load average is above 50.
+   Expected: it passes. If it fails with a timeout, record the time and the load here.
 
 Result: Open.

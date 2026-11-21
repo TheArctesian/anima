@@ -6,6 +6,7 @@ mod feeds;
 mod files;
 mod holds;
 mod parsers;
+mod records;
 mod signatures;
 mod sigv4;
 

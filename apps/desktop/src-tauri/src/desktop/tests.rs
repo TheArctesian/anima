@@ -6,10 +6,24 @@
 use std::collections::BTreeSet;
 
 /// Commands that only the macOS and Linux application registers, each with its reason.
-const NOT_ON_WINDOWS: [(&str, &str); 1] = [(
-    "system_settings::sharing_settings_open",
-    "opens the sharing settings of macOS or Linux; module system_settings is Unix only",
-)];
+const NOT_ON_WINDOWS: [(&str, &str); 4] = [
+    (
+        "system_settings::sharing_settings_open",
+        "opens the sharing settings of macOS or Linux; module system_settings is Unix only",
+    ),
+    (
+        "agent_runner::agent_runner_call",
+        "calls the thread runner of this computer over its Unix socket; module agent_runner is Unix only (THR-011)",
+    ),
+    (
+        "agent_runner::agent_runner_watch",
+        "watches the thread runner of this computer over its Unix socket; module agent_runner is Unix only (THR-011)",
+    ),
+    (
+        "agent_runner::agent_thread_notify",
+        "tells the person that a thread of the runner needs them; module agent_runner is Unix only (THR-011)",
+    ),
+];
 
 /// Commands that only the Windows application registers, each with its reason.
 const ONLY_ON_WINDOWS: [(&str, &str); 0] = [];
