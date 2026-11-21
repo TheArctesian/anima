@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeHub } from '$lib/devices/hub.fixture';
-import { daemonBundled, installDaemon, thisComputerShell } from './shell';
+import { daemonBundled, installDaemon, removeDaemon, thisComputerShell } from './shell';
 
 const tauri = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: tauri.invoke, isTauri: tauri.isTauri }));
@@ -51,5 +51,30 @@ describe('daemonBundled (D-10 d)', () => {
     }
     tauri.invoke.mockRejectedValue(new Error('no such command'));
     expect(await daemonBundled()).toBe(false);
+  });
+});
+
+describe('removeDaemon (HMD-056)', () => {
+  it('HMD-056: calls the shell with no argument and reads whether a copy was here', async () => {
+    tauri.invoke.mockResolvedValue(true);
+    expect(await removeDaemon()).toEqual({ ok: true, wasHere: true });
+    expect(tauri.invoke).toHaveBeenCalledWith('daemon_remove');
+    tauri.invoke.mockResolvedValue(false);
+    expect(await removeDaemon()).toEqual({ ok: true, wasHere: false });
+  });
+
+  it('HMD-056: a refusal of the shell is its code and fixed words', async () => {
+    tauri.invoke.mockRejectedValue({ code: 'uninstall', message: 'raw' });
+    expect(await removeDaemon()).toEqual({
+      ok: false,
+      problem: 'uninstall',
+      message: 'The daemon did not take its unit and its token off this computer.',
+    });
+  });
+
+  it('CLI-001: outside the desktop app nothing is removed and nothing is invoked', async () => {
+    tauri.isTauri.mockReturnValue(false);
+    expect(await removeDaemon()).toEqual({ ok: true, wasHere: false });
+    expect(tauri.invoke).not.toHaveBeenCalled();
   });
 });

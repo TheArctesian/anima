@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { leaveDaemonOnThisComputer } from '$lib/desktop/daemon/leave';
   import { ACCOUNT_PAGE, hubIsHosted } from '$lib/hosted/mark';
   import { forgetRecentCopy } from '$lib/hub/hub';
   import { tick } from 'svelte';
@@ -31,7 +32,7 @@
     busy = true;
     let kept: string | null;
     try {
-      kept = await leaveHub(hub, api, forgetRecentCopy);
+      kept = await leaveHub(hub, api, forgetRecentCopy, () => leaveDaemonOnThisComputer(hub));
     } catch (reason) {
       busy = false;
       throw reason;

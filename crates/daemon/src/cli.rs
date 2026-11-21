@@ -1,6 +1,6 @@
 //! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run`,
-//! `anima-daemon install [--system]` (MET-012, MET-019), and `anima-daemon key read <name>` and
-//! `anima-daemon key forget` (K-E5 Section 2.1).
+//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056), and
+//! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1).
 
 use std::io::{BufRead, Read as _};
 
@@ -10,7 +10,14 @@ use zeroize::Zeroizing;
 use crate::config::origin::{Origin, OriginError};
 use crate::units::plan::Target;
 
-pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]\n       anima-daemon key read <name>\n       anima-daemon key forget\n       anima-daemon threads\n       anima-daemon holder <folder> [<bytes kept for each thread>]";
+pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
+       anima-daemon run
+       anima-daemon install [--system]
+       anima-daemon uninstall
+       anima-daemon key read <name>
+       anima-daemon key forget
+       anima-daemon threads
+       anima-daemon holder <folder> [<bytes kept for each thread>]";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
@@ -23,6 +30,8 @@ pub enum Command {
     Run,
     /// Write the unit that starts `run` at login or boot, and start it (MET-019, D-10).
     Install { target: Target },
+    /// Stop and delete the user unit, then forget the token and the key cache (HMD-056).
+    Uninstall,
     /// Write the cached value of one operational key to standard output (K-E5 Section 2.1).
     KeyRead { name: String },
     /// Delete the whole key cache, as when the daemon leaves the machine.
@@ -63,6 +72,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
     let mut args = args.into_iter();
     match args.next().as_deref() {
         Some("run") if args.next().is_none() => Ok(Command::Run),
+        Some("uninstall") if args.next().is_none() => Ok(Command::Uninstall),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),
@@ -213,6 +223,14 @@ mod tests {
         assert!(matches!(parse(args("threads")), Ok(Command::Threads)));
         assert!(matches!(parse(args("run now")), Err(CliError::Usage)));
         assert!(matches!(parse(args("")), Err(CliError::Usage)));
+    }
+
+    #[test]
+    fn hmd_056_uninstall_takes_no_arguments() {
+        assert!(matches!(parse(args("uninstall")), Ok(Command::Uninstall)));
+        for line in ["uninstall --system", "uninstall now"] {
+            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
+        }
     }
 
     #[test]
