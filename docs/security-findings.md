@@ -2616,9 +2616,9 @@ Where: `crates/daemon/src/model/server.rs`, `tree/linux.rs`.
 
 What it is: With `Delegate=yes`, the user of the daemon may write to each `cgroup.procs` of the delegated tree. A runtime can write its own process id into the `cgroup.procs` of the cgroup of the daemon and leave the cgroup of its server. When the main process leaves and a child stays, the tree still reads as not empty, and the main process is no longer read or ended by the cgroup.
 
-The correction: Each poll checks that the main process, while it runs, is a member of the `cgroup.procs` of its server; when it is not, the server is exposed and ends with `listener`. A child that leaves while the main process stays is not caught by this check. Linux only, not compiled on the Mac; HT-NEW-l1containment step 9a. The rest waits for the operator: a cgroup namespace in the launcher (so the runtime cannot see or write a cgroup above its own), or the risk accepted under OD-C22.
+The correction: The operator ruled R-NEW-cgroupns: "Hide the daemon's cgroup (Recommended)". The launcher makes a new cgroup namespace (with a user namespace of its own, which a user that is not root needs) after it joins the cgroup of the server and before `exec`. The kernel then refuses a move of a process of the runtime to a cgroup outside the cgroup of its server, a child included. When the namespaces cannot be made, the start fails with `containment_failed`, with no fallback. The launcher now runs before the async runtime starts, because a new user namespace needs a process with one thread. Each poll also checks that the main process, while it runs, is a member of the `cgroup.procs` of its server; when it is not, the server ends with `listener`. Linux only, not compiled on the Mac; HT-NEW-l1containment steps 9a and 9b.
 
-State: Open. Check built; namespace or accept waits for the operator. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
+State: Open. Fixed by the ruling R-NEW-cgroupns on the branch `compute/l1-6` (not pushed); waits for HT-NEW-l1containment. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
 
 ### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
 

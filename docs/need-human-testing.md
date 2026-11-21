@@ -260,6 +260,12 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
 9a. With a server running, write the process id of its `llama-server` into the `cgroup.procs` of the cgroup
    of the daemon (`echo <pid> > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs`). Expected: at the next cycle
    the server is `failed` with `listener`, and its processes and its cgroup are gone (SF-NEW-l1workt1).
+9b. With a server running, read `/proc/<pid of llama-server>/cgroup`. Expected: `0::/` (the runtime sees its
+   own cgroup as the root). Then, as the user of the daemon, run `nsenter -t <pid> -U -C --preserve-credentials sh
+   -c 'echo $$ > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs'`. Expected: the write fails (`No such file`
+   or `Permission denied`). If `sysctl kernel.apparmor_restrict_unprivileged_userns` gives `1`, or
+   `kernel.unprivileged_userns_clone` gives `0`, each start fails with `containment_failed`: write that in the
+   result (R-NEW-cgroupns).
 9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
    and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
    when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon

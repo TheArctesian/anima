@@ -114,6 +114,31 @@ pub fn sweep_cgroups() {
     }
 }
 
+/// Moves the launcher into a new cgroup namespace whose root is the cgroup of its server
+/// (R-NEW-cgroupns): the runtime then sees `/` as its cgroup, and the kernel refuses a move of
+/// a process to a cgroup outside that root, such as the cgroup of the daemon. A user of the
+/// system may make a cgroup namespace only inside a user namespace of its own, so both are made
+/// in one call; the user namespace maps the user and the group of the daemon to themselves.
+/// Called with one thread only (a new user namespace needs it).
+///
+/// # Errors
+/// An I/O error when the system does not permit the namespaces; the launcher then refuses the
+/// start (`containment_failed`), with no fallback.
+fn hide_cgroups() -> io::Result<()> {
+    use rustix::thread::UnshareFlags;
+    let uid = rustix::process::getuid().as_raw();
+    let gid = rustix::process::getgid().as_raw();
+    #[expect(
+        deprecated,
+        reason = "unshare_unsafe needs `unsafe`, which the workspace forbids; its hazard is                   CLONE_FILES and CLONE_FS, which this call does not pass"
+    )]
+    rustix::thread::unshare(UnshareFlags::NEWUSER | UnshareFlags::NEWCGROUP)?;
+    std::fs::write("/proc/self/setgroups", "deny")?;
+    std::fs::write("/proc/self/uid_map", format!("{uid} {uid} 1"))?;
+    std::fs::write("/proc/self/gid_map", format!("{gid} {gid} 1"))?;
+    Ok(())
+}
+
 /// The launcher: `__model-launch <cgroup.procs> <daemon pid> <program> <arguments…>`. It never
 /// returns. The environment is the one that the daemon gave it, already the fixed list.
 ///
@@ -137,7 +162,7 @@ pub fn launch(arguments: &[String]) -> ! {
     // The daemon may have ended before the signal was set: then nothing would end the runtime.
     let parent = rustix::process::getppid().map(rustix::process::Pid::as_raw_nonzero);
     let alive = parent.is_some_and(|pid| daemon.parse().ok() == Some(pid.get()));
-    if !joined || backstop.is_err() || !alive {
+    if !joined || backstop.is_err() || !alive || hide_cgroups().is_err() {
         std::process::exit(LAUNCH_FAILED);
     }
     let _error = std::process::Command::new(program)

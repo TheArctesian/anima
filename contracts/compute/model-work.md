@@ -392,7 +392,12 @@ of the batches between.
   - On Linux the tree of a server is one cgroup v2 below the cgroup of the daemon, which its unit delegates. The
     server joins that cgroup before its program runs: the daemon starts the daemon program in the fixed mode
     `__model-launch`, which writes its own process id to `cgroup.procs`, sets the parent-death signal (`SIGKILL`) as a
-    backstop, checks that the daemon is still its parent, and then runs the runtime with `exec`. The loopback check
+    backstop, checks that the daemon is still its parent, makes a new cgroup namespace (in a user namespace of
+    its own that maps the user and the group of the daemon to themselves; R-NEW-cgroupns), and then runs the
+    runtime with `exec`. The root of the cgroups of the runtime is then the cgroup of its server: it cannot see
+    the cgroup of the daemon or move a process out of its cgroup. When the namespaces cannot be made, the start
+    fails (`containment_failed`), with no fallback. At each poll the main process, while it runs, must be in the
+    cgroup of its server; when it is not, the server ends with `listener`. The loopback check
     reads the sockets of each process of `cgroup.procs`, in the network tables of each network namespace that a
     process is in, merged. A `cgroup.procs` that does not read, a process of the tree whose files do not read, or
     an empty tree while the server runs, counts as a listener that is not on loopback (it fails closed). A stop and

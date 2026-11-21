@@ -20,10 +20,10 @@ use anima_daemon::units::step::{STEP_DEADLINE, run_step};
 use anima_daemon::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    // The launcher of a model runtime (R-NEW-containment): it joins the cgroup of the server
-    // and becomes the runtime; it never returns.
+fn main() -> ExitCode {
+    // The launcher of a model runtime (R-NEW-containment, R-NEW-cgroupns): it joins the cgroup
+    // of the server, hides the cgroups above it and becomes the runtime; it never returns. It
+    // runs before the async runtime starts, because a new namespace needs one thread.
     #[cfg(target_os = "linux")]
     {
         let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -33,6 +33,16 @@ async fn main() -> ExitCode {
             anima_daemon::model::tree::linux::launch(&arguments[1..]);
         }
     }
+    match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime.block_on(daemon()),
+        Err(error) => failure(&error),
+    }
+}
+
+async fn daemon() -> ExitCode {
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
     tracing_subscriber::fmt()
