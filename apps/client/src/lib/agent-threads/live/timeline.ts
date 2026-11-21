@@ -3,7 +3,7 @@
  * that wait, and the row (TH14, THR-014, THR-030). Pure: the time of each update is a parameter.
  */
 
-import type { Entry, ToolCall, ToolKind } from '../thread';
+import type { Entry, Program, ToolCall, ToolKind } from '../thread';
 import type { Ask, RunRow, Said, Update } from './run';
 
 /** The most characters of the output of one tool call that the page keeps. */
@@ -147,4 +147,18 @@ export function liveParts(entries: readonly LiveEntry[]): readonly LivePart[] {
   }
   if (run.length > 0) out.push({ kind: 'tools', tools: run });
   return out;
+}
+
+/** The time the runner gives a program for its first answer before it ends it (TH97); the same as the runner. */
+export const FIRST_ANSWER_MINUTES = 10;
+
+/**
+ * What a thread that is starting waits for, with the time it has waited (TH97): on a busy computer Claude Code reads its
+ * sign-in from the Keychain and Codex loads its plugins first, which can take minutes.
+ */
+export function waitingWords(program: Program, started: Date, now: Date): string {
+  const seconds = Math.max(0, Math.floor((now.getTime() - started.getTime()) / 1000));
+  const waited = seconds < 60 ? `${String(seconds)} s` : `${String(Math.floor(seconds / 60))} min ${String(seconds % 60)} s`;
+  const first = program === 'claude_code' ? 'Claude Code reads its sign-in first' : 'Codex loads its plugins first';
+  return `Waiting for the first answer of the program: ${waited}. ${first}; on a busy computer this can take minutes. The runner ends it after ${String(FIRST_ANSWER_MINUTES)} minutes with no answer.`;
 }

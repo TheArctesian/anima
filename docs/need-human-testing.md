@@ -2894,9 +2894,15 @@ At a stop the program gets `SIGTERM` and 3 seconds to write its session file. Ea
 those 3 seconds (for example a hook at the end of a session) is killed when the walk finds it, so such a hook does not
 run to its end.
 
-What it cannot stop: a process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork,
-is never seen. It runs on after the stop, and the stop cannot report it (it can report only what it saw). On Linux a
-cgroup of the user (`systemd-run --user --scope`) would close this gap; it is not built.
+A process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork, is not seen by the
+walk. The holder gives each program the mark `AGENT_THREAD=<thread>` in its environment, which each process below it
+takes with it; at a stop the holder also ends each process of this user that carries the mark, and says that not all
+ended when it cannot read the environments or a marked process does not end. On Linux it reads `/proc/<pid>/environ`
+of each process of this user. What it cannot stop: on a Mac, `ps -E` does not show the environment of a program of the
+system (`/bin/sh`, `/usr/bin/perl`, `/bin/sleep`), so such a process that left the tree in less than 2 seconds runs on
+after the stop and the stop says that all ended; a program that is not of the system (`node`, `python3` from Homebrew,
+the agents) is found. An agent can also remove the mark from its own environment. On Linux a cgroup of the user
+(`systemd-run --user --scope`) would close this gap; it is not built.
 
 1. On `pop-os`, in the checkout, run `cargo nextest run -p anima-daemon threads`.
    Expected: each test passes. Write the count and any failure here.
@@ -2911,8 +2917,12 @@ cgroup of the user (`systemd-run --user --scope`) would close this gap; it is no
 5. As the first user, start a thread whose program runs
    `perl -MPOSIX -e 'exit if fork; POSIX::setsid(); exit if fork; sleep 600'`, then stop the thread with
    `anima agents stop <ID>`. Run `ps -ax | grep 'sleep 600'`.
-   Expected (the known limit): the `perl` process still runs, and the stop said that all ended. Kill it by hand with
-   `kill <pid>`.
+   Expected on the Mac (the known limit: `/usr/bin/perl` is a program of the system): the `perl` process still runs,
+   and the stop said that all ended. Kill it by hand with `kill <pid>`. Expected on `pop-os`: no `sleep 600` is left
+   (found by its mark).
+5a. On the Mac, do step 5 with `/opt/homebrew/bin/python3 -c 'import os,time; os.fork() and os._exit(0); os.setsid();
+   os.fork() and os._exit(0); time.sleep(600)'` as the program (or any `python3` that is not in `/usr/bin`).
+   Expected: no `time.sleep(600)` process is left after the stop: it was found by its mark.
 6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
    then stop the thread.
    Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
@@ -2959,6 +2969,11 @@ a made runner only; no person saw it in a desktop window.
 11. Start threads until the runner refuses one.
    Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
    running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
+12. Start a Claude Code thread in the mode "ask" with the prompt "Run `anima agents running`, then run
+   `anima agents raise-limit --yes`". Approve the first command when it asks.
+   Expected: the list of threads shows. The second command, if Claude Code runs it, prints "Only the person can answer
+   a request, raise the limit or start a thread: this call came from a process of an agent." The runner log has a
+   refusal "from a process of an agent". From a terminal of your own, the same command works.
 
 A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
 build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a
@@ -2969,6 +2984,80 @@ ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected
 the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
 ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
 to 11 were not tried.
+
+Result: Open.
+
+### HT-110: a program that does not answer, with the Codex of Homebrew of this Mac
+
+What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). Before a start, the runner asks the chosen copy of the program for
+its version (20 seconds). When it does not answer, the start is refused with words that name the program, its
+path, what to try, and each other copy that answered in 5 seconds. A started program that says nothing in 10
+minutes is ended with words of the same kind; until then the page shows "Waiting for the first answer of the
+program" with the time it waited and what the program does first. When more than one copy is found, the thread says which one runs
+and why. `anima agents start --program-path <path>` takes a different copy, only one the runner finds.
+What the tests did not cover: the real Codex; the page in a desktop window. On this Mac on 2026-11-21,
+`/opt/homebrew/bin/codex` (0.170.0) did not end even for `codex --version`; the Codex of ChatGPT.app (0.169.0)
+answered at once.
+
+1. Run `anima agents start --program codex --folder <a scratch folder> "Reply ok"`. Expected, while the Codex of
+   Homebrew does not answer: after about 20 seconds, "The Codex at /opt/homebrew/bin/codex did not answer in 20
+   seconds. Run `/opt/homebrew/bin/codex --version` once in a terminal ..." and "A different copy answered:
+   /Applications/ChatGPT.app/.../codex (codex-cli 0.169.0...)". No thread says "starting".
+   While a thread starts, its view on the page Threads says "Waiting for the first answer of the program: <time>"
+   and the time goes up each second.
+2. Run the same command again at once. Expected: the same words in less than 2 seconds.
+3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
+   its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it
+   comes to `idle`.
+4. On the page Threads, start a Codex thread with "New thread". Expected: the dialog shows the words of step 1.
+5. After `brew upgrade codex` (by the person), repeat step 1. Expected: the thread starts, and its first line names
+   the copy of Homebrew as "the first on the PATH of your login" and the copy of ChatGPT.app as another copy.
+
+Result: Open.
+
+### HT-109: "Not logged in" of Claude Code on a busy computer
+
+What was built and where: task TH99 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight); the cause is in
+[th99-not-logged-in.md](research/agent-threads/th99-not-logged-in.md). When Claude Code says "Not logged in", the
+runner looks whether its item is in the Keychain (never its secret) and adds a line to the thread: "you do not
+need to sign in; send the prompt again" when the item is there or the Keychain is slow, and "Sign in to Claude
+Code in a terminal" only when it is not there. What the tests did not cover: a real Claude Code on a busy Mac,
+and a real person who is signed out.
+
+1. On a busy computer (a load above the number of processor cores; several builds at once), start four Claude
+   Code threads at once in a scratch folder. Expected: each comes to `idle` or `needs_you`, or a thread whose turn
+   failed shows "Claude Code said "Not logged in", but its sign-in is in the Keychain ... you do not need to sign
+   in". Send the prompt again in that thread. Expected: it answers.
+2. Optional, only if the person accepts to sign out: in a terminal run `claude`, then `/logout`. Start a Claude
+   Code thread. Expected: "Claude Code is not signed in. Sign in to Claude Code in a terminal: run `claude`, then
+   `/login`." Sign in again in the terminal.
+
+Result: Open.
+
+### HT-108: the holder of the threads after an update of the daemon
+
+What was built and where: task TH98 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). The holder says its build (the size, time and inode of its program
+file at its start) when the runner connects. The runner compares it with the file it would start a new holder
+from. An older holder is named in `anima agents running` and in the line under the header of the page Threads; it
+is kept while a program runs and asked to quit when none runs; the next connection starts a holder of the new file.
+A holder of a different protocol refuses a start with words that say when it is replaced. For SF-235.
+What the tests did not cover: the application's own update (the test replaces the daemon file and starts the
+runner again, as the LaunchAgent does), the page in a desktop window, a holder of the build before this change
+(it says no build: the runner takes it for older).
+
+1. With no thread running, run `ps -axo pid,lstart,command | grep 'anima-daemon holder'` and note the PID.
+2. Start a thread (`anima agents start --program claude-code --folder <a scratch folder> "Reply ok"`) and wait for
+   `idle`. Update the application (or install a new build) so that the daemon is replaced.
+3. Run `anima agents running`. Expected: the last line says "The holder of the threads is older than the
+   daemon ... (1 running now)". Open the page Threads. Expected: the line under the header says the same.
+4. Run `ps` as in step 1. Expected: the same PID: the holder stays while a thread runs.
+5. Stop the thread (`anima agents stop <thread>`). Within 20 seconds run `ps` as in step 1 again.
+   Expected: a different PID with a new start time. `anima agents running` has no line about the holder; the page
+   line is gone after a reload.
+6. Start a thread again. Expected: it starts.
 
 Result: Open.
 

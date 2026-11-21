@@ -74,11 +74,13 @@ export type Refusal =
   | 'unknown_thread'
   | 'folder_not_permitted'
   | 'program_not_found'
+  | 'program_does_not_answer'
   | 'bad_value'
   | 'request_gone'
   | 'answer_does_not_fit'
   | 'not_running'
   | 'holder'
+  | 'from_an_agent'
   | 'over_limit';
 
 export interface Limits {
@@ -90,12 +92,14 @@ export interface Limits {
 export type Outcome =
   | { readonly outcome: 'ok' }
   | { readonly outcome: 'started'; readonly thread: string }
-  | { readonly outcome: 'threads'; readonly threads: readonly RunRow[] }
+  /** `holder`: words while the holder of the programs is older than the daemon (TH98). */
+  | { readonly outcome: 'threads'; readonly threads: readonly RunRow[]; readonly holder?: string }
   | { readonly outcome: 'limits'; readonly limits: Limits }
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
   /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
   | { readonly outcome: 'folder'; readonly notice: readonly string[] }
-  | { readonly outcome: 'refused'; readonly why: Refusal };
+  /** `said`: the words of the runner for a refusal that names a program and its path (TH97). */
+  | { readonly outcome: 'refused'; readonly why: Refusal; readonly said?: string };
 
 export type Answer =
   | { readonly answer: 'allow' }
@@ -132,7 +136,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'over_limit'];
+const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'over_limit'];
 
 type Fields = Record<string, unknown>;
 
@@ -265,14 +269,24 @@ export function updateFrom(value: unknown): Update | null {
   return change === null ? null : { thread, seq: value.seq, change };
 }
 
-function threadsFrom(value: unknown): Outcome | null {
+function threadsFrom(value: unknown, holder: unknown): Outcome | null {
   const rows = Array.isArray(value) ? value.map(runRowFrom) : null;
-  return rows === null || rows.some((row) => row === null) ? null : { outcome: 'threads', threads: rows as RunRow[] };
+  if (rows === null || rows.some((row) => row === null)) return null;
+  const words = str(holder);
+  return words === null ? { outcome: 'threads', threads: rows as RunRow[] } : { outcome: 'threads', threads: rows as RunRow[], holder: words };
 }
 
 function limitsFrom(limits: unknown): Outcome | null {
   if (!isRecord(limits) || typeof limits.depth !== 'number' || typeof limits.children !== 'number' || typeof limits.running !== 'number') return null;
   return { outcome: 'limits', limits: { depth: limits.depth, children: limits.children, running: limits.running } };
+}
+
+function refusedFrom(value: unknown): Outcome | null {
+  if (!isRecord(value)) return null;
+  const why = oneOf<Refusal>(value.refusal, REFUSALS);
+  const said = str(value.said);
+  if (why === null) return null;
+  return said === null ? { outcome: 'refused', why } : { outcome: 'refused', why, said };
 }
 
 /** The result of a call, or `null` when it does not read. */
@@ -284,17 +298,15 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'started':
       return typeof value.thread === 'string' ? { outcome: 'started', thread: value.thread } : null;
     case 'threads':
-      return threadsFrom(value.threads);
+      return threadsFrom(value.threads, value.holder);
     case 'limits':
       return limitsFrom(value.limits);
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
       return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
-    case 'refused': {
-      const why = isRecord(value.why) ? oneOf<Refusal>(value.why.refusal, REFUSALS) : null;
-      return why === null ? null : { outcome: 'refused', why };
-    }
+    case 'refused':
+      return refusedFrom(value.why);
     default:
       return null;
   }
@@ -304,11 +316,13 @@ export function outcomeFrom(value: unknown): Outcome | null {
 export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   unknown_thread: 'No thread of this computer has that ID.',
   folder_not_permitted: 'That folder is not an absolute folder of this computer.',
-  program_not_found: 'That program is not on the PATH of your login.',
+  program_not_found: 'That program is not on the PATH of your login, or that path is not a copy the runner finds.',
+  program_does_not_answer: 'The program did not answer.',
   bad_value: "A value is not permitted (a model name takes letters, digits, '.', '_', '-', '[' and ']').",
   request_gone: 'That request is answered, closed, or its program ended.',
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
+  from_an_agent: 'Only the person can answer a request, raise the limit or start a thread: this call came from a process of an agent.',
   over_limit: OVER_LIMIT,
 };

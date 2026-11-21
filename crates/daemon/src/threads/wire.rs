@@ -7,6 +7,25 @@ use serde::{Deserialize, Serialize};
 /// guess: the holder then takes no new start (THR-113).
 pub const VERSION: u32 = 2;
 
+/// The build of the program file at `path` now: its size, its time of change and its inode, so
+/// that a holder of an older file says so after an update of the daemon (TH98).
+#[must_use]
+pub fn build_of(path: &std::path::Path) -> Option<String> {
+    use std::os::unix::fs::MetadataExt as _;
+    let meta = std::fs::metadata(path).ok()?;
+    Some(format!("{}-{}-{}", meta.len(), meta.mtime(), meta.ino()))
+}
+
+/// The build of this program, taken the first time it is asked: the holder asks at its start,
+/// before an update can replace its file.
+#[must_use]
+pub fn this_build() -> Option<String> {
+    static BUILD: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    BUILD
+        .get_or_init(|| build_of(&std::env::current_exe().ok()?))
+        .clone()
+}
+
 /// The most bytes of one frame. A longer frame, or one that does not read, closes the
 /// connection and harms no agent (H8). A line of a program is at most 4 MiB, and JSON writes a
 /// control byte in six bytes, so one line in a frame fits with room.
@@ -65,6 +84,9 @@ pub enum Event {
     Hello {
         version: u32,
         threads: Vec<Held>,
+        /// The build of the holder ([`this_build`]); a holder from before this member says none.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        build: Option<String>,
     },
     /// The answer to the command `id`.
     Done {

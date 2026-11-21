@@ -20,7 +20,7 @@ use super::gone;
 
 /// A made Claude Code: it names its session, asks to run a command, and after the answer starts
 /// a child in a process group of its own, writes the child's ID to `child.pid`, and ends its turn.
-const CLAUDE: &str = r#"#!/usr/bin/perl
+pub(super) const CLAUDE: &str = r#"#!/usr/bin/perl
 $| = 1;
 my $sid = "none";
 for my $i (0 .. $#ARGV) { $sid = $ARGV[$i + 1] if $ARGV[$i] eq "--session-id"; }
@@ -58,6 +58,13 @@ impl Kit {
 
     /// A kit whose made Claude Code is `claude`.
     pub(super) fn with(claude: &str) -> Self {
+        let mut kit = Self::unstarted(claude);
+        kit.start();
+        kit
+    }
+
+    /// A kit with no runner yet.
+    pub(super) fn unstarted(claude: &str) -> Self {
         use std::os::unix::fs::PermissionsExt as _;
         let home = tempfile::tempdir().expect("a folder");
         let bin = home.path().join("bin");
@@ -68,9 +75,7 @@ impl Kit {
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("mode");
         }
         std::fs::create_dir(home.path().join("work")).expect("work");
-        let mut kit = Self { home, runner: None };
-        kit.start();
-        kit
+        Self { home, runner: None }
     }
 
     pub(super) fn path(&self, name: &str) -> PathBuf {
@@ -87,8 +92,17 @@ impl Kit {
 
     /// One more `anima-daemon threads` on the folder of this kit.
     pub(super) fn spawn_runner(&self) -> Child {
+        self.spawn_runner_from(Path::new(env!("CARGO_BIN_EXE_anima-daemon")))
+    }
+
+    /// The runner of this kit from the program file at `daemon`, which also starts the holder.
+    pub(super) fn start_from(&mut self, daemon: &Path) {
+        self.runner = Some(self.spawn_runner_from(daemon));
+    }
+
+    fn spawn_runner_from(&self, daemon: &Path) -> Child {
         let bin = self.path("bin");
-        Process::new(env!("CARGO_BIN_EXE_anima-daemon"))
+        Process::new(daemon)
             .arg("threads")
             .env_clear()
             .env("HOME", self.home.path())
@@ -230,6 +244,7 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
             model: None,
             effort: None,
             prompt: "Run the command".to_owned(),
+            program_path: None,
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {
@@ -267,7 +282,7 @@ async fn th11_a_thread_starts_asks_is_answered_survives_a_restart_and_stops_with
     kit.start();
     let mut client = kit.client().await;
     let list = client.call(Action::List).await;
-    let Outcome::Threads { threads } = client.done(list).await else {
+    let Outcome::Threads { threads, .. } = client.done(list).await else {
         panic!("threads")
     };
     assert_eq!(threads.len(), 1);

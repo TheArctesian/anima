@@ -34,7 +34,7 @@
   let field = $state<HTMLInputElement>();
   let starting = $state(false);
   const live = $derived(store.live);
-  const linkWords = $derived(live === null || live.linked !== false ? null : (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.'));
+  const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
   let screen = $state<HTMLElement>();
   const shown = $derived(narrowed(store.allRows ?? [], program, search));
   /** The states are of the time of the last read of the list; a test gives its own time. */

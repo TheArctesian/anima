@@ -2,10 +2,12 @@
 //! shell makes it, never a secret of Anima (R-308). The daemon runs from a service
 //! manager with a short `PATH`, so the runner asks the login shell one time at its start.
 
-use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use agent_threads::drive::Program;
+mod copies;
+pub mod sign_in;
+
+pub use copies::{chosen_copy, copies, executable, find, trusted, with_folder_of};
 
 /// The mark before the environment in the output of the shell: a profile may print text first.
 const MARK: &str = "ANIMA-LOGIN-ENVIRONMENT-7f3c";
@@ -186,132 +188,9 @@ fn login_shell(user: &str) -> Option<String> {
         .filter(|shell| shell.starts_with('/'))
 }
 
-/// The file name of a program.
-const fn file_name(program: Program) -> &'static str {
-    match program {
-        Program::ClaudeCode => "claude",
-        Program::Codex => "codex",
-    }
-}
-
-/// The folders where Claude Code and Codex are often installed, below the home folder or not.
-/// They are looked in after the `PATH` of the login, for a login shell that gave no `PATH`.
-const USUAL: [&str; 6] = [
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-    "~/.local/bin",
-    "~/.claude/local",
-    "~/.bun/bin",
-    "~/.npm-global/bin",
-];
-
-/// The absolute path of `program` on the `PATH` of `env`: the first folder that holds an
-/// executable file of that name. Then the [`USUAL`] folders, with `~` as the `HOME` of `env`,
-/// each only when `trusted` holds for it (a folder of the person or of the system, that no other
-/// user can write).
-#[must_use]
-pub fn find(
-    program: Program,
-    env: &[(String, String)],
-    executable: impl Fn(&Path) -> bool,
-    trusted: impl Fn(&Path) -> bool,
-) -> Option<PathBuf> {
-    let home = env
-        .iter()
-        .find(|(name, _)| name == "HOME")
-        .map(|(_, home)| home.as_str());
-    let usual = USUAL
-        .iter()
-        .filter_map(|folder| match folder.strip_prefix("~/") {
-            Some(below) => home.map(|home| Path::new(home).join(below)),
-            None => Some(PathBuf::from(folder)),
-        })
-        .filter(|folder| trusted(folder));
-    env.iter()
-        .find(|(name, _)| name == "PATH")
-        .into_iter()
-        .flat_map(|(_, path)| path.split(':').map(PathBuf::from))
-        .chain(usual)
-        .filter(|folder| folder.is_absolute())
-        .map(|folder| folder.join(file_name(program)))
-        .find(|candidate| executable(candidate))
-}
-
-/// Whether `folder` belongs to this user or to the system and no other user can write it.
-#[must_use]
-pub fn trusted(folder: &Path) -> bool {
-    use std::os::unix::fs::MetadataExt as _;
-    let me = rustix::process::getuid().as_raw();
-    std::fs::metadata(folder).is_ok_and(|meta| {
-        meta.is_dir() && (meta.uid() == me || meta.uid() == 0) && meta.mode() & 0o022 == 0
-    })
-}
-
-/// `env` with the folder of `program` last on its `PATH` when the `PATH` does not hold it, so
-/// that a program found in a [`USUAL`] folder also finds the programs next to it, and the order
-/// of the login stays first.
-#[must_use]
-pub fn with_folder_of(mut env: Vec<(String, String)>, program: &Path) -> Vec<(String, String)> {
-    let Some(folder) = program
-        .parent()
-        .and_then(Path::to_str)
-        .filter(|folder| !folder.contains(':'))
-    else {
-        return env;
-    };
-    match env.iter_mut().find(|(name, _)| name == "PATH") {
-        Some((_, path)) if path.split(':').any(|known| known == folder) => {}
-        Some((_, path)) => *path = format!("{path}:{folder}"),
-        None => env.push(("PATH".to_owned(), folder.to_owned())),
-    }
-    env
-}
-
-/// Whether `path` is a file that this user may run.
-#[must_use]
-pub fn executable(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt as _;
-    std::fs::metadata(path)
-        .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_program_not_on_the_path_is_found_in_a_usual_folder_and_its_folder_goes_on_the_path() {
-        let env = vec![
-            ("HOME".to_owned(), "/home/a".to_owned()),
-            ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
-        ];
-        let at_home = |path: &Path| path == Path::new("/home/a/.local/bin/claude");
-        let found = find(Program::ClaudeCode, &env, at_home, |_| true);
-        assert_eq!(found, Some(PathBuf::from("/home/a/.local/bin/claude")));
-        assert_eq!(
-            find(Program::ClaudeCode, &env, at_home, |_| false),
-            None,
-            "a usual folder that another user can write is not used"
-        );
-        let on_path = find(
-            Program::Codex,
-            &env,
-            |path| path == Path::new("/bin/codex"),
-            |_| false,
-        );
-        assert_eq!(
-            on_path,
-            Some(PathBuf::from("/bin/codex")),
-            "the PATH comes first"
-        );
-        let env = with_folder_of(env, Path::new("/home/a/.local/bin/claude"));
-        assert!(env.contains(&(
-            "PATH".to_owned(),
-            "/usr/bin:/bin:/home/a/.local/bin".to_owned()
-        )));
-        let again = with_folder_of(env.clone(), Path::new("/usr/bin/claude"));
-        assert_eq!(again, env, "a folder on the PATH is not added twice");
-    }
 
     #[test]
     fn the_environment_is_read_after_the_mark_and_leaves_out_the_names_of_anima() {
@@ -347,18 +226,5 @@ mod tests {
             parse(cut.as_bytes(), &[]).is_empty(),
             "no end mark, nothing read"
         );
-    }
-
-    #[test]
-    fn a_program_is_found_in_the_first_absolute_folder_of_the_path() {
-        let env = vec![("PATH".to_owned(), "relative:/a:/b".to_owned())];
-        let found = find(
-            Program::Codex,
-            &env,
-            |path| path.starts_with("/b") || path.starts_with("relative"),
-            |_| false,
-        );
-        assert_eq!(found, Some(PathBuf::from("/b/codex")));
-        assert_eq!(find(Program::ClaudeCode, &env, |_| false, |_| false), None);
     }
 }

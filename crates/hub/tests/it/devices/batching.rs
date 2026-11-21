@@ -40,7 +40,12 @@ pub(crate) async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
 
 const BATCHED_AT_MOST: usize = 12;
 pub(super) const SITES: i32 = 30;
-pub(super) const BATCH_WINDOW: Duration = Duration::from_millis(20);
+/// How long a loader of these tests waits for keys before it reads. A loader reads the keys that
+/// came in its window; on a loaded machine (load about 32) the 163 resolvers of the large set did not
+/// all come within 20 ms, so the batches split and the count passed its bound (86 for 163 devices)
+/// with the batching unchanged. 200 ms holds the count under load; the hub's own window is in
+/// `schema.rs` and is not tested here.
+pub(super) const BATCH_WINDOW: Duration = Duration::from_millis(200);
 const NESTED: &str =
     "{ sites { name devices(first: 200) { totalCount edges { node { name site { name } } } } } }";
 

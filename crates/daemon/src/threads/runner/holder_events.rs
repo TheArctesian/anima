@@ -2,6 +2,9 @@
 //! programs, their end, the answer to each command, and a program that waits because the holder
 //! keeps its limit of output (THR-113).
 
+mod older;
+mod signed_out;
+
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
 use agent_threads::drive::DriveEvent;
 use uuid::Uuid;
@@ -17,7 +20,11 @@ use crate::threads::wire::{
 impl Runner {
     pub(super) async fn holder_event(&mut self, event: Event) {
         match event {
-            Event::Hello { version, threads } => self.hello(version, threads).await,
+            Event::Hello {
+                version,
+                threads,
+                build,
+            } => self.hello(version, threads, build.as_deref()).await,
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,
@@ -32,19 +39,27 @@ impl Runner {
     /// After a connection: a holder of a different version takes no start (THR-113); a thread
     /// that the holder does not hold any more stopped; a program the holder holds that no
     /// thread knows is ended (THR-049); a start whose answer was lost is settled.
-    async fn hello(&mut self, version: u32, held: Vec<Held>) {
+    async fn hello(&mut self, version: u32, held: Vec<Held>, build: Option<&str>) {
         self.holder_fits = version == wire::VERSION;
-        if !self.holder_fits {
-            tracing::error!(
+        // Compared with the file that a new holder would start from, so that a holder that a
+        // new start would not change is never replaced (no loop of ends and starts).
+        // A holder of the same file is never older, also when its protocol differs: then this
+        // runner is the old one and ends with the next restart of the daemon.
+        let next = wire::build_of(&self.program);
+        self.holder_older = next.is_some() && build != next.as_deref();
+        self.holder_newer = !self.holder_fits && !self.holder_older;
+        if self.holder_older {
+            tracing::warn!(
                 holder = version,
                 runner = wire::VERSION,
-                "the holder speaks a different version; no thread starts until it ends"
+                "the holder is older than the daemon; it is replaced when no thread runs"
             );
         }
         self.reconcile(&held).await;
         self.settle_starts().await;
         self.end_unknown(held).await;
         self.save();
+        self.replace_older_holder().await;
     }
 
     /// Each thread that the holder does not hold, or holds ended, stops.
@@ -148,6 +163,7 @@ impl Runner {
         };
         let before = self.threads.get(&id).map(Thread::record_key);
         let mut last = self.read_up_to.get(&id).copied().unwrap_or(0);
+        let mut signed_out = false;
         for (at, line) in lines.into_iter().enumerate() {
             let seq = first + at as u64;
             if seq <= last {
@@ -164,9 +180,13 @@ impl Runner {
                     Vec::new()
                 }
             };
+            signed_out |= steps.iter().any(signed_out::not_logged_in);
             if self.apply(id, steps).await.is_err() {
                 break;
             }
+        }
+        if signed_out {
+            self.tell_sign_in(id).await;
         }
         self.read_up_to.insert(id, last);
         // The record holds the open requests before the holder drops their lines (THR-030); a
@@ -206,7 +226,10 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
-        let steps = thread.exited(exit.code, exit.signal);
+        let steps = match self.silence.ended(id) {
+            Some(why) => thread.ended_because(why),
+            None => thread.exited(exit.code, exit.signal),
+        };
         let _ = self.apply(id, steps).await;
         self.save();
         self.command(Action::Forget {

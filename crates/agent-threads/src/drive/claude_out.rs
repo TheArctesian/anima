@@ -23,6 +23,9 @@ const QUIET_SYSTEM: [&str; 6] = [
 #[derive(Debug, Default)]
 pub struct ClaudeDecoder {
     session: Option<String>,
+    /// The kind of fault that an `assistant` line of this turn named (`authentication_failed`),
+    /// for the end of the turn (TH99).
+    fault: Option<String>,
 }
 
 impl ClaudeDecoder {
@@ -44,11 +47,16 @@ impl ClaudeDecoder {
         match kind {
             "system" => self.system(&value),
             "stream_event" => stream(&value["event"]).into_iter().collect(),
-            "assistant" => assistant(&value),
+            "assistant" => {
+                if let Some(fault) = value["error"].as_str().filter(|fault| fault_word(fault)) {
+                    self.fault = Some(fault.to_owned());
+                }
+                assistant(&value)
+            }
             "user" => user(&value),
             "control_request" => vec![control_request(&value)],
             "control_response" => vec![control_response(&value["response"])],
-            "result" => vec![result(&value)],
+            "result" => vec![result(&value, self.fault.take())],
             // The limits of the account: kept at the machine (THR-051, THR-132).
             "rate_limit_event" => account::claude_limits(&value["rate_limit_info"])
                 .map(|facts| DriveEvent::Account {
@@ -263,17 +271,30 @@ fn control_response(response: &Value) -> DriveEvent {
 }
 
 /// The end of a turn: `success` is completed, an abort is an interrupt, each other is a fault.
-fn result(value: &Value) -> DriveEvent {
+/// A word of a fault of the program: lower-case letters and `_`, at most 40 of them.
+fn fault_word(word: &str) -> bool {
+    !word.is_empty()
+        && word.len() <= 40
+        && word
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte == b'_')
+}
+
+/// The end of a turn; `fault` is the kind of fault an `assistant` line of the turn named, which
+/// comes as the detail. A result with `is_error` failed, also with the subtype "success" (the
+/// reply "Not logged in" of Claude Code 2.1.311, TH99).
+fn result(value: &Value, fault: Option<String>) -> DriveEvent {
     let reason = value["terminal_reason"].as_str().unwrap_or_default();
+    let failed = value["is_error"].as_bool() == Some(true);
     let outcome = match value["subtype"].as_str() {
-        Some("success") => TurnOutcome::Completed,
         _ if reason.starts_with("aborted") => TurnOutcome::Interrupted,
+        Some("success") if !failed => TurnOutcome::Completed,
         _ => TurnOutcome::Failed,
     };
     let refused = value["permission_denials"].as_array().map_or(0, Vec::len);
     DriveEvent::TurnEnded {
         outcome,
-        detail: (!reason.is_empty()).then(|| reason.to_owned()),
+        detail: fault.or_else(|| (!reason.is_empty()).then(|| reason.to_owned())),
         refused: u32::try_from(refused).unwrap_or(u32::MAX),
     }
 }

@@ -140,9 +140,7 @@
                 onPick={pick}
               />
             {/if}
-            {#if view.accounts.length > 0}
-              <AccountList accounts={view.accounts} shares={view.shares} count={query.count} now={minute} />
-            {/if}
+            <AccountList accounts={view.accounts} shares={view.shares} count={query.count} now={minute} />
             <ShareTable
               label="By device"
               note="only devices whose daemon reports; counts only, no text of a session leaves a device"

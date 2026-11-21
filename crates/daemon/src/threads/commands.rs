@@ -2,15 +2,11 @@
 //! ID again gets the first answer and does nothing (H10).
 
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use super::holder::{Shared, locked};
 use super::program::{self, Start};
 use super::tree;
 use super::wire::{self, Action, Command, Event, Outcome, Refusal, Stream, ThreadKey};
-
-/// The time the program of a thread has after `SIGTERM` before `SIGKILL`.
-const GRACE: Duration = Duration::from_secs(3);
 
 /// Does `command` and gives its answer to the daemon.
 pub async fn run(shared: &Arc<Mutex<Shared>>, command: Command) -> Outcome {
@@ -45,6 +41,10 @@ async fn act(shared: &Arc<Mutex<Shared>>, action: Action) -> Outcome {
             env,
             folder,
         } => {
+            // The mark goes last, so that no value of the daemon takes its place (THR-049).
+            let mut env = env;
+            env.retain(|(name, _)| name != super::marker::MARK);
+            env.push(super::marker::entry(&thread));
             let start = Start {
                 program: &program,
                 args: &args,
@@ -74,10 +74,10 @@ async fn act(shared: &Arc<Mutex<Shared>>, action: Action) -> Outcome {
                 None => refused(Refusal::UnknownThread),
             }
         }
-        Action::EndChildren { thread } => end(shared, &thread, false).await,
+        Action::EndChildren { thread } => super::stop::end(shared, &thread, false).await,
         Action::Stop { thread } => {
             close_input(shared, &thread);
-            end(shared, &thread, true).await
+            super::stop::end(shared, &thread, true).await
         }
         Action::Forget { thread } => forget(shared, &thread),
         Action::Quit => {
@@ -93,7 +93,7 @@ async fn act(shared: &Arc<Mutex<Shared>>, action: Action) -> Outcome {
     }
 }
 
-fn refused(why: Refusal) -> Outcome {
+pub(super) fn refused(why: Refusal) -> Outcome {
     Outcome::Refused { why }
 }
 
@@ -107,6 +107,7 @@ fn hello(shared: &Arc<Mutex<Shared>>, version: u32) -> Outcome {
     state.send(&Event::Hello {
         version: wire::VERSION,
         threads: state.held(),
+        build: wire::this_build(),
     });
     for (thread, slot) in &state.threads {
         for (first, lines) in slot.outbox.pending() {
@@ -185,7 +186,7 @@ async fn start_thread(
 }
 
 /// Closes the input of the program of `thread`; false when the holder does not know it.
-fn close_input(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> bool {
+pub(super) fn close_input(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> bool {
     let Ok(mut state) = shared.lock() else {
         return false;
     };
@@ -236,70 +237,6 @@ async fn mark(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
     Outcome::Ok
 }
 
-/// What the holder knows of a program when it ends its processes.
-struct Ending {
-    root: u32,
-    gone: bool,
-    spare: tree::Known,
-    /// The processes seen below the program that may have left its tree since (a stop only).
-    seen: tree::Known,
-    left_behind: bool,
-}
-
-async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -> Outcome {
-    let found = locked(shared).threads.get(thread).map(|slot| Ending {
-        root: slot.pid,
-        gone: slot.reaped || slot.exit.is_some(),
-        spare: if with_root {
-            tree::Known::new()
-        } else {
-            slot.spared.clone()
-        },
-        // A stop sweeps what was seen; so does each command on a program that ended and left
-        // a process that a sweep could not end.
-        seen: if with_root || slot.left_behind {
-            slot.seen.clone()
-        } else {
-            tree::Known::new()
-        },
-        left_behind: slot.left_behind,
-    });
-    match found {
-        None => refused(Refusal::UnknownThread),
-        Some(Ending {
-            gone: true,
-            left_behind: false,
-            ..
-        }) => Outcome::Stopped {
-            ended: 0,
-            all_ended: true,
-        },
-        Some(Ending {
-            gone: true, seen, ..
-        }) => {
-            // The program ended and its sweep did not prove that all ended: sweep again.
-            let swept = tree::sweep(&seen).await;
-            if let Some(slot) = locked(shared).threads.get_mut(thread) {
-                program::settle_sweep(slot, swept.all);
-            }
-            Outcome::Stopped {
-                ended: swept.count,
-                all_ended: swept.all,
-            }
-        }
-        Some(ending) => {
-            let ended = tree::end(ending.root, with_root, &ending.spare, GRACE).await;
-            // A process that was below the program and left its tree (its parent ended) is
-            // found by its start time (THR-049).
-            let swept = tree::sweep(&ending.seen).await;
-            Outcome::Stopped {
-                ended: ended.count.saturating_add(swept.count),
-                all_ended: ended.all && swept.all,
-            }
-        }
-    }
-}
-
 fn forget(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
     let Ok(mut state) = shared.lock() else {
         return refused(Refusal::UnknownThread);
@@ -312,21 +249,4 @@ fn forget(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
             Outcome::Ok
         }
     }
-}
-
-/// Ends each program the holder holds, with the processes below it (THR-049), at the end of the
-/// holder.
-pub async fn end_all(shared: &Arc<Mutex<Shared>>) {
-    let running: Vec<ThreadKey> = locked(shared)
-        .threads
-        .iter()
-        // A program that ended but left a process its sweep could not end is swept again.
-        .filter(|(_, slot)| slot.exit.is_none() || slot.left_behind)
-        .map(|(key, _)| key.clone())
-        .collect();
-    for thread in running {
-        close_input(shared, &thread);
-        end(shared, &thread, true).await;
-    }
-    locked(shared).write_record();
 }

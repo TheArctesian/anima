@@ -11,6 +11,7 @@ use anima_daemon::threads::wire::{Action, Event, Line, Outcome};
 use tempfile::TempDir;
 
 mod connection;
+mod holder_update;
 mod requests;
 mod runner;
 mod start;
@@ -68,13 +69,79 @@ fn spawn(dir: &Path, limit: usize) -> Child {
 }
 
 fn start(thread: &str, program: &str, args: &[&str]) -> Action {
+    let mut env = vec![("ONLY".to_owned(), "this".to_owned())];
+    let program = match stand_ins() {
+        Some(folder) if program == "/bin/sh" => {
+            env.push((
+                "PATH".to_owned(),
+                format!("{}:/usr/bin:/bin", folder.display()),
+            ));
+            folder.join("sh").display().to_string()
+        }
+        _ => program.to_owned(),
+    };
     Action::Start {
         thread: thread.to_owned(),
-        program: program.to_owned(),
+        program,
         args: args.iter().map(|arg| (*arg).to_owned()).collect(),
-        env: vec![("ONLY".to_owned(), "this".to_owned())],
+        env,
         folder: "/".to_owned(),
     }
+}
+
+/// On a Mac, the folder of the made shell and the programs its scripts run. `ps -E` does not
+/// show the environment of a program of the system, so a stop finds the mark of a thread only on
+/// copies signed here; with them the Mac reads each mark, as Linux does (THR-049). `None` on
+/// Linux, where each process of the user is read.
+#[cfg_attr(
+    target_os = "macos",
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "None on Linux, where no stand-in is needed"
+    )
+)]
+fn stand_ins() -> Option<&'static Path> {
+    #[cfg(target_os = "macos")]
+    {
+        static FOLDER: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+        Some(FOLDER.get_or_init(made_stand_ins).as_path())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        None
+    }
+}
+
+/// Signs copies of `bash` (as `sh`), `perl` and `sleep` once for each build folder; each test
+/// process makes its own and the first rename wins.
+#[cfg(target_os = "macos")]
+fn made_stand_ins() -> PathBuf {
+    let folder = Path::new(env!("CARGO_TARGET_TMPDIR")).join("mac-stand-ins");
+    if folder.join("sleep").exists() {
+        return folder;
+    }
+    let made = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).expect("a folder");
+    for (name, from) in [
+        ("sh", "/bin/bash"),
+        ("perl", "/usr/bin/perl"),
+        ("sleep", "/bin/sleep"),
+    ] {
+        let copy = made.path().join(name);
+        std::fs::copy(from, &copy).expect("a copy");
+        let signed = Process::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(&copy)
+            .output()
+            .expect("codesign runs");
+        assert!(signed.status.success(), "{name} is signed");
+    }
+    // A different test process may have made the folder first: then its copies are used.
+    let kept = made.keep();
+    if std::fs::rename(&kept, &folder).is_err() {
+        let _ = std::fs::remove_dir_all(&kept);
+    }
+    assert!(folder.join("sleep").exists(), "the stand-ins are in place");
+    folder
 }
 
 /// A link with each event it got, so that an event that comes before an answer is not lost.

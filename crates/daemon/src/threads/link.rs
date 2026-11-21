@@ -177,3 +177,19 @@ pub async fn reach(program: &Path, dir: &Path) -> Result<HolderLink, LinkError> 
 pub fn folder(daemon_dir: &Path) -> PathBuf {
     daemon_dir.join("threads")
 }
+
+/// The longest wait between two tries to reach the holder.
+const RETRY_MOST: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// The link to the holder; while none answers, it tries again, each time a little later.
+pub async fn reach_patiently(program: &Path, dir: &Path) -> HolderLink {
+    let mut wait = std::time::Duration::from_secs(1);
+    loop {
+        match reach(program, dir).await {
+            Ok(link) => return link,
+            Err(error) => tracing::warn!(%error, "the holder did not answer; trying again"),
+        }
+        tokio::time::sleep(wait).await;
+        wait = (wait * 2).min(RETRY_MOST);
+    }
+}

@@ -57,6 +57,10 @@ pub enum Action {
         model: Option<String>,
         effort: Option<Effort>,
         prompt: String,
+        /// A different copy of the program than the first on the `PATH` of the login: one of
+        /// the copies the runner finds (TH97).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        program_path: Option<PathBuf>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn.
     Send { thread: Uuid, text: String },
@@ -97,6 +101,9 @@ pub enum Outcome {
     },
     Threads {
         threads: Vec<ThreadRow>,
+        /// Words for the person while the holder is older than the daemon (TH98).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        holder: Option<String>,
     },
     Limits {
         limits: Limits,
@@ -127,6 +134,11 @@ pub enum Refusal {
     FolderNotPermitted,
     /// The program is not on the `PATH` of the login of the person.
     ProgramNotFound,
+    /// The program did not answer `--version` in time: `said` names it, its path and what to
+    /// try, in words for the person (TH97).
+    ProgramDoesNotAnswer {
+        said: String,
+    },
     /// A value that becomes an argument is not of its alphabet (THR-040).
     BadValue,
     /// The request is answered, or its process ended (THR-030).
@@ -137,6 +149,14 @@ pub enum Refusal {
     NotRunning,
     /// The holder did not take the command.
     Holder,
+    /// The holder is older than the daemon and speaks a different protocol: `said` tells when
+    /// it is replaced, in words for the person (TH98).
+    HolderOlder {
+        said: String,
+    },
+    /// The call came from a process of an agent: only the person answers a request, raises the
+    /// limit or starts a thread.
+    FromAnAgent,
     /// A start would pass the soft limit: the person must answer first (THR-114).
     OverLimit {
         limits: Limits,

@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use agent_threads::control::{Action, Change, Outcome, RunState};
-use agent_threads::drive::{Answer, Mode, Program};
+use agent_threads::drive::{Answer, DriveEvent, Mode, Program};
 use uuid::Uuid;
 
 use super::runner::{Client, Kit, SECRET, change, child_pid, state_is};
@@ -18,6 +18,17 @@ print qq({"type":"system","subtype":"init","session_id":"s","model":"made","perm
 while (my $line = <STDIN>) {}
 "#;
 
+/// A made Claude Code with no sign-in it could read: the reply of Claude Code 2.1.311 (TH99).
+const SIGNED_OUT: &str = r#"#!/usr/bin/perl
+$| = 1;
+print qq({"type":"system","subtype":"init","session_id":"s","model":"made","permissionMode":"bypassPermissions"}\n);
+while (my $line = <STDIN>) {
+    next unless $line =~ /"type":"user"/;
+    print qq({"type":"assistant","message":{"model":"<synthetic>","role":"assistant","content":[{"type":"text","text":"Not logged in"}]},"session_id":"s","error":"authentication_failed"}\n);
+    print qq({"type":"result","subtype":"success","is_error":true,"result":"Not logged in","terminal_reason":"api_error","session_id":"s"}\n);
+}
+"#;
+
 async fn start(client: &mut Client, kit: &Kit) -> Uuid {
     let start = client
         .call(Action::Start {
@@ -27,6 +38,7 @@ async fn start(client: &mut Client, kit: &Kit) -> Uuid {
             model: None,
             effort: None,
             prompt: "Run the command".to_owned(),
+            program_path: None,
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {
@@ -56,7 +68,7 @@ async fn thr_030_an_open_request_survives_a_restart_of_the_runner_and_takes_one_
     kit.start();
     let mut client = kit.client().await;
     let list = client.call(Action::List).await;
-    let Outcome::Threads { threads } = client.done(list).await else {
+    let Outcome::Threads { threads, .. } = client.done(list).await else {
         panic!("threads")
     };
     assert_eq!(threads[0].state, RunState::NeedsYou);
@@ -124,6 +136,32 @@ async fn thr_040_an_agent_gets_the_environment_of_the_login_and_no_secret_of_ani
     );
     assert!(!text.contains("ANIMA_"), "no name of Anima: {text}");
     assert!(text.contains("CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS=1\n"));
+    let stop = client.call(Action::Stop { thread }).await;
+    client.done(stop).await;
+}
+
+#[tokio::test]
+async fn th99_not_logged_in_gets_words_that_say_whether_to_sign_in() {
+    let kit = Kit::with(SIGNED_OUT);
+    let mut client = kit.client().await;
+    let watch = client.call(Action::Watch).await;
+    client.done(watch).await;
+    let thread = start(&mut client, &kit).await;
+    let notice = client
+        .until(|reply| {
+            matches!(
+                change(reply),
+                Some(Change::Said { event: DriveEvent::Notice { text } }) if text.contains("Not logged in")
+            )
+        })
+        .await;
+    let Some(Change::Said {
+        event: DriveEvent::Notice { text },
+    }) = change(&notice)
+    else {
+        unreachable!()
+    };
+    assert!(text.contains("`claude`, then `/login`"), "{text}");
     let stop = client.call(Action::Stop { thread }).await;
     client.done(stop).await;
 }

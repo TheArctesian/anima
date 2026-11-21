@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use agent_threads::control::{Action, OVER_LIMIT, Outcome, Refusal, Reply, ThreadRow};
+use agent_threads::control::{Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow};
 use agent_threads::drive::{Answer, Effort, Mode, Program};
 use uuid::Uuid;
 
@@ -45,6 +45,10 @@ pub struct StartArgs {
     model: Option<String>,
     #[arg(long, value_parser = parse_effort)]
     effort: Option<Effort>,
+    /// A different copy of the program than the first on the PATH of your login, such as the
+    /// copy of an application. The runner takes only a copy that it finds itself.
+    #[arg(long)]
+    program_path: Option<PathBuf>,
     /// The first prompt.
     prompt: String,
 }
@@ -140,6 +144,9 @@ impl StartArgs {
             model: self.model,
             effort: self.effort,
             prompt: self.prompt,
+            program_path: self
+                .program_path
+                .map(|path| std::path::absolute(&path).unwrap_or(path)),
         };
         loop {
             match link.call(action.clone()).await? {
@@ -267,10 +274,22 @@ pub async fn raise_limit(invocation: &Invocation) -> Result<(), Failure> {
 /// [`Failure`] when the runner is not there.
 pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
-    let Outcome::Threads { threads } = accepted(link.call(Action::List).await?)? else {
+    let Outcome::Threads { threads, holder } = accepted(link.call(Action::List).await?)? else {
         return Ok(());
     };
-    invocation.output.data(&threads, |threads| table(threads))
+    invocation.output.data(&threads, |threads| table(threads))?;
+    // Why a recent thread stopped, and an older holder (TH97, TH98): words the table has no
+    // room for.
+    let day_ago = chrono::Utc::now() - chrono::Duration::days(1);
+    for row in threads.iter().filter(|row| row.started > day_ago) {
+        if let (RunState::Stopped, Some(ended)) = (row.state, &row.ended) {
+            invocation.output.message(&format!("{}: {ended}", row.id));
+        }
+    }
+    if let Some(holder) = holder {
+        invocation.output.message(&holder);
+    }
+    Ok(())
 }
 
 fn table(rows: &[ThreadRow]) -> Table {

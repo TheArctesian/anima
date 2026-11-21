@@ -125,7 +125,16 @@ pub fn refusal(why: &Refusal) -> Failure {
             "That folder is not an absolute folder of this computer.",
             None,
         ),
-        Refusal::ProgramNotFound => ("That program is not on the PATH of your login.", None),
+        Refusal::ProgramNotFound => (
+            "That program is not on the PATH of your login, or that path is not a copy the runner finds.",
+            None,
+        ),
+        Refusal::ProgramDoesNotAnswer { said } | Refusal::HolderOlder { said } => {
+            return Failure::Forbidden {
+                message: said.clone(),
+                hint: None,
+            };
+        }
         Refusal::BadValue => (
             "A value is not permitted (a model name takes letters, digits, '.', '_', '-', '[' and ']').",
             None,
@@ -137,6 +146,10 @@ pub fn refusal(why: &Refusal) -> Failure {
         Refusal::AnswerDoesNotFit => ("That answer does not fit the request.", None),
         Refusal::NotRunning => ("The program of that thread is not running.", None),
         Refusal::Holder => ("The holder of the programs did not take the command.", None),
+        Refusal::FromAnAgent => (
+            "Only the person can answer a request, raise the limit or start a thread: this call came from a process of an agent.",
+            None,
+        ),
         Refusal::OverLimit { .. } => (
             control::OVER_LIMIT,
             Some(Hint::run("anima agents raise-limit")),
