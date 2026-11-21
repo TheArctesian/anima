@@ -105,7 +105,6 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
-| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with `--public-origin https://hub.anima.ing` and an image of this build, the gateway of the pool at `hub.anima.ing` that passes `/connect/github*`, an application of this build, and a GitHub account that may get a new App | Open |
 
 ### What a check on the hosted hub needs
 
