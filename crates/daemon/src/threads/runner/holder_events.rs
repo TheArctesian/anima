@@ -3,6 +3,9 @@
 //! keeps its limit of output (THR-113).
 
 mod older;
+mod refused;
+
+pub(super) use older::Standing;
 mod signed_out;
 
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
@@ -40,15 +43,17 @@ impl Runner {
     /// that the holder does not hold any more stopped; a program the holder holds that no
     /// thread knows is ended (THR-049); a start whose answer was lost is settled.
     async fn hello(&mut self, version: u32, held: Vec<Held>, build: Option<&str>) {
-        self.holder_fits = version == wire::VERSION;
+        self.holder.fits = version == wire::VERSION;
+        self.holder.quitting = false;
+        self.holder.quit_command = None;
         // Compared with the file that a new holder would start from, so that a holder that a
         // new start would not change is never replaced (no loop of ends and starts).
         // A holder of the same file is never older, also when its protocol differs: then this
         // runner is the old one and ends with the next restart of the daemon.
         let next = wire::build_of(&self.program);
-        self.holder_older = next.is_some() && build != next.as_deref();
-        self.holder_newer = !self.holder_fits && !self.holder_older;
-        if self.holder_older {
+        self.holder.older = next.is_some() && build != next.as_deref();
+        self.holder.newer = !self.holder.fits && !self.holder.older;
+        if self.holder.older {
             tracing::warn!(
                 holder = version,
                 runner = wire::VERSION,
@@ -240,6 +245,9 @@ impl Runner {
 
     /// The answer of the holder to a command that a call waits for.
     async fn done(&mut self, command: u64, outcome: HolderOutcome) {
+        if self.quit_answered(command, &outcome) {
+            return;
+        }
         let sent = self.unanswered.remove(&command);
         let Some(waits) = self.waits.remove(&command) else {
             if let HolderOutcome::Refused { why } = outcome {
@@ -266,32 +274,6 @@ impl Runner {
                 pending.back.answer(result);
             }
         }
-    }
-
-    /// The holder refused a command that no call waits for: the log says so, and a line that
-    /// did not reach the program is said in its thread.
-    fn not_taken(&mut self, sent: Option<wire::Command>, why: HolderRefusal) {
-        let Some(wire::Command {
-            action: Action::Write { thread, .. },
-            ..
-        }) = sent
-        else {
-            tracing::warn!(?why, "the holder refused a command of the runner");
-            return;
-        };
-        let Ok(id) = Uuid::parse_str(&thread) else {
-            return;
-        };
-        tracing::warn!(%id, ?why, "the holder did not write a line to the program");
-        self.publish(
-            id,
-            Change::Said {
-                event: DriveEvent::Notice {
-                    text: "A line did not reach the program: the holder did not take it."
-                        .to_owned(),
-                },
-            },
-        );
     }
 
     async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {

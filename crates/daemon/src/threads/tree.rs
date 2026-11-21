@@ -131,6 +131,8 @@ pub async fn ps_output(args: &[&str]) -> Option<Vec<u8>> {
         .args(args)
         .env_clear()
         .env("LC_ALL", "C")
+        // Start times in UTC: no change of summer time makes a child look older than its parent.
+        .env("TZ", "UTC")
         .kill_on_drop(true)
         .output();
     let output = tokio::time::timeout(PS_WAIT, run).await.ok()?.ok()?;
@@ -143,6 +145,18 @@ pub async fn table() -> Option<Table> {
     let output = ps_output(&["-axo", "pid=,ppid=,lstart="]).await?;
     let table = Table::read(&String::from_utf8_lossy(&output));
     (!table.rows.is_empty()).then_some(table)
+}
+
+/// The time of an `lstart` of `ps` in the C locale ("Sat Nov 21 10:00:00 2026"), to the second.
+#[must_use]
+pub fn start_time(lstart: &str) -> Option<chrono::NaiveDateTime> {
+    // The weekday is left out: the date alone says the day.
+    let words = lstart
+        .split_whitespace()
+        .skip(1)
+        .collect::<Vec<_>>()
+        .join(" ");
+    chrono::NaiveDateTime::parse_from_str(&words, "%b %d %H:%M:%S %Y").ok()
 }
 
 /// The start time of a process as `ps` says it, so that an old record never ends a process

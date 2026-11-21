@@ -100,3 +100,44 @@ async fn th98_an_older_holder_is_named_kept_while_a_thread_runs_and_replaced_aft
     }
     panic!("the runner still names the holder older");
 }
+
+fn start_action(kit: &Kit) -> Action {
+    Action::Start {
+        program: Program::ClaudeCode,
+        folder: kit.path("work"),
+        mode: Mode::FullAccess,
+        model: None,
+        effort: None,
+        prompt: "Run the command".to_owned(),
+        program_path: None,
+    }
+}
+
+#[tokio::test]
+async fn th98_a_refused_quit_lets_starts_go_on() {
+    let mut kit = Kit::unstarted(CLAUDE);
+    let daemon = kit.path("anima-daemon");
+    install(&daemon);
+    kit.start_from(&daemon);
+    let mut client = kit.client().await;
+    let start = client.call(start_action(&kit)).await;
+    assert!(matches!(client.done(start).await, Outcome::Started { .. }));
+    drop(client);
+
+    // A runner that forgot its thread meets an older holder that still holds the program: it
+    // ends the program and asks the holder to quit at once, and the holder may refuse while the
+    // program is not yet reaped.
+    kit.end_runner();
+    std::fs::remove_file(kit.threads().join("threads.json")).expect("the record");
+    install(&daemon);
+    kit.start_from(&daemon);
+    let mut client = kit.client().await;
+    for _ in 0..20 {
+        let start = client.call(start_action(&kit)).await;
+        if matches!(client.done(start).await, Outcome::Started { .. }) {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    panic!("no thread starts in 10 seconds after the old holder was asked to quit");
+}

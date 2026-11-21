@@ -164,3 +164,28 @@ async fn h8_output_over_the_limit_of_the_holder_reaches_a_daemon_that_comes_back
     }
     assert_eq!(count, 4);
 }
+
+#[tokio::test]
+async fn th98_a_start_sent_after_a_quit_starts_no_program() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let folder = tempfile::tempdir().expect("a folder");
+    let ran = folder.path().join("ran");
+    let script = format!("touch '{}'; sleep 300", ran.display());
+    let quit = link.send(Action::Quit).await;
+    let late = link
+        .send(start("after-quit", "/bin/sh", &["-c", &script]))
+        .await;
+    assert_eq!(link.answer(quit).await, Outcome::Ok);
+    // The holder reads nothing after its Quit: the start gets no answer and no program runs.
+    while let Ok(Some(event)) =
+        tokio::time::timeout(Duration::from_secs(10), link.link.events.recv()).await
+    {
+        assert!(
+            !matches!(&event, Event::Done { id, .. } if *id == late),
+            "the start was taken: {event:?}"
+        );
+    }
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(!ran.exists(), "a program started in the holder that ends");
+}

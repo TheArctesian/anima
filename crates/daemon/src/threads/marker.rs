@@ -23,31 +23,63 @@ pub fn entry(thread: &str) -> (String, String) {
     (MARK.to_owned(), thread.to_owned())
 }
 
-/// Ends each process of this user that carries the mark of `thread`, except the `program` that
-/// runs on (it carries the mark too) and the `spare`d ones (the servers that ran before the turn,
-/// THR-021). `all` is false when the environments could not be read or a marked process still
-/// runs after its `SIGKILL`.
-pub async fn end_marked(thread: &str, program: Option<u32>, spare: &tree::Known) -> Ended {
-    let Some(mut marked) = carrying(thread).await else {
+/// What an end of marked processes keeps.
+pub struct Keep<'a> {
+    /// The program, when only its children end: it carries the mark too.
+    pub program: Option<u32>,
+    /// The start of the program, when only its children end: a marked process that started
+    /// before it is not of this run of the program, and is left (THR-049).
+    pub since: Option<&'a str>,
+    /// The servers that ran before the turn, with each process below them (THR-021).
+    pub spare: &'a tree::Known,
+}
+
+/// The marked processes that were found, and whether a marked line could not be read as one.
+pub struct Found {
+    pub pids: BTreeSet<u32>,
+    pub unsure: bool,
+}
+
+/// Ends each process of this user that carries the mark of `thread`, except what `keep` names.
+/// `all` is false when the environments or the table could not be read, or a marked process
+/// still runs after its `SIGKILL`.
+pub async fn end_marked(thread: &str, keep: &Keep<'_>) -> Ended {
+    let Some(Found {
+        pids: mut marked,
+        unsure,
+    }) = carrying(thread).await
+    else {
         return Ended {
             count: 0,
             all: false,
         };
     };
-    if let Some(program) = program {
+    let mut unproven = unsure;
+    if let Some(program) = keep.program {
         marked.remove(&program);
     }
-    // A spared server and each process below it are kept, as the walk of the tree keeps them.
-    // When the table cannot be read, each spared ID is kept and "all ended" is not said.
-    let mut unproven = false;
-    if !spare.is_empty() {
-        let kept = if let Some(table) = tree::table().await {
-            tree::spare_with_children(&table, spare)
+    if !keep.spare.is_empty() || keep.since.is_some() {
+        if let Some(table) = tree::table().await {
+            // A spared server and each process below it are kept, as the walk of the tree
+            // keeps them.
+            let kept = tree::spare_with_children(&table, keep.spare);
+            let since = keep.since.and_then(tree::start_time);
+            if keep.since.is_some() && since.is_none() {
+                // The start of the program does not read: no process is proved to be of it.
+                unproven = true;
+                marked.clear();
+            }
+            marked.retain(|pid| !kept.contains(pid) && started_since(&table, *pid, since));
         } else {
+            // Without the table nothing proves which process is spared or how old it is:
+            // nothing that may be kept is ended, and "all ended" is not said.
             unproven = true;
-            spare.keys().copied().collect()
-        };
-        marked.retain(|pid| !kept.contains(pid));
+            if keep.since.is_some() {
+                marked.clear();
+            } else {
+                marked.retain(|pid| !keep.spare.contains_key(pid));
+            }
+        }
     }
     for pid in &marked {
         tree::signal(*pid, Signal::KILL);
@@ -62,19 +94,38 @@ pub async fn end_marked(thread: &str, program: Option<u32>, spare: &tree::Known)
     }
 }
 
+/// Whether the process `pid` of `table` started at or after `since`; a process whose start
+/// cannot be read has ended, and an end of it changes nothing.
+fn started_since(table: &tree::Table, pid: u32, since: Option<chrono::NaiveDateTime>) -> bool {
+    let Some(since) = since else {
+        return true;
+    };
+    table
+        .starts
+        .get(&pid)
+        .and_then(|start| tree::start_time(start))
+        .is_none_or(|start| start >= since)
+}
+
 /// The processes whose environment holds the mark of `thread`; `None` when it cannot be read.
-/// On a Mac `ps -E` shows the environment of the processes of this user; on Linux each
-/// `/proc/<pid>/environ` of this user can be read.
+/// On a Mac `ps -E` shows the environment of the processes of this user after their command;
+/// the command alone comes from a second `ps`, so that an argument never counts as the mark.
+/// On Linux each `/proc/<pid>/environ` of this user can be read.
 #[cfg(target_os = "macos")]
-async fn carrying(thread: &str) -> Option<BTreeSet<u32>> {
-    let output = tree::ps_output(&["-axww", "-E", "-o", "pid=,command="]).await?;
-    Some(marked_in(&String::from_utf8_lossy(&output), thread))
+async fn carrying(thread: &str) -> Option<Found> {
+    let commands = tree::ps_output(&["-axww", "-o", "pid=,command="]).await?;
+    let with_env = tree::ps_output(&["-axww", "-E", "-o", "pid=,command="]).await?;
+    Some(marked_in(
+        &String::from_utf8_lossy(&commands),
+        &String::from_utf8_lossy(&with_env),
+        thread,
+    ))
 }
 
 #[cfg(not(target_os = "macos"))]
-async fn carrying(thread: &str) -> Option<BTreeSet<u32>> {
+async fn carrying(thread: &str) -> Option<Found> {
     let wanted = format!("{MARK}={thread}");
-    let mut found = BTreeSet::new();
+    let mut pids = BTreeSet::new();
     let mut folders = tokio::fs::read_dir("/proc").await.ok()?;
     while let Ok(Some(folder)) = folders.next_entry().await {
         let Some(pid) = folder
@@ -90,10 +141,13 @@ async fn carrying(thread: &str) -> Option<BTreeSet<u32>> {
                 .split(|byte| *byte == 0)
                 .any(|one| one == wanted.as_bytes())
         {
-            found.insert(pid);
+            pids.insert(pid);
         }
     }
-    Some(found)
+    Some(Found {
+        pids,
+        unsure: false,
+    })
 }
 
 /// Whether the process `pid` is known to carry the mark of any thread.
@@ -128,18 +182,45 @@ async fn environment_words(pid: u32) -> Option<Vec<String>> {
     )
 }
 
-/// The processes of a `ps -E` table whose line holds the mark of `thread` as a word of its own.
+/// The processes whose environment holds the mark of `thread` as a word of its own: each line
+/// of `with_env` (`ps -E`) is its line of `commands` followed by the environment. A line whose
+/// command changed between the two tables, and that holds the mark, makes the answer unsure.
 #[must_use]
-pub fn marked_in(table: &str, thread: &str) -> BTreeSet<u32> {
+pub fn marked_in(commands: &str, with_env: &str, thread: &str) -> Found {
     let wanted = format!("{MARK}={thread}");
-    table
+    let command_of: std::collections::BTreeMap<u32, &str> = commands
         .lines()
         .filter_map(|line| {
-            let mut words = line.split_whitespace();
-            let pid = words.next()?.parse::<u32>().ok()?;
-            words.any(|word| word == wanted).then_some(pid)
+            let (pid, rest) = line.trim_start().split_once(' ')?;
+            Some((pid.parse().ok()?, rest.trim()))
         })
-        .collect()
+        .collect();
+    let mut found = Found {
+        pids: BTreeSet::new(),
+        unsure: false,
+    };
+    for line in with_env.lines() {
+        let Some((pid, rest)) = line.trim_start().split_once(' ') else {
+            continue;
+        };
+        let (Ok(pid), rest) = (pid.parse::<u32>(), rest.trim()) else {
+            continue;
+        };
+        if !rest.split_whitespace().any(|word| word == wanted) {
+            continue;
+        }
+        match command_of
+            .get(&pid)
+            .and_then(|command| rest.strip_prefix(command))
+        {
+            Some(environment) if environment.split_whitespace().any(|word| word == wanted) => {
+                found.pids.insert(pid);
+            }
+            Some(_) => {}
+            None => found.unsure = true,
+        }
+    }
+    found
 }
 
 #[cfg(test)]
@@ -148,8 +229,56 @@ mod tests {
 
     #[test]
     fn thr_049_a_process_is_marked_only_by_the_whole_mark_of_its_thread() {
-        let table = "  10 /bin/sleep 9 HOME=/h AGENT_THREAD=t-1\n  11 /bin/sh AGENT_THREAD=t-10\n 12 x AGENT_THREAD=t-1x\nnot a line\n";
-        assert_eq!(marked_in(table, "t-1"), BTreeSet::from([10]));
+        let commands = "  10 /bin/sleep 9\n  11 /bin/sh\n 12 x\n";
+        let with_env = "  10 /bin/sleep 9 HOME=/h AGENT_THREAD=t-1\n  11 /bin/sh AGENT_THREAD=t-10\n 12 x AGENT_THREAD=t-1x\nnot a line\n";
+        let found = marked_in(commands, with_env, "t-1");
+        assert_eq!(found.pids, BTreeSet::from([10]));
+        assert!(!found.unsure);
+    }
+
+    #[test]
+    fn thr_049_an_argument_that_looks_like_the_mark_is_not_the_mark() {
+        let commands = "  20 /usr/bin/grep AGENT_THREAD=t-1\n  21 /bin/sh -c x\n";
+        let with_env = "  20 /usr/bin/grep AGENT_THREAD=t-1 HOME=/h\n  21 /bin/sh -c x AGENT_THREAD=t-1\n  22 /new AGENT_THREAD=t-1\n";
+        let found = marked_in(commands, with_env, "t-1");
+        assert_eq!(
+            found.pids,
+            BTreeSet::from([21]),
+            "only the environment counts"
+        );
+        assert!(
+            found.unsure,
+            "a marked process missing from the first table is not proved"
+        );
+    }
+
+    #[test]
+    fn thr_049_after_a_turn_only_a_process_started_with_or_after_the_program_is_ended() {
+        let table = tree::Table::read(
+            "  30 1 Sun Nov  1 09:05:02 2026\n  31 1 Sun Nov  1 09:05:03 2026\n  32 1 Sun Nov  1 09:06:00 2026\n",
+        );
+        let since = tree::start_time("Sun Nov  1 09:05:03 2026");
+        assert!(since.is_some(), "an lstart with a day of one digit reads");
+        assert!(!started_since(&table, 30, since), "older than the program");
+        assert!(started_since(&table, 31, since), "the same second");
+        assert!(started_since(&table, 32, since));
+        assert!(
+            started_since(&table, 33, since),
+            "gone: an end changes nothing"
+        );
+        assert!(
+            started_since(&table, 30, None),
+            "a stop ends each marked process"
+        );
+    }
+
+    fn none() -> Keep<'static> {
+        static EMPTY: tree::Known = tree::Known::new();
+        Keep {
+            program: None,
+            since: None,
+            spare: &EMPTY,
+        }
     }
 
     /// A process to end: the test program itself, waiting (a program of the system would not
@@ -185,7 +314,7 @@ mod tests {
             "a client of the runner with the mark is of an agent"
         );
         assert!(!carries_a_mark(std::process::id()).await);
-        let ended = end_marked(&thread, None, &tree::Known::new()).await;
+        let ended = end_marked(&thread, &none()).await;
         let _ = reaper.join();
         assert_eq!(
             ended,
@@ -195,7 +324,7 @@ mod tests {
             }
         );
         assert_eq!(
-            end_marked(&thread, None, &tree::Known::new()).await,
+            end_marked(&thread, &none()).await,
             Ended {
                 count: 0,
                 all: true

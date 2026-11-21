@@ -88,15 +88,8 @@ pub struct Runner {
     dir: PathBuf,
     program: PathBuf,
     link: HolderLink,
-    /// The holder speaks the version of this runner; until it says so, nothing starts.
-    holder_fits: bool,
-    /// The holder is of an older build or protocol than this runner (TH98).
-    holder_older: bool,
-    /// The holder speaks a different protocol but is of the file of this runner: the runner is
-    /// the older one (TH98).
-    holder_newer: bool,
-    /// When the runner last asked the older holder to end on this connection.
-    holder_quit: Option<std::time::Instant>,
+    /// What the runner knows of the holder (THR-113, TH98).
+    holder: holder_events::Standing,
     env: Vec<(String, String)>,
     /// The environment of the daemon, to ask the login shell again when a program is not found.
     daemon_env: Vec<(String, String)>,
@@ -166,10 +159,7 @@ pub async fn run(
         dir: dir.clone(),
         program: program.to_owned(),
         link,
-        holder_fits: false,
-        holder_older: false,
-        holder_newer: false,
-        holder_quit: None,
+        holder: holder_events::Standing::default(),
         env,
         daemon_env,
         asked_again: None,
@@ -245,8 +235,10 @@ impl Runner {
     /// that waits gets its answer; a start waits for the holder to say what it holds.
     async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
-        self.holder_fits = false;
-        self.holder_newer = false;
+        self.holder.fits = false;
+        self.holder.newer = false;
+        // Until the next hello nothing is known of the holder: no Quit goes to a new one.
+        self.holder.older = false;
         let next = self.link.next_id();
         self.link = link::reach_patiently(&self.program, &self.dir).await;
         self.link.go_on_from(next);

@@ -185,7 +185,7 @@ impl Runner {
     /// Whether a new thread may start now: a holder that fits (THR-113), and fewer than the soft
     /// limit of running threads with the `asking` starts that wait for an answer (THR-114).
     fn may_start(&self, asking: u32) -> Result<(), Refusal> {
-        if !self.holder_fits {
+        if !self.holder.fits || self.holder.quitting {
             return match self.holder_words() {
                 Some(said) => Err(Refusal::HolderOlder { said }),
                 None => Err(Refusal::Holder),
