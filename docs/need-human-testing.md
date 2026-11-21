@@ -33,6 +33,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-NEW-routeproxy | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
+| HT-NEW-routesmockup | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2028,6 +2029,37 @@ it answers "not configured", so no route serves on a real hub yet. The consent o
    and an `X-Forwarded-For` with the address of your client.
 7. On a second hub, run `anima route add` with the same name. Expected: the TXT record of the first hub
    does not prove the name for the second hub.
+
+Result: Open.
+
+### HT-NEW-routesmockup: the mockup of the section Routes of the hub (tasks H21 and H40)
+
+Made on the branch `hosted/routes-screen`: [routes/index.html](mockup/routes/index.html), with its record
+[records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
+reviewer read it (R-NEW-hostovernight). No person looked at it. Nothing of the screen is built. The decision is yours:
+approve it, or say what to change, before the client screen is built.
+
+1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
+   Expected: a board of ten frames at 1280 px. The first paragraph says why Routes is a section of Settings, in the
+   group Hub, and not an item of the navigation bar.
+2. Frame 1 (the list) and Frame 1b (empty).
+   Expected: each row shows the name, the kind and the access, the application on its machine with its port, the
+   proof and the certificate, and the traffic of 24 hours. Rows that need you have a wash. The empty state says that a
+   new route is private.
+3. Frame 2 (add a route on a hosted hub).
+   Expected: four kinds; TCP stream and UDP stream are disabled with the reason beside them, readable. The application
+   is chosen from a list of recorded ports; you cannot type a port. There is no access choice: a new route is private.
+4. Frames 2c and 2d (just after the add).
+   Expected: 2c shows the TXT record and the CNAME, each with Copy. 2d (a hub that you host) shows the A record and the
+   warning that the name and the hub share a site.
+5. Frame 3 (the details of one route).
+   Expected: Make public is disabled with the warning that the consent at the machine is not given. The checks are in
+   order. Remove asks for the six digits of your authenticator.
+6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (from the page of an application).
+   Expected: the port of the hub with the refused ports; a database and a protocol with no TLS are "Private only";
+   UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
+7. Frames 5a and 5b.
+   Expected: Frames 1 and 3 in the light appearance; each text, status and disabled reason is easy to read.
 
 Result: Open.
 

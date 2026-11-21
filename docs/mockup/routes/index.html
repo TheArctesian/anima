@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routes: mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@200;400;500&amp;display=swap">
+<style>
+/* Layout: a review board with frames of the section Routes of Settings at 1280 px, in the dark and the light appearance
+   (HOST-046, HOST-050; tasks H21 and H40 of hosted-applications-plan.md). The colours, sizes and spaces are the values of
+   design/tokens (Graphite), as in device-containers-v2 and settings-v2; this file adds none. */
+body { margin: 0; padding: 24px 16px 48px; background: #101214; color: #E6E7E9; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: #A4A8B0; font-size: 14px; max-width: 90ch; }
+figure { margin: 0 0 24px; }
+figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; }
+/* v2 artboards. Every colour, space, radius and size below is a token of the Anima design system
+   (https://claude.ai/artifact/BpU9eFkcLbJYBpZrwAPZDU, tokens.json). No second set of values. */
+.v2[data-theme="dark"] {
+  --surface-sunken: #16181B;
+  --surface-base: #1B1D21;
+  --surface-raised: #23262B;
+  --surface-overlay: #2C3036;
+  --surface-hover: #2C3036;
+  --surface-selected: #333F45;
+  --border-subtle: #2C3036;
+  --border-strong: #6C7076;
+  --text: #E6E7E9;
+  --text-secondary: #A4A8B0;
+  --text-tertiary: #7E838C;
+  --text-quiet: #5C6169;
+  --planned: #B997B3;
+  --accent: #88C0D0;
+  --accent-hover: #96C6D4;
+  --accent-pressed: #5E81AC;
+  --on-accent: #16181B;
+  --accent-tint: #333F45;
+  --status-up: #A3BE8C;
+  --status-down: #BF616A;
+  --status-degraded: #EBCB8B;
+  --status-warning: #D08770;
+  --status-maintenance: #B48EAD;
+  --status-unknown: #7E838C;
+  --status-up-tint: #373E3B;
+  --status-up-text: #A3BE8C;
+  --status-down-tint: #3C2F35;
+  --status-down-text: #CA888F;
+  --status-degraded-tint: #43403A;
+  --status-down-wash: #BF616A12;
+  --status-degraded-wash: #EBCB8B0F;
+  --status-degraded-text: #EBCB8B;
+  --status-warning-tint: #3F3636;
+  --status-warning-text: #D2917C;
+  --status-maintenance-tint: #3A3740;
+  --status-maintenance-text: #B997B3;
+  --status-unknown-tint: #32353B;
+  --status-unknown-text: #999DA4;
+  --danger: #C0656E;
+  --on-danger: #16181B;
+  --scrim: #0000008C;
+  --material-edge: #FFFFFF24;
+  --material-sheen: #FFFFFF0D;
+  --focus-ring: #88C0D0;
+  --shadow: #000000;
+  --chart-grid: #41464E;
+  --chart-axis: #A4A8B0;
+  --chart-threshold: #EBCB8B;
+  --chart-series-1: #88C0D0;
+  --chart-series-2: #81A1C1;
+  --chart-series-3: #5E81AC;
+  --chart-series-4: #8FBCBB;
+  --chart-series-5: #B48EAD;
+  --chart-series-6: #D08770;
+}
+.v2[data-theme="light"] {
+  --surface-sunken: #EEEFF1;
+  --surface-base: #F6F7F8;
+  --surface-raised: #FFFFFF;
+  --surface-overlay: #FFFFFF;
+  --surface-hover: #EEEFF1;
+  --surface-selected: #E2EBED;
+  --border-subtle: #E3E5E8;
+  --border-strong: #86898E;
+  --text: #1D2024;
+  --text-secondary: #5A5F68;
+  --text-tertiary: #71757D;
+  --text-quiet: #A3A7AE;
+  --planned: #7B657A;
+  --accent: #2E6E80;
+  --accent-hover: #2C6575;
+  --accent-pressed: #2A5A69;
+  --on-accent: #FFFFFF;
+  --accent-tint: #E2EBED;
+  --status-up: #7C906E;
+  --status-down: #BF616A;
+  --status-degraded: #998762;
+  --status-warning: #B97A66;
+  --status-maintenance: #A0809B;
+  --status-unknown: #71757D;
+  --status-up-tint: #EDEFEB;
+  --status-up-text: #617159;
+  --status-down-tint: #F6E9EA;
+  --status-down-text: #9F545C;
+  --status-degraded-tint: #F1EEE9;
+  --status-down-wash: #BF616A12;
+  --status-degraded-wash: #9987620F;
+  --status-degraded-text: #786B51;
+  --status-warning-tint: #F5ECEA;
+  --status-warning-text: #8D6154;
+  --status-maintenance-tint: #F2EDF1;
+  --status-maintenance-text: #7B657A;
+  --status-unknown-tint: #EBECED;
+  --status-unknown-text: #676B72;
+  --danger: #9F545C;
+  --on-danger: #FFFFFF;
+  --scrim: #1D202459;
+  --material-edge: #FFFFFFCC;
+  --material-sheen: #FFFFFF0D;
+  --focus-ring: #2E6E80;
+  --shadow: #1D2024;
+  --chart-grid: #C3C7CD;
+  --chart-axis: #5A5F68;
+  --chart-threshold: #998762;
+  --chart-series-1: #5E81AC;
+  --chart-series-2: #5A5F68;
+  --chart-series-3: #7C906E;
+  --chart-series-4: #A0809B;
+  --chart-series-5: #B97A66;
+  --chart-series-6: #BF616A;
+}
+.v2 {
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-pill: 999px;
+  --control-sm: 28px;
+  --control-md: 32px;
+  --control-lg: 40px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 20px;
+  --content-form: 704px;
+  --content-page: 1440px;
+  --border-thin: 1px;
+  --border-focus: 2px;
+  --target-min-desktop: 24px;
+  --target-min-touch: 44px;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --t-display: 36px; --t-2xl: 24px; --t-xl: 20px; --t-lg: 16px; --t-md: 14px; --t-sm: 13px; --t-xs: 12px;
+}
+
+/* ---------- Base ---------- */
+.v2, .v2 * { box-sizing: border-box; }
+.v2 { display: flex; font-family: var(--font-ui); font-size: var(--t-md); line-height: 1.5; color: var(--text); background: var(--surface-sunken); overflow: hidden; }
+.v2 h1, .v2 h2, .v2 h3, .v2 p, .v2 ul, .v2 ol, .v2 dl, .v2 dd, .v2 figure { margin: 0; padding: 0; }
+.v2 ul, .v2 ol { list-style: none; }
+.v2 a { color: inherit; text-decoration: none; }
+.v2 button, .v2 input { font: inherit; color: inherit; }
+.v2 .mono { font-family: var(--font-mono); font-size: var(--t-sm); }
+.v2 .num { font-variant-numeric: tabular-nums; }
+.v2 .sec { color: var(--text-secondary); }
+.v2 .ter { color: var(--text-tertiary); }
+.v2 .ic { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.v2 .link { color: var(--accent); }
+.v2 .grow { flex: 1; min-width: 0; }
+
+/* ---------- Type roles ---------- */
+.v2 .display { font-size: var(--t-display); font-weight: 200; line-height: 1.2; letter-spacing: -0.03em; }
+.v2 .label { font-size: var(--t-sm); font-weight: 500; letter-spacing: 0.01em; color: var(--text-secondary); }
+.v2 .title { font-size: var(--t-xl); font-weight: 500; line-height: 1.2; }
+
+/* ---------- Navigation bar ---------- */
+.v2 .side { width: 224px; flex: none; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4) var(--space-2); background: var(--surface-base); }
+.v2 .brand { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-2); font-size: var(--t-lg); }
+.v2 .brand i { width: var(--icon-lg); height: var(--icon-lg); border: var(--border-focus) solid var(--accent); border-radius: var(--radius-sm); }
+.v2 .jump { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-2); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .kbd { margin-left: auto; font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text-secondary); padding: 0 var(--space-1); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-sm); }
+.v2 .nav { display: flex; flex-direction: column; gap: var(--space-1); }
+.v2 .nav a { display: flex; align-items: center; gap: var(--space-3); height: var(--control-md); padding: 0 var(--space-2); border-radius: var(--radius-md); color: var(--text-secondary); }
+.v2 .nav a.on { background: var(--surface-selected); color: var(--text); font-weight: 500; }
+.v2 .nav a.on .ic { color: var(--accent); }
+.v2 .nav .n { margin-left: auto; font-size: var(--t-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.v2 .nav .n.bad { color: var(--status-down-text); }
+.v2 .side .foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-3); }
+.v2 .running { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2); }
+.v2 .running a { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--t-sm); height: var(--target-min-desktop); }
+.v2 .running a span { margin-left: auto; color: var(--text-secondary); }
+.v2 .hubcard { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-2); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .hubcard b { font-weight: 500; }
+
+/* ---------- Page ---------- */
+.v2 .page { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.v2 .head { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-8) var(--space-4); }
+.v2 .head .actions { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; }
+.v2 .body { padding: 0 var(--space-8) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); flex: 1; min-height: 0; }
+.v2 .toolbar { display: flex; align-items: center; gap: var(--space-2); }
+.v2 .card { background: var(--surface-raised); border-radius: var(--radius-lg); }
+
+/* ---------- Controls ---------- */
+.v2 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); white-space: nowrap; cursor: pointer; }
+.v2 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 500; }
+.v2 .btn.quiet { border-color: var(--surface-raised); background: var(--surface-raised); color: var(--text-secondary); }
+.v2 .btn.bare { border-color: var(--surface-sunken); background: var(--surface-sunken); color: var(--text-secondary); }
+.v2 .btn.sm { height: var(--control-sm); padding: 0 var(--space-2); font-size: var(--t-sm); }
+.v2 .btn.icon { width: var(--control-sm); padding: 0; }
+.v2 .btn.danger { color: var(--danger); }
+.v2 .field { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text-secondary); }
+.v2 .field input { border: 0; outline: 0; background: none; flex: 1; min-width: 0; }
+.v2 .field input::placeholder { color: var(--text-tertiary); }
+.v2 .seg { display: inline-flex; height: var(--control-md); padding: var(--space-1); gap: var(--space-1); border-radius: var(--radius-md); background: var(--surface-base); }
+.v2 .seg button { display: inline-flex; align-items: center; gap: var(--space-2); border: 0; background: none; padding: 0 var(--space-3); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: var(--t-sm); cursor: pointer; }
+.v2 .seg button.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
+.v2 .seg.sm { height: var(--control-sm); }
+.v2 .seg.sm button { padding: 0 var(--space-2); }
+.v2 .seg .n { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-weight: 400; }
+
+/* ---------- Status: a dot and a word, always ---------- */
+.v2 .st { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.v2 .st::before { content: ""; width: var(--space-2); height: var(--space-2); border-radius: var(--radius-pill); background: var(--status-unknown); flex: none; }
+.v2 .st.up::before { background: var(--status-up); }
+.v2 .st.down::before { background: var(--status-down); }
+.v2 .st.warn::before { background: var(--status-warning); }
+.v2 .st.deg::before { background: var(--status-degraded); }
+.v2 .st.maint::before { background: var(--status-maintenance); }
+.v2 .st.live::before { background: var(--accent); }
+.v2 .st.down { color: var(--status-down-text); }
+.v2 .st.warn { color: var(--status-warning-text); }
+.v2 .st.deg { color: var(--status-degraded-text); }
+.v2 .st.unk { color: var(--status-unknown-text); }
+.v2 .tag { display: inline-flex; align-items: center; height: var(--space-5); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--surface-base); color: var(--text-secondary); font-size: var(--t-xs); white-space: nowrap; }
+.v2 .tag.warn { background: var(--status-warning-tint); color: var(--status-warning-text); }
+.v2 .tag.up { background: var(--status-up-tint); color: var(--status-up-text); }
+.v2 .tag.planned { background: var(--status-maintenance-tint); color: var(--planned); }
+
+/* ---------- Table: one pattern for every list ---------- */
+.v2 .table { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); overflow: hidden; }
+.v2 .tr { display: grid; align-items: center; column-gap: var(--space-4); padding: 0 var(--space-4); min-height: var(--space-12); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .tr.th { min-height: var(--control-md); border-top: 0; color: var(--text-secondary); font-size: var(--t-sm); font-weight: 500; letter-spacing: 0.01em; }
+.v2 .tr.group { min-height: var(--control-md); background: var(--surface-base); color: var(--text-secondary); font-weight: 500; display: flex; gap: var(--space-3); }
+.v2 .tr.sel { background: var(--surface-selected); }
+.v2 .tr.dense { min-height: var(--control-lg); }
+.v2 .tr.need { background: linear-gradient(90deg, var(--status-down-wash), var(--surface-raised) 40%); }
+.v2 .tr.need.w { background: linear-gradient(90deg, var(--status-degraded-wash), var(--surface-raised) 40%); }
+.v2 .cell2 { display: flex; flex-direction: column; min-width: 0; }
+.v2 .cell2 b { font-weight: 500; font-size: var(--t-md); }
+.v2 .cell2 > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .end { justify-self: end; display: flex; gap: var(--space-1); align-items: center; }
+.v2 .r { text-align: right; }
+.v2 .name { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.v2 .name .ic { color: var(--text-secondary); }
+.v2 .why { display: flex; gap: var(--space-2); align-items: baseline; min-width: 0; }
+.v2 .why span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Check history: 50 ticks drawn as one strip; a failed tick is a taller mark of the status colour. */
+.v2 .beats { position: relative; height: var(--space-4); width: 200px; background: repeating-linear-gradient(90deg, var(--status-up) 0 3px, var(--surface-raised) 3px 4px); opacity: 0.9; }
+.v2 .beats.unk { background: repeating-linear-gradient(90deg, var(--border-subtle) 0 3px, var(--surface-raised) 3px 4px); }
+.v2 .beats i { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--status-down); }
+.v2 .beats i.g { background: var(--status-degraded); }
+.v2 .beats.s20 { width: 80px; }
+.v2 .meter { display: flex; align-items: center; gap: var(--space-2); }
+.v2 .meter u { display: block; width: var(--space-10); height: var(--space-1); background: var(--surface-base); border-radius: var(--radius-sm); overflow: hidden; }
+.v2 .meter u i { display: block; height: 100%; background: var(--chart-series-2); }
+.v2 .meter u i.hot { background: var(--status-degraded); }
+
+/* ---------- Detail page ---------- */
+.v2 .bar { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-8) 0; background: var(--surface-base); }
+.v2 .bar .row1 { display: flex; align-items: center; gap: var(--space-4); }
+.v2 .crumb { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); }
+.v2 .crumb h1 { font-size: var(--t-xl); font-weight: 500; line-height: 1.2; color: var(--text); }
+.v2 .reason { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .tabs { display: flex; gap: var(--space-6); }
+.v2 .tabs a { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-lg); color: var(--text-secondary); border-bottom: var(--border-focus) solid var(--surface-base); }
+.v2 .tabs a.on { color: var(--text); font-weight: 500; border-bottom-color: var(--accent); }
+.v2 .tabs .n { font-size: var(--t-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.v2 .split { display: grid; gap: var(--space-4); flex: 1; min-height: 0; }
+.v2 .pane { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); min-height: 0; overflow: hidden; }
+.v2 .pane-head { display: flex; align-items: center; gap: var(--space-3); min-height: var(--space-12); padding: 0 var(--space-4); }
+.v2 .pane-tools { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); flex-wrap: wrap; }
+.v2 .log { flex: 1; margin: 0 var(--space-4) var(--space-4); padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--t-sm); display: flex; flex-direction: column; gap: var(--space-1); overflow: hidden; }
+.v2 .log li { display: grid; grid-template-columns: 64px 48px minmax(0, 1fr); gap: var(--space-3); }
+.v2 .log time { color: var(--text-secondary); }
+.v2 .log .lv { color: var(--text-secondary); }
+.v2 .log .lv.w { color: var(--status-warning-text); }
+.v2 .log .lv.e { color: var(--status-down-text); }
+.v2 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); font-size: var(--t-sm); }
+.v2 .kv dt { color: var(--text-secondary); }
+.v2 .dock { display: flex; align-items: center; gap: var(--space-4); height: var(--control-lg); padding: 0 var(--space-8); background: var(--surface-base); font-size: var(--t-sm); }
+.v2 .dock .msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .switch { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .switch::before { content: ""; width: var(--space-8); height: var(--space-4); border-radius: var(--radius-pill); background: var(--accent); }
+.v2 .switch.off::before { background: var(--border-strong); }
+.v2 .empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-8); }
+.v2 .note { font-size: var(--t-sm); color: var(--text-secondary); }
+
+/* ---------- Forms and settings ---------- */
+.v2 .cols { display: grid; gap: var(--space-8); }
+.v2 .subnav { display: flex; flex-direction: column; gap: var(--space-1); }
+.v2 .subnav a { display: flex; align-items: center; height: var(--control-md); padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--text-secondary); }
+.v2 .subnav a.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
+.v2 .subnav .label { padding: var(--space-3) var(--space-3) var(--space-1); }
+.v2 .setrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-6); align-items: center; padding: var(--space-3) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); min-height: var(--space-12); }
+.v2 .setrow:first-of-type { border-top: 0; }
+.v2 .setrow p { font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .group-title { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-2) 0; }
+.v2 .center { flex: 1; display: grid; place-items: center; background: var(--surface-sunken); }
+.v2 .sheet { width: 400px; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-8); background: var(--surface-raised); border-radius: var(--radius-lg); }
+.v2 .btn.lg { height: var(--control-lg); }
+.v2 .steps { display: flex; flex-direction: column; gap: var(--space-2); }
+.v2 .steps li { display: flex; align-items: center; gap: var(--space-3); font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .steps li.done { color: var(--text); }
+.v2 .steps li.now { color: var(--text); font-weight: 500; }
+.v2 .steps li::before { content: ""; width: var(--space-2); height: var(--space-2); border-radius: var(--radius-pill); background: var(--border-strong); }
+.v2 .steps li.done::before { background: var(--status-up); }
+.v2 .steps li.now::before { background: var(--accent); }
+.v2 .code { font-family: var(--font-mono); font-size: var(--t-2xl); letter-spacing: 0.14em; }
+.v2 .phones { display: flex; gap: var(--space-8); padding: var(--space-8); align-items: flex-start; }
+.v2 .phone { width: 390px; height: 844px; flex: none; display: flex; flex-direction: column; background: var(--surface-sunken); border-radius: var(--radius-lg); overflow: hidden; outline: var(--border-thin) solid var(--border-subtle); }
+.v2 .phone .ptop { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-12) var(--space-4) var(--space-3); background: var(--surface-base); }
+.v2 .phone .pbody { flex: 1; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); min-height: 0; overflow: hidden; }
+.v2 .phone .tabbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface-base); padding: var(--space-2) var(--space-2) var(--space-6); }
+.v2 .phone .tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); min-height: var(--target-min-touch); font-size: var(--t-xs); color: var(--text-secondary); }
+.v2 .phone .tabbar a.on { color: var(--accent); }
+.v2 .phone .tr { min-height: var(--space-16); }
+.v2 .phone .btn { height: var(--target-min-touch); }
+.v2 .phone .seg { height: var(--target-min-touch); }
+
+/* Corrections after the first rendered look (2026-11-19). */
+.v2 .tr > * { min-width: 0; }
+.v2 .why .st { flex: none; overflow: visible; }
+.v2 .why a { flex: none; white-space: nowrap; }
+.v2 .name .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2 .name .tag { flex: none; }
+.v2 .nowrap { white-space: nowrap; }
+.v2 .seg button { white-space: nowrap; }
+.v2 .name b { white-space: nowrap; }
+.v2 .phone .seg button { padding: 0 var(--space-1); }
+
+/* ---------- Routes (this mockup). Only tokens; no new value. ---------- */
+.v2 .dim { opacity: 0.5; } /* tone.opacity.disabled; the reason of a disabled choice stays outside .dim, at full contrast */
+.v2 .choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.v2 .opt { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-raised); font-size: var(--t-sm); }
+.v2 .opt b { font-weight: 500; font-size: var(--t-md); display: flex; align-items: center; gap: var(--space-2); }
+.v2 .opt.on { border: var(--border-focus) solid var(--accent); background: var(--accent-tint); }
+.v2 .opt p { color: var(--text-secondary); }
+.v2 .opt .why-off { color: var(--text-secondary); font-size: var(--t-xs); }
+.v2 .radio { display: grid; grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); min-height: var(--space-12); font-size: var(--t-sm); }
+.v2 .radio:first-child { border-top: 0; }
+.v2 .radio.off-row::before { opacity: 0.5; }
+.v2 .radio::before { content: ""; width: var(--icon-sm); height: var(--icon-sm); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-strong); box-sizing: border-box; }
+.v2 .radio.on::before { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 var(--space-1) var(--surface-raised); }
+.v2 .radio.on { background: var(--surface-selected); }
+.v2 .rec { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: var(--space-2) var(--space-4); align-items: center; padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-md); font-size: var(--t-sm); }
+.v2 .rec .k { color: var(--text-secondary); }
+.v2 .rec .mono { word-break: break-all; }
+.v2 .banner { display: grid; grid-template-columns: var(--icon-sm) minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-size: var(--t-sm); }
+.v2 .banner.warn { background: var(--status-warning-tint); color: var(--status-warning-text); }
+.v2 .banner.deg { background: var(--status-degraded-tint); color: var(--status-degraded-text); }
+.v2 .banner.plain { background: var(--surface-base); color: var(--text-secondary); }
+.v2 .banner b { font-weight: 500; color: var(--text); }
+.v2 .banner p + p { margin-top: var(--space-1); }
+.v2 .fieldset { display: flex; flex-direction: column; gap: var(--space-2); }
+.v2 .hint { font-size: var(--t-xs); color: var(--text-secondary); }
+.v2 .otp { display: flex; gap: var(--space-2); }
+.v2 .otp i { display: grid; place-items: center; width: var(--control-lg); height: var(--control-lg); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); font-style: normal; font-family: var(--font-mono); font-size: var(--t-lg); }
+.v2 .otp i.now { border: var(--border-focus) solid var(--focus-ring); }
+.v2 .checks { display: flex; flex-direction: column; }
+.v2 .checks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-3) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); min-height: var(--space-12); font-size: var(--t-sm); }
+.v2 .checks li:first-child { border-top: 0; }
+.v2 .checks li p { color: var(--text-secondary); }
+.v2 .stat { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.v2 .stat div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); border-left: var(--border-thin) solid var(--border-subtle); }
+.v2 .stat div:first-child { border-left: 0; }
+.v2 .stat b { font-size: var(--t-xl); font-weight: 400; font-variant-numeric: tabular-nums; }
+.v2 .scroll { overflow: hidden; }
+
+</style>
+</head>
+<body>
+<h1 class="board">Routes</h1>
+<p class="about">The routes of the hub, as in Nginx Proxy Manager, with the hub as the proxy (Sections 12 and 16 of hosted-applications-stage-2.md). Routes is a section of Settings, in the group Hub: the routes belong to the hub and not to one device, they are set up rarely, and a problem of a route comes to you as a check and a notification (CHK-007, NOT-006), so the navigation bar of NAV-001 does not change. The page of an application proposes its route (Frame 6). The API of today (task H21) has web routes only: add, check, remove, with the proof and the certificate. No route serves yet: the certificate issuer and the consent at the machine are not built. A part marked Planned needs task H40 or a later task: redirects, streams, the access of a route and the step that makes it public.</p>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 900px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="group-title"><h2 class="title">Routes</h2><span class="grow"></span><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Add a route</button></div>
+        <p class="note">The hub is the proxy: each route sends a name of yours to one application on one machine.</p>
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Show"><button class="on" type="button">All <span class="n">6</span></button><button type="button">Needs you <span class="n">3</span></button><button type="button">Public <span class="n">3</span></button><button type="button">Private <span class="n">3</span></button></div>
+          <span class="grow"></span>
+          <button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Check all</button>
+        </div>
+        <span class="note">3 serving, 3 waiting · checked 14:02</span>
+        <ul class="table">
+          <li class="tr th" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px"><span>Name, kind and access</span><span>Target</span><span>Proof and certificate</span><span class="r">Traffic, 24 h</span></li>
+          <li class="tr " style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">photos.example.com</b><span class="sec">Web · Public</span></span>
+            <span class="cell2"><span>Immich on pop-os</span><span class="mono sec">port 2283</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="sec">Certificate to 14 Feb 2027</span></span>
+            <span class="cell2 r num"><span>41.2k requests</span><span class="sec">3.1 GB out</span></span>
+          </li>
+          <li class="tr need w" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">tracks.example.com</b><span class="sec">Web · Private</span></span>
+            <span class="cell2"><span>Tracks on pop-os</span><span class="mono sec">port 3000</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="st deg">Certificate ends in 9 days</span></span>
+            <span class="cell2 r num"><span>1.9k requests</span><span class="sec">84 MB out</span></span>
+          </li>
+          <li class="tr " style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">code.example.com</b><span class="sec">Redirect · Public</span></span>
+            <span class="cell2"><span>Redirect to</span><span class="mono sec">git.example.com</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="sec">Certificate to 2 Mar 2027</span></span>
+            <span class="cell2 r num"><span>312 requests</span><span class="sec">41 KB out</span></span>
+          </li>
+          <li class="tr " style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">vault.example.com</b><span class="sec">Web · Private</span></span>
+            <span class="cell2"><span>Vaultwarden on atlas</span><span class="mono sec">port 80</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="sec">Certificate to 18 Feb 2027</span></span>
+            <span class="cell2 r num"><span>220 requests</span><span class="sec">9 MB out</span></span>
+          </li>
+          <li class="tr need w" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">wiki.example.com</b><span class="sec">Web · Private</span></span>
+            <span class="cell2"><span>Wiki.js on nas</span><span class="mono sec">port 3000</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st unk">Waits for TXT record</span><span class="sec">No certificate yet</span></span>
+            <span class="cell2 r num"><span>Not serving</span><span class="sec">Added 13:58</span></span>
+          </li>
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">media.example.org</b><span class="sec">Web · Public</span></span>
+            <span class="cell2"><span>Jellyfin on nas</span><span class="mono sec">port 8096</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st down">Name lost</span><span class="sec">TXT not found, 3 reads</span></span>
+            <span class="cell2 r num"><span>Not serving</span><span class="sec">12 refused</span></span>
+          </li>
+        </ul>
+        <p class="note">Streams of TCP and UDP need a hub that you host: this hub is hosted by Anima.ing, and its front door has no address of its own for this hub yet.</p>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 1, dark, 1280 px: the list of the routes of a hosted hub, in Settings, group Hub. Each row: the name, the kind and the access; the target (the application on the machine with its recorded port, or the address of a redirect); the state of the name proof and of the certificate; the traffic of 24 hours. Rows that need you have the wash of their status. No stream: a hosted hub has none (OD-HOST-47).</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 760px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">0</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="group-title"><h2 class="title">Routes</h2></div>
+        <section class="card empty" aria-label="No routes">
+          <span class="name" style="color: var(--accent)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="4" r="1.5"/><circle cx="12" cy="12" r="1.5"/><path d="M5.5 4H10a2 2 0 0 1 0 4H6a2 2 0 0 0 0 4h4.5"/></svg></span>
+          <b style="font-weight: 500; font-size: var(--t-lg)">No routes yet</b>
+          <p class="note" style="max-width: 60ch">A route sends a name of yours, for example <span class="mono">photos.example.com</span>, to one application on one of your machines. The hub is the proxy and gets the certificate. A new route is private: only your devices on the network of Anima reach it, until you make it public.</p>
+          <div class="toolbar" style="margin-top: var(--space-2)"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Add a route</button><a class="link" href="#" style="font-size: var(--t-sm)">How names and certificates work</a></div>
+        </section>
+        <p class="note">Adding the first route turns on the proxy of the hub. Until then nothing listens for the internet.</p>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 1b, dark: the empty state. A new route is private (Section 16.4).</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 960px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <nav class="crumb" aria-label="Breadcrumb"><a href="#">Routes</a><span aria-hidden="true">/</span><h2 class="title" style="color: var(--text)">Add a route</h2></nav>
+        <div class="fieldset"><span class="label">Kind</span>
+          <div class="choice" role="radiogroup" aria-label="Kind">
+            <div class="opt on" role="radio" aria-checked="true" tabindex="0"><b>Web</b><p>HTTPS by name, with a certificate</p></div>
+            <div class="opt" role="radio" aria-checked="false" tabindex="-1"><b>Redirect<span class="tag planned">Planned</span></b><p>A name that you proved, to an https:// address</p></div>
+            <div class="opt off-opt" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f2-tcp"><div class="dim"><b>TCP stream<span class="tag planned">Planned</span></b><p>A port of the hub to a port of the application</p></div><span class="why-off" id="f2-tcp">Needs a hub that you host: the front door of a hosted hub has no address of its own for this hub yet.</span></div>
+            <div class="opt off-opt" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f2-udp"><div class="dim"><b>UDP stream<span class="tag planned">Planned</span></b><p>The same for UDP</p></div><span class="why-off" id="f2-udp">Needs a hub that you host, and a link that carries UDP.</span></div>
+          </div>
+        </div>
+        <div class="cols" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6)">
+          <div class="fieldset">
+            <span class="label">Application</span>
+            <section class="card" role="radiogroup" aria-label="Application"><div class="radio " role="radio" aria-checked="false" tabindex="-1"><span class="cell2"><b style="font-weight: 500; font-size: var(--t-sm)">Immich</b><span class="sec">pop-os · web port 2283</span></span><span class="sec">Has a route</span></div><div class="radio on" role="radio" aria-checked="true" tabindex="0"><span class="cell2"><b style="font-weight: 500; font-size: var(--t-sm)">Wiki.js</b><span class="sec">nas · web port 3000</span></span><span class="sec"></span></div><div class="radio " role="radio" aria-checked="false" tabindex="-1"><span class="cell2"><b style="font-weight: 500; font-size: var(--t-sm)">Uptime Kuma</b><span class="sec">nas · web port 3001</span></span><span class="sec"></span></div><div class="radio off-row" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f2-app3"><span class="cell2 dim"><b style="font-weight: 500; font-size: var(--t-sm)">code-server</b><span class="sec">pop-os · port 8443</span></span><span class="sec" id="f2-app3">A shell: no route</span></div></section>
+            <span class="hint">Only the ports that the applications program recorded. You cannot type a port.</span>
+          </div>
+          <div class="fieldset">
+            <span class="label">Name</span>
+            <label class="field"><input value="wiki.example.com" aria-label="Name"></label>
+            <span class="hint">A name of a domain that you own. Not a wildcard, not a name of the hub.</span>
+            <span class="label" style="margin-top: var(--space-2)">Access</span>
+            <span class="name" style="gap: var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Private</span>
+            <span class="hint">A new route is private: only your devices on the network of Anima reach it. You make it public on the page of the route, with your second factor.</span>
+          </div>
+        </div>
+        <div class="toolbar"><span class="sec grow">Adding the route asks for the code of your authenticator. Then the hub gives the DNS records to add.</span><button class="btn" type="button">Cancel</button><button class="btn primary" type="button">Add route</button></div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 2, dark: add a route on a hosted hub. The kind is a choice of four; TCP stream and UDP stream are disabled with the reason beside them (OD-HOST-47, OD-HOST-48). The application is chosen from the recorded ports, never a free port; a shell entry is disabled (OD-HOST-54). There is no access choice: a new route is private (Section 16.4). Adding asks for the second factor (Section 12.3).</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 760px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="toolbar"><nav class="crumb" aria-label="Breadcrumb"><a href="#">Routes</a><span aria-hidden="true">/</span><h2 class="title" style="color: var(--text)">wiki.example.com</h2></nav><span class="st unk" style="margin-left: var(--space-2)">Waits for TXT record</span><span class="grow"></span><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Check now</button></div>
+        <section class="card" aria-label="DNS records" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
+          <div><b style="font-weight: 500">Add these two records in the DNS of example.com</b><p class="note">The hub routes the name only after it finds the TXT record. It reads it again at intervals; one failed read removes nothing.</p></div>
+          <div class="rec">
+            <span class="k">TXT</span><span class="mono">_anima.wiki.example.com</span><span></span>
+            <span class="k">Value</span><span class="mono">anima-route=hub_8q3v5k2r.3f9a1c7e5b20d84f6a1e9c03b7d25e04c81f6b2a97d3e05f4a6c19b8e72d0f35</span><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>Copy</button>
+          </div>
+          <div class="rec">
+            <span class="k">CNAME</span><span class="mono">wiki.example.com</span><span></span>
+            <span class="k">Target</span><span class="mono">door.anima.ing</span><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>Copy</button>
+          </div>
+        </section>
+        <ul class="card checks" aria-label="Checks">
+          <li><div>The name is proven<p>TXT record not found yet. Added 13:58, checked 14:02.</p></div><span class="st unk">Waits</span></li>
+          <li><div>Certificate<p>Asked from Let's Encrypt after the proof.</p></div><span class="st unk">Waits</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 2c, dark: the route just after Add route. addApplicationRoute gives the TXT record of the proof (a token of 256 bits bound to the hub and the name); the CNAME points the name at the front door (Section 12.4). Each with Copy.</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="light" style="width: 1280px; height: 860px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>home hub</b></span><span class="sec">hub.example.com · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">3</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="toolbar"><nav class="crumb" aria-label="Breadcrumb"><a href="#">Routes</a><span aria-hidden="true">/</span><h2 class="title" style="color: var(--text)">photos.example.com</h2></nav><span class="st unk" style="margin-left: var(--space-2)">Waits for the name</span><span class="grow"></span><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Check now</button></div>
+        <div class="banner deg" role="note"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg><div><p><b>Same site as the hub.</b> photos.example.com and hub.example.com share example.com, so a page of Immich can send requests to the hub with your cookies. The hub checks the origin of each request; a name on a different domain is safer.</p></div></div>
+        <section class="card" aria-label="DNS record" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
+          <div><b style="font-weight: 500">Point the name at this hub</b><p class="note">This hub is the only hub at its address, so the record is the proof. No TXT token is needed.</p></div>
+          <div class="rec">
+            <span class="k">A</span><span class="mono">photos.example.com</span><span></span>
+            <span class="k">Address</span><span class="mono">203.0.113.24</span><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>Copy</button>
+          </div>
+        </section>
+        <ul class="card checks" aria-label="Checks">
+          <li><div>The name points at this hub<p>photos.example.com has no A record yet. Checked 14:02.</p></div><span class="st unk">Waits</span></li>
+          <li><div>Certificate<p>Asked from Let's Encrypt after the name points at this hub.</p></div><span class="st unk">Waits</span></li>
+        </ul>
+        <section class="card" aria-label="Route">
+          <div class="setrow"><div>Target<p>Fixed when the route was added.</p></div><span>Immich on pop-os, <span class="mono">port 2283</span></span></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 2d, light: a web route just added on a hub that a person hosts at hub.example.com. The proof is the A record to the address of the hub, with no token. addApplicationRoute said sameSiteAsHub, so the warning shows (Section 12.3).</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 1060px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="toolbar"><nav class="crumb" aria-label="Breadcrumb"><a href="#">Routes</a><span aria-hidden="true">/</span><h2 class="title" style="color: var(--text)">vault.example.com</h2></nav><span class="st up" style="margin-left: var(--space-2)">Serving, private</span><span class="grow"></span><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Check now</button></div>
+        <section class="card" aria-label="Route">
+          <div class="setrow"><div>Access<p>Private: only your devices on the network of Anima.</p></div><span class="name" style="gap: var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Private</span></div>
+          <div class="setrow"><div>Target<p>Fixed when the route was added. To change it, remove the route and add a new one.</p></div><span>Vaultwarden on atlas, <span class="mono">port 80</span></span></div>
+        </section>
+        <section class="card" aria-label="Make public" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
+          <div class="toolbar" style="align-items: flex-start"><div class="grow"><b style="font-weight: 500; display: inline-flex; gap: var(--space-2); align-items: center">Make public<span class="tag planned">Planned</span></b><p class="note">Anyone on the internet reaches Vaultwarden at vault.example.com. Asks for the code of your authenticator.</p></div><button class="btn" type="button" aria-disabled="true" aria-describedby="f3-consent" style="opacity: 0.5"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11M8 2.5c1.6 1.6 2.4 3.4 2.4 5.5S9.6 11.9 8 13.5M8 2.5C6.4 4.1 5.6 5.9 5.6 8s.8 3.9 2.4 5.5"/></svg>Make public</button></div>
+          <div class="banner warn" role="note" id="f3-consent"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg><div><p><b>Consent at atlas is not given.</b> Port 80 of Vaultwarden is open to the hub, not to the internet. An administrator of atlas turns on "Public" for this port, in Anima on atlas. Then you can make the route public.</p></div></div>
+        </section>
+        <div class="group-title"><span class="label">Checks</span><span class="note">In the order the hub checks them · checked 14:02</span></div>
+        <ul class="card checks" aria-label="Checks">
+          <li><div>The name is proven<p class="mono">_anima.vault.example.com</p><p>TXT record found, 0 failed reads.</p></div><span class="st up">Proven</span></li>
+          <li><div>Consent at the machine, for public<p>Not needed while the route is private.</p></div><span class="st unk">Not given</span></li>
+          <li><div>Certificate<p>Let's Encrypt, to 18 Feb 2027. A new one is asked 30 days before the end.</p></div><span class="st up">Valid</span></li>
+        </ul>
+        <section class="card" aria-label="Traffic, 24 hours"><div class="stat"><div><span class="label">Requests</span><b>220</b></div><div><span class="label">In</span><b>1 MB</b></div><div><span class="label">Out</span><b>9 MB</b></div><div><span class="label">Refused</span><b>0</b></div></div></section>
+        <section class="card" aria-label="Remove" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
+          <div><b style="font-weight: 500">Remove this route</b><p class="note">The hub forgets vault.example.com, its certificate and its key. Delete the DNS records yourself.</p></div>
+          <div class="toolbar" style="gap: var(--space-3); flex-wrap: wrap"><span class="sec">Code of your authenticator</span><div class="otp" role="group" aria-label="Code of your authenticator"><i>4</i><i>8</i><i class="now"></i><i></i><i></i><i></i></div><span class="grow"></span><button class="btn" type="button">Cancel</button><button class="btn danger" type="button" aria-disabled="true" style="opacity: 0.5">Remove route</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 3, dark: the details of one route. Make public asks for the second factor and is disabled while the consent at the machine is not given (OD-HOST-43). The checks in the order of ApplicationRouteWait, Check now (checkApplicationRoute), the traffic, and Remove, which asks for the code of the authenticator before it removes the name, its certificate and its key (removeApplicationRoute).</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 1060px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>home hub</b></span><span class="sec">hub.example.com · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">3</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <nav class="crumb" aria-label="Breadcrumb"><a href="#">Routes</a><span aria-hidden="true">/</span><h2 class="title" style="color: var(--text)">Add a route</h2></nav>
+        <div class="fieldset"><span class="label">Kind</span>
+          <div class="choice" role="radiogroup" aria-label="Kind">
+            <div class="opt" role="radio" aria-checked="false" tabindex="-1"><b>Web</b><p>HTTPS by name, with a certificate</p></div>
+            <div class="opt" role="radio" aria-checked="false" tabindex="-1"><b>Redirect<span class="tag planned">Planned</span></b><p>A name that you proved, to an https:// address</p></div>
+            <div class="opt on" role="radio" aria-checked="true" tabindex="0"><b>TCP stream<span class="tag planned">Planned</span></b><p>A port of the hub to a port of the application</p></div>
+            <div class="opt off-opt" role="radio" aria-checked="false" aria-disabled="true" aria-describedby="f4-udp"><div class="dim"><b>UDP stream<span class="tag planned">Planned</span></b><p>The same for UDP</p></div><span class="why-off" id="f4-udp">UDP to a machine on the link waits for a change of the link.</span></div>
+          </div>
+        </div>
+        <div class="cols" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6)">
+          <div class="fieldset">
+            <span class="label">Application</span>
+            <section class="card" role="radiogroup" aria-label="Application"><div class="radio on" role="radio" aria-checked="true" tabindex="0"><span class="cell2"><b style="font-weight: 500; font-size: var(--t-sm)">Stalwart Mail</b><span class="sec">pop-os · IMAPS port 993</span></span><span class="sec">Can be public</span></div><div class="radio " role="radio" aria-checked="false" tabindex="-1"><span class="cell2"><b style="font-weight: 500; font-size: var(--t-sm)">Minecraft server</b><span class="sec">pop-os · TCP port 25565</span></span><span class="sec">Private only</span></div><div class="radio " role="radio" aria-checked="false" tabindex="-1"><span class="cell2"><b style="font-weight: 500; font-size: var(--t-sm)">PostgreSQL</b><span class="sec">nas · TCP port 5432</span></span><span class="sec">Private only</span></div></section>
+            <span class="hint">A stream has no look inside. Only a port that the catalogue marks as having its own sign-in and TLS can be public later.</span>
+          </div>
+          <div class="fieldset">
+            <span class="label">Port of the hub</span>
+            <label class="field"><input value="993" aria-label="Port of the hub"></label>
+            <span class="hint">From the stream range that you set. Not 22, 53, 80, 443, 3478, 5432 or a port of the VPN. The hub tests the port before it saves.</span>
+            <span class="label" style="margin-top: var(--space-2)">Access</span>
+            <span class="name" style="gap: var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Private</span>
+            <span class="hint">Listens on 100.64.0.1, the address of the hub on the network of Anima.</span>
+          </div>
+        </div>
+        <section class="card" aria-label="Limits">
+          <div class="setrow"><div>Connections at one time<p>The application sees the hub as the client, so the hub applies the limits for each source.</p></div><span class="mono">50</span></div>
+          <div class="setrow"><div>New connections each second, for each source</div><span class="mono">5</span></div>
+        </section>
+        <div class="toolbar"><span class="sec grow">Adding the route asks for the code of your authenticator.</span><button class="btn" type="button">Cancel</button><button class="btn primary" type="button">Add route</button></div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 4, dark: add a TCP stream on a hub that a person hosts. The port of the hub is from the stream range, with the refused ports. The access is private; only a port marked stream-public (here IMAPS) can be public later, never a database or a protocol without TLS (Section 16.4). UDP stream is disabled with its reason (OD-HOST-48).</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 560px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="bar">
+    <div class="row1"><nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>nas</h1></nav><span class="st up">Up</span></div>
+    <nav class="tabs" aria-label="Device"><a href="#">Overview</a><a href="#">Checks</a><a href="#" class="on" aria-current="page">Containers<span class="n">5</span></a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
+  </header>
+  <div class="body" style="padding-top: var(--space-4)">
+    <section class="pane" aria-label="Wiki.js">
+      <div class="pane-head"><b style="font-weight: 500">Wiki.js</b><div class="seg sm" role="group" aria-label="View"><button type="button">Log</button><button class="on" type="button">Details</button></div><span class="grow"></span></div>
+      <div style="padding: 0 var(--space-4) var(--space-4)">
+        <section class="card" aria-label="Routes of Wiki.js" style="background: var(--surface-base)">
+          <div class="setrow"><div>Routes<p>The catalogue marks port 3000 as web. A route sends a name of yours to it through the hub.</p></div><button class="btn primary sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Add a route for port 3000</button></div>
+          <div class="setrow"><div>Port 3000<p>Recorded by the applications program.</p></div><span class="sec">No route</span></div>
+        </section>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+<figcaption>Frame 6, dark: the entry point from the page of an application (Section 16.2). The button opens Frame 2 with the application and its port chosen. Where the application is drawn in the client (the tab Containers, or a page of the application of task H6) follows that task.</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="light" style="width: 1280px; height: 900px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="group-title"><h2 class="title">Routes</h2><span class="grow"></span><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Add a route</button></div>
+        <p class="note">The hub is the proxy: each route sends a name of yours to one application on one machine.</p>
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Show"><button class="on" type="button">All <span class="n">6</span></button><button type="button">Needs you <span class="n">3</span></button><button type="button">Public <span class="n">3</span></button><button type="button">Private <span class="n">3</span></button></div>
+          <span class="grow"></span>
+          <button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Check all</button>
+        </div>
+        <span class="note">3 serving, 3 waiting · checked 14:02</span>
+        <ul class="table">
+          <li class="tr th" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px"><span>Name, kind and access</span><span>Target</span><span>Proof and certificate</span><span class="r">Traffic, 24 h</span></li>
+          <li class="tr " style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">photos.example.com</b><span class="sec">Web · Public</span></span>
+            <span class="cell2"><span>Immich on pop-os</span><span class="mono sec">port 2283</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="sec">Certificate to 14 Feb 2027</span></span>
+            <span class="cell2 r num"><span>41.2k requests</span><span class="sec">3.1 GB out</span></span>
+          </li>
+          <li class="tr need w" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">tracks.example.com</b><span class="sec">Web · Private</span></span>
+            <span class="cell2"><span>Tracks on pop-os</span><span class="mono sec">port 3000</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="st deg">Certificate ends in 9 days</span></span>
+            <span class="cell2 r num"><span>1.9k requests</span><span class="sec">84 MB out</span></span>
+          </li>
+          <li class="tr " style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">code.example.com</b><span class="sec">Redirect · Public</span></span>
+            <span class="cell2"><span>Redirect to</span><span class="mono sec">git.example.com</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="sec">Certificate to 2 Mar 2027</span></span>
+            <span class="cell2 r num"><span>312 requests</span><span class="sec">41 KB out</span></span>
+          </li>
+          <li class="tr " style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">vault.example.com</b><span class="sec">Web · Private</span></span>
+            <span class="cell2"><span>Vaultwarden on atlas</span><span class="mono sec">port 80</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st up">Proven</span><span class="sec">Certificate to 18 Feb 2027</span></span>
+            <span class="cell2 r num"><span>220 requests</span><span class="sec">9 MB out</span></span>
+          </li>
+          <li class="tr need w" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">wiki.example.com</b><span class="sec">Web · Private</span></span>
+            <span class="cell2"><span>Wiki.js on nas</span><span class="mono sec">port 3000</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st unk">Waits for TXT record</span><span class="sec">No certificate yet</span></span>
+            <span class="cell2 r num"><span>Not serving</span><span class="sec">Added 13:58</span></span>
+          </li>
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 176px 92px">
+            <span class="cell2"><b class="mono" style="font-size: var(--t-sm)">media.example.org</b><span class="sec">Web · Public</span></span>
+            <span class="cell2"><span>Jellyfin on nas</span><span class="mono sec">port 8096</span></span>
+            <span class="cell2" style="gap: var(--space-1)"><span class="st down">Name lost</span><span class="sec">TXT not found, 3 reads</span></span>
+            <span class="cell2 r num"><span>Not serving</span><span class="sec">12 refused</span></span>
+          </li>
+        </ul>
+        <p class="note">Streams of TCP and UDP need a hub that you host: this hub is hosted by Anima.ing, and its front door has no address of its own for this hub yet.</p>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 5a, light: Frame 1 in the light appearance.</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="light" style="width: 1280px; height: 1060px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>Projects<span class="n">7</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/></svg>Sessions<span class="n">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>Logs</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+      <a href="#">atlas<span>RDP, 42 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>okita's hub</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Settings</h1></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 200px minmax(0, 704px)">
+      <nav class="subnav" aria-label="Settings sections">
+        <span class="label">This computer</span>
+        <a href="#">Appearance</a><a href="#">Notifications</a><a href="#">Stay awake</a><a href="#">Updates</a><a href="#">MCP</a>
+        <span class="label">Hub</span>
+        <a href="#">Hub and account</a><a href="#">Devices on the link</a><a class="on" href="#" aria-current="page">Routes<span class="n" style="margin-left: auto; font-weight: 400; color: var(--text-secondary)">6</span></a><a href="#">Default checks</a><a href="#">Data retention</a>
+        <span class="label">Connections</span>
+        <a href="#">Integrations</a><a href="#">API keys</a><a href="#">Extensions</a>
+      </nav>
+      <div class="scroll" style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <div class="toolbar"><nav class="crumb" aria-label="Breadcrumb"><a href="#">Routes</a><span aria-hidden="true">/</span><h2 class="title" style="color: var(--text)">vault.example.com</h2></nav><span class="st up" style="margin-left: var(--space-2)">Serving, private</span><span class="grow"></span><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/></svg>Check now</button></div>
+        <section class="card" aria-label="Route">
+          <div class="setrow"><div>Access<p>Private: only your devices on the network of Anima.</p></div><span class="name" style="gap: var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Private</span></div>
+          <div class="setrow"><div>Target<p>Fixed when the route was added. To change it, remove the route and add a new one.</p></div><span>Vaultwarden on atlas, <span class="mono">port 80</span></span></div>
+        </section>
+        <section class="card" aria-label="Make public" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
+          <div class="toolbar" style="align-items: flex-start"><div class="grow"><b style="font-weight: 500; display: inline-flex; gap: var(--space-2); align-items: center">Make public<span class="tag planned">Planned</span></b><p class="note">Anyone on the internet reaches Vaultwarden at vault.example.com. Asks for the code of your authenticator.</p></div><button class="btn" type="button" aria-disabled="true" aria-describedby="f3-consent" style="opacity: 0.5"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11M8 2.5c1.6 1.6 2.4 3.4 2.4 5.5S9.6 11.9 8 13.5M8 2.5C6.4 4.1 5.6 5.9 5.6 8s.8 3.9 2.4 5.5"/></svg>Make public</button></div>
+          <div class="banner warn" role="note" id="f3-consent"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.5h.01"/></svg><div><p><b>Consent at atlas is not given.</b> Port 80 of Vaultwarden is open to the hub, not to the internet. An administrator of atlas turns on "Public" for this port, in Anima on atlas. Then you can make the route public.</p></div></div>
+        </section>
+        <div class="group-title"><span class="label">Checks</span><span class="note">In the order the hub checks them · checked 14:02</span></div>
+        <ul class="card checks" aria-label="Checks">
+          <li><div>The name is proven<p class="mono">_anima.vault.example.com</p><p>TXT record found, 0 failed reads.</p></div><span class="st up">Proven</span></li>
+          <li><div>Consent at the machine, for public<p>Not needed while the route is private.</p></div><span class="st unk">Not given</span></li>
+          <li><div>Certificate<p>Let's Encrypt, to 18 Feb 2027. A new one is asked 30 days before the end.</p></div><span class="st up">Valid</span></li>
+        </ul>
+        <section class="card" aria-label="Traffic, 24 hours"><div class="stat"><div><span class="label">Requests</span><b>220</b></div><div><span class="label">In</span><b>1 MB</b></div><div><span class="label">Out</span><b>9 MB</b></div><div><span class="label">Refused</span><b>0</b></div></div></section>
+        <section class="card" aria-label="Remove" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
+          <div><b style="font-weight: 500">Remove this route</b><p class="note">The hub forgets vault.example.com, its certificate and its key. Delete the DNS records yourself.</p></div>
+          <div class="toolbar" style="gap: var(--space-3); flex-wrap: wrap"><span class="sec">Code of your authenticator</span><div class="otp" role="group" aria-label="Code of your authenticator"><i>4</i><i>8</i><i class="now"></i><i></i><i></i><i></i></div><span class="grow"></span><button class="btn" type="button">Cancel</button><button class="btn danger" type="button" aria-disabled="true" style="opacity: 0.5">Remove route</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 5b, light: Frame 3 in the light appearance.</figcaption>
+</figure>
+</body>
+</html>
