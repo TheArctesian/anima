@@ -142,6 +142,34 @@ that owns the area.
 | SF-129 | The version of a program and "hooks installed" leave the device but are not in the list of fields | The agent layer of Anima (proposal, no code) | Open |
 | SF-130 | The gate covers the kept sessions and High findings only | The agent layer of Anima (proposal, no code) | Open |
 | SF-131 | A unit of a user ends at logout unless linger is set | The agent layer of Anima (proposal, no code) | Open |
+| SF-147 | "Only a person answers an approval" has no mechanism: an agent of the same user reaches the socket, the command and the login token (High) | Agent threads (proposal, no code) | Open |
+| SF-148 | Settings of the project or the user of the agent program (allow rules, hooks, MCP servers, the policy of Codex) can answer before the approval tool is asked (not verified) (High) | Agent threads (proposal, no code) | Open |
+| SF-149 | "Relay without a copy" is a promise of the hub: a hub controller can pull each thread of each device that is online (High) | Agent threads (proposal, no code) | Open |
+| SF-150 | W7 proves the device to the hub, not the hub to the machine; a prompt of the hub is a command that the hub names, with no isolation (High) | Agent threads (proposal, no code) | Open |
+| SF-151 | The daemon token and the login token of the command line are in reach of an agent of the same user; in stage 3 one poisoned file reaches each machine (High) | Agent threads (proposal, no code) | Open |
+| SF-152 | THR-034 names a key of a client that no plan owns, and does not say what is signed (High) | Agent threads (proposal, no code) | Open |
+| SF-153 | THR-029 bans only MCP tools; an API key and the `anima` command can read entries (High) | Agent threads (proposal, no code) | Open |
+| SF-154 | The main web view is a new reader with open `https:` egress, and later would send prompts and answer approvals; P9 was too kind (High) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-155 | The switch, the folder list and the mode can be written by the user of the agent; TH33 misread USE-004; nothing stops the hub from sending Full access (Medium) | Agent threads (proposal, no code) | Open |
+| SF-156 | The recommendation of OD-THR8 conflicts with MCP-006 and AGL-003; change tools are `allow` by default (Medium) | Agent threads (proposal, no code) | Open |
+| SF-157 | The built MCP tool gave the full title, the path of the folder and the branch, with no exclusion (Medium) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-158 | Nobody is named as the holder of the setting of option A of the event log (Medium) | Agent threads (proposal, no code) | Open |
+| SF-159 | The long poll of THR-026 is not written against K10 and K8 (Medium) | Agent threads (proposal, no code) | Open |
+| SF-160 | The idle stop and the life of a thread have no limits, no containment of child processes, no rule for a restart of the daemon (Medium) | Agent threads (proposal, no code) | Open |
+| SF-161 | The `git` of the runner runs hooks and configuration that the agent can write; checkpoints take untracked secrets; worktree names come from the prompt (Medium) | Agent threads (proposal, no code) | Open |
+| SF-162 | The label of the source of a prompt and the audit rest on the hub; no log at the machine (Medium) | Agent threads (proposal, no code) | Open |
+| SF-163 | The event log is a second copy with no retention, deletion or limit; redaction is best effort (Medium) | Agent threads (proposal, no code) | Open |
+| SF-164 | Wider conflicts with BOT-020, BOT-032, BOT-033 and AXT-045: a subscription login driven through a hosted hub (Medium) | Agent threads (proposal, no code) | Open |
+| SF-165 | Gaps of THR-040: no deny list, the source of `PATH`, `SSH_AUTH_SOCK`, a prompt in the process list (Medium) | Agent threads (proposal, no code) | Open |
+| SF-166 | A forged session file shows as a thread, and a resume would load its history; the ID of a Codex row came from the content (Medium) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-167 | No rule to fail closed for an unknown event, kind of request or version of the program (Medium) | Agent threads (proposal, no code) | Open |
+| SF-168 | Limits missing in the code: the summary title, the patch, the whole thread, the line of a glance (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-169 | The file reader followed a link at the root folders and checked no owner and no hard link (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-170 | The reader can show what did not happen: the output wrapper of Codex, the rule for typed text, no end of a turn for Claude Code (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-171 | TH4 was marked built, but the page was not on the branch at the time of the read (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-172 | Rows of Section 8 that were wrong or too kind (P2, P3, P10, P13), and rows that were missing (Low) | Agent threads (proposal, no code) | Open |
+| SF-173 | Open decisions and conflicts that were missing (Low) | Agent threads (proposal, no code) | Open |
+| SF-174 | Members about the account and its limits in the streams of the programs conflict with AIS-022 (not verified) (Low) | Agent threads (proposal, no code) | Open |
 | SF-070 | Sections 6.4.1 and 6.4.2: "the administrator" has two meanings. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-071 | Section 6.4.1: the write check names "a real file", and the socket is one. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-072 | Sections 6.4.2 and 6.4.7: who writes the adoption record on an engine of a user. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
@@ -247,6 +275,10 @@ Options to close it (not built):
   passes nothing.
 
 State: Open.
+
+## The security read of the agent threads proposal (2026-11-20)
+
+R-286 asks for the behaviour of T3 Code as a native part of Anima; the proposal is [agent-threads.md](proposals/agent-threads.md). A separate reviewer agent read version 1 on 2026-11-20. It got the proposal, the documents that it stands on, the code of the read side (the branch `threads/read-side`) and eight positions of an attacker, and no opinion of the session that wrote the proposal. Its report, with the scenario and the proposed change of each finding, is the record [agent-threads-review-2026-11-20.md](research/agent-threads/agent-threads-review-2026-11-20.md). The findings F1 to F28 of that record are the entries SF-147 to SF-174, in the same order: 8 High, 13 Medium, 7 Low. Section 9 of the proposal says what was done for each. No code of the drive side exists; the entries about the read side (F8, F11, F20, F22 to F25) have corrections that are built on the branch and that no person and no second reviewer checked. The choices that only the operator can make are OD-THR18 to OD-THR22 and OD-THR2 to OD-THR8 of the proposal.
 
 ## The security review of the work route (task W1, 2026-11-18)
 

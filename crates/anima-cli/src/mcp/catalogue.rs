@@ -25,6 +25,7 @@ pub enum ToolSet {
     Repositories,
     Timeline,
     Records,
+    Agents,
 }
 
 /// What a tool needs from the token.
@@ -93,6 +94,7 @@ impl ToolSet {
         Self::Repositories,
         Self::Timeline,
         Self::Records,
+        Self::Agents,
     ];
 
     /// The set's name as `--toolsets` takes it.
@@ -117,6 +119,7 @@ impl ToolSet {
             Self::Repositories => "repositories",
             Self::Timeline => "timeline",
             Self::Records => "records",
+            Self::Agents => "agents",
         }
     }
 

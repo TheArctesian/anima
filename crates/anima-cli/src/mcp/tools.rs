@@ -1,6 +1,7 @@
 //! Every MCP tool, one module for each tool set. A tool calls the typed documents of its noun
 //! through [`Hub`] (MCP-001, CMD-003); it never starts the `anima` program.
 
+pub mod agents;
 pub mod checks;
 pub mod devices;
 pub mod events;
@@ -53,6 +54,7 @@ pub enum Tool {
     Places(shared_records::places::PlaceTool),
     Locations(shared_records::locations::LocationTool),
     Reminders(shared_records::reminders::ReminderTool),
+    Agents(agents::AgentTool),
 }
 
 impl Tool {
@@ -83,6 +85,7 @@ impl Tool {
         tools.extend(shared_records::places::PlaceTool::ALL.map(Self::Places));
         tools.extend(shared_records::locations::LocationTool::ALL.map(Self::Locations));
         tools.extend(shared_records::reminders::ReminderTool::ALL.map(Self::Reminders));
+        tools.extend(agents::AgentTool::ALL.map(Self::Agents));
         tools
     }
 
@@ -112,6 +115,7 @@ impl Tool {
             | Self::Places(_)
             | Self::Locations(_)
             | Self::Reminders(_) => ToolSet::Records,
+            Self::Agents(_) => ToolSet::Agents,
         }
     }
 
@@ -141,6 +145,7 @@ impl Tool {
             Self::Places(tool) => tool.definition(),
             Self::Locations(tool) => tool.definition(),
             Self::Reminders(tool) => tool.definition(),
+            Self::Agents(tool) => tool.definition(),
         }
     }
 
@@ -177,6 +182,7 @@ impl Tool {
             Self::Places(tool) => tool.call(hub, arguments).await,
             Self::Locations(tool) => tool.call(hub, arguments).await,
             Self::Reminders(tool) => tool.call(hub, arguments).await,
+            Self::Agents(tool) => tool.call(arguments),
         }
     }
 }

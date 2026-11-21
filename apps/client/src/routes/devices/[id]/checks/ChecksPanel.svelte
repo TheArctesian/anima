@@ -5,6 +5,8 @@
   import type { HubResult } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { listRow } from '$lib/motion/roles/transitions';
   import type { OpenHistory } from '../detail.svelte';
   import CheckEditor from './CheckEditor.svelte';
   import CheckHistory from './CheckHistory.svelte';
@@ -29,6 +31,8 @@
   let editing = $state(false);
   let deleting = $state<DeviceCheck | null>(null);
   const opened = $derived(checks.find((check) => check.id === history?.checkId));
+  /** A check that is added or deleted fades where it stands; the rows after it slide to their places (5.7.3, Reorder). */
+  const track = reorderMotion(() => checks.map((check) => check.id).join('\n'));
 
   function edit(check: DeviceCheck | null): void {
     edited = check;
@@ -44,8 +48,13 @@
   <button type="button" class="add" onclick={() => { edit(null); }} {@attach press()}>
     <Icon name="carbon:add" size="sm" />Add check
   </button>
+  {#if checks.length > 0}
+    <!-- The heads of the columns, for the eye: each row already names its own values. Hidden where a row has three lines. -->
+    <div class="heads" aria-hidden="true"><span>Name</span><span>Type</span><span>Status</span><span>Response</span><span>Expires</span><span></span></div>
+  {/if}
   <ul class="rows" aria-label="Checks">
-    {#each checks as check (check.id)}
+    {#each checks as check, index (check.id)}
+      <li transition:listRow={{ index }} {@attach track(check.id)}>
       <CheckRow
         {check}
         open={history?.checkId === check.id}
@@ -57,6 +66,7 @@
         onEdit={() => { edit(check); }}
         onDelete={() => { deleting = check; }}
       />
+      </li>
     {:else}
       <li class="none">No checks yet</li>
     {/each}
@@ -96,9 +106,36 @@
 
 <style>
   .checks {
+    /* The actions have a width of their own (Pause or Resume, Edit, Delete), so the heads stand over the values. */
+    --check-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) calc(var(--space-16) * 3);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+  }
+
+  /* The column heads of the Devices list: small, medium weight, secondary, sentence case (row G of the site language plan). */
+  .heads {
+    display: grid;
+    grid-template-columns: var(--check-columns);
+    gap: var(--space-2);
+    margin-block-end: calc(var(--space-4) * -1);
+    padding-block-end: var(--space-1);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+
+  /* The name of a row is a button with its own inner space: the head starts where its text starts. */
+  .heads span:first-child {
+    padding-inline-start: var(--space-2);
+  }
+
+  /* Same edge as `CheckRow`'s narrow layout: the medium edge of `$lib/motion/tokens`, less 0.02px. */
+  @media (max-width: 1100.98px) {
+    .heads {
+      display: none;
+    }
   }
 
   .rows {
