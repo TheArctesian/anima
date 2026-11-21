@@ -125,7 +125,16 @@ pub fn refusal(why: &Refusal) -> Failure {
             "That folder is not an absolute folder of this computer.",
             None,
         ),
-        Refusal::ProgramNotFound => ("That program is not on the PATH of your login.", None),
+        Refusal::ProgramNotFound => (
+            "That program is not on the PATH of your login, or that path is not a copy the runner finds.",
+            None,
+        ),
+        Refusal::ProgramDoesNotAnswer { said } => {
+            return Failure::Forbidden {
+                message: said.clone(),
+                hint: None,
+            };
+        }
         Refusal::BadValue => (
             "A value is not permitted (a model name takes letters, digits, '.', '_', '-', '[' and ']').",
             None,

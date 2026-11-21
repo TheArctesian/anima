@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { askFrame, madeShell, saidFrame, stateFrame, THREAD } from './frames.fixture';
 import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from './live.svelte';
 import { TEXT_CHARS } from './timeline';
-import { OVER_LIMIT, type Outcome } from './run';
+import { OVER_LIMIT, outcomeFrom, type Outcome } from './run';
 
 const AWAY = { front: false, chosen: null };
 
@@ -102,6 +102,14 @@ describe('the calls of the page to the runner', () => {
   it('TH14: a refusal of the runner comes back in words', async () => {
     const live = new LiveThreads(madeShell(() => ({ outcome: 'refused', why: 'request_gone' })), () => AWAY);
     expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
+  });
+
+  it('TH97: a program that does not answer is refused with the words of the runner, which name its path', async () => {
+    const said = 'The Codex at /opt/homebrew/bin/codex did not answer in 20 seconds.';
+    const read = outcomeFrom({ outcome: 'refused', why: { refusal: 'program_does_not_answer', said } });
+    expect(read).toEqual({ outcome: 'refused', why: 'program_does_not_answer', said });
+    const live = new LiveThreads(madeShell(() => read ?? { outcome: 'ok' }), () => AWAY);
+    expect(await live.call({ call: 'start', program: 'codex', folder: '/w', mode: 'ask', model: null, effort: null, prompt: 'hi' })).toEqual({ ok: false, words: said });
   });
 });
 

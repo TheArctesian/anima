@@ -289,6 +289,7 @@ const fn refusal_word(why: &Refusal) -> &'static str {
         Refusal::FromAnAgent => "from a process of an agent",
         Refusal::FolderNotPermitted => "folder not permitted",
         Refusal::ProgramNotFound => "program not found",
+        Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
         Refusal::BadValue => "bad value",
         Refusal::RequestGone => "request gone",
         Refusal::AnswerDoesNotFit => "answer does not fit",

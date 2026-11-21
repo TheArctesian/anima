@@ -24,6 +24,7 @@ pub(super) struct NewThread {
     pub model: Option<String>,
     pub effort: Option<Effort>,
     pub prompt: String,
+    pub program_path: Option<PathBuf>,
 }
 
 impl NewThread {
@@ -37,6 +38,7 @@ impl NewThread {
                 model,
                 effort,
                 prompt,
+                program_path,
             } => Some(Self {
                 program,
                 folder,
@@ -44,6 +46,7 @@ impl NewThread {
                 model,
                 effort,
                 prompt,
+                program_path,
             }),
             _ => None,
         }
@@ -66,9 +69,19 @@ impl Runner {
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
+        let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
+        let path = chosen_copy(new.program_path.as_deref(), &copies)?;
+        let env = login::with_folder_of(self.env.clone(), &path);
+        if let Err(answered) = self.silence.probe(&path, &copies, &env).await {
+            let said = super::silence::not_answered(new.program, &path, &answered);
+            return Err(Refusal::ProgramDoesNotAnswer { said });
+        }
         let id = Uuid::now_v7();
-        let (row, action) = self.prepared(&new, id)?;
-        let notice = crate::threads::notice::of_folder(&row.folder);
+        let (row, action) = self.prepared(&new, id, &path)?;
+        let mut notice = crate::threads::notice::of_folder(&row.folder);
+        let named = new.program_path.is_some();
+        notice.extend(super::silence::chosen(new.program, &path, named, &copies));
+        self.silence.started(id, new.program, path);
         let codex = codex_of(&row, new.effort);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
         if !notice.is_empty() {
@@ -93,6 +106,24 @@ impl Runner {
         Ok(())
     }
 
+    /// Ends each thread that is still starting after [`super::silence::FIRST_ANSWER`]; its end
+    /// says which program at which path said nothing (TH97).
+    pub(super) async fn end_the_silent(&mut self) {
+        let threads: Vec<_> = self
+            .threads
+            .values()
+            .map(|thread| (thread.row.id, thread.row.state, thread.row.started))
+            .collect();
+        for id in self.silence.overdue(&threads, chrono::Utc::now()) {
+            let stop = wire::Action::Stop {
+                thread: id.to_string(),
+            };
+            if self.command(stop).await.is_some() {
+                self.note(super::log::Kind::Stop, Some(id), "no first answer");
+            }
+        }
+    }
+
     /// Asks the login shell again for its environment, at most once in [`ASK_AGAIN`]: it may not
     /// have answered when the daemon started on a busy computer. The answer is kept only when it
     /// finds the program, so that a shell that does not answer does not take a good environment.
@@ -110,7 +141,12 @@ impl Runner {
     /// The row of a new thread and the start for the holder: the folder that the person chose
     /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
     /// (THR-040) and the environment of the login (R-308).
-    fn prepared(&self, new: &NewThread, id: Uuid) -> Result<(ThreadRow, wire::Action), Refusal> {
+    fn prepared(
+        &self,
+        new: &NewThread,
+        id: Uuid,
+        path: &Path,
+    ) -> Result<(ThreadRow, wire::Action), Refusal> {
         let folder = chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         let model = new
             .model
@@ -118,18 +154,16 @@ impl Runner {
             .map(Model::new)
             .transpose()
             .map_err(|_| Refusal::BadValue)?;
-        let path = login::find(new.program, &self.env, login::executable, login::trusted)
-            .ok_or(Refusal::ProgramNotFound)?;
         let launch = Launch {
             program: new.program,
-            path: path.clone(),
+            path: path.to_owned(),
             mode: new.mode,
             model: model.clone(),
             effort: new.effort,
             session: SessionStart::New(id),
         };
         let invocation = launch.invocation().map_err(|_| Refusal::BadValue)?;
-        let mut env = login::with_folder_of(self.env.clone(), &path);
+        let mut env = login::with_folder_of(self.env.clone(), path);
         if new.program == Program::ClaudeCode {
             env.extend(
                 login::CLAUDE_VARIABLES.map(|(name, value)| (name.to_owned(), value.to_owned())),
@@ -173,4 +207,20 @@ pub(super) fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Ref
     } else {
         Err(Refusal::FolderNotPermitted)
     }
+}
+
+/// The copy of the program that a start runs: the one it named, when that is one of the
+/// `copies` the runner found, else the first of them (TH97). A path that is not a found copy is
+/// refused, so that a start never runs a file of its choice.
+fn chosen_copy(named: Option<&Path>, copies: &[PathBuf]) -> Result<PathBuf, Refusal> {
+    let Some(named) = named else {
+        return copies.first().cloned().ok_or(Refusal::ProgramNotFound);
+    };
+    let real = |path: &Path| std::fs::canonicalize(path).ok();
+    let wanted = real(named).ok_or(Refusal::ProgramNotFound)?;
+    copies
+        .iter()
+        .find(|copy| real(copy).as_ref() == Some(&wanted))
+        .cloned()
+        .ok_or(Refusal::ProgramNotFound)
 }

@@ -45,6 +45,10 @@ pub struct StartArgs {
     model: Option<String>,
     #[arg(long, value_parser = parse_effort)]
     effort: Option<Effort>,
+    /// A different copy of the program than the first on the PATH of your login, such as the
+    /// copy of an application. The runner takes only a copy that it finds itself.
+    #[arg(long)]
+    program_path: Option<PathBuf>,
     /// The first prompt.
     prompt: String,
 }
@@ -140,6 +144,9 @@ impl StartArgs {
             model: self.model,
             effort: self.effort,
             prompt: self.prompt,
+            program_path: self
+                .program_path
+                .map(|path| std::path::absolute(&path).unwrap_or(path)),
         };
         loop {
             match link.call(action.clone()).await? {

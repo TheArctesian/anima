@@ -27,6 +27,7 @@ async fn start(client: &mut Client, kit: &Kit) -> Uuid {
             model: None,
             effort: None,
             prompt: "Run the command".to_owned(),
+            program_path: None,
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {

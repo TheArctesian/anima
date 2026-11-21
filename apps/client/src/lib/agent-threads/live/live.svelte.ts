@@ -106,7 +106,7 @@ export class LiveThreads {
     }
     if (outcome.outcome !== 'refused') return { ok: true, outcome };
     if (outcome.why === 'over_limit' && action.call === 'start') this.overLimit = action;
-    return { ok: false, words: REFUSAL_WORDS[outcome.why] };
+    return { ok: false, words: outcome.said ?? REFUSAL_WORDS[outcome.why] };
   }
 
   /**

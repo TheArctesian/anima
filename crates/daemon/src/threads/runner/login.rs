@@ -205,10 +205,17 @@ const USUAL: [&str; 6] = [
     "~/.npm-global/bin",
 ];
 
-/// The absolute path of `program` on the `PATH` of `env`: the first folder that holds an
-/// executable file of that name. Then the [`USUAL`] folders, with `~` as the `HOME` of `env`,
-/// each only when `trusted` holds for it (a folder of the person or of the system, that no other
-/// user can write).
+/// Where an application keeps its own copy of a program, after the [`USUAL`] folders.
+const fn in_applications(program: Program) -> &'static [&'static str] {
+    match program {
+        Program::ClaudeCode => &[],
+        Program::Codex => {
+            &["/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS"]
+        }
+    }
+}
+
+/// The absolute path of `program` on the `PATH` of `env`: the first of [`copies`].
 #[must_use]
 pub fn find(
     program: Program,
@@ -216,17 +223,34 @@ pub fn find(
     executable: impl Fn(&Path) -> bool,
     trusted: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
+    copies(program, env, executable, trusted).into_iter().next()
+}
+
+/// Each copy of `program` on this computer, in the order a start chooses: each folder of the
+/// `PATH` of `env` that holds an executable file of that name, then the [`USUAL`] folders, with
+/// `~` as the `HOME` of `env`, then the folders of applications; a folder that is not on the
+/// `PATH` only when `trusted` holds for it (a folder of the person or of the system, that no
+/// other user can write). A file that two folders reach is one copy.
+#[must_use]
+pub fn copies(
+    program: Program,
+    env: &[(String, String)],
+    executable: impl Fn(&Path) -> bool,
+    trusted: impl Fn(&Path) -> bool,
+) -> Vec<PathBuf> {
     let home = env
         .iter()
         .find(|(name, _)| name == "HOME")
         .map(|(_, home)| home.as_str());
     let usual = USUAL
         .iter()
+        .chain(in_applications(program))
         .filter_map(|folder| match folder.strip_prefix("~/") {
             Some(below) => home.map(|home| Path::new(home).join(below)),
             None => Some(PathBuf::from(folder)),
         })
         .filter(|folder| trusted(folder));
+    let mut seen = std::collections::BTreeSet::new();
     env.iter()
         .find(|(name, _)| name == "PATH")
         .into_iter()
@@ -234,7 +258,11 @@ pub fn find(
         .chain(usual)
         .filter(|folder| folder.is_absolute())
         .map(|folder| folder.join(file_name(program)))
-        .find(|candidate| executable(candidate))
+        .filter(|candidate| executable(candidate))
+        .filter(|candidate| {
+            seen.insert(std::fs::canonicalize(candidate).unwrap_or_else(|_| candidate.clone()))
+        })
+        .collect()
 }
 
 /// Whether `folder` belongs to this user or to the system and no other user can write it.

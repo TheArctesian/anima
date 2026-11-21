@@ -230,6 +230,7 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
             model: None,
             effort: None,
             prompt: "Run the command".to_owned(),
+            program_path: None,
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {

@@ -206,7 +206,10 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
-        let steps = thread.exited(exit.code, exit.signal);
+        let steps = match self.silence.ended(id) {
+            Some(why) => thread.ended_because(why),
+            None => thread.exited(exit.code, exit.signal),
+        };
         let _ = self.apply(id, steps).await;
         self.save();
         self.command(Action::Forget {

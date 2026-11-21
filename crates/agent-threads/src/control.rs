@@ -57,6 +57,10 @@ pub enum Action {
         model: Option<String>,
         effort: Option<Effort>,
         prompt: String,
+        /// A different copy of the program than the first on the `PATH` of the login: one of
+        /// the copies the runner finds (TH97).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        program_path: Option<PathBuf>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn.
     Send { thread: Uuid, text: String },
@@ -121,6 +125,11 @@ pub enum Refusal {
     FolderNotPermitted,
     /// The program is not on the `PATH` of the login of the person.
     ProgramNotFound,
+    /// The program did not answer `--version` in time: `said` names it, its path and what to
+    /// try, in words for the person (TH97).
+    ProgramDoesNotAnswer {
+        said: String,
+    },
     /// A value that becomes an argument is not of its alphabet (THR-040).
     BadValue,
     /// The request is answered, or its process ended (THR-030).

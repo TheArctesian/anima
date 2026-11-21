@@ -14,6 +14,7 @@ pub mod log;
 pub mod login;
 pub mod peer;
 pub mod record;
+mod silence;
 pub mod socket;
 mod start;
 #[cfg(test)]
@@ -106,6 +107,9 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// The copies that were asked for their version and the threads that wait for their first
+    /// line (TH97).
+    silence: silence::Silence,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -161,6 +165,7 @@ pub async fn run(
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        silence: silence::Silence::default(),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -208,6 +213,7 @@ impl Runner {
         let (sender, mut incoming) = mpsc::channel(256);
         let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
+        let mut look = tokio::time::interval(Duration::from_secs(10));
         loop {
             tokio::select! {
                 event = self.link.events.recv() => match event {
@@ -215,6 +221,7 @@ impl Runner {
                     None => self.reconnect().await,
                 },
                 Some(call) = incoming.recv() => self.call(call).await,
+                _ = look.tick() => self.end_the_silent().await,
                 () = &mut stop => break,
             }
         }
