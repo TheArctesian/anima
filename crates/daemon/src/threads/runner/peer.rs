@@ -7,18 +7,24 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Whether the process `pid` is of an agent of the holder whose folder is `holder_dir`.
-/// A peer whose process is not known (`None`) is not taken for an agent.
+/// When the answer cannot be known, the client is taken for an agent: a peer with no process
+/// ID, a process that ended before it was read (a child that connects and exits), or one whose
+/// environment cannot be read. Such a client can still read and write; only the person's calls
+/// are refused (R-NEW-agentself).
 pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
-    let Some(pid) = pid.and_then(|pid| u32::try_from(pid).ok()) else {
-        return false;
+    let Some(pid) = pid
+        .and_then(|pid| u32::try_from(pid).ok())
+        .filter(|pid| *pid > 1)
+    else {
+        return true;
     };
-    if crate::threads::marker::carries_a_mark(pid).await {
+    if crate::threads::marker::mark_of(pid).await != Some(false) {
         return true;
     }
     let Some(table) = commands().await else {
-        return false;
+        return true;
     };
-    below_the_holder(&table, pid, &holder_mark(holder_dir))
+    !table.contains_key(&pid) || below_the_holder(&table, pid, &holder_mark(holder_dir))
 }
 
 /// The end of the command of the holder of `holder_dir`, as `ps` shows it.
@@ -106,5 +112,23 @@ mod tests {
             "the holder is not below itself"
         );
         assert!(!below_the_holder(&rows, 99, &mark), "an unknown process");
+    }
+
+    #[tokio::test]
+    async fn thr_049_a_client_that_cannot_be_read_is_taken_for_an_agent() {
+        let dir = Path::new("/no/such/threads");
+        assert!(of_an_agent(None, dir).await, "no process ID");
+        assert!(of_an_agent(Some(0), dir).await, "process ID 0");
+        let mut child = std::process::Command::new("/usr/bin/true")
+            .spawn()
+            .expect("a child");
+        let gone = child.id();
+        child.wait().expect("it ended");
+        assert!(
+            of_an_agent(i32::try_from(gone).ok(), dir).await,
+            "a process that ended before it was read"
+        );
+        let me = i32::try_from(std::process::id()).ok();
+        assert!(!of_an_agent(me, dir).await, "this test is not an agent");
     }
 }

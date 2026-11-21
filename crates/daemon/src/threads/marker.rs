@@ -89,13 +89,17 @@ async fn carrying(thread: &str) -> Option<BTreeSet<u32>> {
     Some(found)
 }
 
-/// Whether the process `pid` carries the mark of any thread. A process whose environment
-/// cannot be read (a program of the system on a Mac) does not.
+/// Whether the process `pid` is known to carry the mark of any thread.
 pub async fn carries_a_mark(pid: u32) -> bool {
+    mark_of(pid).await == Some(true)
+}
+
+/// Whether the process `pid` carries a mark of a thread; `None` when its environment cannot be
+/// read (the process ended, or the system hides it).
+pub async fn mark_of(pid: u32) -> Option<bool> {
     let prefix = format!("{MARK}=");
-    environment_words(pid)
-        .await
-        .is_some_and(|words| words.iter().any(|word| word.starts_with(&prefix)))
+    let words = environment_words(pid).await?;
+    (!words.is_empty()).then(|| words.iter().any(|word| word.starts_with(&prefix)))
 }
 
 #[cfg(target_os = "macos")]
@@ -108,6 +112,9 @@ async fn environment_words(pid: u32) -> Option<Vec<String>> {
         .output()
         .await
         .ok()?;
+    if !output.status.success() {
+        return None;
+    }
     let text = String::from_utf8_lossy(&output.stdout);
     Some(text.split_whitespace().map(str::to_owned).collect())
 }
