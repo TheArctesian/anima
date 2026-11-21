@@ -71,6 +71,9 @@ export const REFUSED_ROOTS: readonly string[] = [
   "containerDetail",
   "createLocationIngestToken",
   "connectDawarich",
+  "addApplicationRoute",
+  "checkApplicationRoute",
+  "removeApplicationRoute",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */

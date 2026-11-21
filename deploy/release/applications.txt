@@ -48,6 +48,7 @@ cli out crates/daemon/
 cli out crates/daemon-core/
 cli out crates/guac-protocol/
 cli out crates/hub/
+cli out crates/route-proxy/
 cli out crates/providers/
 cli out crates/rdp-test-device/
 cli out crates/redaction/
@@ -84,6 +85,7 @@ ios out crates/daemon/
 ios out crates/daemon-core/
 ios out crates/guac-protocol/
 ios out crates/hub/
+ios out crates/route-proxy/
 ios out crates/providers/
 ios out crates/rdp-test-device/
 ios out crates/redaction/
