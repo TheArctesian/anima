@@ -55,7 +55,7 @@ describe('DeviceBar (D16, DEV-020, DEV-021)', () => {
     const order = [...(header?.querySelectorAll('a, h1, .status, .mono, button, [role="tablist"]') ?? [])].map((node) =>
       node instanceof HTMLButtonElement ? `button:${node.getAttribute('aria-label') ?? words(node)}` : words(node) || node.getAttribute('role'),
     );
-    expect(order).toEqual(['Devices', 'nas', 'Up', 'nas.home.arpa', '192.168.1.20', 'button:SSH to nas', 'button:More ways to connect to nas', 'button:Edit', 'tablist']);
+    expect(order).toEqual(['Devices', 'nas', 'Up', 'nas.home.arpa', 'button:Copy address', '192.168.1.20', 'button:SSH to nas', 'button:More ways to connect to nas', 'button:Edit', 'tablist']);
   });
 
   it('DEV-021: the name has its full text as a tooltip', () => {
