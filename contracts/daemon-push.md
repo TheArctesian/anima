@@ -72,9 +72,10 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
     into its token record first and then into its configuration, and from then on it is a link origin like any
     other. On macOS the path is `link.sock` in the default folder below the home folder of the account as the
     user database names it, not the folder that the environment names (`ANIMA_DAEMON_HOME`, `HOME`), because no
-    value of the environment may decide where a token from the Keychain goes; until the move, the macOS daemon
-    sends nothing and stops, and the service manager starts it again. On Linux, until the move, it uses the
-    socket in its own folder as before. The link of that computer must start with `-daemon-socket <path>`.
+    value of the environment may decide where a token from the Keychain goes; until the move, the daemon sends only to a
+    peer that passes the check: on macOS through that socket, on Linux through the socket in its own folder as before; and asks the socket of the move again
+    each minute; when it passes, the daemon stops with an error, and the service manager starts it again for the
+    move. The link of that computer must start with `-daemon-socket <path>`.
     Until it does, a push fails and the daemon keeps its samples (Section 7).
   - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
 - In the container of a hosted hub (HMD-046; tasks HM-T35 and HM-T10 of

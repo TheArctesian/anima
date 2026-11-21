@@ -2059,11 +2059,13 @@ peer that fails gets no byte, and the push fails with "the program at the socket
 link, so nothing was sent to it". A daemon with no Developer ID signature (a build for development) and each
 daemon on Linux check the user only. A daemon that was enrolled with the old link origin
 (`http://127.0.0.1:<port>`) moves by itself to `unix:<path>` at its start when the program at the socket passes
-the check; on macOS the path is below the home folder of the account, not one that the environment names. When
+the check, or within a minute after the link starts, and until then pushes only to a peer that passes the same check (on macOS through the socket of the move,
+on Linux through the socket of its own folder); on macOS the path of the move is below the home folder of the account, not
+one that the environment names. The link that the application runs itself (not a unit) makes the same socket. When
 the application updates the copy of the link, it moves the running copy aside (`anima-link.previous`) first,
 so the running link keeps passing the check until its unit starts the new copy.
 
-The tests cover: a listener whose user is not the expected one gets no byte; on macOS, a listener in the test
+The tests cover: a listener whose user is not the expected one gets no byte; an old enrolment moves when the peer passes (Linux token file) and does not move when it fails; the wait of an old enrolment goes on with no socket and with a peer that fails, and ends when a socket that passes appears; the link that the application runs itself gets `-daemon-socket`; an old enrolment pushes through the socket of its own folder and sends nothing to the port; a socket that fails the check with an old enrolment is not a step here, because on a computer of today a stand-in at the socket before the move would get the token from the daemon before this build; on macOS, a listener in the test
 process (no Developer ID signature) gets no byte from a daemon that expects a team; the reading of the output
 of `codesign -d`. Not covered: a real release daemon and a real release link (Developer ID, hardened runtime);
 the real unit of the link; the Linux user check on a real computer (compiled only on Linux, checked by reading).
@@ -2090,8 +2092,9 @@ terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an Ap
    build. Expected before: `http://127.0.0.1:` and a port. After the build is installed and the link runs,
    wait one minute and run it again. Expected: `unix:` and the path of `link.sock`, and the row of this Mac shows
    metrics. If the link does not run, the line stays as it was and the row shows no metrics; start the
-   application, and within one minute the line changes. If the line does not change after the application has run for five minutes,
-   report it: such a daemon must be enrolled again (sign in again), and the log of the daemon says so. What you see: nothing to do; the metrics come back.
+   application, and within two minutes the line changes, also when the application runs the link itself (no
+   unit). If the line does not change after the application has run for five minutes, report it with the lines of
+   the daemon's log that name the old link origin. What you see: nothing to do; the metrics come back.
 7. An update of the link. Install a build with a different link program over this one and open it. Within
    one minute, `ls ~/Library/Application\ Support/ing.anima.desktop/link/program/` shows `anima-link` and no
    `anima-link.previous`, and the row of this Mac shows metrics with no gap longer than about one minute. What you

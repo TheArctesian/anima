@@ -4,11 +4,13 @@
 
 use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt as _;
+use std::time::Duration;
 
 use anima_daemon::config::private_file::running_user;
 use anima_daemon::hub::answer::{Answer, Cause};
 use anima_daemon::hub::peer::{Expected, Program};
 use anima_daemon::hub::{HubClient, TIMEOUT, link_admits};
+use anima_daemon::runtime::old_origin::Watch;
 use daemon_core::wire::{Announcements, Batch, DaemonToken};
 use tokio::io::AsyncReadExt as _;
 use tokio::net::UnixListener;
@@ -75,20 +77,39 @@ async fn k8_1_a_signed_daemon_sends_nothing_to_a_program_of_its_user_without_the
     assert!(got.is_empty(), "the listener got {} bytes", got.len());
 }
 
-/// The finding `daemonoldlinkhome` of the review HM-T23: on macOS the token is in the Keychain,
-/// so a daemon with the old link origin, whose socket is in a folder that `ANIMA_DAEMON_HOME`
-/// can name, makes no client.
-#[cfg(target_os = "macos")]
+/// R-NEW-socketpeer: an old enrolment that did not move asks the socket of the move again, and
+/// its wait ends once a program there passes the check.
 #[tokio::test]
-async fn k8_1_on_macos_a_daemon_with_the_old_link_origin_makes_no_client() {
-    use anima_daemon::config::origin::Origin;
-    use anima_daemon::hub::HubError;
-    let old = Origin::parse_kept("http://127.0.0.1:4100").expect("a stored old link origin");
+async fn k8_1_the_wait_of_an_old_enrolment_ends_when_the_socket_appears_and_passes() {
+    let folder = tempfile::tempdir().expect("a folder");
+    std::fs::set_permissions(folder.path(), Permissions::from_mode(0o700)).expect("mode");
+    let socket = folder.path().join("link.sock");
+    let me = Expected {
+        user: running_user().expect("the user"),
+        program: Program::OfTheUser,
+    };
+    let watch = Watch::of(socket.clone(), me, Duration::from_millis(20));
+    let waiting = tokio::time::timeout(Duration::from_millis(200), watch.passed()).await;
+    assert!(waiting.is_err(), "no socket yet, so the wait goes on");
+
+    let _listener = UnixListener::bind(&socket).expect("a socket");
+    tokio::time::timeout(TIMEOUT, watch.passed())
+        .await
+        .expect("the wait ends");
+}
+
+/// R-NEW-socketpeer: a program at the socket that fails the check never ends the wait, so the
+/// daemon does not move to it and sends it nothing.
+#[tokio::test]
+async fn k8_1_the_wait_of_an_old_enrolment_goes_on_while_the_peer_fails_the_check() {
     let (_folder, socket, _listener) = listener_at_the_socket();
-    assert!(matches!(
-        HubClient::reaching(old.reach(), &socket, TIMEOUT),
-        Err(HubError::OldLinkOrigin)
-    ));
+    let someone_else = Expected {
+        user: running_user().expect("the user") + 1,
+        program: Program::OfTheUser,
+    };
+    let watch = Watch::of(socket, someone_else, Duration::from_millis(20));
+    let waiting = tokio::time::timeout(Duration::from_millis(300), watch.passed()).await;
+    assert!(waiting.is_err(), "the wait ended for a peer that fails");
 }
 
 /// R-NEW-socketpeer: the move of an old enrolment asks only this check, which writes nothing.

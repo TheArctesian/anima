@@ -52,10 +52,8 @@ async fn an_old_enrolment_moves_to_the_socket_when_its_peer_passes_the_check() {
     let (_folder, socket, _listener) = listener_at_the_socket();
     let me = expecting(running_user().expect("the user"));
 
-    let moved = enrolled
-        .moved(&home, &store, (socket.as_path(), &me))
-        .await
-        .expect("the move");
+    let (moved, failed) = enrolled.moved(&home, &store, (socket.as_path(), &me)).await;
+    assert!(failed.is_none(), "the move failed");
 
     let to = Origin::parse(&format!("unix:{}", socket.display())).expect("a link origin");
     assert_eq!(moved.config.hub, to);
@@ -74,10 +72,10 @@ async fn an_old_enrolment_does_not_move_to_a_peer_that_fails_the_check() {
     let (_folder, socket, _listener) = listener_at_the_socket();
     let someone_else = expecting(running_user().expect("the user") + 1);
 
-    let stayed = enrolled
+    let (stayed, failed) = enrolled
         .moved(&home, &store, (socket.as_path(), &someone_else))
-        .await
-        .expect("no move, no error");
+        .await;
+    assert!(failed.is_none(), "no move, no error");
 
     assert_eq!(stayed.config.hub, old());
     assert_eq!(

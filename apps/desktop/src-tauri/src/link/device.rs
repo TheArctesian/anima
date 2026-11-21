@@ -4,7 +4,7 @@
 //! (F-2). The child's log is read for its state only; no line of it is logged (LOG-007).
 
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     io::{BufRead, BufReader, Read},
     net::{Ipv4Addr, TcpListener},
     path::PathBuf,
@@ -38,6 +38,8 @@ pub struct Launch {
     pub folder: PathBuf,
     pub port: u16,
     pub env: Vec<(&'static str, OsString)>,
+    /// The socket for the metrics daemon (`-daemon-socket`), as a unit of the user makes it.
+    pub daemon_socket: Option<PathBuf>,
     /// The pause between an end and the next start.
     pub restart_after: Duration,
 }
@@ -235,6 +237,12 @@ fn start(launch: &Launch) -> std::io::Result<Child> {
         .arg("-state")
         .arg(&launch.folder)
         .args(["-listen", &listen, "-stop-with-stdin"])
+        .args(
+            launch
+                .daemon_socket
+                .iter()
+                .flat_map(|socket| [OsStr::new("-daemon-socket"), socket.as_os_str()]),
+        )
         .env_clear()
         .envs(launch.env.iter().map(|(name, value)| (name, value)))
         .stdin(Stdio::piped())

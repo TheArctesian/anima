@@ -65,9 +65,8 @@ async fn k8_1_a_push_reaches_the_hub_through_the_socket_of_the_link() {
 }
 
 /// R-172, SF-004: after its update, a daemon that was enrolled at a port of the link pushes
-/// through the socket in its own folder, and the port gets no request and no token. Not on
-/// macOS, where that folder would come from the environment (`peer.rs`).
-#[cfg(not(target_os = "macos"))]
+/// through the socket in its own folder, to a peer that passes the check, and the port gets no
+/// request and no token (R-NEW-socketpeer: also on macOS, until the move).
 #[tokio::test]
 async fn k8_1_a_daemon_with_the_old_link_origin_pushes_by_its_socket_and_sends_nothing_to_the_port()
 {

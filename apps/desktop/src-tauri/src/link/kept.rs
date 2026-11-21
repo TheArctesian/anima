@@ -36,8 +36,10 @@ use windows::{environment, socket_present};
 #[cfg(unix)]
 #[path = "kept/unix.rs"]
 mod unix;
+#[cfg(all(unix, test))]
+pub use unix::{daemon_folder, private_socket};
 #[cfg(unix)]
-pub use unix::{daemon_folder, environment, private_socket};
+pub use unix::{environment, socket_of_user};
 
 /// `unit install` runs up to three steps of 30 s each, one of them twice.
 const UNIT_LIMIT: Duration = Duration::from_secs(150);
@@ -239,14 +241,7 @@ fn at(folder: &Path, port: u16) -> Result<Kept, LinkError> {
     let home = crate::user_folders::home().ok_or(LinkError::NoHome)?;
     let application = crate::user_folders::of_this_user().ok_or(LinkError::NoHome)?;
     #[cfg(unix)]
-    let daemon_socket = {
-        let config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
-        private_socket(&daemon_folder(
-            &home,
-            cfg!(target_os = "macos"),
-            config_home.as_deref(),
-        ))
-    };
+    let daemon_socket = socket_of_user(&home);
     #[cfg(windows)]
     let daemon_socket = windows::private_socket();
     Ok(Kept {

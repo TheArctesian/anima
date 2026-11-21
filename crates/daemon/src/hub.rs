@@ -57,12 +57,6 @@ pub enum HubError {
     #[cfg(unix)]
     #[error(transparent)]
     Peer(#[from] PeerError),
-    /// On macOS the token is in the Keychain, and no value of the environment may decide where
-    /// it goes: the folder of an old link origin does (the finding `daemonoldlinkhome` of the review HM-T23).
-    #[error(
-        "this daemon was enrolled with an old link origin: it moves to the socket of anima-link by itself when the signed link of a unit runs there, and sends nothing until then; if this stays, enrol it again (sign in again in the Anima application, or run anima-daemon enrol)"
-    )]
-    OldLinkOrigin,
 }
 
 /// One request: its route, its bearer (none for enrolment), its JSON body and the statuses that
@@ -158,7 +152,6 @@ impl HubClient {
         match reach {
             Reach::Https(url) => Self::new(url.clone(), limit),
             Reach::LinkSocket(socket) => Self::over_link(socket, limit),
-            Reach::OwnLinkSocket if cfg!(target_os = "macos") => Err(HubError::OldLinkOrigin),
             Reach::OwnLinkSocket => Self::over_link(own_socket, limit),
         }
     }
