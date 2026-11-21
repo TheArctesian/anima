@@ -1036,6 +1036,24 @@ A separate reviewer read Section 4.14 against the code of the hub and the contra
 | J11 | Low | "Held only in `Secret`" cannot hold for the bodies of two requests; "write-only field" was against THR-138 | THR-135, THR-141 |
 | J12 | Low | No cache and no command that prints the token were not said | THR-139 |
 
+### 9.4 The fifth read: the code of stage 1b against Section 6.2.1
+
+A separate reviewer read the code of the branch `threads/client` at `b601926eb` (it holds `threads/runner`) on 2026-11-21, against the 15 points of Section 6.2.1. It read only: nothing was built or run, so no test was checked. This read is not the review of the session that built the code; that session ordered five reads of its own.
+
+The verdicts: 4 points met (4, 7, 9, 10), 9 met in part (1, 2, 3, 6, 8, 11, 12, 13, 14), 2 with no code or record to read (5: the MCP server of a thread is not built, and no tool that starts an agent ships; 15: no measured record for THR-085 to THR-096). What is missing in the points met in part: a test with a made hub (1); a test with two users (2); the daemon token of the key store in the secret check (3); the idle stop and a control group on Linux (6, 8); the sign-in of Codex, which is on a different branch (11); hostile text in a title, a choice, a long line and a text with direction marks (13); a human check on `pop-os` (14).
+
+Other weaknesses: 1 High, 4 Medium, 9 Low.
+
+| # | Severity | What | State |
+| --- | --- | --- | --- |
+| K1 | High | Claude Code runs the hooks of `.claude/settings.json` of the folder with no question, in each mode, also in a folder that is not trusted (the TH18 record). The runner refuses only the folder of the daemon. THR-046 asks for a notice on the thread; no notice is built | The reading of the files is built (`agent_threads::project`, branch `threads/live-order`, `2e6b69e4c`). The runner and the client do not show it yet. Open |
+| K2 | Medium | A process of the same user can take the socket of the holder: a new connection takes the place of the daemon's, with no entry in the log of the runner (against THR-030 and THR-044; the class is accepted by OD-THR18) | Open |
+| K3 | Medium | An agent with a shell can answer its own approval and raise the limit through the socket of the runner | Accepted by OD-THR18; the log has no source |
+| K4 | Medium | The approval card for a file change of Claude Code shows the path, not the content | Open |
+| K5 | Medium | A stop says that all ended when a process left the tree between two looks of 2 seconds | Open; a known limit of the human check of the holder |
+
+The nine Low findings are in the note of the read. Among them: "Allow for this thread" can send a rule that changes the mode; no cleaning of direction marks on the live path; the notification holds the first line of the prompt (OD-THR13 allows it); the record on disk keeps whole request lines.
+
 ## 10. Open decisions
 
 Each row is one question for the operator with the options, the strength and the weakness, and a recommendation.
@@ -1146,3 +1164,4 @@ Not made in this version; each needs the ruling named.
 - 2026-11-20, version 1, second part. `origin/dev` at `116c7b15` was read for the documents of the other planning stream (Section 4.10); OD-THR15 to OD-THR17 are new.
 - 2026-11-20, version 1. Written from R-286, the inventory of T3 Code at commit `6f5293fb`, and the code of `dev` at `4ffc36a5`. Tasks TH1 to TH4 are built on the branch `threads/read-side`. A separate reviewer read version 1 (Section 9).
 - 2026-11-21, version 3.2. Section 4.14: the design of the store for the tokens of a Codex login (THR-133 to THR-141, tasks TH97 to TH100), written with the operator away; its choices are R-NEW-threadstokens (made overnight, not yet confirmed). Three facts from the types of `codex app-server` are new: the vendor marks `chatgptAuthTokens` as for its internal use only; the method gives the application no refresh token; a sign-in with a device code is in the same types. The route of THR-131 is corrected: a path of the daemon, not K10 Section 8. A separate reviewer read the section (Section 9.3: 3 High, 6 Medium, 3 Low; each corrected in the text; the corrections were not read again). The branch `threads/read-side` is in `dev`, and `dev` gave numbers to R-286 to R-288, HT-079 and SF-147 to SF-174.
+- 2026-11-21. Section 9.4: a separate read of the code of stage 1b against Section 6.2.1 (4 met, 9 in part, 2 not found; 1 High, 4 Medium, 9 Low). The High finding is the notice of THR-046, which is not built.
