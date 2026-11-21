@@ -195,7 +195,7 @@ Approved for build (operator, 2026-11-15: "lets build the two buildable ones now
   | AI agent programs | claude, codex, and each harness of AGN-009 |
 
 - **CAP-024.** Each line must give the name and a verdict, in the form of CAP-002: usable with the version, or not usable with a reason. The reason is a fixed code (timed out, exited, no version), never text from the device. The command and the MCP tool give a fixed repair hint for each reason.
-- **CAP-025.** For an AI agent program, the line must say only "installed" and the version. The daemon must not read a credential file, an account name or a usage limit (LOG-007). The probe of such a program must run with an empty temporary home folder, so that it cannot read or change the folders of the account.
+- **CAP-025.** For an AI agent program, the line must say only "installed" and the version. The probe must not read a credential file, an account name or a usage limit (LOG-007). The facts of an account that AIS-022 allows (changed by R-NEW-accountgroup, made overnight, not yet confirmed) come from the reader of agent usage and the runner of threads, never from this probe. The probe of such a program must run with an empty temporary home folder, so that it cannot read or change the folders of the account.
 - **CAP-026.** The tool inventory must include the processor architecture and the operating system version.
 - **CAP-027.** The daemon must send the tool inventory at start and when a probe result changes. It must check for changes each 15 minutes or less often. It must send an unchanged inventory again each 24 hours.
 - **CAP-028.** The probe list and the parse of each probe output must be in `daemon-core`, with no I/O (CAG-007). The reader that runs each program is the I/O edge.

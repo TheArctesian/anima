@@ -889,8 +889,17 @@ collector exist. Counts have no text, so they are Class C and need no vault.
 - **AIS-021.** The hub must show an estimate of the cost: the tokens times the public price of
   the model (MGW-014 holds the prices). The text must say that it is an estimate and not the bill
   of the subscription.
-- **AIS-022.** The daemon must not read a login, the name of an account or a usage limit
-  (CAP-025). The function must not show the quota that is left on an account.
+- **AIS-022.** (Changed by R-NEW-accountgroup, made overnight, not yet confirmed.) The daemon must
+  not read a login, a token or a credential file (CAP-025). Of the account of a program it may send
+  only: the account key, the name of the plan as the program states it, and for each limit window
+  the used share and the time of the reset. The account key is the HMAC-SHA-256 of the identifier
+  that the vendor gives the account, with the account salt of the hub: the same account on two
+  machines of one hub gives the same key, and a different hub gives a different key. The daemon
+  must not send the identifier, the name of the account or an address. The name of the account
+  stays at the machine; only the page of that machine may show it, from local data. The page groups
+  the devices that send the same account key under that account, with one shared bar for each
+  limit window, and still shows the share of each device. A limit that no source gives stays
+  empty.
 - **AIS-023.** The exclusions of AIS-008 apply to the counts. When the collector reads the same
   session (AIS-001), the hub must keep one session, not two.
 
@@ -910,6 +919,10 @@ result gives them in named fields with a length limit (MCP-008).
 | AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | In progress: built in 4b3823cd, 8bd2579e, 51f77f8f. The browser specs did not run and the mockup is not compared. Waits for HT-026. | See the state |
 | AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | In progress: the review found six faults of the daemon, corrected in cbbc1122. The entry is HT-026, which is open. | See the state |
 | AU-6 | The page drawn again after the mockup agent-usage-v2 (operator, 2026-11-19: "B: look and work like T3 Code", then "Approved, build it"): the repositories at the side with the newest use first, the totals with one bar for each UTC day, the use by program and model and by device. Only what `agentUsage` gives: no change of the hub, of the contract or of the daemon. The three states of a hosted hub stay (HMD-053) | In progress: built on the branch `hosted/agent-usage-v2`. The built page was compared with the mockup from pictures at 1280 px in the dark and the light appearance; not compared in a window of the application. Waits for HT-026. | See the state |
+| AU-7 | The contract of the account (R-NEW-accountgroup, AIS-022): the member `accounts` of `agentUsage` in K8 (key, program, plan, limit windows), the account salt in the answer to a push, the query in K1, the tables in K2 | Not started. | — |
+| AU-8 | The daemon: one reader of accounts with the runner of threads (`AccountFacts` of `agent-threads`, THR-132); the rate limits and the account identifier of the Codex session files as a second input; the key made with the salt of the hub; the test `ais_022_...` proves the new bounds | Not started. Waits for threads/accounts in `dev`. | — |
+| AU-9 | The hub keeps the newest report of each account key and gives the accounts with their devices; `anima agents usage` and `anima_agents_usage` show them (CMD-030) | Not started. | — |
+| AU-10 | The page groups the devices of one account under it, with one bar for each limit window and the share of each device; the mockup agent-usage-v2 and its record | Not started. | — |
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
