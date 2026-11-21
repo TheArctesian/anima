@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LOG_FILTER } from '../log';
-import { SEVERITY_CHOICES, clockLabel, dayLabel, deviceLabel, labelOf, switched, timeLabel, withDevice, withSince } from './view';
+import type { EventSource } from '$lib/hub/generated/graphql';
+import { SEVERITY_CHOICES, SOURCE_CHOICES, clockLabel, dayLabel, deviceLabel, labelOf, switched, timeLabel, withDevice, withSince } from './view';
 
 describe('time labels', () => {
   const now = new Date(2026, 10, 4, 15, 0, 0);
@@ -30,6 +31,13 @@ describe('time labels', () => {
 describe('labels', () => {
   it('LOG-009: severity shows as a word', () => {
     expect(labelOf(SEVERITY_CHOICES, 'WARNING')).toBe('Warning');
+  });
+
+  it('LOG-009: every source shows as a word, never in capitals, and each one is a choice of the filter', () => {
+    expect(labelOf(SOURCE_CHOICES, 'METRICS')).toBe('Metrics');
+    expect(labelOf(SOURCE_CHOICES, 'NOTIFICATION')).toBe('Notification');
+    expect(SOURCE_CHOICES.map((choice) => choice.value)).toContain('METRICS');
+    expect(labelOf(SOURCE_CHOICES, 'NEW_KIND' as EventSource)).toBe('New kind');
   });
 
   it('LOG-009: an event with no device shows a dash', () => {

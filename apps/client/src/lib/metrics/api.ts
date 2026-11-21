@@ -13,6 +13,10 @@ const DeviceMetrics = graphql(`
         vendor
         hasVram
       }
+      batteries {
+        name
+        state
+      }
       readings {
         at
         cpuPercent
@@ -139,6 +143,8 @@ export interface DeviceMetricsView {
   readonly drives: readonly StorageDrive[];
   /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
   readonly readings: DeviceNode['readings'] | null;
+  /** The batteries that power the device; empty for a device with none (MET-032). */
+  readonly batteries: DeviceNode['batteries'];
 }
 /** The daemon state of one device: its source, whether an DAEMON device has gone quiet (MET-018), and its daemon version (R-122). */
 export interface DaemonStatusView {
@@ -164,7 +170,7 @@ export function metricsApi(hub: Hub) {
       const { device } = result.value;
       if (!device) return { ok: true, value: null };
       const view = { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics, drives: device.storage.drives };
-      return { ok: true, value: { ...view, readings: device.readings ?? null } };
+      return { ok: true, value: { ...view, readings: device.readings ?? null, batteries: device.batteries } };
     },
     /** The device's daemon source and stale flag; `null` when the hub has no such device. */
     daemonStatus: async (deviceId: string): Promise<HubResult<DaemonStatusView | null>> => {
