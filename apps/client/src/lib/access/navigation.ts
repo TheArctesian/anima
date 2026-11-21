@@ -1,13 +1,14 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { hasStoredHubAddress, storedHubAddress } from '$lib/desktop/address';
+import { behindGateway } from '$lib/hosted/gateway/here';
 import { holdsMovedAddressHere, hubIsHosted } from '$lib/hosted/mark';
 import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { accessApi } from './api';
 import { startGuard } from './guard';
 import { tokenFor } from './listener/check';
-import { isSignedOut, routePath, signInPathFor, SIGN_IN_PATH, WELCOME_PATH } from './routes';
+import { GATEWAY_SIGN_IN_PATH, isSignedOut, routePath, signInPathFor, SIGN_IN_PATH, WELCOME_PATH } from './routes';
 import { clientStart, type ClientStart } from './start';
 
 // The browser side of access: the router, the page reload, the platform and the page origin. Logic stays in
@@ -24,6 +25,14 @@ export function goToSignIn(): void {
   if (capabilities().keyStore && !hasStoredHubAddress(localStorage)) return goToWelcome();
   // The address of before is the hosted service now: the first-run choices lead to the account or to a hub address (HM-T31).
   if (capabilities().keyStore && holdsMovedAddressHere(storedHubAddress(localStorage).origin)) return goToWelcome();
+  // A browser signs in to the hub that served it: with the hub password, or, behind the gateway of the hosted hubs,
+  // through the gateway and the account (HMD-059). Never the account sign-in of the desktop app.
+  if (!capabilities().keyStore) {
+    void behindGateway()
+      .then((behind) => goto(resolve(behind ? GATEWAY_SIGN_IN_PATH : SIGN_IN_PATH)))
+      .catch(failed);
+    return;
+  }
   const hosted = hubIsHosted(storedHubAddress(localStorage).origin);
   goto(resolve(signInPathFor(hosted))).catch(failed);
 }
