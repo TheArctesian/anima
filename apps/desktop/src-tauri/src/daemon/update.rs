@@ -3,12 +3,17 @@
 //! and the unit starts again, through the daemon's own `install`, as at the first install. The
 //! token and the configuration stay: there is no new enrolment.
 //!
-//! The copy is first moved aside to `anima-daemon.previous` (a rename: the same file), so that the
-//! daemon that runs from it keeps its file, and macOS still finds its code signature valid, until
-//! its unit starts the new copy. The new copy is written beside it under a fresh name, flushed and
-//! renamed into place ([`super::placement::place`]). When the copy or the start fails, the copy
-//! of before goes back by a rename and its unit starts again; the next start of the app tries
-//! again. A copy that is not installed is never installed here: that is the install of HMD-053.
+//! The order: first the unit stops (`anima-daemon stop` of the carried daemon, because a daemon
+//! of before has no such command), so that no daemon of before runs, and none starts a new holder
+//! of the agent threads, once the new copy is in place. Then the copy is moved aside to
+//! `anima-daemon.previous` (a rename: the same file, so a program that still has it open keeps
+//! it, and macOS still finds its code signature valid). The new copy is written beside it under a
+//! fresh name, flushed and renamed into place ([`super::placement::place`]): a new file, never a
+//! write into the old one. Then `install` with the new copy writes the unit and starts it. When
+//! the copy or the start fails, the copy of before goes back by a rename and its unit starts
+//! again; the next start of the app tries again. No other process is signalled: the holder of
+//! the agent threads (THR-113) and its programs stay, and the update does not wait for them. A
+//! copy that is not installed is never installed here: that is the install of HMD-053.
 
 use std::{
     ffi::OsString,
@@ -25,6 +30,9 @@ use super::{
     trust::User,
     version::{self, Decision},
 };
+
+/// `stop`: the user unit stops; its file and the token stay (HMD-055).
+pub const STOP_ARGS: [&str; 1] = ["stop"];
 
 /// `--version` prints one line and touches nothing; a program that takes longer does not answer.
 const VERSION_DEADLINE: Duration = Duration::from_secs(10);
@@ -93,28 +101,54 @@ pub fn update_here(swap: &Swap<'_>) -> Result<Updated, DaemonError> {
     }
 }
 
-/// Moves the copy aside (unless an earlier copy already waits there: the unit may run from it),
-/// puts the carried daemon in its place and starts the unit again.
+/// Stops the unit, moves the copy aside (unless an earlier copy already waits there), puts the
+/// carried daemon in its place and starts the unit again. When the copy is not put in place, the
+/// copy of before goes back and its unit starts again.
 fn replace(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
-    if fs::symlink_metadata(aside).is_err() {
-        fs::rename(swap.copy, aside).map_err(|_| DaemonError::Copy)?;
+    stop(swap)?;
+    let failed = |error: DaemonError| {
+        // The copy of before starts again; the error that matters is the first one.
+        let _ = restart(swap, &real(swap.copy));
+        Err(error)
+    };
+    if fs::symlink_metadata(aside).is_err() && fs::rename(swap.copy, aside).is_err() {
+        return failed(DaemonError::Copy);
     }
     match placement::place(swap.carried, swap.copy, swap.user) {
         Ok(installed) => started(swap, &installed, aside),
         Err(error) => {
-            // The copy of before goes back; the error that matters is the placement's.
-            let _ = put_back(swap.copy, aside);
-            Err(DaemonError::of_placement(error))
+            if put_back(swap.copy, aside).is_err() {
+                return Err(DaemonError::of_placement(error));
+            }
+            failed(DaemonError::of_placement(error))
         }
     }
+}
+
+/// `stop` with the carried daemon: the unit stops, and its file and the token stay. Nothing is
+/// changed yet when it fails.
+fn stop(swap: &Swap<'_>) -> Result<(), DaemonError> {
+    let stop = Run {
+        program: swap.carried,
+        args: &STOP_ARGS,
+        input: None,
+        env: swap.env,
+        deadline: swap.restart,
+        stop: swap.stop,
+    };
+    run::run(&stop).map_err(|error| DaemonError::of_run(error, DaemonError::Failed))
+}
+
+/// The real path of `copy`, the path that the install runs; `copy` itself when it has none.
+fn real(copy: &Path) -> PathBuf {
+    fs::canonicalize(copy).unwrap_or_else(|_| copy.to_owned())
 }
 
 /// An update that a stop of the app cut after the new copy was put in place: its unit starts
 /// again, so that it runs the copy that is there.
 fn finish_earlier(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
     if aside.is_file() {
-        let installed = fs::canonicalize(swap.copy).unwrap_or_else(|_| swap.copy.to_owned());
-        return started(swap, &installed, aside);
+        return started(swap, &real(swap.copy), aside);
     }
     Ok(())
 }

@@ -55,6 +55,7 @@ async fn main() -> ExitCode {
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
+        Command::Stop => stop_unit(),
         Command::KeyRead { name } => key_read(&name, &home),
         Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
@@ -170,6 +171,32 @@ fn uninstall(home: &Home) -> ExitCode {
         }
         Err(error) => failure(&error),
     }
+}
+
+/// `anima-daemon stop` (HMD-055): the user unit stops; its file and the token stay.
+#[cfg(unix)]
+fn stop_unit() -> ExitCode {
+    use anima_daemon::units::removal::{self, Leaving};
+    let uid = match private_file::running_user() {
+        Ok(uid) => uid,
+        Err(error) => return failure(&error),
+    };
+    let user = Leaving {
+        platform: Platform::current(),
+        uid,
+    };
+    let env = |name: &str| std::env::var(name).ok();
+    match removal::stop(user, env, |step| run_step(step, STEP_DEADLINE)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    }
+}
+
+/// The task of the daemon on Windows is not stopped by this command yet.
+#[cfg(windows)]
+fn stop_unit() -> ExitCode {
+    eprintln!("`anima-daemon stop` is not built for Windows yet");
+    ExitCode::FAILURE
 }
 
 /// The task of the daemon on Windows is not taken out by this command yet.

@@ -1,5 +1,6 @@
 //! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run`,
-//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056), and
+//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056),
+//! `anima-daemon stop` (HMD-055),
 //! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1), and
 //! `anima-daemon --version`, which the desktop app reads to update the copy it installed (HMD-055).
 
@@ -16,6 +17,7 @@ pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
        anima-daemon run [--hosted-hub <data folder>]
        anima-daemon install [--system]
        anima-daemon uninstall
+       anima-daemon stop
        anima-daemon key read <name>
        anima-daemon key forget
        anima-daemon threads
@@ -44,6 +46,8 @@ pub enum Command {
     Install { target: Target },
     /// Stop and delete the user unit, then forget the token and the key cache (HMD-056).
     Uninstall,
+    /// Stop the user unit and keep its file and the token, before the copy is replaced (HMD-055).
+    Stop,
     /// Write the cached value of one operational key to standard output (K-E5 Section 2.1).
     KeyRead { name: String },
     /// Delete the whole key cache, as when the daemon leaves the machine.
@@ -87,6 +91,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
     match args.next().as_deref() {
         Some("run") => run(args),
         Some("uninstall") if args.next().is_none() => Ok(Command::Uninstall),
+        Some("stop") if args.next().is_none() => Ok(Command::Stop),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),

@@ -42,6 +42,23 @@ fn met_019_the_systemd_units_parse_and_run_the_binary_with_run() {
     }
 }
 
+/// THR-113, HMD-055: a stop or a restart of the daemon (an update) stops only the daemon; the
+/// holder of the agent threads and the programs that it runs stay.
+#[test]
+fn thr_113_a_stop_of_either_systemd_unit_kills_only_the_daemon() {
+    for text in [SYSTEMD_USER, SYSTEMD_SYSTEM] {
+        let lines = unit(text);
+        assert!(
+            lines
+                .iter()
+                .any(|(section, key, value)| section == "Service"
+                    && key == "KillMode"
+                    && value == "process"),
+            "{text}"
+        );
+    }
+}
+
 #[test]
 fn met_019_the_system_unit_is_sandboxed_and_listens_on_nothing() {
     let lines = unit(SYSTEMD_SYSTEM);

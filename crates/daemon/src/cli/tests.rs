@@ -12,6 +12,8 @@ fn args(text: &str) -> Vec<String> {
 fn hmd_055_version_takes_no_argument_and_prints_the_name_and_the_release_version() {
     assert!(matches!(parse(args("--version")), Ok(Command::Version)));
     assert!(matches!(parse(args("--version now")), Err(CliError::Usage)));
+    assert!(matches!(parse(args("stop")), Ok(Command::Stop)));
+    assert!(matches!(parse(args("stop now")), Err(CliError::Usage)));
     assert_eq!(
         version_line(),
         format!("anima-daemon {}", env!("CARGO_PKG_VERSION"))
