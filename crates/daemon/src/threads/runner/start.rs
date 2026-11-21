@@ -172,6 +172,16 @@ impl Runner {
         }
     }
 
+    /// The threads whose program has not stopped, which count against the soft limit.
+    pub(super) fn running(&self) -> u32 {
+        let count = self
+            .threads
+            .values()
+            .filter(|thread| thread.row.state != RunState::Stopped)
+            .count();
+        u32::try_from(count).unwrap_or(u32::MAX)
+    }
+
     /// Whether a new thread may start now: a holder that fits (THR-113), and fewer than the soft
     /// limit of running threads with the `asking` starts that wait for an answer (THR-114).
     fn may_start(&self, asking: u32) -> Result<(), Refusal> {

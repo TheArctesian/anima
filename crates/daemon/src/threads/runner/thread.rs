@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use agent_threads::control::{Change, Refusal, RunState, ThreadRow, Update};
 use agent_threads::drive::{
-    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
+    AccountFacts, ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
 };
 use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
@@ -41,6 +41,8 @@ pub enum Step {
     Log(&'static str),
     /// An update for the clients.
     Change(Change),
+    /// What the program said of its account: for the runner only, never an update (THR-051).
+    Account(Box<AccountFacts>),
 }
 
 /// A request that waits for the person, with the line it came in, so that a runner that starts

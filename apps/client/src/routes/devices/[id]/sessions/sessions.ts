@@ -33,10 +33,13 @@ const PROTOCOLS: Record<Protocol, string> = { SSH: 'SSH', RDP: 'RDP', VNC: 'VNC'
 
 const MINUTE_S = 60;
 const HOUR_S = 3600;
+const DAY_S = 86_400;
 
-/** A length of time in seconds as "1 h 5 min", "4 min 2 s" or "12 s". */
+/** A length of time in seconds as "1 d 2 h", "1 h 5 min", "4 min 2 s" or "12 s": the two largest units. */
 export function durationText(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(whole / DAY_S);
+  if (days > 0) return `${String(days)} d ${String(Math.floor((whole % DAY_S) / HOUR_S))} h`;
   const hours = Math.floor(whole / HOUR_S);
   const minutes = Math.floor((whole % HOUR_S) / MINUTE_S);
   const rest = whole % MINUTE_S;

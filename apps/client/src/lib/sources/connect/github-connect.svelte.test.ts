@@ -57,9 +57,10 @@ async function settled(): Promise<void> {
   flushSync();
 }
 
-async function show(current: ReturnType<typeof attempt> | null = null, origin?: string): Promise<void> {
+/** `connectPageUrl` of the hub; 'before': a hub of before the field. */
+async function show(current: ReturnType<typeof attempt> | null = null, page: string | null = 'https://hub.example/connect/github'): Promise<void> {
   hub = fakeHub([account('a', 'Personal')]);
-  if (origin !== undefined) hub.address = { ...hub.address, origin };
+  hub.connectPage = page === 'before' ? undefined : page;
   hub.connect = current;
   mocks.hub = hub;
   app = mount(SourcesSection, { target: document.body, props: { now: () => NOW, opener } });
@@ -184,18 +185,31 @@ it('PRJ-039: a refused start shows the hub words and opens nothing', async () =>
   expect(closed).toBe(1);
 });
 
-it('DEF-003: on a hub at a port of this computer the browser flow is not offered, no link is asked for, and the key file stays', async () => {
-  await show(null, 'http://127.0.0.1:41001');
-  expect(text()).toContain('Coming soon: Connect GitHub in your browser for this hub.');
-  expect(button('Connect GitHub')).toBeUndefined();
-  expect(hub.sent).toEqual([]);
-  expect(opened).toEqual([]);
-  await click('Use key file');
-  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+for (const [what, page] of [
+  ['says that it cannot start the flow in a browser', null],
+  ['is of before the field, which counts as cannot', 'before'],
+] as const) {
+  it(`HM-T29: on a hub that ${what}, the browser flow is not offered, no link is asked for, and the key file stays`, async () => {
+    await show(null, page);
+    expect(text()).toContain('Coming soon: Connect GitHub in your browser for this hub.');
+    expect(button('Connect GitHub')).toBeUndefined();
+    expect(text()).not.toContain('must be signed in');
+    expect(hub.sent).toEqual([]);
+    expect(opened).toEqual([]);
+    await click('Use key file');
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+}
+
+it('HM-T29: a hosted hub that gives the page of its gateway offers the flow and says where the browser must be signed in', async () => {
+  await show(null, 'https://hub.anima.ing/connect/github');
+  expect(button('Connect GitHub')).toBeDefined();
+  expect(text()).toContain('Your browser must be signed in at hub.anima.ing with your Anima.ing account.');
+  expect(text()).not.toContain('Coming soon');
 });
 
-it('DEF-003: an attempt that is open on such a hub can be cancelled but not continued in a browser', async () => {
-  await show(attempt({ phase: 'WAITING_FOR_BROWSER' }), 'http://127.0.0.1:41001');
+it('HM-T29: an attempt that is open on a hub that cannot start the flow can be cancelled but not continued in a browser', async () => {
+  await show(attempt({ phase: 'WAITING_FOR_BROWSER' }), null);
   expect(button('Continue in browser')).toBeUndefined();
   expect(button('Install on GitHub')).toBeUndefined();
   await click('Cancel');

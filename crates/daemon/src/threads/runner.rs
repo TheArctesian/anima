@@ -7,6 +7,7 @@
 //! (the loop and the holder), [`holder_events`], [`calls`] (the calls of the clients),
 //! [`socket`], [`login`], [`record`] and [`log`].
 
+mod accounts;
 mod calls;
 pub mod codex;
 mod holder_events;
@@ -119,6 +120,8 @@ pub struct Runner {
     asks: start::Asks,
     /// When each thread last got the words of a lost sign-in (TH99).
     sign_in_told: BTreeMap<Uuid, std::time::Instant>,
+    /// What the programs said of their accounts: in memory only (THR-051).
+    accounts: accounts::Accounts,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -180,6 +183,7 @@ pub async fn run(
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
+        accounts: accounts::Accounts::default(),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -288,6 +292,13 @@ impl Runner {
                     self.publish(id, change);
                     continue;
                 }
+                Step::Account(facts) => {
+                    if let Some(thread) = self.threads.get(&id) {
+                        let program = thread.row.program;
+                        self.accounts.note(program, *facts, chrono::Utc::now());
+                    }
+                    continue;
+                }
             };
             let write = matches!(action, Action::Write { .. });
             let command = self.command(action).await.ok_or(LinkDown)?;
@@ -356,14 +367,5 @@ impl Runner {
         if let Err(error) = record::write(&self.dir, &record) {
             tracing::warn!(%error, "the record of the runner was not written");
         }
-    }
-
-    fn running(&self) -> u32 {
-        let count = self
-            .threads
-            .values()
-            .filter(|thread| thread.row.state != RunState::Stopped)
-            .count();
-        u32::try_from(count).unwrap_or(u32::MAX)
     }
 }
