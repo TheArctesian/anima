@@ -4,6 +4,8 @@ import type { Gate } from "./gates.ts";
 export interface Member {
   folder: string;
   name: string;
+  /** The names of the other members of the workspace that this one depends on. */
+  uses?: string[];
 }
 
 /** The packages of the repository, as `cargo metadata` and the workspaces of `package.json` give them. */
