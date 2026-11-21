@@ -98,6 +98,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
+| HT-NEW-socketpeer | The daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054, R-NEW-socketpeer) | This Mac with a release application (Developer ID) signed in to the hosted hub, and the Linux computer `pop-os` with an AppImage of the same build | Open |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 
@@ -1993,6 +1994,40 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
+
+### HT-NEW-socketpeer: the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054)
+
+Built: on the branch `hosted/daemon-socket-peer` (R-NEW-socketpeer). Before each request on the socket of the link, the
+daemon reads the user and the process of the peer from the kernel (`crates/daemon/src/hub/peer.rs`,
+`hub/unix.rs`). The user must be its own. On macOS a daemon with a Developer ID signature also runs
+`/usr/bin/codesign --verify` on the process of the peer, with the Developer ID requirement of its own team; a
+peer that fails gets no byte, and the push fails with "the program at the socket of anima-link is not the Anima
+link, so nothing was sent to it". A daemon with no Developer ID signature (a build for development) and each
+daemon on Linux check the user only. On macOS a daemon that was enrolled with the old link origin
+(`http://127.0.0.1:<port>`) stops with an error that asks for a new enrolment.
+
+The tests cover: a listener whose user is not the expected one gets no byte; on macOS, a listener in the test
+process (no Developer ID signature) gets no byte from a daemon that expects a team; the reading of the output
+of `codesign -d`. Not covered: a real release daemon and a real release link (Developer ID, hardened runtime);
+the real unit of the link; the Linux user check on a real computer (compiled only on Linux, checked by reading).
+
+It needs: this Mac with a release application signed in to the hosted hub, whose daemon shows metrics; a
+terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an AppImage of the same build.
+
+1. On this Mac, open Devices on the hub. Expected: the row of this Mac shows CPU, Memory and Disk, and they
+   change within one minute. (The real link is signed by the same team, so the check passes.)
+2. Run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link 2>&1 | grep
+   TeamIdentifier` and the same for `~/.local/bin/anima-daemon`. Expected: the two lines are the same and do
+   not say `not set`.
+3. Put a stand-in at the socket. Run `launchctl bootout gui/$(id -u)/ing.anima.link`, then
+   `S=~/Library/Application\ Support/anima-daemon/link.sock; rm -f "$S"; python3 -c 'import socket,sys;
+   s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(); c,_=s.accept(); print(len(c.recv(65536)),
+   "bytes")' "$S"`. Expected: within about 10 seconds the command prints `0 bytes`. The stand-in got no token.
+   Press Control-C if it prints nothing after 30 seconds, and report that.
+4. Close the application and open it again (it installs and starts the unit of the link again). Expected: after
+   about one minute the row of this Mac shows metrics again.
+5. On `pop-os`, open Devices on the hub. Expected: the row `pop-os` shows metrics (the user check passes for
+   the real link).
 
 ## Not built yet
 

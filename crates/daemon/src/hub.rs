@@ -1,7 +1,8 @@
 //! The daemon's one HTTP client and its calls to the hub (K8 Section 1; K-E5 Section 2.1).
 //!
 //! In the link mode the client sends plain HTTP on the Unix socket of `anima-link`, and to no
-//! TCP port (R-172).
+//! TCP port (R-172). It writes a request only to a connection whose peer passed its check
+//! ([`peer`]).
 //!
 //! The client verifies certificates against the web PKI roots, follows no redirect, ignores
 //! proxy variables, keeps no cookie, and gives up after 10 seconds (MET-020). It logs nothing:
@@ -11,6 +12,10 @@ pub mod answer;
 pub mod body;
 pub mod enrolment;
 pub mod link_socket;
+#[cfg(unix)]
+pub mod peer;
+#[cfg(unix)]
+mod unix;
 #[cfg(windows)]
 mod windows;
 
@@ -29,12 +34,18 @@ use crate::config::origin::Reach;
 use answer::{Answer, Cause, answer};
 use body::Body;
 use link_socket::LinkSocketError;
+#[cfg(unix)]
+use peer::{Expected, PeerError};
+#[cfg(unix)]
+use unix::Local;
+#[cfg(windows)]
+use windows::Local;
 
 /// How long one request may take, connection and answer together (K8 Section 7).
 pub const TIMEOUT: Duration = Duration::from_secs(10);
 
-/// The base of each route on the socket of the link. No request goes to this address: the
-/// client connects to the socket, and the text only fills the `Host` header.
+/// The base URL of a client for the socket of the link. No request goes to this address: the
+/// client connects to the socket and sets the loopback `Host` itself.
 const ON_LINK_SOCKET: &str = "http://127.0.0.1/";
 
 #[derive(Debug, thiserror::Error)]
@@ -43,6 +54,15 @@ pub enum HubError {
     Build,
     #[error(transparent)]
     LinkSocket(#[from] LinkSocketError),
+    #[cfg(unix)]
+    #[error(transparent)]
+    Peer(#[from] PeerError),
+    /// On macOS the token is in the Keychain, and no value of the environment may decide where
+    /// it goes: the folder of an old link origin does (the finding `daemonoldlinkhome` of the review HM-T23).
+    #[error(
+        "this daemon was enrolled with an old link origin, which macOS no longer uses: enrol it again (sign in again in the Anima application, or run anima-daemon enrol)"
+    )]
+    OldLinkOrigin,
 }
 
 /// One request: its route, its bearer (none for enrolment), its JSON body and the statuses that
@@ -58,8 +78,7 @@ struct Call<'a> {
 pub struct HubClient {
     http: Client,
     base: Url,
-    #[cfg(windows)]
-    local: Option<windows::Local>,
+    local: Option<Local>,
 }
 
 impl HubClient {
@@ -79,38 +98,51 @@ impl HubClient {
         Ok(Self {
             http,
             base,
-            #[cfg(windows)]
             local: None,
         })
     }
 
     /// A client for the hub behind the socket of `anima-link` at `socket` (K8 Section 1). Each
-    /// request connects to the socket and to nothing else.
+    /// request connects to the socket and to nothing else. On Unix it goes only to the peer that
+    /// this daemon expects ([`Expected::of_this_daemon`]); Windows checks the access list of
+    /// the socket.
+    ///
+    /// # Errors
+    /// [`HubError::LinkSocket`] when a different user could listen at the path;
+    /// [`HubError::Peer`] when the user or the signature of this daemon cannot be read.
+    pub fn over_link(socket: &Path, limit: Duration) -> Result<Self, HubError> {
+        #[cfg(unix)]
+        return Self::over_link_to(socket, limit, Expected::of_this_daemon()?);
+        #[cfg(windows)]
+        {
+            link_socket::trusted(socket)?;
+            let mut client = Self::on_link_socket(limit)?;
+            client.local = Some(Local::new(socket.to_path_buf(), limit));
+            Ok(client)
+        }
+    }
+
+    /// As [`HubClient::over_link`], with the peer that a request may go to given as `expected`.
     ///
     /// # Errors
     /// [`HubError::LinkSocket`] when a different user could listen at the path.
-    pub fn over_link(socket: &Path, limit: Duration) -> Result<Self, HubError> {
+    #[cfg(unix)]
+    pub fn over_link_to(
+        socket: &Path,
+        limit: Duration,
+        expected: Expected,
+    ) -> Result<Self, HubError> {
         link_socket::trusted(socket)?;
-        #[cfg(windows)]
-        {
-            let mut client = Self::new(
-                Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?,
-                limit,
-            )?;
-            client.local = Some(windows::Local::new(socket.to_path_buf(), limit));
-            Ok(client)
-        }
-        #[cfg(unix)]
-        {
-            let http = Client::builder()
-                .redirect(redirect::Policy::none())
-                .timeout(limit)
-                .unix_socket(socket)
-                .build()
-                .map_err(|_| HubError::Build)?;
-            let base = Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?;
-            Ok(Self { http, base })
-        }
+        let mut client = Self::on_link_socket(limit)?;
+        client.local = Some(Local::new(socket.to_path_buf(), limit, expected));
+        Ok(client)
+    }
+
+    fn on_link_socket(limit: Duration) -> Result<Self, HubError> {
+        Self::new(
+            Url::parse(ON_LINK_SOCKET).map_err(|_| HubError::Build)?,
+            limit,
+        )
     }
 
     /// A client for the hub that `reach` names; `own_socket` is the socket in the daemon's own
@@ -126,6 +158,7 @@ impl HubClient {
         match reach {
             Reach::Https(url) => Self::new(url.clone(), limit),
             Reach::LinkSocket(socket) => Self::over_link(socket, limit),
+            Reach::OwnLinkSocket if cfg!(target_os = "macos") => Err(HubError::OldLinkOrigin),
             Reach::OwnLinkSocket => Self::over_link(own_socket, limit),
         }
     }
@@ -183,7 +216,6 @@ impl HubClient {
         call: Call<'_>,
         read_ok: impl FnOnce(u16, &[u8]) -> Option<T>,
     ) -> Answer<T> {
-        #[cfg(windows)]
         if let Some(local) = &self.local {
             return local.post(call, read_ok).await;
         }

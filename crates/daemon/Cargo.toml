@@ -59,6 +59,10 @@ http-body-util.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1.1", features = ["fs", "process"] }
+# HTTP on the socket of the link, on a connection whose peer the daemon checked first (K8 Section 1).
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util.workspace = true
+http-body-util.workspace = true
 
 [target.'cfg(windows)'.dev-dependencies]
 uds_windows = "1.2"

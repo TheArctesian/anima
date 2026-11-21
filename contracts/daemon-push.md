@@ -5,6 +5,8 @@ WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust type
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5). R-172
 (operator, 2026-11-18) changed it from a local port to a Unix socket (task W0).
+The check of the peer of the socket and the refusal of the old link origin on macOS (Section 1) were added by
+R-NEW-socketpeer (made overnight by the orchestrator, not yet confirmed by the operator).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
 The `agentUsage` member of Section 4 was added by R-135 (operator, 2026-11-17; AIS-018, AIS-019, AIS-022 to
 AIS-024).
@@ -41,16 +43,26 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
     folder of the socket by the rule of its own folder (Section 2): a real folder, owned by the user that
     runs the daemon, with no access for the group or for others, below no folder that others can write to
     without the sticky bit. If a thing is at the path, it must be a socket that the same user owns. If one
-    check fails the daemon stops with an error and sends nothing. Thus a program of a different user can
-    neither open the socket nor put a socket of its own at the path. A program of the same user can do the
-    two things: the system cannot tell it from the link, and such a program can also read the token store.
-    A job must thus run as a different user (task W2).
+    check fails the daemon stops with an error and sends nothing. Then, for each request, after it connects
+    and before it writes a byte, the daemon reads the peer of the connection from the kernel (R-NEW-socketpeer):
+    the user of the peer must be the user that runs the daemon; on macOS, a daemon with a Developer ID
+    signature also requires that the process of the peer has a valid Developer ID signature of the same team
+    (`codesign --verify` with the requirement of the release). If the peer fails, the daemon closes the
+    connection, sends nothing, and the request fails (Section 7). A daemon with no Developer ID signature (a
+    build for development) and each daemon on Linux check the user only: on Linux a program of the same user
+    can read the token file in any case (Section 2). Thus a program of a different user can neither open the
+    socket nor listen at the path, and on macOS a program of the same user that only listens at the path
+    gets nothing. A program of the same user that tries harder can still get the token: it can let a signed
+    program take the process that made its socket, or start the signed link with settings of its own, and on
+    Linux it can read the token store. A job must thus run as a different user (task W2).
   - The daemon sends no request to a TCP port in the link mode. It accepts `http` for no host:
     `enrol --hub http://127.0.0.1:<port>` is refused.
   - A daemon that was enrolled with the old link origin, `http://127.0.0.1:<port>`. Its configuration file
     and its token record keep that text; an update does not change them (ROL-018). The daemon reads the
     text as "the link of this computer": it uses the socket `link.sock` in its own folder and sends nothing
-    to the port. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
+    to the port. On macOS it refuses the old link origin and stops with an error that asks for a new
+    enrolment (R-NEW-socketpeer): its folder can come from the environment (`ANIMA_DAEMON_HOME`), and no value of
+    the environment may decide where a token from the Keychain goes. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
     it does, a push fails and the daemon keeps its samples (Section 7).
   - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
 - The daemon sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
