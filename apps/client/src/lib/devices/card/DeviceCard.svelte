@@ -4,10 +4,12 @@
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
   import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
+  import { isHubDevice } from '$lib/devices/actions/actions';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import Meters from '../list/Meters.svelte';
   import { batteryBar } from '$lib/metrics/battery/battery';
   import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
+  import type { LiveMemory } from '$lib/metrics/container/memory.svelte';
   import Why from '../list/Why.svelte';
   import { press } from '$lib/motion/roles/press';
   import { sharedItem } from '$lib/motion/shared/shared';
@@ -34,9 +36,11 @@
     wake?: WakeApi;
     /** The latest charge of each battery of each device (MET-032). */
     charges?: Pick<LiveCharges, 'of'>;
+    /** The bytes of memory in use of the hub's own device (HMD-073). */
+    memory?: Pick<LiveMemory, 'of'>;
   }
 
-  const { device, beats, onConnect, onOpenWeb, wake, screenSharing, charges }: Props = $props();
+  const { device, beats, onConnect, onOpenWeb, wake, screenSharing, charges, memory }: Props = $props();
   const battery = $derived(batteryBar(device.batteries, charges?.of(device.id)));
   const line = $derived(hostLine(device));
 </script>
@@ -69,7 +73,7 @@
   <p class="host"><span title={line.host}>{line.host}</span>{#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}</p>
   <div class="middle">
     {#if device.status !== 'UP'}<Why {device} {beats} wrap />{/if}
-    {#if device.status === 'UP' || device.readings != null}<Meters readings={device.readings ?? null} source={device.metricsSource} {battery} />{/if}
+    {#if device.status === 'UP' || device.readings != null}<Meters readings={device.readings ?? null} source={device.metricsSource} {battery} container={isHubDevice(device)} memoryBytes={memory?.of(device.id) ?? null} />{/if}
   </div>
   <p class="uptime">
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}

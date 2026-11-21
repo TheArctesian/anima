@@ -22,6 +22,7 @@ export const Devices = graphql(`
           name
           host
           ip
+          kind
           tags
           maintenance
           status

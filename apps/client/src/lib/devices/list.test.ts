@@ -11,6 +11,7 @@ function device(name: string, status: CardDevice['status'] = 'UP', uptime: numbe
     name,
     host: `${name}.lan`,
     ip: null,
+    kind: 'server',
     os: 'OTHER',
     distribution: null,
     tags: [],

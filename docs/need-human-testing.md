@@ -2820,6 +2820,38 @@ design was approved overnight by the orchestrator only.
 
 Result: Open.
 
+### HT-NEW-hubrow: the row Hub and its page show the figures of its container and what it keeps (HM-T36, HMD-073, HMD-046)
+
+Built on the branch `hosted/hm-t36-hub-row`: `apps/client/src/lib/metrics/container/` (the CPU and the memory of the
+container, the bytes of memory in use from the batches of the hub's own device), `lib/devices/list/Meters.svelte` and
+`lib/devices/card/` (the row and the tile), `lib/devices/actions/` (no way in on the row), `lib/hosted/kept/` (the card
+"What the hub keeps") and `routes/devices/[id]/overview/` (the Overview of the hub). The tests prove each figure and each
+state with a fake hub and pushed batches in jsdom. No test reached a hub of the pool, no person saw the screens in a window,
+and the design was approved overnight by the orchestrator only.
+
+1. Open the Devices page of a hosted hub whose own daemon runs (HT-NEW-owndaemon), in the list view. Wait 10 seconds.
+   Expected: the row Hub shows its CPU in percent and its memory as used of its limit, for example "0.8 of 2.0 GiB", in the
+   places of the memory and the disk; it shows no disk. Its Connect column has no button: no SSH, RDP, VNC and no
+   "Set up screen sharing". The other rows are as before.
+2. Point at the CPU and at the memory of the row Hub.
+   Expected: the tooltip of the CPU says that it is the share of the processors that the hub may use; the tooltip of the
+   memory names the limit of the hub. The limit is the memory limit of the container of the hub in the pool (for a hub of
+   the plan of today, as the pool session gives it).
+3. Switch to the grid view.
+   Expected: the tile Hub has two meters, CPU and Memory, with "0.8 of 2.0 GiB" in the memory; no disk and no button.
+4. Open the row Hub, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars show CPU and the memory as used of its limit, with no disk; there is no card Storage and no card of the SSH host key. The CPU bar has the note "of its processors". The side column
+   has the cards Connect (no session reaches the container of the hub), Plan and usage (HT-NEW-hubusage) and "What the hub
+   keeps" with the count of the devices, the count of the checks and the days of history ("30 days of metrics, 90 days of
+   check results", or the values set in Settings, Data retention). The counts agree with the Devices page.
+5. Open the Overview of a device that is not the hub.
+   Expected: its bars have CPU, memory and disk in percent, as before; no card "What the hub keeps".
+6. Compare the list and the Overview with the mockups devices-v2 (the row Hub) and device-overview-v2 (Frame 3) and their
+   records.
+   Expected: the place and the order of each part agree, with the differences in the records only.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
