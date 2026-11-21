@@ -16,7 +16,13 @@ export function threadsStore(): ThreadsStore {
   if (shared !== undefined) return shared;
   const live = desktopRunnerShell === null ? null : new LiveThreads(desktopRunnerShell, () => ({ front: document.visibilityState === 'visible' && document.hasFocus(), chosen: shared?.chosen ?? null }));
   shared = new ThreadsStore(desktopThreadsShell, typeof localStorage === 'undefined' ? null : localStorage, undefined, live);
-  if (live !== null) void live.begin();
+  if (live !== null) {
+    const store = shared;
+    live.seenOpen = (id) => {
+      store.markSeen(id);
+    };
+    void live.begin();
+  }
   return shared;
 }
 

@@ -64,6 +64,19 @@ describe('the threads that the runner drives', () => {
     expect(shell.notices).toEqual([['Fix the test', 'Your turn']]);
   });
 
+  it('THR-055: a thread that changes while the person looks at it is seen; one in the back is not', async () => {
+    const shell = madeShell();
+    let looking = { front: true, chosen: THREAD as string | null };
+    const live = new LiveThreads(shell, () => looking, clock().now);
+    const seen: string[] = [];
+    live.seenOpen = (id) => seen.push(id);
+    await live.begin();
+    shell.emit(stateFrame(1, 'idle'));
+    expect(seen).toEqual([THREAD]);
+    looking = { front: false, chosen: THREAD };
+    shell.emit(stateFrame(2, 'working'));
+    expect(seen).toEqual([THREAD]);
+  });
 });
 
 describe('the calls of the page to the runner', () => {
