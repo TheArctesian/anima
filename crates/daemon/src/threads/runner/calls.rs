@@ -50,6 +50,9 @@ impl Runner {
                 return;
             }
             Action::Interrupt { thread } => self.interrupt(thread).await,
+            Action::Accounts => Outcome::Accounts {
+                accounts: self.accounts.rows(),
+            },
             Action::RaiseLimit => {
                 self.limits = self.limits.raised();
                 self.save();

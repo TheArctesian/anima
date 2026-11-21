@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request};
+use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, Program, Request};
 
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;
@@ -72,6 +72,9 @@ pub enum Action {
     Stop { thread: Uuid },
     /// The person raised the soft limit (THR-114).
     RaiseLimit,
+    /// What each program of this computer said of its account (THR-132). Only for a client of
+    /// the same user: the name of an account is often an address of the person.
+    Accounts,
 }
 
 /// A frame of the runner to a client.
@@ -94,6 +97,9 @@ pub enum Outcome {
     },
     Limits {
         limits: Limits,
+    },
+    Accounts {
+        accounts: Vec<AccountRow>,
     },
     /// The program of a stopped thread ended; `all_ended` is false when a process below it was
     /// still there or the walk could not run (THR-049).
@@ -204,6 +210,17 @@ pub struct ThreadRow {
     pub ended: Option<String>,
     /// The requests that wait for the person.
     pub open: Vec<Uuid>,
+}
+
+/// The account of one program of this computer, as its newest report said it (THR-132). It is
+/// kept in the memory of the runner only: it is not saved, logged or sent to the hub (THR-051).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AccountRow {
+    pub program: Program,
+    #[serde(flatten)]
+    pub facts: AccountFacts,
+    /// The time of the newest report.
+    pub at: chrono::DateTime<chrono::Utc>,
 }
 
 /// One update of one thread, in the order the runner made them.

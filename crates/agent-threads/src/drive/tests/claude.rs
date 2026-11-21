@@ -161,11 +161,7 @@ fn a_claude_line_of_an_unknown_kind_stops_the_turn() {
 }
 
 #[test]
-fn claude_account_members_are_dropped() {
-    assert_eq!(
-        claude(r#"{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"}}"#),
-        []
-    );
+fn claude_account_members_of_a_control_reply_are_dropped() {
     let reply = claude(
         r#"{"type":"control_response","response":{"subtype":"success","request_id":"init-1","response":{"account":{"email":"a@b"}}}}"#,
     );

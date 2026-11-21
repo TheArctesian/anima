@@ -3,6 +3,7 @@
 
 use serde_json::Value;
 
+use super::account;
 use super::request::{ProgramRequestId, Question, Request, RequestKind};
 use super::{DriveEvent, MAX_LINE, ProgramState, TurnOutcome, text_of};
 use crate::{MAX_OUTPUT, MAX_TEXT, held};
@@ -48,8 +49,13 @@ impl ClaudeDecoder {
             "control_request" => vec![control_request(&value)],
             "control_response" => vec![control_response(&value["response"])],
             "result" => vec![result(&value)],
-            // Members about the account and its limits are dropped (THR-051, AIS-022).
-            "rate_limit_event" => Vec::new(),
+            // The limits of the account: kept at the machine (THR-051, THR-132).
+            "rate_limit_event" => account::claude_limits(&value["rate_limit_info"])
+                .map(|facts| DriveEvent::Account {
+                    facts: Box::new(facts),
+                })
+                .into_iter()
+                .collect(),
             other => vec![unknown(&format!("type {other}"), true)],
         }
     }
