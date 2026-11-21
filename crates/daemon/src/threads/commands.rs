@@ -107,6 +107,7 @@ fn hello(shared: &Arc<Mutex<Shared>>, version: u32) -> Outcome {
     state.send(&Event::Hello {
         version: wire::VERSION,
         threads: state.held(),
+        build: wire::this_build(),
     });
     for (thread, slot) in &state.threads {
         for (first, lines) in slot.outbox.pending() {

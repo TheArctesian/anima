@@ -91,6 +91,10 @@ pub struct Runner {
     link: HolderLink,
     /// The holder speaks the version of this runner; until it says so, nothing starts.
     holder_fits: bool,
+    /// The holder is of an older build or protocol than this runner (TH98).
+    holder_older: bool,
+    /// When the runner last asked the older holder to end on this connection.
+    holder_quit: Option<std::time::Instant>,
     env: Vec<(String, String)>,
     /// The environment of the daemon, to ask the login shell again when a program is not found.
     daemon_env: Vec<(String, String)>,
@@ -155,6 +159,8 @@ pub async fn run(
         program: program.to_owned(),
         link,
         holder_fits: false,
+        holder_older: false,
+        holder_quit: None,
         env,
         daemon_env,
         asked_again: None,
@@ -221,7 +227,10 @@ impl Runner {
                     None => self.reconnect().await,
                 },
                 Some(call) = incoming.recv() => self.call(call).await,
-                _ = look.tick() => self.end_the_silent().await,
+                _ = look.tick() => {
+                    self.end_the_silent().await;
+                    self.replace_older_holder().await;
+                }
                 () = &mut stop => break,
             }
         }
@@ -234,6 +243,7 @@ impl Runner {
     async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
         self.holder_fits = false;
+        self.holder_quit = None;
         let next = self.link.next_id();
         self.link = reach_patiently(&self.program, &self.dir).await;
         self.link.go_on_from(next);

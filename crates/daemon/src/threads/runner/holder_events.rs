@@ -2,6 +2,8 @@
 //! programs, their end, the answer to each command, and a program that waits because the holder
 //! keeps its limit of output (THR-113).
 
+mod older;
+
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
 use agent_threads::drive::DriveEvent;
 use uuid::Uuid;
@@ -13,11 +15,16 @@ use crate::threads::wire::{
     self, Action, Event, Exit, Held, Line, Outcome as HolderOutcome, Refusal as HolderRefusal,
     Stream,
 };
+pub use older::older_holder;
 
 impl Runner {
     pub(super) async fn holder_event(&mut self, event: Event) {
         match event {
-            Event::Hello { version, threads } => self.hello(version, threads).await,
+            Event::Hello {
+                version,
+                threads,
+                build,
+            } => self.hello(version, threads, build.as_deref()).await,
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,
@@ -32,19 +39,24 @@ impl Runner {
     /// After a connection: a holder of a different version takes no start (THR-113); a thread
     /// that the holder does not hold any more stopped; a program the holder holds that no
     /// thread knows is ended (THR-049); a start whose answer was lost is settled.
-    async fn hello(&mut self, version: u32, held: Vec<Held>) {
+    async fn hello(&mut self, version: u32, held: Vec<Held>, build: Option<&str>) {
         self.holder_fits = version == wire::VERSION;
-        if !self.holder_fits {
-            tracing::error!(
+        // Compared with the file that a new holder would start from, so that a holder that a
+        // new start would not change is never replaced (no loop of ends and starts).
+        let next = wire::build_of(&self.program);
+        self.holder_older = !self.holder_fits || build != next.as_deref();
+        if self.holder_older {
+            tracing::warn!(
                 holder = version,
                 runner = wire::VERSION,
-                "the holder speaks a different version; no thread starts until it ends"
+                "the holder is older than the daemon; it is replaced when no thread runs"
             );
         }
         self.reconcile(&held).await;
         self.settle_starts().await;
         self.end_unknown(held).await;
         self.save();
+        self.replace_older_holder().await;
     }
 
     /// Each thread that the holder does not hold, or holds ended, stops.

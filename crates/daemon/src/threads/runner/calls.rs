@@ -48,6 +48,7 @@ impl Runner {
                     .values()
                     .map(|thread| thread.row.clone())
                     .collect(),
+                holder: self.holder_words(),
             },
             Action::Watch => {
                 self.watch(id, client);
@@ -295,6 +296,7 @@ const fn refusal_word(why: &Refusal) -> &'static str {
         Refusal::AnswerDoesNotFit => "answer does not fit",
         Refusal::NotRunning => "not running",
         Refusal::Holder => "holder",
+        Refusal::HolderOlder { .. } => "holder older than the daemon",
         Refusal::OverLimit { .. } => "over the soft limit",
     }
 }

@@ -27,6 +27,8 @@ export class LiveThreads {
   linked = $state<boolean | null>(null);
   /** A failure of the watch or of a notification, as fixed text. */
   problem = $state<string | null>(null);
+  /** Words while the holder of the programs is older than the daemon (TH98); read again when a thread stops. */
+  holder = $state<string | null>(null);
   /** A start that the runner refused at the soft limit: it is sent again when the person raises the limit. */
   overLimit = $state<Action | null>(null);
   /** Called with the ID of a thread that changed while the person looks at it: it does not need the person (THR-055). */
@@ -61,9 +63,16 @@ export class LiveThreads {
     }
   }
 
+  /** The holder is replaced when no thread runs: its words go when the list no longer has them. */
+  private async readHolder(): Promise<void> {
+    const listed = await this.shell.call({ call: 'list' }).catch(() => null);
+    if (listed?.outcome === 'threads') this.holder = listed.holder ?? null;
+  }
+
   private async seed(): Promise<void> {
     const listed = await this.shell.call({ call: 'list' });
     if (listed.outcome !== 'threads') return;
+    this.holder = listed.holder ?? null;
     const at = this.now();
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
     const next = new Map(this.threads);
@@ -81,6 +90,7 @@ export class LiveThreads {
     if (after === before) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
     this.threads = pruned(new Map(this.threads).set(update.thread, after));
+    if (this.holder !== null && update.change.change === 'state' && update.change.state === 'stopped') void this.readHolder();
     const looking = this.looking();
     if (looking.front && looking.chosen === update.thread) this.seenOpen?.(update.thread);
     if (at.getTime() < this.quietUntil) {

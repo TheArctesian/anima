@@ -58,7 +58,8 @@ impl Runner {
     /// start its program; the answer goes to the client when the holder answers.
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
         if !self.holder_fits {
-            return Err(Refusal::Holder);
+            let said = super::holder_events::older_holder(false, self.running());
+            return Err(Refusal::HolderOlder { said });
         }
         if self.running() >= self.limits.running {
             return Err(Refusal::OverLimit {

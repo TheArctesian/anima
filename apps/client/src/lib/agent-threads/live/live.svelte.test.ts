@@ -104,6 +104,21 @@ describe('the calls of the page to the runner', () => {
     expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
   });
 
+  it('TH98: the words of an older holder show from the list and go when a stop leaves the list without them', async () => {
+    const words = 'The holder of the threads is older than the daemon.';
+    let older = true;
+    const shell = madeShell((action) => (action.call === 'list' ? (older ? { outcome: 'threads', threads: [], holder: words } : { outcome: 'threads', threads: [] }) : { outcome: 'ok' }));
+    const live = new LiveThreads(shell, () => AWAY, clock().now);
+    await live.begin();
+    expect(live.holder).toBe(words);
+    shell.emit(stateFrame(1, 'working'));
+    older = false;
+    shell.emit(stateFrame(2, 'stopped'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(live.holder).toBeNull();
+  });
+
   it('TH97: a program that does not answer is refused with the words of the runner, which name its path', async () => {
     const said = 'The Codex at /opt/homebrew/bin/codex did not answer in 20 seconds.';
     const read = outcomeFrom({ outcome: 'refused', why: { refusal: 'program_does_not_answer', said } });

@@ -92,7 +92,8 @@ export interface Limits {
 export type Outcome =
   | { readonly outcome: 'ok' }
   | { readonly outcome: 'started'; readonly thread: string }
-  | { readonly outcome: 'threads'; readonly threads: readonly RunRow[] }
+  /** `holder`: words while the holder of the programs is older than the daemon (TH98). */
+  | { readonly outcome: 'threads'; readonly threads: readonly RunRow[]; readonly holder?: string }
   | { readonly outcome: 'limits'; readonly limits: Limits }
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
   /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
@@ -268,9 +269,11 @@ export function updateFrom(value: unknown): Update | null {
   return change === null ? null : { thread, seq: value.seq, change };
 }
 
-function threadsFrom(value: unknown): Outcome | null {
+function threadsFrom(value: unknown, holder: unknown): Outcome | null {
   const rows = Array.isArray(value) ? value.map(runRowFrom) : null;
-  return rows === null || rows.some((row) => row === null) ? null : { outcome: 'threads', threads: rows as RunRow[] };
+  if (rows === null || rows.some((row) => row === null)) return null;
+  const words = str(holder);
+  return words === null ? { outcome: 'threads', threads: rows as RunRow[] } : { outcome: 'threads', threads: rows as RunRow[], holder: words };
 }
 
 function limitsFrom(limits: unknown): Outcome | null {
@@ -287,7 +290,7 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'started':
       return typeof value.thread === 'string' ? { outcome: 'started', thread: value.thread } : null;
     case 'threads':
-      return threadsFrom(value.threads);
+      return threadsFrom(value.threads, value.holder);
     case 'limits':
       return limitsFrom(value.limits);
     case 'stopped':

@@ -98,6 +98,9 @@ pub enum Outcome {
     },
     Threads {
         threads: Vec<ThreadRow>,
+        /// Words for the person while the holder is older than the daemon (TH98).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        holder: Option<String>,
     },
     Limits {
         limits: Limits,
@@ -140,6 +143,11 @@ pub enum Refusal {
     NotRunning,
     /// The holder did not take the command.
     Holder,
+    /// The holder is older than the daemon and speaks a different protocol: `said` tells when
+    /// it is replaced, in words for the person (TH98).
+    HolderOlder {
+        said: String,
+    },
     /// The call came from a process of an agent: only the person answers a request, raises the
     /// limit or starts a thread.
     FromAnAgent,

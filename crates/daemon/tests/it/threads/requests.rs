@@ -57,7 +57,7 @@ async fn thr_030_an_open_request_survives_a_restart_of_the_runner_and_takes_one_
     kit.start();
     let mut client = kit.client().await;
     let list = client.call(Action::List).await;
-    let Outcome::Threads { threads } = client.done(list).await else {
+    let Outcome::Threads { threads, .. } = client.done(list).await else {
         panic!("threads")
     };
     assert_eq!(threads[0].state, RunState::NeedsYou);
