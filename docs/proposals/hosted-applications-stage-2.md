@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
 state: Direction decided
-evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28.
+evidence: R-209 to R-216 (operator, 2026-11-19, relayed) decide OD-HOST-5 to OD-HOST-12 as recommended. Approved: HOST-027, HOST-028, HOST-031 (no change of the file), HOST-037, HOST-039 and HOST-041, and HOST-008 of the plan; HOST-009 of the plan is replaced (R-213). Section 4 is the text of the container work types (R-209). A security review read its first form (SF-015 to SF-033); R-226 to R-233 decide the eight findings that needed the operator, and R-228 changes R-210: no profile `full`. A second read found the second form corrected only in part (SF-034 to SF-048); R-234 to R-238 decide its five points, and R-246 decides the design for a Mac (the applications program runs as the owner of Docker). Section 4 of version 4 is the third form. A third read by a separate reviewer (2026-11-19) says of the third form: no finding remains that the owner has not decided; the open points are changes of the text (SF-049 to SF-069). Section 4 of version 5 has those changes. The owner of `contracts/work-route.md` reviews the text when it is put in that file. It is the contract only when `contracts/work-route.md` has it as version 0.4; no code of a container work type on a machine is built before that. Not approved: HOST-026, HOST-029, HOST-030, HOST-032 to HOST-036, HOST-038, HOST-040, HOST-042 and HOST-043; Section 9 says what each waits for. The approved requirements and the tasks that the rulings name are in the task table of hosted-applications-plan.md. Version 5 (2026-11-19). Version 6 (2026-11-19): Section 10 is the proposed exception of R-247 for an entry that holds the socket of the engine; it is not in the contract and waits for a security review and for OD-HOST-28. Version 7 (2026-11-20): R-NEW-hubrouting, R-NEW-catalogueways and R-NEW-databaselevels give stage 3 its direction (HOST-046 to HOST-048); Section 12 is the design of the routing on the hub, Section 13 the recipe format of the catalogue, Section 14 the design of the PostgreSQL entry.
 ---
 
 # Proposal: hosted applications, stage 2 and the stage after it
@@ -12,7 +12,7 @@ Version: 4. Date: 2026-11-19. Version 4 has Section 4 in its third form, after t
 From: the operator, 2026-11-19, relayed by the orchestrating session and not first-hand in the session that wrote this: the container side should be "fleshed out more via the competitor research", and "the coolify/dockploy and the portainer things are still competitors and things I want to emulate ish".
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md). The plan that this proposal changes when it is approved is [hosted-applications-plan.md](../plans/hosted-applications-plan.md). The contract that it changes is K10, [work-route.md](../../contracts/work-route.md).
-Identifiers: HOST-026 to HOST-043; open decisions OD-HOST-5 to OD-HOST-12; tasks H14 to H27.
+Identifiers: HOST-026 to HOST-048; open decisions OD-HOST-5 to OD-HOST-12; tasks H14 to H27.
 
 ## 1. What this document is for
 
@@ -675,9 +675,10 @@ Not proposed for stage 2, with the reason:
 Stage 3 starts after stage 2 is in use. Each requirement here is a direction, written so that the
 operator can say yes or no to it. None has contract text yet.
 
-- **HOST-037.** Anima can install a reverse proxy on a machine as an application that the operator
-  can see, only when the operator asks for it on that machine. It refuses clearly when ports 80 or
-  443 are in use. This replaces the words "supply a reverse proxy" of HOST-009.
+- **HOST-037.** Anima can install a reverse proxy on the hub as an application that the operator
+  can see, only when the operator asks for it. It refuses clearly when ports 80 or 443 are in use.
+  This replaces the words "supply a reverse proxy" of HOST-009. R-NEW-hubrouting changed "on a
+  machine" to "on the hub": Anima installs no reverse proxy on a different machine.
 - **HOST-038.** The operator can give an application a domain name. Anima asks for a certificate
   only after it has checked that the name points at the machine. Anima already warns before a
   certificate ends (CHK-007, NOT-006).
@@ -701,6 +702,19 @@ operator can say yes or no to it. None has contract text yet.
 - **HOST-045.** Proposed (R-250). On a hosted hub, the link carries the port of an application to
   the hub when the person turns that port on at the machine. The design is made with the owner of
   the open ports of the link (HMD-049 of [hosted-mode.md](hosted-mode.md)).
+- **HOST-046.** Direction decided (R-NEW-hubrouting). The hub is the front door of the public
+  traffic of the applications of its machines. A request for the domain of an application comes to
+  the hub, and the hub sends it to the port of the application on its machine. A hosted hub does
+  this behind the front door of the cloud service; a hub that a person hosts does it on its own
+  ports 80 and 443. Section 12 is the design.
+- **HOST-047.** Direction decided (R-NEW-catalogueways). The catalogue that ships with the product
+  is a large list of popular self-hosted applications. Each entry has a test that a machine runs,
+  each image is named by a digest, a schedule pins new digests and runs the test again, each entry
+  shows the date of its last test, and an entry that fails leaves the list. An entry that needs
+  more than the default rules has a mark. Section 13 is the format.
+- **HOST-048.** Proposed (R-NEW-databaselevels, OD-HOST-38 of the plan). A database has one of
+  three levels: one server with copies to a second machine (the default); a primary and a replica
+  that the operator selects, with a switch to the copy only by his action; no sharding.
 
 | Task | Content | Needs |
 | --- | --- | --- |
@@ -862,8 +876,8 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-034: the containers of all machines in one list | Not approved | A question for the operator. No answer of 2026-11-19 covers it |
 | HOST-035: the limits of memory and processor as fields | Not approved | A question for the operator |
 | HOST-036: the result of each item on the page of the application | Not approved | A question for the operator |
-| HOST-037: the reverse proxy | Approved for stage 3 (R-213) | Stage 2 in use; the trial of two programs |
-| HOST-038: domain names and certificates | Not approved | A question for the operator, with task H21 |
+| HOST-037: the reverse proxy | Approved for stage 3 (R-213); on the hub only (R-NEW-hubrouting) | The design of Section 12 and its review; the trial of two programs |
+| HOST-038: domain names and certificates | Not approved; the direction is decided (R-NEW-hubrouting asks for the design) | Section 12 and its review, then a question for the operator |
 | HOST-039: the Compose file from a repository | Approved for stage 3 (R-214) | Task H6 |
 | HOST-040: a build from a Dockerfile | Not approved (R-214: later) | The work type `build` proven on the releases of Anima |
 | HOST-041: databases as a kind | Approved for stage 3 (R-216) | Task H7 |
@@ -871,6 +885,9 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-043: the credential of a private registry | Not approved | A question for the operator |
 | HOST-044: updates to a digest that Anima tested | Not approved; the direction is decided (R-249: later) | HOST-042; the actor in the contract, after a security review |
 | HOST-045: the link carries the port of an application on a hosted hub | Not approved; the direction is decided (R-250) | The design with the owner of HMD-049 |
+| HOST-046: the hub is the front door of the traffic of applications | Not approved; the direction is decided (R-NEW-hubrouting) | Section 12, its review, and the answers of the cloud service |
+| HOST-047: a large catalogue that stays tested | Not approved; the direction is decided (R-NEW-catalogueways) | Section 13; the test on a machine needs task H6 |
+| HOST-048: the levels of a database | Not approved | OD-HOST-38 of the plan |
 
 One question remains for the operator from this table: "Do you approve HOST-030 and HOST-032 to
 HOST-036 for stage 2?" It is decision OD-HOST-13 of
@@ -1030,3 +1047,14 @@ each fact of Section 11.1 is a claim of that session.
 
 A security review by a separate reviewer reads this section before it becomes a plan.
 
+## 12. The routing of the domains of applications on the hub (R-NEW-hubrouting, task H21)
+
+The text follows.
+
+## 13. The recipe format of the catalogue (R-NEW-catalogueways, task H36)
+
+The text follows.
+
+## 14. The PostgreSQL entry (R-216, R-NEW-databaselevels, task H24)
+
+The text follows.
