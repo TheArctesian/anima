@@ -1,5 +1,6 @@
 import type { DeviceCheck } from '$lib/checks/api';
 import type { CardDevice, DeviceDetail } from '$lib/devices/api';
+import { hasWaysIn } from '$lib/devices/actions/actions';
 import { reasonOf } from '$lib/devices/list/look';
 import { offersScreenSharing } from '$lib/devices/screen-sharing/setup';
 import { osIcon } from '$lib/devices/os/os';
@@ -36,14 +37,6 @@ export function protocolButton(
   if (mode === 'connect') return { label: `${protocol} to ${deviceName}`, section: null };
   if (mode === 'test') return { label: `Test the ${protocol} connection`, section: 'test' };
   return { label: `Set up ${protocol}`, section: protocol === 'RDP' ? 'rdp' : 'ssh' };
-}
-
-/** The kind of the hub's own device in a hosted hub (HMD-045). */
-const HUB_KIND = 'hub';
-
-/** Whether anything may offer SSH, RDP or VNC for the device: not for the hub's own device, whose container no session reaches (HMD-045, HMD-046). */
-export function hasWaysIn(device: Partial<Pick<DeviceDetail, 'kind'>>): boolean {
-  return device.kind !== HUB_KIND;
 }
 
 export interface HeaderLine {

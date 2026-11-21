@@ -346,6 +346,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .name b { white-space: nowrap; }
 .v2 .phone .seg button { padding: 0 var(--space-1); }
 
+/* The battery (MET-032, BT5 of compute-plan.md): its shape, then its charge. The shape has a bolt while it charges and
+   one bar while it is low, so neither is colour alone; low is the quiet warning colour at 20 % and at 10 % on battery. */
+.v2 .bat { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); font-variant-numeric: tabular-nums; }
+.v2 .bat .ic { color: var(--text-secondary); }
+.v2 .bat.low, .v2 .bat.low .ic { color: var(--status-warning-text); }
+
 </style>
 </head>
 <body>
@@ -386,7 +392,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
-        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4)">
+        <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-4)">
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">CPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">3%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,26 15,25 30,27 45,18 60,24 75,26 90,25 105,27 120,26" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">16 cores · peak 41%</span></figure>
@@ -399,6 +405,9 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
+          <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="Battery" aria-valuetext="18 %, low, on battery">
+  <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Battery</span><b class="num bat low" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="4.5" width="11" height="7" rx="1"/><path d="M14.5 7v2M4 7v2"/></svg>18%</b></div>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,10 30,14 60,18 90,22 120,26" fill="none" stroke="var(--status-warning)" stroke-width="1.5"/></svg><span class="note">On battery · low</span></figure>
         </div>
         <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB · 1 not mounted</span></div>
         <ul class="table">
@@ -470,7 +479,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
-        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4)">
+        <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-4)">
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">CPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">3%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,26 15,25 30,27 45,18 60,24 75,26 90,25 105,27 120,26" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">16 cores · peak 41%</span></figure>
@@ -483,6 +492,9 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
+          <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="Battery" aria-valuetext="18 %, low, on battery">
+  <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Battery</span><b class="num bat low" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="4.5" width="11" height="7" rx="1"/><path d="M14.5 7v2M4 7v2"/></svg>18%</b></div>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,10 30,14 60,18 90,22 120,26" fill="none" stroke="var(--status-warning)" stroke-width="1.5"/></svg><span class="note">On battery · low</span></figure>
         </div>
         <div class="toolbar"><span class="label grow">Storage</span><span class="note">4 drives · 6.5 TB · 1 not mounted</span></div>
         <ul class="table">
@@ -518,6 +530,74 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </div>
 
 <figcaption>Frame 2, light, 1280 px.</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 720px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+    <nav class="nav" aria-label="Main"><a href="#" class="on" aria-current="page">Devices</a><a href="#">Live sessions<span class="n">2</span></a><a href="#">Agent usage</a></nav>
+  <div class="foot">
+        <div class="hubcard"><span class="sec">Hosted by Anima.ing</span><span>Connected</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="bar">
+    <div class="row1">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>Hub</h1></nav>
+      <span class="st up">Up</span><span class="mono sec">container</span>
+    </div>
+    <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks</a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
+  </header>
+  <div class="body" style="padding-top: var(--space-4)">
+    <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
+      <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
+        <section class="card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))" aria-label="Health">
+          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span class="note">None</span></div>
+          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">100% in 7 d and 30 d</span></div>
+        </section>
+        <div class="toolbar"><span class="label grow">Resources</span>
+          <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4)">
+          <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="CPU" aria-valuetext="4 %" title="CPU: the share of the processors that the hub may use">
+  <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">CPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">4%</b></div>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,29 20,28 40,29 60,26 80,29 100,28 120,29" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">Of its processors: the share of the processors that the hub may use</span></figure>
+          <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)" role="meter" aria-label="Memory" aria-valuetext="0.8 of 2.0 GiB, 40 %">
+  <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Memory</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">0.8 of 2.0 GiB</b></div>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 31.5h120" stroke="var(--chart-grid)" stroke-width="1" fill="none"/><polyline points="0,20 20,20 40,19 60,19 80,20 100,19 120,19" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">40% of the limit of the hub</span></figure>
+        </div>
+      </div>
+      <aside style="display: flex; flex-direction: column; gap: var(--space-4)">
+        <section class="card" aria-label="Connect">
+          <div class="pane-head"><span class="label">Connect</span></div>
+          <div class="setrow"><div><b style="font-weight: 500" class="sec">SSH, RDP and VNC</b><p>No session reaches the container of the hub</p></div></div>
+        </section>
+        <section class="card" aria-label="Plan and usage">
+          <div class="pane-head"><span class="label">Plan and usage</span></div>
+          <dl class="kv" style="padding: 0 var(--space-4) var(--space-4)">
+            <dt>Data of your hub</dt><dd class="num">3.0 GiB</dd><dt>Plan</dt><dd>Hosted</dd><dt>Disk used of the plan</dt><dd class="num">4.1 of 20 GiB (21%)</dd>
+            <dt>Awake</dt><dd class="num">212 h</dd><dt>Asleep</dt><dd class="num">268 h</dd><dt>This month</dt><dd class="num">$4.12</dd>
+          </dl>
+        </section>
+        <section class="card" aria-label="What the hub keeps">
+          <div class="pane-head"><span class="label">What the hub keeps</span></div>
+          <dl class="kv" style="padding: 0 var(--space-4) var(--space-4)">
+            <dt>Devices</dt><dd class="num">13</dd><dt>Checks</dt><dd class="num">27</dd><dt>History</dt><dd>30 days of metrics, 90 days of check results</dd>
+          </dl>
+        </section>
+        <section class="card" aria-label="About this device">
+          <div class="pane-head"><span class="label">About</span></div>
+          <dl class="kv" style="padding: 0 var(--space-4) var(--space-4)">
+            <dt>System</dt><dd>Debian 12</dd><dt>Kind</dt><dd>Hub</dd><dt>Daemon</dt><dd>0.8.14, sending metrics</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+  </div>
+</main>
+</div>
+
+<figcaption>Frame 3, dark, 1280 px: the tab Overview of the own device of a hosted hub (HMD-073, task HM-T36 of hosted-mode.md). The bar offers no way in. Resources has CPU, as a share of the processors that the hub may use, and the memory as used of the limit of its container; no disk, no storage table: the disk of the hub is the bytes of its data, in "Plan and usage". Beside them, "What the hub keeps": the counts of its devices and of its checks and the days of its history.</figcaption>
 </figure>
 </body>
 </html>

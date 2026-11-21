@@ -2528,6 +2528,11 @@ is built and was not seen: no desktop build was made.
    `anima mcp uninstall`, and `anima mcp install`.
    Expected: the state is "set up, starts a different anima"; uninstall leaves it; install replaces it after it shows
    it in its list.
+8. On a Mac with Anima.ing in `/Applications` and the command line tool installed from the application, open Settings,
+   then the part "Coding agents" (the review of 12.7 of cli-mcp-plan.md corrected the check of `/Applications`).
+   Expected: the list of the agents, not "a different user can change". While the page opens, look at the list of
+   processes (Activity Monitor, search "anima"): write down if an `anima mcp` starts only because the page opened
+   (12.7, row 2). The page shows the states within 20 seconds, also when an agent does not answer.
 ### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
 
 Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
@@ -2850,6 +2855,29 @@ control group, its user and its folders.
 
 Result: Open.
 
+### HT-095: the daemon of a hosted hub keeps its enrolment across starts and enrols again after a refusal (HM-T35, HMD-046)
+
+Built on the branch `hosted/hm-t35-hub-daemon`: `crates/anima-local-hub/src/members/own_daemon.rs` (an enrolment is
+the token and the configuration of the daemon together) and `crates/daemon/src/runtime.rs` (with `--hosted-hub`, a
+refused token is deleted and the run ends). The tests prove the decision on the files of the daemon's folder and,
+on Linux, a run against a fake hub on a socket that refuses the token. No test ran the group in a container of the pool
+with the real hub, its database and a revoked token.
+
+1. Use an image of the pool that carries `anima-daemon` (HT-096 step 1). Start a hub with it, and note the
+   time of the entry "enrolled" of the hub's own device in the event log. Restart the hub two times.
+   Expected: the event log has one entry "enrolled" for the hub's device. The device list has one device of the kind
+   `hub`. The file `/run/anima/own-daemon.code` does not exist. The row `Hub` shows figures after each start.
+2. Revoke the daemon token of the device of the kind `hub`: run `anima daemon revoke <the id of that device>`
+   against the hub.
+   Expected: in one minute, `/var/lib/anima/hub/log/anima-daemon.log` says that the hub refused the token and that it
+   is deleted. `/var/lib/anima/hub/daemon/token` does not exist. The log shows no token and no code.
+3. Restart the hub.
+   Expected: the event log has a new entry "enrolled" for the same device; the device list still has one device of
+   the kind `hub`. The row `Hub` shows figures again in two minutes. `/run/anima/own-daemon.code` does not exist.
+
+Result: Open.
+
+### HT-094: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 ### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 
 Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
@@ -2871,6 +2899,69 @@ kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test
    Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
 5. Do step 1 on a desktop computer or a server with no battery.
    Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
+### HT-089: the battery beside the meters of the Devices list, the Overview and Agent usage (MET-032, BT5)
+
+Built on the branch `metrics/battery-display`: `apps/client/src/lib/metrics/battery/` (the meter, the shape, the
+charges of the batches), `lib/devices/list/Meters.svelte` and `lib/devices/card/` (the list and the grid),
+`lib/metrics/bars/MetricBars.svelte` (the Overview), `lib/agent-usage/view/ShareTable.svelte` (Agent usage). The
+tests prove the meter with a fake hub and pushed batches in jsdom. No test showed a real laptop in a window, and the
+design was approved overnight by the orchestrator only.
+
+1. Open the Devices page with a laptop that runs a daemon of this build (HT-088) and a server with no battery,
+   in the list view. Wait 10 seconds.
+   Expected: the usage column has a fourth head "Battery". The laptop row shows a battery shape and its charge after
+   Disk; the server row shows nothing there. With no laptop in the list there is no fourth head.
+2. Connect the mains of the laptop and wait 10 seconds; then disconnect it.
+   Expected: while it charges the shape has a bolt; on battery the shape is a plain battery. The charge follows the
+   laptop within 10 seconds.
+3. Let the laptop discharge to 20 %, then to 10 % (or test on a laptop that is that low).
+   Expected: the charge and the bar take the quiet warning colour and the shape shows one bar; a screen reader says
+   "low" at 20 % and "very low" at 10 %. Connect the mains: the warning goes.
+4. Switch to the grid view.
+   Expected: the tile of the laptop has a fifth meter "Battery" on the same line as CPU, Memory and Disk, with the same
+   height; the tile keeps its size.
+5. Open the laptop, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars have "Battery" with its charge, and "charging" or "low" beside the word when it applies. A laptop
+   with a GPU that has its own memory shows the battery on a third line of bars.
+6. Open Agent usage with the laptop reporting.
+   Expected: its row in "By device" has the battery shape and its charge after its name; the other rows have none.
+7. Compare each screen with the mockups devices-v2, device-overview-v2 and agent-usage-v2 and their records.
+   Expected: the place and the order of the battery agree, with the differences in the records only.
+
+Result: Open.
+
+### HT-091: the row Hub and its page show the figures of its container and what it keeps (HM-T36, HMD-073, HMD-046)
+
+Built on the branch `hosted/hm-t36-hub-row`: `apps/client/src/lib/metrics/container/` (the CPU and the memory of the
+container, the bytes of memory in use from the batches of the hub's own device), `lib/devices/list/Meters.svelte` and
+`lib/devices/card/` (the row and the tile), `lib/devices/actions/` (no way in on the row), `lib/hosted/kept/` (the card
+"What the hub keeps") and `routes/devices/[id]/overview/` (the Overview of the hub). The tests prove each figure and each
+state with a fake hub and pushed batches in jsdom. No test reached a hub of the pool, no person saw the screens in a window,
+and the design was approved overnight by the orchestrator only.
+
+1. Open the Devices page of a hosted hub whose own daemon runs (HT-093), in the list view. Wait 10 seconds.
+   Expected: the row Hub shows its CPU in percent and its memory as used of its limit, for example "0.8 of 2.0 GiB", in the
+   places of the memory and the disk; it shows no disk. Its Connect column has no button: no SSH, RDP, VNC and no
+   "Set up screen sharing". The other rows are as before.
+2. Point at the CPU and at the memory of the row Hub.
+   Expected: the tooltip of the CPU says that it is the share of the processors that the hub may use; the tooltip of the
+   memory names the limit of the hub. The limit is the memory limit of the container of the hub in the pool (for a hub of
+   the plan of today, as the pool session gives it).
+3. Switch to the grid view.
+   Expected: the tile Hub has two meters, CPU and Memory, with "0.8 of 2.0 GiB" in the memory; no disk and no button.
+4. Open the row Hub, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars show CPU and the memory as used of its limit, with no disk; there is no card Storage and no card of the SSH host key. The CPU bar has the note "of its processors". The side column
+   has the cards Connect (no session reaches the container of the hub), Plan and usage (HT-092) and "What the hub
+   keeps" with the count of the devices, the count of the checks and the days of history ("30 days of metrics, 90 days of
+   check results", or the values set in Settings, Data retention). The counts agree with the Devices page.
+5. Open the Overview of a device that is not the hub.
+   Expected: its bars have CPU, memory and disk in percent, as before; no card "What the hub keeps".
+6. Compare the list and the Overview with the mockups devices-v2 (the row Hub) and device-overview-v2 (Frame 3) and their
+   records.
+   Expected: the place and the order of each part agree, with the differences in the records only.
 
 Result: Open.
 

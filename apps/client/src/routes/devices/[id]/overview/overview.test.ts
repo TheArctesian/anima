@@ -53,20 +53,21 @@ it.each([
   expect(hostKeyText(ssh)).toBe(text);
 });
 
-type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
+type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'battery' | 'error' | 'liveError'>;
 
 const NOW = new Date('2026-11-05T09:05:00Z');
 const SPAN = { start: NOW.getTime() - 3_600_000, end: NOW.getTime() };
 const LOADED: Shown = {
-  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, drives: [], readings: null },
+  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, drives: [], readings: null, batteries: [] },
   span: SPAN,
   shownRange: 'HOUR',
   chartShape: null,
   readings: { ...added('2026-11-05T09:04:00Z', []).readings, cpuPercent: 20, memoryPercent: 45, diskPercent: 61 },
   error: null,
   liveError: null,
+  battery: null,
 };
-const WAITING: Shown = { view: null, span: null, shownRange: null, chartShape: null, readings: null, error: null, liveError: null };
+const WAITING: Shown = { view: null, span: null, shownRange: null, chartShape: null, readings: null, battery: null, error: null, liveError: null };
 
 function show(metrics: Shown, source: 'SSH' | 'NONE' | 'DAEMON' = 'SSH', range: MetricRange = 'HOUR', ssh: Partial<ReturnType<typeof device>['ssh']> = {}) {
   const time = manualClock();
@@ -215,7 +216,7 @@ it('D-7: an error shows the hub message and Retry in the chart area', () => {
 });
 
 it('MET-007: data with no series says it is waiting for metrics', () => {
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null } });
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } });
   expect(document.body.textContent).toContain('Waiting for metrics');
   expect(document.querySelector('h3')).toBeNull();
 });
@@ -259,7 +260,7 @@ it('MET-003: while a switch is pending the old chart keeps its own range in the 
   const at = (minute: number) => point(`2026-11-05T09:0${String(minute)}:00Z`, 20);
   // Minutes 0, 1, 4, 5: a three-minute hole that breaks an HOUR line but not a DAY one.
   const cpu = series('CPU_PERCENT', 'cpu', [at(0), at(1), at(4), at(5)]);
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], drives: [], readings: null }, shownRange: 'HOUR' }, 'SSH', 'DAY');
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], drives: [], readings: null, batteries: [] }, shownRange: 'HOUR' }, 'SSH', 'DAY');
   expect(document.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toContain('CPU, last hour');
   expect(document.querySelectorAll('.lines polyline')).toHaveLength(2);
   expect(document.querySelector('[aria-pressed="true"]')?.textContent.trim()).toBe('24 hours');
