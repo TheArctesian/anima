@@ -227,6 +227,8 @@ pub fn chosen(program: Program, path: &Path, named: bool, copies: &[PathBuf]) ->
 async fn ask_version(path: &Path, wait: Duration, env: &[(String, String)]) -> Option<String> {
     let mut child = tokio::process::Command::new(path)
         .arg("--version")
+        // A folder that the program cannot write: the question changes nothing on disk.
+        .current_dir("/")
         .env_clear()
         .envs(env.iter().map(|(name, value)| (name, value)))
         .stdin(std::process::Stdio::null())
