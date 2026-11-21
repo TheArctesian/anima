@@ -19,6 +19,7 @@ export const TOKEN_KEPT_AFTER_LOGOUT = 'Signed out, but the key store kept the a
 export const TOKEN_KEPT_UNCONFIRMED =
   'The hub did not confirm the sign-out, and the key store kept the access token.';
 export const COPY_KEPT = 'Signed out, but the copy of recent hub data stayed on this computer. Sign in and sign out again.';
+export const GATEWAY_KEPT = 'Your hub signed this browser out, but the sign-out of your Anima.ing address was not confirmed. Retry.';
 export const COOKIE_KEPT = 'The hub did not confirm the sign-out, so this browser may still be signed in. Retry.';
 
 /** The hub's answer to `logout`; a rejected call is no answer (`null`). */

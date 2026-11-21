@@ -50,6 +50,7 @@ const APP_COMMANDS: &[&str] = &[
     "link_join",
     "link_status",
     "link_leave",
+    "link_ports",
     "hub_listener_check",
     "command_line_read",
     "command_line_install",

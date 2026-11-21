@@ -10,23 +10,35 @@
     project: Project;
     onLeaveOut: (repositoryId: string) => void;
     onRestore: (repositoryId: string) => void;
+    /** In select mode, whether the project is selected (PRO-060); undefined out of select mode. */
+    selected?: boolean | undefined;
+    onSelect?: (selected: boolean) => void;
+    /** The name of the card's group, shown under its state; none under the head of that group (PRO-061). */
+    groupName?: string | undefined;
   }
 
-  const { project, onLeaveOut, onRestore }: Props = $props();
+  const { project, onLeaveOut, onRestore, selected, onSelect, groupName }: Props = $props();
   const reason = $derived(lookReason(project));
 </script>
 
 <!-- One project as a tile (UR-7, PRO-001): its name and the state of its repository, why it needs a look, where it runs,
      then its repositories with Leave out. A tile steps from the page by its surface, with no border (R-221, R-224); one
      that needs a look carries a 2 px warning edge (D18). -->
-<li class="entry tile" class:look={reason !== null}>
+<!-- The list item is the screen's, so the tile fades in and out where it stands (5.7.3, Reorder). -->
+<div class="tile" class:look={reason !== null} class:selected>
   <div class="top">
+    {#if selected !== undefined}
+      <input type="checkbox" class="pick" checked={selected} aria-label={`Select ${project.name}`} onchange={(event) => onSelect?.(event.currentTarget.checked)} />
+    {/if}
     <span class="name">
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the slug is the hub's and is encoded -->
       <a href={`${resolve('/projects')}/${encodeURIComponent(project.slug)}`}><Icon name="carbon:folder" size="sm" />{project.name}</a>
       {#if project.repositories[0] !== undefined}<span class="repo">{project.repositories[0].fullName}</span>{/if}
     </span>
-    <span class="state">{projectStatusWords(project)}</span>
+    <span class="side">
+      <span class="state">{projectStatusWords(project)}</span>
+      {#if groupName !== undefined}<span class="group">{groupName}</span>{/if}
+    </span>
   </div>
   {#if reason !== null}<p class="why">{reason}</p>{/if}
   <ul class="places" aria-label="Where it runs">
@@ -43,10 +55,11 @@
       <RepositoryRow {repository} {onLeaveOut} {onRestore} />
     {/each}
   </ul>
-</li>
+</div>
 
 <style>
   .tile {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -54,6 +67,33 @@
     padding: var(--space-4);
     border-radius: var(--radius-lg);
     background: var(--surface-raised);
+  }
+
+  .selected {
+    background: var(--surface-selected);
+  }
+
+  .pick {
+    flex: none;
+    margin: var(--space-1) 0 0;
+    accent-color: var(--accent);
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-1);
+    min-inline-size: 0;
+  }
+
+  .group {
+    max-inline-size: calc(var(--space-16) * 2);
+    overflow: hidden;
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .look {

@@ -30,14 +30,14 @@
 <nav class="repositories" aria-label="Repositories">
   <span class="label">Repositories, newest use first</span>
   <button type="button" class="line" aria-current={chosen === null ? 'true' : undefined} onclick={() => { onChoose(null); }}>
-    <span class="what"><span class="name">All repositories</span><span class="when">{days} days</span></span>
+    <span class="what"><span class="name words">All repositories</span><span class="when">{days} days</span></span>
     <span class="counts"><span>{whole(everything.sessions)}</span><span class="cost">{costText(everything)}</span></span>
   </button>
   {#each lines as line (line.repository ?? '')}
     {@const when = lastUseWords(line.lastDay, today)}
     {#if line.repository === null}
       <div class="line">
-        <span class="what"><span class="name">No repository</span><span class="when">{when}</span></span>
+        <span class="what"><span class="name words">No repository</span><span class="when">{when}</span></span>
         <span class="counts"><span>{whole(line.sessions)}</span><span class="cost">{costText(line)}</span></span>
       </div>
     {:else}
@@ -113,6 +113,11 @@
     font-family: var(--font-mono);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* A line that is words, not a repository path, is in the face of the page. */
+  .name.words {
+    font-family: inherit;
   }
 
   .when,
