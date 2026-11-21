@@ -2855,6 +2855,29 @@ control group, its user and its folders.
 
 Result: Open.
 
+### HT-095: the daemon of a hosted hub keeps its enrolment across starts and enrols again after a refusal (HM-T35, HMD-046)
+
+Built on the branch `hosted/hm-t35-hub-daemon`: `crates/anima-local-hub/src/members/own_daemon.rs` (an enrolment is
+the token and the configuration of the daemon together) and `crates/daemon/src/runtime.rs` (with `--hosted-hub`, a
+refused token is deleted and the run ends). The tests prove the decision on the files of the daemon's folder and,
+on Linux, a run against a fake hub on a socket that refuses the token. No test ran the group in a container of the pool
+with the real hub, its database and a revoked token.
+
+1. Use an image of the pool that carries `anima-daemon` (HT-096 step 1). Start a hub with it, and note the
+   time of the entry "enrolled" of the hub's own device in the event log. Restart the hub two times.
+   Expected: the event log has one entry "enrolled" for the hub's device. The device list has one device of the kind
+   `hub`. The file `/run/anima/own-daemon.code` does not exist. The row `Hub` shows figures after each start.
+2. Revoke the daemon token of the device of the kind `hub`: run `anima daemon revoke <the id of that device>`
+   against the hub.
+   Expected: in one minute, `/var/lib/anima/hub/log/anima-daemon.log` says that the hub refused the token and that it
+   is deleted. `/var/lib/anima/hub/daemon/token` does not exist. The log shows no token and no code.
+3. Restart the hub.
+   Expected: the event log has a new entry "enrolled" for the same device; the device list still has one device of
+   the kind `hub`. The row `Hub` shows figures again in two minutes. `/run/anima/own-daemon.code` does not exist.
+
+Result: Open.
+
+### HT-094: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 ### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 
 Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
