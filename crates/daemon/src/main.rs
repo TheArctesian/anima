@@ -192,17 +192,7 @@ fn uninstall(home: &Home) -> ExitCode {
 /// `anima-daemon stop` (HMD-055): the user unit stops; its file and the token stay.
 #[cfg(unix)]
 fn stop_unit() -> ExitCode {
-    use anima_daemon::units::removal::{self, Leaving};
-    let uid = match private_file::running_user() {
-        Ok(uid) => uid,
-        Err(error) => return failure(&error),
-    };
-    let user = Leaving {
-        platform: Platform::current(),
-        uid,
-    };
-    let env = |name: &str| std::env::var(name).ok();
-    match removal::stop(user, env, |step| run_step(step, STEP_DEADLINE)) {
+    match anima_daemon::units::removal::stop_here() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => failure(&error),
     }

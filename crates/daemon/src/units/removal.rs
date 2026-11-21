@@ -99,6 +99,29 @@ fn bootout(uid: u32) -> Step {
     bootout
 }
 
+/// Stops the user unit of the user of this process, with the commands of this computer
+/// (`anima-daemon stop`, HMD-055). The unit file, the token and the key cache stay.
+///
+/// # Errors
+/// [`UninstallError::Run`] when the user of this process cannot be read; else as [`stop`].
+#[cfg(unix)]
+pub fn stop_here() -> Result<(), UninstallError> {
+    let uid =
+        crate::config::private_file::running_user().map_err(|source| UninstallError::Run {
+            program: "reading the user of this process",
+            source,
+        })?;
+    let user = Leaving {
+        platform: Platform::current(),
+        uid,
+    };
+    stop(
+        user,
+        |name| std::env::var(name).ok(),
+        |step| super::step::run_step(step, super::step::STEP_DEADLINE),
+    )
+}
+
 /// Stops the user unit of the daemon and leaves its file, the token and the key cache: the next
 /// `install` starts it again. Only the unit is stopped (`launchctl bootout`, or
 /// `systemctl --user stop`); no other process is signalled. A unit that is not loaded makes the
