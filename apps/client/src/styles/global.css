@@ -67,6 +67,11 @@ body {
   color-scheme: light;
 }
 
+/* A native check box, radio button and range take the accent of the app, not the browser's own blue. */
+:root {
+  accent-color: var(--accent);
+}
+
 @media (prefers-color-scheme: light) {
   :root[data-theme="system"] {
     color-scheme: light;

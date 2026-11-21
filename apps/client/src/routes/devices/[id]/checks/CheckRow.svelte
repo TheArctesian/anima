@@ -20,6 +20,8 @@
 
   const { check, open, onHistory, onPause, onEdit, onDelete }: Props = $props();
   const text = $derived(checkRowText(check));
+  /** The tone of the status word: a dot and the word, as the Devices list draws a status (row H of the site language plan). */
+  const tone = $derived(check.paused ? 'paused' : check.status.toLowerCase());
   let pausing = $state(false);
   let failure = $state<HubError | null>(null);
 
@@ -40,7 +42,7 @@
     <span class="type" title={text.type}>{text.type}</span>
     <!-- A reading changes with a cross-fade, in place (MOT-008, Status change). -->
     <span class="reading">
-      {#key check.status}<span transition:crossFade>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
+      {#key tone}<span class="state {tone}" transition:crossFade><span class="dot" aria-hidden="true"></span>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
     </span>
     <span class="reading ms">
       {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
@@ -58,8 +60,8 @@
     >
       <Icon name={check.paused ? 'carbon:play' : 'carbon:pause'} size="sm" />{check.paused ? 'Resume' : 'Pause'}
     </button>
-    <button type="button" aria-label="Edit {check.name}" onclick={onEdit} {@attach press()}><Icon name="carbon:edit" size="sm" /></button>
-    <button type="button" aria-label="Delete {check.name}" onclick={onDelete} {@attach press()}><Icon name="carbon:trash-can" size="sm" /></button>
+    <button type="button" aria-label="Edit {check.name}" title="Edit" onclick={onEdit} {@attach press()}><Icon name="carbon:edit" size="sm" /></button>
+    <button type="button" aria-label="Delete {check.name}" title="Delete" onclick={onDelete} {@attach press()}><Icon name="carbon:trash-can" size="sm" /></button>
   </span>
   {#if failure !== null}<p class="failure" role="alert">{failure.message}</p>{/if}
 </li>
@@ -67,11 +69,51 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
+    grid-template-columns: var(--check-columns);
     align-items: center;
     gap: var(--space-2);
     min-block-size: var(--target-min-touch);
-    border-block-end: var(--border-thin) solid var(--border-strong);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+  }
+
+  /* A status is a dot and its word; a problem keeps the weight of its word (as in the Devices list). */
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--ink, var(--text-secondary));
+  }
+
+  .state:not(.up, .paused, .unknown) {
+    font-weight: var(--weight-medium);
+  }
+
+  .dot {
+    flex: none;
+    inline-size: calc(var(--space-2) - var(--border-thin));
+    block-size: calc(var(--space-2) - var(--border-thin));
+    border-radius: var(--radius-pill);
+    background: var(--tone, var(--status-unknown));
+  }
+
+  .up {
+    --tone: var(--status-up);
+    --ink: var(--status-up-text);
+  }
+
+  .down {
+    --tone: var(--status-down);
+    --ink: var(--status-down-text);
+  }
+
+  .degraded {
+    --tone: var(--status-degraded);
+    --ink: var(--status-degraded-text);
+  }
+
+  .maintenance {
+    --tone: var(--status-maintenance);
+    --ink: var(--status-maintenance-text);
   }
 
   .paused {
@@ -160,7 +202,20 @@
 
   .actions {
     display: flex;
+    justify-content: end;
     gap: var(--space-1);
+  }
+
+  /* The actions of a row are quiet: no edge and no fill until the pointer is on one (as in the Devices list). */
+  .actions button {
+    border-color: transparent;
+    background: none;
+    color: var(--text-secondary);
+  }
+
+  .actions button:hover {
+    background: var(--surface-hover);
+    color: var(--text);
   }
 
   .failure {
