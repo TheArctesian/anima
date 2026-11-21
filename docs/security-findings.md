@@ -2130,7 +2130,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Waits for the operator (OD-C22, MW-P9). Until he decides, Section 9 requires an isolation that denies each thing by default, and a start with no isolation fails (`isolation_failed`).
 
-State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+State: Accepted by the operator (R-NEW-sandboxrisk). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
 
 ### SF-NEW-modelworkc: A runtime can make outgoing connections and gets the environment of the daemon. High
 
@@ -2150,7 +2150,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Waits for the operator (OD-C23, MW-P7). Until he decides, Section 7 checks the hash that Hugging Face publishes at that commit (`hash_mismatch`) and a lowest age of a commit of 7 days (`revision_too_new`).
 
-State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+State: Accepted by the operator (R-NEW-hubhash). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
 
 ### SF-NEW-modelworke: The default list of the machine has `mlx-community`, an open organisation. Medium
 
@@ -2160,7 +2160,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Waits for the operator (OD-C24, MW-P8). Until he decides, the default list is `unsloth` only.
 
-State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+State: Accepted by the operator (R-NEW-mlxcommunity). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
 
 ### SF-NEW-modelworkf: The loopback check ran only at the start, and missed children, later listeners, UDP and mapped IPv4. Medium
 
@@ -2260,7 +2260,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Waits for the operator (OD-C25, MW-P6). Until he decides, an API key can ask only for `model_report`, `server_stop`, `model_unload` and `model_drain`.
 
-State: Open. Waits for the operator. Found by a separate reviewer on 2026-11-20.
+State: Accepted by the operator (R-NEW-agentmodelwork). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
 
 ### SF-NEW-modelworkp: The rules of TLS, of redirects and of the hosts of the fetch process were not given. Low
 
