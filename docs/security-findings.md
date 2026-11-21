@@ -177,6 +177,14 @@ that owns the area.
 | SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-NEW-routeproxyexit | The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routepublish | Who may make an application public was not stated. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routetoken | The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routeheaders | Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routetarget | The target of a route could change after it was made public, or be a port of a session. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routeacme | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routelinkshare | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-NEW-routeabuse | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -2107,6 +2115,122 @@ What it is: `mcp/untrusted.rs` gave the cap of 4,000 characters with kept lines 
 The correction: only the top-level field `composeFile` of `anima_compose_from_run` keeps its lines (`cleaned_result`). The tool gives the file only when the cleaning does not change it; else `composeFile` is null, `withheld` says why, and `fileLength` gives the length of the whole file. The description of the tool says that an agent must not install a file from the result without a person reading it. Tests: `mcp_008_only_the_file_of_the_compose_tool_keeps_its_lines` and `mcp_008_a_file_that_the_cleaning_would_change_is_withheld`.
 
 State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+## The security review of the routing on the hub (task H21, 2026-11-20)
+
+A separate reviewer read Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code existed. The text is corrected in the same branch; the build of task H21 builds the rules.
+
+### SF-NEW-routeproxyexit: The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: A parser fault in the proxy, which reads each request from the internet, gives its process. If that process can open the dial socket of the link, the control socket of the link, the listener of the hub or the network of the pool, an attacker on the internet gets SSH on each machine whose port 22 is on. The text said that the proxy takes an identifier of an application, but nothing enforced it.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet who finds a fault in the proxy. Effect: the sessions and the machines of each customer of that hub.
+
+Mitigation now: Section 12.3 now says that the user of the proxy cannot open those sockets or the database, has no network route but its one interface to the hub and the outbound ACME and DNS, and that a test shows it.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routepublish: Who may make an application public was not stated. High
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: An API key, an MCP agent or a person who took over the hub could add a public name to an application whose port is open only for a look in the hub: an administration page, or an application that holds the socket of the engine, is then on the internet. The consent of the machine (OD-HOST-29) covers "the hub may reach this port", not "the internet may reach it".
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A holder of an API key or a taken-over hub. Effect: a page that must stay private is public.
+
+Mitigation now: Section 12.3: only a person with a login or a browser session, after a second factor; no API key and no MCP tool; no application that holds the socket of the engine. OD-HOST-43 asks him for a second consent at the machine.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routetoken: The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: The text did not say who makes the token, so a hub could give a token that it copied from a different hub. A name that Anima gives could be given again to a new customer, who then gets the cookies, saved passwords and callbacks of the old one. One failed DNS read could remove a name.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A customer with a hub of the pool. Effect: the traffic of a different customer's name.
+
+Mitigation now: Section 12.4: the cloud service makes a random token of at least 128 bits bound to the hub and the name; hub identifiers are never used again; no wildcard names; a name is removed only after several failed reads; a name that Anima gives is proven by allocation, never given again, and leaves the door with the hub.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routeheaders: Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: Adding to an `X-Forwarded-For` that the client sent keeps a false address that an application can trust. A `Host` that is not the SNI name, or content on port 80, makes a second path. A log of the request line keeps reset tokens and OAuth codes.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet. Effect: an application trusts a false address; secrets of an application in the log of the hub (LOG-007).
+
+Mitigation now: Section 12.2 and 12.3: each `Forwarded`, `X-Forwarded-*` and `X-Real-IP` is removed and set again; the PROXY protocol only from the door; 421 when `Host` differs from SNI; port 80 gives only ACME and a redirect; the log has only the name, the bytes, the status and the time.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routetarget: The target of a route could change after it was made public, or be a port of a session. Medium
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: On a hub that a person hosts, a changed host of a device (an API key, or a name that a DNS rebinding changes) points a public name at a different host of the network, a metadata address or the hub itself. A record of an application that names port 22 would pass the rule "a port that the record names".
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A holder of an API key, or a DNS rebinding. Effect: a public name reaches a host or a port that must stay private.
+
+Mitigation now: Section 12.3: the target is fixed when the name is made public; loopback addresses and ports of the hub, link-local addresses and `169.254.169.254` are refused; a change needs the rights of a publish; the port of an application is never 22, 5900, 3389 or a port of the link or the daemon.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routeacme: Certificates under the shared address of the pool, and the owner of the ACME key. Medium
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: Let's Encrypt limits new accounts for each address, and all hubs of the pool share one. A domain of the names that Anima gives that is not on the Public Suffix List shares one weekly limit. A wildcard certificate would put one key in each hub. The text gave the ACME work to both the hub and the proxy.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Many new hubs at one time, or one customer with many names. Effect: no certificate for a time, for each customer.
+
+Mitigation now: Section 12.5: the hub holds the account and its key; no wildcard certificate; no name that Anima gives before its domain is on the Public Suffix List; the door routes the ACME challenges by its table only; the old hub deletes the key when a name moves. OD-HOST-44 asks him for one account for the pool or one for each hub.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routelinkshare: Public traffic can slow the sessions on the same link. Medium
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: A flood to one name fills the tunnel of the link to a machine, and SSH and VNC on the same tunnel stall. The text said that the door never cuts the sessions, which is true and does not help.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet. Effect: the operator loses his sessions to that machine during the flood.
+
+Mitigation now: Section 12.7: the hub limits the streams and the bandwidth of public routes for each link and gives the sessions priority; the absolute sentence is gone.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-NEW-routeabuse: Smaller points: claims about the door, wake, abuse and a hub on the same site. Low
+
+Requirements: HOST-046, task H21; R-NEW-hubrouting.
+
+What it is: The text wrote what the door does as a fact, but the door is in the private cloud plan. The door cannot answer a page inside TLS with option R1. Requests from the internet could wake a failing hub again and again. The switch for abuse had no message to the customer. A hub that a person hosts on the same registered domain as an application is same-site for cookies. The seal of keys protects nothing if its key is in the same backup.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Various. Effect: claims that are not true, and smaller denial of service.
+
+Mitigation now: Section 12: each sentence about the door is a request to the cloud plan; the proxy is installed only when the operator asks; a wake only when a machine is online and a limited number of times each hour; a record, a message and a review for each removal; a warning for the same site; the place of the key of the seal is a question for the cloud plan.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
 ## Closed
 
