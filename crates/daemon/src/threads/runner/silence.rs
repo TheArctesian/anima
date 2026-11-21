@@ -21,7 +21,7 @@ const OTHER_WAIT: Duration = Duration::from_secs(5);
 const SILENT_KEPT: Duration = Duration::from_secs(60);
 /// The time a started program has for its first line of protocol. Codex loads its plugins
 /// first (about 90 s on a busy Mac, 2026-11-20); Claude Code reads the Keychain first.
-pub const FIRST_ANSWER: Duration = Duration::from_secs(300);
+pub const FIRST_ANSWER: Duration = Duration::from_secs(600);
 
 /// The file of a copy, so that a copy that changed is asked again.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -55,50 +55,64 @@ pub struct Silence {
     ending: BTreeMap<Uuid, String>,
 }
 
+/// The answers of the copies of one start: the chosen copy first, then each other copy when the
+/// chosen one did not answer. A version is `None` for a copy that did not answer in time.
+pub type Answers = Vec<(PathBuf, Option<String>)>;
+
+/// Asks the chosen copy at `path` for its version and, only when it does not answer, each
+/// different copy of `others`. Runs away from the loop of the runner: it can take 20 seconds
+/// and 5 more for each other copy.
+pub async fn ask(path: PathBuf, others: Vec<PathBuf>, env: Vec<(String, String)>) -> Answers {
+    let first = ask_version(&path, PROBE_WAIT, &env).await;
+    let silent = first.is_none();
+    let mut answers = vec![(path.clone(), first)];
+    if silent {
+        for other in others.into_iter().filter(|other| *other != path) {
+            let version = ask_version(&other, OTHER_WAIT, &env).await;
+            answers.push((other, version));
+        }
+    }
+    answers
+}
+
 impl Silence {
-    /// Asks the copy at `path` for its version (or takes a recent answer). When it does not
-    /// answer: the `others` copies that answer, with their versions, for [`not_answered`].
-    pub async fn probe(
-        &mut self,
-        path: &Path,
-        others: &[PathBuf],
-        env: &[(String, String)],
-    ) -> Result<(), Vec<(PathBuf, String)>> {
-        if self.version(path, PROBE_WAIT, env).await.is_some() {
-            return Ok(());
+    /// The kept answer of the copy at `path` when its file did not change: `Some(true)` when it
+    /// answered, `Some(false)` when it did not in the last minute, `None` to ask it.
+    #[must_use]
+    pub fn kept(&self, path: &Path) -> Option<bool> {
+        let kept = self
+            .asked
+            .get(path)
+            .filter(|kept| kept.stamp == stamp(path))?;
+        match kept.version {
+            Some(_) => Some(true),
+            None => (kept.at.elapsed() < SILENT_KEPT).then_some(false),
         }
-        let mut answered = Vec::new();
-        for other in others.iter().filter(|other| other.as_path() != path) {
-            if let Some(version) = self.version(other, OTHER_WAIT, env).await {
-                answered.push((other.clone(), version));
-            }
-        }
-        Err(answered)
     }
 
-    /// The first line that `path --version` printed, from the kept answers when the file did
-    /// not change; `None` when it did not answer in `wait`.
-    async fn version(
-        &mut self,
-        path: &Path,
-        wait: Duration,
-        env: &[(String, String)],
-    ) -> Option<String> {
-        let now = stamp(path);
-        if let Some(kept) = self.asked.get(path).filter(|kept| kept.stamp == now)
-            && (kept.version.is_some() || kept.at.elapsed() < SILENT_KEPT)
-        {
-            return kept.version.clone();
+    /// Keeps the answers of one ask.
+    pub fn keep(&mut self, answers: &Answers) {
+        for (path, version) in answers {
+            let asked = Asked {
+                stamp: stamp(path),
+                at: Instant::now(),
+                version: version.clone(),
+            };
+            self.asked.insert(path.clone(), asked);
         }
-        let version = ask_version(path, wait, env).await;
-        let at = Instant::now();
-        let asked = Asked {
-            stamp: now,
-            at,
-            version: version.clone(),
-        };
-        self.asked.insert(path.to_owned(), asked);
-        version
+    }
+
+    /// The other copies of `copies` that answered when they were last asked, with their versions.
+    #[must_use]
+    pub fn answered_others(&self, path: &Path, copies: &[PathBuf]) -> Vec<(PathBuf, String)> {
+        copies
+            .iter()
+            .filter(|copy| copy.as_path() != path)
+            .filter_map(|copy| {
+                let version = self.asked.get(copy)?.version.clone()?;
+                Some((copy.clone(), version))
+            })
+            .collect()
     }
 
     /// A started thread: it waits for its first line of protocol.
@@ -117,6 +131,8 @@ impl Silence {
         let limit = chrono::Duration::from_std(FIRST_ANSWER).unwrap_or(chrono::Duration::MAX);
         let mut due = Vec::new();
         self.waiting
+            .retain(|id, _| threads.iter().any(|(thread, ..)| thread == id));
+        self.ending
             .retain(|id, _| threads.iter().any(|(thread, ..)| thread == id));
         for (id, state, started) in threads {
             if *state != RunState::Starting {
@@ -270,26 +286,24 @@ mod tests {
         std::fs::create_dir(&other).expect("a folder");
         let answers = script(&other, "codex", "echo 'codex-cli 0.169.0'");
         let env = vec![("PATH".to_owned(), "/usr/bin:/bin".to_owned())];
+        let copies = vec![silent.clone(), answers.clone()];
         let mut silence = Silence::default();
+        assert_eq!(silence.kept(&silent), None, "not asked yet");
         let started = Instant::now();
-        let answered = silence
-            .probe(&silent, &[silent.clone(), answers.clone()], &env)
-            .await
-            .expect_err("the first copy says nothing");
-        let words = not_answered(Program::Codex, &silent, &answered);
+        let asked = ask(silent.clone(), copies.clone(), env.clone()).await;
         assert!(started.elapsed() < PROBE_WAIT + Duration::from_secs(10));
+        silence.keep(&asked);
+        assert_eq!(silence.kept(&silent), Some(false), "kept, not asked again");
+        assert_eq!(silence.kept(&answers), Some(true));
+        let words = not_answered(
+            Program::Codex,
+            &silent,
+            &silence.answered_others(&silent, &copies),
+        );
         assert!(words.contains(&format!("The Codex at {}", silent.display())));
         assert!(words.contains(&format!("{} (codex-cli 0.169.0)", answers.display())));
-        let again = Instant::now();
-        assert!(
-            silence.probe(&silent, &[], &env).await.is_err(),
-            "the same words"
-        );
-        assert!(
-            again.elapsed() < Duration::from_secs(2),
-            "kept, not asked again"
-        );
-        assert!(silence.probe(&answers, &[], &env).await.is_ok());
+        let fine = ask(answers.clone(), copies, env).await;
+        assert_eq!(fine.len(), 1, "the others are asked only after a silence");
     }
 
     #[test]
@@ -301,7 +315,7 @@ mod tests {
             silence.started(id, Program::Codex, path.clone());
         }
         let now = chrono::Utc::now();
-        let old = now - chrono::Duration::minutes(6);
+        let old = now - chrono::Duration::minutes(11);
         let threads = [
             (late, RunState::Starting, old),
             (
@@ -315,7 +329,7 @@ mod tests {
         assert_eq!(silence.overdue(&threads, now), Vec::<Uuid>::new(), "once");
         let words = silence.ended(late).expect("words");
         assert!(
-            words.starts_with("The Codex at /opt/homebrew/bin/codex said nothing in 5 minutes")
+            words.starts_with("The Codex at /opt/homebrew/bin/codex said nothing in 10 minutes")
         );
         assert_eq!(silence.ended(working), None);
     }

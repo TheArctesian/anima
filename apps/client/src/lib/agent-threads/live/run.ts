@@ -281,6 +281,14 @@ function limitsFrom(limits: unknown): Outcome | null {
   return { outcome: 'limits', limits: { depth: limits.depth, children: limits.children, running: limits.running } };
 }
 
+function refusedFrom(value: unknown): Outcome | null {
+  if (!isRecord(value)) return null;
+  const why = oneOf<Refusal>(value.refusal, REFUSALS);
+  const said = str(value.said);
+  if (why === null) return null;
+  return said === null ? { outcome: 'refused', why } : { outcome: 'refused', why, said };
+}
+
 /** The result of a call, or `null` when it does not read. */
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
@@ -297,12 +305,8 @@ export function outcomeFrom(value: unknown): Outcome | null {
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
       return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
-    case 'refused': {
-      const why = isRecord(value.why) ? oneOf<Refusal>(value.why.refusal, REFUSALS) : null;
-      const said = isRecord(value.why) ? str(value.why.said) : null;
-      if (why === null) return null;
-      return said === null ? { outcome: 'refused', why } : { outcome: 'refused', why, said };
-    }
+    case 'refused':
+      return refusedFrom(value.why);
     default:
       return null;
   }

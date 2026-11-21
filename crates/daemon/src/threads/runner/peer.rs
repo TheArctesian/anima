@@ -36,21 +36,8 @@ fn holder_mark(holder_dir: &Path) -> String {
 type Commands = BTreeMap<u32, (u32, String)>;
 
 async fn commands() -> Option<Commands> {
-    let ps = ["/bin/ps", "/usr/bin/ps"]
-        .into_iter()
-        .find(|path| Path::new(path).exists())?;
-    let output = tokio::process::Command::new(ps)
-        .args(["-axww", "-o", "pid=,ppid=,command="])
-        .env_clear()
-        .env("LC_ALL", "C")
-        .kill_on_drop(true)
-        .output()
-        .await
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| table(&String::from_utf8_lossy(&output.stdout)))
+    let output = crate::threads::tree::ps_output(&["-axww", "-o", "pid=,ppid=,command="]).await?;
+    Some(table(&String::from_utf8_lossy(&output)))
 }
 
 /// The rows of `ps -axww -o pid=,ppid=,command=`; a line that does not read is left out.

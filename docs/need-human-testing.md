@@ -2777,8 +2777,9 @@ Result: Open.
 What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch
 `threads/start-health` (2026-11-21, overnight). Before a start, the runner asks the chosen copy of the program for
 its version (20 seconds). When it does not answer, the start is refused with words that name the program, its
-path, what to try, and each other copy that answered in 5 seconds. A started program that says nothing in 5
-minutes is ended with words of the same kind. When more than one copy is found, the thread says which one runs
+path, what to try, and each other copy that answered in 5 seconds. A started program that says nothing in 10
+minutes is ended with words of the same kind; until then the page shows "Waiting for the first answer of the
+program" with the time it waited and what the program does first. When more than one copy is found, the thread says which one runs
 and why. `anima agents start --program-path <path>` takes a different copy, only one the runner finds.
 What the tests did not cover: the real Codex; the page in a desktop window. On this Mac on 2026-11-21,
 `/opt/homebrew/bin/codex` (0.170.0) did not end even for `codex --version`; the Codex of ChatGPT.app (0.169.0)
@@ -2788,6 +2789,8 @@ answered at once.
    Homebrew does not answer: after about 20 seconds, "The Codex at /opt/homebrew/bin/codex did not answer in 20
    seconds. Run `/opt/homebrew/bin/codex --version` once in a terminal ..." and "A different copy answered:
    /Applications/ChatGPT.app/.../codex (codex-cli 0.169.0...)". No thread says "starting".
+   While a thread starts, its view on the page Threads says "Waiting for the first answer of the program: <time>"
+   and the time goes up each second.
 2. Run the same command again at once. Expected: the same words in less than 2 seconds.
 3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
    its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it

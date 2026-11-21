@@ -7,7 +7,8 @@ use crate::threads::wire::Action;
 impl Runner {
     /// Asks an older holder to end when no program of a thread runs, so that the daemon starts
     /// the holder of its own build on the next connection (TH98). The holder refuses while a
-    /// program runs; the runner asks again a minute later.
+    /// program runs; the runner asks again a minute later, also after a new connection, so that
+    /// nothing can make a loop of quick ends and starts.
     pub(in crate::threads::runner) async fn replace_older_holder(&mut self) {
         let asked = self
             .holder_quit
@@ -18,12 +19,19 @@ impl Runner {
         }
     }
 
-    /// The words of an older holder for the person, while it runs (TH98).
+    /// The words of a holder that is not of the build of this runner, while it runs (TH98).
     pub(in crate::threads::runner) fn holder_words(&self) -> Option<String> {
+        if self.holder_newer {
+            return Some(NEWER.to_owned());
+        }
         self.holder_older
             .then(|| older_holder(self.holder_fits, self.running()))
     }
 }
+
+/// The words when the daemon is older than the holder: an update replaced the file, and the
+/// daemon that runs is still the one before it.
+const NEWER: &str = "The daemon is older than the holder of the threads: an update replaced it and it did not start again yet, so no thread starts. Quit and open Anima, or restart the computer.";
 
 /// The words of an older holder: what it means and when it is replaced (TH98).
 #[must_use]

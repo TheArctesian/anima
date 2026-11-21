@@ -69,7 +69,8 @@ pub fn copies(
         })
         .filter(|folder| trusted(folder));
     let mut seen = std::collections::BTreeSet::new();
-    env.iter()
+    let found: Vec<PathBuf> = env
+        .iter()
         .find(|(name, _)| name == "PATH")
         .into_iter()
         .flat_map(|(_, path)| path.split(':').map(PathBuf::from))
@@ -80,6 +81,13 @@ pub fn copies(
         .filter(|candidate| {
             seen.insert(std::fs::canonicalize(candidate).unwrap_or_else(|_| candidate.clone()))
         })
+        .collect();
+    // The first copy is the one a terminal runs (THR-091). Each other copy can be asked for its
+    // version or named by a start, so its folder must be one no other user can write.
+    let mut each = found.into_iter();
+    each.next()
+        .into_iter()
+        .chain(each.filter(|copy| copy.parent().is_some_and(&trusted)))
         .collect()
 }
 

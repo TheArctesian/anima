@@ -50,18 +50,8 @@ pub async fn end_marked(thread: &str) -> Ended {
 /// `/proc/<pid>/environ` of this user can be read.
 #[cfg(target_os = "macos")]
 async fn carrying(thread: &str) -> Option<BTreeSet<u32>> {
-    let output = tokio::process::Command::new(tree::ps()?)
-        .args(["-axww", "-E", "-o", "pid=,command="])
-        .env_clear()
-        .env("LC_ALL", "C")
-        .kill_on_drop(true)
-        .output()
-        .await
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| marked_in(&String::from_utf8_lossy(&output.stdout), thread))
+    let output = tree::ps_output(&["-axww", "-E", "-o", "pid=,command="]).await?;
+    Some(marked_in(&String::from_utf8_lossy(&output), thread))
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -104,18 +94,8 @@ pub async fn mark_of(pid: u32) -> Option<bool> {
 
 #[cfg(target_os = "macos")]
 async fn environment_words(pid: u32) -> Option<Vec<String>> {
-    let output = tokio::process::Command::new(tree::ps()?)
-        .args(["-ww", "-E", "-o", "command=", "-p", &pid.to_string()])
-        .env_clear()
-        .env("LC_ALL", "C")
-        .kill_on_drop(true)
-        .output()
-        .await
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
+    let output = tree::ps_output(&["-ww", "-E", "-o", "command=", "-p", &pid.to_string()]).await?;
+    let text = String::from_utf8_lossy(&output);
     Some(text.split_whitespace().map(str::to_owned).collect())
 }
 

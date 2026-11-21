@@ -16,7 +16,6 @@ use crate::threads::wire::{
     self, Action, Event, Exit, Held, Line, Outcome as HolderOutcome, Refusal as HolderRefusal,
     Stream,
 };
-pub use older::older_holder;
 
 impl Runner {
     pub(super) async fn holder_event(&mut self, event: Event) {
@@ -44,8 +43,11 @@ impl Runner {
         self.holder_fits = version == wire::VERSION;
         // Compared with the file that a new holder would start from, so that a holder that a
         // new start would not change is never replaced (no loop of ends and starts).
+        // A holder of the same file is never older, also when its protocol differs: then this
+        // runner is the old one and ends with the next restart of the daemon.
         let next = wire::build_of(&self.program);
-        self.holder_older = !self.holder_fits || build != next.as_deref();
+        self.holder_older = next.is_some() && build != next.as_deref();
+        self.holder_newer = !self.holder_fits && !self.holder_older;
         if self.holder_older {
             tracing::warn!(
                 holder = version,

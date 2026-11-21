@@ -16,6 +16,34 @@ use super::{Runner, Waits, login};
 const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
+/// The starts whose copy is being asked for its version (TH97).
+pub(super) struct Asks {
+    pub sender: tokio::sync::mpsc::Sender<(u64, super::silence::Answers)>,
+    pub receiver: Option<tokio::sync::mpsc::Receiver<(u64, super::silence::Answers)>>,
+    open: std::collections::BTreeMap<u64, Asking>,
+    next: u64,
+}
+
+impl Default for Asks {
+    fn default() -> Self {
+        let (sender, receiver) = tokio::sync::mpsc::channel(16);
+        Self {
+            sender,
+            receiver: Some(receiver),
+            open: std::collections::BTreeMap::new(),
+            next: 0,
+        }
+    }
+}
+
+/// A start that waits for the answer of its copy.
+struct Asking {
+    new: NewThread,
+    back: Caller,
+    path: PathBuf,
+    copies: Vec<PathBuf>,
+}
+
 /// A new thread as the client named it.
 pub(super) struct NewThread {
     pub program: Program,
@@ -58,8 +86,10 @@ impl Runner {
     /// start its program; the answer goes to the client when the holder answers.
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
         if !self.holder_fits {
-            let said = super::holder_events::older_holder(false, self.running());
-            return Err(Refusal::HolderOlder { said });
+            return match self.holder_words() {
+                Some(said) => Err(Refusal::HolderOlder { said }),
+                None => Err(Refusal::Holder),
+            };
         }
         if self.running() >= self.limits.running {
             return Err(Refusal::OverLimit {
@@ -72,11 +102,74 @@ impl Runner {
         }
         let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
         let path = chosen_copy(new.program_path.as_deref(), &copies)?;
-        let env = login::with_folder_of(self.env.clone(), &path);
-        if let Err(answered) = self.silence.probe(&path, &copies, &env).await {
-            let said = super::silence::not_answered(new.program, &path, &answered);
-            return Err(Refusal::ProgramDoesNotAnswer { said });
+        match self.silence.kept(&path) {
+            Some(true) => {
+                let asking = Asking {
+                    new,
+                    back,
+                    path,
+                    copies,
+                };
+                self.start_checked(asking).await
+            }
+            Some(false) => Err(self.not_answered(new.program, &path, &copies)),
+            None => {
+                // The ask runs away from the loop; the start goes on when it answers (TH97).
+                let env = login::with_folder_of(self.env.clone(), &path);
+                let ask = super::silence::ask(path.clone(), copies.clone(), env);
+                let sender = self.asks.sender.clone();
+                let id = self.asks.next;
+                self.asks.next += 1;
+                self.asks.open.insert(
+                    id,
+                    Asking {
+                        new,
+                        back,
+                        path,
+                        copies,
+                    },
+                );
+                tokio::spawn(async move {
+                    // A runner that ended does not need the answer.
+                    let _ = sender.send((id, ask.await)).await;
+                });
+                Ok(())
+            }
         }
+    }
+
+    /// The answers of the copies for the start `id`: it goes on, or it is refused with words.
+    pub(super) async fn asked(&mut self, id: u64, answers: super::silence::Answers) {
+        self.silence.keep(&answers);
+        let Some(asking) = self.asks.open.remove(&id) else {
+            return;
+        };
+        let back = asking.back.clone();
+        let refusal = if self.silence.kept(&asking.path) == Some(true) {
+            self.start_checked(asking).await.err()
+        } else {
+            Some(self.not_answered(asking.new.program, &asking.path, &asking.copies))
+        };
+        if let Some(why) = refusal {
+            back.answer(super::holder_events::refused(why));
+        }
+    }
+
+    /// The refusal of a start whose copy did not answer, with the other copies that did.
+    fn not_answered(&self, program: Program, path: &Path, copies: &[PathBuf]) -> Refusal {
+        let others = self.silence.answered_others(path, copies);
+        let said = super::silence::not_answered(program, path, &others);
+        Refusal::ProgramDoesNotAnswer { said }
+    }
+
+    /// The start of a thread whose copy answered its version.
+    async fn start_checked(&mut self, asking: Asking) -> Result<(), Refusal> {
+        let Asking {
+            new,
+            back,
+            path,
+            copies,
+        } = asking;
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id, &path)?;
         let mut notice = crate::threads::notice::of_folder(&row.folder);

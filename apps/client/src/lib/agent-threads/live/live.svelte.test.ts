@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { askFrame, madeShell, saidFrame, stateFrame, THREAD } from './frames.fixture';
 import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from './live.svelte';
-import { TEXT_CHARS } from './timeline';
+import { TEXT_CHARS, waitingWords } from './timeline';
 import { OVER_LIMIT, outcomeFrom, type Outcome } from './run';
 
 const AWAY = { front: false, chosen: null };
@@ -102,6 +102,12 @@ describe('the calls of the page to the runner', () => {
   it('TH14: a refusal of the runner comes back in words', async () => {
     const live = new LiveThreads(madeShell(() => ({ outcome: 'refused', why: 'request_gone' })), () => AWAY);
     expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
+  });
+
+  it('TH97: a starting thread says what it waits for and for how long', () => {
+    const started = new Date('2026-11-21T10:00:00Z');
+    expect(waitingWords('claude_code', started, new Date('2026-11-21T10:00:42Z'))).toMatch(/^Waiting for the first answer of the program: 42 s\. Claude Code reads its sign-in first/);
+    expect(waitingWords('codex', started, new Date('2026-11-21T10:03:05Z'))).toContain('3 min 5 s. Codex loads its plugins first');
   });
 
   it('TH98: the words of an older holder show from the list and go when a stop leaves the list without them', async () => {
