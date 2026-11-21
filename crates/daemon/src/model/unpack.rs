@@ -18,9 +18,8 @@ use tar::EntryType;
 pub const MAX_BYTES: u64 = 8 << 30;
 pub const MAX_ENTRIES: usize = 50_000;
 
-/// The cause of an archive that breaks a rule of the unpack. Its SHA-256 was the one of the
-/// configuration, so the source holds a release that this program does not take.
-const BAD_ARCHIVE: Cause = Cause::ProgramMismatch;
+/// The cause of an archive that breaks a rule of the unpack (Section 5, R-NEW-archiverejected).
+const BAD_ARCHIVE: Cause = Cause::ArchiveRejected;
 
 fn open_dir(parent: &OwnedFd, name: &str, create: bool) -> io::Result<OwnedFd> {
     if create {
@@ -71,7 +70,7 @@ fn write_file<R: Read>(
 /// Unpacks `archive` into `into`, a new empty folder.
 ///
 /// # Errors
-/// `program_mismatch` for an entry that breaks a rule; `limit_disk` past a limit or for a
+/// `archive_rejected` for an entry that breaks a rule; `limit_disk` past a limit or for a
 /// write that fails.
 pub fn unpack(archive: File, into: &Path) -> Result<(), Cause> {
     let flags = OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::RDONLY | OFlags::CLOEXEC;

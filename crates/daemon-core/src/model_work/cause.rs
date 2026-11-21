@@ -41,6 +41,8 @@ pub enum Cause {
     ProbeFailed,
     LimitDisk,
     ProgramMismatch,
+    /// An archive of a runtime breaks a rule of the unpack (R-NEW-archiverejected).
+    ArchiveRejected,
 }
 
 impl Cause {
@@ -81,6 +83,7 @@ impl Cause {
             Self::ProbeFailed => "probe_failed",
             Self::LimitDisk => "limit_disk",
             Self::ProgramMismatch => "program_mismatch",
+            Self::ArchiveRejected => "archive_rejected",
         }
     }
 
@@ -102,6 +105,7 @@ impl Cause {
                 | Self::ProbeFailed
                 | Self::LimitDisk
                 | Self::ProgramMismatch
+                | Self::ArchiveRejected
         )
     }
 }

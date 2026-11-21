@@ -54,7 +54,7 @@ pub async fn install(release: &Release, place: &Place<'_>) -> Result<(), Cause> 
 /// Unpacks a verified `archive` and renames its folder into place.
 ///
 /// # Errors
-/// As [`unpack::unpack`]; `program_mismatch` when the archive has no program at the path of
+/// As [`unpack::unpack`]; `archive_rejected` when the archive has no program at the path of
 /// its entry.
 pub fn place_archive(
     archive: std::fs::File,
@@ -71,7 +71,7 @@ pub fn place_archive(
     unpack::unpack(archive, temporary.path())?;
     let program = temporary.path().join(&entry.program);
     if !std::fs::symlink_metadata(&program).is_ok_and(|meta| meta.is_file()) {
-        return Err(Cause::ProgramMismatch);
+        return Err(Cause::ArchiveRejected);
     }
     let target = folders.release(release);
     rename_into(temporary.path(), &target)?;

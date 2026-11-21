@@ -43,7 +43,7 @@ fn an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing() {
         let root = tempfile::tempdir().expect("a folder");
         let folders = folders(root.path());
         let refused = place_archive(archive(entries), &folders, &release(), &entry());
-        assert_eq!(refused, Err(Cause::ProgramMismatch), "case {index}");
+        assert_eq!(refused, Err(Cause::ArchiveRejected), "case {index}");
         assert!(!folders.release(&release()).exists(), "case {index}");
         assert!(!root.path().join("escape").exists());
     }

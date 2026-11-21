@@ -246,7 +246,9 @@ Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-25
 larger than `sizeBytes`), `source_failed` (the source refused or did not answer after the retries), `listener`
 (Section 9), `isolation_failed` (the daemon cannot make the isolation of Section 9), `limit_memory` (Section 9),
 `load_crash` (the server ended while it loaded a copy), `hash_mismatch` (Section 7), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
-no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file).
+no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file), `archive_rejected` (a
+`runtime_install` whose archive breaks a rule of the unpack of Section 6, or has no server program at the path of its
+release source entry; R-NEW-archiverejected).
 
 ## 6. The install of a runtime (CAG-008)
 
