@@ -94,3 +94,19 @@ export function readLink(): Promise<LinkResult<DeviceLinkStatus>> {
 export function leaveLink(): Promise<LinkResult<null>> {
   return call('link_leave', () => null);
 }
+
+/** The open ports of this computer (HMD-049): the local ports that its hub may reach through the link. */
+export interface OpenPorts {
+  readonly open: readonly number[];
+}
+
+/** The answer of `link_ports`, or `undefined` for anything that is not one. */
+export function openPortsOf(value: unknown): OpenPorts | undefined {
+  if (!isRecord(value) || !Array.isArray(value.open) || !value.open.every(isPort)) return undefined;
+  return { open: [...(value.open as number[])] };
+}
+
+/** The open ports of this computer; with `change`, after that port is turned on or off. Only the person changes them. */
+export function linkPorts(change?: { readonly port: number; readonly on: boolean }): Promise<LinkResult<OpenPorts>> {
+  return call('link_ports', openPortsOf, change === undefined ? {} : { port: change.port, on: change.on });
+}
