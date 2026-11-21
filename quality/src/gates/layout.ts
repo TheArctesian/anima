@@ -6,8 +6,14 @@ import type { Layout, Member } from "./tier.ts";
 function crates(root: string): Member[] {
   const run = Bun.spawnSync(["cargo", "metadata", "--no-deps", "--format-version", "1", "--locked"], { cwd: root });
   if (run.exitCode !== 0) throw new Error("cargo metadata failed: the fast tier cannot find the Rust packages");
-  const metadata = JSON.parse(run.stdout.toString()) as { packages: { name: string; manifest_path: string }[] };
-  return metadata.packages.map((each) => ({ name: each.name, folder: relative(root, dirname(each.manifest_path)) }));
+  const metadata = JSON.parse(run.stdout.toString()) as {
+    packages: { name: string; manifest_path: string; dependencies: { name: string; path?: string }[] }[];
+  };
+  return metadata.packages.map((each) => ({
+    name: each.name,
+    folder: relative(root, dirname(each.manifest_path)),
+    uses: each.dependencies.filter((dependency) => dependency.path !== undefined).map((dependency) => dependency.name),
+  }));
 }
 
 /** The folders that one workspace entry of `package.json` names: a folder, or `folder/*`. */
@@ -26,8 +32,14 @@ function packages(root: string): Member[] {
     .flatMap((entry) => workspaceFolders(root, entry))
     .filter((folder) => existsSync(join(root, folder, "package.json")))
     .map((folder) => {
-      const each = JSON.parse(readFileSync(join(root, folder, "package.json"), "utf8")) as { name?: string };
-      return { folder, name: each.name ?? folder };
+      const each = JSON.parse(readFileSync(join(root, folder, "package.json"), "utf8")) as {
+        name?: string;
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const versions = { ...each.dependencies, ...each.devDependencies };
+      const uses = Object.keys(versions).filter((name) => versions[name]?.startsWith("workspace:"));
+      return { folder, name: each.name ?? folder, uses };
     });
 }
 

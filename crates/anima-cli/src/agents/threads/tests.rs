@@ -55,6 +55,7 @@ fn thr_007_the_list_holds_the_sessions_of_both_programs_and_no_sub_agent() {
         .expect("a row");
     assert_eq!(claude.title.as_deref(), Some("Fix the login test"));
     assert_eq!(claude.folder.as_deref(), Some("/w/anima"));
+    assert_eq!(claude.tail, "open");
 }
 
 #[test]

@@ -38,6 +38,7 @@ const APP_COMMANDS: &[&str] = &[
     "this_machine_read",
     "daemon_bundled",
     "daemon_install",
+    "daemon_remove",
     "local_hub_carried",
     "local_hub_install",
     "local_hub_remove",

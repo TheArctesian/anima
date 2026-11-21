@@ -5,6 +5,7 @@
 
 mod flow;
 mod folders;
+mod removal;
 mod rig;
 mod trust;
 
