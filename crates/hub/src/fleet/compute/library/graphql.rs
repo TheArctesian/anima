@@ -8,11 +8,34 @@ mod types;
 use async_graphql::{Context, Error as GraphQlError, Object, Result};
 
 use self::types::AliasView;
-use super::{Error, HuggingFace, Missing, Model};
+use super::{Error, HuggingFace, Missing, Model, PublisherApproval};
 use crate::{
-    api_errors::{ErrorCode, begin, coded, commit, internal, invalid, pool},
-    fleet::{access::Authenticated, events::Trail},
+    api_errors::{ErrorCode, begin, coded, commit, internal, invalid, pool, schema_dependency},
+    fleet::{
+        access::Authenticated,
+        events::{ActorKind, Operator, TokenKind, Trail},
+    },
 };
+
+/// Whether the request comes from a person at a login or browser token: not an API key and
+/// not an agent (R-NEW-modellibrary).
+fn is_person(ctx: &Context<'_>) -> Result<bool> {
+    let actor = &schema_dependency::<Operator>(ctx)?.actor;
+    Ok(actor.kind() == ActorKind::User && actor.token() != Some(TokenKind::ApiKey))
+}
+
+/// Only a person changes the approved sources (R-NEW-modellibrary). The D-23 list keeps API
+/// keys out before this; this refuses an agent.
+fn person_only(ctx: &Context<'_>) -> Result<()> {
+    if is_person(ctx)? {
+        Ok(())
+    } else {
+        Err(coded(
+            "Only a person changes the approved model sources.",
+            ErrorCode::Forbidden,
+        ))
+    }
+}
 
 /// The GraphQL error with its `extensions.code`; the message holds no input value.
 fn to_graphql(error: Error) -> GraphQlError {
@@ -53,6 +76,14 @@ impl Query {
         }
     }
 
+    /// How the publisher of a base model gets onto the approved list (LIBM-003).
+    #[graphql(guard = "Authenticated")]
+    async fn model_publisher_approval(&self, ctx: &Context<'_>) -> Result<PublisherApproval> {
+        super::publisher_approval(pool(ctx)?)
+            .await
+            .map_err(to_graphql)
+    }
+
     /// The Hugging Face organisations from which a variant can come (LIBM-003).
     #[graphql(guard = "Authenticated")]
     async fn approved_model_sources(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
@@ -83,10 +114,11 @@ impl Mutation {
         let model = super::save(&mut tx, &read, trail.now)
             .await
             .map_err(to_graphql)?;
-        trail
-            .write(&mut tx, trail::model_added(&model, repository.trim()))
+        let widening = super::widen(&mut tx, &read, is_person(ctx)?, trail.now)
             .await
-            .map_err(internal)?;
+            .map_err(to_graphql)?;
+        let entry = trail::model_added(&model, repository.trim(), &widening);
+        trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
         Ok(model)
     }
@@ -117,6 +149,7 @@ impl Mutation {
         ctx: &Context<'_>,
         organisation: String,
     ) -> Result<Vec<String>> {
+        person_only(ctx)?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
         let added = super::add_source(&mut tx, &organisation, trail.now)
@@ -128,5 +161,26 @@ impl Mutation {
         }
         commit(tx).await?;
         super::sources(pool(ctx)?).await.map_err(to_graphql)
+    }
+
+    /// Changes how the publisher of a base model gets onto the approved list.
+    #[graphql(guard = "Authenticated")]
+    async fn set_model_publisher_approval(
+        &self,
+        ctx: &Context<'_>,
+        mode: PublisherApproval,
+    ) -> Result<PublisherApproval> {
+        person_only(ctx)?;
+        let trail = Trail::from_context(ctx)?;
+        let mut tx = begin(ctx).await?;
+        super::set_publisher_approval(&mut tx, mode)
+            .await
+            .map_err(to_graphql)?;
+        trail
+            .write(&mut tx, trail::approval_set(mode))
+            .await
+            .map_err(internal)?;
+        commit(tx).await?;
+        Ok(mode)
     }
 }

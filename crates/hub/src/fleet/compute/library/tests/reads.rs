@@ -7,7 +7,7 @@ use super::{MLX_CONFIG, Recorded};
 use crate::fleet::compute::library::{
     Capability, Error, Format, Refusal,
     naming::{self, Repository},
-    reading::{self, Known, Read},
+    reading::{self, Read},
 };
 
 fn approved() -> Vec<String> {
@@ -18,20 +18,15 @@ fn repository(text: &str) -> Repository {
     naming::repository(text).unwrap()
 }
 
-async fn read(fetch: &Recorded, text: &str, publisher: Option<&str>) -> Result<Read, Error> {
+async fn read(fetch: &Recorded, text: &str) -> Result<Read, Error> {
     let source = repository(text);
     let name = naming::proposed(&source);
-    let approved = approved();
-    let known = Known {
-        approved: &approved,
-        publisher,
-    };
-    reading::read(fetch, &source, name, known).await
+    reading::read(fetch, &source, name, &approved()).await
 }
 
 #[tokio::test]
 async fn a_gguf_repository_gives_the_facts_of_its_files() {
-    let read = read(&Recorded::default(), "unsloth/Qwen3-0.6B-GGUF", None)
+    let read = read(&Recorded::default(), "unsloth/Qwen3-0.6B-GGUF")
         .await
         .unwrap();
     assert_eq!(read.name, "qwen3-0.6b");
@@ -45,12 +40,15 @@ async fn a_gguf_repository_gives_the_facts_of_its_files() {
     assert_eq!(facts.shape.key_value_heads, Some(8));
     assert_eq!(facts.licence.as_deref(), Some("apache-2.0"));
     assert_eq!(facts.publisher.as_deref(), Some("Qwen"));
-    assert_eq!(facts.capabilities, vec![Capability::Chat]);
+    assert_eq!(
+        facts.capabilities,
+        vec![Capability::Chat, Capability::Tools]
+    );
 }
 
 #[tokio::test]
 async fn each_gguf_quantisation_is_a_variant_with_the_lfs_sha256() {
-    let read = read(&Recorded::default(), "unsloth/Qwen3-0.6B-GGUF", None)
+    let read = read(&Recorded::default(), "unsloth/Qwen3-0.6B-GGUF")
         .await
         .unwrap();
     assert_eq!(read.variants.len(), 26);
@@ -76,9 +74,7 @@ async fn each_gguf_quantisation_is_a_variant_with_the_lfs_sha256() {
 #[tokio::test]
 async fn an_mlx_repository_is_one_variant_and_a_small_file_is_hashed_by_the_hub() {
     let fetch = Recorded::default();
-    let read = read(&fetch, "mlx-community/Qwen3-0.6B-4bit", None)
-        .await
-        .unwrap();
+    let read = read(&fetch, "mlx-community/Qwen3-0.6B-4bit").await.unwrap();
     assert_eq!(read.name, "qwen3-0.6b");
     let [variant] = read.variants.as_slice() else {
         panic!("one variant")
@@ -101,20 +97,9 @@ async fn an_mlx_repository_is_one_variant_and_a_small_file_is_hashed_by_the_hub(
 #[tokio::test]
 async fn a_source_that_is_not_approved_is_refused_before_any_read() {
     let fetch = Recorded::default();
-    let refused = read(&fetch, "someone/Qwen3-0.6B-GGUF", None).await;
+    let refused = read(&fetch, "someone/Qwen3-0.6B-GGUF").await;
     assert!(matches!(refused, Err(Error::Refused(Refusal::NotApproved))));
     assert_eq!(fetch.reads(), 0);
-}
-
-#[tokio::test]
-async fn the_publisher_of_a_model_in_the_library_is_approved_for_it() {
-    let fetch = Recorded::default();
-    let refused = read(&fetch, "someone/Qwen3-0.6B-GGUF", Some("Qwen")).await;
-    assert!(matches!(refused, Err(Error::Refused(Refusal::NotApproved))));
-    let read = read(&fetch, "someone/Qwen3-0.6B-GGUF", Some("someone"))
-        .await
-        .unwrap();
-    assert_eq!(read.facts.publisher.as_deref(), Some("someone"));
 }
 
 #[test]

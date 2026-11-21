@@ -1,5 +1,5 @@
 -- The model library of the compute domain: the models, their variants and files, the aliases
--- and the approved sources (K2 1040-1059, waits for the ruling R-NEW-modellibrary; LIBM-001 to
+-- and the approved sources (K2 1040-1059, ruling R-NEW-modellibrary; LIBM-001 to
 -- LIBM-008, SEL-003).
 --
 -- `approved_sources` holds the Hugging Face organisations from which a variant can come
@@ -10,6 +10,9 @@
 -- repository and the commit its file list is from; `variant_files` holds each file with its
 -- size and its SHA-256 value, which a pull verifies (PULL-005, SEC-C-009). `aliases` points a
 -- name such as `coder` at one model; the hub refuses an alias that is the name of a model.
+--
+-- `library_settings` holds one row: how the publisher of a base model gets onto the approved
+-- list (`base_model`, the operator's choice, or `by_hand`; R-NEW-modellibrary).
 --
 -- Deleting a model deletes its variants, their files and its aliases.
 --
@@ -32,6 +35,17 @@ create unique index approved_sources_lower_idx on compute.approved_sources (lowe
 
 insert into compute.approved_sources (organisation, added_at)
 values ('unsloth', now()), ('mlx-community', now());
+
+create table compute.library_settings (
+    only_row boolean not null default true,
+    publisher_approval text not null,
+    constraint library_settings_pkey primary key (only_row),
+    constraint library_settings_only_row_check check (only_row),
+    constraint library_settings_publisher_approval_check
+        check (publisher_approval in ('base_model', 'by_hand'))
+);
+
+insert into compute.library_settings (publisher_approval) values ('base_model');
 
 create table compute.models (
     id uuid not null,
@@ -58,7 +72,7 @@ create table compute.models (
     ),
     -- Fixed identifiers of LIBM-008: never change the meaning of one; add a new one instead.
     constraint models_capabilities_check check (capabilities <@ array[
-        'chat', 'coding', 'reasoning', 'translation', 'summarization', 'text_classification',
+        'chat', 'tools', 'coding', 'reasoning', 'translation', 'summarization', 'text_classification',
         'structured_extraction', 'token_classification', 'image_generation', 'image_editing',
         'upscaling', 'image_classification', 'video_generation', 'video_editing',
         'video_understanding', 'video_classification', 'music_generation', 'audio_generation',

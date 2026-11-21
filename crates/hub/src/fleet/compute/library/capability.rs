@@ -13,6 +13,8 @@ use async_graphql::Enum;
 pub enum Capability {
     // Text
     Chat,
+    /// Calls tools that the request names (R-NEW-modellibrary).
+    Tools,
     Coding,
     Reasoning,
     Translation,
@@ -64,8 +66,9 @@ pub enum Capability {
 }
 
 /// Each tag with the text stored in `compute.models.capabilities`.
-const STORED: [(Capability, &str); 40] = [
+const STORED: [(Capability, &str); 41] = [
     (Capability::Chat, "chat"),
+    (Capability::Tools, "tools"),
     (Capability::Coding, "coding"),
     (Capability::Reasoning, "reasoning"),
     (Capability::Translation, "translation"),
@@ -178,7 +181,9 @@ const TASKS: [(&str, &[Capability]); 33] = [
 ];
 
 /// Repository tags that add a tag of their own to the task's tags.
-const REPOSITORY_TAGS: [(&str, Capability); 4] = [
+const REPOSITORY_TAGS: [(&str, Capability); 6] = [
+    ("tool-use", Capability::Tools),
+    ("function-calling", Capability::Tools),
     ("code", Capability::Coding),
     ("reasoning", Capability::Reasoning),
     ("ocr", Capability::Ocr),

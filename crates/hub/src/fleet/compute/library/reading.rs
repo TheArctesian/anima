@@ -23,13 +23,6 @@ pub struct Read {
     pub variants: Vec<Variant>,
 }
 
-/// What the library knows before the read.
-pub struct Known<'a> {
-    pub approved: &'a [String],
-    /// The publisher of the model of this name, when it is in the library already.
-    pub publisher: Option<&'a str>,
-}
-
 pub(super) fn hex(bytes: &[u8]) -> String {
     use std::fmt::Write as _;
     bytes.iter().fold(String::new(), |mut text, each| {
@@ -127,9 +120,9 @@ pub async fn read(
     fetch: &impl Fetch,
     source: &Repository,
     name: String,
-    known: Known<'_>,
+    approved: &[String],
 ) -> Result<Read, Error> {
-    if !naming::is_approved(&source.organisation, known.approved, known.publisher) {
+    if !naming::is_approved(&source.organisation, approved) {
         return Err(Error::Refused(Refusal::NotApproved));
     }
     let full = source.full();
@@ -156,13 +149,10 @@ pub async fn read(
     {
         return Err(Error::Refused(Refusal::NoVariant));
     }
-    // A publisher comes only from the card of a repository in the approved list: a
-    // repository cannot approve its own organisation by naming it as its base.
-    let in_list = naming::is_approved(&source.organisation, known.approved, None);
-    let publisher = known
-        .publisher
-        .map(str::to_owned)
-        .or_else(|| in_list.then(|| listing.base_organisation()).flatten())
+    // The publisher is the organisation of the base model on the card. The source is in the
+    // approved list, so a repository outside the list never names one.
+    let publisher = listing
+        .base_organisation()
         .filter(|organisation| naming::organisation("publisher", organisation).is_ok());
     Ok(Read {
         name,

@@ -20,7 +20,7 @@ pub enum ModelCommand {
     Add(add::AddArgs),
     /// Point an alias, such as coder, at a model.
     Alias(alias::AliasArgs),
-    /// The approved organisations of the sources (list, add).
+    /// The approved organisations of the sources (list, add, mode).
     #[command(subcommand)]
     Source(source::SourceCommand),
 }

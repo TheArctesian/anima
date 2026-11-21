@@ -136,13 +136,10 @@ pub fn proposed(repository: &Repository) -> String {
 }
 
 /// Whether a variant from the repository's organisation can be added: the organisation is in
-/// the approved list, or it is the model publisher (LIBM-003). Hugging Face compares
-/// organisation names without case.
+/// the approved list (LIBM-003). Hugging Face compares organisation names without case.
 #[must_use]
-pub fn is_approved(organisation: &str, approved: &[String], publisher: Option<&str>) -> bool {
+pub fn is_approved(organisation: &str, approved: &[String]) -> bool {
     approved
         .iter()
-        .map(String::as_str)
-        .chain(publisher)
         .any(|each| each.eq_ignore_ascii_case(organisation))
 }

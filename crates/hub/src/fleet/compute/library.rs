@@ -11,6 +11,7 @@ mod fetch;
 pub mod graphql;
 mod model;
 mod naming;
+mod publisher;
 mod reading;
 mod repository;
 mod store;
@@ -26,6 +27,7 @@ use crate::api_errors::{FieldError, field_names};
 pub use capability::Capability;
 pub use fetch::{Fetch, FetchError, HuggingFace};
 pub use model::{Alias, Facts, Format, LayerShape, Missing, Model, Refusal, Variant, VariantFile};
+pub use publisher::{PublisherApproval, Widening};
 pub use reading::Read;
 
 /// Why a library operation failed.
@@ -112,25 +114,18 @@ pub async fn read(
         Some(text) => naming::name("name", text).map_err(invalid)?,
         None => naming::name("name", &naming::proposed(&source)).map_err(invalid)?,
     };
-    let approved = store::sources(db).await?;
-    let existing = match get(db, &name).await {
-        Ok(model) if model.name == name => Some(model),
-        Ok(_) => {
+    match get(db, &name).await {
+        Ok(model) if model.name != name => {
             return Err(invalid(FieldError::new(
                 "name",
                 "The name is an alias. Use a different name.",
             )));
         }
-        Err(Error::NotFound(_)) => None,
+        Ok(_) | Err(Error::NotFound(_)) => {}
         Err(other) => return Err(other),
-    };
-    let known = reading::Known {
-        approved: &approved,
-        publisher: existing
-            .as_ref()
-            .and_then(|model| model.facts.publisher.as_deref()),
-    };
-    reading::read(fetch, &source, name, known).await
+    }
+    let approved = store::sources(db).await?;
+    reading::read(fetch, &source, name, &approved).await
 }
 
 /// Stores what [`read`] gave: the model, and each variant in place of a variant of the same
@@ -178,4 +173,44 @@ pub async fn set_alias(
         .ok_or(Error::NotFound(Missing::Model))?;
     let before = store::set_alias(conn, &alias, id).await?;
     Ok((Alias { alias, model: name }, before))
+}
+
+/// The hub setting of the publisher approval (LIBM-003).
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn publisher_approval(db: &PgPool) -> Result<PublisherApproval, Error> {
+    store::publisher_approval(db).await
+}
+
+/// Changes the hub setting of the publisher approval.
+///
+/// # Errors
+/// `Database` when the write fails.
+pub async fn set_publisher_approval(
+    conn: &mut PgConnection,
+    mode: PublisherApproval,
+) -> Result<(), Error> {
+    store::set_publisher_approval(conn, mode).await
+}
+
+/// Adds the publisher of the model that [`read`] gave to the approved list, when the setting
+/// and the actor permit it (R-NEW-modellibrary). `person` is false for an API key or an agent.
+/// Returns what it did, for the audit entry.
+///
+/// # Errors
+/// `Database` when a query or the write fails.
+pub async fn widen(
+    conn: &mut PgConnection,
+    read: &Read,
+    person: bool,
+    now: DateTime<Utc>,
+) -> Result<Widening, Error> {
+    let mode = store::publisher_approval(&mut *conn).await?;
+    let approved = store::sources(&mut *conn).await?;
+    let widening = publisher::widening(mode, person, read.facts.publisher.as_deref(), &approved);
+    if let Widening::Add(organisation) = &widening {
+        store::add_source(conn, organisation, now).await?;
+    }
+    Ok(widening)
 }

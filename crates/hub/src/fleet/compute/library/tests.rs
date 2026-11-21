@@ -5,6 +5,7 @@
 
 mod aliases;
 mod reads;
+mod widening;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 

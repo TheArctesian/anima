@@ -10,7 +10,7 @@ The hub groups its domains under parent nouns so `crates/hub/src/` stays within 
 
 | Group | Modules |
 | --- | --- |
-| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces`; `compute` (folder `compute/`, part `library`; waits for the ruling R-NEW-modellibrary) |
+| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces`; `compute` (folder `compute/`, part `library`; R-NEW-modellibrary) |
 
 The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/plans/extensions-plan.md`) are added by the task that adds their first code.
 
@@ -212,7 +212,7 @@ are private to `events`.
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
 | `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
-| `compute` (compute plan L1-4, new; waits for the ruling R-NEW-modellibrary) | `events` (`Trail`; the audit target is the setting `compute.library`), `access` (`Authenticated` only, in `library/graphql.rs`) |
+| `compute` (compute plan L1-4, new; R-NEW-modellibrary) | `events` (`Trail`; the audit target is the setting `compute.library`), `access` (`Authenticated` only, in `library/graphql.rs`) |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
 | `notifications` (Phase 3, new) | `events`, `credentials` (`Vault`, `Secret`, `Sealed` only) |
@@ -591,7 +591,7 @@ pub async fn for_devices(db: &Db, devices: &[DeviceId]) -> Result<HashMap<Device
 pub async fn suggestions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Suggestion>>, Error>;
 ```
 
-## compute (compute plan L1-4; waits for the ruling R-NEW-modellibrary)
+## compute (compute plan L1-4; R-NEW-modellibrary)
 
 The part `compute/library/` keeps the model library (LIBM-001 to LIBM-009, SEL-003). It reads a Hugging Face repository through the trait `Fetch` (the I/O edge, `HuggingFace` in production). No other domain imports it now.
 

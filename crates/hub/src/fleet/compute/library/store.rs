@@ -16,6 +16,7 @@ use super::{
     Error,
     capability::Capability,
     model::{Facts, Format, LayerShape, Model, Variant, VariantFile},
+    publisher::PublisherApproval,
 };
 
 /// The approved organisations in name order.
@@ -42,6 +43,28 @@ pub(super) async fn add_source(
     .execute(conn)
     .await?;
     Ok(added.rows_affected() == 1)
+}
+
+/// The hub setting of the publisher approval; the migration stores its one row.
+pub(super) async fn publisher_approval(
+    db: impl PgExecutor<'_>,
+) -> Result<PublisherApproval, Error> {
+    let text: String =
+        sqlx::query_scalar("SELECT publisher_approval FROM compute.library_settings")
+            .fetch_one(db)
+            .await?;
+    PublisherApproval::from_stored(&text).ok_or(Error::Unreadable)
+}
+
+pub(super) async fn set_publisher_approval(
+    conn: &mut PgConnection,
+    mode: PublisherApproval,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE compute.library_settings SET publisher_approval = $1")
+        .bind(mode.as_str())
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 /// The id and the name of the model with this name or alias.

@@ -56,6 +56,8 @@ pub struct GgufSummary {
     pub total: Option<u64>,
     pub architecture: Option<String>,
     pub context_length: Option<u32>,
+    /// The chat template of the files; a template that reads `tools` takes tool calls.
+    pub chat_template: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,6 +107,22 @@ impl Listing {
             .map(|(organisation, _)| organisation.to_owned())
     }
 
+    /// The tags of the task and the repository, and `Tools` when the chat template of the GGUF
+    /// files reads the tools of a request (LIBM-005).
+    fn capabilities(&self) -> Vec<capability::Capability> {
+        let mut found = capability::from_repository(self.pipeline_tag.as_deref(), &self.tags);
+        let template = self
+            .gguf
+            .as_ref()
+            .and_then(|each| each.chat_template.as_deref());
+        if template.is_some_and(|text| text.contains("tools")) {
+            found.push(capability::Capability::Tools);
+            found.sort();
+            found.dedup();
+        }
+        found
+    }
+
     fn licence(&self) -> Option<String> {
         let from_card = match &self.card.license {
             Some(Value::String(text)) => Some(text.clone()),
@@ -137,7 +155,7 @@ impl Listing {
                 .and_then(ModelConfig::context_length)
                 .or_else(|| gguf.and_then(|each| each.context_length)),
             shape: config.map_or_else(LayerShape::default, ModelConfig::shape),
-            capabilities: capability::from_repository(self.pipeline_tag.as_deref(), &self.tags),
+            capabilities: self.capabilities(),
             licence: self.licence(),
             publisher,
         }

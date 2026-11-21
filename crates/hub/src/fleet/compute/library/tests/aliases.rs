@@ -91,3 +91,42 @@ async fn the_operator_adds_an_approved_source(pool: PgPool) {
             .is_ok()
     );
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_person_widens_the_list_and_an_agent_does_not(pool: PgPool) {
+    assert_eq!(
+        library::publisher_approval(&pool).await.unwrap(),
+        library::PublisherApproval::BaseModel
+    );
+    let read = library::read(&pool, &Recorded::default(), "unsloth/Qwen3-0.6B-GGUF", None)
+        .await
+        .unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    let agent = library::widen(&mut conn, &read, false, now())
+        .await
+        .unwrap();
+    assert_eq!(agent, library::Widening::Withheld("Qwen".to_owned()));
+    assert_eq!(library::sources(&pool).await.unwrap().len(), 2);
+    let person = library::widen(&mut conn, &read, true, now()).await.unwrap();
+    assert_eq!(person, library::Widening::Add("Qwen".to_owned()));
+    assert!(
+        library::sources(&pool)
+            .await
+            .unwrap()
+            .contains(&"Qwen".to_owned())
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn the_by_hand_mode_keeps_the_list(pool: PgPool) {
+    let mut conn = pool.acquire().await.unwrap();
+    library::set_publisher_approval(&mut conn, library::PublisherApproval::ByHand)
+        .await
+        .unwrap();
+    let read = library::read(&pool, &Recorded::default(), "unsloth/Qwen3-0.6B-GGUF", None)
+        .await
+        .unwrap();
+    let person = library::widen(&mut conn, &read, true, now()).await.unwrap();
+    assert_eq!(person, library::Widening::Nothing);
+    assert_eq!(library::sources(&pool).await.unwrap().len(), 2);
+}

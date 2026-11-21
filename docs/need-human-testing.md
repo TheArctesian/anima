@@ -2654,21 +2654,22 @@ Result: Open.
 
 ### HT-NEW-modellibrary: the model library on a real hub (compute plan L1-4)
 
-Branch `compute/l1-4`. The tests read recorded answers of Hugging Face; the tests that need PostgreSQL (the alias
-change, the stored files, the approved sources) and the contract test of the hub did not run on the builder's
-machine, because DATABASE_URL was not set. No person ran the commands against a hub that reads Hugging Face.
+Branch `compute/l1-4`. On 2026-11-20 the build session ran the database tests with the throwaway PostgreSQL of the
+gates: the 14 tests of `fleet::compute::library` (the alias change, the stored files, the approved sources, the
+publisher approval by setting and actor), the 10 key-root tests, the 24 contract tests of the hub and the 500 tests of
+`anima-cli` (the end-to-end tests too) pass. The tests read recorded answers of Hugging Face. No person ran the
+commands against a hub that reads Hugging Face live.
 
-1. Run the gates with PostgreSQL (`bun run gates`).
-   Expected: `fleet::compute::library::tests` and the contract test of the hub pass.
-2. Run `anima model add unsloth/Qwen3-0.6B-GGUF`, then `anima model list`.
-   Expected: about 26 variants, for example `qwen3-0.6b:q4_k_m`, each with a size.
-3. Run `anima model show qwen3-0.6b --json`.
-   Expected: the context length 40960, 28 layers, the publisher `Qwen`, and a 64-digit SHA-256 value for each file.
-4. Run `anima model add someone-else/Qwen3-0.6B-GGUF`.
-   Expected: a refusal on `repository` that names the approved sources; the hub sends no request to Hugging Face.
-5. Run `anima model alias fast qwen3-0.6b`, add a second model, and run `anima model alias fast <second model>`.
-   Expected: `anima model show fast` shows the second model.
-6. Ask an agent to call `anima_model_list` and `anima_model_show`.
-   Expected: the same facts as steps 2 and 3.
+1. Run `anima model add unsloth/Qwen3-0.6B-GGUF` as a person, then `anima model list`.
+   Expected: about 26 variants, for example `qwen3-0.6b:q4_k_m`, each with a size; `anima model source list` now
+   shows `Qwen` (the publisher of the base model).
+2. Run `anima model show qwen3-0.6b --json`.
+   Expected: the context length 40960, 28 layers, the tags CHAT and TOOLS, and a 64-digit SHA-256 value for each file.
+3. Run `anima model add someone-else/Qwen3-0.6B-GGUF`.
+   Expected: a refusal on `repository`; the hub sends no request to Hugging Face.
+4. With an API key, run `anima model source add bartowski`.
+   Expected: FORBIDDEN.
+5. Ask an agent to call `anima_model_list` and `anima_model_show`.
+   Expected: the same facts as steps 1 and 2.
 
 Result: Open.
