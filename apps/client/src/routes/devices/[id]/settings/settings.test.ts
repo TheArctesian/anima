@@ -108,14 +108,16 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-describe('settings tab (D-7, DEV-014)', () => {
+describe('settings tab of the hub\'s own device (HMD-045)', () => {
   it('HMD-045: the hub\'s own device has no SSH, VNC or RDP row, only why', async () => {
     await show(answers({ Device: { device: device({ kind: 'hub' }) } }), '?tab=settings');
     const connections = document.querySelector('[data-section="device-settings-connections"]');
     expect(connections?.querySelector('[data-connection]')).toBeNull();
     expect(connections?.textContent).toContain('No session reaches the container of the hub');
   });
+});
 
+describe('settings tab (D-7, DEV-014)', () => {
   it('DEV-014: Cancel and Escape do not delete; confirming deletes once and goes to the list', async () => {
     const fake = await show(answers({ DeleteDevice: { deleteDevice: ID } }), '?tab=settings');
     button('Delete device').click();
