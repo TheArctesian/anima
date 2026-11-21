@@ -4,7 +4,7 @@ import { cpus, loadavg } from "node:os";
 import { compileCache } from "../src/gates/cache.ts";
 import { formatGateEvent, gateList, GROUPS, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
 import { changedGates } from "../src/gates/changed.ts";
-import { EACH_JOB, jobLines, jobsFor } from "../src/gates/jobs.ts";
+import { devPushJobs, EACH_JOB, jobLines, jobsFor } from "../src/gates/jobs.ts";
 import { changedPaths, readLayout } from "../src/gates/layout.ts";
 import { choose, describeChoice, fastGates, isBusy, macOnly } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
@@ -46,6 +46,37 @@ if (process.argv[2] === "--alone") {
 if (process.argv[2] === "--jobs") {
   const paths = changedPaths(REPO_ROOT, process.env["FAST_BASE"] || "origin/dev");
   for (const line of jobLines(paths === undefined ? EACH_JOB : jobsFor(paths))) console.log(line);
+  process.exit(0);
+}
+
+/** The tree of `commit` here, or undefined when the commit is not here. */
+function treeOf(commit: string): string | undefined {
+  const done = Bun.spawnSync(["git", "rev-parse", "--verify", "--quiet", `${commit}^{tree}`], { cwd: REPO_ROOT });
+  return done.exitCode === 0 ? done.stdout.toString().trim() : undefined;
+}
+
+/** Each tree whose gates passed as it is: a run on `dev` or on a train (`gh` signed in), with the run. */
+function provedTrees(): Map<string, number> {
+  const fields = "databaseId,headBranch,headSha,status,conclusion";
+  const listed = Bun.spawnSync(["gh", "run", "list", "--workflow", "gates.yml", "--limit", "400", "--json", fields], { cwd: REPO_ROOT });
+  if (listed.exitCode !== 0) return new Map();
+  const runs = JSON.parse(listed.stdout.toString()) as { databaseId: number; headBranch: string; headSha: string; status: string; conclusion: string | null }[];
+  const asItIs = runs.filter((run) => (run.headBranch === "dev" || run.headBranch.startsWith("train/")) && run.status === "completed" && run.conclusion === "success");
+  return new Map(asItIs.flatMap((run) => { const tree = treeOf(run.headSha); return tree === undefined ? [] : [[tree, run.databaseId] as const]; }));
+}
+
+// `--dev-push <before>`: the jobs of a push to `dev` from the commit `before` (devPushJobs), as
+// lines for `$GITHUB_OUTPUT`; the reason goes to standard error.
+if (process.argv[2] === "--dev-push") {
+  const before = process.argv[3] ?? "";
+  const tree = treeOf("HEAD") ?? "";
+  const beforeTree = before === "" ? undefined : treeOf(before);
+  const diff = Bun.spawnSync(["git", "diff", "--name-only", "-z", before, "HEAD"], { cwd: REPO_ROOT });
+  const changed = beforeTree === undefined || diff.exitCode !== 0 ? undefined : diff.stdout.toString().split("\0").filter((path) => path !== "");
+  const push = { tree, proved: provedTrees(), ...(beforeTree !== undefined && changed !== undefined ? { before: { tree: beforeTree, changed } } : {}) };
+  const chosen = devPushJobs(push);
+  console.error(`jobs of this push to dev: ${chosen.reason}`);
+  for (const line of jobLines(chosen.jobs, chosen.provedBy)) console.log(line);
   process.exit(0);
 }
 
