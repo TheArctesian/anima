@@ -11,11 +11,14 @@ mod update;
 mod write;
 
 pub use assess::{Assessment, assess};
-pub use update::{Change, reviewed, update};
+pub use update::{Change, reviewed, tested, update};
 
 use serde::Deserialize;
 
-use crate::{Code, Finding, Recipe, check, entry::Reviewed};
+use crate::{
+    Finding, Recipe, check,
+    entry::{MachineTest, Reviewed},
+};
 
 /// The fleet list cannot be read.
 #[derive(Debug, thiserror::Error)]
@@ -164,8 +167,11 @@ pub struct Pin {
 /// What the catalogue holds already for the recipe that the form makes.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Existing<'a> {
-    /// The read of the recipe that exists (SF-NEW-revlsreview), which the form keeps.
+    /// The review state of the recipe that exists (SF-NEW-revlsreview), which the form keeps.
     pub reviewed: Option<&'a Reviewed>,
+    /// The last test on a machine of the recipe that exists. The form keeps a pass only for
+    /// the same digest.
+    pub tested: Option<&'a MachineTest>,
     /// The ports of the machine that the other recipes of the catalogue publish.
     pub taken: &'a [u16],
 }
@@ -254,20 +260,16 @@ impl Unfit {
 /// below 1024 moves up by 8000; each port is on `127.0.0.1` with its protocol.
 ///
 /// A port of the machine that a different recipe of the catalogue publishes moves to the next
-/// free port, so that two entries can run on one machine. The entry keeps `reviewed`, the read
-/// of the recipe that exists. A recipe that no one read yet
-/// is made all the same, and the static test of the catalogue refuses it until a person or an
-/// agent reads it and writes `reviewed` (SF-NEW-revlsreview).
+/// free port, so that two entries can run on one machine. The entry keeps the review state of
+/// the recipe that exists, else it is `not-reviewed` (SF-NEW-revlsreview). It keeps a passed
+/// test on a machine only when the test ran with the same digest; else it is `not-tested`.
 ///
 /// # Errors
 /// The [`Unfit`] reason of the first need that the rules refuse.
 pub fn recipe(image: &Image, pin: &Pin, existing: Existing<'_>) -> Result<Recipe, Unfit> {
     let plan = plan::plan(image, existing.taken)?;
-    let made = write::recipe(image, &plan, pin, existing.reviewed);
-    let findings: Vec<Finding> = check(&made)
-        .into_iter()
-        .filter(|finding| finding.code != Code::NotReviewed)
-        .collect();
+    let made = write::recipe(image, &plan, pin, existing);
+    let findings = check(&made);
     if findings.is_empty() {
         Ok(made)
     } else {

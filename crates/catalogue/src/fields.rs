@@ -5,7 +5,7 @@ use compose_rules::forms::{is_name, is_target};
 
 use crate::{
     Code,
-    entry::{Anima, Class, Entry, MachineTest, Mark, Optional},
+    entry::{Anima, Class, Entry, MachineTest, Mark, Optional, Reviewed},
 };
 
 /// The name of the Compose file in a recipe folder.
@@ -72,11 +72,10 @@ pub(crate) fn check(entry: &Entry, folder: &str) -> Vec<Code> {
         .origin
         .as_ref()
         .map(|origin| origin.read.as_str());
-    let reviewed = entry
-        .anima
-        .reviewed
-        .as_ref()
-        .map(|reviewed| reviewed.on.as_str());
+    let reviewed = match &entry.anima.reviewed {
+        Some(Reviewed::Reviewed { on, .. }) => Some(on.as_str()),
+        Some(Reviewed::NotReviewed) | None => None,
+    };
     let dates = std::iter::once(entry.anima.pinned.as_str())
         .chain(read)
         .chain(reviewed)
@@ -95,12 +94,50 @@ pub(crate) fn check(entry: &Entry, folder: &str) -> Vec<Code> {
     codes
 }
 
-/// The codes of the optional parts, of the class and of the read of `anima`.
+/// The words that name an agent, a session or a program, not a person.
+const NOT_A_PERSON: [&str; 7] = [
+    "agent",
+    "claude",
+    "automated",
+    "session",
+    "orchestrator",
+    "subagent",
+    "local_",
+];
+/// The shortest run of hexadecimal digits that is taken for the identifier of an agent.
+const LONGEST_HEX: usize = 12;
+
+/// True when `by` can be the name of a person: not empty, and with no word of an agent, a
+/// session or a program, no word `bot`, and no long run of hexadecimal digits (SF-NEW-revlsreview).
+fn is_person(by: &str) -> bool {
+    let lower = by.to_lowercase();
+    let mut run = 0;
+    let longest_hex = lower.chars().fold(0, |longest, character| {
+        run = if character.is_ascii_hexdigit() {
+            run + 1
+        } else {
+            0
+        };
+        longest.max(run)
+    });
+    let bot = lower
+        .split(|character: char| !character.is_alphanumeric())
+        .any(|word| word == "bot" || word == "bots");
+    !lower.trim().is_empty()
+        && !NOT_A_PERSON.iter().any(|word| lower.contains(word))
+        && !bot
+        && longest_hex < LONGEST_HEX
+}
+
+/// The codes of the optional parts, of the class and of the review of `anima`.
 fn parts(anima: &Anima) -> Vec<Code> {
     let mut codes = Vec::new();
-    let unread = (anima.reviewed.as_ref()).is_none_or(|reviewed| reviewed.by.trim().is_empty());
-    if anima.origin.is_some() && unread {
-        codes.push(Code::NotReviewed);
+    match &anima.reviewed {
+        None if anima.origin.is_some() => codes.push(Code::NotReviewed),
+        Some(Reviewed::Reviewed { by, .. }) if !is_person(by) => {
+            codes.push(Code::ReviewerNotPermitted);
+        }
+        _ => {}
     }
     let devices = anima.optional.iter().all(|part| match part {
         Optional::Device { path } => path.starts_with("/dev/") && is_target(path),

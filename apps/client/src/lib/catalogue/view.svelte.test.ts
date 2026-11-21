@@ -57,6 +57,11 @@ it('H39: the catalogue is read when the operator first opens it, in groups by ca
   expect(shell).toContain('Shell');
   expect(shell).toContain('Needs a password that the machine makes. It has no public route.');
   expect(shell).toContain('Not reviewed');
+  row('code-server')?.click();
+  flushSync();
+  const about = document.querySelector('section[aria-label="About code-server"]')?.textContent ?? '';
+  expect(about).toContain('No person has read the settings of this entry. Read them before you install it.');
+  expect(about).toContain('Not reviewed');
   expect(row('jellyfin')?.textContent).not.toContain('Not reviewed');
   expect(row('PostgreSQL')?.textContent).not.toContain('reviewed');
 });
@@ -83,7 +88,8 @@ it('H39: the description gives the stream with its protocols and the optional pa
   flushSync();
   const about = document.querySelector('section[aria-label="About jellyfin"]');
   expect(about?.textContent).toContain('From LinuxServer.io, data of 2026-11-17. Anima did not test it.');
-  expect(about?.textContent).toContain('Reviewed by security reviewer agent on 2026-11-21');
+  expect(about?.textContent).toContain('Reviewed by Ada Lovelace on 2026-11-21');
+  expect(about?.textContent).not.toContain('No person has read');
   expect(about?.textContent).toContain('7359TCP and UDP');
   expect(about?.textContent).toContain('Off by default');
   expect(about?.textContent).toContain('Needs machine setting');

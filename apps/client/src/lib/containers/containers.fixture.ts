@@ -87,7 +87,7 @@ export const UPDATES: readonly ImageUpdate[] = [
 const GENERATED = {
   tier: 'GENERATED',
   origin: { publisher: 'LinuxServer.io', read: '2026-11-17' },
-  reviewedBy: 'security reviewer agent',
+  reviewedBy: 'Ada Lovelace',
   reviewedOn: '2026-11-21',
   install: { refusal: 'GENERATED_NEEDS_DIGEST', reason: 'Anima did not test this entry: it is generated from the data of its publisher. To install it, a person confirms the digest of its image.', needsOpenToNetwork: false },
 } as const;

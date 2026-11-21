@@ -9,7 +9,7 @@ const OPTION: &str = "    security_opt:";
 const REVIEWED: &str =
     r#""marks": [], "exceptions": [{ "exception": "reviewed-command", "services": ["notes"] }]"#;
 const ORIGIN: &str = r#""origin": { "from": "linuxserver", "read": "2026-11-17" },
-    "reviewed": { "by": "a person", "on": "2026-11-21" }, "marks""#;
+    "reviewed": { "state": "not-reviewed" }, "marks""#;
 
 /// [`sound`] with `lines` before the `security_opt` of its service.
 fn with_lines(lines: &str) -> Recipe {
@@ -88,6 +88,9 @@ fn sf_revlsform_an_interpreter_with_code_in_a_word_needs_a_reviewed_command() {
         "    command: [\"bun\", \"-e\", \"Bun.spawn()\"]",
         "    command: [\"/usr/bin/gawk\", \"BEGIN{system(\\\"x\\\")}\"]",
         "    command: [\"awk\", \"BEGIN { system (1) }\"]",
+        "    command: [\"mawk\", \"BEGIN { print 1 | \\\"sh\\\" }\"]",
+        "    command: [\"nawk\", \"BEGIN { \\\"id\\\" | getline x }\"]",
+        "    command: [\"gawk\", \"BEGIN{getline<\\\"/etc/x\\\"}\"]",
     ] {
         let recipe = with_lines(lines);
         assert_eq!(codes(&recipe), refused(Privilege::ShellCommand), "{lines}");

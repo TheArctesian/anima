@@ -88,7 +88,10 @@ export function tierFact(entry: Pick<CatalogueEntry, 'origin' | 'lastMachineTest
   return `Written and read by the Anima project. ${machineTest(entry)}.`;
 }
 
-/** True for a generated entry that no person or agent read: the list and the description say so. */
+/** What "Not reviewed" means for the person, in one sentence that the description shows. */
+export const UNREVIEWED_NOTE = 'No person has read the settings of this entry. Read them before you install it.';
+
+/** True for a generated entry that no person reviewed: the list and the description say so. */
 export function unreviewed(entry: Pick<CatalogueEntry, 'origin' | 'reviewedBy'>): boolean {
   return entry.origin !== null && entry.reviewedBy === null;
 }

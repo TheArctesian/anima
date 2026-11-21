@@ -21,8 +21,11 @@ const INLINE: [(&str, &str, &[&str]); 9] = [
 ];
 /// The interpreters whose subcommand `eval` runs code given in a word.
 const EVAL: [&str; 1] = ["deno"];
-/// The versions of awk: a program that calls `system` runs a command.
+/// The versions of awk: a program that calls `system`, reads with `getline` or writes to or
+/// reads from a pipe `|` runs a command.
 const AWK: [&str; 4] = ["awk", "gawk", "mawk", "nawk"];
+/// The parts of an awk program that run a command.
+const AWK_COMMAND: [&str; 3] = ["system", "getline", "|"];
 /// The variables of the init of `LinuxServer` that get or install code at the start.
 const MODS: [&str; 3] = ["DOCKER_MODS", "INSTALL_PACKAGES", "INSTALL_PIP_PACKAGES"];
 
@@ -110,7 +113,7 @@ fn program(word: &str) -> &str {
 }
 
 /// True when an interpreter in `words` is followed by an option that takes code in a word, as
-/// `perl -e`, `node --eval` or `deno eval`, or awk by a program that calls `system`: it runs any
+/// `perl -e`, `node --eval` or `deno eval`, or awk by a program that runs a command: it runs any
 /// text, as a shell does.
 fn runs_inline_code(words: &[&str]) -> bool {
     words.iter().enumerate().any(|(at, word)| {
@@ -121,7 +124,8 @@ fn runs_inline_code(words: &[&str]) -> bool {
                 .any(|option| is_inline_option(option, short, long))
         });
         let eval = EVAL.contains(&program(word)) && after.first() == Some(&"eval");
-        let awk = AWK.contains(&program(word)) && after.iter().any(|text| text.contains("system"));
+        let awk = AWK.contains(&program(word))
+            && (after.iter()).any(|text| AWK_COMMAND.iter().any(|call| text.contains(call)));
         inline || eval || awk
     })
 }

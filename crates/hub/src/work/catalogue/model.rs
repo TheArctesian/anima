@@ -5,7 +5,7 @@
 )]
 
 use async_graphql::Enum;
-use catalogue::entry::{Class, Entry, Kind, MachineTest, Mark, Protocol};
+use catalogue::entry::{Class, Entry, Kind, MachineTest, Mark, Protocol, Reviewed};
 
 /// One entry that passed the static test, with what the hub shows of its files.
 #[derive(Clone, Debug)]
@@ -42,10 +42,14 @@ impl Listed {
             && own.iter().zip(digests).all(|(a, b)| *a == b)
     }
 
-    /// Who read a generated entry, and the day (SF-NEW-revlsreview); `None` when no one did.
+    /// The person who reviewed a generated entry, and the day (SF-NEW-revlsreview); `None`
+    /// when no person did, or for a tested entry.
     #[must_use]
     pub fn read_by(&self) -> Option<(&str, &str)> {
-        (self.entry.anima.reviewed.as_ref()).map(|read| (read.by.as_str(), read.on.as_str()))
+        match &self.entry.anima.reviewed {
+            Some(Reviewed::Reviewed { by, on }) => Some((by, on)),
+            Some(Reviewed::NotReviewed) | None => None,
+        }
     }
 
     /// The digest of each image, `sha256:` and 64 hexadecimal digits, in the order of the entry.

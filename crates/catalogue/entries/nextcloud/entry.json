@@ -20,8 +20,7 @@
       "read": "2026-11-17"
     },
     "reviewed": {
-      "by": "security reviewer agent, overnight session of the orchestrator",
-      "on": "2026-11-21"
+      "state": "not-reviewed"
     },
     "images": [
       {

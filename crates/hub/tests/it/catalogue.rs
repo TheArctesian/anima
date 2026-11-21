@@ -137,12 +137,9 @@ async fn h39_an_entry_gives_its_class_tier_streams_and_optional_parts(pool: PgPo
     assert_eq!(jellyfin["class"], "APPLICATION", "{answer}");
     assert_eq!(jellyfin["tier"], "GENERATED");
     assert_eq!(jellyfin["origin"]["publisher"], "LinuxServer.io");
-    assert_eq!(jellyfin["reviewedOn"], "2026-11-21", "{answer}");
-    assert!(
-        jellyfin["reviewedBy"]
-            .as_str()
-            .is_some_and(|by| !by.is_empty())
-    );
+    // No person has reviewed the ten generated entries yet (SF-NEW-revlsreview).
+    assert_eq!(jellyfin["reviewedBy"], Value::Null, "{answer}");
+    assert_eq!(jellyfin["reviewedOn"], Value::Null);
     assert_eq!(
         jellyfin["optionalParts"],
         json!([{ "kind": "DEVICE", "path": "/dev/dri", "on": false,

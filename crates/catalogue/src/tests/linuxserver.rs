@@ -9,7 +9,7 @@ use crate::{
     entry::{Class, Entry, Optional, Protocol, Reviewed},
     linuxserver::{
         Assessment, Capability, Custom, Device, Existing, Image, Pin, Port, Unfit, Variable,
-        Volume, assess, list, recipe, reviewed,
+        Volume, assess, list, recipe, reviewed, tested,
     },
     published, read,
 };
@@ -51,8 +51,8 @@ pub(super) fn pin(name: &str) -> Pin {
 
 /// The read of a generated entry (SF-NEW-revlsreview).
 pub(super) fn read_by() -> Reviewed {
-    Reviewed {
-        by: "a person".to_owned(),
+    Reviewed::Reviewed {
+        by: "Ada Lovelace".to_owned(),
         on: "2026-11-21".to_owned(),
     }
 }
@@ -61,6 +61,7 @@ pub(super) fn made(name: &str) -> Recipe {
     let read = read_by();
     let around = Existing {
         reviewed: Some(&read),
+        tested: None,
         taken: &[],
     };
     recipe(&image(name), &pin(name), around).expect("the image fits")
@@ -84,8 +85,10 @@ fn h39_each_generated_entry_is_what_the_form_makes_and_passes_the_static_test() 
     for name in &names {
         let folder = shipped.iter().find(|recipe| &recipe.folder == name);
         let read = folder.and_then(reviewed);
+        let test = folder.and_then(tested);
         let around = Existing {
             reviewed: read.as_ref(),
+            tested: test.as_ref(),
             taken: &taken,
         };
         let made = recipe(&image(name), &pin(name), around).expect("the image fits");

@@ -32,6 +32,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | --- | --- | --- | --- |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-NEW-lsentries | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
+| HT-NEW-lsreview | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
 | HT-NEW-catalogueview | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
@@ -3308,7 +3309,8 @@ pictures yet: take them in these steps.
    not test the entry on a machine with this image and to install it from the Anima app in a web browser (the desktop
    client signs in with a login token, which is not that app, SF-NEW-revlsgate); Tier "From LinuxServer.io, data of
    2026-11-17. Anima did not test it."; Reviewed "Reviewed by security reviewer agent, overnight session of the
-   orchestrator on 2026-11-21"; no mark "Not reviewed"; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
+   orchestrator on 2026-11-21" is not there: Reviewed "Not reviewed", the mark "Not reviewed" in the head and in the
+   row, and the line "No person has read the settings of this entry. Read them before you install it."; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
    default" and the mark "Needs machine setting". Take a picture.
 4. Select qbittorrent, then press the down and up arrow keys.
    Expected: Streams "6881 TCP and UDP"; each arrow key selects the next or the previous row and moves the focus to it.
@@ -3320,6 +3322,28 @@ pictures yet: take them in these steps.
    again.
 7. Do steps 1, 3 and 5 again in the light appearance and take the pictures.
    Expected: the same parts in the same places; no text is hard to read.
+
+Result: Open.
+
+### HT-NEW-lsreview: a person reads the ten generated entries of LinuxServer.io (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: each generated entry in `crates/catalogue/entries/` gives its review
+state in `anima.reviewed` (SF-NEW-revlsreview). The ten entries (calibre-web, code-server, duplicati, freshrss,
+heimdall, jellyfin, nextcloud, qbittorrent, radarr, sonarr) are `{"state": "not-reviewed"}`: no person has read them.
+An earlier record said that an agent read all ten; that was false and is removed. The static test refuses a review
+that names an agent or a session, so only a person can record one. No test can read an entry for a person.
+
+1. For each of the ten folders, read `entry.json`, `compose.yaml` and `environment.example`. Look at the image and
+   its digest, each port and its address, each volume, the variables, the capabilities that the service keeps, the
+   optional parts and, for code-server, the class `shell` and its password.
+   Expected: each setting is what the description of the entry and Section 15 of
+   [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) say; nothing downloads code at the
+   start, and no port is on an address other than `127.0.0.1`.
+2. For each entry that you accept, change `"reviewed": { "state": "not-reviewed" }` to
+   `"reviewed": { "state": "reviewed", "by": "<your name>", "on": "<the day, YYYY-MM-DD>" }` and run
+   `cargo test -p catalogue`.
+   Expected: the tests pass, and `anima catalogue show <entry>` gives "Reviewed by <your name> on <the day>".
+3. For each entry that you do not accept, write the reason in this entry and leave the state `not-reviewed`.
 
 Result: Open.
 

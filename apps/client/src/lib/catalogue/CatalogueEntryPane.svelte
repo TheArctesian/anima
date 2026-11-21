@@ -3,7 +3,7 @@
   import Switch from '$lib/forms/switch/Switch.svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import type { CatalogueEntry } from './api';
-  import { SHELL_REASON, TIER_LABELS, enumWords, markWords, partState, protocolWords, reviewFact, tierFact, unreviewed } from './entry';
+  import { SHELL_REASON, TIER_LABELS, UNREVIEWED_NOTE, enumWords, markWords, partState, protocolWords, reviewFact, tierFact, unreviewed } from './entry';
 
   /**
    * Tasks H38 and H39: the description of one entry. The install button is present and refused with the hub's fixed
@@ -23,6 +23,9 @@
     <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the description" onclick={onclose} />
   </header>
   <p class="reason" id="install-reason" role="note"><Icon name="carbon:information" size="sm" />{entry.install.reason ?? 'The hub can install this entry.'}</p>
+  {#if unreviewed(entry)}
+    <p class="reason" role="note"><Icon name="carbon:warning-alt" size="sm" />{UNREVIEWED_NOTE}</p>
+  {/if}
   {#if entry.install.needsOpenToNetwork}
     <p class="reason">It needs the setting Open to the network at the machine.</p>
   {/if}

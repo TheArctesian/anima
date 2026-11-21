@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 
-use crate::entry::Reviewed;
+use crate::entry::{MachineTest, Reviewed};
 
 #[derive(Serialize)]
 pub(super) struct Written<'a> {
@@ -24,8 +24,7 @@ pub(super) struct Written<'a> {
 pub(super) struct Anima<'a> {
     pub class: &'static str,
     pub origin: Origin<'a>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reviewed: Option<&'a Reviewed>,
+    pub reviewed: &'a Reviewed,
     pub images: [Pinned<'a>; 1],
     pub marks: [(); 0],
     pub exceptions: [Exception<'a>; 1],
@@ -35,7 +34,7 @@ pub(super) struct Anima<'a> {
     pub generated: Vec<&'a str>,
     pub test: Test<'a>,
     pub pinned: &'a str,
-    pub last_test: LastTest,
+    pub last_test: MachineTest,
 }
 
 #[derive(Serialize)]
@@ -85,9 +84,4 @@ pub(super) struct Test<'a> {
     pub statuses: [u16; 0],
     pub body: Option<&'static str>,
     pub limit_seconds: u32,
-}
-
-#[derive(Serialize)]
-pub(super) struct LastTest {
-    pub result: &'static str,
 }

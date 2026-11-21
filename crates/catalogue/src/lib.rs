@@ -104,8 +104,10 @@ pub enum Code {
     ShellNotContained,
     /// A published port of the machine is a port of Anima (SF-NEW-revlsform).
     AnimaPortPublished,
-    /// A generated entry does not say who read it (SF-NEW-revlsreview).
+    /// A generated entry does not give its review state (SF-NEW-revlsreview).
     NotReviewed,
+    /// The review names no person: an empty name, an agent, a session or a program.
+    ReviewerNotPermitted,
 }
 
 impl Code {
@@ -141,6 +143,7 @@ impl Code {
             Self::ShellNotContained => "shell_not_contained",
             Self::AnimaPortPublished => "anima_port_published",
             Self::NotReviewed => "not_reviewed",
+            Self::ReviewerNotPermitted => "reviewer_not_permitted",
         }
     }
 

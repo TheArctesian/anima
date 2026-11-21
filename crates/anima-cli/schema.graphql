@@ -1412,9 +1412,9 @@ type CatalogueEntry {
   tier: CatalogueTier!
   "The publisher of a generated entry; null for a tested entry."
   origin: CatalogueOrigin
-  "Who read the generated entry: a person, or an agent named for its job; null when no one did, as for a tested entry (SF-NEW-revlsreview)."
+  "The person who reviewed the generated entry; null when no person did (the client says Not reviewed), and for a tested entry (SF-NEW-revlsreview). Never an agent or a session."
   reviewedBy: String
-  "The day (YYYY-MM-DD) of that read; null when no one read the entry."
+  "The day (YYYY-MM-DD) of that review; null when no person reviewed the entry."
   reviewedOn: String
   "The published ports other than the port of the test."
   streams: [CatalogueStream!]!

@@ -48,8 +48,9 @@ pub struct Anima {
     /// Where the entry comes from: written by a person when absent, or generated from the data
     /// of a publisher (tier 2, OD-HOST-50).
     pub origin: Option<Origin>,
-    /// Who read a generated entry, and the day (SF-NEW-revlsreview). The generator keeps it
-    /// when it changes only the digest or the version.
+    /// Whether a person read a generated entry (SF-NEW-revlsreview): not reviewed, or reviewed
+    /// by a named person on a day. The generator writes `not-reviewed` for a new entry and keeps
+    /// the state when it changes only the digest or the version.
     pub reviewed: Option<Reviewed>,
     /// The published ports other than the port of the test, with their protocols: the streams
     /// that a route of task H40 can carry.
@@ -239,13 +240,17 @@ pub struct Origin {
     pub read: String,
 }
 
-/// Who read a generated entry, a person or an agent named for its job, and the day,
-/// `YYYY-MM-DD`.
+/// Whether a person read a generated entry. Only a person reviews: an agent or a session is
+/// never named in `by` (SF-NEW-revlsreview).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Reviewed {
-    pub by: String,
-    pub on: String,
+#[serde(tag = "state", rename_all = "kebab-case", deny_unknown_fields)]
+pub enum Reviewed {
+    NotReviewed,
+    /// A person, named in `by`, read the entry on `on`, `YYYY-MM-DD`.
+    Reviewed {
+        by: String,
+        on: String,
+    },
 }
 
 /// A published port that is a stream: the port in the container and its protocols.
@@ -325,7 +330,7 @@ pub struct HealthTest {
 }
 
 /// The result of the last test on a machine.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "result", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum MachineTest {
     NotTested,

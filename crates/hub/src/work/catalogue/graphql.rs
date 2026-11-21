@@ -171,13 +171,13 @@ impl Listed {
         self.entry.anima.origin.as_ref().map(GeneratedFrom)
     }
 
-    /// Who read the generated entry: a person, or an agent named for its job; null when no one
-    /// did, as for a tested entry (SF-NEW-revlsreview).
+    /// The person who reviewed the generated entry; null when no person did, as for a tested
+    /// entry (SF-NEW-revlsreview).
     async fn reviewed_by(&self) -> Option<&str> {
         self.read_by().map(|(by, _)| by)
     }
 
-    /// The day (`YYYY-MM-DD`) of that read; null when no one read the entry.
+    /// The day (`YYYY-MM-DD`) of that review; null when no person reviewed the entry.
     async fn reviewed_on(&self) -> Option<&str> {
         self.read_by().map(|(_, on)| on)
     }

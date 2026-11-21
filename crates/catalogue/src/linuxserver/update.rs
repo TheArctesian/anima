@@ -3,7 +3,10 @@
 
 use serde_json::Value;
 
-use crate::{Recipe, entry::Entry, entry::Reviewed};
+use crate::{
+    Recipe,
+    entry::{Entry, MachineTest, Reviewed},
+};
 
 /// Why the generator writes nothing to a recipe that exists.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -50,15 +53,22 @@ fn images(entry: &Value) -> Vec<&str> {
         })
 }
 
-/// The read of a recipe that exists, which the generator writes again unchanged
+fn entry(existing: &Recipe) -> Option<Entry> {
+    (existing.entry.as_deref()).and_then(|text| serde_json::from_str::<Entry>(text).ok())
+}
+
+/// The review state of a recipe that exists, which the generator writes again unchanged
 /// (SF-NEW-revlsreview).
 #[must_use]
 pub fn reviewed(existing: &Recipe) -> Option<Reviewed> {
-    existing
-        .entry
-        .as_deref()
-        .and_then(|text| serde_json::from_str::<Entry>(text).ok())
-        .and_then(|entry| entry.anima.reviewed)
+    entry(existing).and_then(|entry| entry.anima.reviewed)
+}
+
+/// The last test on a machine of a recipe that exists, which the generator keeps only for the
+/// same digest.
+#[must_use]
+pub fn tested(existing: &Recipe) -> Option<MachineTest> {
+    entry(existing).map(|entry| entry.anima.last_test)
 }
 
 /// Whether the generator may write `made` over `existing`.
@@ -66,7 +76,8 @@ pub fn reviewed(existing: &Recipe) -> Option<Reviewed> {
 /// # Errors
 /// [`Change::Reviewed`] for a recipe with no `origin`, which a person wrote;
 /// [`Change::NotReadable`] for an entry that is not JSON; [`Change::NotOnlyPin`] when the two
-/// recipes differ in more than the version, the images, the days of the reads and the pin.
+/// recipes differ in more than the version, the images, the days of the reads and the pin, and
+/// a reset of the last test on a machine to `not-tested`.
 pub fn update(existing: &Recipe, made: &Recipe) -> Result<(), Change> {
     let mut old = json(existing.entry.as_deref())?;
     let new = json(made.entry.as_deref())?;
@@ -88,6 +99,9 @@ pub fn update(existing: &Recipe, made: &Recipe) -> Result<(), Change> {
         &["anima", "images"],
     ] {
         copy(&mut old, &new, path)?;
+    }
+    if new.pointer("/anima/last_test") == Some(&serde_json::json!({ "result": "not-tested" })) {
+        copy(&mut old, &new, &["anima", "last_test"])?;
     }
     if old == new && Some(compose) == made.compose && existing.environment == made.environment {
         Ok(())

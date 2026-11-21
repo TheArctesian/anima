@@ -19,7 +19,8 @@ use std::{
 use catalogue::{
     Recipe,
     linuxserver::{
-        self, Assessment, Existing, Image, Pin, Unfit, assess, list, recipe, reviewed, update,
+        self, Assessment, Existing, Image, Pin, Unfit, assess, list, recipe, reviewed, tested,
+        update,
     },
     published, read,
 };
@@ -129,8 +130,10 @@ fn run(arguments: &[String]) -> Result<String, GenerateError> {
         }
         let old = existing.iter().find(|recipe| recipe.folder == image.name);
         let read = old.and_then(reviewed);
+        let test = old.and_then(tested);
         let around = Existing {
             reviewed: read.as_ref(),
+            tested: test.as_ref(),
             taken: &taken,
         };
         let made = recipe(image, &pin, around);

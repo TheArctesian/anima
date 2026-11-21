@@ -3,13 +3,13 @@
 use std::fmt::Write as _;
 
 use super::{
-    Image, Pin,
-    entry::{Anima, Device, Exception, Kept, LastTest, Origin, Pinned, Stream, Test, Written},
+    Existing, Image, Pin,
+    entry::{Anima, Device, Exception, Kept, Origin, Pinned, Stream, Test, Written},
     plan::{Plan, Published, Value},
 };
 use crate::{
     Recipe,
-    entry::{Protocol, Reviewed},
+    entry::{MachineTest, Protocol, Reviewed},
     example::GENERATED,
     fields::{COMPOSE, ENVIRONMENT},
 };
@@ -168,12 +168,7 @@ fn streams(plan: &Plan) -> Vec<Stream> {
 }
 
 /// The fields of Anima of a generated entry.
-fn anima<'a>(
-    plan: &'a Plan,
-    pin: &'a Pin,
-    reference: String,
-    reviewed: Option<&'a Reviewed>,
-) -> Anima<'a> {
+fn anima<'a>(plan: &'a Plan, pin: &'a Pin, reference: String, existing: Existing<'a>) -> Anima<'a> {
     let service = plan.service.as_str();
     Anima {
         class: if plan.shell { "shell" } else { "application" },
@@ -181,7 +176,7 @@ fn anima<'a>(
             from: "linuxserver",
             read: &pin.read,
         },
-        reviewed,
+        reviewed: existing.reviewed.unwrap_or(&Reviewed::NotReviewed),
         images: [Pinned {
             service,
             image: reference,
@@ -230,9 +225,7 @@ fn anima<'a>(
             limit_seconds: TEST_SECONDS,
         },
         pinned: &pin.resolved,
-        last_test: LastTest {
-            result: "not-tested",
-        },
+        last_test: kept_test(existing.tested, &pin.digest),
     }
 }
 
@@ -241,7 +234,18 @@ fn reference(image: &Image, pin: &Pin) -> String {
     format!("{REGISTRY}{}@{}", image.name, pin.digest)
 }
 
-fn entry(image: &Image, plan: &Plan, pin: &Pin, reviewed: Option<&Reviewed>) -> String {
+/// The last test on a machine that the entry keeps: a pass with exactly `digest`, else
+/// `not-tested`. A new digest never keeps a pass (SF-NEW-revlsresidual).
+fn kept_test(tested: Option<&MachineTest>, digest: &str) -> MachineTest {
+    match tested {
+        Some(MachineTest::Passed { digests, .. }) if digests.as_slice() == [digest] => {
+            tested.cloned().unwrap_or(MachineTest::NotTested)
+        }
+        _ => MachineTest::NotTested,
+    }
+}
+
+fn entry(image: &Image, plan: &Plan, pin: &Pin, existing: Existing<'_>) -> String {
     let service = plan.service.as_str();
     let written = Written {
         id: service,
@@ -254,7 +258,7 @@ fn entry(image: &Image, plan: &Plan, pin: &Pin, reviewed: Option<&Reviewed>) -> 
         env_url: ENVIRONMENT,
         documentation_url: &image.github_url,
         icon_url: Some(image.project_logo.as_str()).filter(|logo| logo.starts_with("https://")),
-        anima: anima(plan, pin, reference(image, pin), reviewed),
+        anima: anima(plan, pin, reference(image, pin), existing),
     };
     let mut text =
         serde_json::to_string_pretty(&written).expect("an entry of texts and numbers is JSON");
@@ -263,10 +267,10 @@ fn entry(image: &Image, plan: &Plan, pin: &Pin, reviewed: Option<&Reviewed>) -> 
 }
 
 /// The recipe folder of `image` from its plan.
-pub(super) fn recipe(image: &Image, plan: &Plan, pin: &Pin, reviewed: Option<&Reviewed>) -> Recipe {
+pub(super) fn recipe(image: &Image, plan: &Plan, pin: &Pin, existing: Existing<'_>) -> Recipe {
     Recipe {
         folder: plan.service.clone(),
-        entry: Some(entry(image, plan, pin, reviewed)),
+        entry: Some(entry(image, plan, pin, existing)),
         compose: Some(compose(plan, &reference(image, pin))),
         environment: Some(environment(plan, &image.name)),
     }

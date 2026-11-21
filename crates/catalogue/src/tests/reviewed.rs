@@ -1,13 +1,13 @@
-//! The read of a generated entry (SF-NEW-revlsreview): the static test refuses a generated entry
-//! that does not say who read it and when. A recipe that a person wrote needs no read.
+//! The review state of a generated entry (SF-NEW-revlsreview): the static test refuses a
+//! generated entry with no state, and a review that names no person: an empty name, a bad day,
+//! an agent, a session or a program. A recipe that a person wrote needs no state.
 
 use std::path::Path;
 
-use crate::{Code, Recipe, check, linuxserver::reviewed, read};
+use crate::{Code, Recipe, check, entry::Reviewed, linuxserver::reviewed, read};
 
-const READ: &str = r#""reviewed": {
-      "by": "security reviewer agent, overnight session of the orchestrator",
-      "on": "2026-11-21"
+const STATE: &str = r#""reviewed": {
+      "state": "not-reviewed"
     },"#;
 
 fn shipped(name: &str) -> Recipe {
@@ -19,13 +19,17 @@ fn shipped(name: &str) -> Recipe {
         .expect("the recipe ships")
 }
 
-fn with_read(recipe: &Recipe, new: &str) -> Recipe {
+fn with_state(recipe: &Recipe, new: &str) -> Recipe {
     let entry = recipe.entry.as_deref().expect("an entry");
-    assert!(entry.contains(READ), "the shipped entry has its read");
+    assert!(entry.contains(STATE), "the shipped entry is not reviewed");
     Recipe {
-        entry: Some(entry.replace(READ, new)),
+        entry: Some(entry.replace(STATE, new)),
         ..recipe.clone()
     }
+}
+
+fn by(name: &str) -> String {
+    format!(r#""reviewed": {{ "state": "reviewed", "by": "{name}", "on": "2026-11-21" }},"#)
 }
 
 fn codes(recipe: &Recipe) -> Vec<Code> {
@@ -36,19 +40,54 @@ fn codes(recipe: &Recipe) -> Vec<Code> {
 }
 
 #[test]
-fn sf_revlsreview_a_generated_entry_says_who_read_it_and_when() {
+fn sf_revlsreview_a_generated_entry_gives_its_review_state() {
     let radarr = shipped("radarr");
-    assert_eq!(codes(&radarr), []);
-    assert_eq!(codes(&with_read(&radarr, "")), [Code::NotReviewed]);
-    let nobody = r#""reviewed": { "by": " ", "on": "2026-11-21" },"#;
-    assert_eq!(codes(&with_read(&radarr, nobody)), [Code::NotReviewed]);
-    let no_day = r#""reviewed": { "by": "a person", "on": "21 November" },"#;
-    assert_eq!(codes(&with_read(&radarr, no_day)), [Code::DateNotPermitted]);
+    assert_eq!(reviewed(&radarr), Some(Reviewed::NotReviewed));
+    assert_eq!(
+        codes(&radarr),
+        [],
+        "not reviewed is a state that the list shows"
+    );
+    assert_eq!(codes(&with_state(&radarr, "")), [Code::NotReviewed]);
+    assert_eq!(codes(&with_state(&radarr, &by("Ada Lovelace"))), []);
+    let no_day =
+        r#""reviewed": { "state": "reviewed", "by": "Ada Lovelace", "on": "21 November" },"#;
+    assert_eq!(
+        codes(&with_state(&radarr, no_day)),
+        [Code::DateNotPermitted]
+    );
     let gitea = shipped("gitea");
     assert_eq!(
         reviewed(&gitea),
         None,
-        "a recipe that a person wrote needs no read"
+        "a recipe that a person wrote has no state"
     );
     assert_eq!(codes(&gitea), []);
+}
+
+#[test]
+fn sf_revlsreview_only_a_person_is_named_as_the_reviewer() {
+    let radarr = shipped("radarr");
+    for name in [
+        " ",
+        "security reviewer agent",
+        "Claude",
+        "release-bot",
+        "Bot",
+        "AUTOMATED check",
+        "overnight session",
+        "the orchestrator",
+        "a subagent",
+        "a0ef3ffeba3311ab3",
+        "local_a764338c-3744",
+    ] {
+        assert_eq!(
+            codes(&with_state(&radarr, &by(name))),
+            [Code::ReviewerNotPermitted],
+            "{name}"
+        );
+    }
+    for name in ["Ada Lovelace", "Abbott", "J. Talbot", "Bea Cafe"] {
+        assert_eq!(codes(&with_state(&radarr, &by(name))), [], "{name}");
+    }
 }

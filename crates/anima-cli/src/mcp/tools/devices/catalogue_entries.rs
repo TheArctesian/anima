@@ -113,8 +113,8 @@ fn show_definition() -> Definition {
             "object",
             "The fields of anima_catalogue_list, and description, author, iconUrl, \
              documentationUrl, networkPorts (port and protocols), origin (publisher and read, \
-             null for a tested entry), reviewedBy and reviewedOn (who read a generated entry \
-             and the day; null when no one did), streams (port and protocols), optionalParts (kind, path, \
+             null for a tested entry), reviewedBy and reviewedOn (the person who reviewed a \
+             generated entry and the day; null when no person did), streams (port and protocols), optionalParts (kind, path, \
              on, needsMachineSetting), digests, install (refusal, reason, needsOpenToNetwork) \
              and environmentVariables (names only).",
         ),
