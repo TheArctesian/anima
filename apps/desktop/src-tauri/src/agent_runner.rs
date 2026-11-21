@@ -4,14 +4,14 @@
 //! notification of a thread that needs the person (THR-059). It starts no program itself, sends
 //! nothing to the hub and logs no text of a thread (LOG-007).
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use agent_threads::control::{Action, Outcome, Reply};
 use anima_cli::agents::runner::RunnerLink;
 use anima_cli::failure::Failure;
 use serde::{Serialize, Serializer, ser::SerializeStruct};
-use tauri::{AppHandle, Emitter, EventTarget, Runtime, State, Webview};
+use tauri::{AppHandle, Emitter, EventTarget, Manager as _, Runtime, State, Webview};
 use tauri_plugin_log::log;
 use tauri_plugin_notification::NotificationExt as _;
 
@@ -72,9 +72,10 @@ impl Serialize for RunnerError {
     }
 }
 
-/// Whether the watch of the runner runs: one for the application.
+/// The number of the newest watch of the runner: an older watch ends at its next update, so that
+/// one watch runs, and a page that loads again gets the kept updates again.
 #[derive(Default)]
-pub struct Watching(AtomicBool);
+pub struct Watching(AtomicU64);
 
 fn checked<R: Runtime>(webview: &Webview<R>) -> Result<(), RunnerError> {
     crate::web_view::caller(webview.label()).map_err(|_| RunnerError::Caller)
@@ -103,8 +104,8 @@ pub async fn agent_runner_call<R: Runtime>(
     })
 }
 
-/// Starts the watch of the runner, once: each update goes to the main window as
-/// [`UPDATE_EVENT`]; when the runner is not there, the watch tries again each [`RETRY`].
+/// Starts a new watch of the runner in place of the one before: each update goes to the main
+/// window as [`UPDATE_EVENT`]; when the runner is not there, the watch tries again each [`RETRY`].
 #[expect(
     clippy::needless_pass_by_value,
     reason = "a Tauri command takes its arguments by value"
@@ -116,20 +117,26 @@ pub fn agent_runner_watch<R: Runtime>(
     watching: State<'_, Watching>,
 ) -> Result<(), RunnerError> {
     checked(&webview)?;
-    if !watching.0.swap(true, Ordering::SeqCst) {
-        tauri::async_runtime::spawn(watch(app));
-    }
+    let generation = watching.0.fetch_add(1, Ordering::SeqCst) + 1;
+    tauri::async_runtime::spawn(watch(app, generation));
     Ok(())
 }
 
-async fn watch<R: Runtime>(app: AppHandle<R>) {
+fn newest<R: Runtime>(app: &AppHandle<R>, generation: u64) -> bool {
+    app.state::<Watching>().0.load(Ordering::SeqCst) == generation
+}
+
+async fn watch<R: Runtime>(app: AppHandle<R>, generation: u64) {
     let to = EventTarget::webview_window(MAIN);
-    loop {
+    while newest(&app, generation) {
         if let Ok(mut link) = RunnerLink::connect().await
             && link.send(Action::Watch).await.is_ok()
         {
             let _ = app.emit_to(to.clone(), LINK_EVENT, true);
             while let Ok(Some(reply)) = link.next().await {
+                if !newest(&app, generation) {
+                    return;
+                }
                 if let Reply::Update(update) = reply {
                     let _ = app.emit_to(to.clone(), UPDATE_EVENT, update);
                 }

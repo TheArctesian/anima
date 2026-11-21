@@ -1,4 +1,6 @@
+import { desktopRunnerShell } from '$lib/desktop/agent-threads/runner';
 import { desktopThreadsShell } from '$lib/desktop/agent-threads/shell';
+import { LiveThreads } from './live/live.svelte';
 import { ThreadsStore } from './store.svelte';
 
 /**
@@ -11,7 +13,10 @@ let shared: ThreadsStore | undefined;
 
 /** The one store of the threads of this computer: the page and the count on the bar read the same rows. */
 export function threadsStore(): ThreadsStore {
-  shared ??= new ThreadsStore(desktopThreadsShell, typeof localStorage === 'undefined' ? null : localStorage);
+  if (shared !== undefined) return shared;
+  const live = desktopRunnerShell === null ? null : new LiveThreads(desktopRunnerShell, () => ({ front: document.visibilityState === 'visible' && document.hasFocus(), chosen: shared?.chosen ?? null }));
+  shared = new ThreadsStore(desktopThreadsShell, typeof localStorage === 'undefined' ? null : localStorage, undefined, live);
+  if (live !== null) void live.begin();
   return shared;
 }
 
