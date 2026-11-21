@@ -40,8 +40,13 @@ impl Thread {
                 steps
             }
             other => {
-                let mark = matches!(other, DriveEvent::TurnStarted { .. })
-                    && matches!(self.driver, Driver::Codex(_));
+                // The processes below the program now (its MCP servers) are spared by a stop of
+                // a turn: Codex marks when a turn starts; Claude Code says its session (with its
+                // servers up) before it works on a prompt.
+                let mark = match self.driver {
+                    Driver::Codex(_) => matches!(other, DriveEvent::TurnStarted { .. }),
+                    Driver::Claude(_) => matches!(other, DriveEvent::Session { .. }),
+                };
                 self.track(&other);
                 let mut steps: Vec<Step> = mark.then_some(Step::Mark).into_iter().collect();
                 steps.push(said(other));
