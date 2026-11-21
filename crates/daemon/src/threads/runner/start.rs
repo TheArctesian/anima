@@ -3,16 +3,15 @@
 
 use std::path::{Path, PathBuf};
 
-use agent_threads::control::{Outcome, Refusal, Reply, RunState, ThreadRow};
+use agent_threads::control::{Refusal, RunState, ThreadRow};
 use agent_threads::drive::{Effort, Launch, Mode, Model, Program, SessionStart};
-use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use super::calls::codex_of;
-use super::log::Kind;
+use super::socket::Caller;
 use super::thread::Thread;
-use super::{Runner, Waits, login, refused};
-use crate::threads::wire::{self, Outcome as HolderOutcome};
+use super::{Runner, Waits, login};
+use crate::threads::wire;
 
 /// A new thread as the client named it.
 pub(super) struct NewThread {
@@ -51,12 +50,10 @@ impl NewThread {
 impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
-    pub(super) async fn start(
-        &mut self,
-        new: NewThread,
-        call: u64,
-        client: mpsc::UnboundedSender<Reply>,
-    ) -> Result<(), Refusal> {
+    pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
+        if !self.holder_fits {
+            return Err(Refusal::Holder);
+        }
         if self.running() >= self.limits.running {
             return Err(Refusal::OverLimit {
                 limits: self.limits,
@@ -75,8 +72,7 @@ impl Runner {
             command,
             Waits::Start {
                 thread: id,
-                call,
-                client,
+                back,
                 prompt,
             },
         );
@@ -87,7 +83,7 @@ impl Runner {
     /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
     /// (THR-040) and the environment of the login (R-NEW-threadsdrive).
     fn prepared(&self, new: &NewThread, id: Uuid) -> Result<(ThreadRow, wire::Action), Refusal> {
-        let folder = chosen_folder(&new.folder)?;
+        let folder = chosen_folder(&new.folder, &self.dir)?;
         let model = new
             .model
             .as_deref()
@@ -133,54 +129,17 @@ impl Runner {
         };
         Ok((row, action))
     }
-
-    /// The answer of the holder to a start or a stop.
-    pub(super) async fn done(&mut self, command: u64, outcome: HolderOutcome) {
-        match self.waits.remove(&command) {
-            Some(Waits::Start {
-                thread,
-                call,
-                client,
-                prompt,
-            }) => {
-                let result = if refused(&outcome) {
-                    self.threads.remove(&thread);
-                    Outcome::Refused {
-                        why: Refusal::Holder,
-                    }
-                } else {
-                    self.note(Kind::Start, Some(thread), "started");
-                    if let Some(started) = self.threads.get_mut(&thread) {
-                        let steps = started.begin(&prompt);
-                        self.apply(thread, steps).await;
-                    }
-                    self.save();
-                    Outcome::Started { thread }
-                };
-                let _ = client.send(Reply::Done { id: call, result });
-            }
-            Some(Waits::Stop { call, client }) => {
-                let result = match outcome {
-                    HolderOutcome::Stopped { all_ended, .. } => Outcome::Stopped { all_ended },
-                    HolderOutcome::Refused { .. } => Outcome::Refused {
-                        why: Refusal::Holder,
-                    },
-                    _ => Outcome::Ok,
-                };
-                let _ = client.send(Reply::Done { id: call, result });
-            }
-            None => {}
-        }
-    }
 }
 
-/// An absolute folder of this computer that exists, as its real path (THR-041).
-fn chosen_folder(folder: &Path) -> Result<PathBuf, Refusal> {
+/// An absolute folder of this computer that exists, as its real path, and not in the folder of
+/// the threads, which holds the record, the log and the sockets of the runner (THR-040, THR-041).
+fn chosen_folder(folder: &Path, threads: &Path) -> Result<PathBuf, Refusal> {
     if !folder.is_absolute() {
         return Err(Refusal::FolderNotPermitted);
     }
     let real = std::fs::canonicalize(folder).map_err(|_| Refusal::FolderNotPermitted)?;
-    if real.is_dir() {
+    let inside = std::fs::canonicalize(threads).is_ok_and(|threads| real.starts_with(threads));
+    if real.is_dir() && !inside {
         Ok(real)
     } else {
         Err(Refusal::FolderNotPermitted)

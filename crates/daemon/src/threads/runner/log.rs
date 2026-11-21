@@ -67,7 +67,7 @@ impl RunnerLog {
             .append(true)
             .mode(0o600)
             .open(&self.path)?;
-        let mut text = serde_json::to_string(line).unwrap_or_default();
+        let mut text = serde_json::to_string(line).map_err(std::io::Error::other)?;
         text.push('\n');
         file.write_all(text.as_bytes())
     }

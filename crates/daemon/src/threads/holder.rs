@@ -9,7 +9,7 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -47,6 +47,8 @@ pub struct Slot {
     pub input: Input,
     pub outbox: Outbox,
     pub waiting: bool,
+    /// The processes below the program at its last mark, which an end of the children spares.
+    pub spared: BTreeSet<u32>,
     /// The program ended and was reaped: its ID may belong to a different process now.
     pub reaped: bool,
     pub exit: Option<Exit>,
@@ -133,6 +135,7 @@ impl Shared {
             input,
             outbox: Outbox::new(self.limit),
             waiting: false,
+            spared: BTreeSet::new(),
             reaped: false,
             exit: None,
         }

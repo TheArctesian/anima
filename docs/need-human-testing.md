@@ -92,6 +92,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
 | HT-NEW-threadview | The page Threads with the real sessions of Claude Code and Codex of this computer (R-NEW-t3native) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-NEW-threadsdrive | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -2510,6 +2511,34 @@ not compared with its mockup.
 
 Result: Open.
 
+
+### HT-NEW-threadsdrive: the thread runner of the daemon starts and drives Claude Code and Codex (TH11 to TH13)
+
+Built on the local branch `threads/runner` (tasks TH11 to TH13 of [agent-threads.md](proposals/agent-threads.md)): the
+holder and the runner in `anima-daemon`, the local socket, and the commands `anima agents start`, `send`, `approve`,
+`interrupt`, `stop`, `running` and `watch`. The tests use a made `claude`, a made `codex` and a made login shell. No real Claude Code or
+Codex was started by the runner, nothing was run on Linux, and the page of the client is not built yet.
+
+1. Start a daemon of the build with a state folder and a label of your own (not the installed application). In a
+   terminal run `anima agents start --program claude-code --folder <a test folder> "Say hello and list the files"`.
+   Expected: the command gives a thread ID. `anima agents watch` shows the reply; `anima agents running` shows the thread
+   as working, then idle.
+2. Do steps 1 and 3 again with `--program codex`.
+   Expected: the same for Codex.
+3. Start a Claude thread with `--mode ask` and a prompt that runs a shell command. Run `anima agents approve <ID>
+   <request>` with the request ID that `anima agents watch` shows.
+   Expected: the thread shows the request; after the answer the command runs and the request closes.
+4. Give a thread a task that starts a long command (for example `sleep 600` in a child shell). Run `anima agents
+   interrupt <ID>`, then `ps -ax | grep sleep`.
+   Expected: the turn stops and the `sleep` is gone. For Codex, its MCP servers still run.
+5. Stop the daemon and start it again while a thread works.
+   Expected: the program went on in the holder; after the restart the thread shows the same state and its output.
+6. Start a second daemon on the same state folder.
+   Expected: its runner refuses to start, with the words "a different runner holds the threads of this daemon".
+7. Run `anima agents stop <ID>`.
+   Expected: the program and each child of it end.
+
+Result: Open.
 
 ### HT-074: the native Windows desktop client (WIN1)
 

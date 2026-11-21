@@ -78,6 +78,101 @@ async fn thr_049_ending_the_children_keeps_the_program() {
 }
 
 #[tokio::test]
+async fn thr_021_ending_the_children_spares_the_servers_marked_before_the_turn() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let script = "perl -e 'setpgrp(0,0); sleep 300' & echo $!; read line; perl -e 'setpgrp(0,0); sleep 300' & echo $!; read line";
+    let id = link.send(start("turns", "/bin/sh", &["-c", script])).await;
+    link.answer(id).await;
+    let first = texts(
+        &link
+            .until(|event| matches!(event, Event::Lines { .. }))
+            .await,
+    );
+    let server: u32 = first[0].1.parse().expect("a pid");
+    let mark = link
+        .send(Action::Mark {
+            thread: "turns".into(),
+        })
+        .await;
+    assert_eq!(link.answer(mark).await, Outcome::Ok);
+    link.send(Action::Write {
+        thread: "turns".into(),
+        line: "turn".into(),
+    })
+    .await;
+    let second = texts(
+        &link
+            .until(|event| matches!(event, Event::Lines { .. }))
+            .await,
+    );
+    let command: u32 = second[0].1.parse().expect("a pid");
+    let end = link
+        .send(Action::EndChildren {
+            thread: "turns".into(),
+        })
+        .await;
+    link.answer(end).await;
+    assert!(gone(command).await, "the process of the turn ended");
+    assert!(
+        tree::alive(server),
+        "the server marked before the turn is spared"
+    );
+    let stop = link
+        .send(Action::Stop {
+            thread: "turns".into(),
+        })
+        .await;
+    link.answer(stop).await;
+    assert!(gone(server).await, "a stop ends the spared server too");
+}
+
+#[tokio::test]
+async fn thr_113_a_program_that_does_not_read_its_input_holds_up_no_command() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let id = link
+        .send(start("deaf", "/bin/sh", &["-c", "sleep 300"]))
+        .await;
+    let Outcome::Started { pid } = link.answer(id).await else {
+        panic!("not started")
+    };
+    let big = "x".repeat(1024 * 1024);
+    let mut full = false;
+    for _ in 0..64 {
+        let write = link
+            .send(Action::Write {
+                thread: "deaf".into(),
+                line: big.clone(),
+            })
+            .await;
+        let answer = tokio::time::timeout(std::time::Duration::from_secs(5), link.answer(write))
+            .await
+            .expect("a write is answered at once");
+        if matches!(
+            answer,
+            Outcome::Refused {
+                why: anima_daemon::threads::wire::Refusal::InputFull
+            }
+        ) {
+            full = true;
+            break;
+        }
+    }
+    assert!(full, "the queue in front of the input fills and says so");
+    let stop = link
+        .send(Action::Stop {
+            thread: "deaf".into(),
+        })
+        .await;
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(10), link.answer(stop))
+        .await
+        .expect("a stop is not held up by the full input");
+    assert!(matches!(answer, Outcome::Stopped { .. }));
+    assert!(gone(pid).await);
+}
+
+#[tokio::test]
 async fn thr_049_the_end_of_the_holder_ends_its_programs_and_a_new_holder_ends_what_a_killed_one_left()
  {
     let mut holder = Holder::start(0);

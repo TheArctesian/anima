@@ -1,10 +1,9 @@
 //! What the holder does for each command of the daemon. A command is done one time: the same
 //! ID again gets the first answer and does nothing (H10).
 
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
-use tokio::io::AsyncWriteExt as _;
 
 use super::holder::Shared;
 use super::program::{self, Start};
@@ -62,14 +61,15 @@ async fn act(shared: &Arc<Mutex<Shared>>, action: Action) -> Outcome {
             };
             start_thread(shared, thread, &start).await
         }
-        Action::Write { thread, line } => write(shared, &thread, line).await,
-        Action::CloseInput { thread } => match input(shared, &thread) {
-            Some(input) => {
-                input.lock().await.take();
+        Action::Write { thread, line } => write(shared, &thread, line),
+        Action::CloseInput { thread } => {
+            if close_input(shared, &thread) {
                 Outcome::Ok
+            } else {
+                refused(Refusal::UnknownThread)
             }
-            None => refused(Refusal::UnknownThread),
-        },
+        }
+        Action::Mark { thread } => mark(shared, &thread).await,
         Action::Ack { thread, seq } => {
             let Ok(mut state) = shared.lock() else {
                 return refused(Refusal::UnknownThread);
@@ -84,9 +84,7 @@ async fn act(shared: &Arc<Mutex<Shared>>, action: Action) -> Outcome {
         }
         Action::EndChildren { thread } => end(shared, &thread, false).await,
         Action::Stop { thread } => {
-            if let Some(input) = input(shared, &thread) {
-                input.lock().await.take();
-            }
+            close_input(shared, &thread);
             end(shared, &thread, true).await
         }
         Action::Forget { thread } => forget(shared, &thread),
@@ -167,7 +165,7 @@ async fn start_thread(
         return refused(Refusal::StartFailed);
     };
     let started = tree::started(pid).await;
-    let input = Arc::new(tokio::sync::Mutex::new(child.stdin.take()));
+    let input = child.stdin.take().map(program::input);
     let (Some(out), Some(err)) = (child.stdout.take(), child.stderr.take()) else {
         return refused(Refusal::StartFailed);
     };
@@ -194,46 +192,77 @@ async fn start_thread(
     Outcome::Started { pid }
 }
 
-fn input(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Option<program::Input> {
-    let state = shared.lock().ok()?;
+/// Closes the input of the program of `thread`; false when the holder does not know it.
+fn close_input(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> bool {
+    let Ok(mut state) = shared.lock() else {
+        return false;
+    };
     state
         .threads
-        .get(thread)
-        .map(|slot| Arc::clone(&slot.input))
+        .get_mut(thread)
+        .map(|slot| slot.input = None)
+        .is_some()
 }
 
-async fn write(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, mut line: String) -> Outcome {
-    let Some(input) = input(shared, thread) else {
-        return refused(Refusal::UnknownThread);
-    };
-    let mut input = input.lock().await;
-    let Some(pipe) = input.as_mut() else {
-        return refused(Refusal::InputClosed);
-    };
+/// Puts `line` in the queue of the input of the program. It never waits: a program that does
+/// not read its input gets [`Refusal::InputFull`], and the other commands go on (THR-113).
+fn write(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, mut line: String) -> Outcome {
+    use tokio::sync::mpsc::error::TrySendError;
     if !line.ends_with('\n') {
         line.push('\n');
     }
-    match pipe.write_all(line.as_bytes()).await {
-        Ok(()) => Outcome::Ok,
-        Err(_) => refused(Refusal::InputClosed),
+    let Ok(state) = shared.lock() else {
+        return refused(Refusal::UnknownThread);
+    };
+    let Some(slot) = state.threads.get(thread) else {
+        return refused(Refusal::UnknownThread);
+    };
+    match slot.input.as_ref().map(|input| input.try_send(line)) {
+        Some(Ok(())) => Outcome::Ok,
+        Some(Err(TrySendError::Full(_))) => refused(Refusal::InputFull),
+        Some(Err(TrySendError::Closed(_))) | None => refused(Refusal::InputClosed),
     }
 }
 
+/// Keeps the processes below the program now as spared (see [`Action::Mark`]).
+async fn mark(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
+    let root = shared
+        .lock()
+        .ok()
+        .and_then(|state| state.threads.get(thread).map(|slot| slot.pid));
+    let Some(root) = root else {
+        return refused(Refusal::UnknownThread);
+    };
+    let below = tree::table()
+        .await
+        .map_or_else(BTreeSet::new, |table| tree::below(&table, root));
+    if let Ok(mut state) = shared.lock()
+        && let Some(slot) = state.threads.get_mut(thread)
+    {
+        slot.spared = below;
+    }
+    Outcome::Ok
+}
+
 async fn end(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, with_root: bool) -> Outcome {
-    let pid = shared.lock().ok().and_then(|state| {
-        state
-            .threads
-            .get(thread)
-            .map(|slot| (slot.pid, slot.reaped || slot.exit.is_some()))
+    let found = shared.lock().ok().and_then(|state| {
+        state.threads.get(thread).map(|slot| {
+            let spare = if with_root {
+                BTreeSet::new()
+            } else {
+                slot.spared.clone()
+            };
+            (slot.pid, slot.reaped || slot.exit.is_some(), spare)
+        })
     });
-    match pid {
+    match found {
         None => refused(Refusal::UnknownThread),
-        Some((_, true)) => Outcome::Stopped {
+        Some((_, true, _)) => Outcome::Stopped {
             ended: 0,
             all_ended: true,
         },
-        Some((pid, false)) => {
-            let ended = tree::end(pid, with_root, GRACE).await;
+        Some((root, false, spare)) => {
+            let ended = tree::end(root, with_root, &spare, GRACE).await;
             Outcome::Stopped {
                 ended: ended.count,
                 all_ended: ended.all,
@@ -271,9 +300,7 @@ pub async fn end_all(shared: &Arc<Mutex<Shared>>) {
         },
     );
     for thread in running {
-        if let Some(input) = input(shared, &thread) {
-            input.lock().await.take();
-        }
+        close_input(shared, &thread);
         end(shared, &thread, true).await;
     }
     if let Ok(state) = shared.lock() {

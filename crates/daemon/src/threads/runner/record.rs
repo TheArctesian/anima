@@ -48,14 +48,19 @@ pub fn read(dir: &Path) -> std::io::Result<Record> {
 /// The I/O error of the file.
 pub fn write(dir: &Path, record: &Record) -> std::io::Result<()> {
     use std::os::unix::fs::OpenOptionsExt as _;
+    let text = serde_json::to_vec(record).map_err(std::io::Error::other)?;
     let new = dir.join(format!("{FILE}.new"));
+    // A file left by an earlier write may have a different mode: a new one is made 0600.
+    match std::fs::remove_file(&new) {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(error),
+        _ => {}
+    }
     let mut file = std::fs::OpenOptions::new()
-        .create(true)
+        .create_new(true)
         .write(true)
-        .truncate(true)
         .mode(0o600)
         .open(&new)?;
-    file.write_all(&serde_json::to_vec(record).unwrap_or_default())?;
+    file.write_all(&text)?;
     file.sync_all()?;
     std::fs::rename(new, dir.join(FILE))
 }

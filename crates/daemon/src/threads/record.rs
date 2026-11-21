@@ -50,7 +50,13 @@ pub async fn end_left_over(dir: &Path) {
     for entry in old.threads {
         let same = entry.started.is_some() && tree::started(entry.pid).await == entry.started;
         if same {
-            tree::end(entry.pid, true, Duration::from_secs(3)).await;
+            tree::end(
+                entry.pid,
+                true,
+                &std::collections::BTreeSet::new(),
+                Duration::from_secs(3),
+            )
+            .await;
         }
     }
     let _ = write(

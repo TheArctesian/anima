@@ -39,21 +39,30 @@ while (my $line = <STDIN>) {
 }
 "#;
 
-/// A made login shell: it runs the script it is given with the environment it got.
-const SHELL: &str = "#!/bin/sh\nexec /bin/sh -c \"$4\"\n";
+/// A made login shell: it is asked as a login and interactive shell, sets the names of a
+/// profile (one of them with the value of a secret of Anima), and runs the script it is given.
+const SHELL: &str = "#!/bin/sh\n[ \"$1\" = -l ] && [ \"$2\" = -i ] || exit 3\nexport LOGIN_ONLY=yes COPY=s3cret-value ANIMA_LEAK=x\nexec /bin/sh -c \"$4\"\n";
 
-struct Kit {
+/// A secret of Anima in the environment of the daemon.
+pub(super) const SECRET: &str = "s3cret-value";
+
+pub(super) struct Kit {
     home: tempfile::TempDir,
     runner: Option<Child>,
 }
 
 impl Kit {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
+        Self::with(CLAUDE)
+    }
+
+    /// A kit whose made Claude Code is `claude`.
+    pub(super) fn with(claude: &str) -> Self {
         use std::os::unix::fs::PermissionsExt as _;
         let home = tempfile::tempdir().expect("a folder");
         let bin = home.path().join("bin");
         std::fs::create_dir(&bin).expect("bin");
-        for (name, text) in [("claude", CLAUDE), ("login-shell", SHELL)] {
+        for (name, text) in [("claude", claude), ("login-shell", SHELL)] {
             let path = bin.join(name);
             std::fs::write(&path, text).expect("written");
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("mode");
@@ -64,29 +73,34 @@ impl Kit {
         kit
     }
 
-    fn path(&self, name: &str) -> PathBuf {
+    pub(super) fn path(&self, name: &str) -> PathBuf {
         self.home.path().join(name)
     }
 
-    fn threads(&self) -> PathBuf {
+    pub(super) fn threads(&self) -> PathBuf {
         self.path("daemon").join("threads")
     }
 
-    fn start(&mut self) {
+    pub(super) fn start(&mut self) {
+        self.runner = Some(self.spawn_runner());
+    }
+
+    /// One more `anima-daemon threads` on the folder of this kit.
+    pub(super) fn spawn_runner(&self) -> Child {
         let bin = self.path("bin");
-        let child = Process::new(env!("CARGO_BIN_EXE_anima-daemon"))
+        Process::new(env!("CARGO_BIN_EXE_anima-daemon"))
             .arg("threads")
             .env_clear()
             .env("HOME", self.home.path())
             .env("ANIMA_DAEMON_HOME", self.path("daemon"))
             .env("SHELL", bin.join("login-shell"))
             .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+            .env("ANIMA_TEST_SECRET", SECRET)
             .spawn()
-            .expect("the runner starts");
-        self.runner = Some(child);
+            .expect("the runner starts")
     }
 
-    fn end_runner(&mut self) {
+    pub(super) fn end_runner(&mut self) {
         if let Some(mut child) = self.runner.take() {
             let pid = rustix::process::Pid::from_raw(i32::try_from(child.id()).expect("a pid"));
             let _ =
@@ -95,7 +109,7 @@ impl Kit {
         }
     }
 
-    async fn client(&self) -> Client {
+    pub(super) async fn client(&self) -> Client {
         let socket = self.threads().join(SOCKET);
         for _ in 0..200 {
             if let Ok(stream) = UnixStream::connect(&socket).await {
@@ -133,14 +147,14 @@ impl Drop for Kit {
     }
 }
 
-struct Client {
+pub(super) struct Client {
     lines: Lines<BufReader<OwnedReadHalf>>,
     write: OwnedWriteHalf,
     next: u64,
 }
 
 impl Client {
-    async fn call(&mut self, action: Action) -> u64 {
+    pub(super) async fn call(&mut self, action: Action) -> u64 {
         self.next += 1;
         let mut text = serde_json::to_string(&Call {
             id: self.next,
@@ -152,7 +166,7 @@ impl Client {
         self.next
     }
 
-    async fn until(&mut self, mut wanted: impl FnMut(&Reply) -> bool) -> Reply {
+    pub(super) async fn until(&mut self, mut wanted: impl FnMut(&Reply) -> bool) -> Reply {
         let wait = async {
             loop {
                 let line = self.lines.next_line().await.expect("reads").expect("open");
@@ -167,7 +181,7 @@ impl Client {
             .expect("in time")
     }
 
-    async fn done(&mut self, id: u64) -> Outcome {
+    pub(super) async fn done(&mut self, id: u64) -> Outcome {
         match self
             .until(|reply| matches!(reply, Reply::Done { id: done, .. } if *done == id))
             .await
@@ -178,18 +192,18 @@ impl Client {
     }
 }
 
-fn change(reply: &Reply) -> Option<&Change> {
+pub(super) fn change(reply: &Reply) -> Option<&Change> {
     match reply {
         Reply::Update(update) => Some(&update.change),
         Reply::Done { .. } => None,
     }
 }
 
-fn state_is(state: RunState) -> impl FnMut(&Reply) -> bool {
+pub(super) fn state_is(state: RunState) -> impl FnMut(&Reply) -> bool {
     move |reply| matches!(change(reply), Some(Change::State { state: now, .. }) if *now == state)
 }
 
-async fn child_pid(folder: &Path) -> u32 {
+pub(super) async fn child_pid(folder: &Path) -> u32 {
     for _ in 0..100 {
         if let Some(pid) = std::fs::read_to_string(folder.join("child.pid"))
             .ok()
