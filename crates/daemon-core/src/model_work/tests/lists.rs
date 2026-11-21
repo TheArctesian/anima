@@ -122,3 +122,31 @@ fn the_form_of_an_archive_comes_from_the_end_of_its_address() {
     assert_eq!(form("https://h/a/r.gz"), None);
     assert_eq!(form("https://h/a/r.tar"), None);
 }
+
+#[test]
+fn each_failed_step_of_containment_has_its_own_detail_and_launcher_code() {
+    use crate::model_work::cause::Containment;
+    let steps = [
+        Containment::NoDelegation,
+        Containment::NoNsdelegate,
+        Containment::CgroupJoinFailed,
+        Containment::BackstopFailed,
+        Containment::ParentGone,
+        Containment::UsernsDenied,
+        Containment::ExecFailed,
+    ];
+    for step in steps {
+        let cause = Cause::ContainmentFailed(step);
+        assert_eq!(
+            (cause.as_str(), cause.detail()),
+            ("containment_failed", Some(step.as_str()))
+        );
+        if let Some(code) = step.exit_code() {
+            assert_eq!(Containment::of_exit_code(code), Some(step));
+            assert_ne!(code, 125);
+        }
+    }
+    assert_eq!(Containment::UsernsDenied.as_str(), "userns_denied");
+    assert_eq!(Containment::of_exit_code(125), None);
+    assert_eq!(Cause::Listener.detail(), None);
+}

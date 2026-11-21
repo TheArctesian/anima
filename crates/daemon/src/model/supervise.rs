@@ -72,19 +72,6 @@ async fn verdict_of(running: &mut Running, port: u16) -> (Verdict, bool) {
     }
 }
 
-/// Whether the launcher ended because it could not join the cgroup of the server (Linux).
-fn launch_failed(status: std::process::ExitStatus) -> bool {
-    #[cfg(target_os = "linux")]
-    {
-        status.code() == Some(super::tree::linux::LAUNCH_FAILED)
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = status;
-        false
-    }
-}
-
 fn unreadable() -> loopback::Socket {
     loopback::Socket {
         protocol: loopback::Protocol::Tcp,
@@ -115,13 +102,14 @@ impl Server {
     async fn look(&mut self, now: u64, temporary_bytes: u64) -> Option<()> {
         let (running, port) = self.running.as_mut()?;
         if let Ok(Some(status)) = running.child.try_wait() {
+            let failure = running.launch_failure(status);
             // The main process ended: each other process of its tree ends with it, so no
             // child keeps a listener that the loopback check no longer reads.
             if let Some((mut running, _)) = self.running.take() {
                 server::kill(&mut running).await;
             }
-            if launch_failed(status) {
-                self.state = ServerState::Failed(Cause::ContainmentFailed);
+            if let Some(step) = failure {
+                self.state = ServerState::Failed(Cause::ContainmentFailed(step));
                 return None;
             }
             return Some(());

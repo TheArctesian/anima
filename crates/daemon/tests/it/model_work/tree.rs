@@ -158,3 +158,63 @@ fn the_walk_finds_a_live_child_on_this_mac() {
 async fn an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table() {
     assert!(anima_daemon::model::sockets::table(&[]).await.is_err());
 }
+
+fn exiting(root: &std::path::Path, script: &str) -> anima_daemon::model::server::Launch {
+    let place = root.join("servers/one");
+    anima_daemon::model::server::Launch {
+        program: "/bin/sh".into(),
+        arguments: vec!["-c".to_owned(), script.to_owned()],
+        environment: Vec::new(),
+        state: root.to_path_buf(),
+        temporary: place.join("tmp"),
+        ring: place.join("ring"),
+        key: zeroize::Zeroizing::new(String::new()),
+        place,
+        server: uuid::Uuid::nil(),
+        launcher: env!("CARGO_BIN_EXE_anima-daemon").into(),
+    }
+}
+
+#[tokio::test]
+async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher() {
+    use daemon_core::model_work::cause::Containment;
+    if !super::kit::contained() {
+        return;
+    }
+    let root = tempfile::tempdir().expect("a folder");
+    let mut runtime =
+        anima_daemon::model::server::spawn(&exiting(root.path(), "sleep 0.5; exit 123"))
+            .expect("started");
+    let status = runtime.child.wait().await.expect("ended");
+    assert_eq!(
+        runtime.launch_failure(status),
+        None,
+        "the runtime's own 123"
+    );
+    let written = "sleep 0.5; printf 123 > ../launch-failure; exit 123";
+    let mut launcher =
+        anima_daemon::model::server::spawn(&exiting(root.path(), written)).expect("started");
+    let status = launcher.child.wait().await.expect("ended");
+    assert_eq!(
+        launcher.launch_failure(status),
+        Some(Containment::UsernsDenied)
+    );
+}
+
+#[test]
+fn the_cgroup_mount_must_delegate_to_namespaces() {
+    use anima_daemon::model::tree::mounts::cgroup_has_nsdelegate;
+    let line = |options: &str| {
+        format!(
+            "30 24 0:26 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime shared:4 - cgroup2 cgroup2 {options}\n"
+        )
+    };
+    assert!(cgroup_has_nsdelegate(&line(
+        "rw,nsdelegate,memory_recursiveprot"
+    )));
+    assert!(!cgroup_has_nsdelegate(&line("rw,memory_recursiveprot")));
+    assert!(!cgroup_has_nsdelegate(
+        "31 24 0:27 / /mnt/other rw shared:5 - cgroup2 cgroup2 rw,nsdelegate\n"
+    ));
+    assert!(!cgroup_has_nsdelegate(""));
+}

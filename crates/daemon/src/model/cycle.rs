@@ -61,6 +61,7 @@ pub fn report(
     outcome: Result<Option<Value>, Cause>,
     seconds: u64,
 ) -> Value {
+    let detail = outcome.as_ref().err().and_then(|cause| cause.detail());
     let (state, cause, model) = match outcome {
         Ok(model) => ("succeeded", None, model),
         Err(cause) if cause.is_refusal() => ("refused", Some(cause.as_str()), None),
@@ -72,6 +73,9 @@ pub fn report(
     });
     if let Some(model) = model {
         result["model"] = model;
+    }
+    if let Some(detail) = detail {
+        result["detail"] = json!(detail);
     }
     json!({ "id": id, "attempt": attempt, "state": state, "result": result })
 }

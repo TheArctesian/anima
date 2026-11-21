@@ -7,14 +7,14 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+use daemon_core::model_work::cause::Containment;
+
 use super::Identity;
 
 /// The first word of the arguments of the launcher.
 pub const LAUNCH_MODE: &str = "__model-launch";
 /// The prefix of the name of the cgroup of a server.
 pub const PREFIX: &str = "anima-model-";
-/// The exit code of the launcher when it cannot join its cgroup or start the runtime.
-pub const LAUNCH_FAILED: i32 = 125;
 /// The most processes in the cgroup of one server, when the `pids` controller is delegated. A
 /// placeholder value of the contract (Section 9), so a fork bomb stops before a stop loses to
 /// it on a kernel with no `cgroup.kill`.
@@ -40,21 +40,37 @@ pub fn own_cgroup() -> Option<PathBuf> {
 
 /// Makes a new cgroup for one start of server `name` (a UUID). Each start has its own name
 /// (the server and the time of the start), so a cgroup of an earlier start that could not be
-/// removed never blocks a new start. Sets `pids.max` when the controller is delegated.
+/// removed never blocks a new start. Sets `cgroup.max.descendants` to 0, so the runtime can
+/// make no cgroup below it, and `pids.max` when the controller is delegated. With `nsdelegate`
+/// these files of the root of the namespace of the runtime are not writable from inside it.
 ///
 /// # Errors
-/// An I/O error when the system has no cgroup v2 or does not delegate it to this user.
-pub fn make(name: &str) -> io::Result<PathBuf> {
-    let parent = own_cgroup().ok_or_else(|| io::Error::other("no cgroup v2 for the daemon"))?;
+/// `no_nsdelegate` when the cgroup v2 mount lacks `nsdelegate`; `no_delegation` when the
+/// system has no cgroup v2 or does not delegate it to this user.
+pub fn make(name: &str) -> Result<PathBuf, Containment> {
+    let mountinfo =
+        std::fs::read_to_string("/proc/self/mountinfo").map_err(|_| Containment::NoDelegation)?;
+    if !super::mounts::cgroup_has_nsdelegate(&mountinfo) {
+        return Err(Containment::NoNsdelegate);
+    }
+    let parent = own_cgroup().ok_or(Containment::NoDelegation)?;
     let start = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos();
     let path = parent.join(format!("{PREFIX}{name}-{start}"));
-    std::fs::create_dir(&path)?;
-    let limit = path.join("pids.max");
-    if limit.exists() {
-        std::fs::write(&limit, PIDS_MAX.to_string())?;
+    std::fs::create_dir(&path).map_err(|_| Containment::NoDelegation)?;
+    let limits = std::fs::write(path.join("cgroup.max.descendants"), "0").and_then(|()| {
+        let pids = path.join("pids.max");
+        if pids.exists() {
+            std::fs::write(&pids, PIDS_MAX.to_string())
+        } else {
+            Ok(())
+        }
+    });
+    if limits.is_err() {
+        let _ = std::fs::remove_dir(&path);
+        return Err(Containment::NoDelegation);
     }
     Ok(path)
 }
@@ -70,18 +86,38 @@ pub fn is_server_cgroup(cgroup: &Path) -> bool {
     named && own_cgroup().is_some_and(|own| cgroup.parent() == Some(own.as_path()))
 }
 
-/// The processes of the cgroup now, by their identities.
+/// The processes of the cgroup and of each cgroup below it now, by their identities.
 ///
 /// # Errors
-/// An I/O error when `cgroup.procs` does not read; the caller then treats the server as
-/// exposed (fails closed).
+/// An I/O error when a `cgroup.procs` or a folder does not read; the caller then treats the
+/// server as exposed (fails closed).
 pub fn members(cgroup: &Path) -> io::Result<Vec<Identity>> {
-    let text = std::fs::read_to_string(cgroup.join("cgroup.procs"))?;
-    Ok(text
-        .lines()
-        .filter_map(|line| line.trim().parse().ok())
-        .filter_map(super::identity)
-        .collect())
+    let mut found = Vec::new();
+    for folder in subtree(cgroup)? {
+        let text = std::fs::read_to_string(folder.join("cgroup.procs"))?;
+        found.extend(
+            text.lines()
+                .filter_map(|line| line.trim().parse().ok())
+                .filter_map(super::identity),
+        );
+    }
+    Ok(found)
+}
+
+/// `cgroup` and each cgroup below it, parents before children; no link is followed.
+fn subtree(cgroup: &Path) -> io::Result<Vec<PathBuf>> {
+    let mut folders = vec![cgroup.to_path_buf()];
+    let mut next = 0;
+    while let Some(folder) = folders.get(next).cloned() {
+        next += 1;
+        for entry in std::fs::read_dir(&folder)? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                folders.push(entry.path());
+            }
+        }
+    }
+    Ok(folders)
 }
 
 /// Ends each process of the cgroup (with `cgroup.kill`, and one signal to each member whose
@@ -93,7 +129,11 @@ pub fn end_cgroup(cgroup: &Path) {
         let _gone_or_sent = super::signal(&member, rustix::process::Signal::KILL);
     }
     for _ in 0..50 {
-        if std::fs::remove_dir(cgroup).is_ok() || !cgroup.exists() {
+        // Children first: a cgroup that holds a cgroup cannot be removed.
+        for folder in subtree(cgroup).unwrap_or_default().iter().rev() {
+            let _ = std::fs::remove_dir(folder);
+        }
+        if !cgroup.exists() {
             return;
         }
         std::thread::sleep(std::time::Duration::from_millis(20));
@@ -139,8 +179,17 @@ fn hide_cgroups() -> io::Result<()> {
     Ok(())
 }
 
-/// The launcher: `__model-launch <cgroup.procs> <daemon pid> <program> <arguments…>`. It never
-/// returns. The environment is the one that the daemon gave it, already the fixed list.
+/// Writes the exit code of the failed launcher step `step` to the file `failure`, then exits
+/// with it.
+fn fail(failure: &str, step: Containment) -> ! {
+    let code = step.exit_code().unwrap_or(1);
+    let _ = std::fs::write(failure, code.to_string());
+    std::process::exit(code);
+}
+
+/// The launcher: `__model-launch <cgroup.procs> <daemon pid> <failure file> <program>
+/// <arguments…>`. It never returns. At a failed step it writes the exit code of that step
+/// ([`Containment::exit_code`]) to the failure file, then exits with it. The environment is the one that the daemon gave it, already the fixed list.
 ///
 /// The parent-death signal fires when the *thread* that started the launcher ends, not the
 /// daemon process. So the daemon must start servers from a thread that lives as long as the
@@ -148,25 +197,36 @@ fn hide_cgroups() -> io::Result<()> {
 /// after a time with no work and would kill each server with them.
 pub fn launch(arguments: &[String]) -> ! {
     use std::os::unix::process::CommandExt as _;
-    let (Some(procs), Some(daemon), Some(program)) =
-        (arguments.first(), arguments.get(1), arguments.get(2))
-    else {
-        std::process::exit(LAUNCH_FAILED);
+    let (Some(procs), Some(daemon), Some(failure), Some(program)) = (
+        arguments.first(),
+        arguments.get(1),
+        arguments.get(2),
+        arguments.get(3),
+    ) else {
+        std::process::exit(Containment::ExecFailed.exit_code().unwrap_or(1));
     };
     let joined = Path::new(procs)
         .file_name()
         .is_some_and(|name| name == "cgroup.procs")
         && std::fs::write(procs, std::process::id().to_string()).is_ok();
-    let backstop =
-        rustix::process::set_parent_process_death_signal(Some(rustix::process::Signal::KILL));
+    if !joined {
+        fail(failure, Containment::CgroupJoinFailed);
+    }
+    if rustix::process::set_parent_process_death_signal(Some(rustix::process::Signal::KILL))
+        .is_err()
+    {
+        fail(failure, Containment::BackstopFailed);
+    }
     // The daemon may have ended before the signal was set: then nothing would end the runtime.
     let parent = rustix::process::getppid().map(rustix::process::Pid::as_raw_nonzero);
-    let alive = parent.is_some_and(|pid| daemon.parse().ok() == Some(pid.get()));
-    if !joined || backstop.is_err() || !alive || hide_cgroups().is_err() {
-        std::process::exit(LAUNCH_FAILED);
+    if !parent.is_some_and(|pid| daemon.parse().ok() == Some(pid.get())) {
+        fail(failure, Containment::ParentGone);
+    }
+    if hide_cgroups().is_err() {
+        fail(failure, Containment::UsernsDenied);
     }
     let _error = std::process::Command::new(program)
-        .args(&arguments[3..])
+        .args(&arguments[4..])
         .exec();
-    std::process::exit(LAUNCH_FAILED);
+    fail(failure, Containment::ExecFailed);
 }

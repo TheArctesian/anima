@@ -253,8 +253,11 @@ larger than `sizeBytes`), `source_failed` (the source refused or did not answer 
 `load_crash` (the server ended while it loaded a copy), `hash_mismatch` (Section 7), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
 no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file), `archive_rejected` (a
 `runtime_install` whose archive breaks a rule of the unpack of Section 6, or has no server program at the path of its
-release source entry; R-NEW-archiverejected), `containment_failed` (Linux: the daemon cannot make the cgroup of the
-server, Section 9; R-NEW-containment).
+release source entry; R-NEW-archiverejected), `containment_failed` (Linux: the tree of the server cannot be contained,
+Section 9; R-NEW-containment). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
+`no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`. The launcher
+gives each of its steps its own exit code (120 to 124) and writes that code to a failure file in the folder of the
+server before it exits; the daemon takes an exit code as the launcher's only when that file holds it.
 
 ## 6. The install of a runtime (CAG-008)
 
@@ -398,12 +401,16 @@ of the batches between.
     the cgroup of the daemon or move a process out of its cgroup. When the namespaces cannot be made, the start
     fails (`containment_failed`), with no fallback. At each poll the main process, while it runs, must be in the
     cgroup of its server; when it is not, the server ends with `listener`. The loopback check
-    reads the sockets of each process of `cgroup.procs`, in the network tables of each network namespace that a
+    reads the sockets of each process of `cgroup.procs` of the cgroup of the server and of each cgroup below it, in
+    the network tables of each network namespace that a
     process is in, merged. A `cgroup.procs` that does not read, a process of the tree whose files do not read, or
     an empty tree while the server runs, counts as a listener that is not on loopback (it fails closed). A stop and
     an end use `cgroup.kill` and a signal to each process, then remove the cgroup; a cgroup that does not empty is
     logged and left, and each start has a cgroup of its own name. When the `pids` controller is delegated, the
-    daemon sets `pids.max` of the cgroup to 512 (a placeholder value, to measure). When the cgroup cannot be made
+    daemon sets `pids.max` of the cgroup to 512 (a placeholder value, to measure). The daemon sets
+    `cgroup.max.descendants` of the cgroup to 0, so the runtime can make no cgroup below it. The cgroup v2 mount must
+    have `nsdelegate` (`/proc/self/mountinfo`), because without it the cgroup namespace does not stop a move out of
+    its root; when it does not, the start fails (`containment_failed`, `no_nsdelegate`). When the cgroup cannot be made
     (no cgroup v2, or no delegation to the user of the daemon), the start fails (`containment_failed`). There is no
     start with less containment.
   - On macOS the tree is the walk of the parent processes from the server (`/bin/ps`), and the daemon records each

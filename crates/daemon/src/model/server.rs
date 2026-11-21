@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use daemon_core::model_work::cause::Cause;
+use daemon_core::model_work::cause::{Cause, Containment};
 use rustix::process::Signal;
 use tokio::process::{Child, Command};
 use zeroize::{Zeroize as _, Zeroizing};
@@ -123,6 +123,17 @@ impl Running {
         }
     }
 
+    /// The step at which the launcher failed, when the main process ended with the exit code of
+    /// a launcher step and the launcher wrote that code to its failure file (an exit code of
+    /// the runtime alone is not taken as one of the launcher).
+    #[must_use]
+    pub fn launch_failure(&self, status: std::process::ExitStatus) -> Option<Containment> {
+        let step = Containment::of_exit_code(status.code()?)?;
+        let written =
+            std::fs::read_to_string(self.record.with_file_name(tree::LAUNCH_FAILURE)).ok()?;
+        (written.trim().parse().ok() == step.exit_code()).then_some(step)
+    }
+
     fn tree(&self) -> Tree {
         Tree {
             leader: self.leader.clone(),
@@ -225,6 +236,7 @@ fn command(launch: &Launch, cgroup: Option<&Path>) -> Command {
                 .arg(super::tree::linux::LAUNCH_MODE)
                 .arg(cgroup.join("cgroup.procs"))
                 .arg(std::process::id().to_string())
+                .arg(launch.place.join(tree::LAUNCH_FAILURE))
                 .arg(&launch.program);
             command
         }
@@ -256,7 +268,7 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
     {
         super::tree::linux::make(&launch.server.to_string())
             .map(Some)
-            .map_err(|_| Cause::ContainmentFailed)
+            .map_err(Cause::ContainmentFailed)
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -276,6 +288,11 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
 /// the folders, the ring or the start.
 pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
     fresh_temporary(&launch.state, &launch.temporary).map_err(|_| Cause::StartFailed)?;
+    match std::fs::remove_file(launch.place.join(tree::LAUNCH_FAILURE)) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(_) => return Err(Cause::StartFailed),
+    }
     let ring = Ring::create(&launch.ring).map_err(|_| Cause::StartFailed)?;
     let cgroup = contain(launch)?;
     let mut child = command(launch, cgroup.as_deref())

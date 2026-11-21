@@ -266,6 +266,22 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
    or `Permission denied`). If `sysctl kernel.apparmor_restrict_unprivileged_userns` gives `1`, or
    `kernel.unprivileged_userns_clone` gives `0`, each start fails with `containment_failed`: write that in the
    result (R-NEW-cgroupns).
+9c. With a server running, as the user of the daemon, run `mkdir` in the cgroup of the server from inside its
+   namespaces (`nsenter -t <pid> -U -C --preserve-credentials mkdir /sys/fs/cgroup/x`). Expected: it fails, because
+   `cgroup.max.descendants` is 0. Then make such a cgroup from outside (as the daemon user), move a child of the
+   runtime that listens on `0.0.0.0` into it, and run a cycle. Expected: `failed` with `listener`.
+9d. Read the `detail` of each `containment_failed` report: on a system with
+   `kernel.apparmor_restrict_unprivileged_userns=1` and no profile it is `userns_denied`; with no `Delegate=yes` it
+   is `no_delegation`. Write the values of `sysctl kernel.apparmor_restrict_unprivileged_userns`,
+   `kernel.unprivileged_userns_clone` and `user.max_user_namespaces`, and `aa-status --enabled`, on `pop-os`.
+9e. End the test daemon with
+   `kill -9` while a server runs. Expected: the `llama-server` ends at once (the parent-death signal survived the
+   namespaces).
+9f. GPU inside the namespaces, on an NVIDIA machine and on an AMD (ROCm) machine: start a server whose settings put
+   the model on the GPU. Expected: `/dev/nvidia*` (NVIDIA), or `/dev/dri/renderD*` and `/dev/kfd` (ROCm), open in
+   the runtime (`ls -l /proc/<pid>/fd`), and the log of the runtime shows the layers on the GPU. If the NVIDIA
+   device nodes are missing before the first use, note it: `nvidia-modprobe` cannot run setuid inside the user
+   namespace.
 9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
    and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
    when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon

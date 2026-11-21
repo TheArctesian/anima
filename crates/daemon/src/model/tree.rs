@@ -14,6 +14,7 @@
 
 #[cfg(target_os = "linux")]
 pub mod linux;
+pub mod mounts;
 pub mod walk;
 
 use std::io;
@@ -24,6 +25,9 @@ use serde::{Deserialize, Serialize};
 
 /// The name of the record of a tree in the folder of its server.
 pub const RECORD: &str = "tree.json";
+/// The file in the folder of a server where the launcher writes its exit code before it exits
+/// at a failed step, so an exit code of the runtime is never read as one of the launcher.
+pub const LAUNCH_FAILURE: &str = "launch-failure";
 
 /// One process by its id and its start time, as the system gives it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

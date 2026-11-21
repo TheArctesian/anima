@@ -2620,6 +2620,42 @@ The correction: The operator ruled R-NEW-cgroupns: "Hide the daemon's cgroup (Re
 
 State: Open. Fixed by the ruling R-NEW-cgroupns on the branch `compute/l1-6` (not pushed); waits for HT-NEW-l1containment. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
 
+### SF-NEW-l1worku1: A cgroup below the cgroup of a server hid its processes from the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-containment, R-NEW-cgroupns.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The runtime may make a cgroup below the cgroup of its server (its user owns that folder) and move a process into it, inside the root of its namespace. `members` read only the `cgroup.procs` of the server, so the loopback check and the check of the main process missed that process.
+
+The correction: `members` reads the `cgroup.procs` of the cgroup of the server and of each cgroup below it, and a folder that does not read fails closed. `make` sets `cgroup.max.descendants` to 0, so no cgroup can be made below it; with `nsdelegate` the runtime cannot write that file of the root of its namespace. The end removes the cgroups below first. Linux only, not compiled on the Mac; HT-NEW-l1containment step 9c.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-NEW-l1worku2: The cgroup namespace stops a move out only with `nsdelegate`. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-cgroupns.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `tree/mounts.rs`.
+
+What it is: The kernel refuses a move to a cgroup outside the root of a cgroup namespace only when cgroup v2 is mounted with `nsdelegate`. systemd mounts it so; a system without systemd, or a mount of its own, may not, and the start then succeeded with the escape of SF-NEW-l1workt1 open.
+
+The correction: `make` reads `/proc/self/mountinfo` and refuses a start with `containment_failed` and the detail `no_nsdelegate` when the cgroup v2 mount at `/sys/fs/cgroup` has no `nsdelegate`. Test: `the_cgroup_mount_must_delegate_to_namespaces`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-NEW-l1worku3: Each failure of the launcher, and an exit 125 of a runtime, read as one `containment_failed`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-NEW-cgroupns.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `supervise.rs`, `cycle.rs`; `crates/daemon-core/src/model_work/cause.rs`.
+
+What it is: The launcher exited 125 at each step, and the daemon took each exit 125 as a failure of containment. A refusal of the user namespace (AppArmor on Ubuntu 24.04 and later, or a sysctl) could not be told from a missing delegation or a missing program, and a runtime that exits 125 was reported as a failure of containment.
+
+The correction: `containment_failed` carries a detail (`no_delegation`, `no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`), which the report gives in the member `detail` of the result. Each launcher step has its own exit code (120 to 124), and the launcher writes it to a failure file in the folder of the server before it exits; an exit code counts as the launcher's only when that file holds it. Tests: `each_failed_step_of_containment_has_its_own_detail_and_launcher_code`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
 ### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.
