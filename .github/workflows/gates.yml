@@ -96,12 +96,14 @@ jobs:
             dev_sha="$(git ls-remote origin refs/heads/dev | cut -f1)"
           fi
           echo "dev_sha=$dev_sha" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$dev_sha" > tested-base
+          # Outside the checkout: the next step counts each untracked file as a change of the branch,
+          # and a file here made each branch need each job.
+          printf '%s\n' "$dev_sha" > "$RUNNER_TEMP/tested-base"
           echo "tested with dev at: ${dev_sha:-nothing, the commit as it is}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tested-base
-          path: tested-base
+          path: ${{ runner.temp }}/tested-base
           if-no-files-found: error
           retention-days: 7
       # The push of a branch runs only the jobs that its changes need (quality/src/gates/jobs.ts):

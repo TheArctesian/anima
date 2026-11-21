@@ -11,6 +11,7 @@ const ROOT = join(import.meta.dir, "..", "..");
 const RAW = readFileSync(join(ROOT, ".github", "workflows", "gates.yml"), "utf8");
 
 interface Step {
+  id?: string;
   name?: string;
   uses?: string;
   run?: string;
@@ -93,6 +94,9 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("R-252 each job of the gates tests the branch as merged with the dev that the job `base` read", () => {
     expect(workflow.jobs["base"]?.steps.some((step) => step.with?.["name"] === "tested-base")).toBe(true);
+    // The file stays out of the checkout: `--jobs` counts an untracked file as a change of the branch.
+    expect(workflow.jobs["base"]?.steps.find((step) => step.with?.["name"] === "tested-base")?.with?.["path"]).toBe("${{ runner.temp }}/tested-base");
+    expect(workflow.jobs["base"]?.steps.find((step) => step.id === "dev")?.run).toContain('> "$RUNNER_TEMP/tested-base"');
     for (const [name, job] of gateJobs) {
       expect(job.needs, name).toEqual("base" as unknown as string[]);
       const merge = job.steps.find((step) => step.run?.includes("gates-merge.sh"));
