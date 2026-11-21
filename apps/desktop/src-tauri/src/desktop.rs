@@ -82,6 +82,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         this_machine::this_machine_read,
         daemon::daemon_bundled,
         daemon::daemon_install,
+        daemon::daemon_remove,
         local_hub::local_hub_carried,
         local_hub::local_hub_install,
         local_hub::local_hub_remove,

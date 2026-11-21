@@ -2,6 +2,7 @@
 
 use super::{Cpu, Disk, Interface, Load, Memory, captures};
 
+mod apfs;
 mod df;
 mod drives;
 mod gpu;
