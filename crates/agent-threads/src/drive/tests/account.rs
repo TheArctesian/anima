@@ -42,10 +42,9 @@ fn log_007_the_debug_text_of_an_account_event_holds_no_name() {
     );
     let debug = format!("{events:?}");
     assert!(
-        !debug.contains("someone") && !debug.contains("user-9"),
+        !debug.contains("someone") && !debug.contains("user-9") && !debug.contains("plus"),
         "{debug}"
     );
-    assert!(debug.contains("plus"));
 }
 
 #[test]
@@ -166,13 +165,11 @@ fn thr_132_a_codex_sign_out_clears_the_account() {
     let out = facts(&codex(
         r#"{"method":"account/updated","params":{"authMode":null,"planType":null}}"#,
     ))[0]
-    .clone();
+        .clone();
     kept.merge(out);
     assert!(kept.name.is_none() && kept.plan.is_none() && kept.signed_out);
-    let none = facts(&codex(
-        r#"{"id":3,"result":{"account":null,"requiresOpenaiAuth":true}}"#,
-    ));
-    assert!(none[0].signed_out);
+    let events = codex(r#"{"id":3,"result":{"account":null,"requiresOpenaiAuth":true}}"#);
+    assert!(facts(&events)[0].signed_out);
 }
 
 #[test]
@@ -200,6 +197,10 @@ fn thr_132_a_codex_window_with_no_length_keeps_its_own_name() {
     let events = codex(
         r#"{"method":"account/rateLimits/updated","params":{"rateLimits":{"primary":{"usedPercent":1},"secondary":{"usedPercent":2}}}}"#,
     );
-    let windows: Vec<&str> = facts(&events)[0].limits.iter().map(|limit| limit.window.as_str()).collect();
+    let windows: Vec<&str> = facts(&events)[0]
+        .limits
+        .iter()
+        .map(|limit| limit.window.as_str())
+        .collect();
     assert_eq!(windows, ["primary", "secondary"]);
 }

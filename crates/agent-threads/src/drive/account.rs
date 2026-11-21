@@ -104,7 +104,10 @@ impl AccountFacts {
 
     fn is_empty(&self) -> bool {
         !self.signed_out
-            && self.id.is_none() && self.name.is_none() && self.plan.is_none() && self.limits.is_empty()
+            && self.id.is_none()
+            && self.name.is_none()
+            && self.plan.is_none()
+            && self.limits.is_empty()
     }
 
     fn some(self) -> Option<Self> {
@@ -222,7 +225,9 @@ pub fn claude_limits(report: &Value) -> Option<AccountFacts> {
 
 /// One window of Claude Code. Only `rejected` is a reached limit: `allowed_warning` is not.
 fn claude_window(name: &str, window: &Value) -> Option<Limit> {
-    let used = window["utilization"].as_f64().map(|used| percent(used * 100.0));
+    let used = window["utilization"]
+        .as_f64()
+        .map(|used| percent(used * 100.0));
     let status = window["status"].as_str();
     if used.is_none() && status.is_none() {
         return None;
