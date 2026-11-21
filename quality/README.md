@@ -118,7 +118,8 @@ gates of a commit calls this one (`workflow_call`, inputs `ref` and `base_ref`).
 When the changes need Rust, the job `windows-lint` runs Clippy of the workspace for the target
 `x86_64-pc-windows-gnu` on Linux, with mingw-w64 (`bun quality/bin/gates.ts --windows-lint`,
 `quality/src/gates/windows-lint.ts`): it type-checks and lints the code behind `cfg(windows)`, which no other
-Linux job compiles. It runs no Windows test; the job `windows` (MSVC, for `dev`, a train or a call) does.
+Linux job compiles. It keeps going past a crate with a fault, so one run lists the faults of each crate that
+does not depend on that crate. It runs no Windows test; the job `windows` (MSVC, for `dev`, a train or a call) does.
 
 A Linux machine does not run these, so a Mac must (`bun run gates:fast` there): the tests of
 `check-mach-o.sh` and one test of `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the

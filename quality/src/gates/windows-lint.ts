@@ -19,7 +19,10 @@ export interface LeftOut {
 /** The crates left out of the lint. Empty: each crate of the workspace builds for the GNU target. */
 export const LEFT_OUT: readonly LeftOut[] = [];
 
-/** The Clippy command of the lint, with warnings denied as in the gate `clippy`. Pure. */
+/**
+ * The Clippy command of the lint, with warnings denied as in the gate `clippy`. `--keep-going`: a
+ * fault in one crate does not stop the check of each crate that does not depend on it. Pure.
+ */
 export function windowsLintArgv(leftOut: readonly LeftOut[] = LEFT_OUT): string[] {
   return [
     "cargo",
@@ -30,6 +33,7 @@ export function windowsLintArgv(leftOut: readonly LeftOut[] = LEFT_OUT): string[
     "--target",
     WINDOWS_TARGET,
     "--locked",
+    "--keep-going",
     "--",
     "-D",
     "warnings",
