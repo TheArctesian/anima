@@ -156,12 +156,29 @@ fn signal(pid: u32, signal: Signal) {
     }
 }
 
+/// Whether `pid` is a process that still runs. A zombie (it ended; its parent has not reaped it)
+/// does not run: on Linux a shell that waits in `read` does not reap a child that was killed.
 #[must_use]
 pub fn alive(pid: u32) -> bool {
     i32::try_from(pid)
         .ok()
         .and_then(Pid::from_raw)
         .is_some_and(|pid| test_kill_process(pid).is_ok())
+        && !zombie(pid)
+}
+
+/// Whether the system says that `pid` ended and waits to be reaped. Only Linux tells it without
+/// a program (`/proc`); elsewhere this says no.
+fn zombie(pid: u32) -> bool {
+    std::fs::read_to_string(format!("/proc/{pid}/stat")).is_ok_and(|stat| zombie_stat(&stat))
+}
+
+/// The state of `/proc/<pid>/stat` is the field after the name in parentheses (the name may hold
+/// spaces and parentheses, so the last `)` ends it).
+fn zombie_stat(stat: &str) -> bool {
+    stat.rfind(')')
+        .and_then(|end| stat[end + 1..].split_whitespace().next())
+        == Some("Z")
 }
 
 /// What an end of processes found.
@@ -271,6 +288,14 @@ pub async fn sweep(known: &Known) -> Ended {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn thr_049_a_zombie_does_not_run() {
+        assert!(zombie_stat("4242 (sh) Z 1 4242 4242 0 -1"));
+        assert!(zombie_stat("4242 (a (b) c) Z 1"));
+        assert!(!zombie_stat("4242 (sleep) S 1 4242"));
+        assert!(!zombie_stat("not a stat"));
+    }
 
     #[test]
     fn thr_049_the_walk_finds_each_process_below_the_root_in_any_group() {
