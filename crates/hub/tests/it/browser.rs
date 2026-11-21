@@ -3,6 +3,7 @@
 //! `logout`, and the sockets a second sign-in or a `logout` closes (D-3, D-4, SEC-002, API-003,
 //! WP-43 A-3 to A-8).
 
+mod catalogue;
 mod cookie;
 mod rotation;
 mod sign_in;

@@ -1,0 +1,71 @@
+{
+  "id": "heimdall",
+  "name": "heimdall",
+  "description": "heimdall is a way to organise all those links to your most used web sites and web applications in a simple way.",
+  "version": "v2.8.4-ls373",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "dashboard"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-heimdall",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/heimdall-banner.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "reviewed": {
+      "state": "not-reviewed"
+    },
+    "images": [
+      {
+        "service": "heimdall",
+        "image": "lscr.io/linuxserver/heimdall@sha256:47f70751f900be4499017a48c01206c02ab9d18f34a580c6213a13d24cdc1a4a",
+        "tag": "v2.8.4-ls373",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "heimdall"
+        ]
+      }
+    ],
+    "streams": [
+      {
+        "port": 443,
+        "protocols": [
+          "tcp"
+        ]
+      }
+    ],
+    "optional": [],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "heimdall",
+      "port": 80,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

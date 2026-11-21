@@ -32,7 +32,7 @@
       }
     ],
     "exceptions": [
-      "init-capabilities"
+      { "exception": "init-capabilities", "services": ["pihole"] }
     ],
     "volumes": [
       {

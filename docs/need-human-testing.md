@@ -31,6 +31,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
+| HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
+| HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
+| HT-113 | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -3518,6 +3521,97 @@ with real projects, in a desktop window or on a phone.
 
 Result: Open.
 
+### HT-113: the choice Catalogue shows the tier, the class shell, the streams and the optional parts (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the hub fields `class`, `tier`, `origin`, `reviewedBy`,
+`reviewedOn`, `streams`, `optionalParts` and `digests` of `CatalogueEntry` (`crates/hub/src/work/catalogue/`), and the client views
+`apps/client/src/lib/catalogue/CatalogueList.svelte` and `CatalogueEntryPane.svelte`, to Frames 3 to 6 of
+[device-containers-v2](mockup/device-containers-v2/index.html). The layout was approved overnight by the orchestrator
+after a separate design review (R-318); a person has not looked at it. The client tests read the
+rendered text in jsdom only: no test looks at the screen, the colours, the scroll of the list or the sticky group
+heads. The gallery tool could not run in the worktree of the build (it has no installed packages), so there are no
+pictures yet: take them in these steps.
+
+1. Open the desktop client in the dark appearance. Open a device that has Docker, the tab Containers, then the choice
+   Catalogue.
+   Expected: on the left, a search field, the choice of the tier "All 16 / Tested by Anima 6 / Generated 10", the line
+   "16 entries", and the entries in groups by category (Backup, Books, Cloud, Dashboard, Database, Downloaders, Git,
+   Location, Media management, Media servers, Monitoring, Passwords, Programming), each row with a neutral mark
+   "Tested by Anima" or "Generated". The row code-server has the mark Shell and the line "Needs a password that the
+   machine makes. It has no public route." Take a picture.
+2. Make the window lower until the list scrolls, and scroll it.
+   Expected: only the list scrolls; the head of each group stays at the top while its rows pass.
+3. Select jellyfin.
+   Expected: on the right, the description: the install button is disabled and the line under it says that Anima did
+   not test the entry on a machine with this image and to install it from the Anima app in a web browser (the desktop
+   client signs in with a login token, which is not that app, SF-253); Tier "From LinuxServer.io, data of
+   2026-11-17. Anima did not test it."; Reviewed "Reviewed by security reviewer agent, overnight session of the
+   orchestrator on 2026-11-21" is not there: Reviewed "Not reviewed", the mark "Not reviewed" in the head and in the
+   row, and the line "No person has read the settings of this entry. Read them before you install it."; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
+   default" and the mark "Needs machine setting". Take a picture.
+4. Select qbittorrent, then press the down and up arrow keys.
+   Expected: Streams "6881 TCP and UDP"; each arrow key selects the next or the previous row and moves the focus to it.
+5. Select code-server.
+   Expected: the marks Generated and Shell in the head, the reason that says to install it from the Anima app in a web
+   browser, and the fact "Class: Shell. Needs a password that the machine makes. It has no public route."
+6. Choose "Tested by Anima", then type `zzz` in the search field.
+   Expected: six entries, then "No entry matches the search" with the button "Clear the search", which shows the list
+   again.
+7. Do steps 1, 3 and 5 again in the light appearance and take the pictures.
+   Expected: the same parts in the same places; no text is hard to read.
+
+Result: Open.
+
+### HT-115: a person reads the ten generated entries of LinuxServer.io (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: each generated entry in `crates/catalogue/entries/` gives its review
+state in `anima.reviewed` (SF-255). The ten entries (calibre-web, code-server, duplicati, freshrss,
+heimdall, jellyfin, nextcloud, qbittorrent, radarr, sonarr) are `{"state": "not-reviewed"}`: no person has read them.
+An earlier record said that an agent read all ten; that was false and is removed. The static test refuses a review
+that names an agent or a session, so only a person can record one. No test can read an entry for a person.
+
+1. For each of the ten folders, read `entry.json`, `compose.yaml` and `environment.example`. Look at the image and
+   its digest, each port and its address, each volume, the variables, the capabilities that the service keeps, the
+   optional parts and, for code-server, the class `shell` and its password.
+   Expected: each setting is what the description of the entry and Section 15 of
+   [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) say; nothing downloads code at the
+   start, and no port is on an address other than `127.0.0.1`.
+2. For each entry that you accept, change `"reviewed": { "state": "not-reviewed" }` to
+   `"reviewed": { "state": "reviewed", "by": "<your name>", "on": "<the day, YYYY-MM-DD>" }` and run
+   `cargo test -p catalogue`.
+   Expected: the tests pass, and `anima catalogue show <entry>` gives "Reviewed by <your name> on <the day>".
+3. For each entry that you do not accept, write the reason in this entry and leave the state `not-reviewed`.
+
+Result: Open.
+
+### HT-114: three generated entries of LinuxServer.io start with the rights of the static test (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the recipe form `crates/catalogue/src/linuxserver.rs`, the
+generator `crates/catalogue/src/bin/generate.rs` and ten generated entries in `crates/catalogue/entries/` (Section
+15.10 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md)). The tests prove that each entry
+is what the form makes from the saved fleet list and that it passes the static test. No container was started: no
+test shows that an image of LinuxServer.io starts with `no-new-privileges:true`, the five capabilities of the init and
+`PUID` 1000, that a stream port answers, or that the shell entry asks for its password. Use a throwaway test machine
+that is not on the network of Anima or your local network (OD-HOST-53). Do each step in a copy of the entry folder.
+
+1. On the test machine, copy `crates/catalogue/entries/radarr/` to a new folder. Copy `environment.example` to
+   `.env`. Run `docker compose up -d`, wait two minutes, then run `docker compose ps` and
+   `curl -sI http://127.0.0.1:7878/`.
+   Expected: the service is `running` (not restarting); `curl` gives an HTTP answer. `docker compose exec radarr id
+   abc` gives uid 1000. `docker volume ls` shows the three volumes `config`, `movies` and `downloads` of the project.
+2. Copy `crates/catalogue/entries/qbittorrent/` in the same way and start it. Run `ss -lntu | grep 6881` on the
+   machine and `docker compose logs qbittorrent | grep -i password`.
+   Expected: port 6881 listens on `127.0.0.1` for TCP and for UDP; the web page answers on
+   `http://127.0.0.1:8082/` (the port of the machine is 8082, because freshrss and heimdall take 8080 and 8081: no two
+   entries publish the same port, SF-254) and the log gives the temporary password of the first sign-in.
+3. Copy `crates/catalogue/entries/code-server/`. In `.env`, write a password of your own after `PASSWORD=` (the
+   install would make it). Start it and open `http://127.0.0.1:8444/` through an SSH tunnel (the port of the machine is 8444, because 8443 is the port of the hub of Anima, SF-252).
+   Expected: the page asks for the password, and the password opens it. Write down what the page does with an empty
+   `PASSWORD=`: the class `shell` needs the credential that the install makes because of that answer (OD-HOST-54).
+4. For each of the three, run `docker inspect --format '{{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}'` on the
+   container, then `docker compose down -v`.
+   Expected: the nine dropped capabilities and `no-new-privileges:true`; after `down -v` no container or volume of
+   the project stays.
 ### HT-106: the log of the daemon in a file on macOS and in the journal on Linux (MET-019, R-312)
 
 Built on the branch `daemon/push-retry-log`: the LaunchAgent (`crates/daemon/units/ing.anima.daemon.plist`) sets

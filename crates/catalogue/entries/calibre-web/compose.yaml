@@ -1,0 +1,35 @@
+services:
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web@sha256:adb69d75b9c252e580fc691096f858833b901b5d106ae4080fb476bab104d946
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
+    ports:
+      - target: 8083
+        published: 8084
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: config
+        target: /config
+      - type: volume
+        source: books
+        target: /books
+volumes:
+  config:
+  books:

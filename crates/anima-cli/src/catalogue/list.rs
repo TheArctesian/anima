@@ -45,6 +45,8 @@ fn table(found: &Vec<Entry>) -> Table {
         "ID",
         "NAME",
         "KIND",
+        "TIER",
+        "CLASS",
         "VERSION",
         "MARKS",
         "MACHINE TEST",
@@ -61,6 +63,8 @@ fn table(found: &Vec<Entry>) -> Table {
             entry.id.as_str().into(),
             entry.name.as_str().into(),
             words(&entry.kind).as_str().into(),
+            words(&entry.tier).as_str().into(),
+            words(&entry.class).as_str().into(),
             entry.version.as_str().into(),
             marks.as_str().into(),
             entry

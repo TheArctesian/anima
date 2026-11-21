@@ -84,10 +84,28 @@ export const UPDATES: readonly ImageUpdate[] = [
   update('c'.repeat(64), 'recorder', { state: 'NOT_KNOWN', reason: 'NO_LOCAL_DIGEST' }),
 ];
 
-/** Task H38: two entries of the catalogue as the hub lists them; the install of each is refused. */
+const GENERATED = {
+  tier: 'GENERATED',
+  origin: { publisher: 'LinuxServer.io', read: '2026-11-17' },
+  reviewedBy: 'Ada Lovelace',
+  reviewedOn: '2026-11-21',
+  install: { refusal: 'GENERATED_NEEDS_DIGEST', reason: 'Anima did not test this entry: it is generated from the data of its publisher. To install it, a person confirms the digest of its image.', needsOpenToNetwork: false },
+} as const;
+
+/**
+ * Tasks H38 and H39: two tested entries and two generated ones (a shell that no one read, and one with a stream and an
+ * optional device).
+ */
 export const ENTRIES: readonly CatalogueEntry[] = [
-  entry('owntracks-recorder', 'OwnTracks Recorder', { lastMachineTest: '2026-11-20' }),
-  entry('postgresql', 'PostgreSQL', { kind: 'DATABASE' }),
+  entry('owntracks-recorder', 'OwnTracks Recorder', { lastMachineTest: '2026-11-20', tags: ['location'] }),
+  entry('postgresql', 'PostgreSQL', { kind: 'DATABASE', tags: ['database'] }),
+  entry('code-server', 'code-server', { ...GENERATED, class: 'SHELL', reviewedBy: null, reviewedOn: null, tags: ['linuxserver', 'programming'] }),
+  entry('jellyfin', 'jellyfin', {
+    ...GENERATED,
+    tags: ['linuxserver', 'media servers'],
+    streams: [{ port: 7359, protocols: ['tcp', 'udp'] }],
+    optionalParts: [{ kind: 'DEVICE', path: '/dev/dri', on: false, needsMachineSetting: true }],
+  }),
 ];
 
 function entry(id: string, name: string, changes: Partial<CatalogueEntry>): CatalogueEntry {
@@ -102,6 +120,13 @@ function entry(id: string, name: string, changes: Partial<CatalogueEntry>): Cata
     documentationUrl: 'https://example.org/docs',
     marks: [],
     networkPorts: [],
+    class: 'APPLICATION',
+    tier: 'TESTED',
+    origin: null,
+    reviewedBy: null,
+    reviewedOn: null,
+    streams: [],
+    optionalParts: [],
     lastMachineTest: null,
     pinned: '2026-11-20',
     install: { refusal: 'INSTALL_NOT_BUILT', reason: 'The install needs task H6 of the hosted applications plan, which is not built. No machine was reached.', needsOpenToNetwork: false },

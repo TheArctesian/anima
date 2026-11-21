@@ -19,7 +19,7 @@ use super::{
     store,
     tokens::{self, Scope, TokenKind, Transport},
 };
-use crate::ids::TokenId;
+use crate::{fleet::events::ActorKind, ids::TokenId};
 
 /// What a stored token grants: its row, its kind and scope, and until when; for an API key,
 /// also its name and what it is made for (LOG-015).
@@ -151,6 +151,15 @@ impl Identity {
     #[must_use]
     pub fn api_key(&self) -> Option<TokenId> {
         (self.grant.kind == TokenKind::ApiKey).then(|| TokenId::from(self.grant.token))
+    }
+
+    /// True for a person signed in to the Anima app in a browser: a browser token whose request
+    /// did not declare an AI agent (OD-HOST-54, SF-252). A login token is never one:
+    /// the `anima` command holds it, and an agent can use it and leave out the header that
+    /// declares an agent. An API key is never one.
+    #[must_use]
+    pub fn is_person_in_browser(&self) -> bool {
+        self.grant.kind == TokenKind::Browser && self.operator.actor.kind() == ActorKind::User
     }
 
     /// The token of a builder identity, which names its builder record (BLD-024); `None` for

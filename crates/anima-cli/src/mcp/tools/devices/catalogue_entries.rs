@@ -1,7 +1,7 @@
 //! `anima_catalogue_list`, `anima_catalogue_show` and `anima_catalogue_install`: the
 //! catalogue of applications that ships with Anima (HOST-047, task H38). An agent may ask for
-//! the install of an entry of the tested catalogue (R-234); the hub refuses it with a fixed
-//! reason until task H6 exists, and reaches no machine.
+//! the install of an entry of the tested catalogue (R-234), never of a shell (OD-HOST-54); the
+//! hub refuses it with a fixed reason until task H6 exists, and reaches no machine.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -34,6 +34,10 @@ pub struct InstallInput {
     id: String,
     /// The device's id or exact name.
     device: String,
+    /// The digest of the image (`sha256:...`, from `anima_catalogue_show`): a generated entry is
+    /// installed only when the request names it.
+    #[serde(default)]
+    digest: Option<String>,
 }
 
 /// The definition of a catalogue tool.
@@ -75,10 +79,12 @@ fn list_definition() -> Definition {
         (
             "entries",
             "array",
-            "One entry each: id, name, kind (APPLICATION or DATABASE), version, tags, marks \
-             (NETWORK_PORT, ENGINE_SOCKET, HOST_NETWORK, DEVICE), lastMachineTest (a day, or \
-             null: not tested on a machine), pinned (the day of the last pin of the images), \
-             install (refusal and needsOpenToNetwork).",
+            "One entry each: id, name, kind (APPLICATION or DATABASE), class (APPLICATION or \
+             SHELL: a shell needs a password made on the machine, gets no public route and only \
+             a person in the Anima app in a web browser installs it), tier (TESTED by Anima or GENERATED from the data of a \
+             publisher), version, tags, marks (NETWORK_PORT, ENGINE_SOCKET, HOST_NETWORK, \
+             DEVICE), lastMachineTest (a day, or null: not tested on a machine), pinned (the day \
+             of the last pin of the images), install (refusal and needsOpenToNetwork).",
         ),
     ])
 }
@@ -106,8 +112,11 @@ fn show_definition() -> Definition {
             "entry",
             "object",
             "The fields of anima_catalogue_list, and description, author, iconUrl, \
-             documentationUrl, networkPorts (port and protocols), install (refusal, reason, \
-             needsOpenToNetwork) and environmentVariables (names only).",
+             documentationUrl, networkPorts (port and protocols), origin (publisher and read, \
+             null for a tested entry), reviewedBy and reviewedOn (the person who reviewed a \
+             generated entry and the day; null when no person did), streams (port and protocols), optionalParts (kind, path, \
+             on, needsMachineSetting), digests, install (refusal, reason, needsOpenToNetwork) \
+             and environmentVariables (names only).",
         ),
         (
             "composeFile",
@@ -139,14 +148,17 @@ fn install_definition() -> Definition {
         "Asks the hub to install one entry of the catalogue on a device (R-234). Today the hub \
          always refuses with a fixed reason: the install needs task H6 of the hosted \
          applications plan, which is not built. An entry that needs the socket of the \
-         container engine is never installed. No machine is reached and nothing changes.",
+         container engine is never installed; a shell is installed only by a person in the \
+         Anima app in a web browser, never by an agent; a generated entry needs digest, the \
+         digest of its image, and from an agent a passed test on a machine with that image. \
+         No machine is reached and nothing changes.",
     )
     .returns(&[
         (
             "refusal",
             "string",
-            "NOT_LISTED, ENGINE_SOCKET or INSTALL_NOT_BUILT; null when the hub would install \
-             the entry (never today).",
+            "NOT_LISTED, ENGINE_SOCKET, SHELL_NEEDS_PERSON, GENERATED_NEEDS_DIGEST, \
+             GENERATED_NOT_TESTED or INSTALL_NOT_BUILT; null when the hub would install the entry (never today).",
         ),
         ("reason", "string", "The fixed text of the refusal."),
         (
@@ -159,7 +171,7 @@ fn install_definition() -> Definition {
 
 async fn install_entry(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: InstallInput = parse(arguments)?;
-    let answer = install::ask(hub, &input.id, &input.device).await?;
+    let answer = install::ask(hub, &input.id, &input.device, input.digest).await?;
     Ok(Value::Object(object([
         ("refusal", json(&answer.refusal)),
         ("reason", json!(answer.reason)),

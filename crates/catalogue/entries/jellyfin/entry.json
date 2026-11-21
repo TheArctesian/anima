@@ -1,0 +1,79 @@
+{
+  "id": "jellyfin",
+  "name": "jellyfin",
+  "description": "jellyfin is a Free Software Media System that puts you in control of managing and streaming your media.",
+  "version": "12.4ubu2604-ls59",
+  "author": "LinuxServer.io",
+  "tags": [
+    "linuxserver",
+    "media servers",
+    "music",
+    "audiobooks"
+  ],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://github.com/linuxserver/docker-jellyfin",
+  "icon_url": "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/jellyfin-logo.png",
+  "anima": {
+    "class": "application",
+    "origin": {
+      "from": "linuxserver",
+      "read": "2026-11-17"
+    },
+    "reviewed": {
+      "state": "not-reviewed"
+    },
+    "images": [
+      {
+        "service": "jellyfin",
+        "image": "lscr.io/linuxserver/jellyfin@sha256:2f708001387aa9853e744a4a4d572d9970927c479c56d6c9e199f789c5173535",
+        "tag": "12.4ubu2604-ls59",
+        "resolved": "2026-11-21"
+      }
+    ],
+    "marks": [],
+    "exceptions": [
+      {
+        "exception": "init-capabilities",
+        "services": [
+          "jellyfin"
+        ]
+      }
+    ],
+    "streams": [],
+    "optional": [
+      {
+        "part": "device",
+        "path": "/dev/dri"
+      }
+    ],
+    "volumes": [
+      {
+        "volume": "config",
+        "copy": "sqlite"
+      },
+      {
+        "volume": "data-tvshows",
+        "copy": "files"
+      },
+      {
+        "volume": "data-movies",
+        "copy": "files"
+      }
+    ],
+    "generated": [],
+    "test": {
+      "service": "jellyfin",
+      "port": 8096,
+      "reach": "tcp",
+      "path": null,
+      "statuses": [],
+      "body": null,
+      "limit_seconds": 300
+    },
+    "pinned": "2026-11-21",
+    "last_test": {
+      "result": "not-tested"
+    }
+  }
+}

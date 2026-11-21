@@ -37,7 +37,10 @@
       }
     ],
     "marks": [],
-    "exceptions": ["init-capabilities"],
+    "exceptions": [
+      { "exception": "init-capabilities", "services": ["db", "redis"] },
+      { "exception": "reviewed-command", "services": ["app", "sidekiq"] }
+    ],
     "volumes": [
       { "volume": "public", "copy": "files" },
       { "volume": "watched", "copy": "files" },

@@ -7,11 +7,15 @@ use sqlx::PgPool;
 
 use crate::hub::{Hub, set_operator, start};
 
-const LIST: &str = "{ catalogueEntries { id kind lastMachineTest install { refusal } } }";
+const LIST: &str =
+    "{ catalogueEntries { id kind class tier lastMachineTest install { refusal } } }";
 const SHOW: &str = "query($id: String!) { catalogueEntry(id: $id) { id composeFile \
     environmentVariables install { refusal reason needsOpenToNetwork } } }";
-const INSTALL: &str = "mutation($entry: String!, $device: ID!) { \
-    installCatalogueEntry(entryId: $entry, deviceId: $device) { refusal reason } }";
+const INSTALL: &str = "mutation($entry: String!, $device: ID!, $digest: String) { \
+    installCatalogueEntry(entryId: $entry, deviceId: $device, digest: $digest) { refusal reason } }";
+const PARTS: &str = "query($id: String!) { catalogueEntry(id: $id) { class tier \
+    origin { publisher read } reviewedBy reviewedOn streams { port protocols } \
+    optionalParts { kind path on needsMachineSetting } digests } }";
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
 const DEVICE: &str = "0190a000-0000-7000-8002-000000000002";
@@ -54,7 +58,15 @@ async fn h38_the_hub_lists_and_describes_the_entries_that_pass_the_static_test(p
     assert!(!ids.contains(&"pihole"), "{answer}");
     for entry in entries {
         assert_eq!(entry["lastMachineTest"], Value::Null, "{entry}");
-        assert_eq!(entry["install"]["refusal"], "INSTALL_NOT_BUILT", "{entry}");
+        // A login token is not the Anima app in a browser (SF-252).
+        let refusal = if entry["class"] == "SHELL" {
+            "SHELL_NEEDS_PERSON"
+        } else if entry["tier"] == "GENERATED" {
+            "GENERATED_NOT_TESTED"
+        } else {
+            "INSTALL_NOT_BUILT"
+        };
+        assert_eq!(entry["install"]["refusal"], refusal, "{entry}");
     }
 
     let answer = hub
@@ -113,4 +125,72 @@ async fn h38_a_read_key_lists_but_does_not_ask_for_an_install(pool: PgPool) {
     assert_eq!(answer["errors"][0]["extensions"]["code"], "FORBIDDEN");
     let answer = hub.post(None, LIST, json!({})).await;
     assert_eq!(answer["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn h39_an_entry_gives_its_class_tier_streams_and_optional_parts(pool: PgPool) {
+    let (hub, token) = signed_in(&pool).await;
+    let answer = hub
+        .post(Some(&token), PARTS, json!({ "id": "jellyfin" }))
+        .await;
+    let jellyfin = &answer["data"]["catalogueEntry"];
+    assert_eq!(jellyfin["class"], "APPLICATION", "{answer}");
+    assert_eq!(jellyfin["tier"], "GENERATED");
+    assert_eq!(jellyfin["origin"]["publisher"], "LinuxServer.io");
+    // No person has reviewed the ten generated entries yet (SF-255).
+    assert_eq!(jellyfin["reviewedBy"], Value::Null, "{answer}");
+    assert_eq!(jellyfin["reviewedOn"], Value::Null);
+    assert_eq!(
+        jellyfin["optionalParts"],
+        json!([{ "kind": "DEVICE", "path": "/dev/dri", "on": false,
+            "needsMachineSetting": true }])
+    );
+    let answer = hub
+        .post(Some(&token), PARTS, json!({ "id": "qbittorrent" }))
+        .await;
+    let streams = &answer["data"]["catalogueEntry"]["streams"];
+    assert!(
+        streams
+            .as_array()
+            .is_some_and(|all| all.iter().any(|stream| stream["port"] == 6881)),
+        "{answer}"
+    );
+    let answer = hub
+        .post(Some(&token), PARTS, json!({ "id": "postgresql" }))
+        .await;
+    let postgresql = &answer["data"]["catalogueEntry"];
+    assert_eq!(postgresql["tier"], "TESTED", "{answer}");
+    assert_eq!(postgresql["origin"], Value::Null);
+    assert_eq!(postgresql["reviewedBy"], Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sf_revlsform_a_login_token_and_a_key_install_no_shell_and_no_untested_entry(pool: PgPool) {
+    let (hub, token) = signed_in(&pool).await;
+    let agent = key(&hub, &token, "WRITE").await;
+    for (entry, refusal) in [
+        ("code-server", "SHELL_NEEDS_PERSON"),
+        ("radarr", "GENERATED_NOT_TESTED"),
+    ] {
+        let answer = hub.post(Some(&token), PARTS, json!({ "id": entry })).await;
+        let digest = answer["data"]["catalogueEntry"]["digests"][0].clone();
+        let named = json!({ "entry": entry, "device": DEVICE, "digest": digest });
+        for (holder, bearer) in [("login token", &token), ("API key", &agent)] {
+            let answer = hub.post(Some(bearer), INSTALL, named.clone()).await;
+            assert_eq!(
+                answer["data"]["installCatalogueEntry"]["refusal"], refusal,
+                "{holder} {entry}: {answer}"
+            );
+        }
+    }
+    let reason = hub
+        .post(Some(&token), INSTALL, install("code-server", DEVICE))
+        .await;
+    let reason = reason["data"]["installCatalogueEntry"]["reason"].clone();
+    assert!(
+        reason
+            .as_str()
+            .is_some_and(|text| text.contains("Anima app in a web browser")),
+        "{reason}"
+    );
 }

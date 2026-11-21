@@ -11,12 +11,13 @@ pub mod graphql;
 mod install;
 mod listing;
 mod model;
+mod parts;
 #[cfg(test)]
 mod tests;
 
 use std::sync::LazyLock;
 
-pub use self::install::{Install, Refusal, install};
+pub use self::install::{Ask, Install, Refusal, install};
 pub use self::model::{EntryKind, Listed, MarkKind};
 
 /// The entries that passed the static test, in the order of their identifiers.

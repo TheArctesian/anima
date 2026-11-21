@@ -13,6 +13,7 @@ mod example;
 mod fields;
 mod file;
 mod folder;
+pub mod linuxserver;
 pub mod postgresql;
 mod privileges;
 mod shipped;
@@ -25,6 +26,11 @@ pub use privileges::Privilege;
 pub use shipped::shipped;
 
 use entry::{Entry, MachineTest};
+
+/// The ports of Anima on a machine (SF-252): `guacd` (4822), the local hub (8443) and
+/// the link (the tunnel on 41641, STUN on 3478). No recipe publishes one of them on the machine.
+/// The routes of task H21 refuse the same ports; when both are on one branch, they use this list.
+pub const ANIMA_PORTS: [u16; 4] = [4822, 8443, 41641, 3478];
 
 /// The three texts of one recipe folder. A file that is not in the folder is `None`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -89,6 +95,19 @@ pub enum Code {
     /// A service keeps rights that it does not need, or changes its code at the start
     /// (SF-224).
     PrivilegeNotPermitted(Privilege),
+    /// A stream of the entry is not a published port of the file with each of its protocols.
+    StreamNotPublished,
+    /// An optional part is not a device below `/dev/`.
+    OptionalNotPermitted,
+    /// An entry of the class `shell` has no credential that the install makes, or a port on
+    /// the network (OD-HOST-54).
+    ShellNotContained,
+    /// A published port of the machine is a port of Anima (SF-252).
+    AnimaPortPublished,
+    /// A generated entry does not give its review state (SF-255).
+    NotReviewed,
+    /// The review names no person: an empty name, an agent, a session or a program.
+    ReviewerNotPermitted,
 }
 
 impl Code {
@@ -119,6 +138,12 @@ impl Code {
             Self::VariableNotPermitted => "variable_not_permitted",
             Self::SecretInFile => "secret_in_file",
             Self::PrivilegeNotPermitted(_) => "privilege_not_permitted",
+            Self::StreamNotPublished => "stream_not_published",
+            Self::OptionalNotPermitted => "optional_not_permitted",
+            Self::ShellNotContained => "shell_not_contained",
+            Self::AnimaPortPublished => "anima_port_published",
+            Self::NotReviewed => "not_reviewed",
+            Self::ReviewerNotPermitted => "reviewer_not_permitted",
         }
     }
 
@@ -166,6 +191,21 @@ pub fn check(recipe: &Recipe) -> Vec<Finding> {
             code,
         })
         .collect()
+}
+
+/// The ports of the machine that the Compose file of `recipe` publishes, on any address, each
+/// once; none for a file that the rules of a Compose file refuse.
+#[must_use]
+pub fn published(recipe: &Recipe) -> Vec<u16> {
+    let (Some(compose), Some(environment)) = (&recipe.compose, &recipe.environment) else {
+        return Vec::new();
+    };
+    let settings = compose_rules::Settings {
+        open_to_network: true,
+        label_prefixes: Vec::new(),
+    };
+    compose_rules::check(compose, environment, &settings)
+        .map_or_else(|_| Vec::new(), |checked| file::published(&checked.unfilled))
 }
 
 fn codes(recipe: &Recipe) -> Vec<Code> {

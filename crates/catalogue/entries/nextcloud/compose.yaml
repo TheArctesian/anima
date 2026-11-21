@@ -1,0 +1,35 @@
+services:
+  nextcloud:
+    image: lscr.io/linuxserver/nextcloud@sha256:1c3cfb00eb8653e03042653065e848523edf177498b439fcfdddff5ecd355e1a
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - AUDIT_WRITE
+      - FSETID
+      - KILL
+      - MKNOD
+      - NET_BIND_SERVICE
+      - NET_RAW
+      - SETFCAP
+      - SETPCAP
+      - SYS_CHROOT
+    ports:
+      - target: 443
+        published: 8446
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: config
+        target: /config
+      - type: volume
+        source: data
+        target: /data
+volumes:
+  config:
+  data:

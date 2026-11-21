@@ -2,10 +2,18 @@
 
 use catalogue::{
     Recipe,
-    entry::{Mark, Protocol},
+    entry::{MachineTest, Mark, Protocol},
 };
 
-use super::{EntryKind, Refusal, entries, entry, install, listing::listed};
+use super::{Ask, EntryKind, Refusal, entries, entry, install, listing::listed, model::Tier};
+
+/// A person in the Anima app in a browser, who names the digest of `listed` when it has one image.
+fn person_with_digest(listed: &super::Listed) -> Ask<'_> {
+    Ask {
+        in_browser: true,
+        digest: listed.image_digests().first().copied(),
+    }
+}
 
 fn ids(found: &[super::Listed]) -> Vec<&str> {
     found
@@ -20,10 +28,20 @@ fn h38_the_hub_lists_each_shipped_recipe_that_passes_the_static_test() {
     assert_eq!(
         ids(entries()),
         [
+            "calibre-web",
+            "code-server",
             "dawarich",
+            "duplicati",
+            "freshrss",
             "gitea",
+            "heimdall",
+            "jellyfin",
+            "nextcloud",
             "owntracks-recorder",
             "postgresql",
+            "qbittorrent",
+            "radarr",
+            "sonarr",
             "uptime-kuma",
             "vaultwarden"
         ]
@@ -81,7 +99,7 @@ fn h38_the_description_gives_the_names_of_the_variables_and_never_a_value() {
 #[test]
 fn h38_the_install_is_refused_because_task_h6_is_not_built() {
     for listed in entries() {
-        let answer = install(Some(listed));
+        let answer = install(Some(listed), person_with_digest(listed));
         assert_eq!(
             answer.refusal,
             Some(Refusal::InstallNotBuilt),
@@ -90,7 +108,10 @@ fn h38_the_install_is_refused_because_task_h6_is_not_built() {
         );
         assert!(!answer.needs_open_to_network);
     }
-    assert_eq!(install(None).refusal, Some(Refusal::NotListed));
+    assert_eq!(
+        install(None, Ask::default()).refusal,
+        Some(Refusal::NotListed)
+    );
     assert!(Refusal::InstallNotBuilt.reason().contains("task H6"));
 }
 
@@ -98,7 +119,10 @@ fn h38_the_install_is_refused_because_task_h6_is_not_built() {
 fn r_247_an_entry_with_the_socket_of_the_engine_is_never_installable() {
     let mut listed = entry("uptime-kuma").expect("listed").clone();
     listed.entry.anima.marks = vec![Mark::EngineSocket];
-    assert_eq!(install(Some(&listed)).refusal, Some(Refusal::EngineSocket));
+    assert_eq!(
+        install(Some(&listed), person_with_digest(&listed)).refusal,
+        Some(Refusal::EngineSocket)
+    );
 }
 
 #[test]
@@ -108,7 +132,99 @@ fn r_229_an_entry_with_a_port_on_the_network_needs_open_to_the_network() {
         port: 3001,
         protocols: vec![Protocol::Tcp],
     }];
-    let answer = install(Some(&listed));
+    let answer = install(Some(&listed), person_with_digest(&listed));
     assert!(answer.needs_open_to_network);
     assert_eq!(answer.refusal, Some(Refusal::InstallNotBuilt));
+}
+
+#[test]
+fn od_host_54_a_shell_is_installed_only_by_a_person_in_the_app_in_a_browser() {
+    let shell = entry("code-server").expect("listed");
+    let by_key = Ask {
+        in_browser: false,
+        digest: shell.image_digests().first().copied(),
+    };
+    assert_eq!(
+        install(Some(shell), by_key).refusal,
+        Some(Refusal::ShellNeedsPerson)
+    );
+    assert_eq!(
+        install(Some(shell), person_with_digest(shell)).refusal,
+        Some(Refusal::InstallNotBuilt)
+    );
+    let application = entry("vaultwarden").expect("listed");
+    let by_key = Ask {
+        in_browser: false,
+        digest: None,
+    };
+    assert_eq!(
+        install(Some(application), by_key).refusal,
+        Some(Refusal::InstallNotBuilt)
+    );
+}
+
+#[test]
+fn od_host_50_a_generated_entry_needs_the_digest_of_its_image() {
+    let generated = entry("radarr").expect("listed");
+    assert_eq!(generated.tier_of_origin(), Tier::Generated);
+    assert_eq!(
+        entry("vaultwarden").expect("listed").tier_of_origin(),
+        Tier::Tested
+    );
+    let digest = generated.image_digests()[0];
+    assert!(digest.starts_with("sha256:"), "{digest}");
+    for named in [
+        None,
+        Some("sha256:0"),
+        Some(entry("sonarr").expect("listed").image_digests()[0]),
+    ] {
+        let ask = Ask {
+            in_browser: true,
+            digest: named,
+        };
+        assert_eq!(
+            install(Some(generated), ask).refusal,
+            Some(Refusal::GeneratedNeedsDigest),
+            "{named:?}"
+        );
+    }
+}
+
+#[test]
+fn sf_revlsform_a_generated_entry_from_outside_the_browser_needs_a_test_with_its_image() {
+    let mut generated = entry("radarr").expect("listed").clone();
+    let digest = generated.image_digests()[0].to_owned();
+    let by_key = Ask {
+        in_browser: false,
+        digest: Some(&digest),
+    };
+    assert_eq!(
+        install(Some(&generated), by_key).refusal,
+        Some(Refusal::GeneratedNotTested)
+    );
+    generated.entry.anima.last_test = MachineTest::Passed {
+        date: "2026-11-21".to_owned(),
+        digests: vec![format!("sha256:{}", "ab".repeat(32))],
+    };
+    assert_eq!(
+        install(Some(&generated), by_key).refusal,
+        Some(Refusal::GeneratedNotTested),
+        "a pass with an other image does not count"
+    );
+    generated.entry.anima.last_test = MachineTest::Passed {
+        date: "2026-11-21".to_owned(),
+        digests: vec![digest.clone()],
+    };
+    assert_eq!(
+        install(Some(&generated), by_key).refusal,
+        Some(Refusal::InstallNotBuilt)
+    );
+    let no_digest = Ask {
+        in_browser: false,
+        digest: None,
+    };
+    assert_eq!(
+        install(Some(&generated), no_digest).refusal,
+        Some(Refusal::GeneratedNeedsDigest)
+    );
 }

@@ -1,10 +1,16 @@
 //! Tests of the static test of a recipe (HOST-047): the recipes that ship (`shipped`), and a
 //! sound recipe with one fault at a time (`refused`), the rights of the services
-//! (`privileges`), and the fields about a database (`database`).
+//! (`privileges`), the commands of the services (`commands`), the fields about a database
+//! (`database`), and the recipe form of LinuxServer.io (`linuxserver`).
 
+mod commands;
 mod database;
+mod generator;
+mod linuxserver;
+mod ports;
 mod privileges;
 mod refused;
+mod reviewed;
 mod shipped;
 
 use crate::{Code, Recipe, check};

@@ -19,16 +19,27 @@ pub struct InstallArgs {
     /// The device's ID or its exact name.
     #[arg(long)]
     device: String,
+    /// The digest of the image (`sha256:...`, as `anima catalogue show` gives it): a
+    /// generated entry is installed only when the request names it (OD-HOST-50).
+    #[arg(long)]
+    digest: Option<String>,
 }
 
-/// The answer of the hub to the install of `entry` on `device` (an ID or an exact name).
+/// The answer of the hub to the install of `entry` on `device` (an ID or an exact name),
+/// with the digest that the request names.
 ///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
-pub async fn ask(hub: &Hub, entry: &str, device: &str) -> Result<Answer, Failure> {
+pub async fn ask(
+    hub: &Hub,
+    entry: &str,
+    device: &str,
+    digest: Option<String>,
+) -> Result<Answer, Failure> {
     let variables = catalogue_install_ask::Variables {
         entry_id: entry.to_owned(),
         device_id: resolve(hub, device).await?,
+        digest,
     };
     Ok(hub
         .run::<CatalogueInstallAsk>(variables)
@@ -43,7 +54,7 @@ impl InstallArgs {
     /// [`Failure::Ended`] with exit status 1 when the hub refuses the install; the errors of
     /// [`ask`].
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let answer = ask(&invocation.hub()?, &self.id, &self.device).await?;
+        let answer = ask(&invocation.hub()?, &self.id, &self.device, self.digest).await?;
         if invocation.output.json() {
             invocation.output.data(&answer, |_| Table::record())?;
         }

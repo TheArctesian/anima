@@ -1,0 +1,5 @@
+# duplicati, generated from the data of LinuxServer.io. The install makes each value that
+# is marked below; this file holds no secret value.
+TZ=Etc/UTC
+# generated at install
+SETTINGS_ENCRYPTION_KEY=

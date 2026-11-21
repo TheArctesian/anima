@@ -21,7 +21,9 @@
       }
     ],
     "marks": [],
-    "exceptions": ["init-capabilities"],
+    "exceptions": [
+      { "exception": "init-capabilities", "services": ["uptime-kuma"] }
+    ],
     "volumes": [
       {
         "volume": "kuma",

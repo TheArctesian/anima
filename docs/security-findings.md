@@ -260,6 +260,19 @@ that owns the area.
 | SF-226 | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-225 | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-223 | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-251 | A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `cb5098bb`) |
+| SF-252 | The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `30019f90`) |
+| SF-255 | A new or changed generated entry is merged with no named person who read it. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `d8efdad0`) |
+| SF-253 | The shell gate trusted the header that names an agent, and the digest gate was friction only. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `1538959f`) |
+| SF-254 | The ports of Anima missed the link, two entries published one port, more interpreters ran inline code, and a new digest could keep a passed test. Low | The catalogue of LinuxServer.io (task H39) | Open (built in `d8efdad0`) |
+| SF-243 | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-244 | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-250 | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-247 | Entries that are a shell: desktops, code editors, SSH, with no password. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-245 | How a private route is limited was not stated. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-248 | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-246 | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-249 | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -2634,6 +2647,185 @@ State: Open. Found in the review HM-T32 on 2026-11-21.
 ### What gates the opening to other people (HMD-067)
 
 On the side of this repository, no entry of this review is of the class "must correct" on its own. Before a person other than the operator uses `hub.anima.ing`: SF-238 must be merged and in the image of the hub; the operator decides SF-239 (it is the reading of "30 minutes with no request" in HMD-062) and SF-236 (HMD-062 asks that the account page ends a session; today the hub token outlives that end). The findings of the gateway, which are recorded in the private repository, gate the opening too.
+### SF-251: A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low
+
+Requirements: HOST-047, HOST-049, tasks H36 and H39; R-300.
+
+What it is: (1) The static test did not read `command`, `entrypoint` or the test of `healthcheck`. A recipe could set `DOCKER_MODS` there, or run `sh -c "curl … | sh"`, and `${VAR}` was permitted in `command`, `entrypoint` and `hostname`, so a value of the install changed what runs. A secret written in a word of a command was not refused. (2) Once an entry named `init-capabilities`, each service of the file could keep the five capabilities of the init.
+
+Where: `crates/catalogue/src/privileges.rs`, `crates/catalogue/src/file.rs`, `crates/catalogue/src/example.rs`.
+
+Effect, and who can cause it: The author of a recipe, or the data of a publisher that the generator copies. Effect: code that no digest names runs at the start, or a service that needs no init keeps the capabilities of one.
+
+Mitigation now: `$` in `command`, `entrypoint` and `hostname` is `variable_not_permitted`. An `entrypoint` is refused (`entrypoint`), and a `command` or a health check that runs a shell (`sh`, `bash`, `ash`, `dash`, `zsh`, `busybox`, `env`, `-c`, the forms `CMD-SHELL` and one text) is refused (`shell_command`), unless the entry names the exception `reviewed-command` for that service; a generated entry (with `origin`) that names it is refused (`generated_exception`). `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` in a word of a command are `image_mods` in each case. A word that gives a value to a secret name (`--password=x`, `--token x`, `API_KEY=x`) is `secret_in_file`. Each exception is now `{"exception": …, "services": […]}` and applies only to the services that it names; a named service that does not use it is `exception_not_needed`. The health checks of PostgreSQL and of the database of Dawarich are now of the form `CMD`; Dawarich names `reviewed-command` for its services `app` and `sidekiq`. Tests: `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/privileges.rs`.
+
+State: Open (built in `cb5098bb`). The words of a command are read as words: a program that a recipe starts can still run a shell of its own, which only the test on a machine shows (task H37). Found by a separate reviewer on 2026-11-21.
+
+### SF-252: The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium
+
+Requirements: HOST-047, HOST-049, tasks H38 and H39; OD-HOST-50, OD-HOST-54; R-234, R-247.
+
+What it is: A separate review of the form of LinuxServer.io on the branch `hosted/catalogue-linuxserver` (2026-11-21) found four points. (M1) The hub (`crates/hub/src/work/catalogue/`) read none of the fields `class`, `origin` and `optional`: an API key or an agent could ask for the install of a shell, and a generated entry needed no more than a tested one. (L1) The form (`crates/catalogue/src/linuxserver/plan.rs`) took the raw name of an image of the fleet list, which reaches the `image:` line and a comment of the Compose file. (L2) code-server published 8443 on the machine, the port of the hub of Anima; the rule "below 1024, add 8000" also makes 443 into 8443 (heimdall, nextcloud). (L3) The shell check (`crates/catalogue/src/privileges/commands.rs`) let `perl -e`, `node -e`, `ruby -e` and `php -r` through.
+
+Effect, and who can cause it: (M1) an API key or an agent installs an entry whose user is root in a container, or a generated entry that no person confirmed, when task H6 exists. (L1) the data of the publisher writes keys into the Compose file. (L2) the application takes the port of the hub, or the hub takes its port. (L3) a recipe runs any text with no `reviewed-command` exception.
+
+Mitigation now: (M1) `install()` gives, before the refusal of task H6, `SHELL_NEEDS_PERSON` for an entry of the class shell unless the request is a person signed in to the client (a login or a browser token whose request is not an agent), and `GENERATED_NEEDS_DIGEST` for an entry with `origin` unless the request names the digest of each of its images (`installCatalogueEntry(digest:)`, `anima catalogue install --digest`, the MCP argument `digest`). The entry gives `class`, `tier`, `origin`, `streams`, `optionalParts` and `digests` in K1, `anima catalogue list` and `show` and the MCP tools. The hub does not record on a token that its sign-in used a second factor; the sign-in asks for it when one is enrolled. (L1) the form refuses an image name that is not `[a-z0-9-]+` (`name_not_permitted`). (L2) `catalogue::ANIMA_PORTS` (4822, 8443): the form moves such a port of the machine to the next port (8444), and the static test refuses a published port of Anima (`anima_port_published`); code-server, heimdall and nextcloud publish 8444. (L3) an interpreter (`perl`, `node`, `python`, `ruby`, `php`, with a version suffix) followed by its inline-code option (a short cluster with `e`, `E`, `p`, `c` or `r`, `--eval`, `--print`) is a shell (`shell_command`). Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs`, `crates/catalogue/src/tests/linuxserver.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/anima-cli/tests/it/catalogue.rs`.
+
+State: Open (built in `30019f90`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21. A second read of `30019f90` found the gaps SF-253 (M1) and SF-254 (L2, L3); the mitigation of M1 above is changed by SF-253.
+
+### SF-255: A new or changed generated entry is merged with no named person who read it. Medium
+
+Requirements: HOST-049, task H39; SF-244.
+
+What it is: A process point. The generator writes new entries in `crates/catalogue/entries/`, and a branch with them can merge with no named person who read each entry. The rule of SF-244 (a named reviewer reads each change of the generator before the merge) is not enforced by a gate.
+
+Effect, and who can cause it: The data of the publisher, or a fault of the generator, puts an entry into the catalogue that no person read.
+
+Correction (2026-11-21): the first build of this mitigation (`1538959f`) wrote in all ten generated entries that the security reviewer agent of the overnight session read them on 2026-11-21. That record was false: the reviewer read code-server in full and only looked at the ports of qbittorrent and searched jellyfin. The record is removed, and no agent is named as a reviewer.
+
+Mitigation now (OD-HOST-55, made overnight, not yet confirmed by the operator): each generated entry gives its review state in `reviewed`: `{"state": "not-reviewed"}`, or `{"state": "reviewed", "by": <the name of a person>, "on": <the day>}`. The generator writes `not-reviewed` for a new entry and keeps the state when it changes only the digest or the version. The static test refuses a generated entry with no state (`not_reviewed`), and a review with a day that is not a date (`date_not_permitted`) or whose `by` is empty or names an agent, a session or a program (`reviewer_not_permitted`: the words agent, claude, bot, automated, session, orchestrator and subagent in any case, a run of 12 or more hexadecimal digits, and `local_`). The hub gives `reviewedBy` and `reviewedOn`, null for `not-reviewed` (K1, `anima catalogue show`, the MCP tool). The client shows the mark "Not reviewed" in the row and in the head of the description, and the line "No person has read the settings of this entry. Read them before you install it." All ten entries are `not-reviewed`: a person still has to read them ([HT-115](need-human-testing.md)). Not built: a merge rule that needs a named person who reviewed each new or changed entry. That is a setting of the repository on GitHub, which this session cannot change; it stays open for the operator. Tests: `crates/catalogue/src/tests/reviewed.rs`, `crates/catalogue/src/tests/generator.rs`, `crates/hub/tests/it/catalogue.rs`, `apps/client/src/lib/catalogue/entry.test.ts`, `apps/client/src/lib/catalogue/view.svelte.test.ts`.
+
+State: Open (built in `d8efdad0`). Found by a separate reviewer on 2026-11-21.
+
+### SF-253: The shell gate trusted the header that names an agent, and the digest gate was friction only. Medium
+
+Requirements: HOST-047, task H39; OD-HOST-50, OD-HOST-54, OD-HOST-56, OD-HOST-57; SF-252.
+
+What it is: A second read of `30019f90` (2026-11-21) found two gaps in M1 of SF-252. (1) The shell gate took a login token whose request did not send the header `Anima-Actor: agent` as a person; the header is the claim of the client, so an agent that holds the stored login token of the `anima` command passes it. (2) The digest gate asks for the digest of the image, which is public: it adds friction, not a check.
+
+Effect, and who can cause it: An agent with the login token of the command installs a shell, or a generated entry that no test on a machine ran, when task H6 exists.
+
+Mitigation now (OD-HOST-56 and OD-HOST-57, made overnight, not yet confirmed by the operator): a shell is installed only with a browser token of a person (`Identity::is_person_in_browser`: the Anima app in a web browser, with no header that names an agent). A login token, an API key and an agent get `SHELL_NEEDS_PERSON`, whose text says to install from the Anima app in a web browser. A generated entry from anything but a browser token needs a passed test on a machine with the digests of its images (`last_test` gives the digests; a pass with other digests does not count), else `GENERATED_NOT_TESTED` (K1, the CLI and the MCP tool). Each request still names the digest (`GENERATED_NEEDS_DIGEST`). The desktop app signs in with a login token, so it is refused too until it has a token of its own. Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs` (a login token and an API key), `crates/hub/tests/it/browser/catalogue.rs` (a browser token, and a browser token with the header of an agent).
+
+State: Open (built in `1538959f`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21.
+
+### SF-254: The ports of Anima missed the link, two entries published one port, more interpreters ran inline code, and a new digest could keep a passed test. Low
+
+Requirements: HOST-047, HOST-049, task H39; OD-HOST-58; SF-252.
+
+What it is: A second read of `30019f90` (2026-11-21). (L2) `catalogue::ANIMA_PORTS` had 4822 and 8443, not the ports of the link (41641, 3478) that the routes of task H21 refuse; heimdall and nextcloud both published 8444, and other entries shared 8080 and 8083. (L3) the shell check let `nodejs`, `pypy`, `lua -e`, `deno eval`, `bun -e` and awk with a program that calls `system` through.
+
+Effect, and who can cause it: (L2) an application takes a port of the link, or two entries cannot run on one machine. (L3) a recipe runs any text with no `reviewed-command` exception.
+
+Mitigation now (OD-HOST-58, made overnight, not yet confirmed by the operator): (L2) `ANIMA_PORTS` is 4822, 8443, 41641 and 3478, the same list as the routes of task H21 on the branch `hosted/apps-h21`; the form moves a port of the machine that a different recipe takes to the next free port (the generator gives each recipe the ports of the others); calibre-web publishes 8084, heimdall 8081 and 8445, nextcloud 8446 and qbittorrent 8082; a test refuses two shipped recipes that publish the same port. (L3) the interpreters `nodejs`, `bun` (`-e`, `-p`, `--eval`, `--print`), `pypy` (`-c`) and `lua` (`-e`), `deno eval`, and `awk`, `gawk`, `mawk` and `nawk` with a program that holds `system`, `getline` or a pipe `|` are a shell (`shell_command`). (Pin) a passed test on a machine stays only for the digest that it ran with: when the generator pins a new digest, the entry is `not-tested` again, and a pin update may change the last test only to `not-tested`. Not built: one list in one crate for the hub routes and the catalogue, because the routes are not on this branch; when both are on one branch, the routes use `catalogue::ANIMA_PORTS`. Tests: `crates/catalogue/src/tests/ports.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/linuxserver.rs`, `crates/catalogue/src/tests/generator.rs`.
+
+State: Open (built in `d8efdad0`). Found by a separate reviewer on 2026-11-21.
+
+## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
+
+A separate reviewer read Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code exists for them. The text is corrected in the same branch.
+
+### SF-243: A pinned image still downloads code at its start. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The init of LinuxServer.io reads `DOCKER_MODS` and downloads and runs other images; `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` install packages; some images download the application (Plex with `VERSION=latest`). This code is outside the pin and the test.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A user variable, or data of the publisher that the generator copies, that names an image of an attacker. Effect: code of the attacker runs as root in the container.
+
+Mitigation now: Section 15.1 and 15.9: the text says that only the image is pinned; the generator and the applications program refuse those variables and each `VERSION` but `docker` or a fixed version; the machine test fails on an outbound connection not on its list.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-244: No person reads the changes of the generator before the merge. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The merge train lands each branch whose gates passed, with no approval of a person, and about 200 changed digests cannot be judged by reading them.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A publisher that is taken over, or a change of the metadata at `api.linuxserver.io`, adds a port, a variable or a volume. Effect: the change lands on `dev` with nobody reading it.
+
+Mitigation now: Section 15.4 and 15.9: the generator fails for each change that is not a digest or a version; such a change needs a named reviewer and the merge rule refuses the branch without one; the digest comes from the registry; a safe reader; a token that pushes only its own branch.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-250: Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: R-300 keeps "each entry is tested"; tier 2 ships entries that are not tested. The applications program cannot tell a tier, and a new pin puts an entry back in tier 2. "Tested" says nothing of default credentials.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An agent builds tier 2 as if allowed; an agent installs a tier-1 entry that is a shell. Effect: an entry that is not tested, or a shell, installed with no person.
+
+Mitigation now: Section 15.1, 15.4 and OD-HOST-50: tier 2 needs a ruling of its own; an install by an API key or an agent names the digest, and the hub refuses unless that digest passed; the screen says that tested is not a security review.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-247: Entries that are a shell: desktops, code editors, SSH, with no password. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: 94 desktop images give the user `abc` `sudo` with no password; `code-server`, `openssh-server` (port 2222), `rdesktop` and pages with no sign-in are the same class. The mark came from data of the publisher.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: Each node of the network of Anima, or of the local network with "Open to the network", reaches a root shell in a container. Effect: a foothold on the machine's networks.
+
+Mitigation now: Section 15.7: the class `shell` from a fixed list of the repository; a credential that the machine makes is required; no public route or stream; a person installs it; OD-HOST-54 asks whether a private route is permitted.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-245: How a private route is limited was not stated. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The text said "private (only his devices)" with no rule of the listener, and the network of Anima also holds each machine and its containers.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A container on a machine of the network reaches a private route. Effect: a route that he thought private is open to each container.
+
+Mitigation now: Section 16.7: a private route listens only on the address of the hub on the network of Anima and the proxy checks the interface; never in the table of the door; private means each node, containers included; the same rights as a public route.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-248: Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The UDP rule never fired for a false source. A public stream to a database or Redis that expects localhost trust; the application sees the address of the hub. The list of ports that a stream may not use was open. A redirect on a name that Anima gives is an open redirect.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An attacker reflects UDP at a victim, reaches a database, or uses a redirect for phishing.
+
+Mitigation now: Section 16.2 and 16.4: answers bounded by received bytes until a source proves it gets them, a flow limit and idle time, no public syslog; a public stream only for a port marked `stream-public`; a range set by the operator, a fixed list of refused ports, a bind test; a redirect only to `https://` on a proven name.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-246: Images start as root with nothing added to contain them; the rule of `shm_size`. Medium
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: `PUID=0` runs the application as root; `no-new-privileges` is optional; the default capabilities stay. `shm_size` gives no right only while `ipc` stays refused.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A recipe or a variable with `PUID=0`. Effect: an application that runs as root.
+
+Mitigation now: Section 15.8 and 15.9: `PUID` or `PGID` 0 is refused; `no-new-privileges:true` and four capabilities dropped, with exceptions by name; `shm_size` in the form of Section 4.5 with `ipc` refused.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-249: The machine tests run images that are not trusted. Medium
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The machine tests of task H37 start about 200 images of a different publisher.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An image that a publisher lost control of. Effect: a foothold on the test machine and its networks.
+
+Mitigation now: OD-HOST-53: the test machine is not on the network of Anima or his local network, its outbound traffic is recorded, and it is wiped after each run.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
 
 ## Closed
 

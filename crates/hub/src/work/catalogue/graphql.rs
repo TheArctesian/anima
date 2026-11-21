@@ -1,16 +1,25 @@
 //! The K1 roots of the catalogue (HOST-047, task H38): `catalogueEntries`, `catalogueEntry`
 //! and `installCatalogueEntry`. Each is open to an API key: a key and an agent may ask for the
-//! install of an entry of the tested catalogue (R-234). The install is refused with a fixed
+//! install of an entry of the tested catalogue (R-234), but not of a shell (OD-HOST-54) or of a
+//! generated entry with no passed test on a machine. The install is refused with a fixed
 //! reason, reaches no machine and keeps nothing.
 
-use async_graphql::{ID, Object, Result};
+use async_graphql::{Context, ID, Object, Result};
 
-use super::{EntryKind, Install, Listed, MarkKind, Refusal, entries, entry, install};
+use super::model::{EntryClass, Tier, protocol_names};
+use super::parts::{GeneratedFrom, NetworkPort, OptionalPart, Port, Stream};
+use super::{Ask, EntryKind, Install, Listed, MarkKind, Refusal, entries, entry, install};
 use crate::{
     api_errors::{FieldError, invalid},
-    fleet::access::Authenticated,
+    fleet::access::{Authenticated, Identity},
     ids::DeviceId,
 };
+
+/// True when the request is a person signed in to the Anima app in a browser (OD-HOST-54).
+fn in_browser(ctx: &Context<'_>) -> bool {
+    ctx.data_opt::<Identity>()
+        .is_some_and(Identity::is_person_in_browser)
+}
 
 #[derive(Default)]
 pub struct Query;
@@ -39,36 +48,35 @@ impl Query {
 #[Object(name = "CatalogueMutation")]
 impl Mutation {
     /// Asks for the install of an entry on a device. Refused today with a fixed reason: the
-    /// install needs task H6. No machine is reached and nothing is kept.
+    /// install needs task H6. Before it, a shell needs a person in the Anima app in a browser,
+    /// and a generated entry needs `digest`, the digest of its image, and, from anything but
+    /// that app, a passed test on a machine with that image. No machine is reached and nothing
+    /// is kept.
     #[graphql(guard = "Authenticated")]
     #[expect(
         clippy::unused_async,
         clippy::unused_async_trait_impl,
         reason = "async-graphql resolvers must be async; this one can fail"
     )]
-    async fn install_catalogue_entry(&self, entry_id: String, device_id: ID) -> Result<Install> {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Mutation.installCatalogueEntry"
+    )]
+    async fn install_catalogue_entry(
+        &self,
+        ctx: &Context<'_>,
+        entry_id: String,
+        device_id: ID,
+        digest: Option<String>,
+    ) -> Result<Install> {
         device_id
             .parse::<DeviceId>()
             .map_err(|_| invalid(&[FieldError::new("deviceId", "That device id is not valid.")]))?;
-        Ok(install(entry(&entry_id)))
-    }
-}
-
-/// One port on the network that an entry needs.
-struct NetworkPort {
-    port: u16,
-    protocols: Vec<String>,
-}
-
-#[Object(name = "CatalogueNetworkPort")]
-impl NetworkPort {
-    async fn port(&self) -> u16 {
-        self.port
-    }
-
-    /// `tcp` or `udp`.
-    async fn protocols(&self) -> &[String] {
-        &self.protocols
+        let ask = Ask {
+            in_browser: in_browser(ctx),
+            digest: digest.as_deref(),
+        };
+        Ok(install(entry(&entry_id), ask))
     }
 }
 
@@ -139,14 +147,61 @@ impl Listed {
     async fn network_ports(&self) -> Vec<NetworkPort> {
         self.ports_on_network()
             .into_iter()
-            .map(|(port, protocols)| NetworkPort {
-                port,
-                protocols: protocols
-                    .iter()
-                    .map(|protocol| format!("{protocol:?}").to_lowercase())
-                    .collect(),
+            .map(|(port, protocols)| {
+                NetworkPort(Port {
+                    port,
+                    protocols: protocol_names(&protocols),
+                })
             })
             .collect()
+    }
+
+    /// What a person may do with the entry: an application, or a shell (OD-HOST-54).
+    async fn class(&self) -> EntryClass {
+        self.entry.anima.class.into()
+    }
+
+    /// Tested by Anima (tier 1) or generated from the data of a publisher (tier 2).
+    async fn tier(&self) -> Tier {
+        self.tier_of_origin()
+    }
+
+    /// The publisher of a generated entry; null for a tested entry.
+    async fn origin(&self) -> Option<GeneratedFrom<'_>> {
+        self.entry.anima.origin.as_ref().map(GeneratedFrom)
+    }
+
+    /// The person who reviewed the generated entry; null when no person did, as for a tested
+    /// entry (SF-255).
+    async fn reviewed_by(&self) -> Option<&str> {
+        self.read_by().map(|(by, _)| by)
+    }
+
+    /// The day (`YYYY-MM-DD`) of that review; null when no person reviewed the entry.
+    async fn reviewed_on(&self) -> Option<&str> {
+        self.read_by().map(|(_, on)| on)
+    }
+
+    /// The published ports other than the port of the test.
+    async fn streams(&self) -> Vec<Stream> {
+        (self.entry.anima.streams.iter())
+            .map(|stream| {
+                Stream(Port {
+                    port: stream.port,
+                    protocols: protocol_names(&stream.protocols),
+                })
+            })
+            .collect()
+    }
+
+    /// The parts of the application that are off.
+    async fn optional_parts(&self) -> Vec<OptionalPart<'_>> {
+        self.entry.anima.optional.iter().map(OptionalPart).collect()
+    }
+
+    /// The digest of each image (`sha256:` and 64 hexadecimal digits).
+    async fn digests(&self) -> Vec<&str> {
+        self.image_digests()
     }
 
     /// The day (`YYYY-MM-DD`) of the last test on a machine, which passed; null: not tested on
@@ -160,9 +215,13 @@ impl Listed {
         &self.entry.anima.pinned
     }
 
-    /// What the hub answers to an install of this entry now.
-    async fn install(&self) -> Install {
-        install(Some(self))
+    /// What the hub answers to an install of this entry by this request, with no digest.
+    async fn install(&self, ctx: &Context<'_>) -> Install {
+        let ask = Ask {
+            in_browser: in_browser(ctx),
+            digest: None,
+        };
+        install(Some(self), ask)
     }
 
     /// The text of the Compose file. It holds no secret.

@@ -22,7 +22,9 @@
       }
     ],
     "marks": [],
-    "exceptions": ["init-capabilities"],
+    "exceptions": [
+      { "exception": "init-capabilities", "services": ["gitea"] }
+    ],
     "volumes": [
       {
         "volume": "gitea",

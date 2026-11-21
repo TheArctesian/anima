@@ -6,6 +6,8 @@ query CatalogueList {
     version
     tags
     marks
+    class
+    tier
     lastMachineTest
     pinned
     install {

@@ -56,6 +56,39 @@ fn or_dash(list: &[String]) -> String {
     }
 }
 
+/// The tier in words, with the publisher and the day of its data for a generated entry.
+fn tier(entry: &Entry) -> String {
+    match &entry.origin {
+        Some(origin) => format!(
+            "{} from {} (data of {}); not tested by Anima",
+            words(&entry.tier),
+            origin.publisher,
+            origin.read
+        ),
+        None => format!("{} by Anima", words(&entry.tier)),
+    }
+}
+
+/// Who read a generated entry and when (SF-255); `-` for a tested entry.
+fn reviewed(entry: &Entry) -> String {
+    match (&entry.origin, &entry.reviewed_by, &entry.reviewed_on) {
+        (_, Some(by), Some(on)) => format!("by {by} on {on}"),
+        (Some(_), _, _) => "not reviewed".to_owned(),
+        (None, _, _) => "-".to_owned(),
+    }
+}
+
+/// The class in words, with the reason for a shell (OD-HOST-54).
+fn class(entry: &Entry) -> String {
+    if matches!(entry.class, catalogue_show::CatalogueEntryClass::SHELL) {
+        "shell: needs a password made on the machine; no public route; only a person in the \
+         Anima app in a web browser installs it"
+            .to_owned()
+    } else {
+        words(&entry.class)
+    }
+}
+
 fn table(entry: &Entry) -> Table {
     let mut table = Table::record();
     table.pair("ID", entry.id.as_str());
@@ -72,6 +105,26 @@ fn table(entry: &Entry) -> Table {
         .map(|open| format!("{} ({})", open.port, open.protocols.join(", ")))
         .collect();
     table.pair("Ports on the network", or_dash(&ports));
+    table.pair("Tier", tier(entry));
+    table.pair("Reviewed", reviewed(entry));
+    table.pair("Class", class(entry));
+    let streams: Vec<String> = (entry.streams.iter())
+        .map(|stream| format!("{} ({})", stream.port, stream.protocols.join(", ")))
+        .collect();
+    table.pair("Streams", or_dash(&streams));
+    let optional: Vec<String> = (entry.optional_parts.iter())
+        .map(|part| {
+            let state = if part.on { "on" } else { "off" };
+            let setting = if part.needs_machine_setting {
+                ", needs a machine setting"
+            } else {
+                ""
+            };
+            format!("{} {} ({state}{setting})", words(&part.kind), part.path)
+        })
+        .collect();
+    table.pair("Optional parts", or_dash(&optional));
+    table.pair("Digests", or_dash(&entry.digests));
     let tested = entry.last_machine_test.as_deref().unwrap_or(NOT_TESTED);
     table.pair("Machine test", tested);
     table.pair("Pinned", entry.pinned.as_str());

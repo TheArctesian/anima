@@ -12,7 +12,7 @@ Version: 4. Date: 2026-11-19. Version 4 has Section 4 in its third form, after t
 From: the operator, 2026-11-19, relayed by the orchestrating session and not first-hand in the session that wrote this: the container side should be "fleshed out more via the competitor research", and "the coolify/dockploy and the portainer things are still competitors and things I want to emulate ish".
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md). The plan that this proposal changes when it is approved is [hosted-applications-plan.md](../plans/hosted-applications-plan.md). The contract that it changes is K10, [work-route.md](../../contracts/work-route.md).
-Identifiers: HOST-026 to HOST-048; open decisions OD-HOST-5 to OD-HOST-12; tasks H14 to H27.
+Identifiers: HOST-026 to HOST-050; open decisions OD-HOST-5 to OD-HOST-12; tasks H14 to H27.
 
 ## 1. What this document is for
 
@@ -715,6 +715,12 @@ operator can say yes or no to it. None has contract text yet.
 - **HOST-048.** Proposed (R-301, OD-HOST-38 of the plan). A database has one of
   three levels: one server with copies to a second machine (the default); a primary and a replica
   that the operator selects, with a switch to the copy only by his action; no sharding.
+- **HOST-049.** Direction decided (R-319). The images of LinuxServer.io are the base of
+  the catalogue: each image that fits the rules is an entry, generated from the data of the
+  publisher, in a tier that says whether Anima tested it. Section 15 is the design.
+- **HOST-050.** Direction decided (R-319). The hub is the proxy manager: one place for
+  each route of a name or a port to an application on a machine, with certificates, for web
+  routes and for streams of TCP and UDP. Section 16 is the design.
 
 | Task | Content | Needs |
 | --- | --- | --- |
@@ -888,6 +894,8 @@ review of Section 4, your decisions on its findings, task W3, and the daemon par
 | HOST-046: the hub is the front door of the traffic of applications | Not approved; the direction is decided (R-302) | Section 12, its review, and the answers of the cloud service |
 | HOST-047: a large catalogue that stays tested | Not approved; the direction is decided (R-300) | Section 13; the test on a machine needs task H6 |
 | HOST-048: the levels of a database | Not approved | OD-HOST-38 of the plan |
+| HOST-049: the images of LinuxServer.io as the base of the catalogue | Not approved; the direction is decided (R-319) | Section 15, its security read, OD-HOST-50 to OD-HOST-53 |
+| HOST-050: the hub as the proxy manager, with streams | Not approved; the direction is decided (R-319) | Section 16, its security read, OD-HOST-46 to OD-HOST-49 |
 
 One question remains for the operator from this table: "Do you approve HOST-030 and HOST-032 to
 HOST-036 for stage 2?" It is decision OD-HOST-13 of
@@ -1354,7 +1362,11 @@ in the tables makes the entry unreadable.
 | `database` | For an application that needs a database only: `engine` (`postgresql`), `lowest_major`, `extensions`, and `variables`: the name of the variable for each connection value that the application wants, of `url`, `host`, `port`, `name`, `user` and `password`, at least one. The install writes each of them, so each is also in `generated` (Section 14.2) |
 | `images` | For each service of the Compose file: `service`, `image`, `tag` and `resolved`. `image` is `repository@sha256:` and 64 hexadecimal digits, with no tag (R-233). `tag` is the tag that was read from the registry to get the digest. `resolved` is the day of that read |
 | `marks` | What the recipe needs beyond the default rules (Section 13.3). Empty for most recipes |
-| `exceptions` | The exceptions of a fixed list to the rights that each service drops (Section 13.3). Empty for most recipes |
+| `exceptions` | The exceptions of a fixed list to the rights of a service (Section 13.3), each as `exception` and the `services` that it applies to. Empty for most recipes |
+| `class` | `application` (the default) or `shell`: an entry that is a shell (Section 15.7, OD-HOST-54). A `shell` has at least one variable in `generated`, its credential, and no `network-port` mark |
+| `origin` | None for an entry that a person wrote. For a generated entry (tier 2, Section 15.4): `from` (`linuxserver`) and `read`, the day of the data of the publisher |
+| `streams` | Each published port other than the port of the test, as `port` (in the container) and `protocols`: the streams that a route of task H40 can carry. Each is a `ports` entry of the file with each protocol |
+| `optional` | The parts that are off because no rule of a file permits them yet, each with a setting of the machine: `{"part": "device", "path": "/dev/dri"}`. The path starts with `/dev/`. The Compose file does not have the part |
 | `volumes` | Each top-level volume of the Compose file, with the kind of copy that it needs (Section 13.4) |
 | `generated` | The variables that the install makes, for example a password. The example file has no value for them |
 | `test` | The test of a machine (Section 13.5). Task H37 runs it |
@@ -1391,18 +1403,28 @@ refuses with `privilege_not_permitted` and one reason:
 | `root_user` | `user` that is `0` or `root`, as the user or as the group, or a variable |
 | `new_privileges` | A service with no `security_opt: [no-new-privileges:true]` |
 | `capabilities_kept` | A service whose `cap_drop` is not `[ALL]` and not the drop of an exception of the entry |
-| `exception_not_needed` | The entry names an exception that no service uses |
+| `exception_not_needed` | An exception names a service that does not use it, or no service |
+| `entrypoint` | A service has `entrypoint`, and no exception `reviewed-command` names it |
+| `shell_command` | The `command` or the test of the `healthcheck` of a service runs a shell (`sh`, `bash`, `ash`, `dash`, `zsh`, `busybox`, `env`, `-c`, the forms `CMD-SHELL` and one text), and no exception `reviewed-command` names it |
+| `generated_exception` | An entry with an `origin` names `reviewed-command`, which only a person gives |
 
-The list of exceptions is fixed. It has one exception, `init-capabilities`: an init that starts
+The list of exceptions is fixed. Each exception names the services that it applies to, and no
+other service has it (SF-251). `init-capabilities`: an init that starts
 as root, gives the files to a different user and changes to it (the s6 init of the LinuxServer
 images, `gosu`, `su-exec`). Such a service keeps exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`,
-`SETGID` and `SETUID`. Contract K10 has no `cap_add`, so the service drops each other capability
+`SETGID` and `SETUID`. `reviewed-command`: a person read the `entrypoint`, the `command` and the
+health check of the service, which run a shell; a generated entry never has it. The variables
+`DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` are refused also in a word of a
+command, with the exception or without it. Contract K10 has no `cap_add`, so the service drops each other capability
 of the default set of the engine by name: `AUDIT_WRITE`, `FSETID`, `KILL`, `MKNOD`,
 `NET_BIND_SERVICE`, `NET_RAW`, `SETFCAP`, `SETPCAP` and `SYS_CHROOT`.
 
-The image, a published port and its `host_ip` are written in the file, never as a variable: the
-install could change a variable after the static test (`variable_not_permitted`,
-SF-226).
+The image, a published port, its `host_ip`, the `command`, the `entrypoint` and the `hostname`
+are written in the file, never as a variable: the install could change a variable after the
+static test (`variable_not_permitted`, SF-226, SF-251). A word of a
+command or of a health check that gives a value to a name that marks a secret (`--password=x`,
+`--token x`, `API_KEY=x`) is refused as `secret_in_file`; a name that ends with `FILE` names a
+path.
 
 The rules of Section 4.5 permit a published port from 1024 only. "Open to the network" does not
 change that. Thus a DNS server on port 53 (Pi-hole, AdGuard Home) is refused today, also with its
@@ -1482,6 +1504,9 @@ file. One recipe can have more than one code.
 | `variable_not_permitted` | The image, a published port or its `host_ip` is a variable (Section 13.3) |
 | `secret_in_file` | The Compose file gives a variable whose name marks a secret a value that is not one variable (Section 13.6) |
 | `privilege_not_permitted` | A service keeps rights that it does not need, or changes its code at the start. The second part is the reason (Section 13.3) |
+| `stream_not_published` | A stream of the entry is not a published port of the file with each of its protocols |
+| `optional_not_permitted` | An optional part is not a device below `/dev/` |
+| `shell_not_contained` | An entry of the class `shell` has no generated credential, or a `network-port` mark (OD-HOST-54) |
 
 A test of the crate reads the folder `entries/` and requires each recipe to pass, with one known
 refusal: Pi-hole (Section 13.3). Thus `bun run gates` runs the static test of each recipe.
@@ -1707,3 +1732,346 @@ Not built: the networks `anima-db-<application>` and the change of contract K10 
   Recommendation: A first. HOST-041 says "shows its connection text one time"; with A that text is
   shown only at the machine, so the hub never holds it. B is an addition when a tool outside the
   machine needs the database.
+
+## 15. The images of LinuxServer.io as the base of the catalogue (R-319, HOST-049)
+
+This section is a design with options. It adds no approved requirement and approves no tier and
+no list. A security read by a separate reviewer reads it. The facts are from a read of the fleet
+list of LinuxServer.io on 2026-11-20
+(`https://api.linuxserver.io/api/v1/images?include_config=true&include_deprecated=true`, updated
+2026-11-17) and of Docker Hub; the counts were made by a script from that list. A number marked
+"estimate" is a judgement.
+
+### 15.1 How this widens R-215, and what he accepts
+
+R-215 said: a small list that Anima tests. R-300 widened it to a large list in which
+each entry is tested. R-319 makes the images of one publisher, about 200 of them, the
+base. Thus he accepts, if he selects the tiers of Section 15.4:
+
+- Entries that Anima did not test on a machine are in the catalogue, with a mark that says so.
+- Tier 2 (Section 15.4) changes R-300 (2) and (3), which keep "each entry is tested
+  by Anima": it needs a new ruling, not only an answer to OD-HOST-50.
+- The images come from one publisher, LinuxServer.io, which Anima does not control. Anima pins
+  each image by a digest (R-233). The image is pinned; code that the image downloads when it
+  starts is not (Section 15.9).
+- These images start as `root` and then change to the user of `PUID` and `PGID`; they need the
+  default capabilities of Docker for that. The rules of a file from the hub permit this today;
+  Section 15.9 adds what contains them.
+- A pinned digest is about one week old before the publisher makes a newer one (Section 15.5).
+
+### 15.2 The list and its shape
+
+- **202 images** are current (224 in the list, 22 marked as no longer kept). Docker Hub shows 293
+  repositories under `linuxserver`, old ones included.
+- Nearly each image takes `PUID`, `PGID` and `TZ`, keeps its state in `/config`, and publishes one
+  or a few ports. 156 need only `/config`. 160 run on x86_64 and arm64; 42 on x86_64 only.
+- The list gives, for each image, a machine-readable `config`: the variables, the volumes, the
+  ports (with `/udp`), the devices, the capabilities, `security_opt`, `shm_size` and `sysctls`, the
+  host network and `privileged`, each with a mark "optional". The same data is in
+  `readme-vars.yml` of each repository. Thus an entry can be **generated** from it.
+- Gaps of that data: 4 images have no `config`; the device `/dev/dri` of Plex and Jellyfin is only
+  in the text of their documentation; a path of the host is a placeholder.
+
+### 15.3 How many fit the rules of a file from the hub
+
+| Group | Count | What it is |
+| --- | --- | --- |
+| Fit as they are | 70 | `/config` and data as named volumes, ports from 1024, nothing that the rules refuse |
+| Fit when `shm_size` is a permitted key | 85 | Most of the 94 desktop images in a browser (KasmVNC, Selkies), which ask for `shm_size: 1gb`; the count of desktops among the 70 is not made yet. `shm_size` is not a key of the list of Section 4.5 today (OD-HOST-51) |
+| Fit when the port of the host is changed | 20 | The default port of the host is 80 or 443 (or 514 and 601 for `syslog-ng`); the entry uses a port from 1024 |
+| Fit with an optional part off | 9 | For example Emby and tvheadend with no `/dev/dri`; Jellyfin is here in practice (no hardware transcoding, no discovery on the local network) (estimate) |
+| Do not fit | 18 | `privileged` (`kasm`, `qemu-static`); the host network (`plex`, `homeassistant`, `duckdns`, `fail2ban`, `wireshark`); `NET_ADMIN` (`wireguard`, `swag`, `mullvad-browser`); `IPC_LOCK` (`vscode`, `vscodium`, `github-desktop`, `mysql-workbench`); devices that are required (`minisatip`, `oscam`); the socket of the engine (`sealskin`, `socket-proxy`) |
+
+The 18 that do not fit stay "install at the machine and adopt" (R-228): the screen shows the
+reason and the Compose file to start at the machine. Plex is the sixth image by pulls; in a bridge
+network with port 32400 it can work with no discovery on the local network (estimate; it needs a
+test). No current image of the list needs port 53, so OD-HOST-45 does not block this list.
+
+Nine images need UDP ports (`deluge`, `qbittorrent`, `transmission`, `syncthing`, `luanti`,
+`unifi-network-application`, `syslog-ng`, `minisatip`, `wireguard`). A UDP port on the machine is
+in the rules; a UDP route through the hub is Section 16.
+
+### 15.4 Three tiers
+
+- **Tier 1, tested by Anima.** The test of task H37 passed on this exact digest: the entry starts, is
+  healthy within its time, its port answers (the list gives `CI_PORT` for its own tests), it stops
+  and is removed with nothing left outside its volumes. "Tested" means this, not that each
+  function of the application works, and it is not a security review; the screen says so. One
+  click; an API key or an agent may ask for its install (R-234) only by the entry and its digest,
+  and the hub refuses unless that digest passed the test at the time of the request. An entry of
+  the class of Section 15.7 is installed by a person only, in each tier.
+- **Tier 2, generated from the data of the publisher.** The static test of task H36 passed, the
+  machine test did not run or is older than the digest. The screen says "Generated from the data of
+  LinuxServer.io on <date>; not tested by Anima". Only a person with a login or a browser session
+  installs it, after a confirmation; no API key and no agent (R-234 covers the tested catalogue
+  only).
+- **Tier 3, install at the machine.** The rules refuse it. The screen gives the reason and the file.
+
+The generator reads the list of the publisher, writes the entry of Section 13 for each image (only
+the parts that are not optional, a port of the host from 1024, named volumes), resolves the digest
+of the multi-arch index of the tag `X.Y.Z-lsN` from the registry (not from the metadata), runs the
+static test, and puts the entry in tier 2 or tier 3. A person reading about 200 changed digests
+proves nothing, and the merge train needs no person. Thus the generator itself fails, and writes
+nothing, for each change that is not a new digest or a new version: a new key, port, variable,
+volume or capability, or a change of tier. Such a change needs a named reviewer, and the merge rule
+refuses a branch of the generator without one (Section 15.9).
+
+### 15.5 Keeping about 200 pins current
+
+- The publisher builds about each week: 191 of 202 images had a new build in the 7 days before
+  2026-11-17, mostly with the same version of the application. An old tag stays available.
+- Thus a new pin for each build is about 200 changes each week, and a machine test for each is
+  about 30 each day. The proposal: a new pin when the version of the application changes, when an
+  advisory names the image, and else each month. Each new pin of a tier-1 entry runs the machine
+  test again; until it passes, the entry is tier 2.
+- The schedule runs as a workflow of the repository that writes a branch; the merge train lands
+  it. It changes no server.
+- Who runs the machine tests (a test machine of the operator, or a machine of the cloud) is a
+  decision with a cost (OD-HOST-53).
+
+### 15.6 What the screen shows
+
+A list with a filter by tier, a search, the marks (`network-port`, UDP, `desktop`, a database),
+for each entry its tier, its version, the date of its pin and of its last test; the page of an entry
+with its description, its ports, its volumes, the names of its variables, the Compose file, and
+for tier 3 the reason. The install button of tier 2 asks for the confirmation; of tier 3 it is
+replaced by "Install at the machine".
+
+### 15.7 A risk of its own: entries that are a shell
+
+94 images are a desktop in a browser (KasmVNC or Selkies); their user `abc` has `sudo` with no
+password, and by default the desktop asks for no password (estimate from their documentation;
+not checked). The same class holds `code-server` and `openvscode-server` (no password when the
+variable is not set), `openssh-server` (port 2222, which goes around the rule of port 22 of Section
+12.3), `rdesktop` (3389), and web pages with no sign-in by default (Syncthing, Transmission). Who
+reaches one is root in a container that can reach the local network and the network of Anima.
+The proposed rule, the class `shell`:
+
+- The class is given by a fixed list in the repository and by the base image, never by a field
+  of the data of the publisher.
+- The machine makes a credential that the entry must use; without one the entry is refused.
+- No public route and no stream; a private route only if OD-HOST-54 says so; a person installs it,
+  never an API key or an agent, in each tier. The same rule applies to "Open to the network".
+
+### 15.8 Options for the operator
+
+- **OD-HOST-54: the class `shell` (Section 15.7)?** A: as written, with no route at all (only a
+  session through the hub or "Open to the network" with the made credential). B: a private route
+  is permitted with the made credential. Recommendation: A first. "Private" is each node of the
+  network of Anima, the containers of each machine included (Section 16.7).
+
+- **OD-HOST-50: the three tiers?** A: tiers 1, 2 and 3 as above; this changes R-300
+  (2) and (3) and needs a ruling of its own. B: only tier 1 is shown; the others appear when their
+  machine test passes. Recommendation: A. With B the list is nearly empty until a test machine runs
+  for weeks.
+- **OD-HOST-51: `shm_size` as a permitted key?** It lets 85 more images in, most of them of the
+  class `shell`. A: yes, a size in the form of Section 4.5, not more than the memory limit of the
+  service, with `ipc` still refused. B: no. Recommendation: A, with the rule of Section 15.7. The
+  shared memory is counted in the memory of the container and gives no right on the machine while
+  `ipc` stays refused. It is a change of contract K10
+  Section 6.4.4, for its owner.
+- **OD-HOST-52: how often a new pin?** A: on a new version of the application, on an advisory, and
+  else each month. B: each build of the publisher (about each week). Recommendation: A.
+- **OD-HOST-53: where the machine tests run?** A: a test machine of yours, each night, a fixed
+  number of entries. B: a machine of the cloud for each run (a cost each month). Recommendation: A
+  first; it needs a machine that you name and is a step of yours. The test machine runs images
+  that are not trusted: it is not on the network of Anima or your local network, its outbound
+  traffic is recorded, and it is wiped after each run.
+
+### 15.9 Rules from the security read
+
+- **Code that an image downloads.** The init of LinuxServer.io reads `DOCKER_MODS` and downloads
+  and runs other images at the start; `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` install
+  packages; some images (Plex with `VERSION=latest`) download the application. The generator and
+  the applications program refuse these variables and each `VERSION` that is not `docker` or a
+  fixed version. The test of task H37 records the outbound connections at the start; one that is
+  not on the recorded list fails the test.
+- **The workflow of the generator.** It reads the metadata with a safe reader, runs nothing that
+  it fetched, and has a token that can push only its own branch.
+- **Root.** `PUID` or `PGID` of 0 is refused. Each generated entry gets `no-new-privileges:true`
+  and drops `MKNOD`, `SETFCAP`, `SYS_CHROOT` and `AUDIT_WRITE`; the test shows that the image still
+  works, and an exception is listed by name.
+- **The tier at the hub.** The applications program cannot tell a tier. The hub checks the tier and
+  the digest at the moment of each request; a new pin puts an entry back in tier 2 until its test.
+- Whether a release carries the data of the catalogue to hosted hubs with no further step is a
+  question for the cloud plan.
+
+### 15.10 What the rest still needs (task H39)
+
+The generator of task H39 (`crates/catalogue/src/bin/generate.rs`) ran the form of
+`catalogue::linuxserver` over the fleet list of 2026-11-17 (202 current images, read on
+2026-11-21). The form keeps only the parts that are not optional, each volume of a placeholder
+path as a named volume, a port of the machine below 1024 moved up by 8000, each port on
+`127.0.0.1` with its protocol, `PUID` and `PGID` of 1000, the exception `init-capabilities` for
+its one service, and each secret or credential as a variable that the install makes. Ten images
+are entries now, in `crates/catalogue/entries/` with an `origin`, pinned by the digest of the
+index of each tag read from `lscr.io` on 2026-11-21: `calibre-web`, `code-server` (class `shell`,
+its `PASSWORD` made at the install), `duplicati`, `freshrss`, `heimdall`, `jellyfin` (the device
+`/dev/dri` as an optional part that is off), `nextcloud`, `qbittorrent` (the stream 6881, TCP and
+UDP), `radarr` (three volumes) and `sonarr`. Totals: **81 fit** (55 as they are, 16 with a port
+moved, 10 with an optional part off) and **121 do not fit**. The counts differ from Section 15.3
+because the form also refuses a variable with no value, an image with no TCP port, and a shell
+with no credential.
+
+| Place or reason | Count | What it still needs | Images |
+| --- | --- | --- | --- |
+| fits | 55 | A pin and a test on a machine (task H37) for tier 1. Ten are entries now | `adguardhome-sync`, `apprise-api`, `audiosilo`, `babybuddy`, `bazarr`, `beets`, `bitcoin-knots`, `calibre-web`, `changedetection.io`, `code-server`, `deluge`, `duplicati`, `faster-whisper`, `flexget`, `grocy`, `habridge`, `hedgedoc`, `hishtory-server`, `htpcmanager`, `jackett`, `kavita`, `lazylibrarian`, `ldap-auth`, `lidarr`, `limnoria`, `mariadb`, `medusa`, `mstream`, `mylar3`, `ngircd`, `nzbget`, `nzbhydra2`, `ombi`, `pairdrop`, `piper`, `planka`, `prowlarr`, `pwndrop`, `pydio-cells`, `pyload-ng`, `radarr`, `raneto`, `resilio-sync`, `sabnzbd`, `sickgear`, `sonarr`, `synclounge`, `tautulli`, `thelounge`, `transmission`, `ubooquity`, `unifi-network-application`, `vscodium-web`, `wikijs`, `znc` |
+| fits with a port moved | 16 | The same; the person reaches the port of the machine from 1024 (80 is 8080, 443 is 8444 because 8443 is the port of the hub of Anima, SF-252; a port that a different entry of the catalogue takes moves to the next free port, so heimdall publishes 8081 and 8445, SF-254) | `cops`, `diskover`, `dokuwiki`, `freshrss`, `grav`, `heimdall`, `kimai`, `librespeed`, `nextcloud`, `nginx`, `phpmyadmin`, `piwigo`, `projectsend`, `smokeping`, `syslog-ng`, `xbackbone` |
+| fits with an optional part off | 10 | The same; the part (a device, a capability, a key of Compose) needs a setting of the machine and a change of contract K10 | `airsonic-advanced`, `emby`, `jellyfin`, `kdenlive`, `lm-studio`, `orcaslicer`, `ppsspp`, `qbittorrent`, `scummvm`, `tvheadend` |
+| shared memory | 84 | The key `shm_size` in contract K10 Section 6.4.4 and in `crates/compose-rules` (OD-HOST-51 A, for the owner of the contract); then most are desktops of the class `shell` and need their credential (`PASSWORD`) in the fixed list of the form | `altus`, `ardour`, `audacity`, `azahar`, `bambustudio`, `blade-of-agony`, `blender`, `boinc`, `brave`, `calibre`, `calligra`, `chrome`, `chromium`, `craft-apps`, `cura`, `darktable`, `digikam`, `dogwalk`, `dolphin`, `dosbox-staging`, `doublecommander`, `duckstation`, `eden`, `ferdium`, `filezilla`, `firefox`, `flycast`, `freecad`, `gimp`, `gitqlient`, `gzdoom`, `handbrake`, `helium`, `inkscape`, `intellij-idea`, `joplin`, `kali-linux`, `keepassxc`, `kicad`, `krita`, `libreoffice`, `librewolf`, `lollypop`, `mame`, `mediaelch`, `melonds`, `modrinth`, `msedge`, `nomacs`, `obsidian`, `onlyoffice`, `openshot`, `opera`, `pcsx2`, `pelorus`, `pidgin`, `pycharm`, `qdirstat`, `rawtherapee`, `remmina`, `retroarch`, `rpcs3`, `rustdesk`, `shadps4`, `shotcut`, `signal`, `spotube`, `sqlitebrowser`, `steam`, `telegram`, `thunderbird`, `ungoogled-chromium`, `vivaldi`, `vlc`, `webcord`, `webstation`, `webtop`, `weixin`, `winegui`, `wps-office`, `xemu`, `yaak`, `zen`, `zotero` |
+| value needed | 8 | A value that only the person or a different service gives (the address of a database, the address of the application, a key of a form): a database entry of the machine (MariaDB) and a form for the values of the person at the install | `bookstack`, `healthchecks`, `lychee`, `manyfold`, `mastodon`, `netbox`, `speedtest-tracker`, `your_spotify` |
+| no port | 7 | A test of a machine for a program with no TCP port (a program that ends, a UDP server) in task H37 | `ddclient`, `doplarr_rs`, `foldingathome`, `kometa`, `luanti`, `rsnapshot`, `webgrabplus` |
+| host network | 5 | Tier 3: install at the machine and adopt (R-228) | `duckdns`, `fail2ban`, `homeassistant`, `plex`, `wireshark` |
+| no config | 4 | Tier 3, or an entry that a person writes: the publisher gives no data | `ffmpeg`, `modmanager`, `qemu-static`, `socket-proxy` |
+| capability IPC_LOCK | 4 | Tier 3; or a test that the application works with no keyring | `github-desktop`, `mysql-workbench`, `vscode`, `vscodium` |
+| capability NET_ADMIN | 3 | Tier 3 | `mullvad-browser`, `swag`, `wireguard` |
+| device | 2 | Tier 3 until a setting of the machine permits a device | `minisatip`, `oscam` |
+| shell without credential | 2 | A credential that the install can make, for each image (the user and password of `openssh-server`, the user of the web page of Syncthing) | `openssh-server`, `syncthing` |
+| privileged | 1 | Tier 3 | `kasm` |
+| engine socket | 1 | Tier 3 until the exception of R-247 (task H34) | `sealskin` |
+
+The ten entries are tier 2: no test on a machine ran (HT-114 is the check by a person).
+The device of hardware decoding of Jellyfin is an optional part that is off; the streams of
+qBittorrent (6881, TCP and UDP) and of Heimdall and Nextcloud (their second port) wait for the
+routes of task H40. The hub lists the generated entries with the others; it does not show the
+tier, the class or the optional parts yet, and its install stays refused (task H6).
+
+
+## 16. The hub as the proxy manager, with streams (R-319, HOST-050)
+
+This section is a design with options. It adds no approved requirement. It widens Section 12 (the
+routing of names on the hub) from HTTPS names to the routes that a proxy manager has, streams of
+TCP and UDP included. A security read by a separate reviewer reads it; each part that opens a port
+of a machine or of the hub to a network waits for that read and for his decisions.
+
+### 16.1 What he asked for
+
+His words: "I used to use nginx proxy manager and I like it as the hub as the proxy manager don't
+need to use nginx but I want it to be networked liket hat with support for more then just https".
+Thus: one place in the hub that lists each route ("this name, or this port, goes to this
+application on this machine"), with its certificate, and with more kinds than HTTPS. The program
+that carries the bytes is the proxy of the hub of Section 12 (R-302): not nginx, and
+not a proxy on each machine.
+
+### 16.2 What users of such tools expect
+
+From the public documentation of each tool, as the writer of this section knows it (not read
+again for this text; the build checks each point):
+
+| Tool | How routes are made | Kinds of route | Certificates | Access |
+| --- | --- | --- | --- | --- |
+| Nginx Proxy Manager | A screen: "proxy hosts", "redirection hosts", "streams", "404 hosts" | HTTP(S) by name; streams of TCP and UDP by port | Let's Encrypt, with HTTP or DNS challenge | Access lists: addresses, basic sign-in |
+| Traefik | Labels on containers, read from the socket of Docker, or files | HTTP by name and path; TCP by SNI or port; UDP by port | ACME, automatic | Middleware: sign-in in front, addresses, limits |
+| Caddy | One file, or its API | HTTP(S) by name; TCP and UDP only with a plug-in (layer 4) | Automatic HTTPS, the strongest default | Plug-ins |
+| Pangolin | A screen on a central server; a tunnel program on each site | HTTP(S) by name; raw TCP and UDP | ACME on the central server | Sign-in in front of each route (identity-aware), rules |
+
+Pangolin is closest to Anima: one central server, a tunnel from each site, the routes on the
+central server. Nginx Proxy Manager is closest to what he names: a screen of routes.
+
+What the hub of Anima takes from them:
+
+- A screen of routes for the hub, with a list of each route of each application: kind, name or
+  port, target (application and machine), certificate, access, state, counts.
+- The kinds: **web** (HTTPS by name, Section 12), **redirect** (a name to an `https://` address,
+  only on a name that the person proved, with the rights of a publish of Section 12.3: a redirect
+  on a name that Anima gives would be an open redirect for phishing),
+  **TCP stream** (a port of the hub to a port of an application), **UDP stream** (the same for
+  UDP). No path rules or custom files of nginx in the first version.
+- The access of a route: **public** (the internet), **private** (only his devices on the network
+  of Anima, the VPN of [vpn-plan.md](../plans/vpn-plan.md)), and later **sign-in in front** (the
+  hub asks for the sign-in of Anima before it passes a request, as Pangolin does).
+- A route is made from the page of the application too: an entry of the catalogue says which of its
+  ports is web and which is a stream (Section 13, Section 15), so one click proposes the route.
+- Not taken: a route from labels on a container (Traefik). It needs the socket of the engine on
+  the hub, which R-226 forbids, and it lets a file of a different publisher make its own route.
+
+### 16.3 Where the bytes go
+
+| From where | To a route of kind web | To a stream of TCP | To a stream of UDP |
+| --- | --- | --- | --- |
+| The internet, hosted hub | The door by SNI (Section 12) | Needs an address of its own for each hub at the door (planned by the cloud service, not built); none before it | The same, and the link must carry datagrams |
+| The internet, hub that a person hosts | Ports 80 and 443 of the hub | A port of the hub that he selects | A port of the hub, and a path that carries UDP to the machine |
+| His devices on the network of Anima (private) | The address of the hub on that network | The same | The same |
+| His local network | A hub that a person hosts on that network serves it as above. A hosted hub does not: the bytes would go to the pool and back. The machine's own port with "Open to the network" (R-229) is the local path, with no proxy | The same | The same |
+
+The path from the hub to the machine is always the path of Section 12.2 point 5: the hub takes
+the identifier of an application and connects through its one connect function; on a computer of
+the link, the link dials `127.0.0.1:<port>`. Two limits of today:
+
+- **The link carries TCP only** (task HM-T12). A stream of UDP to a computer of the link needs a
+  change of the contract of the link (datagrams on the tunnel) and its own security read.
+- **The door of a hosted hub has one address for all hubs** and routes by the name in SNI. A
+  stream has no name, so a stream on a hosted hub needs an address (or a range of ports) of its own
+  for each hub at the door: a question for the cloud plan.
+
+### 16.4 The rules of a stream
+
+The rules of Section 12.3 apply to each route. For a stream also:
+
+- **Port of the hub.** A stream listens on a port of a range that the operator sets for streams,
+  and never on 22, 53, 3478, 5432, the ports of the VPN and of WireGuard, or a port that the hub,
+  the gateway (`guacd`), the link or the proxy is set to use. Ports 80 and 443 belong to the web
+  routes. The hub tests that it can bind the port before it saves the stream. A private stream
+  listens on the address of the hub on the network of Anima; a public one on the public address
+  that the operator selects.
+- **No look inside, so a narrow list.** A stream carries the bytes of the protocol of the
+  application, with no TLS of the hub and no check of a name. A warning is not a control: a public
+  stream is permitted only for a port that the entry marks `stream-public` (a protocol with its own
+  sign-in and TLS), never for a database, MQTT, Redis or an entry of the class `shell`.
+  OD-HOST-43 (a consent at the machine) covers streams too. The application sees the address of
+  the hub for each client, so its own limits for each address do not work: the hub applies the
+  limits for each source.
+- **Limits for each stream.** Connections at one time, new connections each second, bytes. For UDP
+  also packets each second, a limit of flows for each stream and a time after which an idle flow
+  ends. A source address of UDP can be false, so until a source has proven that it gets the
+  answers, the hub sends to it at most as many bytes as it received from it. No public UDP stream
+  for syslog (false log lines).
+- **Who makes it.** As a public web route (Section 12.3): a person with a login or a browser
+  session, after a second factor; no API key and no MCP tool; OD-HOST-43 for the consent at the
+  machine.
+- **Private by default.** A new route is private. He makes it public by a separate step.
+
+### 16.7 What "private" is
+
+- A private route listens only on the address of the hub on the network of Anima, and the proxy
+  checks the interface on which a connection came, not only its name. A private name is never in
+  the table of the door.
+- "Private" means each node of the network of Anima: his devices, and also each machine and each
+  container on it that can reach that network. An entry that holds the socket of the engine
+  (Section 10) or of the class `shell` (Section 15.7) gets no route (OD-HOST-54).
+- A private route is made with the same rights as a public one (Section 12.3).
+- Whether a hosted hub is on a network of its own customer, with its own rules, or on a shared one,
+  is a question for the cloud plan.
+- On a hub that a person hosts, UDP to a machine on its network needs "Open to the network" on
+  that machine, which also opens the port to the whole local network.
+
+### 16.5 What is built in which order
+
+1. The table of routes of task H21 gets the kinds web and redirect, and the access public or
+   private. (Task H21 builds web routes now.)
+2. TCP streams on a hub that a person hosts, private and public.
+3. TCP streams on a hosted hub, after the door gives an address for each hub.
+4. UDP streams: on a hub that a person hosts that reaches the machine on its network first; through
+   the link after the change of the link contract.
+5. Sign-in in front of a route, after a design of its own origin (Section 12.3, AC-D45).
+
+### 16.6 Options for the operator
+
+- **OD-HOST-46: where do the bytes go for his local network on a hosted hub?** A: no proxy for the
+  local network; the machine's own port with "Open to the network" is the local path, and the
+  routes of the hub are for the internet and his devices on the network of Anima. B: a small
+  forwarder on each machine for the local network, which changes R-302 ("only on the
+  hub"). Recommendation: A. It keeps one proxy, and a hub that he hosts on his local network gives
+  him the names there.
+- **OD-HOST-47: streams on a hosted hub before the door has an address for each hub?** A: no;
+  streams only on a hub that a person hosts until then. B: the door gives each hub a range of
+  ports on the shared address. Recommendation: A. A range of ports on one address is hard to keep
+  apart and to limit, and it is the next work of the cloud plan anyway.
+- **OD-HOST-48: UDP through the link?** A: TCP streams first; UDP after the change of the link
+  contract and its security read. B: no UDP through the link; UDP only where the hub reaches the
+  machine on its network. Recommendation: A.
+- **OD-HOST-49: which access does a route have in the first version?** A: public and private. B:
+  also sign-in in front. Recommendation: A, then B after its design.
+
+A separate reviewer read Sections 15 and 16 on 2026-11-20: SF-243 to SF-250 in
+[security-findings.md](../security-findings.md). The text above has the corrections.

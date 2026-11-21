@@ -13,6 +13,7 @@ const DEVICE: &str = "0190a000-0000-7000-8002-000000000002";
 const REASON: &str = "The install needs task H6 of the hosted applications plan, which is not \
                       built. No machine was reached.";
 const COMPOSE: &str = "services:\n  postgres:\n    image: postgres@sha256:0\n";
+const DIGEST: &str = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
 fn refused() -> Value {
     json!({ "refusal": "INSTALL_NOT_BUILT", "reason": REASON, "needsOpenToNetwork": false })
@@ -21,12 +22,19 @@ fn refused() -> Value {
 fn listed() -> Value {
     json!({ "catalogueEntries": [
         { "id": "owntracks-recorder", "name": "OwnTracks Recorder", "kind": "APPLICATION",
-          "version": "1.0.7", "tags": ["location"], "marks": [],
+          "version": "1.0.7", "tags": ["location"], "marks": [], "class": "APPLICATION",
+          "tier": "TESTED",
           "lastMachineTest": "2026-11-20", "pinned": "2026-11-20",
           "install": { "refusal": "INSTALL_NOT_BUILT", "needsOpenToNetwork": false } },
         { "id": "postgresql", "name": "PostgreSQL", "kind": "DATABASE", "version": "18.7",
           "tags": ["database"], "marks": [], "lastMachineTest": null, "pinned": "2026-11-20",
-          "install": { "refusal": "INSTALL_NOT_BUILT", "needsOpenToNetwork": false } }
+          "class": "APPLICATION", "tier": "TESTED",
+          "install": { "refusal": "INSTALL_NOT_BUILT", "needsOpenToNetwork": false } },
+        { "id": "code-server", "name": "code-server", "kind": "APPLICATION",
+          "version": "4.145.2-ls377", "tags": ["linuxserver", "programming"], "marks": [],
+          "lastMachineTest": null, "pinned": "2026-11-21", "class": "SHELL",
+          "tier": "GENERATED",
+          "install": { "refusal": "GENERATED_NEEDS_DIGEST", "needsOpenToNetwork": false } }
     ] })
 }
 
@@ -36,7 +44,28 @@ fn described() -> Value {
         "kind": "DATABASE", "version": "18.7", "author": "PGDG", "tags": ["database"],
         "iconUrl": null, "documentationUrl": "https://www.postgresql.org/docs/18/",
         "marks": [], "networkPorts": [], "lastMachineTest": null, "pinned": "2026-11-20",
+        "class": "APPLICATION", "tier": "TESTED", "origin": null, "reviewedBy": null,
+        "reviewedOn": null, "streams": [],
+        "optionalParts": [], "digests": [DIGEST],
         "install": refused(), "environmentVariables": ["POSTGRES_PASSWORD"],
+        "composeFile": COMPOSE
+    } })
+}
+
+fn generated() -> Value {
+    json!({ "catalogueEntry": {
+        "id": "jellyfin", "name": "jellyfin", "description": "A media server.",
+        "kind": "APPLICATION", "version": "10.11.3", "author": "LinuxServer.io",
+        "tags": ["linuxserver", "media servers"], "iconUrl": null,
+        "documentationUrl": "https://github.com/linuxserver/docker-jellyfin", "marks": [],
+        "networkPorts": [], "lastMachineTest": null, "pinned": "2026-11-21",
+        "class": "APPLICATION", "tier": "GENERATED",
+        "origin": { "publisher": "LinuxServer.io", "read": "2026-11-17" },
+        "reviewedBy": "Ada Lovelace", "reviewedOn": "2026-11-21",
+        "streams": [{ "port": 7359, "protocols": ["udp"] }],
+        "optionalParts": [{ "kind": "DEVICE", "path": "/dev/dri", "on": false,
+          "needsMachineSetting": true }],
+        "digests": [DIGEST], "install": refused(), "environmentVariables": ["TZ"],
         "composeFile": COMPOSE
     } })
 }
@@ -65,6 +94,28 @@ async fn h38_catalogue_list_shows_each_entry_and_says_when_it_is_not_tested_on_a
         "{}",
         run.stdout
     );
+    assert!(
+        lines[3].contains("generated") && lines[3].contains("shell"),
+        "{}",
+        run.stdout
+    );
+}
+
+#[tokio::test]
+async fn h39_catalogue_show_gives_the_tier_the_streams_and_the_optional_parts() {
+    let hub = FakeHub::start().await;
+    hub.answer("CatalogueShow", data(generated()));
+    let run = anima(&hub, &["catalogue", "show", "jellyfin"]).await;
+    assert_eq!(run.code, 0, "{run:?}");
+    for shown in [
+        "generated from LinuxServer.io (data of 2026-11-17)",
+        "7359 (udp)",
+        "device /dev/dri (off, needs a machine setting)",
+        "by Ada Lovelace on 2026-11-21",
+        DIGEST,
+    ] {
+        assert!(run.stdout.contains(shown), "{shown}: {}", run.stdout);
+    }
 }
 
 #[tokio::test]
@@ -99,7 +150,15 @@ async fn h38_catalogue_install_prints_the_refusal_and_ends_with_1() {
     );
     let run = anima(
         &hub,
-        &["catalogue", "install", "postgresql", "--device", DEVICE],
+        &[
+            "catalogue",
+            "install",
+            "postgresql",
+            "--device",
+            DEVICE,
+            "--digest",
+            DIGEST,
+        ],
     )
     .await;
     assert_eq!(run.code, 1, "{run:?}");
@@ -107,7 +166,7 @@ async fn h38_catalogue_install_prints_the_refusal_and_ends_with_1() {
     let sent = hub.seen().pop().expect("a request");
     assert_eq!(
         sent.variables,
-        json!({ "entryId": "postgresql", "deviceId": DEVICE })
+        json!({ "entryId": "postgresql", "deviceId": DEVICE, "digest": DIGEST })
     );
 }
 
