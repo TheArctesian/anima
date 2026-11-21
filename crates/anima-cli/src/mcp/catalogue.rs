@@ -75,7 +75,7 @@ impl Kind {
 }
 
 impl ToolSet {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Devices,
         Self::Checks,
         Self::Maintenance,
