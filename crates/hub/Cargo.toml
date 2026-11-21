@@ -65,6 +65,7 @@ lettre.workspace = true
 # The updater key the hub signs each published updater file with, and the check of that
 # signature by the updater's own verifier (R-117, BLD-045, BLD-046, BLD-064).
 updater-signature = { path = "../updater-signature" }
+release-record = { path = "../release-record" }
 # The text redaction the event log, the audit log and each ingest path share (LOG-007, RED-001).
 redaction = { path = "../redaction" }
 # Sources (K-E1): the types the engine and the providers share, the GitHub declaration the

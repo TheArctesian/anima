@@ -1,6 +1,8 @@
 //! `anima agents`: the AI agent programs on the devices; today the use their daemons count
 //! (R-135; AIS-020, CMD-030) and their single sessions (AIS-025), and the sessions of this computer read as threads (THR-007).
 
+#[cfg(unix)]
+pub mod accounts;
 pub mod documents;
 #[cfg(unix)]
 pub mod drive;
@@ -56,6 +58,10 @@ pub enum AgentCommand {
     /// Raise the soft limit of threads one step, after the question of the limit.
     #[cfg(unix)]
     RaiseLimit,
+    /// Show the account, the plan and the limits that each agent program of this computer
+    /// said. They stay on this computer.
+    #[cfg(unix)]
+    Accounts,
 }
 
 impl AgentCommand {
@@ -85,6 +91,8 @@ impl AgentCommand {
             Self::Watch(args) => drive::watch(args, invocation).await,
             #[cfg(unix)]
             Self::RaiseLimit => drive::raise_limit(invocation).await,
+            #[cfg(unix)]
+            Self::Accounts => accounts::accounts(invocation).await,
         }
     }
 }

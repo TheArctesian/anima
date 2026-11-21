@@ -7,6 +7,7 @@ use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 use anima_hub::{
     all_routes,
     clock::{Clock, FixedClock},
+    config::Config,
     engine::sources::{Attempts, Reach, Registry},
     fleet::{access, events::Bus},
     schema::Dependencies,
@@ -51,6 +52,8 @@ pub fn converted() -> String {
 pub struct Served {
     pub kit: Kit,
     pub base: String,
+    /// The public origin of the hub, `ANIMA_PUBLIC_ORIGIN`: its links name it.
+    pub origin: String,
     task: JoinHandle<()>,
 }
 
@@ -70,6 +73,18 @@ pub async fn served(pool: &PgPool, poll_every: Duration) -> Served {
 
 /// As [`served`], with the page on `/installed` waiting up to `page_wait`.
 pub async fn served_waiting(pool: &PgPool, poll_every: Duration, page_wait: Duration) -> Served {
+    let config = anima_hub::config::from_env(&BTreeMap::new()).unwrap();
+    serve(pool, poll_every, page_wait, config).await
+}
+
+/// As [`served`], for a hub of `config`.
+pub async fn served_as(pool: &PgPool, poll_every: Duration, config: Config) -> Served {
+    serve(pool, poll_every, PAGE_WAIT, config).await
+}
+
+async fn serve(pool: &PgPool, poll_every: Duration, page_wait: Duration, config: Config) -> Served {
+    let origin = config.public_origin.clone();
+    let config = Arc::new(config);
     let stub = Stub::start(pool).await;
     let transport = anima_hub::engine::sources::Transport::to_stub(
         stub.base.clone(),
@@ -91,11 +106,16 @@ pub async fn served_waiting(pool: &PgPool, poll_every: Duration, page_wait: Dura
     };
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
     let parts = || Dependencies {
+        config: config.clone(),
         sources: reach.clone(),
         ..dependencies(pool, clock.clone(), Bus::new(16))
     };
+    // A hosted hub refuses the password sign-in (HMD-037): the token comes from the same
+    // database, signed in through a hub of the default configuration.
+    let token = Hub::serving(pool, dependencies(pool, clock.clone(), Bus::new(4)))
+        .token()
+        .await;
     let hub = Hub::serving(pool, parts());
-    let token = hub.token().await;
     let edge = access::Edge::new(pool.clone(), Bus::new(4), clock.clone());
     let app = all_routes(parts(), edge);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -118,6 +138,7 @@ pub async fn served_waiting(pool: &PgPool, poll_every: Duration, page_wait: Dura
     Served {
         kit,
         base: format!("http://{addr}"),
+        origin,
         task,
     }
 }
@@ -150,17 +171,32 @@ impl Answer {
 pub struct Browser {
     client: reqwest::Client,
     base: String,
+    origin: String,
     pub cookies: BTreeMap<String, String>,
 }
 
 impl Browser {
     pub fn new(served: &Served) -> Self {
+        Self::with(served, HeaderMap::new())
+    }
+
+    /// A browser whose requests reach the hub through a gateway that passes the name `host`,
+    /// as the gateway of the pool passes the name that the browser used (HMD-061).
+    pub fn named(served: &Served, host: &str) -> Self {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", host.parse().unwrap());
+        Self::with(served, headers)
+    }
+
+    fn with(served: &Served, headers: HeaderMap) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .redirect(Policy::none())
+                .default_headers(headers)
                 .build()
                 .unwrap(),
             base: served.base.clone(),
+            origin: served.origin.clone(),
             cookies: BTreeMap::new(),
         }
     }
@@ -228,7 +264,7 @@ impl Browser {
             .client
             .post(format!("{}/graphql", self.base))
             .header("content-type", "application/json")
-            .header("origin", PUBLIC)
+            .header("origin", self.origin.as_str())
             .body(body.to_string());
         let answer = self.send(request).await;
         assert!(self.cookies.contains_key("__Host-anima"), "{}", answer.body);
@@ -237,7 +273,7 @@ impl Browser {
     /// Opens the one-time `link` and follows the hub to the start page: returns the state S1
     /// in the form's action, as GitHub would get it.
     pub async fn open(&mut self, link: &str) -> String {
-        let path = link.strip_prefix(PUBLIC).expect("a link to the hub");
+        let path = link.strip_prefix(&self.origin).expect("a link to the hub");
         let bound = self.get(path).await;
         assert_eq!(bound.status, StatusCode::SEE_OTHER, "{}", bound.body);
         assert_eq!(bound.location(), "/connect/github/start");
