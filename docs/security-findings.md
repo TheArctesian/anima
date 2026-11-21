@@ -261,6 +261,8 @@ that owns the area.
 | SF-NEW-revcatsecret | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatpg | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatentry | A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `cb5098bb`) |
+| SF-NEW-revlsform | The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `30019f90`) |
+| SF-NEW-revlsreview | A new or changed generated entry is merged with no named person who read it. Medium | The catalogue of LinuxServer.io (task H39) | Open |
 | SF-NEW-lsdownload | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lsgenerator | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lstier | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
@@ -2510,6 +2512,30 @@ Effect, and who can cause it: The author of a recipe, or the data of a publisher
 Mitigation now: `$` in `command`, `entrypoint` and `hostname` is `variable_not_permitted`. An `entrypoint` is refused (`entrypoint`), and a `command` or a health check that runs a shell (`sh`, `bash`, `ash`, `dash`, `zsh`, `busybox`, `env`, `-c`, the forms `CMD-SHELL` and one text) is refused (`shell_command`), unless the entry names the exception `reviewed-command` for that service; a generated entry (with `origin`) that names it is refused (`generated_exception`). `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` in a word of a command are `image_mods` in each case. A word that gives a value to a secret name (`--password=x`, `--token x`, `API_KEY=x`) is `secret_in_file`. Each exception is now `{"exception": …, "services": […]}` and applies only to the services that it names; a named service that does not use it is `exception_not_needed`. The health checks of PostgreSQL and of the database of Dawarich are now of the form `CMD`; Dawarich names `reviewed-command` for its services `app` and `sidekiq`. Tests: `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/privileges.rs`.
 
 State: Open (built in `cb5098bb`). The words of a command are read as words: a program that a recipe starts can still run a shell of its own, which only the test on a machine shows (task H37). Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revlsform: The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium
+
+Requirements: HOST-047, HOST-049, tasks H38 and H39; OD-HOST-50, OD-HOST-54; R-234, R-247.
+
+What it is: A separate review of the form of LinuxServer.io on the branch `hosted/catalogue-linuxserver` (2026-11-21) found four points. (M1) The hub (`crates/hub/src/work/catalogue/`) read none of the fields `class`, `origin` and `optional`: an API key or an agent could ask for the install of a shell, and a generated entry needed no more than a tested one. (L1) The form (`crates/catalogue/src/linuxserver/plan.rs`) took the raw name of an image of the fleet list, which reaches the `image:` line and a comment of the Compose file. (L2) code-server published 8443 on the machine, the port of the hub of Anima; the rule "below 1024, add 8000" also makes 443 into 8443 (heimdall, nextcloud). (L3) The shell check (`crates/catalogue/src/privileges/commands.rs`) let `perl -e`, `node -e`, `ruby -e` and `php -r` through.
+
+Effect, and who can cause it: (M1) an API key or an agent installs an entry whose user is root in a container, or a generated entry that no person confirmed, when task H6 exists. (L1) the data of the publisher writes keys into the Compose file. (L2) the application takes the port of the hub, or the hub takes its port. (L3) a recipe runs any text with no `reviewed-command` exception.
+
+Mitigation now: (M1) `install()` gives, before the refusal of task H6, `SHELL_NEEDS_PERSON` for an entry of the class shell unless the request is a person signed in to the client (a login or a browser token whose request is not an agent), and `GENERATED_NEEDS_DIGEST` for an entry with `origin` unless the request names the digest of each of its images (`installCatalogueEntry(digest:)`, `anima catalogue install --digest`, the MCP argument `digest`). The entry gives `class`, `tier`, `origin`, `streams`, `optionalParts` and `digests` in K1, `anima catalogue list` and `show` and the MCP tools. The hub does not record on a token that its sign-in used a second factor; the sign-in asks for it when one is enrolled. (L1) the form refuses an image name that is not `[a-z0-9-]+` (`name_not_permitted`). (L2) `catalogue::ANIMA_PORTS` (4822, 8443): the form moves such a port of the machine to the next port (8444), and the static test refuses a published port of Anima (`anima_port_published`); code-server, heimdall and nextcloud publish 8444. (L3) an interpreter (`perl`, `node`, `python`, `ruby`, `php`, with a version suffix) followed by its inline-code option (a short cluster with `e`, `E`, `p`, `c` or `r`, `--eval`, `--print`) is a shell (`shell_command`). Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs`, `crates/catalogue/src/tests/linuxserver.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/anima-cli/tests/it/catalogue.rs`.
+
+State: Open (built in `30019f90`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revlsreview: A new or changed generated entry is merged with no named person who read it. Medium
+
+Requirements: HOST-049, task H39; SF-NEW-lsgenerator.
+
+What it is: A process point. The generator writes new entries in `crates/catalogue/entries/`, and a branch with them can merge with no named person who read each entry. The rule of SF-NEW-lsgenerator (a named reviewer reads each change of the generator before the merge) is not enforced by a gate.
+
+Effect, and who can cause it: The data of the publisher, or a fault of the generator, puts an entry into the catalogue that no person read.
+
+The fix (not built): a merge rule or a gate that refuses a new or changed file in `crates/catalogue/entries/` with no record of the person who read it (for example a reviewer line in the entry folder or in the merge commit, checked by the documents gate).
+
+State: Open. Found by a separate reviewer on 2026-11-21.
 
 ## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
 
