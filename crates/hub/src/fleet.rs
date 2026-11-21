@@ -6,6 +6,7 @@ pub mod access;
 pub mod agent_usage;
 pub mod builds;
 pub mod checks;
+pub mod compute;
 pub mod credentials;
 pub mod devices;
 pub mod events;
