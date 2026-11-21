@@ -268,8 +268,9 @@ Request:
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
 - `agentUsage`: optional (R-135; AIS-018, AIS-019). The use of the AI agent programs on the device: counts
-  only, never the text of a session, a title, the path of a folder, a login, the name of an account or a
-  usage limit (AIS-018, AIS-022). Absent means "nothing new": a daemon older than R-135 sends none and a hub
+  only, never the text of a session, a title, the path of a folder, a login, a token, the name of an account
+  or the identifier of an account (AIS-018, AIS-022). Its member `accounts` gives the key, the plan and the
+  limits of an account, and nothing else of it (R-NEW-accountgroup). Absent means "nothing new": a daemon older than R-135 sends none and a hub
   older than R-135 ignores it, so the change needs no `/daemon/v2/`.
   - `state` says what the daemon can read: `reading` (it reads the session files of its user),
     `system_unit` (it runs as the systemd system unit, which cannot see the files of a user, AIS-024) or
@@ -305,6 +306,23 @@ Request:
       `cacheWriteTokens` are the input tokens read from and written to the cache.
     - Every count (`prompts`, `toolCalls` and the four token counts) is a whole number from 0 to
       9 007 199 254 740 991 (2^53 − 1).
+  - `accounts`: optional (R-NEW-accountgroup, AIS-022). The accounts that the programs of the device use
+    now, 0 to 4 entries, no two with the same `source`. Absent means "nothing new"; a daemon older than
+    R-NEW-accountgroup sends none, and a hub older than it ignores it. Present, even empty, it asks the hub for
+    its account salt (Section 8.2). The daemon sends an entry only when it has the salt of the hub that
+    it pushes to.
+    - `source`: as in `sessionDays`.
+    - `key`: 64 bytes of `[0-9a-f]`: the HMAC-SHA-256, written in lower-case hexadecimal, of the text
+      `<source>:<identifier>` with the account salt as the key, where `<identifier>` is the identifier that
+      the vendor gives the account (Codex: `account/read` or `creator_account_id` of a rollout; Claude
+      Code: the account of the runner of threads, THR-132). Never the identifier itself.
+    - `plan`: optional, 1 to 32 bytes of `[A-Za-z0-9 ._-]`: the name of the plan as the program states it.
+    - `limits` holds 0 to 8 entries with unique `window` names: `window`, 1 to 32 bytes of
+      `[a-z0-9_ ]` (`five_hour`, `seven_day`, `300 min`); `usedPercent`, optional, a whole number from 0
+      to 100; `resetsAt`, optional, a K8 time (Section 1); `reached`, true when the program said that the
+      limit is reached.
+    - Each entry replaces the earlier report of the same device and `source`. An account that the device
+      no longer reports keeps its last report until a batch says that the device uses a different key.
   - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
     pass them.
   - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files
@@ -520,8 +538,14 @@ different version, and the batch had an `update` member, it answers 200 with `Ac
 { "update": { "version": "0.3.0", "again": false } }
 ```
 
-- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member always gets
-  204, so a daemon older than R-139 keeps working.
+- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member and no
+  `agentUsage.accounts` member always gets 204, so a daemon older than R-139 keeps working.
+- `accountSalt` (R-NEW-accountgroup, AIS-022): in each answer to a batch with an `agentUsage.accounts` member,
+  the account salt of the hub, 32 bytes in standard base64. The hub makes it once, from a random source,
+  and keeps it in its database; it does not change. The daemon keeps it in its state folder with the token
+  of that hub and forgets it at a new enrolment. One account on two machines of one hub thus gives one key,
+  and a different hub gives a different key. The salt is not a secret of a device and gives no access; it is
+  in no log (LOG-007) all the same.
 - `version` is the only instruction (ROL-009). The hub never sends an address, a path, a command or a file
   name. The text has the rule of `daemonVersion`; a daemon ignores an `Accepted` that breaks it.
 - `again`: true only after the operator pressed "Try again" (ROL-032). The machine then sets `tries` to 0 for
