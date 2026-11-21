@@ -45,15 +45,22 @@ export class ThreadsStore {
       this.rows = await this.shell.list(null);
       this.readAt = this.now();
       this.listProblem = null;
+      // The list is read only while the window is seen: the open thread is in front of the person.
+      if (this.chosen !== null) this.markSeen(this.chosen);
     } catch (reason) {
       this.listProblem = reason instanceof Error ? reason.message : 'The threads could not be read.';
     }
   }
 
+  /** The person sees the thread `id` now: a turn that ended there does not need the person (THR-055). */
+  markSeen(id: string): void {
+    this.seen = markSeen(this.storage, this.seen, id, this.now());
+  }
+
   /** Opens the thread `id`; an answer for a thread that is no longer chosen is dropped. */
   async open(id: string): Promise<void> {
     this.chosen = id;
-    this.seen = markSeen(this.storage, this.seen, id, this.now());
+    this.markSeen(id);
     this.threadProblem = null;
     if (this.live?.threads.has(id) === true) return;
     this.loadingThread = true;

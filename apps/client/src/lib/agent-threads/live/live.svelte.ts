@@ -29,6 +29,8 @@ export class LiveThreads {
   problem = $state<string | null>(null);
   /** A start that the runner refused at the soft limit: it is sent again when the person raises the limit. */
   overLimit = $state<Action | null>(null);
+  /** Called with the ID of a thread that changed while the person looks at it: it does not need the person (THR-055). */
+  seenOpen: ((id: string) => void) | null = null;
   private quietUntil = 0;
 
   constructor(
@@ -79,12 +81,14 @@ export class LiveThreads {
     if (after === before) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
     this.threads = pruned(new Map(this.threads).set(update.thread, after));
+    const looking = this.looking();
+    if (looking.front && looking.chosen === update.thread) this.seenOpen?.(update.thread);
     if (at.getTime() < this.quietUntil) {
       // A replay comes as a burst: the page stays quiet until the burst ends.
       this.quietUntil = Math.max(this.quietUntil, at.getTime() + REPLAY_GAP_MS);
       return;
     }
-    const notice = noticeFor(before, after, update, this.looking());
+    const notice = noticeFor(before, after, update, looking);
     if (notice !== null) {
       this.shell.notify(notice.title, notice.words).catch((reason: unknown) => {
         this.problem = reason instanceof Error ? reason.message : 'The notification was not shown.';
