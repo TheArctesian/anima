@@ -5,6 +5,7 @@
 mod api;
 mod browser;
 mod flow;
+mod hosted;
 mod installed;
 mod leaks;
 mod linked;

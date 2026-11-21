@@ -24,9 +24,30 @@ export const HUB_RESTARTED =
   'The hub restarted and dropped the connection. Delete any App you made on GitHub, then start again.';
 export const TAB_BLOCKED = 'The tab did not open. Open this page in a browser signed in to Anima.ing and press Continue.';
 
-/** On a hub that no browser can open: the flow is not offered (DEF-003; the gateway of R-239 will give the address). */
+/** On a hub that says that it cannot start the flow in a browser, or that does not say (a hub of before): not offered. */
 export const NO_BROWSER_ADDRESS =
   'Coming soon: Connect GitHub in your browser for this hub. Today a browser cannot open a page of this hub, so nothing is opened. If you made a GitHub App yourself, use its key file.';
+
+/** The address of the gateway of the hosted hubs, where a browser signs in with the Anima.ing account (HMD-068). */
+const GATEWAY_HOST = 'hub.anima.ing';
+
+/**
+ * Where the browser must be signed in for the flow, from the hub page `page`: the gateway for a hosted hub, whose page
+ * is at `hub.anima.ing` or at a name below it; the host of the page for each other hub. Empty for an address that is
+ * not one.
+ */
+export function signInLine(page: string): string {
+  let host: string;
+  try {
+    host = new URL(page).host;
+  } catch {
+    return '';
+  }
+  if (host === GATEWAY_HOST || host.endsWith(`.${GATEWAY_HOST}`)) {
+    return `Your browser must be signed in at ${GATEWAY_HOST} with your Anima.ing account.`;
+  }
+  return `Your browser must be signed in at ${host}.`;
+}
 
 const GITHUB = 'https://github.com/';
 const TRY_AGAIN = 'Delete any new App on GitHub that starts with "anima-".';
