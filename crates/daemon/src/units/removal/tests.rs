@@ -219,3 +219,67 @@ fn hmd_056_with_no_home_nothing_is_run() {
         Err(UninstallError::Plan(PlanError::NoHome))
     ));
 }
+
+/// Runs `stop` for `platform` in `home`; each command answers `answer`. Returns the commands.
+fn stop_in(
+    platform: Platform,
+    home: &Path,
+    runtime: Option<&str>,
+    answer: impl Fn(&Step) -> io::Result<bool>,
+) -> (Result<(), UninstallError>, Vec<String>) {
+    let noted = Noted::default();
+    let result = stop(
+        Leaving { platform, uid: UID },
+        env_of(home, runtime),
+        |step| {
+            let bus = step.env.iter().map(|(name, _)| *name).collect::<Vec<_>>();
+            noted.note(format!(
+                "{} {} ({})",
+                step.program,
+                step.args.join(" "),
+                bus.join(",")
+            ));
+            answer(step)
+        },
+    );
+    (result, noted.lines())
+}
+
+#[test]
+fn hmd_055_stop_boots_the_launch_agent_out_and_keeps_its_file() {
+    let home = tempfile::tempdir().unwrap();
+    let file = installed(Platform::Macos, home.path());
+    let (result, lines) = stop_in(Platform::Macos, home.path(), None, |_| Ok(false));
+    result.expect("a unit that is not loaded is fine");
+    assert!(file.exists(), "the unit file stays");
+    assert_eq!(
+        lines,
+        [format!(
+            "/bin/launchctl bootout gui/{UID}/ing.anima.daemon ()"
+        )]
+    );
+}
+
+#[test]
+fn hmd_055_stop_stops_the_systemd_user_unit_with_the_bus_and_keeps_it_enabled() {
+    let home = tempfile::tempdir().unwrap();
+    let file = installed(Platform::Linux, home.path());
+    let (result, lines) = stop_in(Platform::Linux, home.path(), Some("/run/user/4242"), |_| {
+        Ok(true)
+    });
+    result.expect("stopped");
+    assert!(file.exists());
+    assert_eq!(
+        lines,
+        ["/usr/bin/systemctl --user stop anima-daemon.service (XDG_RUNTIME_DIR)"]
+    );
+}
+
+#[test]
+fn hmd_055_a_stop_that_cannot_run_is_an_error() {
+    let home = tempfile::tempdir().unwrap();
+    let (result, _) = stop_in(Platform::Macos, home.path(), None, |_| {
+        Err(io::Error::other("no launchctl"))
+    });
+    assert!(matches!(result, Err(UninstallError::Run { .. })));
+}

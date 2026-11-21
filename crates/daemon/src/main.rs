@@ -33,6 +33,10 @@ async fn main() -> ExitCode {
     if let Command::Holder { folder, limit } = &command {
         return holder(folder, *limit).await;
     }
+    if matches!(command, Command::Version) {
+        println!("{}", cli::version_line());
+        return ExitCode::SUCCESS;
+    }
     let home = match Home::locate(
         |name| std::env::var(name).ok(),
         Platform::current() == Platform::Macos,
@@ -46,8 +50,9 @@ async fn main() -> ExitCode {
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
+        Command::Stop => stop_unit(),
         Command::KeyRead { name } => key_read(&name, &home),
-        Command::Holder { .. } => ExitCode::FAILURE,
+        Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
@@ -182,6 +187,22 @@ fn uninstall(home: &Home) -> ExitCode {
         }
         Err(error) => failure(&error),
     }
+}
+
+/// `anima-daemon stop` (HMD-055): the user unit stops; its file and the token stay.
+#[cfg(unix)]
+fn stop_unit() -> ExitCode {
+    match anima_daemon::units::removal::stop_here() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    }
+}
+
+/// The task of the daemon on Windows is not stopped by this command yet.
+#[cfg(windows)]
+fn stop_unit() -> ExitCode {
+    eprintln!("`anima-daemon stop` is not built for Windows yet");
+    ExitCode::FAILURE
 }
 
 /// The task of the daemon on Windows is not taken out by this command yet.

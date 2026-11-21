@@ -100,10 +100,41 @@ pub fn daemon_env(
 /// [`RunError`]: the program could not start, take its input, or exit successfully in time, or
 /// it was stopped. A child still running then is killed and reaped first.
 pub fn run(daemon_run: &Run<'_>) -> Result<(), RunError> {
+    finish(daemon_run, false).map(drop)
+}
+
+/// Runs `daemon_run` as [`run`] does and returns the first `limit` bytes of its standard output.
+/// Only what the program wrote before it exited is read: the pipe is read without waiting, so a
+/// process that it started and that keeps the pipe open cannot hold the app.
+///
+/// # Errors
+/// [`RunError`] as [`run`]; [`RunError::Unreadable`] when the output cannot be read.
+#[cfg(unix)]
+pub fn output(daemon_run: &Run<'_>, limit: u64) -> Result<Vec<u8>, RunError> {
+    use std::io::Read as _;
+    let mut child = finish(daemon_run, true)?;
+    let stdout = child.stdout.take().ok_or(RunError::Unreadable)?;
+    let flags = nix::fcntl::fcntl(&stdout, nix::fcntl::FcntlArg::F_GETFL)
+        .map_err(|_| RunError::Unreadable)?;
+    let flags = nix::fcntl::OFlag::from_bits_truncate(flags) | nix::fcntl::OFlag::O_NONBLOCK;
+    nix::fcntl::fcntl(&stdout, nix::fcntl::FcntlArg::F_SETFL(flags))
+        .map_err(|_| RunError::Unreadable)?;
+    let mut out = Vec::new();
+    match stdout.take(limit).read_to_end(&mut out) {
+        Ok(_) => Ok(out),
+        // The bytes read before the pipe had no more stay in `out`.
+        Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(out),
+        Err(_) => Err(RunError::Unreadable),
+    }
+}
+
+/// Starts `daemon_run`, with a pipe for its standard output when `capture`, and waits for it
+/// until its deadline or its stop. Returns the child once it exited with success.
+fn finish(daemon_run: &Run<'_>, capture: bool) -> Result<Child, RunError> {
     if daemon_run.stop.load(Ordering::Acquire) {
         return Err(RunError::Stopped);
     }
-    let mut child = start(daemon_run)?;
+    let mut child = start(daemon_run, capture)?;
     #[cfg(windows)]
     let Ok(_job) = anima_windows::job::Job::start(child.id()) else {
         reap(child);
@@ -116,7 +147,7 @@ pub fn run(daemon_run: &Run<'_>) -> Result<(), RunError> {
     let end = Instant::now() + daemon_run.deadline;
     loop {
         match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(()),
+            Ok(Some(status)) if status.success() => return Ok(child),
             Ok(Some(_)) => return Err(RunError::Failed),
             Ok(None) if daemon_run.stop.load(Ordering::Acquire) => {
                 reap(child);
@@ -135,9 +166,10 @@ pub fn run(daemon_run: &Run<'_>) -> Result<(), RunError> {
     }
 }
 
-/// Starts the child. A binary that was just written can be "busy" for a moment while another
-/// thread of this process forks with the file still open; that start is tried again.
-fn start(daemon_run: &Run<'_>) -> Result<Child, RunError> {
+/// Starts the child, with a pipe for its standard output when `capture`. A binary that was just
+/// written can be "busy" for a moment while another thread of this process forks with the file
+/// still open; that start is tried again.
+fn start(daemon_run: &Run<'_>, capture: bool) -> Result<Child, RunError> {
     let mut tries = 0;
     loop {
         let mut command = Command::new(daemon_run.program);
@@ -161,7 +193,11 @@ fn start(daemon_run: &Run<'_>) -> Result<Child, RunError> {
             } else {
                 Stdio::null()
             })
-            .stdout(Stdio::null())
+            .stdout(if capture {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
             .stderr(Stdio::null())
             .spawn();
         match started {

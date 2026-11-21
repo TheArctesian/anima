@@ -2,6 +2,9 @@
 //! deletes its file, then has the caller forget the token and the key cache. Each part that is
 //! not there is not an error, so a second run ends the same as the first. The file is the one
 //! `install` writes ([`super::plan`]); the commands are run by the caller's `run`.
+//!
+//! `anima-daemon stop` (HMD-055) only stops the unit: the desktop app runs it before it replaces
+//! the copy of the daemon, so that no daemon of before runs once the new copy is in place.
 
 use std::fs;
 use std::io;
@@ -66,11 +69,7 @@ struct Removal {
 fn removal(user: Leaving, env: impl Fn(&str) -> Option<String>) -> Result<Removal, PlanError> {
     let install = plan::plan(Target::User, user.platform, user.uid, env)?;
     let (stop, reload) = if install.unit == Unit::LaunchAgent {
-        let mut bootout = Step::new("/bin/launchctl", &["bootout"]);
-        bootout
-            .args
-            .push(format!("gui/{}/ing.anima.daemon", user.uid));
-        (vec![bootout], Vec::new())
+        (vec![bootout(user.uid)], Vec::new())
     } else {
         let disable = Step::new(
             "/usr/bin/systemctl",
@@ -91,6 +90,66 @@ fn removal(user: Leaving, env: impl Fn(&str) -> Option<String>) -> Result<Remova
         stop,
         reload,
     })
+}
+
+/// `launchctl bootout` of the `LaunchAgent` of the daemon of user `uid`.
+fn bootout(uid: u32) -> Step {
+    let mut bootout = Step::new("/bin/launchctl", &["bootout"]);
+    bootout.args.push(format!("gui/{uid}/ing.anima.daemon"));
+    bootout
+}
+
+/// Stops the user unit of the user of this process, with the commands of this computer
+/// (`anima-daemon stop`, HMD-055). The unit file, the token and the key cache stay.
+///
+/// # Errors
+/// [`UninstallError::Run`] when the user of this process cannot be read; else as [`stop`].
+#[cfg(unix)]
+pub fn stop_here() -> Result<(), UninstallError> {
+    let uid =
+        crate::config::private_file::running_user().map_err(|source| UninstallError::Run {
+            program: "reading the user of this process",
+            source,
+        })?;
+    let user = Leaving {
+        platform: Platform::current(),
+        uid,
+    };
+    stop(
+        user,
+        |name| std::env::var(name).ok(),
+        |step| super::step::run_step(step, super::step::STEP_DEADLINE),
+    )
+}
+
+/// Stops the user unit of the daemon and leaves its file, the token and the key cache: the next
+/// `install` starts it again. Only the unit is stopped (`launchctl bootout`, or
+/// `systemctl --user stop`); no other process is signalled. A unit that is not loaded makes the
+/// stop fail, which is fine; on Linux, with no session bus there is no user manager to stop.
+///
+/// # Errors
+/// [`UninstallError`] when there is no home folder, or the command could not run to its end.
+pub fn stop(
+    user: Leaving,
+    env: impl Fn(&str) -> Option<String>,
+    mut run: impl FnMut(&Step) -> io::Result<bool>,
+) -> Result<(), UninstallError> {
+    let install = plan::plan(Target::User, user.platform, user.uid, &env)?;
+    let mut step = if install.unit == Unit::LaunchAgent {
+        bootout(user.uid)
+    } else {
+        let Ok(bus) = session::session_bus(&env, user.uid) else {
+            return Ok(());
+        };
+        let mut stop = Step::new(
+            "/usr/bin/systemctl",
+            &["--user", "stop", "anima-daemon.service"],
+        );
+        stop.env = bus;
+        stop
+    };
+    step.may_fail = true;
+    run_all(&[step], &mut run)
 }
 
 /// Stops and deletes the user unit of the daemon, then calls `forget` (the token and the key

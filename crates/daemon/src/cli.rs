@@ -1,6 +1,8 @@
 //! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run`,
-//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056), and
-//! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1).
+//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056),
+//! `anima-daemon stop` (HMD-055),
+//! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1), and
+//! `anima-daemon --version`, which the desktop app reads to update the copy it installed (HMD-055).
 
 use std::io::{BufRead, Read as _};
 use std::path::PathBuf;
@@ -15,10 +17,20 @@ pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
        anima-daemon run [--hosted-hub <data folder>]
        anima-daemon install [--system]
        anima-daemon uninstall
+       anima-daemon stop
        anima-daemon key read <name>
        anima-daemon key forget
        anima-daemon threads
-       anima-daemon holder <folder> [<bytes kept for each thread>]";
+       anima-daemon holder <folder> [<bytes kept for each thread>]
+       anima-daemon --version";
+
+/// What `--version` prints: the name and the release version (R-122), one line. The desktop app
+/// reads it to decide whether the daemon it carries is newer than the installed copy (HMD-055),
+/// so its form does not change.
+#[must_use]
+pub fn version_line() -> String {
+    format!("anima-daemon {}", env!("CARGO_PKG_VERSION"))
+}
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
@@ -34,6 +46,8 @@ pub enum Command {
     Install { target: Target },
     /// Stop and delete the user unit, then forget the token and the key cache (HMD-056).
     Uninstall,
+    /// Stop the user unit and keep its file and the token, before the copy is replaced (HMD-055).
+    Stop,
     /// Write the cached value of one operational key to standard output (K-E5 Section 2.1).
     KeyRead { name: String },
     /// Delete the whole key cache, as when the daemon leaves the machine.
@@ -46,6 +60,8 @@ pub enum Command {
         folder: std::path::PathBuf,
         limit: usize,
     },
+    /// Print [`version_line`]: no home, no token and no network.
+    Version,
 }
 
 /// Where the enrolment code comes from: the command line, or standard input for `-`.
@@ -75,11 +91,13 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
     match args.next().as_deref() {
         Some("run") => run(args),
         Some("uninstall") if args.next().is_none() => Ok(Command::Uninstall),
+        Some("stop") if args.next().is_none() => Ok(Command::Stop),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),
         Some("holder") => holder(args),
         Some("threads") if args.next().is_none() => Ok(Command::Threads),
+        Some("--version") if args.next().is_none() => Ok(Command::Version),
         _ => Err(CliError::Usage),
     }
 }

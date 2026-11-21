@@ -17,6 +17,11 @@ Environment=PATH=/usr/sbin:/usr/bin
 ExecStart=/usr/local/bin/anima-daemon run
 Restart=on-failure
 RestartSec=10
+# The holder of the agent threads (THR-113) must outlive a stop or a restart of the daemon. Without
+# this line, the control-group mode of systemd kills the holder and each program that it runs. Probes
+# and `ps` end by their own deadlines. At the next start systemd logs "left-over process"; that is
+# expected.
+KillMode=process
 StateDirectory=anima-daemon
 StateDirectoryMode=0700
 UMask=0077

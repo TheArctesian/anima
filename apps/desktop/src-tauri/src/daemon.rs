@@ -15,6 +15,9 @@
 //! The removal (HMD-056) runs the daemon's own `uninstall`, then deletes the copy
 //! ([`removal`]); the client calls it at the sign-out of a hosted hub and revokes the daemon at
 //! the hub itself.
+//!
+//! At each start the app replaces an installed copy that is older than the daemon it carries,
+//! and the unit starts again with the same token (HMD-055, [`update`]).
 
 mod error;
 mod installing;
@@ -25,6 +28,10 @@ mod request;
 mod run;
 #[cfg(unix)]
 pub(crate) mod trust;
+#[cfg(unix)]
+mod update;
+#[cfg(unix)]
+mod version;
 
 #[cfg(all(test, unix))]
 mod tests;
@@ -235,6 +242,47 @@ fn hub_origin(origin: &str) -> Option<HubOrigin> {
         let socket = crate::link::daemon_socket(request::link_port(origin)?)?;
         HubOrigin::link(&socket)
     })
+}
+
+/// Replaces an installed copy of the daemon that is older than the one this app carries and
+/// starts its unit again, off the async runtime (HMD-055). It holds the one install while it
+/// runs; when an install or a removal already runs, it does nothing at this start.
+#[cfg(unix)]
+pub fn update_at_start(installing: &Installing) {
+    let (Ok(carried), Ok(home)) = (carried(), home_folder()) else {
+        return;
+    };
+    let Ok(claim) = installing.claim() else {
+        log::info!("the daemon was not compared with the one of the app: an install runs");
+        return;
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let copy = placement::destination(&home);
+        let env = run::daemon_env(&home, |name| std::env::var_os(name));
+        let swap = update::Swap {
+            copy: &copy,
+            carried: &carried,
+            user: this_user(),
+            env: &env,
+            restart: INSTALL_DEADLINE,
+            stop: &claim.stop,
+        };
+        match update::update_here(&swap) {
+            Ok(update::Updated::Replaced) => {
+                log::info!("the daemon on this computer was replaced by the newer one of the app");
+            }
+            Ok(update::Updated::KeptNewer) => {
+                log::info!(
+                    "the daemon on this computer is newer than the one of the app; it stays"
+                );
+            }
+            Ok(update::Updated::CarriedUnknown) => {
+                log::warn!("the version of the daemon of the app could not be read; no update");
+            }
+            Ok(update::Updated::NoCopy | update::Updated::Unchanged) => {}
+            Err(error) => log::warn!("the daemon was not updated: {}", error.code()),
+        }
+    });
 }
 
 /// Whether this build of the app carries the daemon, so the client can offer to install it.

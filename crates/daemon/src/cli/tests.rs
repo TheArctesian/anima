@@ -9,6 +9,18 @@ fn args(text: &str) -> Vec<String> {
 }
 
 #[test]
+fn hmd_055_version_takes_no_argument_and_prints_the_name_and_the_release_version() {
+    assert!(matches!(parse(args("--version")), Ok(Command::Version)));
+    assert!(matches!(parse(args("--version now")), Err(CliError::Usage)));
+    assert!(matches!(parse(args("stop")), Ok(Command::Stop)));
+    assert!(matches!(parse(args("stop now")), Err(CliError::Usage)));
+    assert_eq!(
+        version_line(),
+        format!("anima-daemon {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
 fn r_147_key_read_takes_one_key_name_and_forget_none() {
     let Ok(Command::KeyRead { name }) = parse(args("key read cloudflare.dns")) else {
         panic!("key read with a name reads");
