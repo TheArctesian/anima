@@ -227,8 +227,11 @@ describe("the workflow rust-cache (rust-cache.yml)", () => {
   });
 
   test("it warms the keys of the Rust jobs of the gates, from the tree of dev", () => {
-    expect(keysOf(cacheSteps).sort()).toEqual(["gates-lint", "gates-test"]);
-    for (const key of keysOf(cacheSteps)) expect(keysOf(steps)).toContain(key);
+    expect(keysOf(cacheSteps).sort()).toEqual(["gates-lint", "gates-test", "windows-gates"]);
+    const windows = Bun.YAML.parse(readFileSync(join(ROOT, ".github", "workflows", "windows-trial.yml"), "utf8")) as { jobs: Record<string, Job> };
+    const windowsSteps = Object.values(windows.jobs).flatMap((job) => job.steps ?? []);
+    for (const step of windowsSteps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) expect(step.with?.["save-if"]).toBe(false);
+    for (const key of keysOf(cacheSteps)) expect([...keysOf(steps), ...keysOf(windowsSteps)]).toContain(key);
     for (const step of cacheSteps.filter((each) => each.uses?.startsWith("actions/checkout@"))) expect(step.with?.["ref"]).toBe("dev");
   });
 

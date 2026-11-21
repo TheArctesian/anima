@@ -141,6 +141,11 @@ jobs:
           if ($digest -ne 'ba35ee0ce14ace65cd8c7aaa9613adb7d2644b0fe3866e85131eb4c269786efb') { throw "cargo-nextest has the digest $digest" }
           Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP/nextest"
           "$env:RUNNER_TEMP/nextest" >> $env:GITHUB_PATH
+      # Read only: the workflow rust-cache writes this cache under main, with the same environment.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: windows-gates
+          save-if: false
       - name: Run the Windows gates
         shell: pwsh
         run: |

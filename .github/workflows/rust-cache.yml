@@ -89,3 +89,52 @@ jobs:
           set -eu
           cargo clippy --workspace --all-targets --locked
           bun quality/bin/gates.ts --alone
+
+  # The cache of the job windows-gates of windows-trial.yml (operator decision overnight
+  # 2026-11-21, (e)). The same environment as that job: rust-cache puts each CARGO_ and RUST
+  # variable in the key, so a different CARGO_BUILD_JOBS would make a key that nobody reads.
+  windows-gates:
+    runs-on: windows-2025
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      RUSTC_WRAPPER: ""
+      CARGO_BUILD_JOBS: "4"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - name: Keep source line endings consistent with the Unix gates
+        shell: pwsh
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: dev
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: windows-gates
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Compile as Clippy and the tests of the Windows gates do
+        shell: pwsh
+        env:
+          CARGO_INCREMENTAL: "0"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'MSVC build tools are missing' }
+          Import-Module "$installation/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          $zip = "$env:RUNNER_TEMP/cargo-nextest.zip"
+          Invoke-WebRequest 'https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.151/cargo-nextest-0.9.151-x86_64-pc-windows-msvc.zip' -OutFile $zip
+          $digest = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($digest -ne 'ba35ee0ce14ace65cd8c7aaa9613adb7d2644b0fe3866e85131eb4c269786efb') { throw "cargo-nextest has the digest $digest" }
+          Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP/nextest"
+          $env:PATH = "$env:RUNNER_TEMP/nextest;$env:PATH"
+          cargo clippy --all-targets --locked
+          if ($LASTEXITCODE -ne 0) { throw 'Clippy failed' }
+          cargo nextest run --workspace --no-run --locked
+          if ($LASTEXITCODE -ne 0) { throw 'The tests did not compile' }
+          cargo test --workspace --test pinning --no-run --locked
+          if ($LASTEXITCODE -ne 0) { throw 'The pinning test did not compile' }
