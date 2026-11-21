@@ -2748,6 +2748,11 @@ The entry HT-074 remains Open. These checks extend that entry; they are not a pa
    no compiler or packaging child may remain. Test the signed installer update with the
    private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
    Do not enable or publish a public feed as part of this check.
+   No test runs the builder's Windows path. Since 2026-11-21 the seven programs
+   and the PostgreSQL tree reach that build only through the builder's own `--config`
+   (`carried::bundle_settings()`), no longer also through `tauri.windows.conf.json`. In the installed
+   folder, confirm `anima.exe`, `anima-daemon.exe`, `anima-hub.exe`, `anima-local-hub.exe`,
+   `anima-database.exe`, `anima-gateway.exe`, `anima-link.exe` and the `database` folder.
 
 9. Download the `windows-trial` artifact from a successful dev workflow and install it in
    a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and

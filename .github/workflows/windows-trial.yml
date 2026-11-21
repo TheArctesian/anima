@@ -158,14 +158,6 @@ jobs:
           & bun apps/desktop/src-tauri/database-tree/windows.ts "$pwd/target/windows-database-work" $env:ANIMA_POSTGRES_TREE
           if ($LASTEXITCODE -ne 0) { throw 'The PostgreSQL tree failed' }
           $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
-          # tauri.windows.conf.json names the seven carried programs, and tauri-build checks that each
-          # exists on every Windows build of the shell. The job windows builds and checks the real ones;
-          # the gates need only the names.
-          $binaries = "$pwd/apps/desktop/src-tauri/binaries"
-          New-Item -ItemType Directory -Force $binaries | Out-Null
-          foreach ($program in @('anima-link', 'anima', 'anima-daemon', 'anima-local-hub', 'anima-hub', 'anima-database', 'anima-gateway')) {
-              New-Item -ItemType File -Force "$binaries/$program-x86_64-pc-windows-msvc.exe" | Out-Null
-          }
           $proof = $env:EVENT -eq 'workflow_dispatch'
           $keepGoing = if ($proof) { @('--keep-going') } else { @() }
           & bun run gates @keepGoing 2>&1 | Tee-Object -FilePath windows-gates.log

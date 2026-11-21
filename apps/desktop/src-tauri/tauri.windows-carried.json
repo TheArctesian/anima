@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "externalBin": [
+      "binaries/anima-link",
+      "binaries/anima",
+      "binaries/anima-daemon",
+      "binaries/anima-local-hub",
+      "binaries/anima-hub",
+      "binaries/anima-database",
+      "binaries/anima-gateway"
+    ],
+    "resources": {
+      "database/": "database/"
+    }
+  }
+}

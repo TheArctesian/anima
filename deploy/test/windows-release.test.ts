@@ -65,6 +65,25 @@ test("only a run started by hand goes on after a failed gate, and it still fails
   expect(step?.run?.trimEnd().endsWith("if ($gates -ne 0) { throw 'Windows gates failed' }")).toBe(true);
 });
 
+test("the Windows installer carries the seven programs, and a Windows cargo build needs none of them", () => {
+  const conf = (name: string) => JSON.parse(readFileSync(join(root, "apps/desktop/src-tauri", name), "utf8")) as { bundle: Record<string, unknown> };
+  // tauri-build reads tauri.windows.conf.json on each Windows build, the gates too: it must name no program.
+  expect(conf("tauri.windows.conf.json").bundle["externalBin"]).toBeUndefined();
+  expect(conf("tauri.windows.conf.json").bundle["resources"]).toBeUndefined();
+  const carried = conf("tauri.windows-carried.json").bundle;
+  const programs = ["anima", "anima-daemon", "anima-hub", "anima-local-hub", "anima-database", "anima-gateway", "anima-link"];
+  expect((carried["externalBin"] as string[]).toSorted()).toEqual(programs.map((program) => `binaries/${program}`).toSorted());
+  expect(carried["resources"]).toEqual({ "database/": "database/" });
+  // The bundle script builds each program it names under that name, and passes the file to tauri build.
+  const script = readFileSync(join(root, "deploy/bin/windows-bundle.ps1"), "utf8");
+  expect(script).toContain("'--config', 'src-tauri/tauri.windows-carried.json'");
+  expect(script).toContain("$binaries/anima-link-x86_64-pc-windows-msvc.exe");
+  const copied = /foreach \(\$program in @\(([^)]*)\)\) \{\s*Copy-Item/.exec(script)?.[1]?.match(/'([\w-]+)'/g)?.map((name) => name.slice(1, -1));
+  expect([...(copied ?? []), "anima-link"].toSorted()).toEqual(programs.toSorted());
+  // The gates job of the trial makes no stand-in programs.
+  expect(workflow.jobs["windows-gates"]?.steps.some((step) => step.run?.includes("binaries"))).toBe(false);
+});
+
 interface Gates { jobs: Record<string, { env?: Record<string, string>; if?: string; with?: Record<string, string>; steps?: Step[] }> }
 const gates = Bun.YAML.parse(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8")) as Gates;
 
