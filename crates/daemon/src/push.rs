@@ -3,6 +3,7 @@
 //! [`renewal`](crate::push::renewal) and [`answer`](crate::hub::answer); this module carries them out and
 //! logs the changes of state (never a token or a body, LOG-007).
 
+pub mod accounts;
 pub mod pacing;
 pub mod renewal;
 pub mod usage;
@@ -176,6 +177,7 @@ impl Pusher {
                     self.limit = pacing::grown(count);
                     self.recovered();
                     if let Answer::Accepted(Some(accepted)) = answer {
+                        self.usage.take_salt(accepted.account_salt.as_deref());
                         self.follow_keys(accepted, now).await;
                     }
                     return Round::Sent;

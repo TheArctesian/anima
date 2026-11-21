@@ -2084,6 +2084,28 @@ saw the part with the sessions of a real computer. It needs HT-026 first: a daem
 5. Make the window narrow (about 800 px).
    Expected: the table of sessions fits with no scroll to the side: "Recent" stands over the time, and the column
    Prompts is left out. No name is cut into pieces.
+### HT-NEW-accountkeys: one account on two computers is one card with one limit on the page Agent usage (AIS-022, R-313)
+
+Built on the branch `agents/account-daemon` (AU-8 of extensions-plan.md), with AU-7, AU-9 (in `dev`) and the page of
+AU-10 (branch `ui/account-limits`). Every 15 minutes the usage task of the daemon asks the thread runner of this
+computer, on its own socket, for the account of each program (`crates/daemon/src/runtime/agent_usage/runner.rs`). It
+makes the key of an account from the vendor's identifier with the account salt of the hub, and sends the key, the
+plan and the limit windows only (`crates/daemon/src/push/accounts.rs`). The salt is in memory only: after a start the
+first batch asks for it with an empty list. The tests prove the key, the salt, that no identifier or name is in a
+batch, and the socket check, with a stand-in runner and a stand-in hub. The tests did not cover: a real Codex, a real
+runner, two real computers, a real hub. Claude Code gives no identifier of its account, so it sends no account.
+
+1. On two computers of one hub whose daemons read sessions (HT-026), sign in to Codex with the same account. On each,
+   start a Codex thread through Anima: `anima agents start --program codex --folder <an absolute folder> "hello"`.
+   Expected: `anima agents accounts` on each computer shows the account, the plan and the limits.
+2. Wait 20 minutes. Open "Agent usage".
+   Expected: under "By account", one card "Codex" with the plan, the bars of the limit windows, and both computers
+   with their shares. The card shows a short key, not the name or the address of the account.
+3. In a terminal, run `anima agents usage`.
+   Expected: one line "Account <8 digits> (Codex, <plan>) on <computer 1>, <computer 2>: ..." under the table.
+4. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
+   Expected: two Codex cards, each with one computer.
+
 ### HT-104: Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29)
 
 Built on the branch `hosted/hm-t29-github-hosted`. The hub tells the application whether the browser flow can start:

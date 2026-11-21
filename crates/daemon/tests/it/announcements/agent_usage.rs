@@ -34,6 +34,7 @@ fn reading(count: u32) -> Event {
     Event::AgentUsage(UsageReport {
         state: UsageState::Reading,
         session_days: (0..count).map(day).collect(),
+        accounts: None,
     })
 }
 

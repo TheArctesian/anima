@@ -19,6 +19,8 @@ path = "src/main.rs"
 # The protocols of the agent programs and the frames of the local socket of the runner.
 agent-threads = { path = "../agent-threads" }
 daemon-core = { path = "../daemon-core" }
+# The account salt of the hub arrives in base64 (K8 Section 8.2).
+base64.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 # The spread of the retry wait (K8 Section 7) comes from the OS random source.

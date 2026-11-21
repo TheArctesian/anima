@@ -1,5 +1,9 @@
 //! The task that reads the session files of the AI agent programs at start and every 15
-//! minutes and hands the changed session days to the pusher (AIS-018, AIS-019, AIS-024).
+//! minutes and hands the changed session days to the pusher (AIS-018, AIS-019, AIS-024), with
+//! the accounts that the thread runner of this computer has (AIS-022, R-313).
+
+#[cfg(unix)]
+mod runner;
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -60,6 +64,7 @@ pub(super) async fn count(
             let silent = UsageReport {
                 state,
                 session_days: Vec::new(),
+                accounts: None,
             };
             events.send(Event::AgentUsage(silent)).await.ok();
             return;
@@ -81,9 +86,14 @@ pub(super) async fn count(
             return;
         };
         sessions = back;
+        #[cfg(unix)]
+        let accounts = runner::accounts(|name| std::env::var(name).ok()).await;
+        #[cfg(not(unix))]
+        let accounts = None;
         let report = UsageReport {
             state: UsageState::Reading,
             session_days: watch.changed(read),
+            accounts,
         };
         if events.send(Event::AgentUsage(report)).await.is_err() {
             return;

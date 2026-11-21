@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use agent_threads::drive::AccountFacts;
 use chrono::NaiveDate;
 use daemon_core::agent_usage::{SessionDay, Source, UsageState};
 
@@ -12,6 +13,17 @@ pub struct UsageReport {
     pub state: UsageState,
     /// The session days whose counts changed; none unless the state is `Reading`.
     pub session_days: Vec<SessionDay>,
+    /// The account of each program as the thread runner of this computer has it (THR-132);
+    /// `None` when no runner answered, so the accounts sent before stay as they are.
+    pub accounts: Option<Vec<ProgramAccount>>,
+}
+
+/// The account of one program of this computer. Its identifier and name stay at the machine:
+/// only the key made from the identifier leaves it (AIS-022 as R-313 changed it).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProgramAccount {
+    pub source: Source,
+    pub facts: AccountFacts,
 }
 
 /// One session day: the key the hub upserts by (K8 Section 4).
