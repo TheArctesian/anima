@@ -70,6 +70,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         cloud::cloud_sign_in_resume,
         cloud::cloud_hub,
         cloud::cloud_hub_access,
+        cloud::cloud_hub_usage,
         cloud::cloud_device,
         stay_awake::stay_awake_read,
         stay_awake::stay_awake_choose,
