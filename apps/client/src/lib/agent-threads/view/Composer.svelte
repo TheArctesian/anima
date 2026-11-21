@@ -102,7 +102,7 @@
 
   .fact {
     color: var(--text-secondary);
-    font-size: var(--t-sm);
+    font-size: var(--text-sm);
   }
 
   .grow {
@@ -112,6 +112,6 @@
   .problem {
     margin: 0;
     color: var(--status-down);
-    font-size: var(--t-sm);
+    font-size: var(--text-sm);
   }
 </style>

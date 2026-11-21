@@ -31,10 +31,10 @@ export class ThreadsStore {
   }
 
   /** The rows of the list: the driven threads, then the session files that are not one of them (THR-056). */
-  readonly allRows = $derived(this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])]));
+  readonly allRows = $derived.by(() => (this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])])));
 
   /** The driven thread that is open, or `null` when the open thread is a session file. */
-  readonly liveThread = $derived(this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null));
+  readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
 
   /** How many threads need the person (THR-057). */
   readonly needsYou = $derived(needsYouCount(this.allRows ?? [], this.readAt, this.seen));

@@ -10,6 +10,11 @@
   import { narrowed, type Program } from './thread';
   import ThreadList from './view/ThreadList.svelte';
   import ThreadView from './view/ThreadView.svelte';
+  import FormButton from '$lib/forms/FormButton.svelte';
+  import type { Answer } from './live/run';
+  import LimitDialog from './view/LimitDialog.svelte';
+  import LiveView from './view/LiveView.svelte';
+  import NewThread from './view/NewThread.svelte';
 
   interface Props {
     store: ThreadsStore;
@@ -25,11 +30,14 @@
   let earlierChosen = $state(false);
   const earlierOpen = $derived(earlierChosen || search.trim() !== '');
   let field = $state<HTMLInputElement>();
+  let starting = $state(false);
+  const live = $derived(store.live);
+  const linkWords = $derived(live === null || live.linked !== false ? null : (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.'));
   let screen = $state<HTMLElement>();
-  const shown = $derived(narrowed(store.rows ?? [], program, search));
+  const shown = $derived(narrowed(store.allRows ?? [], program, search));
   /** The states are of the time of the last read of the list; a test gives its own time. */
   const moment = $derived.by(() => {
-    void store.rows;
+    void store.allRows;
     return now();
   });
   /** The threads in the order of the list, for the keys that move by a place. */
@@ -84,12 +92,17 @@
 <!-- The page Threads (THR-011 to THR-017): the list beside one thread. It reads the session files of this computer
      through the desktop shell; it sends nothing to the hub and starts no program. -->
 <section class="threads" bind:this={screen}>
-  <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Read only. The states are read from the session files." />
+  <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Threads started here are driven on this computer only.">
+    {#snippet actions()}
+      {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} disabled={live.linked === false}>New thread</FormButton>{/if}
+    {/snippet}
+  </PageHeader>
+  {#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}
   {#if store.rows === null && store.listProblem !== null}
     <ErrorState message={store.listProblem} onRetry={() => void store.loadList()} />
   {:else if store.rows === null}
     <LoadingState label="Loading threads" rows={8} />
-  {:else if store.rows.length === 0}
+  {:else if (store.allRows ?? []).length === 0}
     <EmptyState title="No threads yet" line="When you use Claude Code or Codex on this computer, its sessions show here." />
   {:else}
     <div class="columns">
@@ -116,6 +129,16 @@
       <div class="thread" aria-busy={store.loadingThread}>
         {#if store.threadProblem !== null}
           <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
+        {:else if store.liveThread !== null && live !== null}
+          {@const id = store.liveThread.row.id}
+          <LiveView
+            thread={store.liveThread}
+            {toolsOpen}
+            onSend={(text) => live.call({ call: 'send', thread: id, text })}
+            onAnswer={(request: string, answer: Answer) => live.call({ call: 'answer', thread: id, request, answer })}
+            onInterrupt={() => live.call({ call: 'interrupt', thread: id })}
+            onStop={() => live.call({ call: 'stop', thread: id })}
+          />
         {:else if store.thread !== null && store.thread.id === store.chosen}
           <ThreadView thread={store.thread} {toolsOpen} state={threadState(store.thread, moment, store.seen)} />
         {:else if store.chosen !== null}
@@ -127,6 +150,17 @@
     </div>
   {/if}
 </section>
+{#if live !== null}
+  <NewThread
+    open={starting}
+    onStart={(action) => live.call(action)}
+    onStarted={(id) => void choose(id)}
+    onClose={() => {
+      starting = false;
+    }}
+  />
+  <LimitDialog open={live.overLimit !== null} onRaise={() => live.raiseLimit()} onKeep={() => live.keepLimit()} />
+{/if}
 
 <style>
   .threads {
@@ -141,6 +175,12 @@
     grid-template-columns: calc(var(--space-16) * 4.5) minmax(0, 1fr);
     gap: var(--space-4);
     align-items: start;
+  }
+
+  .link {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
   }
 
   .thread {

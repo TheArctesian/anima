@@ -6,7 +6,7 @@
 <title>Agent threads: mockup</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@200;400;500&amp;display=swap">
 <style>
-/* Layout: a review board with three frames of the screen Threads (agent-threads.md, THR-011 to THR-016): stage 1 at 1280 px in the dark and the light appearance, and one frame of a later stage that is not approved.
+/* Layout: a review board with three frames of the screen Threads (agent-threads.md, THR-011 to THR-016): stage 1 at 1280 px in the dark and the light appearance, and one frame of stage 1b (a driven thread) that is not approved as a frame.
    The colours, sizes and spaces of the frames are the values of design/tokens (Graphite); this file adds none. */
 body { margin: 0; padding: 24px 16px 48px; background: #101214; color: #E6E7E9; font-family: "IBM Plex Sans", system-ui, sans-serif; }
 h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
@@ -524,7 +524,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <figcaption>Frame 2. The same screen in the light appearance, with the group "Earlier" open: a click on its head, the Right key on it, or a search opens it. The keys follow the keyboard model of a thread tool where Anima.ing has no key of its own: Cmd+Shift+[ and ] for the previous and next thread, Cmd+1 to 9 for a thread of the list, Cmd+F to find in the thread. Cmd+K stays the jump field of Anima.ing (THR-016).</figcaption>
 </figure>
 <figure>
-<div class="v2" class="later" data-theme="dark" style="width: 1280px; height: 1060px;">
+<div class="v2" data-theme="dark" style="width: 1280px; height: 1060px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
   <div class="jump"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Jump to<span class="kbd">⌘K</span></div>
@@ -536,7 +536,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   </div>
 </aside>
 <main class="page">
-  <header class="head"><h1 class="display">Threads</h1><div class="actions"><button class="btn" type="button">This Mac <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></div></header>
+  <header class="head"><h1 class="display">Threads</h1><div class="actions"><button class="btn primary" type="button">New thread</button></div></header>
   <div class="threads">
     <div class="tlist">
       <div class="field" style="margin: 0 var(--space-2)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><input placeholder="Search threads" aria-label="Search threads"><span class="kbd">/</span></div>
@@ -555,7 +555,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
     </div>
     <section class="thread" aria-label="Thread">
       <div class="thead">
-        <div class="row1"><h2>Fix the flaky sign-in test</h2><span class="tag planned">Later stage</span></div>
+        <div class="row1"><h2>Fix the flaky sign-in test</h2></div>
         <div class="facts"><span>Claude Code</span><span><span class="st deg">Your turn</span></span><span>This Mac</span><span class="mono">anima.ing</span><span class="mono">fix/sign-in-test</span><span>claude-opus-5-5</span><span>Started 10:02</span></div>
       </div>
       <div class="timeline">
@@ -578,15 +578,15 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
         </div>
       </div>
       <div class="composer">
-        <span class="sec">Ask for a change, or type / for a command</span>
-        <div class="acts"><button class="btn sm quiet" type="button">claude-opus-5-5 <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="btn sm quiet" type="button">Effort: high <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><button class="btn sm quiet" type="button">Ask before commands <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><span class="grow"></span><button class="btn sm" type="button">Stop</button><button class="btn sm primary" type="button">Send</button></div>
+        <span class="sec">Ask for a change</span>
+        <div class="acts"><span class="sec">claude-opus-5-5</span><span class="sec">Ask before commands</span><span class="grow"></span><button class="btn sm quiet" type="button">End the program</button><button class="btn sm" type="button">Stop</button><button class="btn sm primary" type="button">Send</button></div>
       </div>
       <div class="keys"><span><span class="kbd">⌘⇧[</span><span class="kbd">⌘⇧]</span>Previous and next thread</span><span><span class="kbd">⌘1</span>–<span class="kbd">⌘9</span>Thread 1 to 9</span><span><span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">↵</span>Move in the list and open</span><span><span class="kbd">/</span>Search threads</span><span><span class="kbd">⌘F</span>Find in this thread</span><span><span class="kbd">E</span>Open or close the tool calls</span><span><span class="kbd">?</span>All keys</span></div>
     </section>
   </div>
 </main>
 </div>
-<figcaption>Frame 3, a later stage, NOT APPROVED (dashed outline). It shows only where the parts of stages 3 and 4 go: the composer with the model, the effort and the mode of approvals; Stop; and an approval of a command in the thread. Nothing in this frame may be built before the operator approves the proposal and its security points (THR-020 to THR-034).</figcaption>
+<figcaption>Frame 3. Stage 1b, dark, 1280 px, as built on the branch <code>threads/client</code> (task TH14). NOT APPROVED as a frame. A thread that the runner of this computer drives: the page header has "New thread" (the program, the folder, the mode of approvals with full access first, the model, the effort and the first prompt). The thread shows a request of the program in the timeline, with "Allow once", "Allow for this thread" when the program offered a rule, and "Decline"; its text is drawn as text. The composer shows the model and the mode of the thread; Enter sends and Shift+Enter makes a new line; Stop ends the turn and each process below it; "End the program" ends the program. The model, the effort and the mode are chosen when the thread starts, not in the composer.</figcaption>
 </figure>
 </body>
 </html>

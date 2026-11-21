@@ -2517,7 +2517,8 @@ Result: Open.
 Built on the local branch `threads/runner` (tasks TH11 to TH13 of [agent-threads.md](proposals/agent-threads.md)): the
 holder and the runner in `anima-daemon`, the local socket, and the commands `anima agents start`, `send`, `approve`,
 `interrupt`, `stop`, `running` and `watch`. The tests use a made `claude`, a made `codex` and a made login shell. No real Claude Code or
-Codex was started by the runner, nothing was run on Linux, and the page of the client is not built yet.
+Codex was started by the runner and nothing was run on Linux. The page of the client (steps 8 to 11) was tested with
+a made runner only; no person saw it in a desktop window.
 
 1. Start a daemon of the build with a state folder and a label of your own (not the installed application). In a
    terminal run `anima agents start --program claude-code --folder <a test folder> "Say hello and list the files"`.
@@ -2537,6 +2538,20 @@ Codex was started by the runner, nothing was run on Linux, and the page of the c
    Expected: its runner refuses to start, with the words "a different runner holds the threads of this daemon".
 7. Run `anima agents stop <ID>`.
    Expected: the program and each child of it end.
+8. (Branch `threads/client`, task TH14.) Open the desktop application of the build, then the page Threads. Select "New
+   thread", choose Claude Code, a test folder and "Ask before each change", and type a prompt that runs a command.
+   Expected: the thread is at the top of the list and opens. The request shows with "Allow once" and "Decline". Its text
+   is plain text. "Allow once" lets the command run. Compare the page with frame 3 of
+   `docs/mockup/agent-threads/index.html` and write each difference in the record of the mockup.
+9. In the composer type two lines with Shift+Enter between them, then press Enter. While the agent works, select Stop.
+   Expected: the prompt goes as two lines; Stop ends the turn and the processes it started.
+10. Put a different application in front, and give a thread a task that ends in a request or ends its turn.
+   Expected: one system notification of this Mac with the title of the thread and "Asks to run a command" or "Your
+   turn". With the thread open in front, no notification comes. Close the window and open it again: the thread and its
+   timeline are there, and no notification comes again for an old request.
+11. Start threads until the runner refuses one.
+   Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
+   running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
 
 Result: Open.
 

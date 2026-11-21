@@ -185,16 +185,10 @@ function askFrom(value: unknown): Ask | null {
   return { kind, tool, subject, diff: str(value.diff), sessionRules, questions: questions as Question[] };
 }
 
-function saidFrom(value: unknown): Said | null {
-  if (!isRecord(value)) return null;
+function toolSaidFrom(value: Fields): Said | null {
   const text = str(value.text);
   const id = str(value.id);
   switch (value.kind) {
-    case 'text_delta':
-    case 'notice':
-      return text === null ? null : { kind: value.kind, text };
-    case 'message':
-      return text === null || value.parent !== null ? null : { kind: 'message', text };
     case 'tool_call': {
       const name = str(value.name);
       const input = str(value.input);
@@ -206,12 +200,26 @@ function saidFrom(value: unknown): Said | null {
       const output = str(value.output);
       return id === null || output === null ? null : { kind: 'tool_output', id, output, failed: value.failed === true };
     }
+    default:
+      return null;
+  }
+}
+
+function saidFrom(value: unknown): Said | null {
+  if (!isRecord(value)) return null;
+  const text = str(value.text);
+  switch (value.kind) {
+    case 'text_delta':
+    case 'notice':
+      return text === null ? null : { kind: value.kind, text };
+    case 'message':
+      return text === null || value.parent !== null ? null : { kind: 'message', text };
     case 'turn_ended': {
       const outcome = str(value.outcome);
       return outcome === null ? null : { kind: 'turn_ended', outcome, detail: str(value.detail) };
     }
     default:
-      return null;
+      return toolSaidFrom(value);
   }
 }
 
@@ -254,6 +262,16 @@ export function updateFrom(value: unknown): Update | null {
   return change === null ? null : { thread, seq: value.seq, change };
 }
 
+function threadsFrom(value: unknown): Outcome | null {
+  const rows = Array.isArray(value) ? value.map(runRowFrom) : null;
+  return rows === null || rows.some((row) => row === null) ? null : { outcome: 'threads', threads: rows as RunRow[] };
+}
+
+function limitsFrom(limits: unknown): Outcome | null {
+  if (!isRecord(limits) || typeof limits.depth !== 'number' || typeof limits.children !== 'number' || typeof limits.running !== 'number') return null;
+  return { outcome: 'limits', limits: { depth: limits.depth, children: limits.children, running: limits.running } };
+}
+
 /** The result of a call, or `null` when it does not read. */
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
@@ -262,15 +280,10 @@ export function outcomeFrom(value: unknown): Outcome | null {
       return { outcome: 'ok' };
     case 'started':
       return typeof value.thread === 'string' ? { outcome: 'started', thread: value.thread } : null;
-    case 'threads': {
-      const rows = Array.isArray(value.threads) ? value.threads.map(runRowFrom) : null;
-      return rows === null || rows.some((row) => row === null) ? null : { outcome: 'threads', threads: rows as RunRow[] };
-    }
-    case 'limits': {
-      const limits = value.limits;
-      if (!isRecord(limits) || typeof limits.depth !== 'number' || typeof limits.children !== 'number' || typeof limits.running !== 'number') return null;
-      return { outcome: 'limits', limits: { depth: limits.depth, children: limits.children, running: limits.running } };
-    }
+    case 'threads':
+      return threadsFrom(value.threads);
+    case 'limits':
+      return limitsFrom(value.limits);
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'refused': {

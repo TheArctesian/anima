@@ -59,6 +59,7 @@ export class LiveThreads {
     const listed = await this.shell.call({ call: 'list' });
     if (listed.outcome !== 'threads') return;
     const at = this.now();
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
     const next = new Map(this.threads);
     for (const row of listed.threads) if (!next.has(row.id)) next.set(row.id, begun(row, at));
     this.threads = next;
@@ -72,6 +73,7 @@ export class LiveThreads {
     if (base === undefined) return;
     const after = applied(base, update, at);
     if (after === before) return;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
     this.threads = new Map(this.threads).set(update.thread, after);
     if (at.getTime() < this.quietUntil) return;
     const notice = noticeFor(before, after, update, this.looking());
