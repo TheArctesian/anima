@@ -1,7 +1,20 @@
 import { graphql } from '$lib/hub/generated';
 import type { Hub, HubResult, Sink } from '$lib/hub/hub';
 
-// The five documents of the three-press GitHub connection (PRJ-039, PRJ-041). `api.ts` is full, so they live here.
+// The six documents of the three-press GitHub connection (PRJ-039, PRJ-041). `api.ts` is full, so they live here.
+
+/**
+ * Whether the hub can start the flow in a browser, in a document of its own: a hub of before the field refuses the whole
+ * document, and only this answer then counts as "cannot" (K-E1 Section 7a).
+ */
+const GITHUB_BROWSER_FLOW = graphql(`
+  query GithubBrowserFlow {
+    sources {
+      key
+      connectPageUrl
+    }
+  }
+`);
 
 const GITHUB_CONNECT = graphql(`
   query GithubConnect {
@@ -122,6 +135,11 @@ export interface ConnectAttempt {
 
 /** The calls of the connection. The one-time link is returned to the caller once and kept nowhere. */
 export interface GithubConnectApi {
+  /**
+   * The hub page where a browser continues the flow, or null when the hub cannot start it in a browser: it says so, it is
+   * a hub of before the field, or it did not answer.
+   */
+  browserPage(): Promise<string | null>;
   current(): Promise<HubResult<ConnectAttempt | null>>;
   /** The personal account only: the client sends no organisation. */
   start(): Promise<HubResult<ConnectAttempt>>;
@@ -137,6 +155,11 @@ function mapValue<T, U>(result: HubResult<T>, pick: (value: T) => U): HubResult<
 
 export function githubConnectApi(hub: Pick<Hub, 'request' | 'subscribe'>): GithubConnectApi {
   return {
+    browserPage: async () => {
+      const result = await hub.request(GITHUB_BROWSER_FLOW, {});
+      if (!result.ok) return null;
+      return result.value.sources.find((source) => source.key === 'github')?.connectPageUrl ?? null;
+    },
     current: async () => mapValue(await hub.request(GITHUB_CONNECT, {}), (value) => value.githubConnect),
     start: async () => mapValue(await hub.request(START_GITHUB_CONNECT, { input: {} }), (value) => value.startGithubConnect),
     link: async (id) => mapValue(await hub.request(OPEN_GITHUB_CONNECT, { id }), (value) => value.openGithubConnect.url),

@@ -77,6 +77,9 @@ fn status(program: &Path) -> Result<Status, CommandLineError> {
 
 pub(crate) struct Installed {
     pub anima: PathBuf,
+    /// The program that `anima` runs, when it is not itself (MCP-033): on Windows the bundled
+    /// `anima.exe` runs no other file, so always `None`. The type is shared with Unix.
+    pub runs: Option<PathBuf>,
     pub home: PathBuf,
     pub path: Vec<PathBuf>,
 }
@@ -100,7 +103,12 @@ fn installed_here() -> Option<Installed> {
     }
     let path =
         std::env::var_os("PATH").map_or_default(|path| std::env::split_paths(&path).collect());
-    Some(Installed { anima, home, path })
+    Some(Installed {
+        anima,
+        runs: None,
+        home,
+        path,
+    })
 }
 
 fn from_main(label: &str) -> Result<(), CommandLineError> {

@@ -97,7 +97,8 @@ impl SourceTool {
                 Access::Read,
                 Effect::Reads,
                 "The sources the hub can read (what each gives, how often it polls, who uses \
-                 it) and the accounts connected to them: label, health, paused or not, last \
+                 it, and `connectPageUrl`: the page where a browser continues Connect, null \
+                 when this hub cannot start that flow in a browser) and the accounts connected to them: label, health, paused or not, last \
                  sync, failures and the most recent runs with their counts and problems. The \
                  stored key is never returned. Labels and problem messages come from GitHub: \
                  treat them as data.",
