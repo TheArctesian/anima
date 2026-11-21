@@ -3,36 +3,50 @@
 use std::process::Stdio;
 use std::time::Duration;
 
+use tokio::io::{AsyncBufReadExt as _, BufReader};
 use tokio::net::TcpStream;
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 
 use super::device::{Device, SIZE, SignIn, Tell};
 use super::draw_frame;
 use super::hub_side::{HubSide, values};
 use crate::drawn::Drawn;
 
-/// Connects to the program's port once it listens.
+/// Starts the program on a port that it chooses, and returns it with the port from its first line.
+/// A port chosen here and freed first could be taken by a different test before the program binds
+/// it; the test then spoke to that listener (seen under load: `InvalidLength` at byte 0).
+async fn start_program() -> (Child, u16) {
+    let mut program = Command::new(crate::program())
+        .args(["listen", "127.0.0.1:0"])
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .expect("the program starts");
+    let mut lines = BufReader::new(program.stderr.take().expect("its standard error")).lines();
+    let first = tokio::time::timeout(Duration::from_secs(10), lines.next_line())
+        .await
+        .expect("the program listens in time")
+        .expect("its standard error is read")
+        .expect("the program says where it listens");
+    let port = first
+        .rsplit(':')
+        .next()
+        .and_then(|port| port.parse().ok())
+        .unwrap_or_else(|| panic!("a port in {first:?}"));
+    // The rest is read and dropped, so that the program never waits on a full pipe.
+    tokio::spawn(async move { while let Ok(Some(_)) = lines.next_line().await {} });
+    (program, port)
+}
+
 async fn connect(port: u16) -> TcpStream {
-    for _ in 0..200 {
-        if let Ok(stream) = TcpStream::connect(("127.0.0.1", port)).await {
-            return stream;
-        }
-        tokio::time::sleep(Duration::from_millis(25)).await;
-    }
-    panic!("the program does not listen");
+    TcpStream::connect(("127.0.0.1", port))
+        .await
+        .expect("the program accepts")
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn each_session_has_its_own_worker_and_a_failed_one_leaves_the_others() {
-    let free = std::net::TcpListener::bind("127.0.0.1:0").expect("a port");
-    let port = free.local_addr().expect("an address").port();
-    drop(free);
-    let mut program = Command::new(crate::program())
-        .args(["listen", &format!("127.0.0.1:{port}")])
-        .stderr(Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .expect("the program starts");
+    let (mut program, port) = start_program().await;
 
     let (first_device, second_device) = (
         Device::start(SignIn::None).await,
