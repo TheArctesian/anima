@@ -133,6 +133,39 @@ mod tests {
     }
 
     #[test]
+    fn met_019_the_launch_agent_asks_the_daemon_for_its_log_file() {
+        use crate::report::log_file::{self, LOG_VARIABLE};
+        let path = program("/opt/anima/bin/anima-daemon").expect("a path");
+        let folder = tempfile::tempdir().expect("a folder");
+        let file = folder.path().join("ing.anima.daemon.plist");
+        std::fs::write(&file, render(Unit::LaunchAgent, &path).expect("renders")).expect("writes");
+        let list = plist::Value::from_file(&file).expect("a property list");
+        let variable = list
+            .as_dictionary()
+            .and_then(|dict| dict.get("EnvironmentVariables"))
+            .and_then(plist::Value::as_dictionary)
+            .and_then(|variables| variables.get(LOG_VARIABLE))
+            .and_then(plist::Value::as_string)
+            .map(str::to_owned);
+        let env = |name: &str| match name {
+            "HOME" => Some("/Users/me".to_owned()),
+            _ if name == LOG_VARIABLE => variable.clone(),
+            _ => None,
+        };
+        assert_eq!(
+            log_file::path(env, true),
+            Some("/Users/me/Library/Logs/Anima/anima-daemon.log".into())
+        );
+        for unit in [Unit::SystemdUser, Unit::SystemdSystem] {
+            let text = render(unit, &path).expect("renders");
+            assert!(
+                !text.contains("StandardError=") && !text.contains("StandardOutput="),
+                "a systemd unit leaves its log to the journal"
+            );
+        }
+    }
+
+    #[test]
     fn met_019_the_rest_of_each_unit_is_left_as_it_was() {
         let path = program("/usr/local/bin/anima-daemon").expect("a path");
         for (unit, template) in [

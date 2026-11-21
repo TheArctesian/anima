@@ -20,10 +20,11 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse as _, Response},
 };
+use base64::Engine as _;
 use chrono::{DateTime, Utc};
 use daemon_core::{
     readings::Drive,
-    wire::{Batch, PushAccepted, RefusalCode},
+    wire::{Batch, KeyVersion, PushAccepted, RefusalCode},
 };
 
 use super::{
@@ -34,6 +35,7 @@ use super::{
     turns::Turn,
 };
 use crate::{
+    fleet::agent_usage,
     fleet::metrics::{self, Battery, Gpu, MetricSample, MetricsAdded, Readings},
     ids::DeviceId,
 };
@@ -98,6 +100,10 @@ async fn push(
     let batteries: Option<Vec<Battery>> = accepted
         .batteries
         .map(|batteries| batteries.into_iter().map(Battery::from).collect());
+    let wants_salt = accepted
+        .agent_usage
+        .as_ref()
+        .is_some_and(|usage| usage.accounts.is_some());
     let pushed = Push {
         device,
         name: &name,
@@ -116,18 +122,46 @@ async fn push(
             if kept > 0 {
                 publish(state, device, &rows).await;
             }
-            let Some(held) = held else {
-                return Ok(None);
-            };
-            let told = keys::current(state, device, &held, now).await;
-            Ok(told.map(|current| PushAccepted {
-                keys: Some(current),
-                update: None,
-            }))
+            answer(state, device, (held, wants_salt), now).await
         }
         Ok(Written::Refused(code)) => Err(refused(code)),
         Err(error) => Err(Stop::Failed(error)),
     }
+}
+
+/// The `200` answer of a stored batch: the keys the daemon holds when it listed them, and the
+/// account salt when it listed its accounts; `None` (`204`) when it listed neither.
+async fn answer(
+    state: &DaemonState,
+    device: DeviceId,
+    (held, wants_salt): (Option<Vec<KeyVersion>>, bool),
+    now: DateTime<Utc>,
+) -> Result<Option<PushAccepted>, Stop> {
+    let told = match held {
+        Some(held) => keys::current(state, device, &held, now).await,
+        None => None,
+    };
+    let account_salt = if wants_salt {
+        Some(account_salt(state).await?)
+    } else {
+        None
+    };
+    Ok(
+        (told.is_some() || account_salt.is_some()).then_some(PushAccepted {
+            keys: told,
+            update: None,
+            account_salt,
+        }),
+    )
+}
+
+/// The account salt of the hub in standard base64, for the daemon to make the keys of its
+/// accounts (K8 Section 8.2; AIS-022, R-313).
+async fn account_salt(state: &DaemonState) -> Result<String, Stop> {
+    let salt = agent_usage::accounts::salt(&state.db)
+        .await
+        .map_err(|error| Stop::Failed(error.into()))?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(salt))
 }
 
 /// Publishes the newest point of the batch on the live feed with the device's readings as
