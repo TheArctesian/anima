@@ -104,6 +104,9 @@ pub struct Checked {
     /// The file as a tree, after the variables are filled. The applications program writes
     /// the final form from it.
     pub document: Node,
+    /// The file as a tree before the variables are filled: the values that its author wrote,
+    /// which no environment file changes.
+    pub unfilled: Node,
 }
 
 /// The tree holds values of the environment file, which are secret: `{:?}` shows none.
@@ -124,8 +127,9 @@ pub fn check(file: &str, environment: &str, settings: &Settings) -> Result<Check
     let document = yaml::read(file)?;
     keys::permitted(&document)?;
     let values = variables::environment(environment)?;
+    let unfilled = document.clone();
     let document = variables::filled(document, &values)?;
     keys::permitted(&document)?;
     project::checked(&document, settings)?;
-    Ok(Checked { document })
+    Ok(Checked { document, unfilled })
 }

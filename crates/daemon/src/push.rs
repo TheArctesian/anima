@@ -12,7 +12,8 @@ use std::time::Duration;
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::points::{BATCH_POINTS, Backlog, Point};
 use daemon_core::wire::{
-    Announcements, Batch, BatchDrive, BatchGpu, BatchInventory, PushAccepted, RefusalCode, Renewed,
+    Announcements, Batch, BatchBattery, BatchDrive, BatchGpu, BatchInventory, PushAccepted,
+    RefusalCode, Renewed,
 };
 use uuid::Uuid;
 
@@ -36,6 +37,8 @@ pub enum Event {
     Gpus(Vec<BatchGpu>),
     /// The drives read at start or after a change; sent in the next batch (MET-027).
     Drives(Vec<BatchDrive>),
+    /// The batteries read at start or after one came, went or changed its state (MET-032).
+    Batteries(Vec<BatchBattery>),
     /// The tool inventory probed at start or after a change; sent in the next batch (CAP-027).
     Inventory(BatchInventory),
     /// The daemon's agent usage state and the session days that changed (AIS-019).
@@ -49,7 +52,7 @@ pub struct Pusher {
     credential: Credential,
     store: TokenStore,
     backlog: Backlog,
-    /// The GPUs, drives and inventory waiting to ride along with the next batch.
+    /// The GPUs, drives, batteries and inventory waiting to ride along with the next batch.
     announced: Announcements,
     /// The agent usage waiting for the hub, a part of it in each batch.
     usage: UsageBacklog,
@@ -107,6 +110,7 @@ impl Pusher {
             Event::Point(point) => self.backlog.push(point),
             Event::Gpus(gpus) => self.announced.gpus = Some(gpus),
             Event::Drives(drives) => self.announced.drives = Some(drives),
+            Event::Batteries(batteries) => self.announced.batteries = Some(batteries),
             Event::Inventory(inventory) => self.announced.inventory = Some(inventory),
             Event::AgentUsage(report) => self.usage.take(report),
         }

@@ -5,6 +5,8 @@ import type { ThreadRow } from './thread';
  * report of the program: a file does not say that a tool call waits for an approval, only that it has no result yet.
  */
 export type ThreadState =
+  /** A program that the runner drives asks the person: an approval or a question waits (THR-030). */
+  | 'asks'
   /** A tool call has had no result for a minute: it runs long, or it waits for an approval. */
   | 'may_wait'
   /** The agent ended its turn and the person did not open the thread since. */
@@ -37,6 +39,10 @@ export function threadState(row: ThreadRow, now: Date, seen: Seen): ThreadState 
   const age = row.last === null ? Number.POSITIVE_INFINITY : now.getTime() - row.last.getTime();
   const fresh = age < NEEDS_YOU_MS && !seenSince(row, seen);
   switch (row.tail) {
+    case 'asks':
+      return 'asks';
+    case 'running':
+      return 'working';
     case 'turn_ended':
       return fresh ? 'your_turn' : 'done';
     case 'stopped':
@@ -53,11 +59,12 @@ export function threadState(row: ThreadRow, now: Date, seen: Seen): ThreadState 
 
 /** Whether a state is one that waits for the person. */
 export function needsYou(state: ThreadState): boolean {
-  return state === 'may_wait' || state === 'your_turn';
+  return state === 'asks' || state === 'may_wait' || state === 'your_turn';
 }
 
 /** The words and the icon of a state; the mark is never the colour alone (UI-003). */
 export const STATE_MARKS: Readonly<Record<ThreadState, { readonly words: string; readonly icon: 'carbon:notification' | 'carbon:activity' | 'carbon:checkmark' | 'carbon:pause' | 'carbon:circle-dash'; readonly detail: string }>> = {
+  asks: { words: 'Asks you', icon: 'carbon:notification', detail: 'The program waits for your answer to its request.' },
   may_wait: { words: 'May wait for you', icon: 'carbon:notification', detail: 'A tool call has had no result for a minute. It runs long, or it waits for your approval. The session file cannot tell which.' },
   your_turn: { words: 'Your turn', icon: 'carbon:notification', detail: 'The agent ended its turn. It waits for your next prompt.' },
   working: { words: 'Working', icon: 'carbon:activity', detail: 'The session file changed in the last 2 minutes.' },
@@ -89,6 +96,12 @@ export type ThreadEntry = { readonly kind: 'group'; readonly key: string; readon
 
 const newestFirst = (a: StatedRow, b: StatedRow): number => (b.row.last?.getTime() ?? 0) - (a.row.last?.getTime() ?? 0);
 
+/** In the group "Needs you": a request first, then a tool call that may wait, then a turn that ended. */
+function urgency(state: ThreadState): number {
+  if (state === 'asks') return 2;
+  return state === 'may_wait' ? 1 : 0;
+}
+
 /** Whether the group "Earlier" shows its threads, and the thread that is open. */
 export interface Fold {
   readonly earlierOpen: boolean;
@@ -96,8 +109,8 @@ export interface Fold {
 }
 
 /**
- * The list in its order (THR-056): the threads that need the person at the top, a tool call that may wait for an
- * approval before a turn that ended, the newest first; then the threads that are done, stopped or idle, by their last
+ * The list in its order (THR-056): the threads that need the person at the top, a request of a driven program first,
+ * then a tool call that may wait for an approval, then a turn that ended, the newest first; then the threads that are done, stopped or idle, by their last
  * change; the threads that work at the bottom. Each group opens with its title and its count; an empty group is left out.
  * The group "Earlier" is folded unless `fold.earlierOpen`: then only its title, its count and the thread that is open (`fold.chosen`) are in the list.
  */
@@ -106,7 +119,7 @@ export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen
   const entries: ThreadEntry[] = [];
   for (const group of ['needs', 'earlier', 'working'] as const) {
     const members = stated.filter((each) => groupOf(each.state) === group).sort(newestFirst);
-    if (group === 'needs') members.sort((a, b) => Number(b.state === 'may_wait') - Number(a.state === 'may_wait'));
+    if (group === 'needs') members.sort((a, b) => urgency(b.state) - urgency(a.state));
     if (members.length === 0) continue;
     entries.push({ kind: 'group', key: `group:${group}`, title: GROUP_TITLES[group], count: members.length });
     // The thread that is open stays in the list when its group is folded, so that it does not go from under the person.

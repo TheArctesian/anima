@@ -3,6 +3,7 @@
 //! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1).
 
 use std::io::{BufRead, Read as _};
+use std::path::PathBuf;
 
 use daemon_core::wire::{EnrolmentCode, is_key_name};
 use zeroize::Zeroizing;
@@ -10,7 +11,14 @@ use zeroize::Zeroizing;
 use crate::config::origin::{Origin, OriginError};
 use crate::units::plan::Target;
 
-pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]\n       anima-daemon uninstall\n       anima-daemon key read <name>\n       anima-daemon key forget";
+pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
+       anima-daemon run [--hosted-hub <data folder>]
+       anima-daemon install [--system]
+       anima-daemon uninstall
+       anima-daemon key read <name>
+       anima-daemon key forget
+       anima-daemon threads
+       anima-daemon holder <folder> [<bytes kept for each thread>]";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
@@ -19,8 +27,9 @@ pub const ARGV_WARNING: &str = "warning: a code on the command line shows in pro
 pub enum Command {
     /// Exchange an enrolment code for a token and store both (K8 Section 3).
     Enrol { code: CodeSource, hub: Origin },
-    /// Sample and push until stopped (K8 Sections 4 to 7).
-    Run,
+    /// Sample and push until stopped (K8 Sections 4 to 7). With `--hosted-hub DIR`, the daemon
+    /// is the one in the container of a hosted hub, whose data is in `DIR` (HMD-071).
+    Run { hosted_hub: Option<PathBuf> },
     /// Write the unit that starts `run` at login or boot, and start it (MET-019, D-10).
     Install { target: Target },
     /// Stop and delete the user unit, then forget the token and the key cache (HMD-056).
@@ -29,6 +38,14 @@ pub enum Command {
     KeyRead { name: String },
     /// Delete the whole key cache, as when the daemon leaves the machine.
     KeyForget,
+    /// Drive the agent threads of this computer, with no hub and no enrolment (stage 1b of
+    /// the agent threads; `run` drives them too).
+    Threads,
+    /// Hold the agent programs of the threads; the daemon starts it (THR-113).
+    Holder {
+        folder: std::path::PathBuf,
+        limit: usize,
+    },
 }
 
 /// Where the enrolment code comes from: the command line, or standard input for `-`.
@@ -56,13 +73,47 @@ pub enum CliError {
 pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError> {
     let mut args = args.into_iter();
     match args.next().as_deref() {
-        Some("run") if args.next().is_none() => Ok(Command::Run),
+        Some("run") => run(args),
         Some("uninstall") if args.next().is_none() => Ok(Command::Uninstall),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),
+        Some("holder") => holder(args),
+        Some("threads") if args.next().is_none() => Ok(Command::Threads),
         _ => Err(CliError::Usage),
     }
+}
+
+/// `holder <folder> [<bytes>]`: an absolute folder, and the limit of each thread (0: the default).
+fn holder(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let folder = args
+        .next()
+        .filter(|folder| std::path::Path::new(folder).is_absolute());
+    let limit = match args.next() {
+        None => Some(0),
+        Some(bytes) => bytes.parse().ok(),
+    };
+    match (folder, limit, args.next()) {
+        (Some(folder), Some(limit), None) => Ok(Command::Holder {
+            folder: folder.into(),
+            limit,
+        }),
+        _ => Err(CliError::Usage),
+    }
+}
+
+fn run(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let hosted_hub = match (args.next().as_deref(), args.next()) {
+        (None, _) => None,
+        (Some("--hosted-hub"), Some(folder)) if folder.starts_with('/') => {
+            Some(PathBuf::from(folder))
+        }
+        _ => return Err(CliError::Usage),
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    Ok(Command::Run { hosted_hub })
 }
 
 fn key(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
@@ -151,176 +202,4 @@ pub fn code_from_line(line: &str) -> Result<EnrolmentCode, CliError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const CODE: &str = "anima_enrol_AAAAAAAAAAAAAAAAAAAAAA";
-
-    fn args(text: &str) -> Vec<String> {
-        text.split_whitespace().map(str::to_owned).collect()
-    }
-
-    #[test]
-    fn r_147_key_read_takes_one_key_name_and_forget_none() {
-        let Ok(Command::KeyRead { name }) = parse(args("key read cloudflare.dns")) else {
-            panic!("key read with a name reads");
-        };
-        assert_eq!(name, "cloudflare.dns");
-        assert!(matches!(parse(args("key forget")), Ok(Command::KeyForget)));
-        assert!(matches!(
-            parse(args("key read Bad/Name")),
-            Err(CliError::NotAKeyName)
-        ));
-        for line in [
-            "key",
-            "key read",
-            "key read a b",
-            "key forget now",
-            "key list",
-        ] {
-            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
-        }
-    }
-
-    #[test]
-    fn met_019_run_takes_no_arguments() {
-        assert!(matches!(parse(args("run")), Ok(Command::Run)));
-        assert!(matches!(parse(args("run now")), Err(CliError::Usage)));
-        assert!(matches!(parse(args("")), Err(CliError::Usage)));
-    }
-
-    #[test]
-    fn hmd_056_uninstall_takes_no_arguments() {
-        assert!(matches!(parse(args("uninstall")), Ok(Command::Uninstall)));
-        for line in ["uninstall --system", "uninstall now"] {
-            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
-        }
-    }
-
-    #[test]
-    fn met_019_the_enrol_hint_never_puts_the_code_on_a_command_line() {
-        assert!(!ARGV_WARNING.contains("<code>"), "{ARGV_WARNING}");
-        assert!(!ARGV_WARNING.contains("printf"), "{ARGV_WARNING}");
-        assert!(
-            ARGV_WARNING.contains("`anima-daemon enrol -` and paste the code at the hidden prompt")
-        );
-    }
-
-    #[test]
-    fn met_019_install_is_for_the_user_unless_system_is_given() {
-        assert!(matches!(
-            parse(args("install")),
-            Ok(Command::Install {
-                target: Target::User
-            })
-        ));
-        assert!(matches!(
-            parse(args("install --system")),
-            Ok(Command::Install {
-                target: Target::System
-            })
-        ));
-        for line in ["install --user", "install --system now", "install system"] {
-            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
-        }
-    }
-
-    #[test]
-    fn met_012_enrol_defaults_the_hub_and_reads_a_code_or_stdin() {
-        let Ok(Command::Enrol { code, hub }) = parse(args(&format!("enrol {CODE}"))) else {
-            panic!("enrol with a code reads");
-        };
-        assert!(matches!(code, CodeSource::Given(_)));
-        assert_eq!(hub, Origin::default_hub());
-        assert!(matches!(
-            parse(args("enrol -")),
-            Ok(Command::Enrol {
-                code: CodeSource::Stdin,
-                ..
-            })
-        ));
-    }
-
-    #[test]
-    fn met_020_enrol_takes_an_https_hub_in_either_spelling_and_refuses_http() {
-        for line in [
-            "enrol - --hub https://hub.example",
-            "enrol --hub=https://hub.example -",
-        ] {
-            let Ok(Command::Enrol { hub, .. }) = parse(args(line)) else {
-                panic!("{line}");
-            };
-            assert_eq!(hub.as_text(), "https://hub.example");
-        }
-        assert!(matches!(
-            parse(args("enrol - --hub http://hub.example")),
-            Err(CliError::Hub(OriginError::Scheme))
-        ));
-        let origin = if cfg!(windows) {
-            "unix:C:/Users/me/Anima/link.sock"
-        } else {
-            "unix:/home/me/.config/anima-daemon/link.sock"
-        };
-        let line = format!("enrol - --hub {origin}");
-        let Ok(Command::Enrol { hub, .. }) = parse(args(&line)) else {
-            panic!("the socket of anima-link is a hub origin");
-        };
-        assert_eq!(hub.as_text(), origin);
-        assert!(matches!(
-            parse(args("enrol - --hub http://127.0.0.1:8443")),
-            Err(CliError::Hub(OriginError::LinkPort))
-        ));
-    }
-
-    #[test]
-    fn met_012_a_bad_code_is_refused_without_echoing_it() {
-        let Err(error) = parse(args("enrol anima_enrol_short")) else {
-            panic!("a short code is refused");
-        };
-        assert_eq!(error, CliError::NotACode);
-        assert!(!error.to_string().contains("short"));
-    }
-
-    fn read(input: &[u8]) -> Result<EnrolmentCode, CliError> {
-        read_code(input)
-    }
-
-    #[test]
-    fn met_012_a_code_on_standard_input_ends_at_its_line_feed_or_carriage_return_and_line_feed() {
-        for input in [
-            format!("{CODE}\n"),
-            format!("{CODE}\r\n"),
-            CODE.to_owned(),
-            format!("{CODE}\nmore"),
-        ] {
-            assert!(read(input.as_bytes()).is_ok(), "{input:?}");
-        }
-    }
-
-    #[test]
-    fn met_012_an_empty_a_split_or_a_padded_line_is_not_a_code() {
-        let (head, tail) = CODE.split_at(10);
-        for input in [
-            String::new(),
-            "\n".to_owned(),
-            "\r\n".to_owned(),
-            format!("{head}\n{tail}\n"),
-            format!(" {CODE}\n"),
-            format!("{CODE}\r\r\n"),
-        ] {
-            assert_eq!(
-                read(input.as_bytes()).err(),
-                Some(CliError::NotACode),
-                "{input:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn met_012_at_most_256_bytes_are_read_and_300_without_a_newline_are_not_a_code() {
-        let long = vec![b'A'; 300];
-        let mut input = std::io::Cursor::new(long);
-        assert_eq!(read_code(&mut input).err(), Some(CliError::NotACode));
-        assert_eq!(input.position(), 256, "the rest was never read");
-    }
-}
+mod tests;

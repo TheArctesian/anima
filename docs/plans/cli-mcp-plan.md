@@ -389,7 +389,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
@@ -428,7 +428,14 @@ never a text that the operator wrote. The converted file holds only the values o
 the agent gave. Only the field `composeFile` of `anima_compose_from_run` keeps its lines in the
 cleaning of results (`mcp/untrusted.rs`); the tool gives the file only when that cleaning does not
 change it (at most 4,000 characters, no control or invisible character), and else gives why and the
-length of the whole file. No tool returns the details of a container
+length of the whole file. `anima_catalogue_list` and `anima_catalogue_show` (read, tool set
+`devices`; task H38 of [hosted-applications-plan.md](hosted-applications-plan.md)) list the entries
+of the catalogue that ships with Anima and describe one, with the names of its environment variables
+(never a value) and its Compose file, whose field `composeFile` keeps its lines and is cut at 4,000
+characters (`anima catalogue list` and `anima catalogue show`). `anima_catalogue_install` (change,
+tool set `devices`) asks for the install of an entry on a device, which R-234 opens to an API key and
+an agent (`anima catalogue install`); the hub refuses it with a fixed reason until task H6 exists,
+and it reaches no machine. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a
 secret as the environment can (MCP-004), so the root is closed to every API key and only
 `anima containers inspect` reads it.
@@ -1122,7 +1129,7 @@ decides differently.
 | MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-062); reviewed (12.6) |
 | MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
 | MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | In progress | `3ed276d2` on the branch `mcp/install`: built, with tests of the client part and of the answer of the shell. Not seen: the part is in the desktop application only, and no desktop build was made. The shell commands were not in the review of 12.6 |
-| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The Settings part (MI4) is built and is not reviewed yet: the shell adds the caller check and takes the installed `anima` and the login `PATH` |
+| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The review of the Settings part (MI4) is done (12.7); its corrections are on the branch `mcp/settings-review`. Two findings are open (12.7, rows 2 and 5) |
 | MI6 | The entry HT-062: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
 
 ### 12.6 The security review of the command line part (2026-11-19)
@@ -1149,3 +1156,23 @@ Its findings and what was done (`5b10f6a6`):
 | 12 | A path with `$` or braces is a variable in the files of some agents | Corrected: refused, as is a path that is not text |
 | 13 | A file that an agent saved between the read and the write was overwritten; under `sudo` the files became root's | Corrected: the file is read again before the rename and a change is refused |
 | 14 | Notes | Open: a file that starts with a byte order mark is refused; the home folder itself is not checked; access lists are not read; the path of the running program differs by system (the Settings part must pass the installed path, MCP-039); the copy keeps the other entries of the file for as long as it stays |
+
+### 12.7 The security review of the Settings part (2026-11-21)
+
+A reviewer that did not write the code read the Settings part (MI4, `3ed276d2`) as it is on `dev`: the
+two commands of the desktop shell, their capability, the installed `anima` and the login `PATH`, and the
+client. It changed no file and read no real configuration. It found sound: only the main web view can
+call the two commands (the capability names only `main`, and the command checks the label); the client
+cannot choose a path, a program or arguments; the login shell runs fixed text with a time limit; no
+error carries a path or the text of a file; the work runs off the main thread. Its findings and what was
+done (branch `mcp/settings-review`):
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | High. On macOS, `/Applications` is owned by root with the group `admin`, which can write it (mode 0775). The check of `anima` counted that folder as one that a different user can change, so the part refused the installed `anima` of each normal install | Corrected: on macOS, a folder of root that only the group `admin` can also write counts as fixed, since a member of `admin` can become root. Tests of each case |
+| 2 | Medium. Opening Settings runs the own programs of some agents (`claude mcp get`, `codex mcp get`, `gemini mcp list`) to read their state, with no time limit. Those programs may start the configured server to report its state | Partly: each such program now stops after 20 seconds, and its state is then "cannot be read". Open: whether to read those agents only after a click. The reviewer did not check if they start the server; a person checks it in HT-062 |
+| 3 | Medium. The programs of the agents found on `PATH` were not checked as `anima` is: a program in a folder that a different user can write was run | Corrected: the program, what it links to and each folder above them get the check of `anima`; a program that a different user can replace is not run, and its row says why. A test |
+| 4 | Medium. On Linux the entry runs the launcher, and the launcher runs the `AppImage` file; only the launcher was checked | Corrected: the shell also checks the `AppImage` file with the check of `anima` |
+| 5 | Low. The shell did not enforce the list that the page showed: no agent named meant each agent, and the page could ask to force | Partly: the command of the shell now refuses a change that names no agent or asks to force. Open: the shell does not compare the state that the page showed with the state at the change |
+| 6 | Low. Two changes at the same time could race on the own program of an agent | Corrected: one read or change at a time |
+

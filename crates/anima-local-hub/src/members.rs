@@ -12,8 +12,11 @@ use anima_database::Role;
 use crate::Folders;
 use crate::child::Spec;
 
+mod own_daemon;
 #[cfg(all(test, unix))]
 mod tests;
+
+pub use own_daemon::{DAEMON, OwnDaemon};
 
 pub const DATABASE: &str = "anima-database";
 pub const GATEWAY: &str = "anima-gateway";

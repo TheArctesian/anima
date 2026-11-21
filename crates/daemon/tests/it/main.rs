@@ -13,10 +13,12 @@ mod kit;
 mod log;
 #[cfg(target_os = "linux")]
 mod push;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod readers;
 #[cfg(target_os = "linux")]
 mod renewal;
+#[cfg(unix)]
+mod threads;
 #[cfg(target_os = "linux")]
 mod token_store;
 mod transport;

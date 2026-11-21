@@ -35,6 +35,9 @@ async fn main() -> ExitCode {
         Ok(command) => command,
         Err(error) => return usage(&error),
     };
+    if let Command::Holder { folder, limit } = &command {
+        return holder(folder, *limit).await;
+    }
     let home = match Home::locate(
         |name| std::env::var(name).ok(),
         Platform::current() == Platform::Macos,
@@ -43,14 +46,13 @@ async fn main() -> ExitCode {
         Err(error) => return failure(&error),
     };
     match command {
-        Command::Run => match runtime::run(&home, stop()).await {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(error) => failure(&error),
-        },
+        Command::Run { hosted_hub } => run(&home, hosted_hub).await,
+        Command::Threads => threads(home.dir().to_owned()).await,
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
         Command::KeyRead { name } => key_read(&name, &home),
+        Command::Holder { .. } => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
@@ -213,4 +215,73 @@ fn failure(error: &dyn std::error::Error) -> ExitCode {
 #[cfg(windows)]
 async fn stop() {
     let _ = tokio::signal::ctrl_c().await;
+}
+
+/// The daemon, and beside it the runner of the agent threads. The runner ends with the daemon;
+/// its programs stay in the holder. The system unit and a hosted hub run as an account of their
+/// own and start no agent (THR-128).
+async fn run(home: &Home, hosted_hub: Option<std::path::PathBuf>) -> ExitCode {
+    let runner = (hosted_hub.is_none() && serves_a_person(home.dir()))
+        .then(|| tokio::spawn(threads(home.dir().to_owned())));
+    let outcome = match runtime::run(home, hosted_hub, stop()).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    };
+    if let Some(runner) = runner {
+        runner.abort();
+    }
+    outcome
+}
+
+/// The runner of the agent threads (TH11), until `SIGTERM` or Ctrl-C.
+#[cfg(unix)]
+async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
+    use anima_daemon::threads::runner;
+    let program = match std::env::current_exe() {
+        Ok(program) => program,
+        Err(error) => return failure(&error),
+    };
+    // A name that is not UTF-8 is left out. A value is read as the login shell's output is
+    // (lossy), so that a secret value that is not UTF-8 is still found and stripped (THR-040).
+    let daemon: Vec<(String, String)> = std::env::vars_os()
+        .filter_map(|(name, value)| {
+            Some((
+                name.into_string().ok()?,
+                value.to_string_lossy().into_owned(),
+            ))
+        })
+        .collect();
+    match runner::run(&daemon_dir, &program, daemon, stop()).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    }
+}
+
+#[cfg(unix)]
+fn serves_a_person(daemon_dir: &std::path::Path) -> bool {
+    anima_daemon::threads::runner::serves_a_person(daemon_dir)
+}
+
+#[cfg(not(unix))]
+const fn serves_a_person(_: &std::path::Path) -> bool {
+    false
+}
+
+#[cfg(not(unix))]
+async fn threads(_: std::path::PathBuf) -> ExitCode {
+    ExitCode::FAILURE
+}
+
+/// `anima-daemon holder <folder>`: the holder of the agent programs (THR-113).
+#[cfg(unix)]
+async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
+    match anima_daemon::threads::holder::hold(folder, limit).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    }
+}
+
+#[cfg(not(unix))]
+async fn holder(_: &std::path::Path, _: usize) -> ExitCode {
+    ExitCode::FAILURE
 }

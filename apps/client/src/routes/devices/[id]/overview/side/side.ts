@@ -45,12 +45,26 @@ export function webDetail(url: string): string {
   return `${scheme}, port ${port === '' ? (scheme === 'https' ? '443' : '80') : port}`;
 }
 
+/** The one row of the hub's own device in place of SSH, RDP and VNC: nothing to set up (HMD-045, HMD-046). */
+const NO_WAY_IN: WayIn = {
+  key: 'none',
+  name: 'SSH, RDP and VNC',
+  detail: 'No session reaches the container of the hub',
+  button: null,
+  main: false,
+  action: null,
+  webInterface: null,
+};
+
 /**
  * Each way in, in the order SSH, RDP, VNC, then each web interface (WEB-001): what the bar's connect button and its
- * menu hold, one row each. `web` is false where the page has no way to open a web interface.
+ * menu hold, one row each. `web` is false where the page has no way to open a web interface. The hub's own device has
+ * one row that says it has none (HMD-046).
  */
 export function waysIn(device: SideDevice, web: boolean): readonly WayIn[] {
-  const { main, others } = connectActions(headerLine(device), device.name);
+  const actions = connectActions(headerLine(device), device.name);
+  if (actions === null) return [NO_WAY_IN, ...webWays(device, web)];
+  const { main, others } = actions;
   const order: readonly SessionProtocol[] = ['SSH', 'RDP', 'VNC'];
   const protocols = [main, ...others].sort((a, b) => order.indexOf(a.protocol) - order.indexOf(b.protocol));
   return [
@@ -63,16 +77,20 @@ export function waysIn(device: SideDevice, web: boolean): readonly WayIn[] {
       action,
       webInterface: null,
     })),
-    ...device.webInterfaces.map((webInterface) => ({
-      key: `web:${webInterface.id}`,
-      name: webInterface.label,
-      detail: webDetail(webInterface.url),
-      button: web ? 'Open' : null,
-      main: false,
-      action: null,
-      webInterface,
-    })),
+    ...webWays(device, web),
   ];
+}
+
+function webWays(device: SideDevice, web: boolean): WayIn[] {
+  return device.webInterfaces.map((webInterface) => ({
+    key: `web:${webInterface.id}`,
+    name: webInterface.label,
+    detail: webDetail(webInterface.url),
+    button: web ? 'Open' : null,
+    main: false,
+    action: null,
+    webInterface,
+  }));
 }
 
 export interface Fact {

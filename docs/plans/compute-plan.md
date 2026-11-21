@@ -159,6 +159,18 @@ Facts of 2026-11-18 that this section depends on:
 - **CAP-002.** For each backend, the daemon must give a verdict: usable, or not usable with a reason and a repair hint. Example: "ROCm: not usable, the user is not in the `render` group".
 - **CAP-003.** The daemon must report the installed runtimes and their versions.
 - **CAP-004.** The daemon must report the power state (mains or battery), the thermal state and whether the operator is active on the device.
+  The battery part of the power state is MET-032 of [design-spec.md](../spec/design-spec.md) (R-303): it is built before the rest of CAP-004, in the tasks BT1 to BT7 below, and the rest of CAP-004 uses its readers.
+
+  | Task | What | State | Commit |
+  | --- | --- | --- | --- |
+  | BT1 | K8: the kind `battery_percent` and the member `batteries` (Section 4), with the batch of a hosted hub of HM-T34 of [hosted-mode.md](../proposals/hosted-mode.md), for one approval (CON-001) | Written on the branch `hosted/hm-t34-container-metrics`; approved by R-305 | R-305 |
+  | BT2 | The daemon: the Linux reader of `/sys/class/power_supply` with the rules of `experiments/anima-os/telemetry/readings.py`, the macOS reader of its power sources, the series and the member | Built on the branch `metrics/battery`, not merged yet; the reading of a real laptop waits for HT-084 | — |
+  | BT3 | The hub: keep the last `batteries` of a device, the series `battery_percent`, and give them in the query of a device | Built on the branch `metrics/battery`, not merged yet | — |
+  | BT4 | `anima device show` prints the battery; the MCP tool of the device gives it (CMD-030) | Built on the branch `metrics/battery-cli`, not merged yet | — |
+  | BT5 | The client: the battery beside the meters of the Devices list and its grid, the Overview of a device and the device rows of Agent usage; the mockups and their records (PLN-019) | Built on the branch `metrics/battery-display`, not merged yet; check HT-089 | — |
+  | BT6 | The apps of a phone and a tablet (iPhone, iPad, Android) send `batteries` and `battery_percent` with their batch (MOB-044). For the mobile stream, not for this plan | Not started | — |
+  | BT7 | Open point: a check or a notification for a low battery (20 % and 10 %). Not to be built before the operator decides it | Open | — |
+
 - **CAP-005.** On Apple silicon, the usable memory is the GPU working-set limit of macOS, not the total memory. The daemon must report this limit.
 - **CAP-006.** The hub must keep the measured tokens per second of each loaded copy. The choice of a node can use it (RTR-034).
 - **CAP-032.** The values of CAP-001 to CAP-005 must come from the readers of `anima-daemon`. The daemon already sends the GPUs of a machine (`gpus` of K8: index, name, vendor) and the drives. A value that the daemon does not send is a new optional member of the push batch of K8, as the tool inventory is (CAP-029). The hub gives the values in `capabilities` (CAP-030). Version 0.2 (PH-C-000): "the daemon gives its own hardware values".

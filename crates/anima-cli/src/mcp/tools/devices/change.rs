@@ -137,7 +137,25 @@ pub fn definition(tool: DeviceTool) -> Definition {
     }
 }
 
-pub async fn create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+/// Runs a change tool of the `devices` set.
+///
+/// # Errors
+/// [`ToolError`] for wrong arguments or the hub's refusal.
+pub async fn call(
+    tool: DeviceTool,
+    hub: &Hub,
+    arguments: Option<JsonObject>,
+) -> Result<Value, ToolError> {
+    match tool {
+        DeviceTool::SiteCreate => site_create(hub, arguments).await,
+        DeviceTool::Wake => wake(hub, arguments).await,
+        DeviceTool::Update => update(hub, arguments).await,
+        DeviceTool::Delete => delete(hub, arguments).await,
+        _ => create(hub, arguments).await,
+    }
+}
+
+async fn create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: CreateInput = parse(arguments)?;
     let site = site_id(hub, &input.site).await?;
     let mut fields = present(&input);
@@ -151,7 +169,7 @@ pub async fn create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
     Ok(Value::Object(object([("device", json(&device))])))
 }
 
-pub async fn site_create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn site_create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: SiteInput = parse(arguments)?;
     let variables = site_create::Variables {
         name: input.name,
@@ -161,7 +179,7 @@ pub async fn site_create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Val
     Ok(Value::Object(object([("site", json(&site))])))
 }
 
-pub async fn wake(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn wake(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: DeviceInput = parse(arguments)?;
     let device_id = resolve(hub, &input.device).await?;
     let wake = hub
@@ -171,7 +189,7 @@ pub async fn wake(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     Ok(Value::Object(object([("wake", json(&wake))])))
 }
 
-pub async fn update(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn update(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: UpdateInput = parse(arguments)?;
     let id = resolve(hub, &input.device).await?;
     let input: device_update::UpdateDeviceInput = k1_input(present(&input), "device")?;
@@ -182,7 +200,7 @@ pub async fn update(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
     Ok(Value::Object(object([("device", json(&device))])))
 }
 
-pub async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: DeleteInput = parse(arguments)?;
     let is_id = uuid::Uuid::parse_str(&input.device).is_ok();
     if !is_id {

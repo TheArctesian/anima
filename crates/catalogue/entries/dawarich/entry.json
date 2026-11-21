@@ -1,0 +1,61 @@
+{
+  "id": "dawarich",
+  "name": "Dawarich",
+  "description": "A history of the places that you visited, from the location reports of your phone, with maps and statistics.",
+  "version": "1.23.0",
+  "author": "Freika",
+  "tags": ["location", "maps"],
+  "compose_url": "compose.yaml",
+  "env_url": "environment.example",
+  "documentation_url": "https://dawarich.app/docs/intro",
+  "icon_url": null,
+  "anima": {
+    "images": [
+      {
+        "service": "app",
+        "image": "freikin/dawarich@sha256:c9c6a9c04fa2ad11c438fc0b0ea3b7d95fc7e6d8c7a3cfa98bf1fc5aef2dbfd4",
+        "tag": "1.23.0",
+        "resolved": "2026-11-20"
+      },
+      {
+        "service": "sidekiq",
+        "image": "freikin/dawarich@sha256:c9c6a9c04fa2ad11c438fc0b0ea3b7d95fc7e6d8c7a3cfa98bf1fc5aef2dbfd4",
+        "tag": "1.23.0",
+        "resolved": "2026-11-20"
+      },
+      {
+        "service": "db",
+        "image": "postgis/postgis@sha256:edb61bdfede3dd78074fb1a9e43523510d7fe461817c95f44301be8dfebd04b9",
+        "tag": "17-3.7-alpine",
+        "resolved": "2026-11-20"
+      },
+      {
+        "service": "redis",
+        "image": "redis@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe",
+        "tag": "7.4.12-alpine",
+        "resolved": "2026-11-20"
+      }
+    ],
+    "marks": [],
+    "exceptions": ["init-capabilities"],
+    "volumes": [
+      { "volume": "public", "copy": "files" },
+      { "volume": "watched", "copy": "files" },
+      { "volume": "storage", "copy": "files" },
+      { "volume": "db", "copy": "postgresql" },
+      { "volume": "redis", "copy": "cache" }
+    ],
+    "generated": ["DATABASE_PASSWORD", "SECRET_KEY_BASE"],
+    "test": {
+      "service": "app",
+      "port": 3000,
+      "reach": "http",
+      "path": "/api/v1/health",
+      "statuses": [200],
+      "body": "ok",
+      "limit_seconds": 600
+    },
+    "pinned": "2026-11-20",
+    "last_test": { "result": "not-tested" }
+  }
+}
