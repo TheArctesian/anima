@@ -14,12 +14,14 @@ mod fields;
 mod file;
 mod folder;
 pub mod postgresql;
+mod privileges;
 mod shipped;
 
 #[cfg(test)]
 mod tests;
 
 pub use folder::{ReadError, read};
+pub use privileges::Privilege;
 pub use shipped::shipped;
 
 use entry::{Entry, MachineTest};
@@ -78,6 +80,15 @@ pub enum Code {
     DatabaseNotDescribed,
     /// A database server publishes a port on the machine (Section 14.1 of the proposal).
     DatabasePortPublished,
+    /// The image, a published port or its address is a variable, which the install could
+    /// change after the static test (SF-NEW-revcatvars).
+    VariableNotPermitted,
+    /// The Compose file gives a variable whose name marks a secret a value that is not one
+    /// variable (SF-NEW-revcatsecret).
+    SecretInFile,
+    /// A service keeps rights that it does not need, or changes its code at the start
+    /// (SF-NEW-revcatroot).
+    PrivilegeNotPermitted(Privilege),
 }
 
 impl Code {
@@ -105,10 +116,14 @@ impl Code {
             Self::MachineTestFailed => "machine_test_failed",
             Self::DatabaseNotDescribed => "database_not_described",
             Self::DatabasePortPublished => "database_port_published",
+            Self::VariableNotPermitted => "variable_not_permitted",
+            Self::SecretInFile => "secret_in_file",
+            Self::PrivilegeNotPermitted(_) => "privilege_not_permitted",
         }
     }
 
-    /// The fixed second part of a code: the rule of a refused Compose file, or the mark.
+    /// The fixed second part of a code: the rule of a refused Compose file, the mark, or the
+    /// privilege.
     #[must_use]
     pub const fn detail(&self) -> Option<&'static str> {
         match self {
@@ -117,6 +132,7 @@ impl Code {
                 Some("not_at_machine")
             }
             Self::MarkNotPermitted(mark) => Some(entry::mark_name(mark)),
+            Self::PrivilegeNotPermitted(privilege) => Some(privilege.code()),
             _ => None,
         }
     }

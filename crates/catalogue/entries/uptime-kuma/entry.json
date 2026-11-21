@@ -21,6 +21,7 @@
       }
     ],
     "marks": [],
+    "exceptions": ["init-capabilities"],
     "volumes": [
       {
         "volume": "kuma",

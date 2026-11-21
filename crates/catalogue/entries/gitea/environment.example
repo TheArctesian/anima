@@ -1,5 +1,1 @@
 # Gitea. The web installer of the first visit makes the administrator; this file holds no secret.
-# The port of the machine for the web interface.
-GITEA_PORT=3002
-# The port of the machine for git over SSH.
-GITEA_SSH_PORT=2222

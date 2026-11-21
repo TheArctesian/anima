@@ -7,9 +7,11 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - target: 80
-        published: ${VAULTWARDEN_PORT:-8222}
+        published: 8222
         host_ip: 127.0.0.1
         protocol: tcp
     volumes:

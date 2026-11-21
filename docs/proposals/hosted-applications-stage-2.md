@@ -1354,6 +1354,7 @@ in the tables makes the entry unreadable.
 | `database` | For an application that needs a database only: `engine` (`postgresql`), `lowest_major`, `extensions`, and `variables`: the name of the variable for each connection value that the application wants, of `url`, `host`, `port`, `name`, `user` and `password`, at least one. The install writes each of them, so each is also in `generated` (Section 14.2) |
 | `images` | For each service of the Compose file: `service`, `image`, `tag` and `resolved`. `image` is `repository@sha256:` and 64 hexadecimal digits, with no tag (R-233). `tag` is the tag that was read from the registry to get the digest. `resolved` is the day of that read |
 | `marks` | What the recipe needs beyond the default rules (Section 13.3). Empty for most recipes |
+| `exceptions` | The exceptions of a fixed list to the rights that each service drops (Section 13.3). Empty for most recipes |
 | `volumes` | Each top-level volume of the Compose file, with the kind of copy that it needs (Section 13.4) |
 | `generated` | The variables that the install makes, for example a password. The example file has no value for them |
 | `test` | The test of a machine (Section 13.5). Task H37 runs it |
@@ -1374,6 +1375,34 @@ is an error. A need that has no mark is an error.
 | `engine-socket` | The socket of the engine (R-247) | Refused until the exception of Section 10 exists. Nothing installs such an entry |
 | `host-network` | The network of the machine itself, for example for the discovery of devices | Refused. No rule permits it |
 | `device` | A device of the machine, for example a USB stick or a graphics processor | Refused. No rule permits it |
+
+Each service of a recipe has `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`,
+and no setting makes it root or changes its code at the start (SF-NEW-revcatroot). The static
+test reads these values in the file as its author wrote it, before the variables are filled, and
+refuses with `privilege_not_permitted` and one reason:
+
+| Reason | What the file has |
+| --- | --- |
+| `image_mods` | The variable `DOCKER_MODS`: the image gets and runs more code at the start |
+| `install_packages` | The variable `INSTALL_PACKAGES` |
+| `install_pip_packages` | The variable `INSTALL_PIP_PACKAGES` |
+| `version_not_fixed` | The variable `VERSION` with a value other than `docker`: the image gets a different version at the start, which no digest names |
+| `root_identity` | `PUID` or `PGID` that is not a whole number above 0 |
+| `root_user` | `user` that is `0` or `root`, as the user or as the group, or a variable |
+| `new_privileges` | A service with no `security_opt: [no-new-privileges:true]` |
+| `capabilities_kept` | A service whose `cap_drop` is not `[ALL]` and not the drop of an exception of the entry |
+| `exception_not_needed` | The entry names an exception that no service uses |
+
+The list of exceptions is fixed. It has one exception, `init-capabilities`: an init that starts
+as root, gives the files to a different user and changes to it (the s6 init of the LinuxServer
+images, `gosu`, `su-exec`). Such a service keeps exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`,
+`SETGID` and `SETUID`. Contract K10 has no `cap_add`, so the service drops each other capability
+of the default set of the engine by name: `AUDIT_WRITE`, `FSETID`, `KILL`, `MKNOD`,
+`NET_BIND_SERVICE`, `NET_RAW`, `SETFCAP`, `SETPCAP` and `SYS_CHROOT`.
+
+The image, a published port and its `host_ip` are written in the file, never as a variable: the
+install could change a variable after the static test (`variable_not_permitted`,
+SF-NEW-revcatvars).
 
 The rules of Section 4.5 permit a published port from 1024 only. "Open to the network" does not
 change that. Thus a DNS server on port 53 (Pi-hole, AdGuard Home) is refused today, also with its
@@ -1413,7 +1442,11 @@ The example file has lines `NAME=value` and comments. It holds no secret value.
 - The line of a variable in `generated` has no value. The line directly above it is
   `# generated at install`. The install makes the value. Anima never writes it to the catalogue.
 - A line with no value directly below that comment names a variable of `generated`.
-- A variable whose name has the part `PASSWORD`, `PASS`, `SECRET`, `TOKEN` or `KEY` has no value.
+- A variable whose name has the part `PASS` or `KEY`, or has the text `PASSWORD`, `PASSWD`,
+  `SECRET`, `TOKEN`, `APIKEY`, `CREDENTIAL` or `PRIVATE_KEY` in capital or small letters, has no
+  value (SF-NEW-revcatsecret).
+- In the Compose file, a variable of `environment` with such a name has exactly one variable as
+  its value, `${NAME}`, with no default (`secret_in_file`).
 
 The static test fills the variables of the Compose file from this file, with the rules of
 Section 4.5. Thus each variable of the file has a line, or a default with `:-`.
@@ -1446,6 +1479,9 @@ file. One recipe can have more than one code.
 | `machine_test_failed` | The last test on a machine failed. The entry leaves the list |
 | `database_not_described` | The fields about a database are not complete: an entry of kind `database` has no `server` or has a `database`; an application has a `server`; or a need has no variable, a variable twice, a variable that is not in `generated`, a lowest major of 0 or an extension that is not a name |
 | `database_port_published` | An entry of kind `database` publishes a port on the machine (Section 14.1) |
+| `variable_not_permitted` | The image, a published port or its `host_ip` is a variable (Section 13.3) |
+| `secret_in_file` | The Compose file gives a variable whose name marks a secret a value that is not one variable (Section 13.6) |
+| `privilege_not_permitted` | A service keeps rights that it does not need, or changes its code at the start. The second part is the reason (Section 13.3) |
 
 A test of the crate reads the folder `entries/` and requires each recipe to pass, with one known
 refusal: Pi-hole (Section 13.3). Thus `bun run gates` runs the static test of each recipe.
@@ -1482,6 +1518,13 @@ index of all platforms of the tag.
 | Vaultwarden | `vaultwarden/server` (1.37.5) | None | `sqlite` | Passes |
 | Gitea | `gitea/gitea` (28.4.0) | None | `sqlite` | Passes |
 | PostgreSQL (kind `database`, task H24) | `postgres` (18.7) | None | `postgresql` | Passes |
+
+Each service has `no-new-privileges:true` and drops each capability (Section 13.3). The services
+whose image starts as root and changes to a different user have the exception
+`init-capabilities`: the database and the cache of Dawarich, Pi-hole, Uptime Kuma, Gitea and
+PostgreSQL. Each published port is written in the file, not as a variable (SF-NEW-revcatvars).
+No test on a machine has shown that each image starts with these rights; task H37 shows it. The
+server of OpenSSH in the image of Gitea possibly needs `SYS_CHROOT`, which no exception keeps.
 
 Dawarich passes the default rules. Its Compose file is not the file of the project: it has no
 `container_name`, no `stdin_open`, no `tty`, no `shm_size`, no options of the log driver and no
@@ -1623,18 +1666,26 @@ Where the build differs from Sections 14.1 to 14.3:
 
 - **The names.** Section 14.2 says that the names are made from the identifier. The identifier of
   an entry may have `-`, which a name of PostgreSQL without quotes may not have: each `-`
-  becomes `_`. Two identifiers that differ only in `-` and `_` thus get the same names; the
-  install must refuse a database that exists. The names `postgres`, `template0`, `template1`,
-  `public` and each name that starts with `pg_` are refused.
+  becomes `_`. An identifier with `_` or with `--` is refused, so that two identifiers never
+  get the same names (`my-app` and `my_app`) and no name of an application has `__`
+  (SF-NEW-revcatpg). The names `postgres`, `template0`, `template1`, `public` and each name
+  that starts with `pg_` are refused.
+- **The extensions.** An extension is one of a fixed list, not a pattern: `vector`, `pg_trgm`,
+  `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry
+  `postgresql` names (`btree_gin`, `btree_gist`, `cube`, `earthdistance`, `fuzzystrmatch`,
+  `pgcrypto`, `unaccent`). No extension of the list reaches a file, a program or a different
+  server (SF-NEW-revcatpg).
 - **The password in a statement.** The password is an input value; the crate never makes one
-  (OD-HOST-42 A). It is 16 to 128 printable characters with no space, quote or backslash, so
-  that the quoted literal of the `CREATE ROLE` statement is the same text with each setting of
-  the server. The program must give that statement to `psql` on its standard input, never as
+  (OD-HOST-42 A). It is 22 to 128 letters and digits of ASCII (at least 128 bits), so that the
+  quoted literal of the `CREATE ROLE` statement is the same text with each setting of the
+  server, and no `$`, backtick, `#` or `=` changes it in an environment file, a shell or a
+  connection address (SF-NEW-revcatpg). The program must give that statement to `psql` on its standard input, never as
   an argument. `Debug` of a statement or of a connection value does not show it.
 - **The test of a machine.** It reaches the port that the server exposes on the network of its
   project, not a published port (Section 13.5).
-- **The way back.** The new database is `<database>_back_<number>`, the database of the test is
-  `<database>_check`. A name longer than 63 bytes is refused, not cut.
+- **The way back.** The new database is `<database>__back_<number>`, the database of the test is
+  `<database>__check`. No name of an application has `__`, so neither is the name of a different
+  application. A name longer than 63 bytes is refused, not cut.
 - **The test of the way back** compares the tables of `pg_restore --list` with the tables of the
   restored database. A table whose name has a space is reported as missing: the list does not
   quote names. That is a false failure, never a false pass.

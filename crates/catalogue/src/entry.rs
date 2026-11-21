@@ -37,6 +37,10 @@ pub struct Anima {
     /// What the recipe needs beyond the default rules. Empty for most recipes.
     #[serde(default)]
     pub marks: Vec<Mark>,
+    /// The exceptions of a fixed list to the rights that each service drops. Empty for most
+    /// recipes.
+    #[serde(default)]
+    pub exceptions: Vec<Exception>,
     /// Each top-level volume of the Compose file, and how a copy of it is made.
     pub volumes: Vec<Kept>,
     /// The variables of the environment file that the install makes. The example file has
@@ -164,6 +168,16 @@ pub enum Mark {
     HostNetwork,
     /// A device of the machine, for example a USB stick or a graphics processor.
     Device,
+}
+
+/// An exception to "each service drops each capability" (SF-NEW-revcatroot).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Exception {
+    /// An init that starts as root, gives the files to a different user and changes to it:
+    /// the s6 init of the images of `LinuxServer`, `gosu` or `su-exec`. It keeps exactly `CHOWN`,
+    /// `DAC_OVERRIDE`, `FOWNER`, `SETGID` and `SETUID`.
+    InitCapabilities,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]

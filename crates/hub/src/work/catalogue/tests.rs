@@ -65,8 +65,7 @@ fn h38_the_description_gives_the_names_of_the_variables_and_never_a_value() {
             "DATABASE_PASSWORD",
             "SECRET_KEY_BASE",
             "APPLICATION_HOSTS",
-            "TIME_ZONE",
-            "DAWARICH_PORT"
+            "TIME_ZONE"
         ]
     );
     assert!(dawarich.compose.starts_with("services:"));

@@ -23,7 +23,7 @@ const SERVER: &str = r#""kind": "database",
 fn server() -> Recipe {
     let exposed = replaced(
         COMPOSE,
-        "    ports:\n      - target: 8080\n        published: ${NOTES_PORT:-8080}\n        host_ip: 127.0.0.1\n        protocol: tcp\n",
+        "    ports:\n      - target: 8080\n        published: 8080\n        host_ip: 127.0.0.1\n        protocol: tcp\n",
         "    expose:\n      - \"8080\"\n",
     );
     let entry = with_entry(r#""images""#, SERVER).entry;

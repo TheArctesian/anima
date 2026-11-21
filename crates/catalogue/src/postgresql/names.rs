@@ -29,16 +29,30 @@ fn is_database_name(text: &str) -> bool {
         && !text.starts_with("pg_")
 }
 
-/// The name of an extension: `[a-z][a-z0-9_-]{0,62}` (for example `pg_trgm`, `uuid-ossp`).
+/// The extensions that an entry may name: each is in the images of PostgreSQL or of `PostGIS`,
+/// and none reaches a file, a program or a different server. A pattern would permit an
+/// extension such as `plpython3u`, `adminpack` or `dblink` (SF-NEW-revcatpg).
+const EXTENSIONS: [&str; 13] = [
+    "btree_gin",
+    "btree_gist",
+    "citext",
+    "cube",
+    "earthdistance",
+    "fuzzystrmatch",
+    "hstore",
+    "pg_trgm",
+    "pgcrypto",
+    "postgis",
+    "unaccent",
+    "uuid-ossp",
+    "vector",
+];
+
+/// True when `text` is an extension of the fixed list (for example `pg_trgm`, `uuid-ossp`,
+/// `vector`).
 #[must_use]
 pub fn is_extension(text: &str) -> bool {
-    text.bytes()
-        .next()
-        .is_some_and(|byte| byte.is_ascii_lowercase())
-        && text.len() <= LONGEST
-        && text
-            .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"_-".contains(&byte))
+    EXTENSIONS.contains(&text)
 }
 
 /// The name of one database or one user, checked: it is safe in a quoted identifier.
@@ -83,12 +97,17 @@ pub struct Names {
 
 impl Names {
     /// The names of the application `application`: each `-` of the identifier becomes `_`,
-    /// and both names are that text. Two identifiers that differ only in `-` and `_` get the
-    /// same names; the install refuses a database that exists.
+    /// and both names are that text. An identifier with `_` or with `--` is refused, so that
+    /// two identifiers never get the same names (`my-app` and `my_app`), and no name of an
+    /// application has the `__` of the names of the way back (SF-NEW-revcatpg).
     ///
     /// # Errors
-    /// [`NameError::NotPermitted`] when the text is not a permitted name.
+    /// [`NameError::NotPermitted`] when the identifier has `_` or `--`, or the text is not a
+    /// permitted name.
     pub fn for_application(application: &str) -> Result<Self, NameError> {
+        if application.contains('_') || application.contains("--") {
+            return Err(NameError::NotPermitted);
+        }
         let name = DatabaseName::new(&application.replace('-', "_"))?;
         Ok(Self {
             database: name.clone(),
