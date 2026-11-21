@@ -5,6 +5,7 @@
 use std::time::Duration;
 
 mod copies;
+pub mod sign_in;
 
 pub use copies::{copies, executable, find, trusted, with_folder_of};
 

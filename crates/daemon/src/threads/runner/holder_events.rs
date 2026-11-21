@@ -160,6 +160,7 @@ impl Runner {
         };
         let before = self.threads.get(&id).map(Thread::record_key);
         let mut last = self.read_up_to.get(&id).copied().unwrap_or(0);
+        let mut signed_out = false;
         for (at, line) in lines.into_iter().enumerate() {
             let seq = first + at as u64;
             if seq <= last {
@@ -176,9 +177,21 @@ impl Runner {
                     Vec::new()
                 }
             };
+            signed_out |= steps.iter().any(not_logged_in);
             if self.apply(id, steps).await.is_err() {
                 break;
             }
+        }
+        if signed_out {
+            // Words that say whether the person must sign in, or only send again (TH99).
+            let found = super::login::sign_in::of_claude(&self.env).await;
+            let text = super::login::sign_in::words(found).to_owned();
+            self.publish(
+                id,
+                Change::Said {
+                    event: DriveEvent::Notice { text },
+                },
+            );
         }
         self.read_up_to.insert(id, last);
         // The record holds the open requests before the holder drops their lines (THR-030); a
@@ -333,4 +346,14 @@ const fn taken(outcome: &HolderOutcome) -> Option<Refusal> {
 
 pub(super) const fn refused(why: Refusal) -> Outcome {
     Outcome::Refused { why }
+}
+
+/// A step that ends a turn of Claude Code with the fault of its sign-in ("Not logged in").
+fn not_logged_in(step: &super::thread::Step) -> bool {
+    matches!(
+        step,
+        super::thread::Step::Change(Change::Said {
+            event: DriveEvent::TurnEnded { detail: Some(detail), .. },
+        }) if detail == "authentication_failed"
+    )
 }

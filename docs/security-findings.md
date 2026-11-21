@@ -2422,7 +2422,7 @@ Mitigation now: none in the application. By hand: when no thread runs, `kill <pi
 
 The fix (not built): the holder says its build in `Hello` (the version of the package and the identity of its program file); the runner compares it with its own. When they differ, the runner tells the client ("the holder is older than the daemon; it is replaced when no thread runs"), the holder starts nothing new, and it ends by itself when its last thread ends, so that the daemon starts the holder of the new build. The page and `anima agents running` show the line while the old holder runs.
 
-State: Open. Found in the trial on the installed pair, 2026-11-21.
+State: Open. Found in the trial on the installed pair, 2026-11-21. The fix is built on the branch `threads/start-health` (task TH98; HT-NEW-holderupdate), not yet in `dev`.
 
 ### SF-179: A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium
 

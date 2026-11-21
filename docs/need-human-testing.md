@@ -2772,22 +2772,74 @@ to 11 were not tried.
 
 Result: Open.
 
+### HT-NEW-silentprogram: a program that does not answer, with the Codex of Homebrew of this Mac
+
+What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). Before a start, the runner asks the chosen copy of the program for
+its version (20 seconds). When it does not answer, the start is refused with words that name the program, its
+path, what to try, and each other copy that answered in 5 seconds. A started program that says nothing in 5
+minutes is ended with words of the same kind. When more than one copy is found, the thread says which one runs
+and why. `anima agents start --program-path <path>` takes a different copy, only one the runner finds.
+What the tests did not cover: the real Codex; the page in a desktop window. On this Mac on 2026-11-21,
+`/opt/homebrew/bin/codex` (0.170.0) did not end even for `codex --version`; the Codex of ChatGPT.app (0.169.0)
+answered at once.
+
+1. Run `anima agents start --program codex --folder <a scratch folder> "Reply ok"`. Expected, while the Codex of
+   Homebrew does not answer: after about 20 seconds, "The Codex at /opt/homebrew/bin/codex did not answer in 20
+   seconds. Run `/opt/homebrew/bin/codex --version` once in a terminal ..." and "A different copy answered:
+   /Applications/ChatGPT.app/.../codex (codex-cli 0.169.0...)". No thread says "starting".
+2. Run the same command again at once. Expected: the same words in less than 2 seconds.
+3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
+   its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it
+   comes to `idle`.
+4. On the page Threads, start a Codex thread with "New thread". Expected: the dialog shows the words of step 1.
+5. After `brew upgrade codex` (by the person), repeat step 1. Expected: the thread starts, and its first line names
+   the copy of Homebrew as "the first on the PATH of your login" and the copy of ChatGPT.app as another copy.
+
+Result: Open.
+
+### HT-NEW-signedout: "Not logged in" of Claude Code on a busy computer
+
+What was built and where: task TH99 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight); the cause is in
+[th99-not-logged-in.md](research/agent-threads/th99-not-logged-in.md). When Claude Code says "Not logged in", the
+runner looks whether its item is in the Keychain (never its secret) and adds a line to the thread: "you do not
+need to sign in; send the prompt again" when the item is there or the Keychain is slow, and "Sign in to Claude
+Code in a terminal" only when it is not there. What the tests did not cover: a real Claude Code on a busy Mac,
+and a real person who is signed out.
+
+1. On a busy computer (a load above the number of processor cores; several builds at once), start four Claude
+   Code threads at once in a scratch folder. Expected: each comes to `idle` or `needs_you`, or a thread whose turn
+   failed shows "Claude Code said "Not logged in", but its sign-in is in the Keychain ... you do not need to sign
+   in". Send the prompt again in that thread. Expected: it answers.
+2. Optional, only if the person accepts to sign out: in a terminal run `claude`, then `/logout`. Start a Claude
+   Code thread. Expected: "Claude Code is not signed in. Sign in to Claude Code in a terminal: run `claude`, then
+   `/login`." Sign in again in the terminal.
+
+Result: Open.
+
 ### HT-NEW-holderupdate: the holder of the threads after an update of the daemon
 
-What was built and where: nothing new yet. This check records what an update does to the holder (`anima-daemon holder`),
-for SF-NEW-holderupdate. The tests start each holder fresh; none replaces the daemon under a running holder.
+What was built and where: task TH98 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). The holder says its build (the size, time and inode of its program
+file at its start) when the runner connects. The runner compares it with the file it would start a new holder
+from. An older holder is named in `anima agents running` and in the line under the header of the page Threads; it
+is kept while a program runs and asked to quit when none runs; the next connection starts a holder of the new file.
+A holder of a different protocol refuses a start with words that say when it is replaced. For SF-NEW-holderupdate.
+What the tests did not cover: the application's own update (the test replaces the daemon file and starts the
+runner again, as the LaunchAgent does), the page in a desktop window, a holder of the build before this change
+(it says no build: the runner takes it for older).
 
-1. With no thread running, run `ps -axo pid,lstart,command | grep 'anima-daemon holder'` and
-   `ls -i ~/.local/bin/anima-daemon`, then `lsof -p <pid of the holder> | grep txt`.
-   Expected: the inode of the program file of the holder is the inode of `~/.local/bin/anima-daemon`.
-2. Update the application (or install a new build) so that the daemon is replaced. Do step 1 again.
-   Expected now (the finding): the holder has the old inode and the old start time. Expected after the fix: the page and
-   `anima agents running` say that the holder is older than the daemon.
-3. Start a thread, let it end, and do step 1 again.
-   Expected after the fix: the holder of the new build runs (new inode). Now: the old holder still runs.
-4. If the update changed `wire::VERSION`: start a thread.
-   Expected now: the runner refuses with "holder". Expected after the fix: the old holder ended when its last thread ended
-   and the new one starts the thread.
+1. With no thread running, run `ps -axo pid,lstart,command | grep 'anima-daemon holder'` and note the PID.
+2. Start a thread (`anima agents start --program claude-code --folder <a scratch folder> "Reply ok"`) and wait for
+   `idle`. Update the application (or install a new build) so that the daemon is replaced.
+3. Run `anima agents running`. Expected: the last line says "The holder of the threads is older than the
+   daemon ... (1 running now)". Open the page Threads. Expected: the line under the header says the same.
+4. Run `ps` as in step 1. Expected: the same PID: the holder stays while a thread runs.
+5. Stop the thread (`anima agents stop <thread>`). Within 20 seconds run `ps` as in step 1 again.
+   Expected: a different PID with a new start time. `anima agents running` has no line about the holder; the page
+   line is gone after a reload.
+6. Start a thread again. Expected: it starts.
 
 Result: Open.
 
