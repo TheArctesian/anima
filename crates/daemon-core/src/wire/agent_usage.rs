@@ -6,6 +6,10 @@ use std::collections::BTreeSet;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
+mod accounts;
+
+pub use accounts::{BatchAccount, BatchLimit};
+
 use crate::agent_usage::{
     AgentUsage, MAX_COUNT, MAX_MODELS, MAX_SESSION_DAYS, ModelTokens, SessionDay, Source, Tokens,
     UsageState, is_model, is_repository, is_session_id, is_word,
@@ -18,6 +22,10 @@ use crate::agent_usage::{
 pub struct BatchAgentUsage {
     pub state: String,
     pub session_days: Vec<BatchSessionDay>,
+    /// The accounts of the programs (AIS-022, R-313). Present, even empty, it asks
+    /// the hub for its account salt (K8 Section 8.2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accounts: Option<Vec<BatchAccount>>,
 }
 
 /// The counts of one session on one UTC day. `source` is text, so an entry of a source this
@@ -59,6 +67,7 @@ impl BatchAgentUsage {
         Self {
             state: state.as_str().to_owned(),
             session_days: session_days.iter().map(BatchSessionDay::from).collect(),
+            accounts: None,
         }
     }
 
@@ -84,6 +93,10 @@ impl BatchAgentUsage {
         if !fits {
             return None;
         }
+        let accounts = match self.accounts {
+            Some(accounts) => Some(accounts::accepted(accounts)?),
+            None => None,
+        };
         let session_days = self
             .session_days
             .into_iter()
@@ -92,6 +105,7 @@ impl BatchAgentUsage {
         Some(AgentUsage {
             state,
             session_days,
+            accounts,
         })
     }
 }

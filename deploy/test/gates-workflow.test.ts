@@ -134,6 +134,18 @@ describe("the gates workflow: each crate alone", () => {
   });
 });
 
+describe("the gates workflow: a branch that changed only tests", () => {
+  test("each step of the Rust jobs that runs the gates takes the crates that the job `base` named", () => {
+    const base = workflow.jobs["base"] as unknown as { outputs?: Record<string, string> };
+    expect(base.outputs?.["rust_crates"]).toBe("${{ steps.jobs.outputs.rust_crates }}");
+    for (const name of ["rust-lint", "rust-test"]) {
+      const runs = workflow.jobs[name]?.steps.filter((step) => step.run?.includes("quality/bin/gates.ts")) ?? [];
+      expect(runs.length, name).toBeGreaterThan(0);
+      for (const step of runs) expect(step.env?.["GATES_RUST_CRATES"], `${name}: ${step.name ?? ""}`).toBe("${{ needs.base.outputs.rust_crates }}");
+    }
+  });
+});
+
 describe("the gates workflow: a push to dev", () => {
   const base = workflow.jobs["base"]?.steps.find((step) => step.run?.includes("--dev-push")) ?? {};
 

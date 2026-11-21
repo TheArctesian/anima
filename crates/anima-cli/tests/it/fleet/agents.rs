@@ -34,7 +34,20 @@ pub fn usage() -> Value {
         "devices": [
             { "device": { "id": LINUX, "name": "linux-pc-home" }, "state": "SYSTEM_UNIT" },
             { "device": { "id": MAC, "name": "mac-office-1" }, "state": "READING" }
-        ]
+        ],
+        "accounts": [{
+            "shortKey": "3f9a12c4", "source": "CODEX", "plan": "Pro",
+            "reportedAt": "2026-11-17T10:00:00Z",
+            "devices": [
+                { "id": MAC, "name": "mac-office-1" },
+                { "id": LINUX, "name": "linux-pc-home" }
+            ],
+            "limits": [
+                { "window": "five_hour", "usedPercent": 35, "resetsAt": "2026-11-17T12:00:00Z",
+                  "reached": false },
+                { "window": "weekly", "usedPercent": null, "resetsAt": null, "reached": true }
+            ]
+        }]
     } })
 }
 
@@ -83,6 +96,8 @@ async fn ais_020_agents_usage_shows_each_group_the_total_and_what_the_estimate_i
             "300 tokens of models with no known price are not in the estimate.",
             "linux-pc-home: This daemon runs as a system unit and cannot see the sessions of a \
              user.",
+            "Account 3f9a12c4 (Codex, Pro) on mac-office-1, linux-pc-home: five_hour 35 % used, \
+             resets 2026-11-17T12:00:00Z; weekly reached.",
         ]
     );
     let sent = hub.seen().pop().expect("a request");

@@ -104,7 +104,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
-| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with `--public-origin https://hub.anima.ing` and an image of this build, the gateway of the pool at `hub.anima.ing` that passes `/connect/github*`, an application of this build, and a GitHub account that may get a new App | Open |
+| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 
 ### What a check on the hosted hub needs
 
@@ -2099,19 +2099,21 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
    Expected: the row shows "Connect GitHub" and the line "Your browser must be signed in at hub.anima.ing with your
    Anima.ing account." It does not show "Coming soon".
 2. Run `anima source kinds --hub <the address that the application uses>` with a token of the hub.
-   Expected: the row `github` shows `https://hub.anima.ing/connect/github` in the column BROWSER CONNECT.
+   Expected: the row `github` shows `https://<hub id>.hub.anima.ing/connect/github` in the column BROWSER CONNECT.
 3. In the default browser, sign in at `https://hub.anima.ing` with the Anima.ing account. In the application, select
    "Connect GitHub".
-   Expected: the browser opens `https://hub.anima.ing/connect/github` with a one-time link, then GitHub with the
+   Expected: the browser opens `https://<hub id>.hub.anima.ing/connect/github` with a one-time link, then GitHub with the
    button "Create GitHub App". The application says "Waiting for you on GitHub."
 4. On GitHub, select "Create GitHub App", then "Install".
-   Expected: GitHub goes back to `https://hub.anima.ing/connect/github/installed`, and the page says "GitHub is
-   connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
-   callback address and the setup address are below `https://hub.anima.ing/connect/github`.
+   Expected: GitHub goes back to `https://<hub id>.hub.anima.ing/connect/github/installed`, and the page says "GitHub
+   is connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
+   callback address and the setup address are below `https://<hub id>.hub.anima.ing/connect/github`, and the App has
+   no webhook.
 5. On a second computer of the same account, open Settings > Integrations > GitHub.
    Expected: the same connection shows; no second sign-in to GitHub is asked for (HMD-068).
 6. Do step 3 again in a browser with no session at `hub.anima.ing`.
-   Expected: the gateway asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   Expected: the account site asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   An attempt that was open when the hub moved to its own address is lost: start again.
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
@@ -2968,6 +2970,11 @@ The entry HT-074 remains Open. These checks extend that entry; they are not a pa
    no compiler or packaging child may remain. Test the signed installer update with the
    private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
    Do not enable or publish a public feed as part of this check.
+   No test runs the builder's Windows path. Since 2026-11-21 the seven programs
+   and the PostgreSQL tree reach that build only through the builder's own `--config`
+   (`carried::bundle_settings()`), no longer also through `tauri.windows.conf.json`. In the installed
+   folder, confirm `anima.exe`, `anima-daemon.exe`, `anima-hub.exe`, `anima-local-hub.exe`,
+   `anima-database.exe`, `anima-gateway.exe`, `anima-link.exe` and the `database` folder.
 
 9. Download the `windows-trial` artifact from a successful dev workflow and install it in
    a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and
@@ -3305,6 +3312,33 @@ with real projects, in a desktop window or on a phone.
 
 Result: Open.
 
+### HT-106: the log of the daemon in a file on macOS and in the journal on Linux (MET-019, R-312)
+
+Built on the branch `daemon/push-retry-log`: the LaunchAgent (`crates/daemon/units/ing.anima.daemon.plist`) sets
+`ANIMA_DAEMON_LOG=file`, and the daemon then writes its log to `~/Library/Logs/Anima/anima-daemon.log`
+(`crates/daemon/src/report/log_file.rs`). At 1 MiB the file becomes `anima-daemon.log.1` and a new file starts.
+The tests prove the path, the rotation, the modes 0600 and 0700, and the variable in the rendered LaunchAgent,
+in a temporary folder. No test ran the daemon under launchd or under systemd, and no test let a real daemon
+fill 1 MiB.
+
+1. On a Mac with the daemon enrolled, run `anima-daemon install` with the build of this branch.
+   Expected: "Installed … and started the daemon."
+2. Run `ls -l ~/Library/Logs/Anima/`.
+   Expected: `anima-daemon.log` with the mode `-rw-------`, and the folder with `drwx------`.
+3. Run `cat ~/Library/Logs/Anima/anima-daemon.log`.
+   Expected: a line "the daemon is running" with the identifier of the device, and one line for agent usage.
+4. Stop the link, or the network, for 1 minute, then start it again.
+   Expected: lines "push failed; keeping the points" with a cause, then "the hub answers again".
+5. Run `grep -E 'anima_daemon_|anima_enrol_' ~/Library/Logs/Anima/anima-daemon.log*`.
+   Expected: no line. Read the file: no metric value, no address of the hub other than what the log of the hub
+   shows.
+6. Fill the file to near its bound, then start the daemon again: run
+   `head -c 1048500 /dev/zero | tr '\0' x >> ~/Library/Logs/Anima/anima-daemon.log`, then `anima-daemon install`.
+   Wait 1 minute, then run `ls -l ~/Library/Logs/Anima/`.
+   Expected: `anima-daemon.log.1` (the file with the `x` characters) and a new, small `anima-daemon.log` that
+   holds the line "the daemon is running"; no third file.
+7. On Linux with the user unit installed, run `anima-daemon install`, then `journalctl --user -u anima-daemon -n 20`.
+   Expected: the same lines as step 3. With the system unit: `sudo journalctl -u anima-daemon -n 20`.
 ### HT-100: the list and the thread scroll on their own (THR-013, THR-014)
 
 Built on the branch `threads/scroll`, in `apps/client/src/lib/agent-threads` (`ThreadsScreen.svelte`, `ThreadList.svelte`,
