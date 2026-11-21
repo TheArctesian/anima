@@ -65,7 +65,7 @@ pub(super) async fn end(
                     all: true,
                 }
             };
-            let marked = super::marker::end_marked(thread, &spare).await;
+            let marked = super::marker::end_marked(thread, None, &spare).await;
             let all = swept.all && marked.all;
             if left_behind && let Some(slot) = locked(shared).threads.get_mut(thread) {
                 program::settle_sweep(slot, all);
@@ -81,7 +81,9 @@ pub(super) async fn end(
             // found by its start time (THR-049).
             let swept = tree::sweep(&ending.seen).await;
             // A process that left the tree between two looks is found by its mark.
-            let marked = super::marker::end_marked(thread, &ending.spare).await;
+            // The ending of the children keeps the program, which carries the mark too.
+            let keep = (!with_root).then_some(ending.root);
+            let marked = super::marker::end_marked(thread, keep, &ending.spare).await;
             Outcome::Stopped {
                 ended: ended
                     .count

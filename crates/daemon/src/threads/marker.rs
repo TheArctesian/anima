@@ -23,16 +23,20 @@ pub fn entry(thread: &str) -> (String, String) {
     (MARK.to_owned(), thread.to_owned())
 }
 
-/// Ends each process of this user that carries the mark of `thread`, except the `spare`d ones
-/// (the servers that ran before the turn, THR-021). `all` is false when the environments could
-/// not be read or a marked process still runs after its `SIGKILL`.
-pub async fn end_marked(thread: &str, spare: &tree::Known) -> Ended {
+/// Ends each process of this user that carries the mark of `thread`, except the `program` that
+/// runs on (it carries the mark too) and the `spare`d ones (the servers that ran before the turn,
+/// THR-021). `all` is false when the environments could not be read or a marked process still
+/// runs after its `SIGKILL`.
+pub async fn end_marked(thread: &str, program: Option<u32>, spare: &tree::Known) -> Ended {
     let Some(mut marked) = carrying(thread).await else {
         return Ended {
             count: 0,
             all: false,
         };
     };
+    if let Some(program) = program {
+        marked.remove(&program);
+    }
     // A spared server and each process below it are kept, as the walk of the tree keeps them.
     // When the table cannot be read, each spared ID is kept and "all ended" is not said.
     let mut unproven = false;
@@ -181,7 +185,7 @@ mod tests {
             "a client of the runner with the mark is of an agent"
         );
         assert!(!carries_a_mark(std::process::id()).await);
-        let ended = end_marked(&thread, &tree::Known::new()).await;
+        let ended = end_marked(&thread, None, &tree::Known::new()).await;
         let _ = reaper.join();
         assert_eq!(
             ended,
@@ -191,7 +195,7 @@ mod tests {
             }
         );
         assert_eq!(
-            end_marked(&thread, &tree::Known::new()).await,
+            end_marked(&thread, None, &tree::Known::new()).await,
             Ended {
                 count: 0,
                 all: true
