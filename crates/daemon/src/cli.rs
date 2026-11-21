@@ -10,7 +10,7 @@ use zeroize::Zeroizing;
 use crate::config::origin::{Origin, OriginError};
 use crate::units::plan::Target;
 
-pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]\n       anima-daemon key read <name>\n       anima-daemon key forget";
+pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]\n       anima-daemon run\n       anima-daemon install [--system]\n       anima-daemon key read <name>\n       anima-daemon key forget\n       anima-daemon holder <folder> [<bytes kept for each thread>]";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
@@ -27,6 +27,11 @@ pub enum Command {
     KeyRead { name: String },
     /// Delete the whole key cache, as when the daemon leaves the machine.
     KeyForget,
+    /// Hold the agent programs of the threads; the daemon starts it (THR-113).
+    Holder {
+        folder: std::path::PathBuf,
+        limit: usize,
+    },
 }
 
 /// Where the enrolment code comes from: the command line, or standard input for `-`.
@@ -58,6 +63,25 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),
+        Some("holder") => holder(args),
+        _ => Err(CliError::Usage),
+    }
+}
+
+/// `holder <folder> [<bytes>]`: an absolute folder, and the limit of each thread (0: the default).
+fn holder(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let folder = args
+        .next()
+        .filter(|folder| std::path::Path::new(folder).is_absolute());
+    let limit = match args.next() {
+        None => Some(0),
+        Some(bytes) => bytes.parse().ok(),
+    };
+    match (folder, limit, args.next()) {
+        (Some(folder), Some(limit), None) => Ok(Command::Holder {
+            folder: folder.into(),
+            limit,
+        }),
         _ => Err(CliError::Usage),
     }
 }

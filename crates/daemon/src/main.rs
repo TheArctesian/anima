@@ -35,6 +35,9 @@ async fn main() -> ExitCode {
         Ok(command) => command,
         Err(error) => return usage(&error),
     };
+    if let Command::Holder { folder, limit } = &command {
+        return holder(folder, *limit).await;
+    }
     let home = match Home::locate(
         |name| std::env::var(name).ok(),
         Platform::current() == Platform::Macos,
@@ -50,6 +53,7 @@ async fn main() -> ExitCode {
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
         Command::KeyRead { name } => key_read(&name, &home),
+        Command::Holder { .. } => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
@@ -174,4 +178,18 @@ fn failure(error: &dyn std::error::Error) -> ExitCode {
 #[cfg(windows)]
 async fn stop() {
     let _ = tokio::signal::ctrl_c().await;
+}
+
+/// `anima-daemon holder <folder>`: the holder of the agent programs (THR-113).
+#[cfg(unix)]
+async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
+    match anima_daemon::threads::holder::hold(folder, limit).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => failure(&error),
+    }
+}
+
+#[cfg(not(unix))]
+async fn holder(_: &std::path::Path, _: usize) -> ExitCode {
+    ExitCode::FAILURE
 }
