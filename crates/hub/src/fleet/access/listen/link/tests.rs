@@ -292,6 +292,7 @@ async fn clients_of_the_loopback_port_cannot_take_the_places_of_the_links_device
     let ways = Ways {
         tcp,
         link: Some(link_socket(&socket).unwrap()),
+        own_daemon: None,
     };
     let limits = Limits {
         connections: 2,

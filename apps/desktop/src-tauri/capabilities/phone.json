@@ -16,6 +16,7 @@
     "allow-cloud-sign-in-session",
     "allow-cloud-hub",
     "allow-cloud-hub-access",
+    "allow-cloud-hub-usage",
     "allow-system-browser-open"
   ]
 }

@@ -371,6 +371,9 @@ type Device {
   metrics(range: MetricRange!): [MetricSeries!]!
   # metrics
   gpus: [Gpu!]!
+  # metrics (MET-032)
+  "The batteries that power the device, by name, as its daemon last listed them; empty for a device with none."
+  batteries: [Battery!]!
   # metrics (MET-026, MET-029)
   storage: Storage!
   checks: [Check!]!
@@ -766,6 +769,8 @@ enum MetricKind {
   DISK_WRITE_BPS
   "The share of time one drive had I/O in flight; the label is the drive name (MET-028)."
   DISK_BUSY_PERCENT
+  "The charge of one battery, 0 to 100; the label is the battery name (MET-032)."
+  BATTERY_PERCENT
 }
 
 # MET-003
@@ -780,6 +785,26 @@ enum GpuVendor {
   AMD
   INTEL
   APPLE
+}
+
+# MET-032
+enum BatteryState {
+  CHARGING
+  DISCHARGING
+  FULL
+  "On mains, not charged."
+  NOT_CHARGING
+  UNKNOWN
+}
+
+"A battery that powers a device (MET-032). Its charge is the series BATTERY_PERCENT with its name as the label."
+type Battery {
+  name: String!
+  state: BatteryState!
+  "Seconds to empty while it discharges or to full while it charges."
+  secondsLeft: Int
+  "The capacity when full against the capacity of its design, 0 to 100."
+  healthPercent: Int
 }
 
 type Gpu {

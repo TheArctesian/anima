@@ -245,7 +245,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` (replaced in Phase 3 by `trust`, see the Phase 3 row below) | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
-| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029) |
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029), `Device.batteries` (MET-032) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
@@ -571,6 +571,8 @@ pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 /// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
 pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
+/// (MET-032) The batteries each device's daemon last listed, by name; no entry when it has none.
+pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Battery>>, Error>;
 ```
 
 ## agent_usage (R-135, operator, 2026-11-17; AIS-018 to AIS-024; AU-2)

@@ -2778,6 +2778,78 @@ window with real devices.
 Result: Open.
 
 
+### HT-085: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
+
+Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
+usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in
+`apps/desktop/src-tauri/src/cloud.rs`. The tests prove the form of [account-usage.md](../contracts/account-usage.md), each state of the
+card and the choice of the way in, with stand-in answers. No test reached the route of the site or the path of the gateway, which
+are in the private repositories, and no test read real figures of an account.
+
+1. In the desktop application, signed in to the Anima.ing account of a hosted hub, open "Devices", then the row of the hub.
+   Expected: the card "Plan and usage" shows "Data of your hub" and "Disk used of the plan" as two figures, the name of the plan,
+   the hours awake and asleep, the amount of the month with the sentence "So far this month, before tax. This is an estimate, not
+   a bill. Your invoice arrives after the month ends." (or "Nothing is charged on this plan" on a free plan), and the time of the
+   figures. The amount is the one that the account page shows.
+2. Open the hub at its address in a browser, signed in at the gateway, and open the same page.
+   Expected: the same figures.
+3. In the browser, end the session of the gateway in a second tab, then load the page again.
+   Expected: the card says to sign in to the account; the data of the hub still shows.
+4. Open the row of a device that is not the hub.
+   Expected: no card "Plan and usage".
+
+Result: Open.
+
+### HT-086: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
+
+Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,
+`crates/hub/src/fleet/access/listen/serve/own_daemon.rs`, `crates/hub/src/upkeep/hub_device.rs`,
+`crates/anima-local-hub/src/group/own_daemon.rs`, `crates/anima-local-hub/src/members/own_daemon.rs` and
+`crates/daemon/src/readers/container.rs`. The tests prove the socket, its routes, the settings, the specs of the member
+and the reader against files that a test lays out. No test ran the programs in a container of the pool, with its
+control group, its user and its folders.
+
+1. Make an image of the pool from a commit that holds this work, with `anima-daemon` built and copied into
+   `/opt/anima/bin`. Put it in a hub of the pool and start the hub.
+   Expected: `/var/lib/anima/hub/log/anima-daemon.log` exists and shows no error. `/run/anima/own-daemon.code` does
+   not exist. `/var/lib/anima/hub/daemon/token` exists, mode 0600.
+2. Open the hub in the client, go to "Devices" and open the row of the hub.
+   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The row shows the logo and the name of the
+   distribution of the image (for example Debian), and the device page offers no SSH, RDP, VNC or screen sharing; its tab Settings has no row of SSH, VNC or RDP. The memory total is that of the container
+   (1.5 GiB on the plan of the read of 2026-11-20), not that of the server. The disk shows the bytes of the hub's data
+   with no total and no percent.
+3. Restart the hub.
+   Expected: the daemon starts again with no new enrolment: the event log shows no second "enrolled" entry, and the
+   figures continue.
+4. Make an image with no `anima-daemon` and start a hub with it.
+   Expected: the hub starts and serves as before; there is no `anima-daemon.log` and no file `own-daemon.code`.
+
+Result: Open.
+
+### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+
+Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
+`/sys/class/power_supply` and of `pmset -g batt`), `crates/daemon/src/readers/linux.rs`,
+`crates/daemon/src/readers/macos.rs`, `crates/daemon/src/sampling/batteries.rs`, and in the hub the migration
+`0720_metrics_batteries.sql` and `Device.batteries`. The tests prove the rules against texts in the form of the
+kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test read the battery of a real laptop.
+
+1. On a Linux laptop that runs a daemon of this build, enrolled in a hub of this build, run
+   `cat /sys/class/power_supply/BAT*/capacity /sys/class/power_supply/BAT*/status`. Then ask the hub:
+   `query { device(id: "<id>") { batteries { name state secondsLeft healthPercent } } }`.
+   Expected: one battery for each `BAT*` folder, with the same name and the state of the `status` file. A wireless
+   mouse or keyboard is not in the list.
+2. On the same laptop, connect and disconnect the mains. Ask the hub again after 10 seconds each time.
+   Expected: the state changes to `CHARGING` (or `FULL` or `NOT_CHARGING`) and back to `DISCHARGING`.
+3. Open the chart of the device for one hour, or ask for `metrics(range: HOUR) { kind label }`.
+   Expected: a series `BATTERY_PERCENT` with the battery name as its label, with the value of `capacity`.
+4. Do steps 1 to 3 on a MacBook that runs a daemon of this build. Compare with `pmset -g batt`.
+   Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
+5. Do step 1 on a desktop computer or a server with no battery.
+   Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
 ### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,

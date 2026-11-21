@@ -43,7 +43,7 @@ async fn main() -> ExitCode {
         Err(error) => return failure(&error),
     };
     match command {
-        Command::Run => match runtime::run(&home, stop()).await {
+        Command::Run { hosted_hub } => match runtime::run(&home, hosted_hub, stop()).await {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
         },

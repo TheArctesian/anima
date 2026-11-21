@@ -14,7 +14,8 @@ use crate::readings::{Cpu, Interface, Reading};
 /// time passed, the Linux CPU share, the network rates and the drive activity are left out (D-4,
 /// MET-028). The macOS CPU share
 /// needs no earlier reading, so it is always given. Disks and interfaces follow
-/// [`MAX_LABELS`](super::MAX_LABELS) and the exclusions of D-5.
+/// [`MAX_LABELS`](super::MAX_LABELS) and the exclusions of D-5; each battery with a charge gives
+/// one `battery_percent` labelled with its name (MET-032).
 #[must_use]
 pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration) -> Vec<Sample> {
     let mut out = Vec::new();
@@ -50,6 +51,20 @@ pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration)
         let share = float(used) / float(size) * 100.0;
         out.extend(Sample::new(Kind::DiskPercent, &disk.mount, share));
         out.extend(Sample::new(Kind::DiskBytes, &disk.mount, float(used)));
+    }
+    if let Some(storage) = &current.hub_storage {
+        // The bytes alone: a share would need the total of a file system of the pool (HMD-072).
+        out.extend(Sample::new(
+            Kind::DiskBytes,
+            &storage.folder,
+            float(storage.bytes),
+        ));
+    }
+    for battery in current.batteries.iter().flatten() {
+        let charge = battery
+            .percent
+            .and_then(|value| Sample::new(Kind::BatteryPercent, &battery.name, value));
+        out.extend(charge);
     }
     if let Some(previous) = previous {
         out.extend(network(previous, current, elapsed));
