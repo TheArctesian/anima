@@ -1,6 +1,30 @@
 [workspace]
 resolver = "3"
-members = ["crates/anima-windows", "crates/hub", "crates/guac-protocol", "crates/anima-gateway", "crates/rdp-test-device", "crates/agent-threads", "crates/daemon-core", "crates/daemon", "crates/theme", "crates/providers/*", "crates/updater-signature", "crates/redaction", "crates/compose-rules", "crates/catalogue", "crates/anima-applications", "crates/anima-cli", "crates/anima-database", "crates/anima-local-hub", "apps/desktop/src-tauri", "apps/desktop/keyboard", "apps/desktop/account-session", "apps/desktop/runner"]
+members = [
+    "crates/anima-windows",
+    "crates/hub",
+    "crates/guac-protocol",
+    "crates/anima-gateway",
+    "crates/rdp-test-device",
+    "crates/agent-threads",
+    "crates/daemon-core",
+    "crates/daemon",
+    "crates/theme",
+    "crates/providers/*",
+    "crates/updater-signature",
+    "crates/release-record",
+    "crates/redaction",
+    "crates/compose-rules",
+    "crates/catalogue",
+    "crates/anima-applications",
+    "crates/anima-cli",
+    "crates/anima-database",
+    "crates/anima-local-hub",
+    "apps/desktop/src-tauri",
+    "apps/desktop/keyboard",
+    "apps/desktop/account-session",
+    "apps/desktop/runner",
+]
 
 [workspace.package]
 version = "0.1.0"

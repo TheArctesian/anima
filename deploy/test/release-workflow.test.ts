@@ -50,6 +50,7 @@ const HOLDERS: Record<string, { environment: string; secrets: string[] }> = {
   bucket: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   publish: { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   "cli-publish": { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
+  "daemon-publish": { environment: "release-publish", secrets: ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] },
   tap: { environment: "release-tap", secrets: ["HOMEBREW_TAP_DEPLOY_KEY"] },
   crate: { environment: "release-crate", secrets: ["CARGO_REGISTRY_TOKEN"] },
   ios: { environment: "release-ios", secrets: ["IOS_DISTRIBUTION_P12_BASE64", "IOS_DISTRIBUTION_P12_PASSWORD", "IOS_PROVISIONING_PROFILE_BASE64"] },
@@ -213,7 +214,7 @@ describe("which job holds which secret (R-180, BLD-045)", () => {
   });
 
   test("the jobs that hold the updater key or the bucket token read no repository and compile nothing", () => {
-    for (const name of ["sign", "bucket", "publish", "cli-publish", "ios-upload", "ios-record", "trial"]) {
+    for (const name of ["sign", "bucket", "publish", "cli-publish", "daemon-publish", "ios-upload", "ios-record", "trial"]) {
       const found = job(name);
       const actions = found.steps.flatMap((step) => (step.uses === undefined ? [] : [step.uses.split("@")[0]]));
       for (const action of actions) {
@@ -239,13 +240,13 @@ describe("which job holds which secret (R-180, BLD-045)", () => {
 });
 
 describe("the order to a published release (UPD-008, BLD-042)", () => {
-  test("the sign job waits for the gates, the tool and all three builds", () => {
-    expect(needsOf("sign").sort()).toEqual(["commit", "gates", "linux", "macos", "tool", "windows"]);
+  test("the sign job waits for the gates, the tool, all three builds and the daemon", () => {
+    expect(needsOf("sign").sort()).toEqual(["commit", "daemon", "gates", "linux", "macos", "tool", "windows"]);
   });
 
   test("publish runs only for a push to main with the switch on, and only after every other job passed", () => {
     expect(ownCondition(job("publish").if, needsOf("publish"))).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ANIMA_PUBLIC_RELEASES == 'on'");
-    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "gates", "gates-linux", "gates-macos", "linux", "macos", "sign", "tool", "windows"]);
+    expect([...waitsFor("publish")].sort()).toEqual(["bucket", "commit", "daemon", "gates", "gates-linux", "gates-macos", "linux", "macos", "sign", "tool", "windows"]);
   });
 
 });
