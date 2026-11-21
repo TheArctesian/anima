@@ -2528,6 +2528,11 @@ is built and was not seen: no desktop build was made.
    `anima mcp uninstall`, and `anima mcp install`.
    Expected: the state is "set up, starts a different anima"; uninstall leaves it; install replaces it after it shows
    it in its list.
+8. On a Mac with Anima.ing in `/Applications` and the command line tool installed from the application, open Settings,
+   then the part "Coding agents" (the review of 12.7 of cli-mcp-plan.md corrected the check of `/Applications`).
+   Expected: the list of the agents, not "a different user can change". While the page opens, look at the list of
+   processes (Activity Monitor, search "anima"): write down if an `anima mcp` starts only because the page opened
+   (12.7, row 2). The page shows the states within 20 seconds, also when an agent does not answer.
 ### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
 
 Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the

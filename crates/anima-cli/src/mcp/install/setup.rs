@@ -3,10 +3,12 @@
 //! agents' own programs; `agents.rs` and `jsonc.rs` decide what to write.
 
 use std::fs;
+use std::io::Read as _;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
@@ -83,8 +85,10 @@ impl Here {
 mod program;
 #[cfg(windows)]
 mod windows;
-use program::program;
 pub use program::{Checked, CommandError, check_command};
+use program::{Found, fixed_program};
+#[cfg(all(test, unix))]
+use program::{Part, open_to_others};
 
 /// Whether the agent is on this computer (MCP-027).
 #[must_use]
@@ -98,7 +102,7 @@ pub fn present(agent: &Agent, here: &Here) -> bool {
     agent
         .programs
         .iter()
-        .any(|name| program(here, name).is_some())
+        .any(|name| program::program(here, name).is_some())
         || agent
             .folders
             .iter()
@@ -116,17 +120,69 @@ fn file_of(agent: &Agent, here: &Here) -> Option<PathBuf> {
     }
 }
 
-/// Runs an agent's own program with fixed arguments and no shell (MCP-035); `None` when it is not on `PATH`.
-fn run(here: &Here, name: &str, arguments: &[String]) -> Option<std::process::Output> {
-    let program = program(here, name)?;
+/// The longest time an agent's own program may take; it is then stopped and counts as failed.
+const RUN_LIMIT: Duration = Duration::from_secs(20);
+
+/// What an agent's own program did: its exit and what it wrote, or why it did not run.
+enum Ran {
+    Done {
+        success: bool,
+        stdout: Vec<u8>,
+    },
+    /// It ran past [`RUN_LIMIT`] and was stopped, or could not be started.
+    Failed,
+    /// A different user can replace it (MCP-033): it is not run.
+    Replaceable,
+    Missing,
+}
+
+/// Runs an agent's own program with fixed arguments and no shell (MCP-035), for at most
+/// [`RUN_LIMIT`].
+fn run(here: &Here, name: &str, arguments: &[String]) -> Ran {
+    let program = match fixed_program(here, name) {
+        Found::Fixed(path) => path,
+        Found::Replaceable => return Ran::Replaceable,
+        Found::Missing => return Ran::Missing,
+    };
     // In the home folder: an agent must not read the project configuration of the folder the
     // person happens to be in.
-    Command::new(program)
+    let Ok(mut child) = Command::new(program)
         .args(arguments)
         .current_dir(&here.home)
         .stdin(Stdio::null())
-        .output()
-        .ok()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return Ran::Failed;
+    };
+    let mut stdout = child.stdout.take();
+    let reader = std::thread::spawn(move || {
+        let mut out = Vec::new();
+        if let Some(stdout) = stdout.as_mut() {
+            let _ = stdout.take(1 << 20).read_to_end(&mut out);
+        }
+        out
+    });
+    let start = Instant::now();
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if start.elapsed() < RUN_LIMIT => {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+        }
+    };
+    let stdout = reader.join().unwrap_or_default();
+    status.map_or(Ran::Failed, |status| Ran::Done {
+        success: status.success(),
+        stdout,
+    })
 }
 
 /// What the agent's entry is now (MCP-027). A file way reads the file; an own way asks the program.
@@ -158,12 +214,14 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
         }
         Way::Own { program, check, .. } => {
             let (Check::Get(template) | Check::List(template)) = check;
-            let Some(output) = run(here, program, &arguments(template, anima)) else {
-                return State::NotSetUp;
+            let (success, stdout) = match run(here, program, &arguments(template, anima)) {
+                Ran::Done { success, stdout } => (success, stdout),
+                Ran::Missing => return State::NotSetUp,
+                Ran::Failed | Ran::Replaceable => return State::Unreadable,
             };
             // The path as one whole word of the output, not as a part of a longer word: a
             // server at `<anima>-other` is not this one. What else the entry holds is not read.
-            let output_text = String::from_utf8_lossy(&output.stdout);
+            let output_text = String::from_utf8_lossy(&stdout);
             let path = anima.to_string_lossy();
             let words = |text: &str, word: &str| {
                 text.split(|character: char| {
@@ -172,7 +230,7 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
                 .any(|part| part == word)
             };
             match check {
-                Check::Get(_) if !output.status.success() => State::NotSetUp,
+                Check::Get(_) if !success => State::NotSetUp,
                 Check::Get(_) | Check::List(_) if words(&output_text, &path) => State::SetUp,
                 Check::Get(_) => State::Different,
                 // A list that names a server `anima` with a different program: not ours.
@@ -218,6 +276,8 @@ pub enum SetupError {
     Format(#[from] JsoncError),
     #[error("its program is not on PATH")]
     NoProgram,
+    #[error("its program is in a folder that a different user can change")]
+    ProgramReplaceable,
     #[error("its program ended with a failure")]
     ProgramFailed,
 }
@@ -247,7 +307,11 @@ pub fn steps(
             remove,
             ..
         } => {
-            let program = program(here, name).ok_or(SetupError::NoProgram)?;
+            let program = match fixed_program(here, name) {
+                Found::Fixed(path) => path,
+                Found::Replaceable => return Err(SetupError::ProgramReplaceable),
+                Found::Missing => return Err(SetupError::NoProgram),
+            };
             let run = |template: &[&str]| Step::Run {
                 program: program.clone(),
                 arguments: arguments(template, anima),
@@ -304,10 +368,11 @@ pub fn apply(agent: &Agent, here: &Here, anima: &Path, action: Action) -> Result
             } else {
                 vec![remove]
             } {
-                let output =
-                    run(here, program, &arguments(template, anima)).ok_or(SetupError::NoProgram)?;
-                if !output.status.success() {
-                    return Err(SetupError::ProgramFailed);
+                match run(here, program, &arguments(template, anima)) {
+                    Ran::Done { success: true, .. } => {}
+                    Ran::Done { .. } | Ran::Failed => return Err(SetupError::ProgramFailed),
+                    Ran::Replaceable => return Err(SetupError::ProgramReplaceable),
+                    Ran::Missing => return Err(SetupError::NoProgram),
                 }
             }
             Ok(())
