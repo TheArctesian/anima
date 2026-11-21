@@ -2717,7 +2717,7 @@ window with real devices.
 Result: Open.
 
 
-### HT-NEW-hubusage: the plan and its use on the page of a hosted hub (HM-T38, HMD-073)
+### HT-NEW-hubusage: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
 
 Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
 usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in

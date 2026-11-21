@@ -216,9 +216,7 @@ impl Mutation {
         let add_default_check = input.add_default_check();
         let (form, bad_site) = input.into_form();
         let new = checked(validate_new_device(&form), bad_site)?;
-        if hub_device::is_hub_kind(&new.kind) {
-            return Err(invalid(&[hub_device::kind_refused()]));
-        }
+        hub_device::refuse_new(&new.kind).map_err(|refusal| invalid(&[refusal]))?;
         let trail = Trail::from_context(ctx)?;
         let id = DeviceId::from(Uuid::now_v7());
         let mut tx = begin(ctx).await?;
