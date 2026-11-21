@@ -262,7 +262,9 @@ that owns the area.
 | SF-223 | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-NEW-revcatentry | A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `cb5098bb`) |
 | SF-NEW-revlsform | The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `30019f90`) |
-| SF-NEW-revlsreview | A new or changed generated entry is merged with no named person who read it. Medium | The catalogue of LinuxServer.io (task H39) | Open |
+| SF-NEW-revlsreview | A new or changed generated entry is merged with no named person who read it. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `1538959f`) |
+| SF-NEW-revlsgate | The shell gate trusted the header that names an agent, and the digest gate was friction only. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `1538959f`) |
+| SF-NEW-revlsresidual | The ports of Anima missed the link, two entries published one port, and more interpreters ran inline code. Low | The catalogue of LinuxServer.io (task H39) | Open (built in `1538959f`) |
 | SF-NEW-lsdownload | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lsgenerator | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lstier | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
@@ -2523,7 +2525,7 @@ Effect, and who can cause it: (M1) an API key or an agent installs an entry whos
 
 Mitigation now: (M1) `install()` gives, before the refusal of task H6, `SHELL_NEEDS_PERSON` for an entry of the class shell unless the request is a person signed in to the client (a login or a browser token whose request is not an agent), and `GENERATED_NEEDS_DIGEST` for an entry with `origin` unless the request names the digest of each of its images (`installCatalogueEntry(digest:)`, `anima catalogue install --digest`, the MCP argument `digest`). The entry gives `class`, `tier`, `origin`, `streams`, `optionalParts` and `digests` in K1, `anima catalogue list` and `show` and the MCP tools. The hub does not record on a token that its sign-in used a second factor; the sign-in asks for it when one is enrolled. (L1) the form refuses an image name that is not `[a-z0-9-]+` (`name_not_permitted`). (L2) `catalogue::ANIMA_PORTS` (4822, 8443): the form moves such a port of the machine to the next port (8444), and the static test refuses a published port of Anima (`anima_port_published`); code-server, heimdall and nextcloud publish 8444. (L3) an interpreter (`perl`, `node`, `python`, `ruby`, `php`, with a version suffix) followed by its inline-code option (a short cluster with `e`, `E`, `p`, `c` or `r`, `--eval`, `--print`) is a shell (`shell_command`). Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs`, `crates/catalogue/src/tests/linuxserver.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/anima-cli/tests/it/catalogue.rs`.
 
-State: Open (built in `30019f90`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `30019f90`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21. A second read of `30019f90` found the gaps SF-NEW-revlsgate (M1) and SF-NEW-revlsresidual (L2, L3); the mitigation of M1 above is changed by SF-NEW-revlsgate.
 
 ### SF-NEW-revlsreview: A new or changed generated entry is merged with no named person who read it. Medium
 
@@ -2533,9 +2535,33 @@ What it is: A process point. The generator writes new entries in `crates/catalog
 
 Effect, and who can cause it: The data of the publisher, or a fault of the generator, puts an entry into the catalogue that no person read.
 
-The fix (not built): a merge rule or a gate that refuses a new or changed file in `crates/catalogue/entries/` with no record of the person who read it (for example a reviewer line in the entry folder or in the merge commit, checked by the documents gate).
+Mitigation now (OD-HOST-55, made overnight, not yet confirmed by the operator): each generated entry carries `reviewed` with `by` (a person, or an agent named for its job) and `on` (the day). The generator keeps it when it changes only the digest or the version, and writes a new entry without it. The static test refuses a generated entry with no `reviewed`, an empty `by` (`not_reviewed`) or a day that is not a date (`date_not_permitted`), so a new entry is listed only after a person or an agent writes the read. The hub gives `reviewedBy` and `reviewedOn` (K1, `anima catalogue show`, the MCP tool), and the client shows "Not reviewed" as a mark with text and "Reviewed by X on D" in the description. The ten entries say that the security reviewer agent of the overnight session read them on 2026-11-21, as the orchestrator stated. Not built: a gate on the merge commit; the field is written in the same branch as the entry, so it records a read and does not prove one. Tests: `crates/catalogue/src/tests/reviewed.rs`, `crates/catalogue/src/tests/generator.rs`, `crates/hub/tests/it/catalogue.rs`, `apps/client/src/lib/catalogue/entry.test.ts`.
 
-State: Open. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `1538959f`). Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revlsgate: The shell gate trusted the header that names an agent, and the digest gate was friction only. Medium
+
+Requirements: HOST-047, task H39; OD-HOST-50, OD-HOST-54, OD-HOST-56, OD-HOST-57; SF-NEW-revlsform.
+
+What it is: A second read of `30019f90` (2026-11-21) found two gaps in M1 of SF-NEW-revlsform. (1) The shell gate took a login token whose request did not send the header `Anima-Actor: agent` as a person; the header is the claim of the client, so an agent that holds the stored login token of the `anima` command passes it. (2) The digest gate asks for the digest of the image, which is public: it adds friction, not a check.
+
+Effect, and who can cause it: An agent with the login token of the command installs a shell, or a generated entry that no test on a machine ran, when task H6 exists.
+
+Mitigation now (OD-HOST-56 and OD-HOST-57, made overnight, not yet confirmed by the operator): a shell is installed only with a browser token of a person (`Identity::is_person_in_browser`: the Anima app in a web browser, with no header that names an agent). A login token, an API key and an agent get `SHELL_NEEDS_PERSON`, whose text says to install from the Anima app in a web browser. A generated entry from anything but a browser token needs a passed test on a machine with the digests of its images (`last_test` gives the digests; a pass with other digests does not count), else `GENERATED_NOT_TESTED` (K1, the CLI and the MCP tool). Each request still names the digest (`GENERATED_NEEDS_DIGEST`). The desktop app signs in with a login token, so it is refused too until it has a token of its own. Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs` (a login token and an API key), `crates/hub/tests/it/browser/catalogue.rs` (a browser token, and a browser token with the header of an agent).
+
+State: Open (built in `1538959f`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revlsresidual: The ports of Anima missed the link, two entries published one port, and more interpreters ran inline code. Low
+
+Requirements: HOST-047, HOST-049, task H39; OD-HOST-58; SF-NEW-revlsform.
+
+What it is: A second read of `30019f90` (2026-11-21). (L2) `catalogue::ANIMA_PORTS` had 4822 and 8443, not the ports of the link (41641, 3478) that the routes of task H21 refuse; heimdall and nextcloud both published 8444, and other entries shared 8080 and 8083. (L3) the shell check let `nodejs`, `pypy`, `lua -e`, `deno eval`, `bun -e` and awk with a program that calls `system` through.
+
+Effect, and who can cause it: (L2) an application takes a port of the link, or two entries cannot run on one machine. (L3) a recipe runs any text with no `reviewed-command` exception.
+
+Mitigation now (OD-HOST-58, made overnight, not yet confirmed by the operator): (L2) `ANIMA_PORTS` is 4822, 8443, 41641 and 3478, the same list as the routes of task H21 on the branch `hosted/apps-h21`; the form moves a port of the machine that a different recipe takes to the next free port (the generator gives each recipe the ports of the others); calibre-web publishes 8084, heimdall 8081 and 8445, nextcloud 8446 and qbittorrent 8082; a test refuses two shipped recipes that publish the same port. (L3) the interpreters `nodejs`, `bun` (`-e`, `-p`, `--eval`, `--print`), `pypy` (`-c`) and `lua` (`-e`), `deno eval`, and `awk`, `gawk`, `mawk` and `nawk` with a word that holds `system` are a shell (`shell_command`). Not built: one list in one crate for the hub routes and the catalogue, because the routes are not on this branch; when both are on one branch, the routes use `catalogue::ANIMA_PORTS`. Tests: `crates/catalogue/src/tests/ports.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/linuxserver.rs`.
+
+State: Open (built in `1538959f`). Found by a separate reviewer on 2026-11-21.
 
 ## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
 
