@@ -78,6 +78,8 @@ pub struct ThreadRow {
     pub model: Option<String>,
     pub started: Option<DateTime<Utc>>,
     pub last: Option<DateTime<Utc>>,
+    /// How the file ends: `turn_ended`, `stopped`, `open_tool`, `open` or `nothing` (THR-055).
+    pub tail: &'static str,
 }
 
 impl ThreadRow {
@@ -102,6 +104,7 @@ impl ThreadRow {
             model: thread.model,
             started: thread.started,
             last: thread.last.max(modified),
+            tail: thread.tail.as_str(),
         }
     }
 }

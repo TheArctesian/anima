@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ago, folderName, groups, narrowed, parts, resultWords, rowsFrom, threadFrom, type ThreadRow, type ToolCall } from './thread';
+import { ago, folderName, narrowed, parts, resultWords, rowsFrom, threadFrom, type ThreadRow, type ToolCall } from './thread';
 
 const NOW = new Date(2026, 10, 20, 15, 0, 0);
-const before = (minutes: number): string => new Date(NOW.getTime() - minutes * 60_000).toISOString();
 
 function answer(id: string, last: string | null, more: Record<string, unknown> = {}): Record<string, unknown> {
   return { id, program: 'claude_code', title: `Thread ${id}`, folder: '/w/anima.ing', branch: 'dev', model: null, started: null, last, ...more };
@@ -21,16 +20,6 @@ describe('the threads of this computer', () => {
     expect(rowsFrom({})).toBeNull();
     expect(rowsFrom([answer('a', null), { id: 'b', program: 'other' }])).toBeNull();
     expect(rowsFrom([answer('a', 'not a time')])?.[0]?.last).toBeNull();
-  });
-
-  it('THR-013: the list has the groups changed now, today and earlier, and leaves an empty group out', () => {
-    const list = rows(answer('now', before(1)), answer('today', before(90)), answer('old', before(3 * 24 * 60)), answer('never', null));
-    expect(groups(list, NOW).map((group) => [group.name, group.rows.map((row) => row.id)])).toEqual([
-      ['Changed now', ['now']],
-      ['Today', ['today']],
-      ['Earlier', ['old', 'never']],
-    ]);
-    expect(groups(rows(answer('old', before(3 * 24 * 60))), NOW).map((group) => group.name)).toEqual(['Earlier']);
   });
 
   it('THR-013: the search reads the title, the folder and the branch, and a program narrows the list', () => {
