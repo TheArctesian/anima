@@ -258,6 +258,11 @@ that owns the area.
 | SF-NEW-routeabuse | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-NEW-revroutecheck | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-NEW-revroutestepup | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-NEW-revroutetarget | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-NEW-revrouteupgrade | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-NEW-revroutelimits | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-NEW-revroutesocket | The socket of the interface of the proxy checked no peer and had no set mode. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-NEW-revrouteheaders | The head accepted two lengths, a length that is not digits, and `_` in a header name. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-NEW-lsdownload | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lsgenerator | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lstier | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
@@ -2346,7 +2351,7 @@ Effect, and who can cause it: A person with a login and a second factor, or a pe
 
 Mitigation now: The input has no `holdsEngineSocket`. The hub keeps no record of an application with its ports before task H6, so a route has the new state `APPLICATION_RECORD` (`application_recorded`, false) and never serves until that record names its device and port and no socket of the engine. `check_port` also refuses 2375, 2376, 10250, 41641, 3478, 5432, 3306, 6379, 27017 and 9090, and `check_address` applies it to a link address too. Tests: `the_ports_of_the_engine_the_link_databases_and_metrics_are_refused`, `a_link_address_passes_only_with_the_port_of_an_application`, and the stored route that waits for the record.
 
-State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revrouteupgrade: The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium
 
@@ -2360,7 +2365,7 @@ Effect, and who can cause it: Anyone on the internet. Effect: a request with for
 
 Mitigation now: The relay sends the status line of the application to the client first. It copies both ways only when the application answers 101 and the request had a `Sec-WebSocket-Key`; each other answer goes back as a plain one and the connection ends. A request with no key is a plain request (`connection: close`). Tests: `an_upgrade_goes_both_ways_only_after_a_101`, `an_upgrade_that_the_application_refuses_is_a_plain_answer`, `an_upgrade_without_its_key_is_a_plain_request`.
 
-State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutelimits: No time limit and no cap before the name of a connection was known. Medium
 
@@ -2374,7 +2379,7 @@ Effect, and who can cause it: Anyone on the internet. Effect: the proxy runs out
 
 Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY header (`ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS`), 10 s for the head (`ANIMA_ROUTE_PROXY_HEAD_SECONDS`, answer 408), 300 s with no byte on a stream (`ANIMA_ROUTE_PROXY_IDLE_SECONDS`); 1024 connections in all and 32 for each client address before the handshake (`ANIMA_ROUTE_PROXY_OPEN_TOTAL`, `ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT`), and 256 on port 80 (`ANIMA_ROUTE_PROXY_OPEN_PLAIN`). The hub waits 10 s for a request line of the proxy and ends a stream after 300 s with no byte. Tests: `a_listener_caps_its_connections_in_all_and_for_each_client`, `a_stream_with_no_byte_for_its_idle_time_ends`, `each_byte_starts_the_idle_time_again`, and the defaults of the settings.
 
-State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutesocket: The socket of the interface of the proxy checked no peer and had no set mode. Medium
 
@@ -2388,7 +2393,7 @@ Effect, and who can cause it: A local user or process of the hub host. Effect: t
 
 Mitigation now: `door::bind` makes the socket with mode `0660`, and `serve` closes each connection whose peer user ID (`SO_PEERCRED` or `getpeereid`) is not `ANIMA_ROUTES_PROXY_UID`. The hub refuses `ANIMA_ROUTES_SOCKET` without that setting. Test: `the_socket_answers_only_the_user_of_the_proxy`.
 
-State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revrouteheaders: The head accepted two lengths, a length that is not digits, and `_` in a header name. Low
 
@@ -2402,7 +2407,7 @@ Effect, and who can cause it: Anyone on the internet. Effect: request smuggling 
 
 Mitigation now: The head refuses (400) a second `Content-Length`, a value that is not digits only, `Transfer-Encoding` with `Content-Length`, and a header name with `_`. Tests: `a_body_has_one_length_of_digits_and_never_with_a_transfer_encoding`, `a_header_name_with_an_underscore_is_refused`.
 
-State: Corrected in `274463241`. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutecheck: The proof of a name is read again only when a person asks. Low
 
