@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (17)
+## 1. In the order of the priorities (18)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -34,11 +34,12 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Operator: OD-AXT25 to OD-AXT30 and the approval of AXT-054 to AXT-078 (task AX21, the shared project folder). Agent: tasks AX0 and AX20 in agent-tools-as-extensions.md Section 10 (records only); AX2 to AX16 wait for AX1; AX22 to AX38 wait for AX21 |
+| 4.24 | Agents: named assistants on Hermes Agent, with routines, each on a computer that the operator chooses | Operator: OD-HAG1 to OD-HAG17 and the approval of HAG-001 to HAG-042 (task HG1) in agents.md |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (204)
+## 2. Open decisions (221)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -157,6 +158,23 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AXT32 | Which path reaches a loopback port? (one choice: the SSH `direct-tcpip` channel of AXT-009 (OD-AXT6, R-250 point 1); a new tunnel through the daemon that works… | Open. Recommendation: the SSH channel. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT33 | Which ports can be previewed? (one choice: any loopback port except Anima.ing's own, with a switch for each device and the hub; only ports that an agent session… | Open. Recommendation: any loopback port except Anima.ing's own. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT34 | Which origin does the preview pane use? (one choice: the real `http://localhost:<port>` through a proxy for each web view, with the listener of AXT-011 where a… | Open. Recommendation: the real origin. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-HAG1 | Own document and row? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG2 | Default month budget of a new agent? | (a), shown on the review screen | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG4 | Messaging platforms? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG5 | The sandbox of a routine on a Mac? | (a), (b) only for chat | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG6 | A user account for each agent? | (a) in version 1 | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG7 | May an agent hold a forge token? | (b) from stage 2 | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG8 | May the chat change a skill at once? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG9 | Agents in the pool? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG3 | What may a routine do with no person present? | (b), with no name allowed by default | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG10 | May an MCP tool or API key send a message to, or start, an agent? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG11 | The bar: "Agents" with tabs Agents, Threads, Usage? | (a); it needs the agreement of the Threads session | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG12 | Which model provider by default? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG13 | The first routines? | Those three | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG14 | The harness work: when? | (b) for the eval tasks only | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG15 | Does stage 1's held install branch wait for W4? | (a) | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG16 | Name of the requirement prefix and the page | Keep | [proposals/agents.md](proposals/agents.md) |
+| OD-HAG17 | Hermes on a Mac can read the Keychain item of the Claude Code login, with the person's user. What to do? | (a), and stage 1 on `pop-os` first if the upstream change is slow | [proposals/agents.md](proposals/agents.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -247,7 +265,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (30)
+## 3. Documents that wait for an approval (31)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -259,6 +277,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/agent-layer.md](proposals/agent-layer.md) | Proposal | Direction decided |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) | Proposal, with a task table | Direction decided |
+| [proposals/agents.md](proposals/agents.md) | Proposal, with a task table | Draft |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |

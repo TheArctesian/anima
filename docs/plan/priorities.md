@@ -48,6 +48,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.19 | 3 | The watchdog | See, Use | Proposal, direction decided (R-162). After jobs (row 4.7). | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | 3 | The terminal screen (`anima tui`) | See, Reach | Direction decided (R-168). The requirements are not approved. Starts after R8a to R8d (row 4.6); the measurement TU1 may run before. | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 11.8 (a record only); TU2 to TU10 wait |
 | 4.21 | 3 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Reach, Use | Direction decided (R-196). The requirements are not approved. Tier 3, after row 4.7 (OD-AXT11); AX0 to AX2 may run earlier than the tier. | Operator: the approval of AXT-001 to AXT-045 (task AX1) in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md). Operator: OD-AXT25 to OD-AXT30 and the approval of AXT-054 to AXT-078 (task AX21, the shared project folder). Agent: tasks AX0 and AX20 in [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 10 (records only); AX2 to AX16 wait for AX1; AX22 to AX38 wait for AX21 |
+| 4.24 | 3 | Agents: named assistants on Hermes Agent, with routines, each on a computer that the operator chooses | Use, Reach | Proposal (R-NEW-hermesagents, relayed). The requirements HAG-001 to HAG-042 are not approved; nothing that installs or starts Hermes is built. | Operator: OD-HAG1 to OD-HAG17 and the approval of HAG-001 to HAG-042 (task HG1) in [agents.md](../proposals/agents.md) |
 | 4.23 | 3 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | See, Reach | Direction decided (R-246, 2026-11-19, first-hand). The requirements OBS-001 to OBS-066 are not approved (task OB1). R-144 holds them until WP-53 (OD-OBS13). | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in [extensions-plan.md](../plans/extensions-plan.md) Section 4.17. Agent: nothing; no ruling names a task |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
@@ -234,6 +235,13 @@ The draft [spare-computer OS proposal](../proposals/spare-computer-os.md) also s
 - Shared project folder (R-280, operator, first-hand, 2026-11-20: OD-AXT22 to OD-AXT24 decided): a directory that the hub syncs with Syncthing, revision-checked writes, folder tokens, search on the hub copy and MCP file tools, with MCP over HTTP for the hosted hub only (Section 6.9, AXT-054 to AXT-078, tasks AX20 to AX38). Not approved. Operator: OD-AXT25 to OD-AXT30 and AX21.
 - Beside it (R-263, 2026-11-20, relayed twice): the agent layer of Anima, [agent-layer.md](../proposals/agent-layer.md). Direction decided; AGL-001 to AGL-034 are not approved; no code before the approval and before the launch path. It uses AXT-046 to AXT-053 and names three texts of them that a ruling must change. Operator: OD-AGL1 to OD-AGL20, which hold the ten findings of its security read that need him
 
+### 4.24 Agents
+
+- Tier: 3, beside row 4.21, after row 4.7 (the work route, which the install needs). Proposed; OD-HAG1 asks the operator.
+- Category: Use, Reach
+- Work: several named assistants, each one a Hermes Agent instance on a device of the operator, each with routines, a budget, a stop and a chat in Anima (HAG-001 to HAG-042, tasks HG0 to HG16). Threads (`agent-threads.md`, on a branch) is the coding side; this row is "for everything".
+- State: Proposal. R-NEW-hermesagents (operator, 2026-11-20, first-hand, relayed) gives the direction only. Its security read is in Section 9.3 of the proposal.
+
 ### 4.23 The observability suite
 
 - Tier: 3 (R-246, OD-OBS5: "OD-OBS5: new row 4.23 at tier 3."). It is not under row 4.8. R-144 still holds it until the acceptance run WP-53 (OD-OBS13: "OD-OBS13: yes, R-144 holds these extensions until WP-53."). In the order of XP-005 it comes right after XP-02 (OD-OBS12).
@@ -252,6 +260,7 @@ Notes:
 - Row 4.19 is tier 3, after jobs (R-162). It keeps its number.
 - Row 4.20 is tier 3, after R8a to R8d of row 4.6. It is a new row, so it follows 4.19. The operator chose a row of its own for the terminal screen (R-168). It is not a category: the command line and the MCP server stay a way to use each category.
 - Row 4.21 is tier 3, after row 4.7 (R-196, OD-AXT11). It is a new row, so it follows 4.20. The operator confirmed a row of its own first-hand (R-196, OD-AXT1).
+- Row 4.24 is tier 3, beside row 4.21 (proposed, OD-HAG1). Its number follows 4.23 because it is a new row.
 - Row 4.22 is tier 1, after row 4.3 (R-207, OD-UD4). Its number follows 4.21 because it is a new row; a published number does not change.
 - Row 4.23 is tier 3 (R-246, OD-OBS5). It is a new row, so it follows 4.22. R-144 holds it until WP-53 (OD-OBS13).
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
