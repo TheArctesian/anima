@@ -28,11 +28,30 @@ enum File {
     Text(String),
 }
 
+/// Reads one project file. A link is followed, as Claude Code follows it; but a pipe, a device or
+/// a socket is never opened to wait on and never read, and a file is read to its limit only, so a
+/// hostile folder cannot stop or fill the runner.
 fn read_one(path: &Path) -> File {
-    match std::fs::metadata(path) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => File::Absent,
-        Ok(meta) if meta.len() <= u64::try_from(project::MAX_FILE).unwrap_or(u64::MAX) => {
-            std::fs::read_to_string(path).map_or(File::Unreadable, File::Text)
+    use std::io::Read as _;
+    use std::os::unix::fs::OpenOptionsExt as _;
+    let flags = rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::NOCTTY;
+    let opened = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(flags.bits().cast_signed())
+        .open(path);
+    let file = match opened {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return File::Absent,
+        Err(_) => return File::Unreadable,
+        Ok(file) => file,
+    };
+    if !file.metadata().is_ok_and(|meta| meta.is_file()) {
+        return File::Unreadable;
+    }
+    let limit = u64::try_from(project::MAX_FILE).unwrap_or(u64::MAX);
+    let mut bytes = Vec::new();
+    match file.take(limit + 1).read_to_end(&mut bytes) {
+        Ok(read) if u64::try_from(read).unwrap_or(u64::MAX) <= limit => {
+            String::from_utf8(bytes).map_or(File::Unreadable, File::Text)
         }
         _ => File::Unreadable,
     }
@@ -107,6 +126,28 @@ mod tests {
             notice
                 .iter()
                 .any(|line| line.starts_with("Could not read .mcp.json"))
+        );
+    }
+
+    #[test]
+    fn thr_046_a_pipe_or_a_device_as_a_project_file_is_unreadable_and_does_not_wait() {
+        let folder = tempfile::tempdir().expect("a folder");
+        std::fs::create_dir(folder.path().join(".claude")).expect("the folder of Claude");
+        let pipe = folder.path().join(".claude/settings.json");
+        let made = std::process::Command::new("mkfifo")
+            .arg(&pipe)
+            .status()
+            .expect("mkfifo runs");
+        assert!(made.success(), "a pipe");
+        std::os::unix::fs::symlink("/dev/zero", folder.path().join(".mcp.json")).expect("a link");
+        let notice = of_folder(folder.path());
+        assert_eq!(
+            notice
+                .iter()
+                .filter(|line| line.starts_with("Could not read"))
+                .count(),
+            2,
+            "{notice:?}"
         );
     }
 }

@@ -59,3 +59,36 @@ it('THR-046: a folder whose files run commands by themselves shows its notice be
   expect(calls.map((call) => call.call)).toEqual(['folder', 'start']);
   expect(started).toEqual(['t-1']);
 });
+
+it('THR-046: a folder check that fails is said and does not stop the start; the same line twice is shown twice', async () => {
+  const calls: Action[] = [];
+  let failing = true;
+  const onStart = (action: Action): Promise<CallResult> => {
+    calls.push(action);
+    if (action.call === 'folder' && failing) return Promise.resolve({ ok: false, words: 'The runner did not answer.' });
+    if (action.call === 'folder') return Promise.resolve({ ok: true, outcome: { outcome: 'folder', notice: ['Head:', 'Runs the command `x` at SessionStart.', 'Runs the command `x` at SessionStart.'] } });
+    return Promise.resolve({ ok: true, outcome: { outcome: 'started', thread: 't-2' } });
+  };
+  app = mount(NewThread, { target: document.body, props: { open: true, onStart, onStarted: () => undefined, onClose: () => undefined } });
+  flushSync();
+  const folder = document.querySelector<HTMLInputElement>('input[placeholder="/Users/you/project"]');
+  const prompt = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="First prompt"]');
+  if (folder === null || prompt === null) throw new Error('the dialog has its fields');
+  type(folder, '/tmp/a');
+  type(prompt, 'Hello');
+  flushSync();
+  const form = document.querySelector('form');
+  form?.requestSubmit();
+  await settle();
+  expect(document.querySelector('[role="note"]')?.textContent).toContain('could not be checked');
+  form?.requestSubmit();
+  await settle();
+  expect(calls.map((call) => call.call)).toEqual(['folder', 'start']);
+  failing = false;
+  type(folder, '/tmp/b');
+  type(prompt, 'Again');
+  flushSync();
+  form?.requestSubmit();
+  await settle();
+  expect(document.querySelectorAll('[role="note"] li')).toHaveLength(2);
+});

@@ -3,9 +3,7 @@
 
 use serde_json::Value;
 
-use super::request::{
-    ProgramRequestId, Question, Request, RequestKind, claude_diff, rule_words, visible,
-};
+use super::request::{ProgramRequestId, Question, Request, RequestKind, claude_diff, visible};
 use super::{DriveEvent, MAX_LINE, ProgramState, TurnOutcome, text_of};
 use crate::{MAX_OUTPUT, MAX_TEXT, held};
 
@@ -213,12 +211,7 @@ fn can_use_tool(id: ProgramRequestId, request: &Value) -> Request {
         .as_array()
         .map_or(&[][..], Vec::as_slice)
         .iter()
-        .filter_map(|rule| {
-            let words = held(&rule_words(rule)?, 1024);
-            let mut for_session = rule.clone();
-            for_session["destination"] = "session".into();
-            Some((for_session, words))
-        })
+        .filter_map(super::session_rule::offered)
         .unzip();
     Request {
         id,

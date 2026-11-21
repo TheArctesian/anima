@@ -30,6 +30,8 @@
   let read = $state<string | null>(null);
   let notice = $state<readonly string[]>([]);
   const MODES = Object.keys(MODE_WORDS) as Mode[];
+  const NOT_CHECKED =
+    'The project files of this folder could not be checked: they can make Claude Code run commands with no question.';
 
   async function start(): Promise<void> {
     if (busy) return;
@@ -50,6 +52,8 @@
     const result = await onStart(checked.action);
     busy = false;
     if (!result.ok) {
+      // The files can change before the next press: it reads them again.
+      read = null;
       problem = result.words;
       return;
     }
@@ -58,15 +62,16 @@
     onClose();
   }
 
-  /** Reads the notice of the folder; true when the start may go on now. */
+  /** Reads the notice of the folder; true when the start may go on now. A check that fails is shown as a notice and
+   *  does not stop the start: the next press starts. */
   async function readNotice(): Promise<boolean> {
     const asked = folder;
     const result = await onStart({ call: 'folder', folder: asked.trim() });
+    read = asked;
     if (!result.ok) {
-      problem = result.words;
+      notice = [NOT_CHECKED];
       return false;
     }
-    read = asked;
     notice = result.outcome.outcome === 'folder' ? result.outcome.notice : [];
     return notice.length === 0;
   }
@@ -112,7 +117,7 @@
       <div class="notice" role="note" aria-label="What this folder runs by itself">
         <p>{notice[0]}</p>
         <ul>
-          {#each notice.slice(1) as line (line)}<li>{line}</li>{/each}
+          {#each notice.slice(1) as line, index (index)}<li>{line}</li>{/each}
         </ul>
         <p>Press Start again to start the thread with these settings.</p>
       </div>

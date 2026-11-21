@@ -102,6 +102,9 @@ fn accepted(outcome: Outcome) -> Result<Outcome, Failure> {
     }
 }
 
+/// Said when the project files of the folder could not be checked before a start.
+const NOT_CHECKED: &str = "The project files of this folder could not be checked: they can make Claude Code run commands with no question.";
+
 impl StartArgs {
     /// Starts a thread. At the soft limit the person is asked whether to raise it (THR-114).
     ///
@@ -111,15 +114,17 @@ impl StartArgs {
         let mut link = RunnerLink::connect().await?;
         let folder = std::path::absolute(&self.folder).unwrap_or(self.folder);
         // What the files of the folder make the program do by itself, before the prompt goes
-        // (THR-046, OD-THR21: honoured, with a notice).
-        if let Outcome::Folder { notice } = accepted(
-            link.call(Action::Folder {
+        // (THR-046, OD-THR21: honoured, with a notice). A check that fails is said and does
+        // not stop the start.
+        let checked = link
+            .call(Action::Folder {
                 folder: folder.clone(),
             })
-            .await?,
-        )? && !notice.is_empty()
-        {
-            invocation.output.message(&notice.join("\n"));
+            .await;
+        match checked.map(accepted) {
+            Ok(Ok(Outcome::Folder { notice })) if notice.is_empty() => {}
+            Ok(Ok(Outcome::Folder { notice })) => invocation.output.message(&notice.join("\n")),
+            _ => invocation.output.message(NOT_CHECKED),
         }
         let action = Action::Start {
             program: match self.program {
