@@ -23,6 +23,14 @@ def qmp(directory, command, arguments):
                         raise RuntimeError(response['error'])
                     if 'return' in response:
                         break
+            result = response['return']
+    return result
+
+
+def eject_install_media(output):
+    for device in qmp(output, 'query-block', {}):
+        if device.get('removable') and device.get('inserted'):
+            qmp(output, 'eject', {'device': device['device'], 'force': True})
 
 
 def screenshot(directory, name):
@@ -66,6 +74,8 @@ def graphical_install(machine, output, password):
     machine.command("timeout 90 sh -c 'until DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority xdotool search --class calamares; do sleep 1; done'", timeout=100)
     time.sleep(8)
     machine.command('busctl call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus StartServiceByName su fi.w1.wpa_supplicant1 0; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces')
+    from battery_fixture import install as laptop_fixture
+    laptop_fixture(machine)
     screenshot(output, 'welcome')
     machine.command('head -c 1048576 /dev/vda | sha256sum > /run/before-disk; head -c 1048576 /dev/vdc | sha256sum > /run/before-data')
     machine.command('nmcli connection add type ethernet con-name anima-fixture ifname fixture0; nmcli connection modify anima-fixture connection.autoconnect no')
@@ -100,30 +110,38 @@ def graphical_install(machine, output, password):
 
 
 def installed_checks(machine, password, output):
-    machine.expect('anima login:', timeout=240)
+    machine.expect('anima(?:-node-[a-z0-9]{4})? login:', timeout=240)
     machine.send('admin'); machine.expect('Password:'); machine.send(password)
-    machine.expect(r'admin@anima:[^\r\n]*\$'); machine.send('stty -echo')
+    machine.expect(r'admin@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*\$'); machine.send('stty -echo')
     machine.command("findmnt -n -o OPTIONS / | tr ',' '\\n' | grep -qx ro; test -w /home/admin; ! touch /host-write-test")
     machine.command('command -v lspci; command -v nmcli; systemctl is-active NetworkManager; systemctl show -p Result --value anima-keymap | grep -qx success; systemctl show -p ExecMainStartTimestampMonotonic --value anima-keymap | grep -qv "^0$"; test -s /persist/console.map')
     machine.command('nmcli -g NAME connection show | grep -qx anima-fixture')
     machine.command("podman info --format '{{.Host.Security.Rootless}}' | grep -qx true", timeout=60)
+    from battery_fixture import install as laptop_fixture
+    machine.send('sudo -i'); machine.expect('password for admin:'); machine.send(password)
+    machine.expect(r'root@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*#')
+    laptop_fixture(machine)
+    machine.send('exit'); machine.expect(r'admin@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*\$')
     from console_checks import installed_console, installed_wifi
     installed_wifi(machine, password)
     installed_console(machine, output, password)
     machine.send('sudo -s'); machine.expect('password for admin:'); machine.send(password)
-    machine.expect(r'root@anima:[^\r\n]*#')
+    machine.expect(r'root@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*#')
+    from storage_checks import storage_reporting
+    storage_reporting(machine, output)
     machine.command('sudo test -r /persist/owner-password; sudo find /persist/network-connections -name "*.nmconnection" -printf "%m\\n" | grep -qx 600')
     machine.command("test $(jq length /persist/data-volumes.json) = 1; volume=$(jq -r '.[0].uuid' /persist/data-volumes.json); mountpoint -q /persist/volumes/$volume; echo volume-retained | sudo tee /persist/volumes/$volume/sentinel >/dev/null")
+    machine.command("grep -Ex 'anima-node-[a-f0-9]{4}' /etc/hostname; cmp /etc/hostname /persist/hostname; cp /etc/hostname /home/admin/hostname-before; cmp /etc/hostname /proc/sys/kernel/hostname")
     machine.command('echo retained > /home/admin/gui-sentinel; cp /etc/machine-id /home/admin/machine-id-before; chown admin:users /home/admin/gui-sentinel /home/admin/machine-id-before')
     machine.send('sudo systemctl reboot')
-    machine.expect('anima login:', timeout=240)
+    machine.expect('anima(?:-node-[a-z0-9]{4})? login:', timeout=240)
     machine.send('admin'); machine.expect('Password:'); machine.send(password)
-    machine.expect(r'admin@anima:[^\r\n]*\$'); machine.send('stty -echo')
-    machine.command('grep -qx retained ~/gui-sentinel; cmp /etc/machine-id ~/machine-id-before; nmcli -g NAME connection show | grep -qx anima-fixture')
+    machine.expect(r'admin@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*\$'); machine.send('stty -echo')
+    machine.command('cmp ~/hostname-before /etc/hostname; cmp ~/hostname-before /proc/sys/kernel/hostname; grep -qx retained ~/gui-sentinel; cmp /etc/machine-id ~/machine-id-before; nmcli -g NAME connection show | grep -qx anima-fixture')
     machine.command("volume=$(jq -r '.[0].uuid' /persist/data-volumes.json); mountpoint -q /persist/volumes/$volume; grep -qx volume-retained /persist/volumes/$volume/sentinel")
 
 
-def run(iso, output):
+def run(iso, output, power="shutdown"):
     disk = prepare(output)
     before = digest(output / 'sentinel.raw')
     password = secrets.token_hex(12)
@@ -132,8 +150,22 @@ def run(iso, output):
     try:
         graphical_install(machine, output, password)
         results.append({'case': 'graphical-multidrive-install-and-authorization-reset', 'result': 'Passed'})
-        machine.send('systemctl poweroff'); machine.wait_exit(); machine.close()
-        machine = Machine(output, disk)
+        from gui_actions import locate, tap
+        locate(output, 'Installation complete')
+        try:
+            locate(output, 'Continue')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('Continue must not appear after installation')
+        if power == 'shutdown':
+            tap(machine, output, 'Shut down'); machine.wait_exit(); machine.close()
+            machine = Machine(output, disk)
+        else:
+            tap(machine, output, 'Restart')
+            machine.expect('reboot: Restarting system', timeout=90)
+            eject_install_media(output)
+        results.append({'case': 'completion-'+power, 'result': 'Passed'})
         installed_checks(machine, password, output)
         screenshot(output, 'installed-console')
         results.append({'case': 'installed-gui-auth-lock-network-display-readonly-persistence', 'result': 'Passed'})
@@ -153,5 +185,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('iso', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--power', choices=['shutdown','restart'], default='shutdown')
     args = parser.parse_args()
-    run(args.iso.resolve(), args.output.resolve())
+    run(args.iso.resolve(), args.output.resolve(), args.power)

@@ -5,10 +5,12 @@
 +        m_mainwindow->showFullScreen();
 --- a/src/calamares/CalamaresWindow.cpp
 +++ b/src/calamares/CalamaresWindow.cpp
-@@ -35,0 +36,3 @@
+@@ -35,0 +36,5 @@
 +#include <QProcess>
 +#include <QCheckBox>
 +#include "AnimaSettings.h"
++#include "AnimaCompletion.h"
++#include "AnimaBattery.h"
 @@ -92,0 +96,2 @@
 +    if (name == "go-previous") return QPixmap("@backIcon@").scaled(16,16,Qt::KeepAspectRatio,Qt::SmoothTransformation);
 +    if (name == "go-next" || name == "run-install") return QPixmap("@nextIcon@").scaled(16,16,Qt::KeepAspectRatio,Qt::SmoothTransformation);
@@ -52,7 +54,7 @@
 @@ -241 +235 @@
 -            QCoreApplication::translate( CalamaresWindow::staticMetaObject.className(), "&Next", "@button" ),
 +            QCoreApplication::translate( CalamaresWindow::staticMetaObject.className(), "&Continue", "@button" ),
-@@ -258,18 +252 @@
+@@ -258,18 +252,2 @@
 -    bottomLayout->addSpacing( 12 );
 -    {
 -        auto* quit = new QPushButton(
@@ -71,6 +73,7 @@
 -    }
 -
 -    bottomLayout->setContentsMargins( 0, 0, 6, 6 );
++    addCompletionActions(navigation,bottomLayout,viewManager);
 +    bottomLayout->setContentsMargins( 24, 16, 0, 0 );
 @@ -537 +514,12 @@
 -    baseWidget->setLayout( mainLayout );
@@ -82,7 +85,7 @@
 +    auto* wordmark = new QLabel(baseWidget);
 +    wordmark->setPixmap(QPixmap("@wordmark@").scaled(148,22,Qt::KeepAspectRatio,Qt::SmoothTransformation));
 +    wordmark->setAccessibleName("ANIMA.ING");
-+    header->addWidget(wordmark); header->addStretch();
++    header->addWidget(wordmark); header->addStretch(); header->addWidget(new AnimaBattery(headerWidget));
 +    frame->addWidget(headerWidget);
 +    frame->addLayout(mainLayout,1);
 +    baseWidget->setLayout(frame);

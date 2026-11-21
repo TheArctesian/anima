@@ -1,8 +1,7 @@
 { config, lib, pkgs, daemonPackage, ... }:
 {
-  imports = [ ./branding.nix ./console.nix ./display.nix ];
+  imports = [ ./branding.nix ./console.nix ./display.nix ./updates.nix ./naming.nix ];
   system.stateVersion = "26.05";
-  networking.hostName = "anima";
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 3;
   boot.loader.efi.canTouchEfiVariables = false;
@@ -91,7 +90,7 @@
       ProtectProc = "invisible"; PrivateIPC = true; RemoveIPC = true; LimitCORE = 0;
       SocketBindDeny = "any";
       IPAddressDeny = "any";
-      IPAddressAllow = [ "localhost" "100.64.0.0/10" "fd7a:115c:a1e0::/48" ];
+      IPAddressAllow = [ "localhost" "100.64.0.0/10" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "fc00::/7" ];
     };
   };
   systemd.services.anima-link = {

@@ -7,6 +7,7 @@ let
     rm -f $out/test_*.py
     cp ${./branding/hero.png} $out/hero.png
     cp ${./branding/wordmark.svg} $out/wordmark.svg
+    cp ${./telemetry/readings.py} $out/readings.py
     cp ${./display/orientation.py} $out/orientation.py
   '';
   privileged = pkgs.writeShellApplication {
