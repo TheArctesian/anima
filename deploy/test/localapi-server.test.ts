@@ -19,6 +19,8 @@ let missingProxy: ReturnType<typeof Bun.serve>;
 let big = false;
 let mode: "plain" | "headers" | "redirect" = "plain";
 const SHORT_TIMEOUT_MS = 200;
+/** Long enough that the size cap, not the timeout, ends a large body under heavy load. */
+const CAP_TIMEOUT_MS = 10_000;
 const FAKE_PROCESS = join(import.meta.dir, "localapi-fake.ts");
 
 beforeAll(() => {
@@ -103,13 +105,18 @@ describe("D-4 upstream failures", () => {
 
   test("D-4 an upstream body over the cap gives 502", async () => {
     big = true;
+    const capped = proxyFor(join(dir, "tailscaled.sock"), CAP_TIMEOUT_MS);
     try {
-      expect((await at(proxy, "/localapi/v0/status")).status).toBe(502);
+      expect((await at(capped, "/localapi/v0/status")).status).toBe(502);
     } finally {
       big = false;
+      await capped.stop(true);
     }
   });
 });
+
+const proxyFor = (socketPath: string, upstreamTimeoutMs = SHORT_TIMEOUT_MS) =>
+  Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath, upstreamTimeoutMs }) });
 
 /** Runs the fake tailscaled in its own process, so an unthrottled body cannot block this one. */
 async function withSpawnedFake(behaviour: "endless" | "silent", run: (socketPath: string) => Promise<void>): Promise<void> {
@@ -124,12 +131,10 @@ async function withSpawnedFake(behaviour: "endless" | "silent", run: (socketPath
   }
 }
 
-const proxyFor = (socketPath: string) => Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath, upstreamTimeoutMs: SHORT_TIMEOUT_MS }) });
-
 describe("D-4 limits and header filtering", () => {
   test("D-4 an endless upstream body gives 502 promptly", async () => {
     await withSpawnedFake("endless", async (socketPath) => {
-      const endless = proxyFor(socketPath);
+      const endless = proxyFor(socketPath, CAP_TIMEOUT_MS);
       const started = Date.now();
       try {
         const response = await at(endless, "/localapi/v0/status", { signal: AbortSignal.timeout(10_000) });
