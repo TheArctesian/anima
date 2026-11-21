@@ -3,6 +3,8 @@
 //! One crate builds the desktop application and the mobile application. A module of a desktop
 //! feature does not compile for a mobile target (MOB-003).
 
+#[cfg(all(desktop, unix))]
+mod agent_runner;
 #[cfg(desktop)]
 mod agent_threads;
 #[cfg(desktop)]

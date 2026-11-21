@@ -44,8 +44,11 @@ export function account(id: string, label: string, more: Partial<SourceAccount> 
 export const NOW = new Date('2026-11-13T12:00:00Z');
 
 export interface FakeHub extends Pick<Hub, 'request' | 'subscribe'> {
-  /** The address of the hub; a test sets a port of this computer for a hub that no browser can open. */
-  address: Hub['address'];
+  /**
+   * What `Source.connectPageUrl` of GitHub answers: a page, null for a hub that cannot start the flow in a browser, or
+   * undefined for a hub of before the field, which refuses the document as a hub refuses an unknown field.
+   */
+  connectPage: string | null | undefined;
   /** Each call sent, as `Operation` and its variables, in order. */
   readonly sent: { readonly operation: string; readonly variables: Record<string, unknown> }[];
   /** What the next mutation answers instead of doing anything. */
@@ -60,6 +63,16 @@ export interface FakeHub extends Pick<Hub, 'request' | 'subscribe'> {
   emitAttempt(attempt: ConnectAttempt): void;
 }
 
+/** The answer to `GithubBrowserFlow`; a hub of before the field refuses the document. */
+function browserFlow<T>(page: string | null | undefined): Promise<HubResult<T>> {
+  if (page === undefined) {
+    const refused: HubResult<T> = { ok: false, error: { code: 'INTERNAL', message: 'The hub could not run the request.' } };
+    return Promise.resolve(refused);
+  }
+  const value = { sources: [{ key: 'github', connectPageUrl: page }] };
+  return Promise.resolve({ ok: true, value } as HubResult<T>);
+}
+
 /** A hub with one GitHub source that lists `start`, applies the account calls and sends `sourceAccountChanged`. */
 export function fakeHub(start: readonly SourceAccount[]): FakeHub {
   let accounts = [...start];
@@ -67,7 +80,7 @@ export function fakeHub(start: readonly SourceAccount[]): FakeHub {
   const attemptSinks = new Set<{ next(value: unknown): void }>();
   const answer = <T>(value: unknown): Promise<HubResult<T>> => Promise.resolve({ ok: true, value } as HubResult<T>);
   const hub: FakeHub = {
-    address: { origin: 'https://hub.example', http: 'https://hub.example/graphql', socket: 'wss://hub.example/graphql' },
+    connectPage: 'https://hub.example/connect/github',
     sent: [],
     refuse: null,
     connect: null,
@@ -83,6 +96,7 @@ export function fakeHub(start: readonly SourceAccount[]): FakeHub {
       const operation = (document.definitions[0] as { name?: { value: string } }).name?.value ?? '';
       if (operation === 'Sources') return answer<TResult>({ sources: [{ key: 'github', name: 'GitHub', accounts }] });
       if (operation === 'GithubConnect') return answer<TResult>({ githubConnect: hub.connect });
+      if (operation === 'GithubBrowserFlow') return browserFlow<TResult>(hub.connectPage);
       hub.sent.push({ operation, variables });
       if (hub.refuse !== null) return Promise.resolve({ ok: false, error: hub.refuse } as HubResult<TResult>);
       const connecting = connectAnswer(hub, operation);

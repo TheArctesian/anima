@@ -3,7 +3,18 @@ import { join } from "node:path";
 import { MOCKUPS, mockupTable, withMockupTable } from "../src/documents/mockup-records.ts";
 import { QUEUE, queueRows, withQueue } from "../src/documents/queue.ts";
 import { REGISTER, registerRows, withRows } from "../src/documents/register.ts";
+import { settleGenerated } from "../src/merge/finish.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
+
+// `--settle`: a merge that stopped only on generated files and the mockups is settled first
+// (the merge of a branch with `dev` in a run of the gates); any other conflict ends with exit 1.
+if (process.argv.includes("--settle")) {
+  const reason = settleGenerated(REPO_ROOT);
+  if (reason !== undefined) {
+    console.error(`register: the merge needs a person: ${reason}`);
+    process.exit(1);
+  }
+}
 
 // Writes the list of the plans into the register from the header of each document (PLN-020).
 const documents = [...new Set(listMeasurableFiles(REPO_ROOT))]

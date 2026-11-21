@@ -1,0 +1,85 @@
+//! A thread after a restart of the runner (THR-030).
+
+use super::*;
+
+#[test]
+fn thr_030_a_restored_thread_keeps_the_id_of_its_open_request() {
+    let mut thread = held_claude();
+    let request = asked(&thread.line(CLAUDE_ASK, &mut counter()))[0];
+    let saved = serde_json::to_string(&thread.saved()).expect("saved");
+    let mut again = Thread::restore(serde_json::from_str(&saved).expect("reads"), None);
+    assert_eq!(
+        again.row.state,
+        RunState::NeedsYou,
+        "not Starting after a restart"
+    );
+    let line = again
+        .answer(request, &Answer::Allow)
+        .expect("the request is still open");
+    assert_eq!(
+        json(&line)["response"]["response"]["updatedInput"]["command"],
+        "ls"
+    );
+}
+
+#[test]
+fn thr_030_an_answer_that_went_before_a_restart_is_never_given_twice() {
+    let mut thread = held_claude();
+    let request = asked(&thread.line(CLAUDE_ASK, &mut counter()))[0];
+    thread
+        .answer(request, &Answer::Allow)
+        .expect("the first answer");
+    let saved = serde_json::to_string(&thread.saved()).expect("saved");
+    let mut again = Thread::restore(serde_json::from_str(&saved).expect("reads"), None);
+    assert_eq!(
+        again.answer(request, &Answer::Allow),
+        Err(Refusal::RequestGone),
+        "the answer may have reached the program"
+    );
+    let steps = again.settle_answering();
+    assert!(
+        steps
+            .iter()
+            .any(|step| matches!(step, Step::Change(Change::Closed { .. })))
+    );
+    assert_eq!(again.row.open.len(), 0);
+}
+
+#[test]
+fn th11_a_line_that_changes_nothing_of_the_record_keeps_its_key() {
+    let mut thread = held_claude();
+    let key = thread.record_key();
+    let _ = thread.line(CLAUDE_ASK, &mut counter());
+    assert_ne!(
+        thread.record_key(),
+        key,
+        "an open request changes the record"
+    );
+}
+
+#[test]
+fn thr_030_a_new_watch_gets_the_row_and_each_waiting_request_with_new_numbers() {
+    let mut thread = held_claude();
+    let request = asked(&thread.line(CLAUDE_ASK, &mut counter()))[0];
+    let saved = serde_json::to_string(&thread.saved()).expect("saved");
+    let mut again = Thread::restore(serde_json::from_str(&saved).expect("reads"), None);
+    again.number_from(1_000_000);
+    let changes = again.now_changes();
+    assert!(matches!(changes[0], Change::State { .. }));
+    assert!(
+        changes
+            .iter()
+            .any(|change| matches!(change, Change::Asked { request: id, .. } if *id == request))
+    );
+    let kept = again.kept_newest(100, 1 << 20).count();
+    let numbered = again.number(changes[0].clone());
+    assert!(
+        numbered.seq > 1_000_000,
+        "a number after the restart is new"
+    );
+    assert_eq!(
+        again.kept_newest(100, 1 << 20).count(),
+        kept,
+        "what one new watch gets is not kept for the others"
+    );
+}

@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { AccessWarning } from '$lib/devices/api';
   import Icon from '$lib/icons/Icon.svelte';
-  import { warningLines } from './actions';
+  import HelpTip from '$lib/overlay/helptip/HelpTip.svelte';
+  import { WARNING_MEANING, warningLines, warningName } from './actions';
 
   interface Props {
     warnings: readonly AccessWarning[];
@@ -10,11 +11,22 @@
   const { warnings }: Props = $props();
 </script>
 
-<!-- Below bp-compact only the icon shows; the word stays for assistive technology (UI-003). The word and the icon say it, not the colour alone; the tooltip lists each warning in words (RA-020). -->
+<!--
+  The badge opens its own tip on hover, focus or a click: what Warning means, then each warning in words (RA-020). Its
+  spoken name is the word, the meaning and each warning, so a screen reader hears all of it without opening the tip,
+  which comes and goes with its content and is not reliably announced. Below bp-compact
+  only the icon shows (UI-003); the word and the icon say it, not the colour alone.
+-->
 {#if warnings.length > 0}
-  <span class="badge" title={warningLines(warnings).join('\n')}>
-    <Icon name="carbon:warning-alt" size="sm" /><span class="label">Warning</span>
-  </span>
+  <HelpTip label={warningName(warnings)}>
+    {#snippet face()}
+      <span class="badge"><Icon name="carbon:warning-alt" size="sm" /><span class="label">Warning</span></span>
+    {/snippet}
+    <p>{WARNING_MEANING}</p>
+    <ul>
+      {#each warningLines(warnings) as line (line)}<li>{line}</li>{/each}
+    </ul>
+  </HelpTip>
 {/if}
 
 <style>
@@ -27,7 +39,8 @@
     padding: 0 var(--space-2);
     border-radius: var(--radius-pill);
     background: var(--status-warning-tint);
-    color: var(--status-warning);
+    /* The text colour of the status, as in the mockup: small text on the tint needs it (WCAG 1.4.3). */
+    color: var(--status-warning-text);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
     white-space: nowrap;

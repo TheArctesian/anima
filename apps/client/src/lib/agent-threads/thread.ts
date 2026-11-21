@@ -16,7 +16,11 @@ export interface ThreadRow {
   readonly tail: Tail;
 }
 
-export type Tail = 'turn_ended' | 'stopped' | 'open_tool' | 'open' | 'nothing';
+/**
+ * How the session file ends (THR-055); for a thread that the runner drives, what its program reports: `asks` (a
+ * request waits for the person) or `running` (the program works).
+ */
+export type Tail = 'turn_ended' | 'stopped' | 'open_tool' | 'open' | 'nothing' | 'asks' | 'running';
 
 export type ToolKind = 'command' | 'edit' | 'read' | 'search' | 'web' | 'agent' | 'plan' | 'question' | 'other';
 

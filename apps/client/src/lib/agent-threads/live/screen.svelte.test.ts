@@ -1,0 +1,103 @@
+// @vitest-environment jsdom
+import { flushSync, mount, unmount } from 'svelte';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { installAnimations } from '$lib/forms/animations.fixture';
+import { ThreadsStore } from '../store.svelte';
+import ThreadsScreen from '../ThreadsScreen.svelte';
+import { askFrame, frame, madeShell, rowFrame, saidFrame, stateFrame, THREAD } from './frames.fixture';
+import { LiveThreads } from './live.svelte';
+
+vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
+vi.mock('motion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('motion')>()),
+  animate: (await import('$lib/motion/engine.fixture')).fakeRun,
+}));
+
+const NOW = new Date('2026-11-20T10:05:00Z');
+let app: ReturnType<typeof mount> | undefined;
+
+beforeEach(() => {
+  installAnimations();
+  Element.prototype.scrollIntoView = () => undefined;
+});
+
+afterEach(async () => {
+  if (app !== undefined) await unmount(app);
+  app = undefined;
+  document.body.replaceChildren();
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  flushSync();
+}
+
+async function openLive(): Promise<{ shell: ReturnType<typeof madeShell>; store: ThreadsStore }> {
+  const shell = madeShell();
+  const live = new LiveThreads(shell, () => ({ front: true, chosen: null }), () => NOW);
+  await live.begin();
+  shell.emit(stateFrame(1, 'working'));
+  shell.emit(saidFrame(2, { kind: 'message', text: 'Look: <img src=x onerror="window.reached = true"> **bold**', parent: null }));
+  shell.emit(askFrame(3, '0190a000-0000-7000-8000-0000000000aa', '<script>window.reached = true</script>'));
+  const store = new ThreadsStore({ list: () => Promise.resolve([]), read: () => Promise.reject(new Error('no file')) }, null, () => NOW, live);
+  await store.loadList();
+  app = mount(ThreadsScreen, { target: document.body, props: { store, now: () => NOW } });
+  flushSync();
+  await store.open(THREAD);
+  await settle();
+  return { shell, store };
+}
+
+it('THR-032: the text of a driven thread and of its request is drawn as text, never as markup', async () => {
+  await openLive();
+  expect(document.querySelector('[data-timeline] img')).toBeNull();
+  expect(document.querySelector('[data-timeline] script')).toBeNull();
+  expect(document.body.textContent).toContain('<img src=x onerror="window.reached = true">');
+  expect(document.querySelector('.subject')?.textContent).toBe('<script>window.reached = true</script>');
+  expect((window as { reached?: boolean }).reached).toBeUndefined();
+});
+
+it('THR-030: an answer to a request goes to the runner of this computer with the ID of the runner', async () => {
+  const { shell } = await openLive();
+  const allow = [...document.querySelectorAll('button')].find((button) => button.textContent.includes('Allow once'));
+  allow?.click();
+  await settle();
+  expect(shell.calls.at(-1)).toEqual({ call: 'answer', thread: THREAD, request: '0190a000-0000-7000-8000-0000000000aa', answer: { answer: 'allow' } });
+});
+
+it('THR-017: Enter in the composer sends the prompt; Shift+Enter does not', async () => {
+  const { shell } = await openLive();
+  const field = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Prompt"]');
+  if (field === null) throw new Error('no composer');
+  field.value = 'Go on';
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+  field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+  await settle();
+  expect(shell.calls.filter((call) => call.call === 'send')).toEqual([]);
+  field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await settle();
+  expect(shell.calls.filter((call) => call.call === 'send')).toEqual([{ call: 'send', thread: THREAD, text: 'Go on' }]);
+});
+
+it('THR-017: a draft of the composer stays with its thread', async () => {
+  const { shell, store } = await openLive();
+  const other = '0190a000-0000-7000-8000-000000000002';
+  shell.emit(frame(1, { thread: other, change: 'state', state: 'idle', row: rowFrame('idle', { id: other, title: 'Other' }) }));
+  const field = (): HTMLTextAreaElement | null => document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Prompt"]');
+  const typed = field();
+  if (typed === null) throw new Error('no composer');
+  typed.value = 'For the first thread only';
+  typed.dispatchEvent(new Event('input', { bubbles: true }));
+  await store.open(other);
+  await settle();
+  expect(field()?.value).toBe('');
+});
+
+it('THR-017: the composer of a driven thread is at the foot of the thread, outside its scroll area', async () => {
+  await openLive();
+  const scroll = document.querySelector('[aria-label="Thread content"]');
+  const field = document.querySelector('textarea[aria-label="Prompt"]');
+  expect(scroll?.querySelector('[data-timeline]')).not.toBeNull();
+  expect(field).not.toBeNull();
+  expect(scroll?.contains(field)).toBe(false);
+});

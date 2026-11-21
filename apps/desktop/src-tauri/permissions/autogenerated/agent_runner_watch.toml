@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-agent-runner-watch"
+description = "Enables the agent_runner_watch command without any pre-configured scope."
+commands.allow = ["agent_runner_watch"]
+
+[[permission]]
+identifier = "deny-agent-runner-watch"
+description = "Denies the agent_runner_watch command without any pre-configured scope."
+commands.deny = ["agent_runner_watch"]

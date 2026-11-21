@@ -16,6 +16,8 @@ name = "anima-daemon"
 path = "src/main.rs"
 
 [dependencies]
+# The protocols of the agent programs and the frames of the local socket of the runner.
+agent-threads = { path = "../agent-threads" }
 daemon-core = { path = "../daemon-core" }
 bytes.workspace = true
 chrono.workspace = true

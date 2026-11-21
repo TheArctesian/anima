@@ -8,5 +8,6 @@ query SourceKinds {
     gives
     pollIntervalSeconds
     consumers
+    connectPageUrl
   }
 }
