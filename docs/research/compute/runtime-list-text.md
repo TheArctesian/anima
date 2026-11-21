@@ -1,8 +1,8 @@
 # The installed runtimes: the text for the second approval (R-NEW-runtimelist)
 
 Status: the operator approved the list with two changes (R-NEW-runtimelist): "Approve, add Ollama" and "Add the
-field". This text has both. The wording of `backend` waits for his approval before it goes into the contract. No
-code sends this list before then.
+field". This text has both. He then approved the wording of `backend` with one fix: "Approve, one fix
+(Recommended)". The text is in model-work.md Section 8 on the branch compute/l1-3.
 
 The operator selected "Separate list" (R-NEW-runtimelist): the model runtimes are not names of the K8
 tool inventory. They have one list of their own, defined once, in the runtime report of the model-work
@@ -47,8 +47,8 @@ Add these items after the list of `state` of a server:
   - `llama_server`: a second fixed-argument probe, `llama-server --list-devices`, with the same limits. The first
     device line that starts with `Metal`, `CUDA`, `ROCm` or `Vulkan` gives `metal`, `cuda`, `rocm` or
     `vulkan`; output with no such line gives `cpu`; a probe that fails gives null.
-  - `vllm`: the build tag after `+` in the version that it prints: `rocm…` gives `rocm`, `cpu` gives `cpu`, no
-    tag or `cu…` gives `cuda`; any other tag gives null.
+  - `vllm`: the build tag after `+` in the version that it prints: `rocm…` gives `rocm`, `cpu` gives `cpu`,
+    `cu…` gives `cuda`; no tag or any other tag gives null.
   - `ollama`: Ollama selects its backend when it loads a model, so the daemon takes it from the hardware
     verdicts: on macOS `metal`; on Linux the first usable of `cuda`, `rocm` and `cpu`; null when none is usable.
   - A runtime with a `state` (not usable) still has a `backend` when the rule finds one, else null.
@@ -74,4 +74,6 @@ R-NEW-runtimelist". After the approval it becomes:
 
 1. "Approve, add Ollama": `ollama` is in the list of known runtimes, with the note that task L1-18 still replaces
    it.
-2. "Add the field": each entry has a `backend`, with the rules above. Its wording waits for his approval.
+2. "Add the field": each entry has a `backend`, with the rules above.
+3. "Approve, one fix (Recommended)": he approved the wording of `backend` with one fix in the rule of `vllm`
+   (no tag gives null, not `cuda`).
