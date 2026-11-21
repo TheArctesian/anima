@@ -68,6 +68,9 @@ export const STATE_MARKS: Readonly<Record<ThreadState, { readonly words: string;
 
 export type GroupKey = 'needs' | 'earlier' | 'working';
 
+/** The key of the entry of the group "Earlier", which the list can fold. */
+export const EARLIER_KEY = 'group:earlier';
+
 const GROUP_TITLES: Readonly<Record<GroupKey, string>> = { needs: 'Needs you', earlier: 'Earlier', working: 'Working' };
 
 function groupOf(state: ThreadState): GroupKey {
@@ -86,12 +89,19 @@ export type ThreadEntry = { readonly kind: 'group'; readonly key: string; readon
 
 const newestFirst = (a: StatedRow, b: StatedRow): number => (b.row.last?.getTime() ?? 0) - (a.row.last?.getTime() ?? 0);
 
+/** Whether the group "Earlier" shows its threads, and the thread that is open. */
+export interface Fold {
+  readonly earlierOpen: boolean;
+  readonly chosen: string | null;
+}
+
 /**
  * The list in its order (THR-056): the threads that need the person at the top, a tool call that may wait for an
  * approval before a turn that ended, the newest first; then the threads that are done, stopped or idle, by their last
  * change; the threads that work at the bottom. Each group opens with its title and its count; an empty group is left out.
+ * The group "Earlier" is folded unless `fold.earlierOpen`: then only its title, its count and the thread that is open (`fold.chosen`) are in the list.
  */
-export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen): readonly ThreadEntry[] {
+export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen, fold: Fold = { earlierOpen: true, chosen: null }): readonly ThreadEntry[] {
   const stated = rows.map((row) => ({ row, state: threadState(row, now, seen) }));
   const entries: ThreadEntry[] = [];
   for (const group of ['needs', 'earlier', 'working'] as const) {
@@ -99,7 +109,9 @@ export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen
     if (group === 'needs') members.sort((a, b) => Number(b.state === 'may_wait') - Number(a.state === 'may_wait'));
     if (members.length === 0) continue;
     entries.push({ kind: 'group', key: `group:${group}`, title: GROUP_TITLES[group], count: members.length });
-    for (const member of members) entries.push({ kind: 'device', key: member.row.id, device: member });
+    // The thread that is open stays in the list when its group is folded, so that it does not go from under the person.
+    const shown = group === 'earlier' && !fold.earlierOpen ? members.filter((member) => member.row.id === fold.chosen) : members;
+    for (const member of shown) entries.push({ kind: 'device', key: member.row.id, device: member });
   }
   return entries;
 }

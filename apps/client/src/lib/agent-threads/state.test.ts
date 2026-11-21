@@ -40,6 +40,12 @@ describe('the state of a thread from its session file', () => {
     expect(needsYouCount(rows, NOW, NONE)).toBe(3);
   });
 
+  it('THR-056: the folded group Earlier keeps its title and its count, and none of its threads', () => {
+    const rows = [row('work', 'open', 10), row('old', 'turn_ended', 3 * 24 * 3600), row('turn', 'turn_ended', 60)];
+    const entries = orderedThreads(rows, NOW, NONE, { earlierOpen: false, chosen: null }).map((entry) => (entry.kind === 'group' ? `${entry.title} ${String(entry.count)}` : entry.key));
+    expect(entries).toEqual(['Needs you 1', 'turn', 'Earlier 1', 'Working 1', 'work']);
+  });
+
   it('THR-056: a group with no thread is left out', () => {
     expect(orderedThreads([row('work', 'open', 10)], NOW, NONE).map((entry) => entry.key)).toEqual(['group:working', 'work']);
   });

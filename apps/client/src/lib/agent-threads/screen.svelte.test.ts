@@ -85,9 +85,13 @@ const press = (key: string, more: KeyboardEventInit = {}): void => {
 };
 const titles = (): (string | null | undefined)[] => [...document.querySelectorAll('.row .words')].map((each) => each.textContent);
 
-it('THR-056: the threads that need you are at the top and the threads that work at the bottom, each with its state in words', async () => {
+it('THR-056: the threads that need you are at the top, the threads that work at the bottom, and the group Earlier is folded until it is opened', async () => {
   await open();
-  expect([...document.querySelectorAll('li.head')].map((each) => each.textContent)).toEqual(['Needs you1', 'Earlier2', 'Working1']);
+  expect([...document.querySelectorAll('li.head')].map((each) => each.textContent.replace(/\s+/g, ''))).toEqual(['Needsyou1', 'Earlier2', 'Working1']);
+  expect(titles()).toEqual(['Fix the sign-in test', 'Runs now']);
+  document.querySelector<HTMLButtonElement>('.fold')?.click();
+  flushSync();
+  expect(document.querySelector('.fold')?.getAttribute('aria-expanded')).toBe('true');
   expect(titles()).toEqual(['Fix the sign-in test', 'Add the export', 'Old work', 'Runs now']);
   expect([...document.querySelectorAll('.row .state')].map((each) => each.textContent)).toEqual(['Your turn', 'Idle', 'Idle', 'Working']);
   expect(document.body.textContent).toContain('No thread is open');
@@ -105,6 +109,8 @@ it('THR-055: a thread that waits for you is done when you opened it', async () =
 
 it('THR-014, THR-015: a selected thread shows its prompt, its tool call with the failure, its reply and the read-only note', async () => {
   await open();
+  document.querySelector<HTMLButtonElement>('.fold')?.click();
+  flushSync();
   document.querySelector<HTMLButtonElement>('[data-thread="c2"]')?.click();
   await settle();
   expect(asked).toEqual(['c2']);
@@ -117,13 +123,13 @@ it('THR-014, THR-015: a selected thread shows its prompt, its tool call with the
   expect(document.querySelector('[data-thread="c2"]')?.getAttribute('aria-current')).toBe('true');
 });
 
-it('THR-016: the Down key opens the first thread, Cmd+2 the second, and E opens the tool calls', async () => {
+it('THR-016: the Down key opens the first thread, Cmd+2 the second of the threads that show, and E opens the tool calls', async () => {
   await open();
   press('ArrowDown');
   await settle();
   press('2', { metaKey: true });
   await settle();
-  expect(asked).toEqual(['a1', 'c2']);
+  expect(asked).toEqual(['a1', 'w4']);
   expect(document.querySelector('details')?.open).toBe(false);
   press('e');
   flushSync();

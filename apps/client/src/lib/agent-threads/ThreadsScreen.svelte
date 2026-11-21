@@ -21,6 +21,9 @@
   let program = $state<Program | null>(null);
   let search = $state('');
   let toolsOpen = $state(false);
+  /** The group "Earlier" is folded at first (THR-056); a search shows what it holds. */
+  let earlierChosen = $state(false);
+  const earlierOpen = $derived(earlierChosen || search.trim() !== '');
   let field = $state<HTMLInputElement>();
   let screen = $state<HTMLElement>();
   const shown = $derived(narrowed(store.rows ?? [], program, search));
@@ -30,7 +33,7 @@
     return now();
   });
   /** The threads in the order of the list, for the keys that move by a place. */
-  const inOrder = $derived(orderedThreads(shown, moment, store.seen).flatMap((entry) => (entry.kind === 'device' ? [entry.device.row] : [])));
+  const inOrder = $derived(orderedThreads(shown, moment, store.seen, { earlierOpen, chosen: store.chosen }).flatMap((entry) => (entry.kind === 'device' ? [entry.device.row] : [])));
 
   async function choose(id: string): Promise<void> {
     await store.open(id);
@@ -97,6 +100,10 @@
         {search}
         now={moment}
         seen={store.seen}
+        {earlierOpen}
+        onToggleEarlier={() => {
+          earlierChosen = !earlierChosen;
+        }}
         bind:field
         onChoose={(id) => void choose(id)}
         onProgram={(next) => {

@@ -4,7 +4,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import QuietLabel from '$lib/page/QuietLabel.svelte';
-  import { orderedThreads, STATE_MARKS, type Seen, type StatedRow } from '../state';
+  import { EARLIER_KEY, orderedThreads, STATE_MARKS, type Seen, type StatedRow } from '../state';
   import { ago, folderName, programName, type Program, type ThreadRow } from '../thread';
 
   type Choice = 'all' | Program;
@@ -18,6 +18,9 @@
     now: Date;
     /** When the person last opened each thread. */
     seen: Seen;
+    /** Whether the group "Earlier" shows its threads; it is folded at first, and a search opens it (THR-056). */
+    earlierOpen: boolean;
+    onToggleEarlier: () => void;
     onChoose: (id: string) => void;
     onProgram: (program: Program | null) => void;
     onSearch: (search: string) => void;
@@ -25,7 +28,7 @@
     field?: HTMLInputElement | undefined;
   }
 
-  let { rows, chosen, program, search, now, seen, onChoose, onProgram, onSearch, field = $bindable() }: Props = $props();
+  let { rows, chosen, program, search, now, seen, earlierOpen, onToggleEarlier, onChoose, onProgram, onSearch, field = $bindable() }: Props = $props();
   const choice = $derived<Choice>(program ?? 'all');
   const OPTIONS: readonly { value: Choice; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -34,15 +37,15 @@
   ];
   /** While the pointer is on the list a row keeps its place; a search or a choice of a program applies at once (5.7.3, Reorder). */
   const held = new HeldOrder<StatedRow>(
-    () => orderedThreads(rows, now, seen),
-    () => `${program ?? 'all'}\n${search}`,
+    () => orderedThreads(rows, now, seen, { earlierOpen, chosen }),
+    () => `${program ?? 'all'}\n${search}\n${String(earlierOpen)}\n${chosen ?? ''}`,
   );
   const items = $derived(held.items);
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
 <!-- The threads of this computer (THR-013, THR-056): those that need the person at the top, those that work at the bottom,
-     the others between. A row is a button: it opens its thread beside the list. Each row has the state that its session
+     the others between, in a group "Earlier" that is folded at first. A row is a button: it opens its thread beside the list. Each row has the state that its session
      file gives, as an icon with a word. While the pointer is on the list no row moves. -->
 <div class="list">
   <label class="search">
@@ -71,7 +74,17 @@
   <ul {@attach held.hold}>
     {#each items as item (item.key)}
       {#if item.kind === 'group'}
-        <li class="head" {@attach track(item.key)}><QuietLabel>{item.title}</QuietLabel><span class="count">{item.count}</span></li>
+        <li class="head" {@attach track(item.key)}>
+          {#if item.key === EARLIER_KEY}
+            <button type="button" class="fold" aria-expanded={earlierOpen} onclick={onToggleEarlier}>
+              <Icon name={earlierOpen ? 'carbon:chevron-down' : 'carbon:chevron-right'} size="sm" />
+              <QuietLabel>{item.title}</QuietLabel>
+            </button>
+          {:else}
+            <QuietLabel>{item.title}</QuietLabel>
+          {/if}
+          <span class="count">{item.count}</span>
+        </li>
       {:else}
         {@const row = item.device.row}
         {@const mark = STATE_MARKS[item.device.state]}
@@ -140,6 +153,23 @@
     display: flex;
     justify-content: space-between;
     padding: var(--space-2) var(--space-2) 0;
+  }
+
+  .fold {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .fold:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--space-1);
   }
 
   .state {
