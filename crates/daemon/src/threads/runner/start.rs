@@ -11,6 +11,9 @@ use super::calls::codex_of;
 use super::socket::Caller;
 use super::thread::Thread;
 use super::{Runner, Waits, login};
+
+/// The shortest time between two asks of the login shell after a program was not found.
+const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
 /// A new thread as the client named it.
@@ -59,10 +62,9 @@ impl Runner {
                 limits: self.limits,
             });
         }
-        if login::find(new.program, &self.env, login::executable).is_none() {
-            // The login shell may not have answered when the daemon started (a busy computer):
-            // it is asked again before the start is refused.
-            self.env = login::environment(&self.daemon_env).await;
+        chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
+        if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
+            self.ask_login_again(new.program).await;
         }
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id)?;
@@ -84,6 +86,20 @@ impl Runner {
         Ok(())
     }
 
+    /// Asks the login shell again for its environment, at most once in [`ASK_AGAIN`]: it may not
+    /// have answered when the daemon started on a busy computer. The answer is kept only when it
+    /// finds the program, so that a shell that does not answer does not take a good environment.
+    async fn ask_login_again(&mut self, program: Program) {
+        if self.asked_again.is_some_and(|at| at.elapsed() < ASK_AGAIN) {
+            return;
+        }
+        self.asked_again = Some(std::time::Instant::now());
+        let env = login::environment(&self.daemon_env).await;
+        if login::find(program, &env, login::executable, login::trusted).is_some() {
+            self.env = env;
+        }
+    }
+
     /// The row of a new thread and the start for the holder: the folder that the person chose
     /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
     /// (THR-040) and the environment of the login (R-NEW-threadsdrive).
@@ -95,7 +111,7 @@ impl Runner {
             .map(Model::new)
             .transpose()
             .map_err(|_| Refusal::BadValue)?;
-        let path = login::find(new.program, &self.env, login::executable)
+        let path = login::find(new.program, &self.env, login::executable, login::trusted)
             .ok_or(Refusal::ProgramNotFound)?;
         let launch = Launch {
             program: new.program,

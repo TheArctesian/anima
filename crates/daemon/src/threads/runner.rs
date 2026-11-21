@@ -92,6 +92,8 @@ pub struct Runner {
     env: Vec<(String, String)>,
     /// The environment of the daemon, to ask the login shell again when a program is not found.
     daemon_env: Vec<(String, String)>,
+    /// When the login shell was last asked again after a program was not found.
+    asked_again: Option<std::time::Instant>,
     threads: BTreeMap<Uuid, Thread>,
     limits: Limits,
     watchers: Vec<Client>,
@@ -150,6 +152,7 @@ pub async fn run(
         holder_fits: false,
         env,
         daemon_env,
+        asked_again: None,
         threads: BTreeMap::new(),
         limits: saved.limits,
         watchers: Vec::new(),
