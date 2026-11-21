@@ -41,7 +41,7 @@ pub(super) fn hub_and_daemon(
     );
     let present = carried.program(members::DAEMON).is_file();
     let own = OwnDaemon::of(carried, folders, &plan.pool, present).map(|own| {
-        let enrolled = own.token_file().is_file();
+        let enrolled = own.is_enrolled();
         hub.env.extend(own.hub_environment(enrolled));
         (own, enrolled)
     });
@@ -49,7 +49,7 @@ pub(super) fn hub_and_daemon(
 }
 
 impl Group {
-    /// Enrols the daemon when it has no token, then starts it. A failure is written to standard
+    /// Enrols the daemon when it holds no enrolment, then starts it. A failure is written to standard
     /// error and leaves the hub running; the next start of the group tries again.
     pub(super) async fn start_own_daemon(&mut self, plan: &Plan, own: &OwnDaemon, enrolled: bool) {
         if !enrolled && let Err(fault) = enrol(own).await {

@@ -198,11 +198,6 @@ describe('P3-002, D-29: a DOMAIN_EXPIRY check in the form', () => {
     });
   });
 
-  it('a bare Docker config keeps the defaults (WP-29 not yet selecting its fields)', () => {
-    const values = checkValues(saved('DOCKER', { __typename: 'DockerConfig' }), 'DOCKER');
-    expect(values.docker).toEqual({ container: '', timeoutMs: '10000' });
-  });
-
   it('a rename alone leaves the config out of the update input', () => {
     const initial = checkValues(domainExpiry, 'ICMP');
     const edited = { ...initial, name: 'renamed' };

@@ -13,8 +13,15 @@ if git merge-base --is-ancestor "$DEV_SHA" HEAD; then
   exit 0
 fi
 if ! git -c user.name="anima gates" -c user.email="gates@anima.invalid" merge --no-edit "$DEV_SHA"; then
-  echo "::error::The branch does not merge with dev. Merge origin/dev into the branch and solve the conflict there."
-  exit 1
+  # A conflict only in generated files, the index of the mockups or their records is settled as the
+  # merge into dev settles it (PLN-019, PLN-020); any other conflict needs a person.
+  if ! bun quality/bin/register.ts --settle; then
+    echo "::error::The branch does not merge with dev. Merge origin/dev into the branch and solve the conflict there."
+    exit 1
+  fi
+  git add -A docs
+  git -c user.name="anima gates" -c user.email="gates@anima.invalid" commit --quiet --no-edit
+  echo "The conflicts were only in generated files and the mockups: settled."
 fi
 # The generated files are never merged (PLN-020): write them again from the merged documents.
 bun quality/bin/register.ts

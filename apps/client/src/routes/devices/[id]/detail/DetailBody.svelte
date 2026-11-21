@@ -12,6 +12,7 @@
   import { ContainersStore } from '$lib/containers/store.svelte';
   import { thisComputerShell } from '$lib/desktop/daemon/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
+  import { readKept } from '$lib/hosted/kept/api';
   import { metricsApi } from '$lib/metrics/api';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
@@ -169,13 +170,15 @@
     <DeviceMissing />
   {:else if detail.error !== null}
     <ErrorState message={`The device did not load. ${detail.error.message}`} onRetry={() => void detail.load()} />
-  {:else if device !== null}
-    <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
+  {:else}
+    <!-- D-9: while the device loads, the open tab's panel is busy and shows its skeleton under the tabs; one panel for
+         each tab, so the skeleton cross-fades into the content (MOT-007). -->
+    {#if device !== null}<LiveNotice message={detail.liveError?.message ?? null} gap="end" />{/if}
     {#if place.tab === 'overview'}
-      <TabPanel name="overview" loading={checksLoading} skeleton={overviewSkeleton}>
+      <TabPanel name="overview" loading={loading || checksLoading} skeleton={overviewSkeleton}>
         {#if detail.checksError !== null}
           {@render checksFailure(detail.checksError.message)}
-        {:else}
+        {:else if device !== null}
           {#if phone}<PhoneChecks checks={detail.checks ?? []} />{/if}
           <OverviewPanel
             {device}
@@ -190,11 +193,12 @@
             onConnect={phone ? undefined : connect}
             onOpenWeb={openWeb}
             onSection={settings}
+            readKept={() => readKept(hub)}
           />
         {/if}
       </TabPanel>
     {:else if place.tab === 'checks'}
-      <TabPanel name="checks" loading={checksLoading}>
+      <TabPanel name="checks" loading={loading || checksLoading}>
         {#if detail.checksError !== null}
           {@render checksFailure(detail.checksError.message)}
         {:else}
@@ -212,11 +216,11 @@
       </TabPanel>
     {:else if place.tab === 'containers'}
       <!-- The panel shows its own errors and Retry. -->
-      <TabPanel name="containers" loading={containers.status === 'idle' || (containers.status === 'loading' && containers.containers.length === 0)}>
+      <TabPanel name="containers" loading={loading || containers.status === 'idle' || (containers.status === 'loading' && containers.containers.length === 0)}>
         <ContainersPanel store={containers} />
       </TabPanel>
     {:else if place.tab === 'sessions'}
-      <TabPanel name="sessions" loading={sessionPages.items === null && sessionPages.error === null}>
+      <TabPanel name="sessions" loading={loading || sessionPages.items === null && sessionPages.error === null}>
         {#if sessionPages.error !== null}
           <div class="notice" role="alert">
             <p>{sessionPages.error.message}</p>
@@ -228,12 +232,12 @@
       </TabPanel>
     {:else if place.tab === 'logs'}
       <!-- The log list shows its own errors and Retry. -->
-      <TabPanel name="logs" loading={feed.log === null && feed.error === null}>
+      <TabPanel name="logs" loading={loading || feed.log === null && feed.error === null}>
         <LogList {feed} {now} />
       </TabPanel>
     {:else}
-      <TabPanel name="settings" loading={false}>
-        <SettingsPanel
+      <TabPanel name="settings" {loading}>
+        {#if device !== null}<SettingsPanel
           {device}
           section={place.section}
           calls={calls.settings}
@@ -242,10 +246,10 @@
           onTest={calls.onTest}
           onOpenChecks={() => { go({ tab: 'checks', section: null, range: 'HOUR' }); }}
           onDelete={calls.onDelete}
-        />
+        />{/if}
       </TabPanel>
     {/if}
-    {#if phone}<PhoneConnect {device} onConnect={connect} onSettings={settings} />{/if}
+    {#if phone && device !== null}<PhoneConnect {device} onConnect={connect} onSettings={settings} />{/if}
   {/if}
 </section>
 

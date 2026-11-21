@@ -90,27 +90,33 @@ function finish(tip: Tip): string | undefined {
   return "failure" in finished ? finished.failure : undefined;
 }
 
+/** If the rule permits the carry-over of a train (`carryDocuments`). */
+function carryOn(): boolean {
+  const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));
+  return typeof rule !== "string" && rule.carryDocuments;
+}
+
 /** If the rule permits it: `dev` moved from `base` only in documents, by the rule of the fast tier. */
 function movedOnlyInDocuments(base: string): boolean {
-  const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));
-  return typeof rule !== "string" && rule.carryDocuments && changed(REPO_ROOT, base, `origin/${INTO}`).every(isDocument);
+  return carryOn() && changed(REPO_ROOT, base, `origin/${INTO}`).every(isDocument);
 }
 
 /**
  * Lands a train whose gates passed: `dev` moves to its commit when `dev` did not move, or to the
- * train made again when `dev` moved only in documents. Returns false when the train stays for the next step.
+ * train made again on the new `dev` when each file that is not a document is the one that the
+ * gates tested (carry). Returns false when the train stays for the next step.
  */
 function land(train: Tip, base: string): boolean {
   const held = members(REPO_ROOT, base, train.sha);
   const names = held.map((tip) => tip.branch).join(", ");
   const moved = base !== must(["git", "rev-parse", `origin/${INTO}`]);
-  const carried = moved && movedOnlyInDocuments(base) ? carry(REPO_ROOT, { into: INTO, tested: train.sha, held }, { finish, isDocument }) : undefined;
+  const carried = moved && carryOn() ? carry(REPO_ROOT, { into: INTO, tested: train.sha, held }, { finish, isDocument }) : undefined;
   if (carried?.outcome === "again") return false;
   if (!moved && run(["git", "push", "--quiet", "origin", `${train.sha}:refs/heads/${INTO}`]).ok) {
     must(["git", "merge", "--quiet", "--ff-only", train.sha]);
     say(`landed ${held.length} branch(es) in one step, ${INTO} is ${train.sha.slice(0, 8)}: ${names}`);
   } else if (carried?.outcome === "landed") {
-    say(`landed ${held.length} branch(es); ${INTO} had moved only in documents, and each other file is the one that the gates tested: ${names}`);
+    say(`landed ${held.length} branch(es); ${INTO} had moved, and each file that is not a document is the one that the gates tested: ${names}`);
   } else {
     if (carried !== undefined) say(`the carry-over is refused, these are not as the gates tested them: ${carried.refused.join("; ")}`);
     say(`${INTO} moved after the train was made; the gates of the train do not count. The branches go into the next train: ${names}`);

@@ -35,6 +35,7 @@ function showApple(): void {
       series: [...CPU_ONLY, series('GPU_PERCENT', 'GPU 0', [point(AT, 35)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(AT, THREE_GIB)], 0)],
       drives: [],
       readings: null,
+      batteries: [],
     },
     span: { start: NOW.getTime() - 3_600_000, end: NOW.getTime() },
     shownRange: 'HOUR' as const,
@@ -43,6 +44,7 @@ function showApple(): void {
     readings: { ...added(AT, []).readings, cpuPercent: 20, memoryPercent: 45, diskPercent: 61, vramPercent: 5, vramGpu: APPLE },
     error: null,
     liveError: null,
+    battery: null,
   };
   app = mount(OverviewPanel, {
     target: document.body,

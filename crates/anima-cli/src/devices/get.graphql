@@ -49,6 +49,12 @@ query DeviceGet($id: ID!) {
       status
       paused
     }
+    batteries {
+      name
+      state
+      secondsLeft
+      healthPercent
+    }
     uptime(window: DAY)
     createdAt
     updatedAt

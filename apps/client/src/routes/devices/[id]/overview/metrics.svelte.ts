@@ -9,6 +9,8 @@ import { mergeLive } from '$lib/metrics/live';
 import { rangeWindow, seriesWindow } from '$lib/metrics/ranges';
 import { hasMetrics } from '$lib/metrics/source/has-metrics';
 import { mergeStorage } from '$lib/metrics/storage/storage';
+import { batteryBar, chargesOfSeries, mergeCharges, NO_CHARGES, type Charges } from '$lib/metrics/battery/battery';
+import { memoryBytesOfSeries, mergeMemoryBytes } from '$lib/metrics/container/container';
 
 /**
  * The metrics the Overview shows for one device and the hub calls behind them (D-5, D-6): the series of the chosen
@@ -29,6 +31,12 @@ export class DeviceMetrics {
 
   /** The hub's latest readings at load, then the newest a live batch carried; the bars show them. */
   readings = $state.raw<BarReadings | null>(null);
+  /** The newest charge of each battery: the last point of its series at load, then each live batch (MET-032). */
+  #charges = $state.raw<Charges>(NO_CHARGES);
+  /** The battery meter beside the bars; `null` for a device with no battery. */
+  readonly battery = $derived(batteryBar(this.view?.batteries ?? [], this.#charges));
+  /** The bytes of memory in use: the last point of their series at load, then each live batch (HMD-073). */
+  memoryBytes = $state.raw<number | null>(null);
   error = $state.raw<HubError | null>(null);
   liveError = $state.raw<HubError | null>(null);
 
@@ -83,6 +91,8 @@ export class DeviceMetrics {
       this.chartShape = chartShapeOf(this.#deviceId);
     }
     this.readings = result.value?.readings ?? this.readings;
+    this.#charges = chargesOfSeries(result.value?.series ?? []);
+    this.memoryBytes = memoryBytesOfSeries(result.value?.series ?? []);
     this.#shown = range;
     const pointTimes = (result.value?.series ?? []).flatMap((one) => one.points.map((point) => Date.parse(point.at)));
     this.span = seriesWindow(range, at, pointTimes);
@@ -113,6 +123,8 @@ export class DeviceMetrics {
     const at = Date.parse(added.at);
     if (this.#stopped || Number.isNaN(at)) return;
     this.readings = added.readings;
+    this.#charges = mergeCharges(this.#charges, added.samples);
+    this.memoryBytes = mergeMemoryBytes(this.memoryBytes, added.samples);
     // The Storage rows show the newest values whatever range the charts draw (MET-029).
     if (this.view !== null) this.view = { ...this.view, drives: mergeStorage(this.view.drives, added) };
     // A DAY or WEEK view is an aggregate; a live point joins only the 1-hour one (D-5).

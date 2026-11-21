@@ -9,10 +9,13 @@
   import { enterStrip } from './presence';
   import { nextFocus, panelId } from './tablist';
   import SessionTab from './SessionTab.svelte';
+  import StripArrows from '$lib/scroll/StripArrows.svelte';
+  import { NO_HIDDEN_EDGES, stripEdges, type StripEdges } from '$lib/scroll/strip';
 
   const sessions = useSessions();
   const preference = motionPreference();
   let strip: HTMLElement | undefined = $state();
+  let edges = $state<StripEdges>(NO_HIDDEN_EDGES);
   /**
    * The strip is laid out while a tab is open and until the last tab's exit has played, so the exit is seen (MOT-005);
    * only then does it go. Its space goes when the last tab starts to leave (`leaving`), so the page never moves (MOT-007, R-075).
@@ -65,6 +68,8 @@
     slot.style.position = 'absolute';
     slot.style.left = `${String(box.left - (frame?.left ?? 0))}px`;
     slot.style.top = `${String(box.top - (frame?.top ?? 0))}px`;
+    // Out of the flow its width would follow its words: it keeps the width it had while it closes.
+    slot.style.width = `${String(box.width)}px`;
     sessions.close(tab.id).catch((reason: unknown) => {
       warn('Ending the session failed:', reason);
     });
@@ -127,7 +132,9 @@
   });
 </script>
 
-<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} class:leaving bind:this={strip}>
+<div class="strip-frame">
+<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} class:leaving bind:this={strip}
+  {@attach stripEdges((next) => { edges = next; })}>
   {#each sessions.tabs as tab, index (tab.id)}
     {@const selected = sessions.active?.id === tab.id}
     <div
@@ -170,8 +177,16 @@
     </div>
   {/each}
 </div>
+<StripArrows {strip} {edges} {preference} />
+</div>
 
 <style>
+  /* The arrows sit on the strip's ends (NAV-005). */
+  .strip-frame {
+    position: relative;
+    min-inline-size: 0;
+  }
+
   /* The height is reserved whether or not a tab is in the flow (a closing tab is pinned out of it). */
   .strip {
     position: relative;
@@ -196,10 +211,14 @@
 
   .slot {
     display: inline-flex;
-    flex: none;
+    flex: 0 1 calc(var(--space-16) * 4);
     align-items: center;
-    /* One width for every tab, never wider than the strip's visible box, so a title cannot move the tab or push the close button out (MOT-007). */
-    inline-size: min(calc(var(--space-16) * 4), 100%);
+    /*
+     * One width for every tab, set by the count of tabs and never by a title, so a title cannot move the tab or push the
+     * close button out (MOT-007). The tabs share a narrow strip down to a width that keeps the name and the close
+     * button; past that the strip scrolls and its far end fades and shows an arrow (NAV-005).
+     */
+    min-inline-size: min(calc(var(--space-16) * 2.5), 100%);
     border-radius: var(--radius-md);
     background: var(--surface-raised);
     touch-action: none;

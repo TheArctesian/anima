@@ -109,7 +109,7 @@ impl Runner {
 
     /// The row of a new thread and the start for the holder: the folder that the person chose
     /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
-    /// (THR-040) and the environment of the login (R-NEW-threadsdrive).
+    /// (THR-040) and the environment of the login (R-308).
     fn prepared(&self, new: &NewThread, id: Uuid) -> Result<(ThreadRow, wire::Action), Refusal> {
         let folder = chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         let model = new

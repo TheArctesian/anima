@@ -1,10 +1,14 @@
 import { expect } from '@playwright/test';
+import type { Fixtures } from '../synthetic/fixtures';
 import { HUB_ORIGIN } from '../synthetic/access';
 import type { Screen } from './shots';
 import { DEVICE_IDS, failOperations, openDevice } from './steps';
 
 // The failures of the other screens: an address the app does not have, a project that is not there, and the hub
 // failing on Projects, Agent usage, Extensions and Containers. They come last, so the numbers before them stay.
+
+/** Projects is an extension, off in the synthetic hub: on, so its pages show and not the Devices page. */
+const projectsOn = (loaded: Fixtures): Fixtures => ({ ...loaded, extensionsOn: ['projects'] });
 
 export const ERROR_SCREENS: readonly Screen[] = [
   {
@@ -16,6 +20,7 @@ export const ERROR_SCREENS: readonly Screen[] = [
   },
   {
     name: 'project-not-found',
+    fixtures: projectsOn,
     open: async (page) => {
       await page.goto(`${HUB_ORIGIN}/projects/no-such-project`);
       await page.waitForTimeout(1500);
@@ -23,6 +28,7 @@ export const ERROR_SCREENS: readonly Screen[] = [
   },
   {
     name: 'projects-hub-error',
+    fixtures: projectsOn,
     open: async (page) => {
       await failOperations(page, ['Projects']);
       await page.goto(`${HUB_ORIGIN}/projects`);

@@ -11,6 +11,7 @@ const ROOT = join(import.meta.dir, "..", "..");
 const RAW = readFileSync(join(ROOT, ".github", "workflows", "gates.yml"), "utf8");
 
 interface Step {
+  id?: string;
   name?: string;
   uses?: string;
   run?: string;
@@ -42,8 +43,8 @@ function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    // `--alone` checks each crate by itself and `--jobs` names the jobs that a branch needs: neither runs a gate of the list.
-    if (command === undefined || /^\s*--(alone|jobs)\b/.test(command)) return [];
+    // `--alone` checks each crate by itself; `--jobs` and `--dev-push` name the jobs of a push: none runs a gate of the list.
+    if (command === undefined || /^\s*--(alone|jobs|dev-push)\b/.test(command)) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
     return full
@@ -66,7 +67,9 @@ describe("the gates workflow (gates.yml)", () => {
     for (const [name, job] of jobs) {
       expect(job.environment, name).toBeUndefined();
       expect(Object.values(job.permissions ?? {}).filter((value) => value !== "read"), name).toEqual([]);
-      expect(Object.keys(job.permissions ?? {}).filter((key) => key !== "contents"), name).toEqual([]);
+      // Only the job base reads the runs of the gates, to find the trees of dev that already passed.
+      const readable = name === "base" ? ["contents", "actions"] : ["contents"];
+      expect(Object.keys(job.permissions ?? {}).filter((key) => !readable.includes(key)), name).toEqual([]);
     }
     for (const step of steps.filter((each) => each.uses?.startsWith("actions/checkout@"))) {
       expect(step.with?.["persist-credentials"]).toBe(false);
@@ -91,6 +94,9 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("R-252 each job of the gates tests the branch as merged with the dev that the job `base` read", () => {
     expect(workflow.jobs["base"]?.steps.some((step) => step.with?.["name"] === "tested-base")).toBe(true);
+    // The file stays out of the checkout: `--jobs` counts an untracked file as a change of the branch.
+    expect(workflow.jobs["base"]?.steps.find((step) => step.with?.["name"] === "tested-base")?.with?.["path"]).toBe("${{ runner.temp }}/tested-base");
+    expect(workflow.jobs["base"]?.steps.find((step) => step.id === "dev")?.run).toContain('> "$RUNNER_TEMP/tested-base"');
     for (const [name, job] of gateJobs) {
       expect(job.needs, name).toEqual("base" as unknown as string[]);
       const merge = job.steps.find((step) => step.run?.includes("gates-merge.sh"));
@@ -125,6 +131,20 @@ describe("the gates workflow: each crate alone", () => {
     const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
     expect(merged).toBeGreaterThan(-1);
     expect(alone).toBeGreaterThan(merged);
+  });
+});
+
+describe("the gates workflow: a push to dev", () => {
+  const base = workflow.jobs["base"]?.steps.find((step) => step.run?.includes("--dev-push")) ?? {};
+
+  test("only a push to dev itself, not a branch, a train or a call, chooses its jobs by the trees that passed", () => {
+    expect(base.run).toContain('elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "dev" ] && [ -z "$CALLED_REF" ]; then');
+    expect(base.run).toContain('bun quality/bin/gates.ts --dev-push "$BEFORE"');
+    expect(base.run).toContain("pipefail");
+  });
+
+  test("windows does not run when only the quality gates are needed", () => {
+    expect(workflow.jobs["windows"]?.if).toContain("needs.base.outputs.documents_only != 'true'");
   });
 });
 

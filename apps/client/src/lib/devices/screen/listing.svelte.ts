@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { addBeat, beatOf, latestBeats, type Beat } from '$lib/checks/heartbeats';
 import type { Hub, HubError } from '$lib/hub/hub';
@@ -7,6 +8,9 @@ import { appendPage, applyReadings, applyStatus, applyVncEnabled, fromPage, type
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import { coalesced } from '../live/coalesce';
 import { watchLive } from '../live/live';
+import { LiveCharges } from '$lib/metrics/battery/charges.svelte';
+import { LiveMemory } from '$lib/metrics/container/memory.svelte';
+import { isHubDevice } from '../actions/actions';
 import { browserClock, skeletonGate, type LoadingClock, type SkeletonGate } from '$lib/motion/loading/loading';
 
 /**
@@ -21,6 +25,10 @@ export class Listing {
   loadingMore = $state(false);
   skeleton = $state(false);
   readonly beats = new SvelteMap<string, readonly Beat[]>();
+  /** The latest charge of each battery of each device, from the batches since `start` (MET-032). */
+  readonly charges = new LiveCharges();
+  /** The bytes of memory in use of the hub's own device, for its memory as used of its limit (HMD-073). */
+  readonly memory = new LiveMemory();
 
   readonly #hub: Hub;
   readonly #devices;
@@ -85,6 +93,8 @@ export class Listing {
   /** Starts the live status, readings and heartbeat updates; `stop` ends them. */
   start(): void {
     this.#stopped = false;
+    this.charges.start(this.#hub);
+    this.#watchHubDevice();
     this.#stopLive = watchLive(this.#hub, {
       onStatus: (change) => {
         this.#onStatus(change);
@@ -109,6 +119,8 @@ export class Listing {
     this.#stopped = true;
     this.#stopLive?.();
     this.#stopLive = undefined;
+    this.charges.stop();
+    this.memory.stop();
     this.#gate.stop();
     this.#generation += 1;
     this.#loadedKey = undefined;
@@ -120,6 +132,16 @@ export class Listing {
     for (const device of next.devices) {
       if (!this.beats.has(device.id)) this.beats.set(device.id, latestBeats(device.checks));
     }
+    this.#watchHubDevice();
+  }
+
+  /**
+   * Listens to the batches of the hub's own device while the list holds it and the live updates run. `start` runs in
+   * an effect: the list is read untracked, so a new list does not restart the live updates.
+   */
+  #watchHubDevice(): void {
+    const hubDevice = untrack(() => this.list)?.devices.find(isHubDevice);
+    if (hubDevice !== undefined && !this.#stopped) this.memory.watch(this.#hub, hubDevice.id);
   }
 
   async #loadFirst(): Promise<void> {

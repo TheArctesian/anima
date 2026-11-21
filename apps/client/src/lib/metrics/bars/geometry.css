@@ -4,4 +4,9 @@
   --metric-bars-block-size: calc(
     (var(--metric-bars-label-block-size) + var(--space-1) * 2) * 2 + var(--space-2)
   );
+
+  /* Three lines: a device with a GPU's memory and a battery has five bars (MET-032). */
+  --metric-bars-block-size-three: calc(
+    (var(--metric-bars-label-block-size) + var(--space-1) * 2) * 3 + var(--space-2) * 2
+  );
 }

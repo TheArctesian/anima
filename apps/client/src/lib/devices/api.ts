@@ -22,6 +22,7 @@ export const Devices = graphql(`
           name
           host
           ip
+          kind
           tags
           maintenance
           status
@@ -32,6 +33,10 @@ export const Devices = graphql(`
           metricsSource
           readings {
             ...CardReadings
+          }
+          batteries {
+            name
+            state
           }
           accessWarnings
           webInterfaces {

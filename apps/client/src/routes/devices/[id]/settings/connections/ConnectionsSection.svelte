@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
+  import { hasWaysIn } from '$lib/devices/actions/actions';
   import type { DeviceDetail } from '$lib/devices/api';
   import type { ConnectionTestResult } from '$lib/devices/form/connection-test';
   import type { DeviceFormValues } from '$lib/devices/form/values';
@@ -9,7 +10,6 @@
   import type { SettingsSection as Place } from '../../tabs/tabs';
   import type { SettingsCalls } from '../calls';
   import type { SettingsDraft } from '../draft.svelte';
-  import { hasWaysIn } from '../../header/header';
   import { SECTIONS } from '../sections';
   import RdpConnection from './RdpConnection.svelte';
   import SshConnection from './SshConnection.svelte';

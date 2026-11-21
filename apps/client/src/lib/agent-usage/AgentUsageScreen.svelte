@@ -4,6 +4,8 @@
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import LoadingState from '$lib/states/LoadingState.svelte';
+  import { batteryBar } from '$lib/metrics/battery/battery';
+  import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
   import { utcDay, type UsageQuery } from './query';
   import { sourceName, stateWords } from './report/words';
   import type { UsageStore } from './store.svelte';
@@ -29,9 +31,11 @@
     hostedLine?: string;
     /** The time of now; a test gives its own. */
     now?: () => Date;
+    /** The latest charge of each battery of each device (MET-032). */
+    charges?: Pick<LiveCharges, 'of'>;
   }
 
-  const { store, query, onQueryChange, onRetry, hostedLine, now = () => new Date() }: Props = $props();
+  const { store, query, onQueryChange, onRetry, hostedLine, now = () => new Date(), charges }: Props = $props();
   const view = $derived(store.view);
   /** No daemon sent counts, whatever the choices: the whole page is the empty state. */
   const noDaemon = $derived(view !== null && view.everyDevice.length === 0);
@@ -52,6 +56,7 @@
       key: device.id,
       name: device.name,
       state: stateWords(state),
+      battery: batteryBar(device.batteries, charges?.of(device.id)),
       sums: view?.devices.find((row) => row.device.id === device.id) ?? null,
     })),
   );

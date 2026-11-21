@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeHub } from '$lib/devices/hub.fixture';
 import type { Hub, HubResult } from '$lib/hub/hub';
+import type { MetricSeries } from '$lib/metrics/api';
 import { CPU_ONLY, added, point, series } from '$lib/metrics/metrics.fixture';
 import { forgetChartShapes } from '$lib/metrics/shapes';
 import { POP_OS } from '$lib/metrics/storage/storage.fixture';
@@ -237,5 +238,25 @@ describe('DeviceMetrics ranges (D-5)', () => {
     await metrics.load('DAY', 'SSH');
     expect(fake.listeners('MetricsAdded')).toBe(0);
     expect(metrics.liveError).toBeNull();
+  });
+});
+
+describe('DeviceMetrics battery (MET-032)', () => {
+  const laptop = (metrics: readonly MetricSeries[]) => ({ device: { ...answer(metrics).device, batteries: [{ name: 'BAT0', state: 'DISCHARGING' }] } });
+
+  it('MET-032: the battery meter starts at the newest point of its series and follows each live batch', async () => {
+    const charge = series('BATTERY_PERCENT', 'BAT0', [point('2026-11-05T09:04:00Z', 57)]);
+    const fake = fakeHub({ DeviceMetrics: laptop([...CPU_ONLY, charge]) });
+    const metrics = metricsOf(fake);
+    await metrics.load('HOUR', 'DAEMON');
+    expect(metrics.battery).toMatchObject({ percent: 57, charging: false, low: false });
+    fake.push('MetricsAdded', { metricsAdded: added('2026-11-05T09:06:00Z', [{ kind: 'BATTERY_PERCENT', label: 'BAT0', value: 19 }]) });
+    expect(metrics.battery).toMatchObject({ percent: 19, low: true, note: 'low' });
+  });
+
+  it('MET-032: a device with no battery has no battery meter', async () => {
+    const metrics = metricsOf(fakeHub({ DeviceMetrics: answer() }));
+    await metrics.load('HOUR', 'DAEMON');
+    expect(metrics.battery).toBeNull();
   });
 });

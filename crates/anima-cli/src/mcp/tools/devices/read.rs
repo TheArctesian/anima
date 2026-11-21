@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use super::DeviceTool;
 use crate::devices::documents::{DeviceGet, device_get, device_list};
-use crate::devices::get::resolve;
+use crate::devices::get::{battery, resolve};
 use crate::devices::list::{Query, fetch, site_id};
 use crate::hub::Hub;
 use crate::mcp::arguments::{Page, json, object, parse, short};
@@ -97,7 +97,8 @@ pub fn definition(tool: DeviceTool) -> Definition {
             Access::Read,
             Effect::Reads,
             "One device by id or exact name: status, site, host, tags, maintenance, its \
-             checks (id, name, type, status) with uptime of the last 24 hours, its web \
+             checks (id, name, type, status) with uptime of the last 24 hours, its \
+             batteries (name, chargePercent, state; empty for a device with none), its web \
              interfaces and access warnings. detail adds SSH, RDP and VNC settings (never \
              a credential). Next: anima_check_get for a check, anima_device_metrics.",
         )
@@ -135,7 +136,7 @@ fn overview_definition() -> Definition {
 }
 
 const SEARCH_KEYS: [&str; 5] = ["id", "name", "status", "site", "tags"];
-const GET_KEYS: [&str; 12] = [
+const GET_KEYS: [&str; 13] = [
     "id",
     "name",
     "status",
@@ -148,6 +149,7 @@ const GET_KEYS: [&str; 12] = [
     "checks",
     "uptime",
     "accessWarnings",
+    "batteries",
 ];
 
 pub async fn overview(hub: &Hub) -> Result<Value, ToolError> {
@@ -213,13 +215,16 @@ pub async fn get(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Tool
         .await?
         .device
         .ok_or_else(|| ToolError::Refused(gone(&id)))?;
+    let names: Vec<&str> = device.batteries.iter().map(|b| b.name.as_str()).collect();
+    let charges = battery::charges(hub, &id, &names).await?;
+    let device = battery::with_charges(json(&device), &charges);
     let web = hub
         .run::<WebList>(web_list::Variables { id })
         .await?
         .device
         .map_or(Value::Null, |device| json(&device.web_interfaces));
     Ok(Value::Object(object([
-        ("device", short(json(&device), &GET_KEYS, input.detail)),
+        ("device", short(device, &GET_KEYS, input.detail)),
         ("webInterfaces", web),
     ])))
 }

@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { UsageSums } from '../api';
+  import type { BatteryBar } from '$lib/metrics/battery/battery';
 
   /** One line of a table of shares: a program and model, or a device. */
   export interface ShareRow {
@@ -9,12 +10,15 @@
     readonly detail?: string;
     /** The state of a device's daemon, in words; `reads` is the working state. */
     readonly state?: { readonly words: string; readonly reads: boolean };
+    /** The battery of a device that has one (MET-032). */
+    readonly battery?: BatteryBar | null;
     /** The counts; null for a device that sends none. */
     readonly sums: UsageSums | null;
   }
 </script>
 
 <script lang="ts">
+  import BatteryMark from '$lib/metrics/battery/BatteryMark.svelte';
   import type { Count } from '../query';
   import { tokens, whole } from '../report/units';
   import { costText } from '../report/words';
@@ -59,6 +63,7 @@
                 <span class="name">{row.name}</span>
               </button>
             {/if}
+            {#if row.battery != null}<BatteryMark battery={row.battery} />{/if}
             {#if row.detail !== undefined}<span class="detail">{row.detail}</span>{/if}
             {#if row.state !== undefined}<span class="state" class:reads={row.state.reads}>{row.state.words}</span>{/if}
           </th>

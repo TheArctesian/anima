@@ -1,5 +1,5 @@
 //! The environment of an agent program: the environment of the login of the person, as a login
-//! shell makes it, never a secret of Anima (R-NEW-threadsdrive). The daemon runs from a service
+//! shell makes it, never a secret of Anima (R-308). The daemon runs from a service
 //! manager with a short `PATH`, so the runner asks the login shell one time at its start.
 
 use std::path::{Path, PathBuf};

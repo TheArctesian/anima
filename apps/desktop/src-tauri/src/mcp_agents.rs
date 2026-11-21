@@ -17,7 +17,8 @@ use crate::command_line;
 /// - `no_command_line`: the command line tool is not installed, so no entry can name it.
 /// - `command`: the installed `anima` is not a fixed program that only this user can replace.
 /// - `user`: the home folder does not belong to the user that runs the application.
-/// - `failed`: anything else.
+/// - `failed`: anything else, also a change that names no agent or asks to force one: the page
+///   asks for each agent that it listed, and never forces (MCP-029, MCP-036).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum AgentsError {
     #[error("only the main window may ask")]
@@ -67,6 +68,8 @@ pub struct Wanted {
     force: bool,
 }
 
+static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Runs `job` with this computer and the installed `anima`, off the async runtime.
 async fn with<R: Runtime>(
     webview: Webview<R>,
@@ -79,6 +82,13 @@ async fn with<R: Runtime>(
     let done = tauri::async_runtime::spawn_blocking(move || {
         let here = Here::for_this_user(installed.home, installed.path).ok_or(AgentsError::User)?;
         let anima = check_command(&installed.anima, here.user).map_err(|_| AgentsError::Command)?;
+        if let Some(runs) = &installed.runs {
+            check_command(runs, here.user).map_err(|_| AgentsError::Command)?;
+        }
+        // One read or change at a time: two changes of one agent's own program could race.
+        let _one = ONE_AT_A_TIME
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(job(&here, &anima))
     })
     .await
@@ -120,6 +130,11 @@ pub async fn mcp_agents_change<R: Runtime>(
     webview: Webview<R>,
     wanted: Wanted,
 ) -> Result<Vec<Row>, AgentsError> {
+    // The page lists each agent before a change and names each one; "all" and "force" are for
+    // the command line, where the person reads the list in the terminal.
+    if wanted.agents.is_empty() || wanted.force {
+        return Err(AgentsError::Failed);
+    }
     let result = with(webview, move |here, anima| {
         change(
             here,

@@ -1,4 +1,5 @@
-//! `anima source kinds`: the sources the hub can read from (ITG-001).
+//! `anima source kinds`: the sources the hub can read from (ITG-001), and for each the page
+//! where a browser continues Connect, when this hub can start that flow (K-E1 Section 7a).
 
 use super::documents::{SourceKinds, source_kinds};
 use crate::failure::Failure;
@@ -28,6 +29,7 @@ fn table(sources: &Vec<source_kinds::SourceKindsSources>) -> Table {
         "GIVES",
         "POLLS EVERY",
         "USED BY",
+        "BROWSER CONNECT",
     ]);
     for source in sources {
         table.row(vec![
@@ -37,6 +39,7 @@ fn table(sources: &Vec<source_kinds::SourceKindsSources>) -> Table {
             source.gives.join(", ").into(),
             format!("{}s", source.poll_interval_seconds).into(),
             source.consumers.join(", ").into(),
+            source.connect_page_url.as_deref().unwrap_or("-").into(),
         ]);
     }
     table

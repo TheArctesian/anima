@@ -29,22 +29,53 @@ impl Checked {
     }
 }
 
+#[cfg(unix)]
+/// The group `admin` of macOS. Its members can become root, so a folder of root that this group
+/// can write (as `/Applications`) is as fixed as a folder of root alone.
+const MACOS_ADMIN: u32 = 80;
+
+/// One part of a path as [`replaceable`] reads it.
+#[cfg(unix)]
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Part {
+    pub owner: u32,
+    pub group: u32,
+    pub mode: u32,
+    pub folder: bool,
+    pub link: bool,
+}
+
+#[cfg(unix)]
+/// Whether a different user than `user` can replace `part`. `macos`: the group `admin` counts as
+/// root.
+pub(super) fn open_to_others(part: Part, user: u32, macos: bool) -> bool {
+    let owned = part.owner == user || part.owner == 0;
+    // A link has no mode of its own; the folder that holds it decides who replaces it. A folder
+    // with the sticky bit (as /tmp) lets only the owner of an entry replace it.
+    let sticky = part.folder && part.mode & 0o1000 != 0;
+    let fixed_group = part.group == user
+        || part.group == 0
+        || (macos && part.owner == 0 && part.group == MACOS_ADMIN);
+    let open = !part.link
+        && !sticky
+        && (part.mode & 0o002 != 0 || (part.mode & 0o020 != 0 && !fixed_group));
+    !owned || open
+}
+
 /// Whether a different user can replace what is at `path`: the thing itself or a folder above it,
 /// up to the root. The system's own folders (owned by root) count as fixed.
 #[cfg(unix)]
-fn replaceable(path: &Path, user: u32) -> bool {
+pub(super) fn replaceable(path: &Path, user: u32) -> bool {
     path.ancestors().any(|part| {
         fs::symlink_metadata(part).map_or(true, |metadata| {
-            let mode = metadata.permissions().mode();
-            let owned = metadata.uid() == user || metadata.uid() == 0;
-            // A link has no mode of its own; the folder that holds it decides who replaces it. A
-            // folder with the sticky bit (as /tmp) lets only the owner of an entry replace it.
-            let sticky = metadata.is_dir() && mode & 0o1000 != 0;
-            let open = !metadata.file_type().is_symlink()
-                && !sticky
-                && (mode & 0o002 != 0
-                    || (mode & 0o020 != 0 && metadata.gid() != user && metadata.gid() != 0));
-            !owned || open
+            let part = Part {
+                owner: metadata.uid(),
+                group: metadata.gid(),
+                mode: metadata.permissions().mode(),
+                folder: metadata.is_dir(),
+                link: metadata.file_type().is_symlink(),
+            };
+            open_to_others(part, user, cfg!(target_os = "macos"))
         })
     })
 }
@@ -81,6 +112,28 @@ pub fn check_command(anima: &Path, user: u32) -> Result<Checked, CommandError> {
     Ok(Checked(anima.to_path_buf()))
 }
 
+/// An agent's own program that may be run: found on `PATH`, and neither it, what it links to, nor
+/// a folder above them can be replaced by a different user (the check of `anima`, MCP-033).
+pub(super) enum Found {
+    Fixed(PathBuf),
+    /// On `PATH`, but a different user can replace it: it is not run.
+    Replaceable,
+    Missing,
+}
+
+/// The first program named `name` on `PATH`, if it is one that may be run (MCP-035).
+pub(super) fn fixed_program(here: &Here, name: &str) -> Found {
+    let Some(path) = program(here, name) else {
+        return Found::Missing;
+    };
+    let real = fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+    if replaceable(&path, here.user) || replaceable(&real, here.user) {
+        Found::Replaceable
+    } else {
+        Found::Fixed(path)
+    }
+}
+
 /// The first program named `name` in the folders of `PATH`, as an absolute path.
 pub(super) fn program(here: &Here, name: &str) -> Option<PathBuf> {
     here.path
@@ -98,7 +151,7 @@ pub(super) fn program(here: &Here, name: &str) -> Option<PathBuf> {
 }
 
 #[cfg(windows)]
-fn replaceable(path: &Path, _: u32) -> bool {
+pub(super) fn replaceable(path: &Path, _: u32) -> bool {
     path.ancestors()
         .any(|part| !anima_windows::files::secure(part, false).unwrap_or(false))
 }

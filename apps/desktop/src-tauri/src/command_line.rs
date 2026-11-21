@@ -127,6 +127,9 @@ async fn here() -> Result<Here, CommandLineError> {
 /// The installed `anima` of this app, with the home folder and the folders of the login `PATH`.
 pub(crate) struct Installed {
     pub anima: PathBuf,
+    /// Linux: the `AppImage` file that the launcher `anima` runs. It must be as fixed as the
+    /// launcher, since an entry in the end runs it (MCP-033).
+    pub runs: Option<PathBuf>,
     pub home: PathBuf,
     pub path: Vec<PathBuf>,
 }
@@ -138,6 +141,10 @@ pub(crate) async fn installed() -> Option<Installed> {
     match here.status() {
         Status::Installed { path } => Some(Installed {
             anima: PathBuf::from(path),
+            runs: match &here.carrier {
+                Carrier::AppImage { file } => Some(file.clone()),
+                Carrier::Bundle { .. } => None,
+            },
             home: here.home.clone(),
             path: here.path.clone(),
         }),

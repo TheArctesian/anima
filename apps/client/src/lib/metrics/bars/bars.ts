@@ -1,6 +1,7 @@
 import type { MetricsSource } from '$lib/hub/generated/graphql';
 import { DEGRADED_ABOVE } from '../units';
 import { hasMetrics } from '../source/has-metrics';
+import type { BatteryBar } from '../battery/battery';
 
 /** The readings the bars draw. Structural, so a hub `CardReadings` fragment fits without this folder knowing devices. */
 export interface BarReadings {
@@ -16,7 +17,7 @@ export interface BarReadings {
 }
 
 export interface Bar {
-  readonly key: 'cpu' | 'memory' | 'disk' | 'vram';
+  readonly key: 'cpu' | 'memory' | 'disk' | 'vram' | 'battery';
   readonly label: string;
   /** The reading, 0 to 100; `null` while it is unknown. */
   readonly percent: number | null;
@@ -27,6 +28,8 @@ export interface Bar {
   readonly tooltip: string;
   /** A small note after the label: "+3 drives" on the disk bar (MET-030); `null` for none. */
   readonly note: string | null;
+  /** What a screen reader says for the value when the percent alone is not all of it: the state of a battery. */
+  readonly spoken?: string;
 }
 
 export type BarRow =
@@ -72,9 +75,10 @@ function barsOf(readings: BarReadings): readonly Bar[] {
   return bars;
 }
 
-/** What the metric bars show for a device's readings and metrics source (6.1, MET-007). */
-export function barRow(readings: BarReadings | null, source: MetricsSource | null | undefined): BarRow {
+/** What the metric bars show for a device's readings and metrics source (6.1, MET-007); the battery comes last (MET-032). */
+export function barRow(readings: BarReadings | null, source: MetricsSource | null | undefined, battery: BatteryBar | null = null): BarRow {
   if (!hasMetrics(source)) return { kind: 'empty', text: 'No metrics' };
   if (readings === null) return { kind: 'empty', text: 'Waiting for metrics' };
-  return { kind: 'bars', bars: barsOf(readings) };
+  const bars = barsOf(readings);
+  return { kind: 'bars', bars: battery === null ? bars : [...bars, battery] };
 }

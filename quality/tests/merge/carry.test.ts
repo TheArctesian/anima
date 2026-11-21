@@ -71,7 +71,7 @@ function devMoves(at: { conductor: string; session: string }, path: string, text
   git(at.conductor, "pull", "--quiet", "origin", "dev");
 }
 
-describe("R-NEW-traincarry a train that passed lands over a dev that moved only in documents", () => {
+describe("R-NEW-traincarry a train that passed lands over a dev that moved in documents or by its own branches", () => {
   test("it lands on the new dev with each branch, the pushed document, and the code that the gates tested", () => {
     const at = world();
     devMoves(at, "docs/ideas/spare-computer/idea.md", "# An idea\n");
@@ -113,5 +113,30 @@ describe("R-NEW-traincarry a train that passed lands over a dev that moved only 
     expect(carry(at.conductor, { into: "dev", tested: at.tested, held: at.held }, at.rules)).toEqual({ outcome: "again", refused: [] });
     expect(git(at.origin, "rev-parse", "dev")).toBe(pushed);
     expect(git(at.conductor, "status", "--porcelain")).toBe("");
+  }, SLOW);
+});
+
+describe("R-NEW-traincarry a train that passed lands over a dev that a person merged one of its branches into", () => {
+  test("a dev that moved by a merge by hand of a branch that the train holds lands: the code is the one tested", () => {
+    const at = world();
+    git(at.session, "pull", "--quiet", "origin", "dev");
+    git(at.session, "merge", "--quiet", "--no-ff", "-m", "Merge origin/hub/queue into dev", "hub/queue");
+    git(at.session, "push", "--quiet", "origin", "dev");
+    git(at.conductor, "pull", "--quiet", "origin", "dev");
+    expect(carry(at.conductor, { into: "dev", tested: at.tested, held: at.held }, at.rules)).toEqual({ outcome: "landed", refused: [] });
+    const dev = git(at.origin, "rev-parse", "dev");
+    expect(git(at.conductor, "diff", "--name-only", at.tested, dev)).toBe("");
+    expect(git(at.origin, "rev-list", "--count", "--merges", dev)).toBe("2");
+  }, SLOW);
+
+  test("a merge by hand of a held branch together with other code is refused, and nothing is pushed", () => {
+    const at = world();
+    git(at.session, "pull", "--quiet", "origin", "dev");
+    git(at.session, "merge", "--quiet", "--no-ff", "-m", "Merge origin/hub/queue into dev", "hub/queue");
+    git(at.session, "push", "--quiet", "origin", "dev");
+    devMoves(at, "crates/hub/src/lease.rs", "pub fn renew() {}\n");
+    const before = git(at.origin, "rev-parse", "dev");
+    expect(carry(at.conductor, { into: "dev", tested: at.tested, held: at.held }, at.rules)).toEqual({ outcome: "different", refused: ["crates/hub/src/lease.rs"] });
+    expect(git(at.origin, "rev-parse", "dev")).toBe(before);
   }, SLOW);
 });

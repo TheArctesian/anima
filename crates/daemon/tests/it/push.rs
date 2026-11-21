@@ -11,6 +11,7 @@ use tokio::net::TcpSocket;
 use crate::fake_hub::{FakeHub, Reply};
 use crate::kit::{at, device, origin, points, pushed_times, rig, token, year};
 
+mod hosted;
 mod version;
 
 fn feed(rig: &mut crate::kit::Rig, first: i64, count: i64) {

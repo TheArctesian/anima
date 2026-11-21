@@ -21,14 +21,21 @@ export const SEVERITY_CHOICES: readonly Choice<Severity>[] = [
   { value: 'INFO', label: 'Info' },
 ];
 
-export const SOURCE_CHOICES: readonly Choice<EventSource>[] = [
-  { value: 'CHECK', label: 'Check' },
-  { value: 'SESSION', label: 'Session' },
-  { value: 'DEVICE', label: 'Device' },
-  { value: 'ACCESS', label: 'Access' },
-  { value: 'HUB', label: 'Hub' },
-  { value: 'VPN', label: 'VPN' },
-];
+/** The word of each source, in the order of the filter. A record, so a source that the hub adds fails the check of types here. */
+const SOURCE_WORDS: Readonly<Record<EventSource, string>> = {
+  CHECK: 'Check',
+  SESSION: 'Session',
+  DEVICE: 'Device',
+  ACCESS: 'Access',
+  HUB: 'Hub',
+  VPN: 'VPN',
+  METRICS: 'Metrics',
+  NOTIFICATION: 'Notification',
+};
+
+export const SOURCE_CHOICES: readonly Choice<EventSource>[] = (Object.keys(SOURCE_WORDS) as EventSource[]).map(
+  (value) => ({ value, label: SOURCE_WORDS[value] }),
+);
 
 /** The mark beside a source's word; the word stays, so the icon is never the only sign (UR-7). */
 export const SOURCE_ICONS: Readonly<Record<EventSource, IconName>> = {
@@ -47,9 +54,15 @@ export function sourceIcon(source: string): IconName {
   return (SOURCE_ICONS as Partial<Record<string, IconName>>)[source] ?? 'carbon:catalog';
 }
 
+/** A value this client does not know yet, as a word in sentence case: `NEW_KIND` is "New kind", never capitals. */
+function sentence(value: string): string {
+  const words = value.replaceAll('_', ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /** The text of a choice value; severity and source show as words, never as colour alone. */
 export function labelOf<T extends string>(choices: readonly Choice<T>[], value: T): string {
-  return choices.find((choice) => choice.value === value)?.label ?? value;
+  return choices.find((choice) => choice.value === value)?.label ?? sentence(value);
 }
 
 const pad = (part: number): string => String(part).padStart(2, '0');

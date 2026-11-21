@@ -15,20 +15,23 @@
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
-  import { metricsOffText } from './overview';
+  import { metricsOffText, noChartsText } from './overview';
 
   interface Props {
     source: MetricsSource;
-    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'battery' | 'error' | 'liveError'> &
+      Partial<Pick<DeviceMetrics, 'memoryBytes'>>;
     range: MetricRange;
     now: () => Date;
     clock?: LoadingClock;
     onRange: (range: MetricRange) => void;
     onRetry: () => void;
     onSettings: () => void;
+    /** The hub's own device: its bars are those of its container (HMD-073). */
+    container?: boolean;
   }
 
-  const { source, metrics, range, now, clock, onRange, onRetry, onSettings }: Props = $props();
+  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false }: Props = $props();
   // A hosted hub reads no metrics over SSH (HMD-049 is not built), so its sentence names the daemon only (R-222).
   const hosted = contextHubIsHosted();
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
@@ -62,7 +65,7 @@
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
-    <MetricBars readings={metrics.readings} {source} />
+    <MetricBars readings={metrics.readings} {source} battery={metrics.battery} {container} memoryBytes={metrics.memoryBytes ?? null} />
     {#if metrics.liveError !== null}
       <p class="live" role="status">{metrics.liveError.message}</p>
     {/if}
@@ -78,7 +81,7 @@
       {:else if !waiting}
         <div class="layer" transition:crossFade>
           {#if charts.length === 0 || metrics.span === null}
-            <p class="waiting">Waiting for metrics</p>
+            <p class="waiting">{noChartsText(metrics.readings !== null, phrase)}</p>
           {:else}
             <div class="chart-grid">
               {#each charts as chart (chart.key)}

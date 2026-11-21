@@ -55,6 +55,14 @@ it('AIS-020: the page reads the use with the choices of its address', async () =
   expect(document.querySelector('ol.days')?.getAttribute('aria-label')).toBe('Tokens for each day (UTC)');
 });
 
+it('MET-032: the page listens for the charge of the batteries while it is open, and stops when it closes', async () => {
+  await open('');
+  expect(hub.listening).toBe(1);
+  if (app !== undefined) await unmount(app);
+  app = undefined;
+  expect(hub.listening).toBe(0);
+});
+
 it('AIS-020: with no choices in the address the page reads the last 30 days of every device, program and repository', async () => {
   await open('');
   const asked = hub.asked[0] as { filter: Record<string, string> };

@@ -24,7 +24,7 @@ pub enum ProgramName {
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ModeName {
-    /// The program asks nothing (the default, R-NEW-threadsdrive).
+    /// The program asks nothing (the default, R-308).
     FullAccess,
     /// The program changes files in the folder without asking and asks for the rest.
     AcceptEdits,
@@ -95,7 +95,7 @@ fn parse_choice(text: &str) -> Result<(String, String), String> {
 }
 
 /// Gives a result that is not a refusal.
-fn accepted(outcome: Outcome) -> Result<Outcome, Failure> {
+pub(super) fn accepted(outcome: Outcome) -> Result<Outcome, Failure> {
     match outcome {
         Outcome::Refused { why } => Err(refusal(&why)),
         other => Ok(other),
@@ -293,7 +293,7 @@ fn table(rows: &[ThreadRow]) -> Table {
     table
 }
 
-const fn program_key(program: Program) -> &'static str {
+pub(super) const fn program_key(program: Program) -> &'static str {
     match program {
         Program::ClaudeCode => "claude_code",
         Program::Codex => "codex",

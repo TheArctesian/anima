@@ -1,8 +1,9 @@
 /**
  * The carry-over of a train (R-NEW-traincarry): the gates passed for the commit `tested`, and `dev`
- * moved after it only in documents. The same branches are merged again on the new `dev`, and
- * that result goes to `dev` only when each file that is not a document is the same as in
- * `tested`. So the code that lands is the code that the gates tested. I/O: git in `root`.
+ * moved after it, in documents or by merges of branches that the train holds. The branches that
+ * are not in the new `dev` yet are merged again on it, and that result goes to `dev` only when
+ * each file that is not a document is the same as in `tested`. So the code that lands is the code
+ * that the gates tested, however `dev` moved. I/O: git in `root`.
  */
 import { undoMerge } from "./commit.ts";
 import { stack } from "./stack.ts";
@@ -46,7 +47,9 @@ export interface Carried {
  */
 export function carry(root: string, { into, tested, held }: Passed, rules: Rules): Carried {
   const start = git(root, ["rev-parse", "HEAD"]).out;
-  const made = stack(root, held, rules.finish);
+  // A branch that a person merged into `dev` while the gates ran is there already.
+  const waiting = held.filter((tip) => !git(root, ["merge-base", "--is-ancestor", tip.sha, "HEAD"]).ok);
+  const made = stack(root, waiting, rules.finish);
   const refused = [
     ...made.leftOut.map((each) => `${each.branch}: ${each.reason}`),
     ...changed(root, tested, "HEAD").filter((path) => !rules.isDocument(path)),

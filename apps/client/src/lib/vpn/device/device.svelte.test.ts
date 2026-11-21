@@ -22,7 +22,7 @@ function overview(vpn: ReturnType<typeof node> | null): void {
     props: {
       device: device({ metricsSource: 'NONE' }),
       checks: [],
-      metrics: { view: null, span: null, shownRange: null, chartShape: null, readings: null, error: null, liveError: null },
+      metrics: { view: null, span: null, shownRange: null, chartShape: null, readings: null, battery: null, error: null, liveError: null },
       range: 'HOUR',
       vpn,
       now: () => NOW,
