@@ -149,3 +149,34 @@ async fn cap_010_quiet_hours_are_stored_and_a_value_out_of_range_is_refused(pool
         "the machine never asked for work"
     );
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../fixtures", scripts("devices"))
+)]
+async fn r_new_devicepolicy_an_api_key_cannot_set_a_device_policy(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let made = daemons
+        .operate(
+            "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }",
+            json!({ "input": { "name": "writer", "scope": "WRITE", "madeFor": "AGENT",
+                               "expiresAt": now + TimeDelta::days(30) } }),
+        )
+        .await;
+    let key = made["data"]["createApiKey"]["secret"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{made}"))
+        .to_owned();
+    let variables = json!({ "deviceId": PVE_01, "input": input(false, true) });
+
+    let refused = daemons.graphql(Some(&key), SET, variables).await;
+    let read = daemons.graphql(Some(&key), POLICIES, json!({})).await;
+
+    assert_eq!(
+        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{refused}"
+    );
+    assert!(read["data"]["devicePolicies"].is_array(), "{read}");
+    assert_eq!(policy_of(&daemons, PVE_01).await["isDefault"], true);
+}

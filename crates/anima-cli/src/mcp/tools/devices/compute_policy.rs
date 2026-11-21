@@ -62,7 +62,7 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
     if tool == DeviceTool::ComputePolicySet {
         return Definition::new::<SetInput>(
             "anima_compute_policy_set",
-            Access::Write,
+            Access::Login,
             Effect::Sets,
             "Changes the named values of the device policy of one device and keeps the others: \
              the memory share, the disk share for models, the quiet hours, mains power only, \

@@ -35,7 +35,8 @@
       "devices",
       "events",
       "metrics",
-      "jobs"
+      "jobs",
+      "access"
     ],
     "credentials": [
       "events"

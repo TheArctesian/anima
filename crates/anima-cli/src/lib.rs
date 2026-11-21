@@ -30,6 +30,7 @@ pub mod link;
 pub mod locations;
 pub mod maintenance;
 pub mod mcp;
+pub mod model_library;
 pub mod notifications;
 pub mod one_time_secret;
 pub mod output;

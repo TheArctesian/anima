@@ -1,0 +1,11 @@
+# `anima model add`: reads a repository of an approved organisation (LIBM-004).
+mutation ModelAdd($repository: String!, $name: String) {
+  addLibraryModel(repository: $repository, name: $name) {
+    name
+    variants {
+      address
+      format
+      sizeBytes
+    }
+  }
+}

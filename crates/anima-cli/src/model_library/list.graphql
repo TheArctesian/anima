@@ -1,0 +1,18 @@
+# `anima model list`: the models of the library with their variants (SEL-005).
+query ModelList {
+  libraryModels {
+    name
+    family
+    parameterCount
+    contextLength
+    capabilities
+    licence
+    aliases
+    variants {
+      address
+      format
+      quantisation
+      sizeBytes
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# `anima model source list`: the approved organisations (LIBM-003).
+query ModelSources {
+  approvedModelSources
+}

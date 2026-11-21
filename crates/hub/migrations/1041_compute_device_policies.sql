@@ -1,5 +1,6 @@
 -- The device policy of each compute node (CAP-010 to CAP-012; compute plan task L1-5). A new
--- range of K2, 1040-1059, schema `compute`: waits for a ruling, R-NEW-devicepolicy.
+-- table in the range 1040-1059 and the schema `compute` that migration 1040 (task L1-4) creates:
+-- waits for a ruling, R-NEW-devicepolicy.
 --
 -- One row per device whose operator set a policy; a device with no row has the default policy
 -- of the hub (75 percent memory, 50 percent disk, no quiet hours, mains power only, the
@@ -9,9 +10,7 @@
 -- (DEV-015).
 --
 -- Privileges: migration 0001's default privileges give `anima_runtime` what it needs on the
--- new schema (K2 "Roles"). The migration only creates an empty table (DB-010).
-create schema compute;
-
+-- new table (K2 "Roles"). The migration only creates an empty table (DB-010).
 create table compute.device_policies (
     device_id         uuid        primary key references devices.devices (id) on delete cascade,
     memory_share      smallint    not null check (memory_share between 1 and 100),
